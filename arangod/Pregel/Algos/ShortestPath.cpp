@@ -111,7 +111,7 @@ ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams)
 }
 
 std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
-  return std::set<std::string>{_format->_sourceDocId};
+  return std::set<std::string>{_source};
 }
 
 GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
@@ -120,7 +120,7 @@ GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
 
 VertexComputation<int64_t, int64_t, int64_t>*
 ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
-  PregelID target = _config->documentIdToPregel(_format->_targetDocId);
+  PregelID target = _config->documentIdToPregel(_target);
   return new SPComputation(target);
 }
 
