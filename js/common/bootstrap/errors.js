@@ -220,6 +220,8 @@
     "ERROR_LDAP_CANNOT_UNBIND"     : { "code" : 1803, "message" : "cannot unbind from a LDAP server" },
     "ERROR_LDAP_CANNOT_SEARCH"     : { "code" : 1804, "message" : "cannot issue a LDAP search" },
     "ERROR_LDAP_FOUND_NO_OBJECTS"  : { "code" : 1805, "message" : "LDAP didn't found any objects" },
+    "ERROR_LDAP_NOT_ONE_USER_FOUND" : { "code" : 1806, "message" : "LDAP found zero ore more than one user" },
+    "ERROR_LDAP_USER_NOT_IDENTIFIED" : { "code" : 1807, "message" : "LDAP found a user, but its not the desired one" },
     "ERROR_LDAP_INVALID_MODE"      : { "code" : 1810, "message" : "invalid ldap mode" },
     "ERROR_TASK_INVALID_ID"        : { "code" : 1850, "message" : "invalid task id" },
     "ERROR_TASK_DUPLICATE_ID"      : { "code" : 1851, "message" : "duplicate task id" },

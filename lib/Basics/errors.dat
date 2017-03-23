@@ -297,6 +297,8 @@ ERROR_LDAP_CANNOT_BIND,1802,"cannot bind to a LDAP server","cannot bind to a LDA
 ERROR_LDAP_CANNOT_UNBIND,1803,"cannot unbind from a LDAP server","cannot unbind from a LDAP server"
 ERROR_LDAP_CANNOT_SEARCH,1804,"cannot issue a LDAP search","cant search the LDAP server"
 ERROR_LDAP_FOUND_NO_OBJECTS,1805,"LDAP didn't found any objects","LDAP didn't found any objects with the specified search query"
+ERROR_LDAP_NOT_ONE_USER_FOUND,1806,"LDAP found zero ore more than one user","LDAP found zero ore more than one user"
+ERROR_LDAP_USER_NOT_IDENTIFIED,1807,"LDAP found a user, but its not the desired one","LDAP found a user, but its not the desired one"
 ERROR_LDAP_INVALID_MODE,1810,"invalid ldap mode","cant distinguish a valid mode for provided ldap configuration"
 
 ################################################################################

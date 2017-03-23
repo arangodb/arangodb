@@ -529,6 +529,10 @@
 ///   cant search the LDAP server
 /// - 1805: @LIT{LDAP didn't found any objects}
 ///   LDAP didn't found any objects with the specified search query
+/// - 1806: @LIT{LDAP found zero ore more than one user}
+///   LDAP found zero ore more than one user
+/// - 1807: @LIT{LDAP found a user, but its not the desired one}
+///   LDAP found a user, but its not the desired one
 /// - 1810: @LIT{invalid ldap mode}
 ///   cant distinguish a valid mode for provided ldap configuration
 /// - 1850: @LIT{invalid task id}
@@ -2882,6 +2886,26 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_LDAP_FOUND_NO_OBJECTS                                   (1805)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1806: ERROR_LDAP_NOT_ONE_USER_FOUND
+///
+/// LDAP found zero ore more than one user
+///
+/// LDAP found zero ore more than one user
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_NOT_ONE_USER_FOUND                                 (1806)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1807: ERROR_LDAP_USER_NOT_IDENTIFIED
+///
+/// LDAP found a user, but its not the desired one
+///
+/// LDAP found a user, but its not the desired one
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_USER_NOT_IDENTIFIED                                (1807)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1810: ERROR_LDAP_INVALID_MODE
