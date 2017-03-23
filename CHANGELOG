@@ -1,6 +1,8 @@
 v3.1.16 (2017-XX-XX)
 --------------------
 
+* fixed issue #2392
+
 * ui - aql editor improvements + updated ace editor version (memory leak)
 
 * fixed lost HTTP requests
@@ -8,6 +10,7 @@ v3.1.16 (2017-XX-XX)
 * ui - fixed some event issues
 
 * avoid name resolution when given connection string is a valid ip address
+
 
 v3.1.15 (2017-03-20)
 --------------------
