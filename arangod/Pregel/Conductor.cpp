@@ -97,7 +97,11 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
 
 Conductor::~Conductor() {
   if (_state != ExecutionState::DEFAULT) {
-    this->cancel();
+    try {
+      this->cancel();
+    } catch (...) {
+      // must not throw exception from here
+    }
   }
 }
 

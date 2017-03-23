@@ -35,6 +35,8 @@ namespace basics {
 class ReadWriteLock {
   ReadWriteLock(ReadWriteLock const&) = delete;
   ReadWriteLock& operator=(ReadWriteLock const&) = delete;
+  ReadWriteLock(ReadWriteLock&&) = delete;
+  ReadWriteLock& operator=(ReadWriteLock&&) = delete;
 
  public:
   /// @brief constructs a read-write lock

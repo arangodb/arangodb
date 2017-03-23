@@ -65,23 +65,43 @@ set(DH_CONFFILES_NAME "${PROJECT_BINARY_DIR}/conffiles")
 FILE(WRITE ${DH_CONFFILES_NAME} "${conffiles_list}")
 list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${DH_CONFFILES_NAME}")
 
-# deploy the Init script:
-install(
-  FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
-  PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-  DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/init.d
-  RENAME arangodb3
-  COMPONENT debian-extras
-  )
+if (SYSTEMD_FOUND)
+  # deploy the Init script:
+  install(
+    FILES ${PROJECT_BINARY_DIR}/arangodb3.service
+    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    DESTINATION ${SYSTEMD_UNIT_DIR}/
+    RENAME ${SERVICE_NAME}.service
+    COMPONENT debian-extras
+    )
 
-# deploy the logrotate config:
-install(
-  FILES ${PROJECT_BINARY_DIR}/arangod.sysv
-  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-  DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
-  RENAME ${SERVICE_NAME}
-  COMPONENT debian-extras
-  )
+  # deploy the logrotate config:
+  install(
+    FILES ${PROJECT_BINARY_DIR}/arangod.systemd
+    PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
+    RENAME ${SERVICE_NAME}
+    COMPONENT debian-extras
+    )
+else ()
+  # deploy the Init script:
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
+    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/init.d
+    RENAME arangodb3
+    COMPONENT debian-extras
+    )
+
+  # deploy the logrotate config:
+  install(
+    FILES ${PROJECT_BINARY_DIR}/arangod.sysv
+    PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
+    RENAME ${SERVICE_NAME}
+    COMPONENT debian-extras
+    )
+endif()
 
 ################################################################################
 # hook to build the server package
