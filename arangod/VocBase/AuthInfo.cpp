@@ -408,7 +408,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     printf("%lf\n%lf\n", it->second.created(), (TRI_microtime() - 60) );
   }
 
-  if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP && it->second.created() < TRI_microtime() - 60)) {
+  if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) { // && it->second.created() < TRI_microtime() - 60)) {
     printf("it == _authInfo.end()\n");
     AuthenticationResult authResult = _authenticationHandler->authenticate(username, password);
 
@@ -418,7 +418,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     }
 
     if (authResult.source() == AuthSource::LDAP) { // user authed, add to _authInfo _users
-      if (it != _authInfo.end() && it->second.created() < TRI_microtime() - 60) {
+      if (it != _authInfo.end()) { //  && it->second.created() < TRI_microtime() - 60) {
         LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo timeout erase";
         _authInfo.erase(username);
         it = _authInfo.end();
@@ -437,10 +437,9 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
         MUTEX_LOCKER(locker, _queryLock);
 
-        std::string const queryStr("UPSERT {user: @username} INSERT @user UPDATE @user IN _users");
+        std::string const queryStr("UPSERT {user: @username} INSERT @user REPLACE @user IN _users");
         auto emptyBuilder = std::make_shared<VPackBuilder>();
 
-        // TODO: reuse from authData builder
         VPackBuilder binds;
         binds.openObject();
         binds.add("username", VPackValue(username));
@@ -451,7 +450,9 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
         binds.add("source", VPackValue("LDAP"));
 
         binds.add("databases", VPackValue(VPackValueType::Object));
-        binds.add("*", VPackValue("rw")); // TODO: use from authResult
+        for(auto const& permission : authResult.permissions() ) {
+          binds.add(permission.first, VPackValue(permission.second));
+        }
         binds.close();
 
         binds.add("configData", VPackValue(VPackValueType::Object));
@@ -499,14 +500,12 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "query error");
         }
 
-        VPackSlice resultSlice = queryResult.result->slice();
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << resultSlice.toJson();
-
         VPackBuilder builder;
         builder.openObject();
 
         // username
         builder.add("user", VPackValue(username));
+        builder.add("source", VPackValue("LDAP"));
         builder.add("authData", VPackValue(VPackValueType::Object));
 
         // simple auth
@@ -524,7 +523,9 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
         builder.close();  // authData
 
         builder.add("databases", VPackValue(VPackValueType::Object));
-        builder.add("*", VPackValue("rw"));
+        for(auto const& permission : authResult.permissions() ) {
+          builder.add(permission.first, VPackValue(permission.second));
+        }
         builder.close();
         builder.close();  // The Object
 

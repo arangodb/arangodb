@@ -36,17 +36,17 @@ class AuthenticationResult : public arangodb::Result {
     AuthenticationResult(AuthSource source) : AuthenticationResult(TRI_ERROR_FAILED, source) {}
 
     AuthenticationResult(int errorNumber, AuthSource source) : Result(errorNumber), _authSource(source) {}
-    AuthenticationResult(std::string dummyDatabases, AuthSource source) :
+    AuthenticationResult(std::unordered_map<std::string, std::string> permissions, AuthSource source) :
         Result(0),
         _authSource(source),
-        _dummyDatabases(dummyDatabases) {}
+        _permissions(permissions) {}
 
     AuthSource source() { return _authSource; }
-    std::string databases() { return _dummyDatabases; }
+    std::unordered_map<std::string, std::string> permissions() { return _permissions; }
 
   protected:
     AuthSource _authSource;
-    std::string _dummyDatabases;
+    std::unordered_map<std::string, std::string> _permissions;
 };
 
 
