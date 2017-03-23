@@ -133,33 +133,32 @@ void RocksDBEngine::unprepare() {
 }
 
 transaction::ContextData* RocksDBEngine::createTransactionContextData() {
-  throw std::runtime_error("not implemented35");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return nullptr;
 }
 
 TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t*) {
-  throw std::runtime_error("not implemented36");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return nullptr;
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
     TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
     int nestingLevel) {
-  throw std::runtime_error("not implemented37");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return nullptr;
 }
 
 // create storage-engine specific collection
-PhysicalCollection* RocksDBEngine::createPhysicalCollection(LogicalCollection*,
-                                                            VPackSlice const&) {
-  throw std::runtime_error("not implemented38");
-  return nullptr;
+PhysicalCollection* RocksDBEngine::createPhysicalCollection(LogicalCollection* collection,
+                                                            VPackSlice const& info) {
+  return new RocksDBCollection(collection, info);
 }
 
 // create storage-engine specific view
 PhysicalView* RocksDBEngine::createPhysicalView(LogicalView*,
                                                 VPackSlice const&) {
-  throw std::runtime_error("not implemented39");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return nullptr;
 }
 
@@ -219,7 +218,7 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
                                       arangodb::velocypack::Builder& result,
                                       bool includeIndexes,
                                       TRI_voc_tick_t maxTick) {
-  throw std::runtime_error("not implemented1");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
 
 int RocksDBEngine::getCollectionsAndIndexes(
@@ -291,12 +290,11 @@ std::string RocksDBEngine::databasePath(TRI_vocbase_t const* vocbase) const {
 
 std::string RocksDBEngine::collectionPath(TRI_vocbase_t const* vocbase,
                                           TRI_voc_cid_t id) const {
-  throw std::runtime_error("not implemented3");
-  return "not implemented";
+  return std::string(); // no path to be returned here
 }
 
 void RocksDBEngine::waitForSync(TRI_voc_tick_t tick) {
-  throw std::runtime_error("not implemented4");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
 
 std::shared_ptr<arangodb::velocypack::Builder> RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
@@ -354,11 +352,11 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 
 void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
                                         bool useWriteMarker, int& status) {
-  throw std::runtime_error("not implemented5");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
 
 void RocksDBEngine::dropDatabase(Database* database, int& status) {
-  throw std::runtime_error("not implemented6");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
 
 void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
@@ -369,7 +367,7 @@ void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
 
 // wal in recovery
 bool RocksDBEngine::inRecovery() {
-  throw std::runtime_error("not implemented7");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return true;
 }
 
@@ -380,81 +378,93 @@ void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
 std::string RocksDBEngine::createCollection(
     TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
     arangodb::LogicalCollection const*) {
-  throw std::runtime_error("not implemented9");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return "not implemented";
 }
 
 arangodb::Result RocksDBEngine::persistCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*) {
-  throw std::runtime_error("not implemented10");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return arangodb::Result{};
 }
+
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t* vocbase,
                                                arangodb::LogicalCollection*) {
-  throw std::runtime_error("not implemented11");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return arangodb::Result{};
 }
+
 void RocksDBEngine::destroyCollection(TRI_vocbase_t* vocbase,
                                       arangodb::LogicalCollection*) {
-  throw std::runtime_error("not implemented12");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 void RocksDBEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                      arangodb::LogicalCollection const*,
                                      bool doSync) {
-  throw std::runtime_error("not implemented13");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 arangodb::Result RocksDBEngine::renameCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*,
     std::string const& oldName) {
-  throw std::runtime_error("not implemented14");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return arangodb::Result{};
 }
+
 void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
                                 TRI_voc_cid_t collectionId, TRI_idx_iid_t id,
                                 arangodb::velocypack::Slice const& data) {
-  throw std::runtime_error("not implemented15");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,
                               TRI_voc_cid_t collectionId, TRI_idx_iid_t id) {
-  throw std::runtime_error("not implemented16");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 void RocksDBEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase,
                                        TRI_voc_cid_t collectionId,
                                        arangodb::velocypack::Slice const& data,
                                        bool writeMarker, int&) {
-  throw std::runtime_error("not implemented17");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
                                      arangodb::LogicalCollection* collection) {
-  throw std::runtime_error("not implemented18");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const*) {
-  throw std::runtime_error("not implemented19");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
 
 arangodb::Result RocksDBEngine::persistView(TRI_vocbase_t* vocbase,
                                             arangodb::LogicalView const*) {
-  throw std::runtime_error("not implemented20");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return arangodb::Result{};
 }
 
 arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t* vocbase,
                                          arangodb::LogicalView*) {
-  throw std::runtime_error("not implemented21");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return arangodb::Result{};
 }
+
 void RocksDBEngine::destroyView(TRI_vocbase_t* vocbase,
                                 arangodb::LogicalView*) {
-  throw std::runtime_error("not implemented22");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 void RocksDBEngine::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const*, bool doSync) {
-  throw std::runtime_error("not implemented23");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 std::string RocksDBEngine::createViewDirectoryName(std::string const& basePath,
                                                    TRI_voc_cid_t id) {
-  throw std::runtime_error("not implemented24");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return "not implemented";
 }
 
@@ -467,43 +477,45 @@ void RocksDBEngine::signalCleanup(TRI_vocbase_t*) {
 void RocksDBEngine::iterateDocuments(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     std::function<void(arangodb::velocypack::Slice const&)> const& cb) {
-  throw std::runtime_error("not implemented25");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 void RocksDBEngine::addDocumentRevision(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     arangodb::velocypack::Slice const& document) {
-  throw std::runtime_error("not implemented26");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
+
 void RocksDBEngine::removeDocumentRevision(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     arangodb::velocypack::Slice const& document) {
-  throw std::runtime_error("not implemented27");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
 
 /// @brief remove data of expired compaction blockers
 bool RocksDBEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
-  throw std::runtime_error("not implemented28");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return true;
 }
 
 /// @brief insert a compaction blocker
 int RocksDBEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
                                            TRI_voc_tick_t& id) {
-  throw std::runtime_error("not implemented29");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return true;
 }
 
 /// @brief touch an existing compaction blocker
 int RocksDBEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id, double ttl) {
-  throw std::runtime_error("not implemented30");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return true;
 }
 
 /// @brief remove an existing compaction blocker
 int RocksDBEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id) {
-  throw std::runtime_error("not implemented31");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return true;
 }
 
@@ -512,14 +524,14 @@ int RocksDBEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
 void RocksDBEngine::preventCompaction(
     TRI_vocbase_t* vocbase,
     std::function<void(TRI_vocbase_t*)> const& callback) {
-  throw std::runtime_error("not implemented32");
+  THROW_ARANGO_NOT_IMPLEMENTED();
 }
 
 /// @brief a callback function that is run there is no compaction ongoing
 bool RocksDBEngine::tryPreventCompaction(
     TRI_vocbase_t* vocbase, std::function<void(TRI_vocbase_t*)> const& callback,
     bool checkForActiveBlockers) {
-  throw std::runtime_error("not implemented33");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return true;
 }
 
@@ -530,7 +542,7 @@ int RocksDBEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
 int RocksDBEngine::openCollection(TRI_vocbase_t* vocbase,
                                   LogicalCollection* collection,
                                   bool ignoreErrors) {
-  throw std::runtime_error("not implemented34");
+  THROW_ARANGO_NOT_IMPLEMENTED();
   return 0;
 }
 

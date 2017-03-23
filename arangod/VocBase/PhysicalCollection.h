@@ -29,8 +29,6 @@
 
 #include <velocypack/Builder.h>
 
-struct MMFilesMarker;
-
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -94,9 +92,6 @@ class PhysicalCollection {
   /// @brief iterate all markers of a collection on load
   virtual int iterateMarkersOnLoad(transaction::Methods* trx) = 0;
   
-  virtual uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const = 0;
-  virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;
-
   virtual bool isFullyCollected() const = 0;
 
   void drop();

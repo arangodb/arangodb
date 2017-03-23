@@ -32,7 +32,6 @@
 #include "VocBase/PhysicalCollection.h"
 
 struct RocksDBDatafile;
-struct TRI_df_marker_t;
 
 namespace arangodb {
 class LogicalCollection;
@@ -40,7 +39,6 @@ class ManagedDocumentResult;
 class Result;
 
 class RocksDBCollection final : public PhysicalCollection {
-  //  friend class RocksDBCompactorThread;
   friend class RocksDBEngine;
 
  public:
@@ -81,6 +79,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void updateCount(int64_t) override;
 
   void getPropertiesVPack(velocypack::Builder&) const override;
+  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
   int close() override;
@@ -172,6 +171,10 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;
+
+ private:
+  /// @brief return engine-specific figures
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
 };
 }
 

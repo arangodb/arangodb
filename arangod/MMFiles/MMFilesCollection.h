@@ -420,133 +420,133 @@ class MMFilesCollection final : public PhysicalCollection {
   void createStats(TRI_voc_fid_t fid,
                    MMFilesDatafileStatisticsContainer const& values) {
     _datafileStatistics.create(fid, values);
-    }
+  }
 
-    /// @brief iterates over a collection
-    bool iterateDatafiles(
-        std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const&
-            cb);
+  /// @brief iterates over a collection
+  bool iterateDatafiles(
+      std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const&
+          cb);
 
-    /// @brief creates a datafile
-    MMFilesDatafile* createDatafile(
-        TRI_voc_fid_t fid, TRI_voc_size_t journalSize, bool isCompactor);
+  /// @brief creates a datafile
+  MMFilesDatafile* createDatafile(
+      TRI_voc_fid_t fid, TRI_voc_size_t journalSize, bool isCompactor);
 
-    /// @brief iterate over a vector of datafiles and pick those with a specific
-    /// data range
-    std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin,
-                                                      TRI_voc_tick_t dataMax);
+  /// @brief iterate over a vector of datafiles and pick those with a specific
+  /// data range
+  std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin,
+                                                    TRI_voc_tick_t dataMax);
 
-    /// @brief closes the datafiles passed in the vector
-    bool closeDatafiles(std::vector<MMFilesDatafile*> const& files);
+  /// @brief closes the datafiles passed in the vector
+  bool closeDatafiles(std::vector<MMFilesDatafile*> const& files);
 
-    bool iterateDatafilesVector(
-        std::vector<MMFilesDatafile*> const& files,
-        std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const&
-            cb);
+  bool iterateDatafilesVector(
+      std::vector<MMFilesDatafile*> const& files,
+      std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const&
+          cb);
 
-    MMFilesDocumentPosition lookupRevision(TRI_voc_rid_t revisionId) const;
+  MMFilesDocumentPosition lookupRevision(TRI_voc_rid_t revisionId) const;
 
-    uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const override;
-    uint8_t const* lookupRevisionVPackConditional(
-        TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal)
-        const override;
+  int insertDocument(arangodb::transaction::Methods * trx,
+                      TRI_voc_rid_t revisionId,
+                      arangodb::velocypack::Slice const& doc,
+                      MMFilesDocumentOperation& operation,
+                      MMFilesWalMarker const* marker, bool& waitForSync);
 
-    int insertDocument(arangodb::transaction::Methods * trx,
-                       TRI_voc_rid_t revisionId,
-                       arangodb::velocypack::Slice const& doc,
-                       MMFilesDocumentOperation& operation,
-                       MMFilesWalMarker const* marker, bool& waitForSync);
+ private:
+    
+  uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const;
+  uint8_t const* lookupRevisionVPackConditional(
+      TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal)
+      const;
 
-   private:
+  void addIndex(std::shared_ptr<arangodb::Index> idx);
 
-    void addIndex(std::shared_ptr<arangodb::Index> idx);
+  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx,
+                            bool distribute);
 
-    void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx,
-                             bool distribute);
+  bool removeIndex(TRI_idx_iid_t iid);
 
-    bool removeIndex(TRI_idx_iid_t iid);
+  /// @brief return engine-specific figures
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
 
-    /// @brief return engine-specific figures
-    void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
-  
-    // SECTION: Index storage
+  // SECTION: Index storage
 
-    int saveIndex(transaction::Methods* trx,
-                  std::shared_ptr<arangodb::Index> idx);
+  int saveIndex(transaction::Methods* trx,
+                std::shared_ptr<arangodb::Index> idx);
 
-    /// @brief Detect all indexes form file
-    int detectIndexes(transaction::Methods* trx);
+  /// @brief Detect all indexes form file
+  int detectIndexes(transaction::Methods* trx);
 
-    int insertIndexes(transaction::Methods* trx, TRI_voc_rid_t revisionId,
-                      velocypack::Slice const& doc);
+  int insertIndexes(transaction::Methods* trx, TRI_voc_rid_t revisionId,
+                    velocypack::Slice const& doc);
 
-    int insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
-                           velocypack::Slice const&);
+  int insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
+                          velocypack::Slice const&);
 
-    int deletePrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
-                           velocypack::Slice const&);
+  int deletePrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
+                          velocypack::Slice const&);
 
-    int insertSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
-                               velocypack::Slice const&, bool isRollback);
+  int insertSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
+                              velocypack::Slice const&, bool isRollback);
 
-    int deleteSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
-                               velocypack::Slice const&, bool isRollback);
+  int deleteSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
+                              velocypack::Slice const&, bool isRollback);
 
-    int lookupDocument(transaction::Methods*, velocypack::Slice const,
-                       ManagedDocumentResult& result);
+  int lookupDocument(transaction::Methods*, velocypack::Slice const,
+                      ManagedDocumentResult& result);
 
-    int updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
-                       velocypack::Slice const& oldDoc,
-                       TRI_voc_rid_t newRevisionId,
-                       velocypack::Slice const& newDoc,
-                       MMFilesDocumentOperation&, MMFilesWalMarker const*,
-                       bool& waitForSync);
+  int updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
+                      velocypack::Slice const& oldDoc,
+                      TRI_voc_rid_t newRevisionId,
+                      velocypack::Slice const& newDoc,
+                      MMFilesDocumentOperation&, MMFilesWalMarker const*,
+                      bool& waitForSync);
 
-   private:
-    mutable arangodb::MMFilesDitches _ditches;
+ private:
+  mutable arangodb::MMFilesDitches _ditches;
 
-    // lock protecting the indexes
-    mutable basics::ReadWriteLock _idxLock;
+  // lock protecting the indexes
+  mutable basics::ReadWriteLock _idxLock;
 
-    arangodb::basics::ReadWriteLock _filesLock;
-    std::vector<MMFilesDatafile*> _datafiles;   // all datafiles
-    std::vector<MMFilesDatafile*> _journals;    // all journals
-    std::vector<MMFilesDatafile*> _compactors;  // all compactor files
+  arangodb::basics::ReadWriteLock _filesLock;
+  std::vector<MMFilesDatafile*> _datafiles;   // all datafiles
+  std::vector<MMFilesDatafile*> _journals;    // all journals
+  std::vector<MMFilesDatafile*> _compactors;  // all compactor files
 
-    arangodb::basics::ReadWriteLock _compactionLock;
+  arangodb::basics::ReadWriteLock _compactionLock;
 
-    int64_t _initialCount;
+  int64_t _initialCount;
 
-    bool _revisionError;
+  bool _revisionError;
 
-    MMFilesDatafileStatistics _datafileStatistics;
+  MMFilesDatafileStatistics _datafileStatistics;
 
-    TRI_voc_rid_t _lastRevision;
+  TRI_voc_rid_t _lastRevision;
 
-    MMFilesRevisionsCache _revisionsCache;
+  MMFilesRevisionsCache _revisionsCache;
 
-    std::atomic<int64_t> _uncollectedLogfileEntries;
+  std::atomic<int64_t> _uncollectedLogfileEntries;
 
-    Mutex _compactionStatusLock;
-    size_t _nextCompactionStartIndex;
-    char const* _lastCompactionStatus;
-    double _lastCompactionStamp;
-    std::string _path;
-    TRI_voc_size_t _journalSize;
+  Mutex _compactionStatusLock;
+  size_t _nextCompactionStartIndex;
+  char const* _lastCompactionStatus;
+  double _lastCompactionStamp;
+  std::string _path;
+  TRI_voc_size_t _journalSize;
 
-    bool const _isVolatile;
+  bool const _isVolatile;
 
-    // SECTION: Indexes
+  // SECTION: Indexes
 
-    size_t _cleanupIndexes;
-    size_t _persistentIndexes;
-    uint32_t _indexBuckets;
+  size_t _cleanupIndexes;
+  size_t _persistentIndexes;
+  uint32_t _indexBuckets;
 
-    // whether or not secondary indexes should be filled
-    bool _useSecondaryIndexes;
+  // whether or not secondary indexes should be filled
+  bool _useSecondaryIndexes;
 
-    bool _doCompact;
-    TRI_voc_tick_t _maxTick;
+  bool _doCompact;
+  TRI_voc_tick_t _maxTick;
 };
 
 }
