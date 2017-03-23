@@ -64,14 +64,14 @@ void EngineSelectorFeature::prepare() {
   // read engine from file in database_directory ENGINE (mmfiles/rocksdb)
   auto databasePathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   auto path = databasePathFeature->directory();
-  _engineFilePath = basics::FileUtils::buildFilename(path,"ENGINE");
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "engine selector - using database directory: " << _engineFilePath ;
+  _engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "looking for previously selected engine in file '" << _engineFilePath << "'";
 
-  // file if engine in file does not match commandline option
-  if(basics::FileUtils::isRegularFile(_engineFilePath)){
+  // file if engine in file does not match command-line option
+  if (basics::FileUtils::isRegularFile(_engineFilePath)){
     std::string content = basics::FileUtils::slurp(_engineFilePath);
     if (content != _engine) {
-      LOG_TOPIC(FATAL, Logger::STARTUP) << "engine selector - content of ENGINE file and commandline option do not match!";
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "engine selector - content of 'ENGINE' file and command-line option do not match: '" << content << "' != '" << _engine << "'";
       FATAL_ERROR_EXIT();
     }
   }
@@ -82,7 +82,7 @@ void EngineSelectorFeature::prepare() {
 
     if (engine.first == _engine) {
       // this is the selected engine
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "using storage engine " << engine.first;
+      LOG_TOPIC(INFO, Logger::FIXME) << "using storage engine " << engine.first;
       e->enable();
 
       // register storage engine
