@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_H
-#define ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_DATAFILE_H
+#define ARANGOD_MMFILES_MMFILES_DATAFILE_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"

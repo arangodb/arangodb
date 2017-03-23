@@ -1880,7 +1880,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
       }
 
       if (ServerState::instance()->isRunningInCluster()) {
-        addIndexCoordinator(idx, false);
+        addIndexCoordinator(idx);
       } else {
         addIndex(idx);
       }
@@ -1966,7 +1966,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
     // We only inform the others.
-    addIndexCoordinator(idx, true);
+    addIndexCoordinator(idx);
     created = true;
     return idx;
   }
@@ -2075,7 +2075,7 @@ void MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
 }
 
 void MMFilesCollection::addIndexCoordinator(
-    std::shared_ptr<arangodb::Index> idx, bool distribute) {
+    std::shared_ptr<arangodb::Index> idx) {
   auto const id = idx->id();
   for (auto const& it : _indexes) {
     if (it->id() == id) {
@@ -2085,9 +2085,6 @@ void MMFilesCollection::addIndexCoordinator(
   }
 
   _indexes.emplace_back(idx);
-  if (distribute) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
 }
 
 int MMFilesCollection::restoreIndex(transaction::Methods* trx,

@@ -35,6 +35,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBEntry.h"
+#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBView.h"
 #include "VocBase/ticks.h"
@@ -63,8 +64,7 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, EngineName, FeatureName, nullptr /*new
-                                                              MMFilesIndexFactory()*/),
+    : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
       _db(nullptr) {
   //inherits order from StorageEngine
 }

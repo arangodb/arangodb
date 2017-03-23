@@ -22,8 +22,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_ENGINE_H
-#define ARANGOD_STORAGE_ENGINE_MMFILES_ENGINE_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_ENGINE_H
+#define ARANGOD_MMFILES_MMFILES_ENGINE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"

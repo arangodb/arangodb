@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_MM_FILES_COLLECTION_H
-#define ARANGOD_STORAGE_ENGINE_MM_FILES_COLLECTION_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_COLLECTION_H
+#define ARANGOD_MMFILES_MMFILES_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -461,8 +461,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   void addIndex(std::shared_ptr<arangodb::Index> idx);
 
-  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx,
-                            bool distribute);
+  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
 
   bool removeIndex(TRI_idx_iid_t iid);
 

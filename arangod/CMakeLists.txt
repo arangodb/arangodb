@@ -276,16 +276,6 @@ SET(ARANGOD_SOURCES
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
-  RocksDBEngine/RocksDBCollection.cpp
-  RocksDBEngine/RocksDBComparator.cpp
-  RocksDBEngine/RocksDBEngine.cpp
-  RocksDBEngine/RocksDBEntry.cpp
-  RocksDBEngine/RocksDBIndexFactory.cpp
-  RocksDBEngine/RocksDBTransactionCollection.cpp
-  RocksDBEngine/RocksDBTransactionContextData.cpp
-  RocksDBEngine/RocksDBTransactionState.cpp
-  RocksDBEngine/RocksDBTypes.cpp
-  RocksDBEngine/RocksDBView.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp
@@ -435,6 +425,23 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesWalSlot.cpp
   MMFiles/MMFilesWalSlots.cpp
   MMFiles/mmfiles-replication-dump.cpp
+)
+  
+# add sources for rocksdb engine
+set(ARANGOD_SOURCES
+  ${ARANGOD_SOURCES}
+  RocksDBEngine/RocksDBCollection.cpp
+  RocksDBEngine/RocksDBComparator.cpp
+  RocksDBEngine/RocksDBEdgeIndex.cpp
+  RocksDBEngine/RocksDBEngine.cpp
+  RocksDBEngine/RocksDBEntry.cpp
+  RocksDBEngine/RocksDBIndexFactory.cpp
+  RocksDBEngine/RocksDBPrimaryIndex.cpp
+  RocksDBEngine/RocksDBTransactionCollection.cpp
+  RocksDBEngine/RocksDBTransactionContextData.cpp
+  RocksDBEngine/RocksDBTransactionState.cpp
+  RocksDBEngine/RocksDBTypes.cpp
+  RocksDBEngine/RocksDBView.cpp
 )
 
 if (NOT MSVC)

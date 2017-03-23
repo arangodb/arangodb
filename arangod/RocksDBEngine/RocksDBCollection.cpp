@@ -1,8 +1,38 @@
-#include "RocksDBCollection.h"
-#include <Basics/Result.h>
-#include <stdexcept>
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan-Christoph Uhde
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Basics/Result.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
   
@@ -104,7 +134,44 @@ bool RocksDBCollection::isFullyCollected() const {
 
 void RocksDBCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  createInitialIndexes();
+  if (indexesSlice.isArray()) {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    IndexFactory const* idxFactory = engine->indexFactory();
+    TRI_ASSERT(idxFactory != nullptr);
+    for (auto const& v : VPackArrayIterator(indexesSlice)) {
+      if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
+                                                              false)) {
+        // We have an error here.
+        // Do not add index.
+        // TODO Handle Properly
+        continue;
+      }
+
+      auto idx =
+          idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+
+      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+          idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        continue;
+      }
+
+      if (ServerState::instance()->isRunningInCluster()) {
+        addIndexCoordinator(idx);
+      } else {
+        addIndex(idx);
+      }
+    }
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid indexes for collection '" << _logicalCollection->name() << "'";
+    for (auto const& it : _indexes) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+    }
+  }
+#endif
 }
 
 /// @brief Find index by definition
@@ -229,4 +296,52 @@ void RocksDBCollection::deferDropCollection(
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) {
   THROW_ARANGO_NOT_IMPLEMENTED();
+}
+
+/// @brief creates the initial indexes for the collection
+void RocksDBCollection::createInitialIndexes() {
+  if (!_indexes.empty()) {
+    return;
+  }
+
+  std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory(); 
+  TRI_ASSERT(idxFactory != nullptr);
+
+  idxFactory->fillSystemIndexes(_logicalCollection, systemIndexes);
+  for (auto const& it : systemIndexes) {
+    addIndex(it);
+  }
+}
+
+void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
+  // primary index must be added at position 0
+  TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+             _indexes.empty());
+
+  auto const id = idx->id();
+  for (auto const& it : _indexes) {
+    if (it->id() == id) {
+      // already have this particular index. do not add it again
+      return;
+    }
+  }
+
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
+
+  _indexes.emplace_back(idx);
+}
+
+void RocksDBCollection::addIndexCoordinator(
+    std::shared_ptr<arangodb::Index> idx) {
+  auto const id = idx->id();
+  for (auto const& it : _indexes) {
+    if (it->id() == id) {
+      // already have this particular index. do not add it again
+      return;
+    }
+  }
+
+  _indexes.emplace_back(idx);
 }

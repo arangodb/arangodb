@@ -32,7 +32,6 @@ class LogicalCollection;
 namespace transaction {
 class Methods;
 }
-;
 
 struct MMFilesDocumentOperation {
   enum class StatusType : uint8_t {

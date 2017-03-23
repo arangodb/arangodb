@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan-Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_ROCKSDB_FILES_COLLECTION_H
-#define ARANGOD_STORAGE_ENGINE_ROCKSDB_FILES_COLLECTION_H 1
+#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
+#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -175,7 +175,12 @@ class RocksDBCollection final : public PhysicalCollection {
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  /// @brief creates the initial indexes for the collection
+  void createInitialIndexes();
+  void addIndex(std::shared_ptr<arangodb::Index> idx);
+  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
 };
+
 }
 
 #endif

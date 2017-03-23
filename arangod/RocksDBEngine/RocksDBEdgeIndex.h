@@ -18,17 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_EDGE_INDEX_H
-#define ARANGOD_MMFILES_MMFILES_EDGE_INDEX_H 1
+#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H
+#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H 1
 
-#include "Basics/AssocMulti.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -36,24 +34,16 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-namespace basics {
-class LocalTaskQueue;
-}
-
-class MMFilesEdgeIndex;
+class RocksDBEdgeIndex;
   
-typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleIndexElement,
-                                     uint32_t, false> TRI_MMFilesEdgeIndexHash_t;
-
-class MMFilesEdgeIndexIterator final : public IndexIterator {
+class RocksDBEdgeIndexIterator final : public IndexIterator {
  public:
-  MMFilesEdgeIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+  RocksDBEdgeIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                     ManagedDocumentResult* mmdr,
-                    arangodb::MMFilesEdgeIndex const* index,
-                    TRI_MMFilesEdgeIndexHash_t const* indexImpl,
+                    arangodb::RocksDBEdgeIndex const* index,
                     std::unique_ptr<VPackBuilder>& keys);
 
-  ~MMFilesEdgeIndexIterator();
+  ~RocksDBEdgeIndexIterator();
   
   char const* typeName() const override { return "edge-index-iterator"; }
 
@@ -62,36 +52,18 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  TRI_MMFilesEdgeIndexHash_t const* _index;
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
-  std::vector<MMFilesSimpleIndexElement> _buffer;
-  size_t _posInBuffer;
-  size_t _batchSize;
-  MMFilesSimpleIndexElement _lastElement;
 };
 
-class MMFilesEdgeIndex final : public Index {
+class RocksDBEdgeIndex final : public Index {
  public:
-  MMFilesEdgeIndex() = delete;
+  RocksDBEdgeIndex() = delete;
 
-  MMFilesEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
+  RocksDBEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
 
-  ~MMFilesEdgeIndex();
+  ~RocksDBEdgeIndex();
 
-  static void buildSearchValue(TRI_edge_direction_e, std::string const&,
-                               arangodb::velocypack::Builder&);
-
-  static void buildSearchValue(TRI_edge_direction_e,
-                               arangodb::velocypack::Slice const&,
-                               arangodb::velocypack::Builder&);
-
-  static void buildSearchValueFromArray(TRI_edge_direction_e,
-                                        arangodb::velocypack::Slice const,
-                                        arangodb::velocypack::Builder&);
-
- public:
-  /// @brief typedef for hash tables
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
   
@@ -120,19 +92,11 @@ class MMFilesEdgeIndex final : public Index {
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  void batchInsert(transaction::Methods*,
-                   std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
-                   arangodb::basics::LocalTaskQueue*) override;
-
   int unload() override;
 
   int sizeHint(transaction::Methods*, size_t) override;
 
-  bool hasBatchInsert() const override { return true; }
-
-  TRI_MMFilesEdgeIndexHash_t* from() { return _edgesFrom; }
-
-  TRI_MMFilesEdgeIndexHash_t* to() { return _edgesTo; }
+  bool hasBatchInsert() const override { return false; }
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -152,35 +116,6 @@ class MMFilesEdgeIndex final : public Index {
   ///        entries.
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
-
- private:
-  /// @brief create the iterator
-  IndexIterator* createEqIterator(transaction::Methods*,
-                                  ManagedDocumentResult*,
-                                  arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
-
-  IndexIterator* createInIterator(transaction::Methods*,
-                                  ManagedDocumentResult*,
-                                  arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
-
-  /// @brief add a single value node to the iterator's keys
-  void handleValNode(VPackBuilder* keys,
-                     arangodb::aql::AstNode const* valNode) const;
-
-  MMFilesSimpleIndexElement buildFromElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
-  MMFilesSimpleIndexElement buildToElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
-
- private:
-  /// @brief the hash table for _from
-  TRI_MMFilesEdgeIndexHash_t* _edgesFrom;
-
-  /// @brief the hash table for _to
-  TRI_MMFilesEdgeIndexHash_t* _edgesTo;
-
-  /// @brief number of buckets effectively used by the index
-  size_t _numBuckets;
 };
 }
 

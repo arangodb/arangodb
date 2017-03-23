@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_MM_FILES_VIEW_H
-#define ARANGOD_STORAGE_ENGINE_MM_FILES_VIEW_H 1
+#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_VIEW_H
+#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_VIEW_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"

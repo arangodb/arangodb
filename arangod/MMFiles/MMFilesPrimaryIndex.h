@@ -42,7 +42,6 @@ struct MMFilesSimpleIndexElement;
 namespace transaction {
 class Methods;
 }
-;
   
 typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement> MMFilesPrimaryIndexImpl;
 

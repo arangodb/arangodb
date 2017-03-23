@@ -28,32 +28,34 @@
 
 namespace arangodb {
 
-  class Index;
-  class LogicalCollection;
+class Index;
+class LogicalCollection;
 
-  namespace velocypack {
-    class Builder;
-    class Slice;
-  }
+namespace velocypack {
+  class Builder;
+  class Slice;
+}
 
-  class IndexFactory {
-   public:
-    IndexFactory() {}
+class IndexFactory {
+ public:
+  IndexFactory() = default;
+  IndexFactory(IndexFactory const&) = delete;
+  IndexFactory& operator=(IndexFactory const&) = delete;
 
-    virtual ~IndexFactory() {}
+  virtual ~IndexFactory() = default;
 
-    virtual int enhanceIndexDefinition(
-        arangodb::velocypack::Slice const definition,
-        arangodb::velocypack::Builder& enhanced, bool isCreation) const = 0;
+  virtual int enhanceIndexDefinition(
+      arangodb::velocypack::Slice const definition,
+      arangodb::velocypack::Builder& enhanced, bool isCreation) const = 0;
 
-    virtual std::shared_ptr<arangodb::Index> prepareIndexFromSlice(
-        arangodb::velocypack::Slice info, bool generateKey,
-        arangodb::LogicalCollection* col, bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<arangodb::Index> prepareIndexFromSlice(
+      arangodb::velocypack::Slice info, bool generateKey,
+      arangodb::LogicalCollection* col, bool isClusterConstructor) const = 0;
 
-    virtual void fillSystemIndexes(
-        arangodb::LogicalCollection* col,
-        std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const  = 0;
-  };
+  virtual void fillSystemIndexes(
+      arangodb::LogicalCollection* col,
+      std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const  = 0;
+};
 
 } // namespace arangodb
 
