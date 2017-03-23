@@ -20,13 +20,14 @@ option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 
 set(V8_SUB_DIR "v5.7.0.0")
-if (USE_PRECOMPILED_V8)
-  set(V8_VERSION
-    "V8-${V8_SUB_DIR}"
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Version"
-    FORCE
+set(V8_VERSION
+  "V8-${V8_SUB_DIR}"
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Version"
+  FORCE
   )
+set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
+if (USE_PRECOMPILED_V8)
 
   set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/${V8_SUB_DIR})
   set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_SUB_DIR})

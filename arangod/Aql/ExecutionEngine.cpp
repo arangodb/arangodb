@@ -599,7 +599,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
       cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
                        arangodb::rest::RequestType::POST,
-                       url, body, headers, nullptr, 30.0);
+                       url, body, headers, nullptr, 90.0);
     }
   }
 
@@ -616,7 +616,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     int nrok = 0;
     int errorCode = TRI_ERROR_NO_ERROR;
     for (count = (int)shardIds->size(); count > 0; count--) {
-      auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
+      auto res = cc->wait("", coordTransactionID, 0, "", 90.0);
 
       if (res.status == arangodb::CL_COMM_RECEIVED) {
         if (res.answer_code == arangodb::rest::ResponseCode::OK ||
@@ -1018,7 +1018,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         headers["X-Arango-Nolock"] = shardList;  // Prevent locking
         auto res = cc->syncRequest("", coordTransactionID, "server:" + list.first,
                                    RequestType::POST, url, engineInfo.toJson(),
-                                   headers, 30.0);
+                                   headers, 90.0);
         if (res->status != CL_COMM_SENT) {
           // Note If there was an error on server side we do not have CL_COMM_SENT
           std::string message("could not start all traversal engines");
@@ -1295,14 +1295,14 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
                 arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
                 "/_internal/traverser/lock/" + queryId + "/" + shardId);
             res = cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                                  RequestType::PUT, url, "", headers, 30.0);
+                                  RequestType::PUT, url, "", headers, 90.0);
           } else {
             std::string const url(
                 "/_db/" +
                 arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
                 "/_api/aql/lock/" + queryId);
             res = cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                                  RequestType::PUT, url, "{}", headers, 30.0);
+                                  RequestType::PUT, url, "{}", headers, 90.0);
           }
           if (res->status != CL_COMM_SENT) {
             std::string message("could not lock all shards");
@@ -1378,7 +1378,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               // to the first of those shards
               auto res = cc->syncRequest(
                   "", coordTransactionID, "shard:" + *(te.second.begin()),
-                  RequestType::DELETE_REQ, url + traverserId, "", headers, 30.0);
+                  RequestType::DELETE_REQ, url + traverserId, "", headers, 90.0);
 
               // Ignore result, we need to try to remove all.
               // However, log the incident if we have an errorMessage.
