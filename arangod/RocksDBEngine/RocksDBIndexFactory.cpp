@@ -39,7 +39,7 @@ using namespace arangodb;
 int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
                                                 VPackBuilder& enhanced,
                                                 bool create) const {
-  THROW_ARANGO_NOT_IMPLEMENTED(); 
+  THROW_ARANGO_NOT_YET_IMPLEMENTED(); 
   return 0;
 }
 
@@ -111,7 +111,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     }
     
     default: {
-      THROW_ARANGO_NOT_IMPLEMENTED();
+      THROW_ARANGO_NOT_YET_IMPLEMENTED();
       break;
     }
   }

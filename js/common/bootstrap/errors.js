@@ -33,6 +33,7 @@
     "ERROR_CANNOT_CREATE_TEMP_FILE" : { "code" : 20, "message" : "cannot create temporary file" },
     "ERROR_REQUEST_CANCELED"       : { "code" : 21, "message" : "canceled request" },
     "ERROR_DEBUG"                  : { "code" : 22, "message" : "intentional debug error" },
+    "ERROR_NOT_YET_IMPLEMENTED"    : { "code" : 23, "message" : "not yet implemented" },
     "ERROR_IP_ADDRESS_INVALID"     : { "code" : 25, "message" : "IP address is invalid" },
     "ERROR_FILE_EXISTS"            : { "code" : 27, "message" : "file exists" },
     "ERROR_LOCKED"                 : { "code" : 28, "message" : "locked" },

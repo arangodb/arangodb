@@ -29,6 +29,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CANNOT_CREATE_TEMP_FILE, "cannot create temporary file");
   REG_ERROR(ERROR_REQUEST_CANCELED, "canceled request");
   REG_ERROR(ERROR_DEBUG, "intentional debug error");
+  REG_ERROR(ERROR_NOT_YET_IMPLEMENTED, "not yet implemented");
   REG_ERROR(ERROR_IP_ADDRESS_INVALID, "IP address is invalid");
   REG_ERROR(ERROR_FILE_EXISTS, "file exists");
   REG_ERROR(ERROR_LOCKED, "locked");

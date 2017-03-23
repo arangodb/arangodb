@@ -43,66 +43,66 @@ RocksDBTransactionCollection::~RocksDBTransactionCollection() {
 
 /// @brief request a main-level lock for a collection
 int RocksDBTransactionCollection::lock() {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 /// @brief request a lock for a collection
 int RocksDBTransactionCollection::lock(AccessMode::Type accessType,
                                        int nestingLevel) {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 /// @brief request an unlock for a collection
 int RocksDBTransactionCollection::unlock(AccessMode::Type accessType,
                                          int nestingLevel) {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 /// @brief check if a collection is locked in a specific mode in a transaction
 bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 /// @brief check whether a collection is locked at all
 bool RocksDBTransactionCollection::isLocked() const {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return false;
 }
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return false;
 }
 
 void RocksDBTransactionCollection::freeOperations(transaction::Methods* activeTrx, bool mustRollback) {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return false;
 }
 
 int RocksDBTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 int RocksDBTransactionCollection::use(int nestingLevel) {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 void RocksDBTransactionCollection::unuse(int nestingLevel) {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBTransactionCollection::release() {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 

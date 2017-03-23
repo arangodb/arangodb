@@ -52,25 +52,25 @@ RocksDBTransactionState::~RocksDBTransactionState() {
 
 /// @brief get (or create) a rocksdb WriteTransaction
 rocksdb::Transaction* RocksDBTransactionState::rocksTransaction() {
-  throw std::runtime_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return nullptr;
 }
 
 /// @brief start a transaction
 int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
-  throw std::runtime_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 /// @brief commit a transaction
 int RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  throw std::runtime_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 /// @brief abort and rollback a transaction
 int RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  throw std::runtime_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
@@ -79,23 +79,23 @@ int RocksDBTransactionState::addOperation(TRI_voc_rid_t revisionId,
                                    RocksDBDocumentOperation& operation,
                                    RocksDBWalMarker const* marker,
                                    bool& waitForSync) {
-  throw std::runtime_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 /// @brief free all operations for a transaction
 void RocksDBTransactionState::freeOperations(transaction::Methods* activeTrx) {
-  throw std::runtime_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 /// @brief write WAL begin marker
 int RocksDBTransactionState::writeBeginMarker() {
-  throw std::runtime_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
 /// @brief write WAL abort marker
 int RocksDBTransactionState::writeAbortMarker() {
-  throw std::runtime_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }

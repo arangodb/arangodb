@@ -67,7 +67,7 @@ RocksDBPrimaryIndexIterator::~RocksDBPrimaryIndexIterator() {
 }
 
 bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return false;
 }
 
@@ -81,12 +81,12 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* collection,
     : IndexIterator(collection, trx, mmdr, index), _reverse(reverse), _total(0) {}
 
 bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return true;
 }
 
 void RocksDBAllIndexIterator::reset() { 
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
   
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
@@ -95,12 +95,12 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* collection, 
     : IndexIterator(collection, trx, mmdr, index) {}
 
 bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return true;
 }
 
 void RocksDBAnyIndexIterator::reset() {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection* collection)
@@ -175,7 +175,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
 
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return nullptr;
 }
 

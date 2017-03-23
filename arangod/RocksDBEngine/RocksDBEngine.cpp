@@ -133,19 +133,19 @@ void RocksDBEngine::unprepare() {
 }
 
 transaction::ContextData* RocksDBEngine::createTransactionContextData() {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return nullptr;
 }
 
 TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t*) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return nullptr;
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
     TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
     int nestingLevel) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return nullptr;
 }
 
@@ -158,7 +158,7 @@ PhysicalCollection* RocksDBEngine::createPhysicalCollection(LogicalCollection* c
 // create storage-engine specific view
 PhysicalView* RocksDBEngine::createPhysicalView(LogicalView*,
                                                 VPackSlice const&) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return nullptr;
 }
 
@@ -169,7 +169,6 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "getting existing databases";
 
   rocksdb::ReadOptions readOptions;
-  readOptions.total_order_seek = true; // TODO: why?
   auto& iter = *_db->NewIterator(readOptions);
 
   result.openArray();
@@ -218,7 +217,7 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
                                       arangodb::velocypack::Builder& result,
                                       bool includeIndexes,
                                       TRI_voc_tick_t maxTick) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 int RocksDBEngine::getCollectionsAndIndexes(
@@ -226,7 +225,6 @@ int RocksDBEngine::getCollectionsAndIndexes(
     bool wasCleanShutdown, bool isUpgrade) {
   
   rocksdb::ReadOptions readOptions;
-  readOptions.total_order_seek = true; // TODO: why?
   auto& iter = *_db->NewIterator(readOptions);
 
   result.openArray();
@@ -257,7 +255,6 @@ int RocksDBEngine::getViews(TRI_vocbase_t* vocbase,
                             arangodb::velocypack::Builder& result) {
   
   rocksdb::ReadOptions readOptions;
-  readOptions.total_order_seek = true; // TODO: why?
   auto& iter = *_db->NewIterator(readOptions);
 
   result.openArray();
@@ -294,7 +291,7 @@ std::string RocksDBEngine::collectionPath(TRI_vocbase_t const* vocbase,
 }
 
 void RocksDBEngine::waitForSync(TRI_voc_tick_t tick) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 std::shared_ptr<arangodb::velocypack::Builder> RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
@@ -352,11 +349,11 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 
 void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
                                         bool useWriteMarker, int& status) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::dropDatabase(Database* database, int& status) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
@@ -367,7 +364,7 @@ void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
 
 // wal in recovery
 bool RocksDBEngine::inRecovery() {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return true;
 }
 
@@ -378,93 +375,93 @@ void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
 std::string RocksDBEngine::createCollection(
     TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
     arangodb::LogicalCollection const*) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return "not implemented";
 }
 
 arangodb::Result RocksDBEngine::persistCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return arangodb::Result{};
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t* vocbase,
                                                arangodb::LogicalCollection*) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return arangodb::Result{};
 }
 
 void RocksDBEngine::destroyCollection(TRI_vocbase_t* vocbase,
                                       arangodb::LogicalCollection*) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                      arangodb::LogicalCollection const*,
                                      bool doSync) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 arangodb::Result RocksDBEngine::renameCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*,
     std::string const& oldName) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return arangodb::Result{};
 }
 
 void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
                                 TRI_voc_cid_t collectionId, TRI_idx_iid_t id,
                                 arangodb::velocypack::Slice const& data) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,
                               TRI_voc_cid_t collectionId, TRI_idx_iid_t id) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase,
                                        TRI_voc_cid_t collectionId,
                                        arangodb::velocypack::Slice const& data,
                                        bool writeMarker, int&) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
                                      arangodb::LogicalCollection* collection) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const*) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 arangodb::Result RocksDBEngine::persistView(TRI_vocbase_t* vocbase,
                                             arangodb::LogicalView const*) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return arangodb::Result{};
 }
 
 arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t* vocbase,
                                          arangodb::LogicalView*) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return arangodb::Result{};
 }
 
 void RocksDBEngine::destroyView(TRI_vocbase_t* vocbase,
                                 arangodb::LogicalView*) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const*, bool doSync) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 std::string RocksDBEngine::createViewDirectoryName(std::string const& basePath,
                                                    TRI_voc_cid_t id) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return "not implemented";
 }
 
@@ -477,45 +474,45 @@ void RocksDBEngine::signalCleanup(TRI_vocbase_t*) {
 void RocksDBEngine::iterateDocuments(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     std::function<void(arangodb::velocypack::Slice const&)> const& cb) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::addDocumentRevision(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     arangodb::velocypack::Slice const& document) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::removeDocumentRevision(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     arangodb::velocypack::Slice const& document) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 /// @brief remove data of expired compaction blockers
 bool RocksDBEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return true;
 }
 
 /// @brief insert a compaction blocker
 int RocksDBEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
                                            TRI_voc_tick_t& id) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return true;
 }
 
 /// @brief touch an existing compaction blocker
 int RocksDBEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id, double ttl) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return true;
 }
 
 /// @brief remove an existing compaction blocker
 int RocksDBEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return true;
 }
 
@@ -524,14 +521,14 @@ int RocksDBEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
 void RocksDBEngine::preventCompaction(
     TRI_vocbase_t* vocbase,
     std::function<void(TRI_vocbase_t*)> const& callback) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 /// @brief a callback function that is run there is no compaction ongoing
 bool RocksDBEngine::tryPreventCompaction(
     TRI_vocbase_t* vocbase, std::function<void(TRI_vocbase_t*)> const& callback,
     bool checkForActiveBlockers) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return true;
 }
 
@@ -542,7 +539,7 @@ int RocksDBEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
 int RocksDBEngine::openCollection(TRI_vocbase_t* vocbase,
                                   LogicalCollection* collection,
                                   bool ignoreErrors) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 

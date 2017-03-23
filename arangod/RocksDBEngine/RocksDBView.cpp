@@ -58,33 +58,32 @@ RocksDBView::RocksDBView(LogicalView* view, VPackSlice const& info)
 
 RocksDBView::RocksDBView(LogicalView* logical, PhysicalView* physical)
     : PhysicalView(logical, VPackSlice::emptyObjectSlice()) {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
-RocksDBView::~RocksDBView() {
-}
+RocksDBView::~RocksDBView() {}
 
 void RocksDBView::getPropertiesVPack(velocypack::Builder& result,
                                      bool includeSystem) const {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBView::open() {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBView::drop() {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 arangodb::Result RocksDBView::updateProperties(VPackSlice const& slice,
                                                bool doSync) {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return arangodb::Result{};
 }
 
 arangodb::Result RocksDBView::persistProperties() {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return arangodb::Result{};
 }
 

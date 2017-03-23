@@ -25,6 +25,7 @@ ERROR_CANNOT_CREATE_DIRECTORY,19,"cannot create directory","Will be raised when 
 ERROR_CANNOT_CREATE_TEMP_FILE,20,"cannot create temporary file","Will be raised when an attempt to create a temporary file fails."
 ERROR_REQUEST_CANCELED,21,"canceled request","Will be raised when a request is canceled by the user."
 ERROR_DEBUG,22,"intentional debug error","Will be raised intentionally during debugging."
+ERROR_NOT_YET_IMPLEMENTED,23,"not yet implemented","Will be raised when hitting an unimplemented feature that will be implemented soon."
 ERROR_IP_ADDRESS_INVALID,25,"IP address is invalid","Will be raised when the structure of an IP address is invalid."
 ERROR_FILE_EXISTS,27,"file exists","Will be raised when a file already exists."
 ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is locked."

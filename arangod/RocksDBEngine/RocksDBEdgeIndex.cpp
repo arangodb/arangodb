@@ -69,11 +69,11 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEdgeIndexIterator::reset() {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
   
 RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
@@ -91,13 +91,13 @@ RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
 
 /// @brief return a selectivity estimate for the index
 double RocksDBEdgeIndex::selectivityEstimate(arangodb::StringRef const* attribute) const {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0.0;
 }
 
 /// @brief return the memory usage for the index
 size_t RocksDBEdgeIndex::memory() const {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
 
@@ -114,18 +114,18 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) con
 void RocksDBEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   Index::toVelocyPackFigures(builder);
   // TODO
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 int RocksDBEdgeIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return TRI_ERROR_NO_ERROR;
 }
 
 int RocksDBEdgeIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -157,7 +157,7 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
-  THROW_ARANGO_NOT_IMPLEMENTED();
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return nullptr;
 }
 

@@ -36,11 +36,11 @@ RocksDBTransactionContextData::~RocksDBTransactionContextData() {
 
 /// @brief pin data for the collection
 void RocksDBTransactionContextData::pinData(LogicalCollection* collection) {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 /// @brief whether or not the data for the collection is pinned
 bool RocksDBTransactionContextData::isPinned(TRI_voc_cid_t cid) const {
-  throw std::logic_error("not implemented");
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return false;
 }
