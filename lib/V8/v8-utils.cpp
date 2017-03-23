@@ -4267,16 +4267,6 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an error in a javascript object, using supplied text
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                           std::string const& message) {
-  v8::HandleScope scope(isolate);
-  CreateErrorObject(isolate, errorNumber, message);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4284,18 +4274,18 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                            std::string const& message, bool autoPrepend) {
   v8::HandleScope scope(isolate);
 
-  if (autoPrepend) {
-    try {
-      // does string concatenation, so we must wrap this in a try...catch block
-      CreateErrorObject(
-          isolate, errorNumber,
-          message + ": " + std::string(TRI_errno_string(errorNumber)));
-    } catch (...) {
-      // we cannot do anything about this here, but no C++ exception must
-      // escape the C++ bindings called by V8
+  try {
+    // does string concatenation, so we must wrap this in a try...catch block
+    if (autoPrepend && message.empty()) {
+        CreateErrorObject(
+            isolate, errorNumber,
+            message + ": " + std::string(TRI_errno_string(errorNumber)));
+    } else {
+      CreateErrorObject(isolate, errorNumber, message);
     }
-  } else {
-    CreateErrorObject(isolate, errorNumber, message);
+  } catch (...) {
+    // we cannot do anything about this here, but no C++ exception must
+    // escape the C++ bindings called by V8
   }
 }
 
@@ -4312,7 +4302,7 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
   size_t str_len = str.length();
   if (str_len > 0) {
     UErrorCode errorCode = U_ZERO_ERROR;
-    const Normalizer2* normalizer =
+    Normalizer2 const* normalizer =
         Normalizer2::getInstance(nullptr, "nfc", UNORM2_COMPOSE, errorCode);
 
     if (U_FAILURE(errorCode)) {
@@ -4336,7 +4326,7 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
                                       result.length()));
   }
 
-  TRI_V8_RETURN(v8::String::NewFromUtf8(isolate, ""));
+  TRI_V8_RETURN(v8::String::Empty(isolate));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

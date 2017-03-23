@@ -89,7 +89,7 @@ void Exception::appendLocation () {
     _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
   } else if (_code == TRI_ERROR_OUT_OF_MEMORY || 
              _code == TRI_ERROR_NOT_YET_IMPLEMENTED) {
-    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ").";
+    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ")";
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

@@ -329,7 +329,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       actionError += " - ";
       actionError += *v8::String::Utf8Value(tryCatch.StackTrace());
 
-      TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, actionError);
+      TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, actionError, false);
       tryCatch.ReThrow();
       return;
     }
