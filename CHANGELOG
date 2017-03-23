@@ -1,6 +1,8 @@
 devel
 -----
 
+* increase default collection lock timeout from 30 to 900 seconds
+
 * added function `db._engine()` for retrieval of storage engine information at
   server runtime
 
