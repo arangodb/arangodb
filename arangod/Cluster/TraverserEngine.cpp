@@ -94,12 +94,9 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
   auto params = std::make_shared<VPackBuilder>();
   auto opts = std::make_shared<VPackBuilder>();
 
-  _trx = new arangodb::AqlTransaction(
-      arangodb::StandaloneTransactionContext::Create(vocbase),
-      _collections.collections(), true);
-  // true here as last argument is crucial: it leads to the fact that the
-  // created transaction is considered a "MAIN" part and will not switch
-  // off collection locking completely!
+  _trx = new aql::AqlTransaction(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      _collections.collections(), false);
   _query = new aql::Query(true, vocbase, "", 0, params, opts, aql::PART_DEPENDENT);
   _query->injectTransaction(_trx);
 
@@ -114,6 +111,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
       _query->ast()->variables()->createVariable(v);
     }
   }
+
 
   _trx->begin(); // We begin the transaction before we lock.
                  // We also setup indexes before we lock.
