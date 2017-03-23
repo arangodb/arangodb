@@ -312,7 +312,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         // we already had a group, check if the group has changed
         size_t i = 0;
         
-        if (_pos > 0) {
+        if (_pos > 0 && !skipping) {
           // re-use already copied AQLValues
           for (auto& it : _groupRegisters) {
             res->copyColValuesFromFirstRow(_pos, it.second);
@@ -345,7 +345,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         // increase output row count
         ++skipped;
 
-        if (skipped == atMost) {
+        if (skipped == atMost && !skipping) {
           // output is full
           // do NOT advance input pointer
           result = res.release();
