@@ -292,7 +292,7 @@ build-book:
 	make ppbook-check-directory-link
 	make book-check-images-referenced
 
-	if test -n $(NODE_MODLUES_DIR); then \
+	if test -n "$(NODE_MODLUES_DIR)"; then \
 		cp -a $(NODE_MODLUES_DIR) ppbooks/$(NAME); \
 	else \
 		cd ppbooks/$(NAME); gitbook install -g ; \
