@@ -176,9 +176,7 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
 }
 
 Scheduler::~Scheduler() {
-  if (_threadManager != nullptr) {
-    _threadManager->cancel();
-  }
+  stopRebalancer();
 
   try {
     deleteOldThreads();
@@ -249,12 +247,23 @@ void Scheduler::startRebalancer() {
 
     rebalanceThreads();
 
-    _threadManager->expires_from_now(interval);
-    _threadManager->async_wait(_threadHandler);
+    if (_threadManager != nullptr) {
+      _threadManager->expires_from_now(interval);
+      _threadManager->async_wait(_threadHandler);
+    }
   };
 
   _threadManager->expires_from_now(interval);
   _threadManager->async_wait(_threadHandler);
+}
+
+void Scheduler::stopRebalancer() noexcept {
+  if (_threadManager != nullptr) {
+    try {
+      _threadManager->cancel();
+    } catch (...) {
+    }
+  }
 }
 
 void Scheduler::startManagerThread() {
@@ -262,7 +271,13 @@ void Scheduler::startManagerThread() {
 
   auto thread = new SchedulerManagerThread(this, _managerService.get());
 
-  _threads.emplace(thread);
+  try {
+    _threads.emplace(thread);
+  } catch (...) {
+    delete thread;
+    throw;
+  }
+    
   thread->start();
 }
 
@@ -270,12 +285,18 @@ void Scheduler::startNewThread() {
   MUTEX_LOCKER(guard, _threadsLock);
 
   auto thread = new SchedulerThread(this, _ioService.get());
-
-  _threads.emplace(thread);
+  
+  try {
+    _threads.emplace(thread);
+  } catch (...) {
+    delete thread;
+    throw;
+  }
+    
   thread->start();
 }
 
-bool Scheduler::shouldStopThread() {
+bool Scheduler::shouldStopThread() const {
   if (_nrRunning <= _nrWorking + _nrQueued + _nrMinimum) {
     return false;
   }
@@ -287,7 +308,7 @@ bool Scheduler::shouldStopThread() {
   return false;
 }
 
-bool Scheduler::shouldQueueMore() {
+bool Scheduler::shouldQueueMore() const {
   if (_nrWorking + _nrQueued + _nrMinimum < _nrMaximum) {
     return true;
   }
@@ -295,7 +316,7 @@ bool Scheduler::shouldQueueMore() {
   return false;
 }
 
-bool Scheduler::hasQueueCapacity() {
+bool Scheduler::hasQueueCapacity() const {
   if (_nrWorking + _nrQueued + _nrMinimum >= _nrMaximum) {
     return false;
   }
@@ -374,9 +395,10 @@ void Scheduler::beginShutdown() {
   if (_stopping) {
     return;
   }
-
+  
   _jobQueue->beginShutdown();
 
+  stopRebalancer();
   _threadManager.reset();
 
   _managerGuard.reset();

@@ -611,7 +611,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
 
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Storing results";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->storeResults(&_config, callback);
   } else {

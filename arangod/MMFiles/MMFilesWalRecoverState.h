@@ -140,16 +140,16 @@ struct MMFilesWalRecoverState {
 
   /// @brief executes a single operation inside a transaction
   int executeSingleOperation(
-      TRI_voc_tick_t, TRI_voc_cid_t, TRI_df_marker_t const*, TRI_voc_fid_t,
+      TRI_voc_tick_t, TRI_voc_cid_t, MMFilesMarker const*, TRI_voc_fid_t,
       std::function<int(SingleCollectionTransaction*, MMFilesMarkerEnvelope*)>);
 
   /// @brief callback to handle one marker during recovery
   /// this function modifies indexes etc.
-  static bool ReplayMarker(TRI_df_marker_t const*, void*, MMFilesDatafile*);
+  static bool ReplayMarker(MMFilesMarker const*, void*, MMFilesDatafile*);
 
   /// @brief callback to handle one marker during recovery
   /// this function only builds up state and does not change any data
-  static bool InitialScanMarker(TRI_df_marker_t const*, void*, MMFilesDatafile*);
+  static bool InitialScanMarker(MMFilesMarker const*, void*, MMFilesDatafile*);
 
   /// @brief replay a single logfile
   int replayLogfile(MMFilesWalLogfile*, int);

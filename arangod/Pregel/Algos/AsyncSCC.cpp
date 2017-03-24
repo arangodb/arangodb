@@ -209,13 +209,13 @@ struct ASCCMasterContext : public MasterContext {
     uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
       case SCCPhase::TRANSPOSE:
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: TRIMMING";
+        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: TRIMMING";
         enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::TRIMMING);
         break;
 
       case SCCPhase::TRIMMING:
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: FORWARD_TRAVERSAL";
+        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: FORWARD_TRAVERSAL";
         enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::FORWARD_TRAVERSAL);
         break;
@@ -223,13 +223,13 @@ struct ASCCMasterContext : public MasterContext {
       case SCCPhase::FORWARD_TRAVERSAL: {
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
         if (*newMaxFound == false) {
-          LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
+          LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
           aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
         }
       } break;
 
       case SCCPhase::BACKWARD_TRAVERSAL_START:
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
+        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
         aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
 
@@ -237,7 +237,7 @@ struct ASCCMasterContext : public MasterContext {
         bool const* converged = getAggregatedValue<bool>(kConverged);
         // continue until no more vertices are updated
         if (*converged == false) {
-          LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: TRANSPOSE";
+          LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: TRANSPOSE";
           aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
         }
         break;

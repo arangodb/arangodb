@@ -26,7 +26,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#include "geo-index.h"
+#include "mmfiles-geo-index.h"
 
 /* Radius of the earth used for distances  */
 #define EARTHRADIAN 6371000.0

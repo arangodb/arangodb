@@ -40,41 +40,43 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
-  ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
-  context.installHup();
+  return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
+    ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
+    context.installHup();
 
-  std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-      argv[0], "Usage: arangorestore [<options>]", "For more information use:", BIN_DIRECTORY));
+    std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
+        argv[0], "Usage: arangorestore [<options>]", "For more information use:", BIN_DIRECTORY));
 
-  ApplicationServer server(options, BIN_DIRECTORY);
+    ApplicationServer server(options, BIN_DIRECTORY);
 
-  int ret;
+    int ret;
 
-  server.addFeature(new ClientFeature(&server));
-  server.addFeature(new ConfigFeature(&server, "arangorestore"));
-  server.addFeature(new LoggerFeature(&server, false));
-  server.addFeature(new RandomFeature(&server));
-  server.addFeature(new RestoreFeature(&server, &ret));
-  server.addFeature(new ShutdownFeature(&server, {"Restore"}));
-  server.addFeature(new SslFeature(&server));
-  server.addFeature(new TempFeature(&server, "arangorestore"));
-  server.addFeature(new VersionFeature(&server));
+    server.addFeature(new ClientFeature(&server));
+    server.addFeature(new ConfigFeature(&server, "arangorestore"));
+    server.addFeature(new LoggerFeature(&server, false));
+    server.addFeature(new RandomFeature(&server));
+    server.addFeature(new RestoreFeature(&server, &ret));
+    server.addFeature(new ShutdownFeature(&server, {"Restore"}));
+    server.addFeature(new SslFeature(&server));
+    server.addFeature(new TempFeature(&server, "arangorestore"));
+    server.addFeature(new VersionFeature(&server));
 
-  try {
-    server.run(argc, argv);
-    if (server.helpShown()) {
-      // --help was displayed
-      ret = EXIT_SUCCESS;
+    try {
+      server.run(argc, argv);
+      if (server.helpShown()) {
+        // --help was displayed
+        ret = EXIT_SUCCESS;
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangorestore terminated because of an unhandled exception: "
+              << ex.what();
+      ret = EXIT_FAILURE;
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangorestore terminated because of an unhandled exception of "
+                  "unknown type";
+      ret = EXIT_FAILURE;
     }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangorestore terminated because of an unhandled exception: "
-             << ex.what();
-    ret = EXIT_FAILURE;
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangorestore terminated because of an unhandled exception of "
-                "unknown type";
-    ret = EXIT_FAILURE;
-  }
 
-  return context.exit(ret);
+    return context.exit(ret);
+  });
 }

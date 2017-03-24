@@ -997,6 +997,13 @@
       if (this.type === 'edge') {
         total.html(numeral(this.collection.getTotal()).format('0,0') + ' edge(s)');
       }
+      if (this.collection.getTotal() > this.collection.MAX_SORT) {
+        $('#docsSort').attr('disabled', true);
+        $('#docsSort').attr('placeholder', 'Sort limit reached (docs count)');
+      } else {
+        $('#docsSort').attr('disabled', false);
+        $('#docsSort').attr('placeholder', 'Sort by attribute');
+      }
     },
 
     breadcrumb: function () {

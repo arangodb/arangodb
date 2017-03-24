@@ -832,7 +832,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
     bool performGarbageCollection = false;
 
     // postpone garbage collection for standard contexts
-    double lastGc = (gc != nullptr) ? gc->getLastGcStamp() : -1.0;
+    double lastGc = gc->getLastGcStamp();
     if (context->_lastGcStamp + _gcFrequency < lastGc) {
       LOG_TOPIC(TRACE, arangodb::Logger::V8) << "V8 context has reached GC timeout threshold and will be "
                     "scheduled for GC";

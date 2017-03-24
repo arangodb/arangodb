@@ -29,7 +29,7 @@
 
 #include <velocypack/Builder.h>
 
-struct TRI_df_marker_t;
+struct MMFilesMarker;
 
 namespace arangodb {
 namespace transaction {
@@ -71,6 +71,7 @@ class PhysicalCollection {
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
+  virtual void getPropertiesVPackCoordinator(velocypack::Builder&) const = 0;
 
   /// @brief return the figures for a collection
   std::shared_ptr<velocypack::Builder> figures();
@@ -79,14 +80,6 @@ class PhysicalCollection {
   
   virtual int close() = 0;
   
-  /// @brief rotate the active journal - will do nothing if there is no journal
-  /// REVIEW - MOVE INTO MMFILES?? - used in v8-collection
-  virtual int rotateActiveJournal() = 0;
-
-  /// REVIEW - MOVE INTO MMFILES?? - used in replication-dump
-  virtual bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                                 std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
-
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments() const = 0;
 
@@ -201,11 +194,6 @@ class PhysicalCollection {
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
 
-  // SECTION: Has to be moved INTO MMFiles
-  virtual bool doCompact() const = 0;
-  virtual size_t journalSize() const = 0;
-  virtual uint32_t indexBuckets() const = 0;
-  
  protected:
 
   /// @brief Inject figures that are specific to StorageEngine

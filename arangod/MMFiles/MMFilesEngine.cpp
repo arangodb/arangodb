@@ -767,11 +767,11 @@ std::string MMFilesEngine::createCollection(
   std::string const path = databasePath(vocbase);
 
   // sanity check
-  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
-      parameters->getPhysical()->journalSize()) {
+  if (sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker) >
+      static_cast<MMFilesCollection*>(parameters->getPhysical())->journalSize()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "cannot create datafile '" << parameters->name() << "' in '" << path
-        << "', maximal size '" << parameters->getPhysical()->journalSize()
+        << "', journal size '" << static_cast<MMFilesCollection*>(parameters->getPhysical())->journalSize()
         << "' is too small";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATAFILE_FULL);
   }
@@ -2111,7 +2111,7 @@ bool MMFilesEngine::iterateFiles(std::vector<std::string> const& files) {
   /// it will check the ticks of all markers and update the internal tick
   /// counter accordingly. this is done so we'll not re-assign an already used
   /// tick value
-  auto cb = [this](TRI_df_marker_t const* marker,
+  auto cb = [this](MMFilesMarker const* marker,
                    MMFilesDatafile* datafile) -> bool {
     TRI_voc_tick_t markerTick = marker->getTick();
 
@@ -2731,9 +2731,9 @@ bool MMFilesEngine::checkDatafileHeader(MMFilesDatafile* datafile,
   char const* ptr = datafile->data();
 
   // skip the datafile header
-  ptr += encoding::alignedSize<size_t>(sizeof(TRI_df_header_marker_t));
-  TRI_col_header_marker_t const* cm =
-      reinterpret_cast<TRI_col_header_marker_t const*>(ptr);
+  ptr += encoding::alignedSize<size_t>(sizeof(MMFilesDatafileHeaderMarker));
+  MMFilesCollectionHeaderMarker const* cm =
+      reinterpret_cast<MMFilesCollectionHeaderMarker const*>(ptr);
 
   if (cm->base.getType() != TRI_DF_MARKER_COL_HEADER) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -3032,7 +3032,7 @@ int MMFilesEngine::transferMarkersWorker(
   TRI_ASSERT(!operations.empty());
 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
-    TRI_df_marker_t const* source = (*it2);
+    MMFilesMarker const* source = (*it2);
     TRI_voc_tick_t const tick = source->getTick();
 
     if (tick <= minTransferTick) {
@@ -3049,7 +3049,7 @@ int MMFilesEngine::transferMarkersWorker(
       }
     }
 
-    TRI_df_marker_type_t const type = source->getType();
+    MMFilesMarkerType const type = source->getType();
 
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
         type == TRI_DF_MARKER_VPACK_REMOVE) {
@@ -3082,7 +3082,7 @@ int MMFilesEngine::transferMarkersWorker(
 /// @brief get the next position for a marker of the specified size
 char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection,
                                             TRI_voc_tick_t tick,
-                                            TRI_df_marker_type_t type,
+                                            MMFilesMarkerType type,
                                             TRI_voc_size_t size,
                                             MMFilesCollectorCache* cache) {
   // align the specified size
@@ -3136,7 +3136,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection,
 
   TRI_ASSERT(dst != nullptr);
 
-  MMFilesDatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(dst),
+  MMFilesDatafileHelper::InitMarker(reinterpret_cast<MMFilesMarker*>(dst),
                                     type, size);
 
   return dst;
@@ -3148,8 +3148,8 @@ void MMFilesEngine::finishMarker(char const* walPosition,
                                  LogicalCollection* collection,
                                  TRI_voc_tick_t tick,
                                  MMFilesCollectorCache* cache) {
-  TRI_df_marker_t* marker =
-      reinterpret_cast<TRI_df_marker_t*>(datafilePosition);
+  MMFilesMarker* marker =
+      reinterpret_cast<MMFilesMarker*>(datafilePosition);
 
   MMFilesDatafile* datafile = cache->lastDatafile;
   TRI_ASSERT(datafile != nullptr);

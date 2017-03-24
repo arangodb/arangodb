@@ -292,7 +292,11 @@ build-book:
 	make ppbook-check-directory-link
 	make book-check-images-referenced
 
-	cd ppbooks/$(NAME) && gitbook install
+	if test -n $(NODE_MODLUES_DIR); then \
+		cp -a $(NODE_MODLUES_DIR) ppbooks/$(NAME); \
+	else \
+		cd ppbooks/$(NAME); gitbook install -g ; \
+	fi
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	rm -f ./books/$(NAME)/HEADER.html
 	python ../Scripts/deprecated.py

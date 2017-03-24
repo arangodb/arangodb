@@ -81,24 +81,28 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
   _asyncMode =
       _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
   if (_asyncMode) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Running in async mode";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Running in async mode";
   }
   VPackSlice lazy = _userParams.slice().get("lazyLoading");
   _lazyLoading = _algorithm->supportsLazyLoading();
   _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
   if (_lazyLoading) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Enabled lazy loading";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Will keep results in-memory";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Will keep results in-memory";
   }
 }
 
 Conductor::~Conductor() {
   if (_state != ExecutionState::DEFAULT) {
-    this->cancel();
+    try {
+      this->cancel();
+    } catch (...) {
+      // must not throw exception from here
+    }
   }
 }
 
@@ -158,7 +162,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_enterNextGSS = false;
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
-      LOG_TOPIC(INFO, Logger::PREGEL) << "Master context ended execution";
+      LOG_TOPIC(DEBUG, Logger::PREGEL) << "Master context ended execution";
     }
   }
 
@@ -224,7 +228,8 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     return;
   }
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << _totalVerticesCount << " vertices, "
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Running pregel with "
+                                  << _totalVerticesCount << " vertices, "
                                   << _totalEdgesCount << " edges";
   if (_masterContext) {
     _masterContext->_globalSuperstep = 0;
@@ -650,14 +655,14 @@ int Conductor::_finalizeWorkers() {
 
   LOG_TOPIC(INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep
                                   << " rounds";
-  LOG_TOPIC(INFO, Logger::PREGEL)
+  LOG_TOPIC(DEBUG, Logger::PREGEL)
       << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
-  LOG_TOPIC(INFO, Logger::PREGEL)
+  LOG_TOPIC(DEBUG, Logger::PREGEL)
       << "Computation Time: " << compEnd - _computationStartTimeSecs << "s";
-  LOG_TOPIC(INFO, Logger::PREGEL)
+  LOG_TOPIC(DEBUG, Logger::PREGEL)
       << "Storage Time: " << TRI_microtime() - compEnd << "s";
   LOG_TOPIC(INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Stats: " << debugOut.toString();
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
   return res;
 }
 

@@ -265,16 +265,16 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
     auto const type = ditch->type();
   
     if (type == arangodb::MMFilesDitch::TRI_DITCH_DATAFILE_DROP) {
-      dynamic_cast<arangodb::MMFilesDropDatafileDitch*>(ditch)->executeCallback();
+      static_cast<arangodb::MMFilesDropDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
       // next iteration
     } else if (type == arangodb::MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) {
-      dynamic_cast<arangodb::MMFilesRenameDatafileDitch*>(ditch)->executeCallback();
+      static_cast<arangodb::MMFilesRenameDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
       // next iteration
     } else if (type == arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_UNLOAD) {
       // collection will be unloaded
-      bool hasUnloaded = dynamic_cast<arangodb::MMFilesUnloadCollectionDitch*>(ditch)
+      bool hasUnloaded = static_cast<arangodb::MMFilesUnloadCollectionDitch*>(ditch)
                              ->executeCallback();
       delete ditch;
 
@@ -284,7 +284,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       }
     } else if (type == arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_DROP) {
       // collection will be dropped
-      bool hasDropped = dynamic_cast<arangodb::MMFilesDropCollectionDitch*>(ditch)
+      bool hasDropped = static_cast<arangodb::MMFilesDropCollectionDitch*>(ditch)
                             ->executeCallback();
       delete ditch;
 

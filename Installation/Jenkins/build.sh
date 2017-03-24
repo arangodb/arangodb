@@ -183,7 +183,7 @@ case "$1" in
         ;;
 
     *)
-        echo "using unknown compile configuration"
+        echo "using unknown compile configuration - supported are [standard|debug|maintainer|scan-build]"
         exit 1
         ;;
 esac

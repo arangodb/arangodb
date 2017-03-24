@@ -58,7 +58,7 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         // TODO extend pregel to update certain aggregators during a GSS
         aggregate(spUpperPathBound, current);
         enterNextGlobalSuperstep();
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Found target " << current;
+        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Found target " << current;
         return;
       }
 
@@ -106,20 +106,21 @@ ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams)
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "You must specify source and target");
   }
-  _format = new SPGraphFormat(val1.copyString(), val2.copyString());
+  _source = val1.copyString();
+  _target = val2.copyString();
 }
 
 std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
-  return std::set<std::string>{_format->_sourceDocId};
+  return std::set<std::string>{_source};
 }
 
 GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
-  return _format;
+  return new SPGraphFormat(_source, _target);
 }
 
 VertexComputation<int64_t, int64_t, int64_t>*
 ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
-  PregelID target = _config->documentIdToPregel(_format->_targetDocId);
+  PregelID target = _config->documentIdToPregel(_target);
   return new SPComputation(target);
 }
 

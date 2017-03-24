@@ -85,12 +85,6 @@ std::string const RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
 std::string const RestVocbaseBaseHandler::EDGES_PATH = "/_api/edges";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief export path
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const RestVocbaseBaseHandler::EXPORT_PATH = "/_api/export";
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief documents import path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -633,8 +627,16 @@ void RestVocbaseBaseHandler::prepareExecute() {
   std::string const& shardId = _request->header("x-arango-nolock", found);
 
   if (found) {
-    _nolockHeaderSet =
-        new std::unordered_set<std::string>{std::string(shardId)};
+    _nolockHeaderSet = new std::unordered_set<std::string>();
+    // Split value at commas, if there are any, otherwise take full value:
+    size_t pos = shardId.find(',');
+    size_t oldpos = 0;
+    while (pos != std::string::npos) {
+      _nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
+      oldpos = pos + 1;
+      pos = shardId.find(',', oldpos);
+    }
+    _nolockHeaderSet->emplace(shardId.substr(oldpos));
     CollectionLockState::_noLockHeaders = _nolockHeaderSet;
   }
 }

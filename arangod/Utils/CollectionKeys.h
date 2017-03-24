@@ -25,8 +25,6 @@
 #define ARANGOD_UTILS_COLLECTION_KEYS_H 1
 
 #include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -40,8 +38,7 @@ namespace velocypack {
 class Slice;
 }
 
-class CollectionGuard;
-class MMFilesDocumentDitch;
+class LogicalCollection;
 
 typedef TRI_voc_tick_t CollectionKeysId;
 
@@ -50,10 +47,10 @@ class CollectionKeys {
   CollectionKeys(CollectionKeys const&) = delete;
   CollectionKeys& operator=(CollectionKeys const&) = delete;
 
-  CollectionKeys(TRI_vocbase_t*, std::string const&, TRI_voc_tick_t,
+  CollectionKeys(TRI_vocbase_t*, std::string const& name, 
                  double ttl);
 
-  ~CollectionKeys();
+  virtual ~CollectionKeys() = default;
 
  public:
   CollectionKeysId id() const { return _id; }
@@ -81,50 +78,43 @@ class CollectionKeys {
     _isUsed = false;
   }
 
-  size_t count() const {
-    return _vpack.size();
-  }
+  virtual size_t count() const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initially creates the list of keys
   //////////////////////////////////////////////////////////////////////////////
 
-  void create(TRI_voc_tick_t);
+  virtual void create(TRI_voc_tick_t) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief hashes a chunk of keys
   //////////////////////////////////////////////////////////////////////////////
 
-  std::tuple<std::string, std::string, uint64_t> hashChunk(size_t,
-                                                           size_t) const;
+  virtual std::tuple<std::string, std::string, uint64_t> hashChunk(size_t,
+                                                           size_t) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps keys into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpKeys(arangodb::velocypack::Builder&, size_t, size_t) const;
+  virtual void dumpKeys(arangodb::velocypack::Builder&, size_t, size_t) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps documents into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpDocs(arangodb::velocypack::Builder&, size_t, size_t,
-                arangodb::velocypack::Slice const&) const;
+  virtual void dumpDocs(arangodb::velocypack::Builder&, size_t, size_t,
+                        arangodb::velocypack::Slice const&) const = 0;
 
- private:
+ protected:
   TRI_vocbase_t* _vocbase;
-  std::unique_ptr<arangodb::CollectionGuard> _guard;
   arangodb::LogicalCollection* _collection;
-  arangodb::MMFilesDocumentDitch* _ditch;
   std::string const _name;
-  arangodb::CollectionNameResolver _resolver;
-  TRI_voc_tick_t _blockerId;
   CollectionKeysId _id;
   double _ttl;
   double _expires;
   bool _isDeleted;
   bool _isUsed;
-  std::vector<uint8_t const*> _vpack;
 };
 }
 

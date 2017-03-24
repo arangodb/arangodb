@@ -24,7 +24,6 @@
 #include "CursorRepository.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
-#include "Utils/CollectionExport.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -84,56 +83,42 @@ CursorRepository::~CursorRepository() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief stores a cursor in the registry
+/// the repository will take ownership of the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
+  TRI_ASSERT(cursor != nullptr);
+  TRI_ASSERT(cursor->isUsed());
+
+  CursorId const id = cursor->id();
+
+  MUTEX_LOCKER(mutexLocker, _lock);
+  _cursors.emplace(id, cursor.get());
+
+  return cursor.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cursor and stores it in the registry
 /// the cursor will be returned with the usage flag set to true. it must be
 /// returned later using release()
 /// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-VelocyPackCursor* CursorRepository::createFromQueryResult(
+Cursor* CursorRepository::createFromQueryResult(
     aql::QueryResult&& result, size_t batchSize, std::shared_ptr<VPackBuilder> extra,
     double ttl, bool count) {
   TRI_ASSERT(result.result != nullptr);
 
   CursorId const id = TRI_NewTickServer();
 
-  arangodb::VelocyPackCursor* cursor = new arangodb::VelocyPackCursor(
-      _vocbase, id, std::move(result), batchSize, extra, ttl, count);
+  std::unique_ptr<Cursor> cursor;
+  cursor.reset(new VelocyPackCursor(
+      _vocbase, id, std::move(result), batchSize, extra, ttl, count));
   cursor->use();
 
-  try {
-    MUTEX_LOCKER(mutexLocker, _lock);
-    _cursors.emplace(std::make_pair(id, cursor));
-    return cursor;
-  } catch (...) {
-    delete cursor;
-    throw;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a cursor and stores it in the registry
-////////////////////////////////////////////////////////////////////////////////
-
-ExportCursor* CursorRepository::createFromExport(arangodb::CollectionExport* ex,
-                                                 size_t batchSize, double ttl,
-                                                 bool count) {
-  TRI_ASSERT(ex != nullptr);
-
-  CursorId const id = TRI_NewTickServer();
-  arangodb::ExportCursor* cursor =
-      new arangodb::ExportCursor(_vocbase, id, ex, batchSize, ttl, count);
-
-  cursor->use();
-
-  try {
-    MUTEX_LOCKER(mutexLocker, _lock);
-    _cursors.emplace(std::make_pair(id, cursor));
-    return cursor;
-  } catch (...) {
-    delete cursor;
-    throw;
-  }
+  return addCursor(std::move(cursor));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

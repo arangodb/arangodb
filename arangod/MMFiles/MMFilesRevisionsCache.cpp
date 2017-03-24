@@ -130,7 +130,7 @@ void MMFilesRevisionsCache::update(TRI_voc_rid_t revisionId, uint8_t const* data
   old->fid(fid, isInWal); 
 }
   
-bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
+bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
   WRITE_LOCKER(locker, _lock);
 
   MMFilesDocumentPosition old = _positions.findByKey(nullptr, &revisionId);
@@ -141,7 +141,7 @@ bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, TRI_df_m
   uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
   TRI_ASSERT(vpack != nullptr);
 
-  TRI_df_marker_t const* markerPtr = reinterpret_cast<TRI_df_marker_t const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  MMFilesMarker const* markerPtr = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
   if (markerPtr != oldPosition) {
     // element already outdated

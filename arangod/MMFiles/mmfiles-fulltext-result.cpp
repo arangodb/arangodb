@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "fulltext-result.h"
-
+#include "mmfiles-fulltext-result.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 
 /// @brief create a result

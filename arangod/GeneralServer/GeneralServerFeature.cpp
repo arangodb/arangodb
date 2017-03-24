@@ -51,7 +51,7 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
-#include "RestHandler/RestExportHandler.h"
+#include "RestHandler/RestEngineHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestJobHandler.h"
@@ -359,10 +359,6 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestEdgesHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::EXPORT_PATH,
-      RestHandlerCreator<RestExportHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::IMPORT_PATH,
       RestHandlerCreator<RestImportHandler>::createNoData);
 
@@ -454,6 +450,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+  
+  _handlerFactory->addHandler(
+      "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _handlerFactory->addHandler(

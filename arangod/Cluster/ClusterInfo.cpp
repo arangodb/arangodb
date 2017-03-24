@@ -25,6 +25,7 @@
 #include "ClusterInfo.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -1381,33 +1382,20 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
   if (!collection.isObject()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+ 
+  VPackBuilder temp;     
+  temp.openObject();
+  temp.add("waitForSync", VPackValue(info->waitForSync()));
+  info->getPhysical()->getPropertiesVPackCoordinator(temp);
+  temp.close();
 
-  VPackBuilder copy;
-  try {
-    VPackObjectBuilder b(&copy);
-    for (auto const& entry : VPackObjectIterator(collection)) {
-      std::string key = entry.key.copyString();
-      // Copy all values except the following
-      // They are overwritten later
-      if (key != "doCompact" && key != "journalSize" && key != "waitForSync" &&
-          key != "indexBuckets") {
-        copy.add(key, entry.value);
-      }
-    }
-    // TODO Why is this?
-    copy.add("doCompact", VPackValue(info->getPhysical()->doCompact()));
-    copy.add("journalSize", VPackValue(info->getPhysical()->journalSize()));
-    copy.add("waitForSync", VPackValue(info->waitForSync()));
-    copy.add("indexBuckets", VPackValue(info->getPhysical()->indexBuckets()));
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);
 
   res.clear();
 
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, copy.slice());
+      AgencyValueOperationType::SET, builder.slice());
 
   AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
 

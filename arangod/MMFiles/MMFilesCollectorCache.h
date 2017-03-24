@@ -30,7 +30,7 @@
 #include "VocBase/voc-types.h"
 
 struct MMFilesDatafile;
-struct TRI_df_marker_t;
+struct MMFilesMarker;
 
 namespace arangodb {
 class MMFilesWalLogfile;
@@ -142,11 +142,11 @@ struct MMFilesCollectorCache {
 };
   
 /// @brief typedef key => document marker
-typedef std::unordered_map<std::string, struct TRI_df_marker_t const*>
+typedef std::unordered_map<std::string, struct MMFilesMarker const*>
     MMFilesDocumentOperationsType;
 
 /// @brief typedef for structural operation (attributes, shapes) markers
-typedef std::vector<struct TRI_df_marker_t const*> MMFilesOperationsType;
+typedef std::vector<struct MMFilesMarker const*> MMFilesOperationsType;
 
 }
 
