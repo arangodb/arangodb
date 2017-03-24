@@ -93,6 +93,7 @@ TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMod
 int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType,
                                     int nestingLevel, bool force) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "add collection: " << cid << ", " << this;
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid 
@@ -138,7 +139,9 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   TRI_ASSERT(trxCollection == nullptr);
     
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  LOG_TOPIC(ERR, Logger::FIXME) << "creating trx collection: " << cid << ", " << this;
   trxCollection = engine->createTransactionCollection(this, cid, accessType, nestingLevel);
+  LOG_TOPIC(ERR, Logger::FIXME) << "created trx collection: " << cid << ", " << this << "; " << trxCollection;
   
   TRI_ASSERT(trxCollection != nullptr);
 
@@ -162,6 +165,8 @@ int TransactionState::ensureCollections(int nestingLevel) {
 /// @brief use all participating collections of a transaction
 int TransactionState::useCollections(int nestingLevel) {
   int res = TRI_ERROR_NO_ERROR;
+
+  LOG_TOPIC(ERR, Logger::FIXME) << "use collections " << this;
 
   // process collections in forward order
   for (auto& trxCollection : _collections) {

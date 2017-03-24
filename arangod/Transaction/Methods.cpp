@@ -2577,6 +2577,8 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(trxCollection != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+  
+  LOG_TOPIC(ERR, Logger::FIXME) << "accessing collection " << trxCollection->id() << ": " << trxCollection;
   TRI_ASSERT(trxCollection->collection() != nullptr);
 
   return trxCollection->collection();

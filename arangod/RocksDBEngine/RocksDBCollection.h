@@ -31,12 +31,12 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
 
-struct RocksDBDatafile;
 
 namespace arangodb {
 class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
+class RocksDBPrimaryIndex;
 
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
@@ -74,7 +74,7 @@ class RocksDBCollection final : public PhysicalCollection {
                                     PhysicalCollection*) override;
 
   TRI_voc_rid_t revision() const override;
-
+  
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
 
@@ -85,8 +85,6 @@ class RocksDBCollection final : public PhysicalCollection {
   int close() override;
 
   uint64_t numberDocuments() const override;
-
-  void sizeHint(transaction::Methods* trx, int64_t hint) override;
 
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;
@@ -171,6 +169,8 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;
+  
+  uint64_t objectId() const { return _objectId; }
 
  private:
   /// @brief return engine-specific figures
@@ -179,6 +179,8 @@ class RocksDBCollection final : public PhysicalCollection {
   void createInitialIndexes();
   void addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
+  int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx);
+  arangodb::RocksDBPrimaryIndex* primaryIndex() const;
 
  private:
   uint64_t _objectId; // rocksdb-specific object id for collection

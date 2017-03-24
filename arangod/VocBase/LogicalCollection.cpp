@@ -1107,13 +1107,6 @@ int LogicalCollection::remove(transaction::Methods* trx,
                                lock, revisionId, prevRev);
 }
 
-void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
-  if (hint <= 0) {
-    return;
-  }
-  getPhysical()->sizeHint(trx, hint);
-}
-
 bool LogicalCollection::readDocument(transaction::Methods* trx, DocumentIdentifierToken const& token, ManagedDocumentResult& result) {
   return getPhysical()->readDocument(trx, token, result);
 }

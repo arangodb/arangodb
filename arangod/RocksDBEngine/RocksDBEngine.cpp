@@ -145,8 +145,8 @@ TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t* vocbase) 
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
     TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-    int nestingLevel) {
-  return new RocksDBTransactionCollection(state, cid, accessType, nestingLevel);
+    int /*nestingLevel*/) {
+  return new RocksDBTransactionCollection(state, cid, accessType);
 }
   
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
@@ -444,9 +444,9 @@ void RocksDBEngine::destroyCollection(TRI_vocbase_t* vocbase,
 }
 
 void RocksDBEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                     arangodb::LogicalCollection const*,
+                                     arangodb::LogicalCollection const* parameters,
                                      bool doSync) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  createCollection(vocbase, id, parameters);
 }
 
 arangodb::Result RocksDBEngine::renameCollection(
@@ -457,9 +457,16 @@ arangodb::Result RocksDBEngine::renameCollection(
 }
 
 void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
-                                TRI_voc_cid_t collectionId, TRI_idx_iid_t id,
+                                TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId,
                                 arangodb::velocypack::Slice const& data) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  RocksDBEntry entry = RocksDBEntry::Index(vocbase->id(), collectionId, indexId, data);
+  rocksdb::WriteOptions options; // TODO: check which options would make sense
+
+  rocksdb::Status res = _db->Put(options, entry.key(), entry.value());
+  if (!res.ok()) {
+    // TODO: need translation for RocksDB errors
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 }
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,

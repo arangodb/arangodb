@@ -91,13 +91,13 @@ RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
 
 /// @brief return a selectivity estimate for the index
 double RocksDBEdgeIndex::selectivityEstimate(arangodb::StringRef const* attribute) const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO
   return 0.0;
 }
 
 /// @brief return the memory usage for the index
 size_t RocksDBEdgeIndex::memory() const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO
   return 0;
 }
 
