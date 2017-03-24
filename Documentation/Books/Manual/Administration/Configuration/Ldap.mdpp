@@ -13,6 +13,11 @@ The basic options are `--ldap.enabled`, `--ldap.tls`, `--ldap.port`, `--ldap.ser
 
 
 
+--ldap.enabled true --ldap.server 192.168.2.119 --ldap.prefix uid= --ldap.suffix ,dc=example,dc=com --ldap.permissionsattributename description
+
+--ldap.enabled true --ldap.server 192.168.2.119 --ldap.basedn dc=example,dc=com  --ldap.searchfilter "objectClass=simpleSecurityObject"
+--ldap.searchattribute "uid" --ldap.binddn cn=admin,dc=example,dc=com --ldap.bindpasswd hallo --ldap.permissionsattributename description
+
 
 
 
