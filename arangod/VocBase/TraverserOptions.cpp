@@ -40,6 +40,7 @@ using VPackHelper = arangodb::basics::VelocyPackHelper;
 using TraverserOptions = arangodb::traverser::TraverserOptions;
 using ShortestPathOptions = arangodb::traverser::ShortestPathOptions;
 using BaseTraverserOptions = arangodb::traverser::BaseTraverserOptions;
+using namespace arangodb::transaction;
 
 BaseTraverserOptions::LookupInfo::LookupInfo()
     : expression(nullptr),
