@@ -36,6 +36,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
