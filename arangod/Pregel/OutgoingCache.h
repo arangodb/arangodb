@@ -55,7 +55,7 @@ class OutCache {
  protected:
   WorkerConfig const* _config;
   MessageFormat<M> const* _format;
-  InCache<M>* _localCache;
+  InCache<M>* _localCache = nullptr;
   InCache<M>* _localCacheNextGSS = nullptr;
   std::string _baseUrl;
   uint32_t _batchSize = 1000;

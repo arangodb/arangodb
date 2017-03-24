@@ -210,3 +210,19 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
 
   return { http };
 }
+ 
+int ClientFeature::runMain(int argc, char* argv[],
+                           std::function<int(int argc, char* argv[])> const& mainFunc) {
+  try {
+    return mainFunc(argc, argv);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << argv[0] << " terminated because of an unhandled exception: "
+        << ex.what();
+    return EXIT_FAILURE;
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << argv[0] << " terminated because of an unhandled exception of unknown type";
+    return EXIT_FAILURE;
+  }
+}

@@ -754,7 +754,8 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   for (auto s : *stats) {
     totalAccesses += s.second;
   }
-  double normalizer = remainingWeight / static_cast<double>(totalAccesses);
+
+  double normalizer = remainingWeight / (std::max)(1.0, static_cast<double>(totalAccesses));
 
   // gather all accessed caches in order
   for (auto s : *stats) {

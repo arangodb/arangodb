@@ -491,20 +491,26 @@ std::string SslServerFeature::stringifySslOptions(uint64_t opts) const {
 #endif
 
 #ifdef SSL_OP_PKCS1_CHECK_1
-  if (opts & SSL_OP_PKCS1_CHECK_1) {
-    result.append(", SSL_OP_PKCS1_CHECK_1");
+  if (SSL_OP_PKCS1_CHECK_1) {
+    if (opts & SSL_OP_PKCS1_CHECK_1) {
+      result.append(", SSL_OP_PKCS1_CHECK_1");
+    }
   }
 #endif
 
 #ifdef SSL_OP_PKCS1_CHECK_2
-  if (opts & SSL_OP_PKCS1_CHECK_2) {
-    result.append(", SSL_OP_PKCS1_CHECK_2");
+  if (SSL_OP_PKCS1_CHECK_1) {
+    if (opts & SSL_OP_PKCS1_CHECK_2) {
+      result.append(", SSL_OP_PKCS1_CHECK_2");
+    }
   }
 #endif
 
 #ifdef SSL_OP_NETSCAPE_CA_DN_BUG
-  if (opts & SSL_OP_NETSCAPE_CA_DN_BUG) {
-    result.append(", SSL_OP_NETSCAPE_CA_DN_BUG");
+  if (SSL_OP_NETSCAPE_CA_DN_BUG) {
+    if (opts & SSL_OP_NETSCAPE_CA_DN_BUG) {
+      result.append(", SSL_OP_NETSCAPE_CA_DN_BUG");
+    }
   }
 #endif
 

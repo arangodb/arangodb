@@ -82,6 +82,9 @@ class ClientFeature final : public application_features::ApplicationFeature,
 
   void setWarn(bool warn) { _warn = warn; }
 
+  static int runMain(int argc, char* argv[],
+                     std::function<int(int argc, char* argv[])> const& mainFunc);
+
  private:
   std::string _databaseName;
   bool _authentication;

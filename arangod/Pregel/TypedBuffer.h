@@ -41,7 +41,7 @@ template <typename T>
 struct TypedBuffer {
   /// close file (see close() )
   virtual ~TypedBuffer(){};
-  TypedBuffer() {}
+  TypedBuffer() : _ptr(nullptr) {}
 
   /// @brief return whether the datafile is a physical file (true) or an
   /// anonymous mapped region (false)
