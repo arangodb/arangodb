@@ -62,7 +62,12 @@ class EdgeCursor {
                        size_t&) = 0;
 };
 
-struct BaseTraverserOptions {
+
+struct TraverserOptions {
+  friend class arangodb::aql::TraversalNode;
+
+ public:
+  enum UniquenessLevel { NONE, PATH, GLOBAL };
 
  protected:
 
@@ -93,94 +98,17 @@ struct BaseTraverserOptions {
     
   };
 
- private:
-  aql::FixedVarExpressionContext* _ctx;
-
- protected:
+ public:
   transaction::Methods* _trx;
+ protected:
   std::vector<LookupInfo> _baseLookupInfos;
-  aql::Variable const* _tmpVar;
-  bool const _isCoordinator;
-
- public:
-  explicit BaseTraverserOptions(transaction::Methods* trx)
-      : _ctx(new aql::FixedVarExpressionContext()),
-        _trx(trx),
-        _tmpVar(nullptr),
-        _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {}
-
-  /// @brief This copy constructor is only working during planning phase.
-  ///        After planning this node should not be copied anywhere.
-  explicit BaseTraverserOptions(BaseTraverserOptions const&);
-
-  BaseTraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
-                       arangodb::velocypack::Slice);
-
-  virtual ~BaseTraverserOptions();
-
-  // Creates a complete Object containing all EngineInfo
-  // in the given builder.
-  virtual void buildEngineInfo(arangodb::velocypack::Builder&) const;
-
-  void setVariable(aql::Variable const*);
-
-  void addLookupInfo(aql::Ast* ast, std::string const& collectionName,
-                     std::string const& attributeName, aql::AstNode* condition);
-
-  void clearVariableValues();
-
-  void setVariableValue(aql::Variable const*, aql::AqlValue const);
-
-  void serializeVariables(arangodb::velocypack::Builder&) const;
-
-  transaction::Methods* trx() const;
-
-  /// @brief Build a velocypack for cloning in the plan.
-  virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
-
-  // Creates a complete Object containing all index information
-  // in the given builder.
-  virtual void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
-
-  /// @brief Estimate the total cost for this operation
-  virtual double estimateCost(size_t& nrItems) const = 0;
-
- protected:
-
-  double costForLookupInfoList(std::vector<LookupInfo> const& list,
-                               size_t& createItems) const;
-
-  // Requires an open Object in the given builder an
-  // will inject index information into it.
-  // Does not close the builder.
-  void injectVelocyPackIndexes(arangodb::velocypack::Builder&) const;
-
-  // Requires an open Object in the given builder an
-  // will inject EngineInfo into it.
-  // Does not close the builder.
-  void injectEngineInfo(arangodb::velocypack::Builder&) const;
-
-  aql::Expression* getEdgeExpression(size_t cursorId) const;
-
-  bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue) const;
-
-  void injectLookupInfoInList(std::vector<LookupInfo>&, aql::Ast* ast,
-                              std::string const& collectionName,
-                              std::string const& attributeName,
-                              aql::AstNode* condition);
-};
-
-struct TraverserOptions : public BaseTraverserOptions {
-  friend class arangodb::aql::TraversalNode;
-
- public:
-  enum UniquenessLevel { NONE, PATH, GLOBAL };
-
- protected:
-  std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
-  std::unordered_map<size_t, aql::Expression*> _vertexExpressions;
+  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
   aql::Expression* _baseVertexExpression;
+  aql::Variable const* _tmpVar;
+  aql::FixedVarExpressionContext* _ctx;
   arangodb::traverser::ClusterTraverser* _traverser;
+  bool const _isCoordinator;
 
  public:
   uint64_t minDepth;
@@ -194,9 +122,12 @@ struct TraverserOptions : public BaseTraverserOptions {
   UniquenessLevel uniqueEdges;
 
   explicit TraverserOptions(transaction::Methods* trx)
-      : BaseTraverserOptions(trx),
+      : _trx(trx),
         _baseVertexExpression(nullptr),
+        _tmpVar(nullptr),
+        _ctx(new aql::FixedVarExpressionContext()),
         _traverser(nullptr),
+        _isCoordinator(trx->state()->isCoordinator()),
         minDepth(1),
         maxDepth(1),
         useBreadthFirst(false),
@@ -215,14 +146,14 @@ struct TraverserOptions : public BaseTraverserOptions {
   virtual ~TraverserOptions();
 
   /// @brief Build a velocypack for cloning in the plan.
-  void toVelocyPack(arangodb::velocypack::Builder&) const override;
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
   
   /// @brief Build a velocypack for indexes
-  void toVelocyPackIndexes(arangodb::velocypack::Builder&) const override;
+  void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
 
   /// @brief Build a velocypack containing all relevant information
   ///        for DBServer traverser engines.
-  void buildEngineInfo(arangodb::velocypack::Builder&) const override;
+  void buildEngineInfo(arangodb::velocypack::Builder&) const;
 
   bool vertexHasFilter(uint64_t) const;
 
@@ -234,84 +165,26 @@ struct TraverserOptions : public BaseTraverserOptions {
 
   EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::Slice, uint64_t) const;
 
+  void clearVariableValues();
+
+  void setVariableValue(aql::Variable const*, aql::AqlValue const);
+
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
-  double estimateCost(size_t& nrItems) const override;
+  void serializeVariables(arangodb::velocypack::Builder&) const;
+
+  double estimateCost(size_t& nrItems) const;
 
  private:
+
+  double costForLookupInfoList(std::vector<LookupInfo> const& list,
+                               size_t& createItems) const;
 
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*,
                               arangodb::velocypack::Slice, uint64_t,
                               std::vector<LookupInfo>&) const;
 
   EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, uint64_t) const;
-};
-
-struct ShortestPathOptions : public BaseTraverserOptions {
-
- protected:
-
-  double _defaultWeight;
-  std::string _weightAttribute;
-  std::vector<LookupInfo> _reverseLookupInfos;
-
- public:
-
-  enum DIRECTION {FORWARD, BACKWARD};
-
-  explicit ShortestPathOptions(transaction::Methods* trx)
-    : BaseTraverserOptions(trx),
-      _defaultWeight(1),
-      _weightAttribute("") {}
-
-  ShortestPathOptions(arangodb::aql::Query*, arangodb::velocypack::Slice info,
-                      arangodb::velocypack::Slice collections,
-                      arangodb::velocypack::Slice reverseCollections);
-
-  void setWeightAttribute(std::string const& attr) {
-    _weightAttribute = attr;
-  }
-
-  void setDefaultWeight(double weight) {
-    _defaultWeight = weight;
-  }
-
-  bool usesWeight() const {
-    return !_weightAttribute.empty();
-  }
-
-  std::string const weightAttribute() const {
-    return _weightAttribute;
-  }
-
-  double defaultWeight() const {
-    return _defaultWeight;
-  }
-
-  /// @brief Build a velocypack for cloning in the plan.
-  void toVelocyPack(arangodb::velocypack::Builder&) const override;
-
-  /// @brief Build a velocypack containing all relevant information
-  ///        for DBServer traverser engines.
-  void buildEngineInfo(arangodb::velocypack::Builder&) const override;
-
-  double estimateCost(size_t& nrItems) const override;
-
-  /// @brief Add a lookup info for reverse direction
-  void addReverseLookupInfo(aql::Ast* ast, std::string const& collectionName,
-                            std::string const& attributeName,
-                            aql::AstNode* condition);
-
-  template<enum DIRECTION>
-  EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::Slice) const;
-
- private:
-
-  template<enum DIRECTION>
-  EdgeCursor* nextCursorLocal(ManagedDocumentResult*,
-                              arangodb::velocypack::Slice,
-                              std::vector<LookupInfo>&) const;
-
 };
 
 }

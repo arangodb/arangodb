@@ -24,16 +24,21 @@
 #ifndef ARANGOD_AQL_SHORTEST_PATH_NODE_H
 #define ARANGOD_AQL_SHORTEST_PATH_NODE_H 1
 
-#include "Aql/GraphNode.h"
-#include "VocBase/TraverserOptions.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/Graphs.h"
+#include "Aql/ShortestPathOptions.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+
+namespace traverser {
+struct ShortestPathOptions;
+}
 namespace aql {
 
 /// @brief class ShortestPathNode
-class ShortestPathNode : public GraphNode {
+class ShortestPathNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
   friend class ShortestPathBlock;
@@ -41,24 +46,23 @@ class ShortestPathNode : public GraphNode {
   /// @brief constructor with a vocbase and a collection name
  public:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                AstNode const* direction, AstNode const* start, AstNode const* target,
-                AstNode const* graph, traverser::ShortestPathOptions* options);
+                uint64_t direction, AstNode const* start, AstNode const* target,
+                AstNode const* graph, ShortestPathOptions const& options);
 
   ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
-  ~ShortestPathNode();
+  ~ShortestPathNode() {}
 
   /// @brief Internal constructor to clone the node.
  private:
-  ShortestPathNode(
-      ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-      std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
-      std::vector<std::unique_ptr<aql::Collection>> const& reverseEdgeColls,
-      std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
-      std::vector<TRI_edge_direction_e> const& directions,
-      Variable const* inStartVariable, std::string const& startVertexId,
-      Variable const* inTargetVariable, std::string const& targetVertexId,
-      traverser::ShortestPathOptions* options);
+  ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                   std::vector<std::string> const& edgeColls,
+                   std::vector<TRI_edge_direction_e> const& directions,
+                   Variable const* inStartVariable,
+                   std::string const& startVertexId,
+                   Variable const* inTargetVariable,
+                   std::string const& targetVertexId,
+                   ShortestPathOptions const& options);
 
  public:
   /// @brief return the type of the node
@@ -71,6 +75,9 @@ class ShortestPathNode : public GraphNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+
+  /// @brief the cost of a traversal node
+  double estimateCost(size_t&) const override final;
 
   /// @brief Test if this node uses an in variable or constant for start
   bool usesStartInVariable() const {
@@ -91,6 +98,24 @@ class ShortestPathNode : public GraphNode {
   Variable const* targetInVariable() const { return _inTargetVariable; }
 
   std::string const getTargetVertex() const { return _targetVertexId; }
+
+  /// @brief return the vertex out variable
+  Variable const* vertexOutVariable() const { return _vertexOutVariable; }
+
+  /// @brief checks if the vertex out variable is used
+  bool usesVertexOutVariable() const { return _vertexOutVariable != nullptr; }
+
+  /// @brief set the vertex out variable
+  void setVertexOutput(Variable const* outVar) { _vertexOutVariable = outVar; }
+
+  /// @brief return the edge out variable
+  Variable const* edgeOutVariable() const { return _edgeOutVariable; }
+
+  /// @brief checks if the edge out variable is used
+  bool usesEdgeOutVariable() const { return _edgeOutVariable != nullptr; }
+
+  /// @brief set the edge out variable
+  void setEdgeOutput(Variable const* outVar) { _edgeOutVariable = outVar; }
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
@@ -127,18 +152,18 @@ class ShortestPathNode : public GraphNode {
     }
   }
 
-  traverser::ShortestPathOptions* options() const override;
+  void fillOptions(arangodb::traverser::ShortestPathOptions&) const;
 
-  /// @brief Compute the traversal options containing the expressions
-  ///        MUST! be called after optimization and before creation
-  ///        of blocks.
-  void prepareOptions() override;
-
-  /// @brief Helper function to parse all collection names / directions
-#ifdef USE_ENTERPRISE
-  void addEdgeColl(std::string const& name, TRI_edge_direction_e dir) override;
-#endif
  private:
+
+  /// @brief the database
+  TRI_vocbase_t* _vocbase;
+
+  /// @brief vertex output variable
+  Variable const* _vertexOutVariable;
+
+  /// @brief vertex output variable
+  Variable const* _edgeOutVariable;
 
   /// @brief input variable only used if _vertexId is unused
   Variable const* _inStartVariable;
@@ -152,6 +177,20 @@ class ShortestPathNode : public GraphNode {
   /// @brief input vertexId only used if _inVariable is unused
   std::string _targetVertexId;
 
+  /// @brief input graphInfo only used for serialisation & info
+  arangodb::velocypack::Builder _graphInfo;
+
+  /// @brief The directions edges are followed
+  std::vector<TRI_edge_direction_e> _directions;
+
+  /// @brief the edge collection names
+  std::vector<std::string> _edgeColls;
+
+  /// @brief our graph...
+  Graph const* _graphObj;
+
+  /// @brief Options for traversals
+  ShortestPathOptions _options;
 };
 
 } // namespace arangodb::aql

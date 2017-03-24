@@ -24,24 +24,21 @@
 #include "TraverserOptions.h"
 
 #include "Aql/Ast.h"
-#include "Aql/AstNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Indexes/Index.h"
-#include "Transaction/Methods.h"
 #include "VocBase/SingleServerTraverser.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb::transaction;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 using TraverserOptions = arangodb::traverser::TraverserOptions;
-using ShortestPathOptions = arangodb::traverser::ShortestPathOptions;
-using BaseTraverserOptions = arangodb::traverser::BaseTraverserOptions;
 
-BaseTraverserOptions::LookupInfo::LookupInfo()
+arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo()
     : expression(nullptr),
       indexCondition(nullptr),
       conditionNeedUpdate(false),
@@ -50,13 +47,13 @@ BaseTraverserOptions::LookupInfo::LookupInfo()
   idxHandles.resize(1);
 };
 
-BaseTraverserOptions::LookupInfo::~LookupInfo() {
+arangodb::traverser::TraverserOptions::LookupInfo::~LookupInfo() {
   if (expression != nullptr) {
     delete expression;
   }
 }
 
-BaseTraverserOptions::LookupInfo::LookupInfo(
+arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
     arangodb::aql::Query* query, VPackSlice const& info, VPackSlice const& shards) {
   TRI_ASSERT(shards.isArray());
   idxHandles.reserve(shards.length());
@@ -110,7 +107,7 @@ BaseTraverserOptions::LookupInfo::LookupInfo(
   indexCondition = new aql::AstNode(query->ast(), read); 
 }
 
-BaseTraverserOptions::LookupInfo::LookupInfo(
+arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
     LookupInfo const& other)
     : idxHandles(other.idxHandles),
       expression(nullptr),
@@ -120,7 +117,7 @@ BaseTraverserOptions::LookupInfo::LookupInfo(
   expression = other.expression->clone(nullptr);
 }
 
-void BaseTraverserOptions::LookupInfo::buildEngineInfo(
+void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
     VPackBuilder& result) const {
   result.openObject();
   result.add(VPackValue("handle"));
@@ -141,7 +138,7 @@ void BaseTraverserOptions::LookupInfo::buildEngineInfo(
   result.close();
 }
 
-double TraverserOptions::LookupInfo::estimateCost(size_t& nrItems) const {
+double arangodb::traverser::TraverserOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   // If we do not have an index yet we cannot do anything.
   // Should NOT be the case
   TRI_ASSERT(!idxHandles.empty());
@@ -156,10 +153,14 @@ double TraverserOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   return 1000.0;
 }
 
-TraverserOptions::TraverserOptions(
+arangodb::traverser::TraverserOptions::TraverserOptions(
     transaction::Methods* trx, VPackSlice const& slice)
-    : BaseTraverserOptions(trx),
+    : _trx(trx),
       _baseVertexExpression(nullptr),
+      _tmpVar(nullptr),
+      _ctx(new aql::FixedVarExpressionContext()),
+      _traverser(nullptr),
+      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
@@ -175,7 +176,7 @@ TraverserOptions::TraverserOptions(
   std::string tmp = VPackHelper::getStringValue(obj, "uniqueVertices", "");
   if (tmp == "path") {
     uniqueVertices =
-        TraverserOptions::UniquenessLevel::PATH;
+        arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
   } else if (tmp == "global") {
     if (!useBreadthFirst) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -184,230 +185,35 @@ TraverserOptions::TraverserOptions(
                                      "unpredictable results.");
     }
     uniqueVertices =
-        TraverserOptions::UniquenessLevel::GLOBAL;
+        arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
   } else {
     uniqueVertices =
-        TraverserOptions::UniquenessLevel::NONE;
+        arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
   }
 
   tmp = VPackHelper::getStringValue(obj, "uniqueEdges", "");
   if (tmp == "none") {
     uniqueEdges =
-        TraverserOptions::UniquenessLevel::NONE;
+        arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
   } else if (tmp == "global") {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueEdges: 'global' is not supported, "
                                    "due to unpredictable results. Use 'path' "
                                    "or 'none' instead");
-    uniqueEdges =
-        TraverserOptions::UniquenessLevel::GLOBAL;
   } else {
     uniqueEdges =
-        TraverserOptions::UniquenessLevel::PATH;
+        arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
   }
 }
 
-BaseTraverserOptions::BaseTraverserOptions(BaseTraverserOptions const& other)
-    : _ctx(new aql::FixedVarExpressionContext()),
-      _trx(other._trx),
-      _tmpVar(nullptr),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {
-  TRI_ASSERT(other._baseLookupInfos.empty());
-  TRI_ASSERT(other._tmpVar == nullptr);
-}
-
-
-BaseTraverserOptions::BaseTraverserOptions(
+arangodb::traverser::TraverserOptions::TraverserOptions(
     arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
-  : _ctx(new aql::FixedVarExpressionContext()),
-    _trx(query->trx()),
-    _tmpVar(nullptr),
-    _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {
-  VPackSlice read = info.get("tmpVar");
-  if (!read.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The options require a tmpVar");
-  }
-  _tmpVar = query->ast()->variables()->createVariable(read);
-
-  read = info.get("baseLookupInfos");
-  if (!read.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The options require a baseLookupInfos");
-  }
-
-  size_t length = read.length();
-  TRI_ASSERT(read.length() == collections.length());
-  _baseLookupInfos.reserve(length);
-  for (size_t j = 0; j < length; ++j) {
-    _baseLookupInfos.emplace_back(query, read.at(j), collections.at(j));
-  }
-}
-
-BaseTraverserOptions::~BaseTraverserOptions() {
-  delete _ctx;
-}
-
-
-void BaseTraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
-  builder.openObject();
-  injectVelocyPackIndexes(builder);
-  builder.close();
-}
-
-void BaseTraverserOptions::buildEngineInfo(VPackBuilder& result) const {
-  result.openObject();
-  injectEngineInfo(result);
-  result.close();
-}
-
-void BaseTraverserOptions::setVariable(aql::Variable const* variable) {
-  _tmpVar = variable;
-}
-
-void BaseTraverserOptions::addLookupInfo(aql::Ast* ast,
-                                         std::string const& collectionName,
-                                         std::string const& attributeName,
-                                         aql::AstNode* condition) {
-  injectLookupInfoInList(_baseLookupInfos, ast, collectionName, attributeName, condition);
-}
-
-void BaseTraverserOptions::injectLookupInfoInList(
-    std::vector<LookupInfo>& list, aql::Ast* ast,
-    std::string const& collectionName, std::string const& attributeName,
-    aql::AstNode* condition) {
-  traverser::TraverserOptions::LookupInfo info;
-  info.indexCondition = condition;
-  info.expression = new aql::Expression(ast, condition->clone(ast));
-  bool res = _trx->getBestIndexHandleForFilterCondition(
-      collectionName, info.indexCondition, _tmpVar, 1000, info.idxHandles[0]);
-  TRI_ASSERT(res);  // Right now we have an enforced edge index which will
-                    // always fit.
-  if (!res) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "expected edge index not found");
-  }
-
-  // We now have to check if we need _from / _to inside the index lookup and
-  // which position
-  // it is used in. Such that the traverser can update the respective string
-  // value in-place
-
-  std::pair<arangodb::aql::Variable const*, std::vector<basics::AttributeName>> pathCmp;
-  for (size_t i = 0; i < info.indexCondition->numMembers(); ++i) {
-    // We search through the nary-and and look for EQ - _from/_to
-    auto eq = info.indexCondition->getMemberUnchecked(i);
-    if (eq->type != arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
-      // No equality. Skip
-      continue;
-    }
-    TRI_ASSERT(eq->numMembers() == 2);
-    // It is sufficient to only check member one.
-    // We build the condition this way.
-    auto mem = eq->getMemberUnchecked(0);
-    if (mem->isAttributeAccessForVariable(pathCmp)) {
-      if (pathCmp.first != _tmpVar) {
-        continue;
-      }
-      if (pathCmp.second.size() == 1 && pathCmp.second[0].name == attributeName) {
-        info.conditionNeedUpdate = true;
-        info.conditionMemberToUpdate = i;
-        break;
-      }
-      continue;
-    }
-  }
-  list.emplace_back(std::move(info));
-}
-
-void BaseTraverserOptions::clearVariableValues() {
-  _ctx->clearVariableValues();
-}
-
-void BaseTraverserOptions::setVariableValue(
-    aql::Variable const* var, aql::AqlValue const value) {
-  _ctx->setVariableValue(var, value);
-}
-
-void BaseTraverserOptions::serializeVariables(
-    VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenArray());
-  _ctx->serializeAllVariables(_trx, builder);
-}
-
-arangodb::transaction::Methods* BaseTraverserOptions::trx() const {
-  return _trx;
-}
-
-void BaseTraverserOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-
-  // base indexes
-  builder.add("base", VPackValue(VPackValueType::Array));
-  for (auto const& it : _baseLookupInfos) {
-    for (auto const& it2 : it.idxHandles) {
-      builder.openObject();
-      it2.getIndex()->toVelocyPack(builder, false);
-      builder.close();
-    }
-  }
-  builder.close();
-}
-
-void BaseTraverserOptions::injectEngineInfo(VPackBuilder& result) const {
-  TRI_ASSERT(result.isOpenObject());
-  result.add(VPackValue("baseLookupInfos"));
-  result.openArray();
-  for (auto const& it : _baseLookupInfos) {
-    it.buildEngineInfo(result);
-  }
-  result.close();
-
-  result.add(VPackValue("tmpVar"));
-  _tmpVar->toVelocyPack(result);
-}
-
-arangodb::aql::Expression* BaseTraverserOptions::getEdgeExpression(
-    size_t cursorId) const {
-  TRI_ASSERT(!_baseLookupInfos.empty());
-  TRI_ASSERT(_baseLookupInfos.size() > cursorId);
-  return _baseLookupInfos[cursorId].expression;
-}
-
-bool BaseTraverserOptions::evaluateExpression(
-    arangodb::aql::Expression* expression, VPackSlice value) const {
-  if (expression == nullptr) {
-    return true;
-  }
-
-  TRI_ASSERT(!expression->isV8());
-  expression->setVariable(_tmpVar, value);
-  bool mustDestroy = false;
-  aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
-  TRI_ASSERT(res.isBoolean());
-  bool result = res.toBoolean();
-  expression->clearVariable(_tmpVar);
-  if (mustDestroy) {
-    res.destroy();
-  }
-  return result;
-}
-
-double BaseTraverserOptions::costForLookupInfoList(
-    std::vector<BaseTraverserOptions::LookupInfo> const& list,
-    size_t& createItems) const {
-  double cost = 0;
-  createItems = 0;
-  for (auto const& li : list) {
-    cost += li.estimateCost(createItems);
-  }
-  return cost;
-}
-
-TraverserOptions::TraverserOptions(
-    arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
-    : BaseTraverserOptions(query, info, collections),
+    : _trx(query->trx()),
       _baseVertexExpression(nullptr),
+      _tmpVar(nullptr),
+      _ctx(new aql::FixedVarExpressionContext()),
+      _traverser(nullptr),
+      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
@@ -434,6 +240,13 @@ TraverserOptions::TraverserOptions(
                                    "The options require a bfs");
   }
   useBreadthFirst = read.getBool();
+
+  read = info.get("tmpVar");
+  if (!read.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require a tmpVar");
+  }
+  _tmpVar = query->ast()->variables()->createVariable(read);
 
   read = info.get("uniqueVertices");
   if (!read.isInteger()) {
@@ -477,6 +290,19 @@ TraverserOptions::TraverserOptions(
                                      "The options require a uniqueEdges");
   }
 
+  read = info.get("baseLookupInfos");
+  if (!read.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require a baseLookupInfos");
+  }
+
+  size_t length = read.length();
+  TRI_ASSERT(read.length() == collections.length());
+  _baseLookupInfos.reserve(length);
+  for (size_t j = 0; j < length; ++j) {
+    _baseLookupInfos.emplace_back(query, read.at(j), collections.at(j));
+  }
+
   read = info.get("depthLookupInfo");
   if (!read.isNone()) {
     if (!read.isObject()) {
@@ -484,7 +310,6 @@ TraverserOptions::TraverserOptions(
           TRI_ERROR_BAD_PARAMETER,
           "The options require depthLookupInfo to be an object");
     }
-    size_t length = collections.length();
     _depthLookupInfo.reserve(read.length());
     for (auto const& depth : VPackObjectIterator(read)) {
       uint64_t d = basics::StringUtils::uint64(depth.key.copyString());
@@ -532,78 +357,95 @@ TraverserOptions::TraverserOptions(
   }
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges !=
-             TraverserOptions::UniquenessLevel::GLOBAL);
+             arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL);
   TRI_ASSERT(
       uniqueVertices !=
-          TraverserOptions::UniquenessLevel::GLOBAL ||
+          arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL ||
       useBreadthFirst);
 }
 
-TraverserOptions::TraverserOptions(
+arangodb::traverser::TraverserOptions::TraverserOptions(
     TraverserOptions const& other)
-    : BaseTraverserOptions(other),
+    : _trx(other._trx),
       _baseVertexExpression(nullptr),
+      _tmpVar(nullptr),
+      _ctx(new aql::FixedVarExpressionContext()),
+      _traverser(nullptr),
+      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       minDepth(other.minDepth),
       maxDepth(other.maxDepth),
       useBreadthFirst(other.useBreadthFirst),
       uniqueVertices(other.uniqueVertices),
       uniqueEdges(other.uniqueEdges) {
+  TRI_ASSERT(other._baseLookupInfos.empty());
   TRI_ASSERT(other._depthLookupInfo.empty());
   TRI_ASSERT(other._vertexExpressions.empty());
+  TRI_ASSERT(other._tmpVar == nullptr);
   TRI_ASSERT(other._baseVertexExpression == nullptr);
 
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges !=
-             TraverserOptions::UniquenessLevel::GLOBAL);
+             arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL);
   TRI_ASSERT(
       uniqueVertices !=
-          TraverserOptions::UniquenessLevel::GLOBAL ||
+          arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL ||
       useBreadthFirst);
 }
 
-TraverserOptions::~TraverserOptions() {
+arangodb::traverser::TraverserOptions::~TraverserOptions() {
   for (auto& pair : _vertexExpressions) {
     delete pair.second;
   }
   delete _baseVertexExpression;
+  delete _ctx;
 }
 
-void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
+void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
+
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("bfs", VPackValue(useBreadthFirst));
 
   switch (uniqueVertices) {
-    case TraverserOptions::UniquenessLevel::NONE:
+    case arangodb::traverser::TraverserOptions::UniquenessLevel::NONE:
       builder.add("uniqueVertices", VPackValue("none"));
       break;
-    case TraverserOptions::UniquenessLevel::PATH:
+    case arangodb::traverser::TraverserOptions::UniquenessLevel::PATH:
       builder.add("uniqueVertices", VPackValue("path"));
       break;
-    case TraverserOptions::UniquenessLevel::GLOBAL:
+    case arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL:
       builder.add("uniqueVertices", VPackValue("global"));
       break;
   }
 
   switch (uniqueEdges) {
-    case TraverserOptions::UniquenessLevel::NONE:
+    case arangodb::traverser::TraverserOptions::UniquenessLevel::NONE:
       builder.add("uniqueEdges", VPackValue("none"));
       break;
-    case TraverserOptions::UniquenessLevel::PATH:
+    case arangodb::traverser::TraverserOptions::UniquenessLevel::PATH:
       builder.add("uniqueEdges", VPackValue("path"));
       break;
-    case TraverserOptions::UniquenessLevel::GLOBAL:
+    case arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL:
       builder.add("uniqueEdges", VPackValue("global"));
       break;
   }
-  builder.add("type", VPackValue("traversal"));
 }
 
-void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
+void arangodb::traverser::TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
-  BaseTraverserOptions::injectVelocyPackIndexes(builder);
- 
+
+  // base indexes
+  builder.add("base", VPackValue(VPackValueType::Array));
+  for (auto const& it : _baseLookupInfos) {
+    for (auto const& it2 : it.idxHandles) {
+      builder.openObject();
+      it2.getIndex()->toVelocyPack(builder, false);
+      builder.close();
+    }
+  }
+  builder.close();
+  
   // depth lookup indexes
   builder.add("levels", VPackValue(VPackValueType::Object));
   for (auto const& it : _depthLookupInfo) {
@@ -621,9 +463,8 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.close();
 }
 
-void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
+void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
-  BaseTraverserOptions::injectEngineInfo(result);
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
   result.add("bfs", VPackValue(useBreadthFirst));
@@ -653,6 +494,13 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
       result.add(VPackValue(2));
       break;
   }
+
+  result.add(VPackValue("baseLookupInfos"));
+  result.openArray();
+  for (auto const& it: _baseLookupInfos) {
+    it.buildEngineInfo(result);
+  }
+  result.close();
 
   if (!_depthLookupInfo.empty()) {
     result.add(VPackValue("depthLookupInfo"));
@@ -688,7 +536,10 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
     _baseVertexExpression->toVelocyPack(result, true);
     result.close();
   }
-  result.add("type", VPackValue("traversal"));
+
+  result.add(VPackValue("tmpVar"));
+  _tmpVar->toVelocyPack(result);
+
   result.close();
 }
 
@@ -700,7 +551,7 @@ bool arangodb::traverser::TraverserOptions::vertexHasFilter(
   return _vertexExpressions.find(depth) != _vertexExpressions.end();
 }
 
-bool TraverserOptions::evaluateEdgeExpression(
+bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     arangodb::velocypack::Slice edge, arangodb::velocypack::Slice vertex,
     uint64_t depth, size_t cursorId) const {
   if (_isCoordinator) {
@@ -716,33 +567,44 @@ bool TraverserOptions::evaluateEdgeExpression(
     TRI_ASSERT(specific->second.size() > cursorId);
     expression = specific->second[cursorId].expression;
   } else {
-    expression = getEdgeExpression(cursorId);
+    TRI_ASSERT(!_baseLookupInfos.empty());
+    TRI_ASSERT(_baseLookupInfos.size() > cursorId);
+    expression = _baseLookupInfos[cursorId].expression;
   }
-  if (expression == nullptr) {
-    return true;
+  if (expression != nullptr) {
+    TRI_ASSERT(!expression->isV8());
+    expression->setVariable(_tmpVar, edge);
+  
+    VPackValueLength vidLength;
+    char const* vid = vertex.getString(vidLength);
+
+    // inject _from/_to value
+    auto node = expression->nodeForModification();
+
+    TRI_ASSERT(node->numMembers() > 0);
+    auto dirCmp = node->getMemberUnchecked(node->numMembers() - 1);
+    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ); 
+    TRI_ASSERT(dirCmp->numMembers() == 2);
+
+    auto idNode = dirCmp->getMemberUnchecked(1);
+    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+    idNode->stealComputedValue();
+    idNode->setStringValue(vid, vidLength);
+
+    bool mustDestroy = false;
+    aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
+    expression->clearVariable(_tmpVar);
+    bool result = res.toBoolean();
+    if (mustDestroy) {
+      res.destroy();
+    }
+    return result;
   }
-
-  VPackValueLength vidLength;
-  char const* vid = vertex.getString(vidLength);
-
-  // inject _from/_to value
-  auto node = expression->nodeForModification();
-
-  TRI_ASSERT(node->numMembers() > 0);
-  auto dirCmp = node->getMemberUnchecked(node->numMembers() - 1);
-  TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ); 
-  TRI_ASSERT(dirCmp->numMembers() == 2);
-
-  auto idNode = dirCmp->getMemberUnchecked(1);
-  TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-  TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-  idNode->stealComputedValue();
-  idNode->setStringValue(vid, vidLength);
-
-  return evaluateExpression(expression, edge);
+  return true;
 }
 
-bool TraverserOptions::evaluateVertexExpression(
+bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
     arangodb::velocypack::Slice vertex, uint64_t depth) const {
   arangodb::aql::Expression* expression = nullptr;
 
@@ -754,11 +616,25 @@ bool TraverserOptions::evaluateVertexExpression(
     expression = _baseVertexExpression;
   }
 
-  return evaluateExpression(expression, vertex);
+  if (expression == nullptr) {
+    return true;
+  }
+
+  TRI_ASSERT(!expression->isV8());
+  expression->setVariable(_tmpVar, vertex);
+  bool mustDestroy = false;
+  aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
+  TRI_ASSERT(res.isBoolean());
+  bool result = res.toBoolean();
+  expression->clearVariable(_tmpVar);
+  if (mustDestroy) {
+    res.destroy();
+  }
+  return result;
 }
 
 arangodb::traverser::EdgeCursor*
-TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
+arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
                                                   VPackSlice vertex,
                                                   uint64_t depth) const {
   if (_isCoordinator) {
@@ -776,7 +652,7 @@ TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
 }
 
 arangodb::traverser::EdgeCursor*
-TraverserOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
+arangodb::traverser::TraverserOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
     VPackSlice vertex, uint64_t depth, std::vector<LookupInfo>& list) const {
   TRI_ASSERT(mmdr != nullptr);
   auto allCursor = std::make_unique<SingleServerEdgeCursor>(mmdr, _trx, list.size());
@@ -809,19 +685,45 @@ TraverserOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
 }
 
 arangodb::traverser::EdgeCursor*
-TraverserOptions::nextCursorCoordinator(
+arangodb::traverser::TraverserOptions::nextCursorCoordinator(
     VPackSlice vertex, uint64_t depth) const {
   TRI_ASSERT(_traverser != nullptr);
   auto cursor = std::make_unique<ClusterEdgeCursor>(vertex, depth, _traverser);
   return cursor.release();
 }
 
-void TraverserOptions::linkTraverser(
+void arangodb::traverser::TraverserOptions::clearVariableValues() {
+  _ctx->clearVariableValues();
+}
+
+void arangodb::traverser::TraverserOptions::setVariableValue(
+    aql::Variable const* var, aql::AqlValue const value) {
+  _ctx->setVariableValue(var, value);
+}
+
+void arangodb::traverser::TraverserOptions::linkTraverser(
     arangodb::traverser::ClusterTraverser* trav) {
   _traverser = trav;
 }
 
-double TraverserOptions::estimateCost(size_t& nrItems) const {
+void arangodb::traverser::TraverserOptions::serializeVariables(
+    VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenArray());
+  _ctx->serializeAllVariables(_trx, builder);
+}
+
+double arangodb::traverser::TraverserOptions::costForLookupInfoList(
+    std::vector<arangodb::traverser::TraverserOptions::LookupInfo> const& list,
+    size_t& createItems) const {
+  double cost = 0;
+  createItems = 0;
+  for (auto const& li : list) {
+    cost += li.estimateCost(createItems);
+  }
+  return cost;
+}
+
+double arangodb::traverser::TraverserOptions::estimateCost(size_t& nrItems) const {
   size_t count = 1;
   double cost = 0;
   size_t baseCreateItems = 0;
@@ -842,75 +744,4 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   }
   nrItems = count;
   return cost;
-}
-
-ShortestPathOptions::ShortestPathOptions(arangodb::aql::Query* query,
-                                         VPackSlice info,
-                                         VPackSlice collections,
-                                         VPackSlice reverseCollections)
-    : BaseTraverserOptions(query, info, collections),
-      _defaultWeight(1),
-      _weightAttribute("") {
-  VPackSlice read = info.get("reverseLookupInfos");
-
-  if (!read.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The options require a reverseLookupInfos");
-  }
-  size_t length = read.length();
-  TRI_ASSERT(read.length() == reverseCollections.length());
-  _reverseLookupInfos.reserve(length);
-  for (size_t j = 0; j < length; ++j) {
-    _reverseLookupInfos.emplace_back(query, read.at(j), reverseCollections.at(j));
-  }
-
-  read = info.get("weightAttribute");
-  if (read.isString()) {
-    _weightAttribute = read.copyString();
-
-    read = info.get("defaultWeight");
-    if (read.isNumber()) {
-      _defaultWeight = read.getNumericValue<double>();
-    }
-  }
-}
-
-void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
-  VPackObjectBuilder guard(&builder);
-  builder.add("type", VPackValue("shortest"));
-  // FIXME
-}
-
-void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
-  VPackObjectBuilder guard(&result);
-  BaseTraverserOptions::injectEngineInfo(result);
-  result.add(VPackValue("reverseLookupInfos"));
-  result.openArray();
-  for (auto const& it : _reverseLookupInfos) {
-    it.buildEngineInfo(result);
-  }
-  result.close();
-  if (usesWeight()) {
-    result.add("weightAttribute", VPackValue(weightAttribute()));
-    result.add("defaultWeight", VPackValue(defaultWeight()));
-  }
-  result.add("type", VPackValue("shortest"));
-}
-
-void ShortestPathOptions::addReverseLookupInfo(
-    aql::Ast* ast, std::string const& collectionName,
-    std::string const& attributeName, aql::AstNode* condition) {
-  injectLookupInfoInList(_reverseLookupInfos, ast, collectionName,
-                         attributeName, condition);
-}
-
-double ShortestPathOptions::estimateCost(size_t& nrItems) const {
-  // We estimate the cost with the 7 degrees of separation:
-  // The shortest path between two vertices is most likely
-  // less than seven hops long.
-  size_t edgesCount = 0;
-  double baseCost = costForLookupInfoList(_baseLookupInfos, edgesCount);
-  baseCost = std::pow(baseCost, 7);
-  nrItems = static_cast<size_t>(std::pow(edgesCount, 7));
-  return nrItems;
 }

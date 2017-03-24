@@ -88,7 +88,7 @@ uint32_t HLLCounter::getCount() {
   } else if (estimate > (1.0 / 30.0) * pow_2_32) {
     estimate = neg_pow_2_32 * log(1.0 - (estimate / pow_2_32));
   }
-  return estimate;
+  return (uint32_t) estimate;
 }
 
 void HLLCounter::merge(HLLCounter const& other) {
