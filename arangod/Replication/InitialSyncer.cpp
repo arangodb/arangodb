@@ -183,10 +183,12 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
       return res;
     }
 
-    if (_masterInfo._majorVersion == 1 ||
-        (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion <= 6)) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "incremental replication is not supported with a master < ArangoDB 2.7";
-      incremental = false;
+    if (incremental) {
+      if (_masterInfo._majorVersion == 1 ||
+          (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion <= 6)) {
+        LOG_TOPIC(WARN, Logger::REPLICATION) << "incremental replication is not supported with a master < ArangoDB 2.7";
+        incremental = false;
+      }
     }
       
     if (incremental) {
@@ -605,7 +607,7 @@ int InitialSyncer::handleCollectionDump(
     appendix = "&flush=false";
   } else {
     // only flush WAL once
-    appendix = "&flush=true&flushWait=5";
+    appendix = "&flush=true&flushWait=15";
     _hasFlushed = true;
   }
 
