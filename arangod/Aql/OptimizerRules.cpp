@@ -3764,10 +3764,8 @@ void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> tNodes{a};
   plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
-  SmallVector<ExecutionNode*> sNodes{a};
-  plan->findNodesOfType(sNodes, EN::SHORTEST_PATH, true);
 
-  if (tNodes.empty() && sNodes.empty()) {
+  if (tNodes.empty()) {
     // no traversals present
     opt->addPlan(std::move(plan), rule, false);
     return;
@@ -3778,13 +3776,6 @@ void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
   for (auto const& n : tNodes) {
     TraversalNode* traversal = static_cast<TraversalNode*>(n);
     traversal->prepareOptions();
-
-  }
-  // second make a pass over all shortest path nodes and remove unused
-  // variables from them
-  for (auto const& n : sNodes) {
-    ShortestPathNode* node = static_cast<ShortestPathNode*>(n);
-    node->prepareOptions();
   }
 
   opt->addPlan(std::move(plan), rule, true);

@@ -21,38 +21,43 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INTERNAL_REST_HANDLER_INTERNAL_TRAVERSER_HANDLER_H
-#define ARANGOD_INTERNAL_REST_HANDLER_INTERNAL_TRAVERSER_HANDLER_H 1
+#include "V8Traverser.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/SingleServerTraverser.h"
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-namespace traverser {
-class TraverserEngineRegistry;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::traverser;
+
+ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx)
+    : BasicOptions(trx),
+      direction("outbound"),
+      useWeight(false),
+      weightAttribute(""),
+      defaultWeight(1),
+      bidirectional(true),
+      multiThreaded(true) {
 }
 
-class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
- public:
-  explicit InternalRestTraverserHandler(GeneralRequest*, GeneralResponse*,
-                                        traverser::TraverserEngineRegistry*);
+void ShortestPathOptions::setStart(std::string const& id) {
+  start = id;
+  startBuilder.clear();
+  startBuilder.add(VPackValue(id));
+}
 
- public:
-  RestStatus execute() override final;
-  char const* name() const override final { return "InternalRestTraverserHandler"; }
+void ShortestPathOptions::setEnd(std::string const& id) {
+  end = id;
+  endBuilder.clear();
+  endBuilder.add(VPackValue(id));
+}
 
- private:
+VPackSlice ShortestPathOptions::getStart() const {
+  return startBuilder.slice();
+}
 
-  // @brief create a new Traverser Engine.
-  void createEngine();
-
-  // @brief Query an existing Traverser Engine.
-  void queryEngine();
-
-  // @brief Destroy an existing Traverser Engine.
-  void destroyEngine();
-
- private:
-  traverser::TraverserEngineRegistry* _registry;
-};
-} //namespace arangodb
-#endif
+VPackSlice ShortestPathOptions::getEnd() const {
+  return endBuilder.slice();
+}

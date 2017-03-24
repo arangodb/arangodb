@@ -35,6 +35,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/ShortestPathNode.h"
+#include "Aql/ShortestPathOptions.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
@@ -144,9 +145,8 @@ static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
   return options;
 }
 
-static std::unique_ptr<traverser::ShortestPathOptions>
-CreateShortestPathOptions(transaction::Methods* trx, AstNode const* node) {
-  auto options = std::make_unique<traverser::ShortestPathOptions>(trx);
+static ShortestPathOptions CreateShortestPathOptions(AstNode const* node) {
+  ShortestPathOptions options;
 
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -161,10 +161,10 @@ CreateShortestPathOptions(transaction::Methods* trx, AstNode const* node) {
         TRI_ASSERT(value->isConstant());
 
         if (name == "weightAttribute" && value->isStringValue()) {
-          options->setWeightAttribute(
-              std::string(value->getStringValue(), value->getStringLength()));
+          options.weightAttribute =
+              std::string(value->getStringValue(), value->getStringLength());
         } else if (name == "defaultWeight" && value->isNumericValue()) {
-          options->setDefaultWeight(value->getDoubleValue());
+          options.defaultWeight = value->getDoubleValue();
         }
       }
     }
@@ -723,9 +723,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
                                         node->getMember(3));
 
   // First create the node
-  auto travNode =
-      new TraversalNode(this, nextId(), _ast->query()->vocbase(),
-                        direction->getMember(0), start, graph, options.release());
+  auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),
+                                    direction, start, graph, options);
 
   auto variable = node->getMember(4);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -796,13 +795,13 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  std::unique_ptr<traverser::ShortestPathOptions> options =
-      CreateShortestPathOptions(getAst()->query()->trx(), node->getMember(4));
+  ShortestPathOptions options = CreateShortestPathOptions(node->getMember(4));
+
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),
-                                     direction, start, target,
-                                     graph, options.release());
+                                     direction->getIntValue(), start, target,
+                                     graph, options);
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);

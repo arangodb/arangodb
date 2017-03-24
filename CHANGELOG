@@ -3,10 +3,6 @@ devel
 
 * increase default collection lock timeout from 30 to 900 seconds
 
-* made shortest_path computation aware of SmartGraph features (Enterprise
-  Only) which will give a good performance boost on computing single-pair
-  shortest-paths in a sharded SmartGraph.
-
 * added function `db._engine()` for retrieval of storage engine information at
   server runtime
 
