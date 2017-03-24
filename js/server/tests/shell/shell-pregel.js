@@ -44,11 +44,9 @@ function testAlgo(a, p) {
   var key = db._pregelStart(a, vColl, eColl, p);
   var i = 1000;
   do {
-    console.log("Waiting...");
     internal.wait(1);
     var doc = db._pregelStatus(key);
     if (doc.state !== "running") {
-      console.log("Finished algorithm " + a);
 
       db[vColl].all().toArray()
       .forEach(function(d) {
@@ -60,7 +58,6 @@ function testAlgo(a, p) {
                    }
                  }
                });
-      console.log("Done executing " + a + " : " + key);
       break;
     }
   } while(i-- >= 0);

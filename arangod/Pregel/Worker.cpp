@@ -59,18 +59,19 @@ using namespace arangodb::pregel;
 template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig)
-    : _config(vocbase, initConfig), _algorithm(algo) {
+    : _state(WorkerState::IDLE),
+      _config(vocbase, initConfig),
+      _algorithm(algo),
+      _nextGSSSendMessageCount(0) {
   MUTEX_LOCKER(guard, _commandMutex);
 
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
-  _state = WorkerState::IDLE;
   _workerContext.reset(algo->workerContext(userParams));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
   _conductorAggregators.reset(new AggregatorHandler(algo));
   _workerAggregators.reset(new AggregatorHandler(algo));
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
-  _nextGSSSendMessageCount = 0;
   if (_config.asynchronousMode()) {
     _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
   } else {
@@ -111,9 +112,6 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
         [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
-
-/*template <typename M>
-GSSContext::~GSSContext() {}*/
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
@@ -572,13 +570,14 @@ void Worker<V, E, M>::_continueAsync() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
-  
+
   // wait for new messages before beginning to process
-  int64_t milli = _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
+  int64_t milli =
+      _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _boost_timer.reset(new boost::asio::deadline_timer(*ioService,
-                                                     boost::posix_time::millisec(milli)));
-  _boost_timer->async_wait([this] (const boost::system::error_code& error) {
+  _boost_timer.reset(new boost::asio::deadline_timer(
+      *ioService, boost::posix_time::millisec(milli)));
+  _boost_timer->async_wait([this](const boost::system::error_code& error) {
     if (error != boost::asio::error::operation_aborted) {
       {  // swap these pointers atomically
         MY_WRITE_LOCKER(guard, _cacheRWLock);

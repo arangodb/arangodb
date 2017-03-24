@@ -56,8 +56,8 @@ template <typename V, typename E>
 class GraphStore {
   VocbaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
-  WorkerConfig* _config;
-  
+  WorkerConfig* _config = nullptr;
+
   std::vector<VertexEntry> _index;
   TypedBuffer<V>* _vertexData = nullptr;
   TypedBuffer<Edge<E>>* _edges = nullptr;
