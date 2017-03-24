@@ -2,3 +2,39 @@ LDAP
 ====
 
 __This feature is available in the Enterprise Edition.__
+
+The basic options are `--ldap.enabled`, `--ldap.tls`, `--ldap.port`, `--ldap.server` and `--ldap.permissionsattributename`.
+`--ldap.server` can be specified multiple times.
+
+
+
+
+
+
+
+
+
+
+
+
+    --ldap.permissionsattributename <string>              ldap attributename where the permissions for the database are located. Format: database=(*|rw|none)[,database=(*|rw|none)] (default: "")
+
+
+
+    // simple mode
+    --ldap.prefix <string>                                ldap prefix, eg. uid= xor dn= xor cn= (default: "")
+    --ldap.suffix <string>                                ldap suffix, eg. ,dc=example,dc=com (default: "")
+
+
+
+    // search + bind
+
+    --ldap.basedn <string>                                ldap basedn, eg. dc=example,dc=com (default: "")
+
+    --ldap.binddn <string>                                ldap binddn, eg. cn=admin,dc=example,dc=com (default: "")
+    --ldap.bindpasswd <string>                            ldap bindpassword, eg. admin (default: "")
+
+    --ldap.searchattribute <string>                       ldap searchattribute, eg. uid (default: "uid")
+    --ldap.searchfilter <string>                          ldap searchfilter, eg. (objectClass=simpleSecurityObject) (default: "objectClass=*")
+
+    --ldap.url <string>                                   ldap url, eg. TBD (default: "")
