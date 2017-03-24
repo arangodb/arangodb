@@ -39,7 +39,7 @@ class MasterContext {
   uint64_t _edgeCount = 0;
   // Should cause the master to tell everyone to enter the next phase
   bool _enterNextGSS = false;
-  AggregatorHandler* _aggregators;
+  AggregatorHandler* _aggregators = nullptr;
 
  public:
   MasterContext(){};

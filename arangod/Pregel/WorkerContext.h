@@ -58,7 +58,11 @@ class WorkerContext {
   virtual void postApplication(){};
 
  public:
-  WorkerContext() {}
+  WorkerContext()
+      : _vertexCount(0),
+        _edgeCount(0),
+        _readAggregators(nullptr),
+        _writeAggregators(nullptr) {}
   virtual ~WorkerContext() {}
 
   inline uint64_t vertexCount() const { return _vertexCount; }

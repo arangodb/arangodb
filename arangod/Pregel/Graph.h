@@ -33,13 +33,13 @@ namespace pregel {
 typedef std::string PregelKey;
 // typedef uint64_t PregelKey;
 typedef uint16_t PregelShard;
-const PregelShard invalid_prgl_shard = -1;
+const PregelShard InvalidPregelShard = -1;
 
 struct PregelID {
   PregelShard shard;
   PregelKey key;
 
-  PregelID() : shard(invalid_prgl_shard), key("") {}
+  PregelID() : shard(InvalidPregelShard), key("") {}
   PregelID(PregelShard s, PregelKey const& k) : shard(s), key(k) {}
   // PregelID(PregelShard s, std::string const& k) : shard(s),
   // key(std::stoull(k)) {}
@@ -53,7 +53,7 @@ struct PregelID {
   }
 
   bool inline isValid() const {
-    return shard != invalid_prgl_shard && !key.empty();
+    return shard != InvalidPregelShard && !key.empty();
   }
 };
 
@@ -73,7 +73,7 @@ class Edge {
 
  public:
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
-  Edge() {}
+  Edge() : _targetShard(InvalidPregelShard) {}
   Edge(PregelShard target, PregelKey const& key)
       : _targetShard(target), _toKey(key) {}
 
@@ -99,14 +99,9 @@ class VertexEntry {
   bool _active = true;
 
  public:
-  VertexEntry() {}
+  VertexEntry() : _shard(InvalidPregelShard) {}
   VertexEntry(PregelShard shard, PregelKey const& key)
-      : _shard(shard),
-        _key(key),
-        _vertexDataOffset(0),
-        _edgeDataOffset(0),
-        _edgeCount(0),
-        _active(true) {}  //_vertexIDSize(0)
+      : _shard(shard), _key(key) {}
 
   inline size_t getVertexDataOffset() const { return _vertexDataOffset; }
   inline size_t getEdgeDataOffset() const { return _edgeDataOffset; }
