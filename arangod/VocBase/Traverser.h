@@ -54,6 +54,10 @@ class Query;
 }
 namespace traverser {
 
+#ifdef USE_ENTERPRISE
+class SmartGraphConstDistanceFinder;
+#endif
+
 struct TraverserOptions;
 
 class ShortestPath {
@@ -64,6 +68,10 @@ class ShortestPath {
       arangodb::velocypack::Slice, arangodb::velocypack::Slice,
       arangodb::basics::VelocyPackHelper::VPackStringHash,
       arangodb::basics::VelocyPackHelper::VPackStringEqual, ShortestPath>;
+
+#ifdef USE_ENTERPRISE
+  friend class arangodb::traverser::SmartGraphConstDistanceFinder;
+#endif
 
  public:
   //////////////////////////////////////////////////////////////////////////////

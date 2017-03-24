@@ -26,13 +26,14 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ShortestPathNode.h"
-#include "V8Server/V8Traverser.h"
+#include "Basics/ShortestPathFinder.h"
 
 namespace arangodb {
 class ManagedDocumentResult;
 
 namespace traverser {
 class EdgeCollectionInfo;
+class ShortestPath;
 }
 
 namespace aql {
@@ -55,6 +56,9 @@ class ShortestPathBlock : public ExecutionBlock {
 
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
+
+  /// @brief shutdown send destroy to all engines.
+  int shutdown(int errorCode) override final;
 
   /// @brief getSome
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
@@ -94,7 +98,7 @@ class ShortestPathBlock : public ExecutionBlock {
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief options to compute the shortest path
-  traverser::ShortestPathOptions _opts;
+  traverser::ShortestPathOptions* _opts;
 
   /// @brief list of edge collection infos used to compute the path
   std::vector<arangodb::traverser::EdgeCollectionInfo*> _collectionInfos;
@@ -144,6 +148,13 @@ class ShortestPathBlock : public ExecutionBlock {
   /// @brief Cache for edges send over the network
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _coordinatorCache;
 
+  /// @brief Builder to make sure that source velocypack does not get out of scope
+  arangodb::velocypack::Builder _startBuilder;
+
+  /// @brief Builder to make sure that target velocypack does not get out of scope
+  arangodb::velocypack::Builder _targetBuilder;
+
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 };
 
 } // namespace arangodb::aql

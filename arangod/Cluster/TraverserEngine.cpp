@@ -40,7 +40,9 @@ using namespace arangodb::traverser;
 
 static const std::string OPTIONS = "options";
 static const std::string SHARDS = "shards";
+static const std::string TYPE = "type";
 static const std::string EDGES = "edges";
+static const std::string BACKWARDEDGES = "reverseEdges";
 static const std::string VARIABLES = "variables";
 static const std::string VERTICES = "vertices";
 
@@ -144,13 +146,14 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
   builder.openObject();
   builder.add(VPackValue("edges"));
   builder.openArray();
+  auto opts = static_cast<TraverserOptions*>(_opts.get());
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       TRI_ASSERT(v.isString());
       result.clear();
-      auto edgeCursor = _opts->nextCursor(&mmdr, v, depth);
+      auto edgeCursor = opts->nextCursor(&mmdr, v, depth);
       while (edgeCursor->next(result, cursorId)) {
-        if (!_opts->evaluateEdgeExpression(result.back(), v, depth, cursorId)) {
+        if (!opts->evaluateEdgeExpression(result.back(), v, depth, cursorId)) {
           filtered++;
           result.pop_back();
         }
@@ -161,10 +164,10 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
-    std::unique_ptr<arangodb::traverser::EdgeCursor> edgeCursor(_opts->nextCursor(&mmdr, vertex, depth));
+    std::unique_ptr<arangodb::traverser::EdgeCursor> edgeCursor(opts->nextCursor(&mmdr, vertex, depth));
 
     while (edgeCursor->next(result, cursorId)) {
-      if (!_opts->evaluateEdgeExpression(result.back(), vertex, depth, cursorId)) {
+      if (!opts->evaluateEdgeExpression(result.back(), vertex, depth, cursorId)) {
         filtered++;
         result.pop_back();
       }
@@ -321,18 +324,24 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
   }
   VPackSlice shardsSlice = info.get(SHARDS);
   VPackSlice edgesSlice = shardsSlice.get(EDGES);
-
-  _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
+  VPackSlice backwardSlice = shardsSlice.get(BACKWARDEDGES);
+  VPackSlice typeSlice = optsSlice.get(TYPE);
+  if (!typeSlice.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The body requires an " + TYPE + " attribute.");
+  }
+  StringRef type(typeSlice);
+  if (type == "shortest") {
+    _opts.reset(new ShortestPathOptions(_query, optsSlice, edgesSlice, backwardSlice));
+  } else if (type == "traversal") {
+    _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The " + TYPE + " has to be shortest or traversal.");
+  }
 }
-
 
 TraverserEngine::~TraverserEngine() {
-}
-
-void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
-}
-
-void TraverserEngine::smartSearchBFS(VPackSlice, VPackBuilder&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
 }

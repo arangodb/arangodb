@@ -28,6 +28,7 @@
 
 namespace arangodb {
 namespace traverser {
+class BaseTraverserEngine;
 class TraverserEngineRegistry;
 }
 
@@ -50,6 +51,12 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
 
   // @brief Destroy an existing Traverser Engine.
   void destroyEngine();
+
+  // @brief Do a smart search (EE only)
+  void enterpriseSmartSearch(std::string const& option,
+                             traverser::BaseTraverserEngine* engine,
+                             arangodb::velocypack::Slice body,
+                             arangodb::velocypack::Builder& result);
 
  private:
   traverser::TraverserEngineRegistry* _registry;

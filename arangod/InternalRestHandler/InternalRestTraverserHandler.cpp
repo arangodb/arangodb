@@ -129,12 +129,29 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   
   }
-  traverser::BaseTraverserEngine* engine = _registry->get(engineId);
-  if (engine == nullptr) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "invalid TraverserEngineId");
-    return;
+  double start = TRI_microtime();
+  traverser::BaseTraverserEngine* engine = nullptr;
+  while (true) {
+    try {
+      engine = _registry->get(engineId);
+      if (engine == nullptr) {
+        generateError(
+            ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+            "invalid TraverserEngineId");
+        return;
+      }
+      break;
+    } catch (arangodb::basics::Exception const& ex) { /* check type */
+      if (ex.code() == TRI_ERROR_DEADLOCK) {
+        // Define timeout properly.
+        if (TRI_microtime() - start > 600.0) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_TIMEOUT);
+        }
+        usleep(100000);
+      } else {
+        throw ex;
+      }
+    }
   }
 
   auto& registry = _registry; // For the guard
@@ -222,10 +239,18 @@ void InternalRestTraverserHandler::queryEngine() {
       }
       engine->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
     }
-  } else if (option == "smartSearch") {
-    engine->smartSearch(body, result);
-  } else if (option == "smartSearchBFS") {
-    engine->smartSearchBFS(body, result);
+  } else {
+    enterpriseSmartSearch(option, engine, body, result);
+ }
+  generateResult(ResponseCode::OK, result.slice(), engine->context());
+}
+
+#ifndef USE_ENTERPRISE
+void InternalRestTraverserHandler::enterpriseSmartSearch(
+    std::string const& option, traverser::BaseTraverserEngine* engine,
+    VPackSlice body, VPackBuilder& result) {
+  if (option == "smartSearch" || option == "smartSearchBFS" || "smartShortestPath") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
   } else {
     // PATH Info wrong other error
     generateError(
@@ -233,8 +258,8 @@ void InternalRestTraverserHandler::queryEngine() {
         "");
     return;
   }
-  generateResult(ResponseCode::OK, result.slice(), engine->context());
 }
+#endif
 
 void InternalRestTraverserHandler::destroyEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();

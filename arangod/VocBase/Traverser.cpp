@@ -58,20 +58,26 @@ void arangodb::traverser::ShortestPath::vertexToVelocyPack(transaction::Methods*
                                                            size_t position, VPackBuilder& builder) {
   TRI_ASSERT(position < length());
   VPackSlice v = _vertices[position];
-  TRI_ASSERT(v.isString());
-  std::string collection =  v.copyString();
-  size_t p = collection.find("/");
-  TRI_ASSERT(p != std::string::npos);
+  TRI_ASSERT(v.isString() || v.isObject() || v.isNull());
+  if (v.isString()) {
+    // In this case we have to fetch the vertex
+    std::string collection =  v.copyString();
+    size_t p = collection.find("/");
+    TRI_ASSERT(p != std::string::npos);
 
-  transaction::BuilderLeaser searchBuilder(trx);
-  searchBuilder->add(VPackValue(collection.substr(p + 1)));
-  collection = collection.substr(0, p);
+    transaction::BuilderLeaser searchBuilder(trx);
+    searchBuilder->add(VPackValue(collection.substr(p + 1)));
+    collection = collection.substr(0, p);
 
-  int res =
-      trx->documentFastPath(collection, mmdr, searchBuilder->slice(), builder, true);
-  if (res != TRI_ERROR_NO_ERROR) {
-    builder.clear(); // Just in case...
-    builder.add(basics::VelocyPackHelper::NullValue());
+    int res =
+        trx->documentFastPath(collection, mmdr, searchBuilder->slice(), builder, true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      builder.clear(); // Just in case...
+      builder.add(basics::VelocyPackHelper::NullValue());
+    }
+  } else {
+    // We already have the vertex data.
+    builder.add(v);
   }
 }
 

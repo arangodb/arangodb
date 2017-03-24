@@ -23,31 +23,34 @@
 
 #include "ShortestPathBlock.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterComm.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Cluster/SmartGraphPathFinder.h"
+#endif
 #include "Utils/OperationCursor.h"
 #include "Transaction/Methods.h"
 #include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 /// @brief typedef the template instantiation of the PathFinder
 typedef arangodb::basics::DynamicDistanceFinder<
-    arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
-    arangodb::traverser::ShortestPath> ArangoDBPathFinder;
+    VPackSlice, VPackSlice, double, arangodb::traverser::ShortestPath>
+    ArangoDBPathFinder;
 
-typedef arangodb::basics::ConstDistanceFinder<arangodb::velocypack::Slice,
-                                              arangodb::velocypack::Slice,
-                                              arangodb::basics::VelocyPackHelper::VPackStringHash, 
-                                              arangodb::basics::VelocyPackHelper::VPackStringEqual,
-                                              arangodb::traverser::ShortestPath>
+typedef arangodb::basics::ConstDistanceFinder<
+    VPackSlice, VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash,
+    arangodb::basics::VelocyPackHelper::VPackStringEqual,
+    arangodb::traverser::ShortestPath>
     ArangoDBConstDistancePathFinder;
-
-
 
 using namespace arangodb::aql;
 
@@ -317,7 +320,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _vertexReg(ExecutionNode::MaxRegisterId),
       _edgeVar(nullptr),
       _edgeReg(ExecutionNode::MaxRegisterId),
-      _opts(_trx),
+      _opts(ep->options()),
       _posInPath(0),
       _pathLength(0),
       _path(nullptr),
@@ -326,9 +329,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _targetReg(ExecutionNode::MaxRegisterId),
       _useTargetRegister(false),
       _usedConstant(false) {
-
-  ep->fillOptions(_opts);
-  _mmdr.reset(new ManagedDocumentResult);
+  _mmdr.reset(new ManagedDocumentResult());
 
   size_t count = ep->_edgeColls.size();
   TRI_ASSERT(ep->_directions.size());
@@ -336,8 +337,8 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
 
   for (size_t j = 0; j < count; ++j) {
     auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(
-        _trx, ep->_edgeColls[j], ep->_directions[j], _opts.weightAttribute,
-        _opts.defaultWeight);
+        _trx, ep->_edgeColls[j]->getName(), ep->_directions[j],
+        _opts->weightAttribute(), _opts->defaultWeight());
     _collectionInfos.emplace_back(info.get());
     info.release();
   }
@@ -370,34 +371,34 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   _path = std::make_unique<arangodb::traverser::ShortestPath>();
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    if (_opts.useWeight) {
-      _finder.reset(new arangodb::basics::DynamicDistanceFinder<
-                    arangodb::velocypack::Slice, arangodb::velocypack::Slice,
-                    double, arangodb::traverser::ShortestPath>(
-          EdgeWeightExpanderCluster(this, false),
-          EdgeWeightExpanderCluster(this, true), _opts.bidirectional));
+    _engines = ep->engines();
+
+#ifdef USE_ENTERPRISE
+    // TODO This feature is NOT imlpemented for weighted graphs
+    if (ep->isSmart() && !_opts->usesWeight()) {
+      _finder.reset(new arangodb::traverser::SmartGraphConstDistanceFinder(
+          _opts, _engines, engine->getQuery()->trx()->resolver()));
     } else {
-      _finder.reset(new arangodb::basics::ConstDistanceFinder<
-                    arangodb::velocypack::Slice, arangodb::velocypack::Slice,
-                    arangodb::basics::VelocyPackHelper::VPackStringHash,
-                    arangodb::basics::VelocyPackHelper::VPackStringEqual,
-                    arangodb::traverser::ShortestPath>(
-          ConstDistanceExpanderCluster(this, false),
-          ConstDistanceExpanderCluster(this, true)));
+#endif
+      if (_opts->usesWeight()) {
+        _finder.reset(new ArangoDBPathFinder(
+            EdgeWeightExpanderCluster(this, false),
+            EdgeWeightExpanderCluster(this, true), true));
+      } else {
+        _finder.reset(new ArangoDBConstDistancePathFinder(
+            ConstDistanceExpanderCluster(this, false),
+            ConstDistanceExpanderCluster(this, true)));
+      }
+#ifdef USE_ENTERPRISE
     }
+#endif
   } else {
-    if (_opts.useWeight) {
-      _finder.reset(new arangodb::basics::DynamicDistanceFinder<
-                    arangodb::velocypack::Slice, arangodb::velocypack::Slice,
-                    double, arangodb::traverser::ShortestPath>(
+    if (_opts->usesWeight()) {
+      _finder.reset(new ArangoDBPathFinder(
           EdgeWeightExpanderLocal(this, false),
-          EdgeWeightExpanderLocal(this, true), _opts.bidirectional));
+          EdgeWeightExpanderLocal(this, true), true));
     } else {
-      _finder.reset(new arangodb::basics::ConstDistanceFinder<
-                    arangodb::velocypack::Slice, arangodb::velocypack::Slice,
-                    arangodb::basics::VelocyPackHelper::VPackStringHash,
-                    arangodb::basics::VelocyPackHelper::VPackStringEqual,
-                    arangodb::traverser::ShortestPath>(
+      _finder.reset(new ArangoDBConstDistancePathFinder(
           ConstDistanceExpanderLocal(this, false),
           ConstDistanceExpanderLocal(this, true)));
     }
@@ -443,6 +444,39 @@ int ShortestPathBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
+/// @brief shutdown: Inform all traverser Engines to destroy themselves
+int ShortestPathBlock::shutdown(int errorCode) {
+  DEBUG_BEGIN_BLOCK();
+  // We have to clean up the engines in Coordinator Case.
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto cc = arangodb::ClusterComm::instance();
+    std::string const url(
+        "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
+        "/_internal/traverser/");
+    for (auto const& it : *_engines) {
+      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+      std::unordered_map<std::string, std::string> headers;
+      auto res = cc->syncRequest(
+          "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+          url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
+          30.0);
+      if (res->status != CL_COMM_SENT) {
+        // Note If there was an error on server side we do not have CL_COMM_SENT
+        std::string message("Could not destruct all traversal engines");
+        if (res->errorMessage.length() > 0) {
+          message += std::string(" : ") + res->errorMessage;
+        }
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
+      }
+    }
+  }
+
+  return ExecutionBlock::shutdown(errorCode);
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
 bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   if (_usedConstant) {
     // Both source and target are constant.
@@ -454,6 +488,12 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
     // Both are constant, after this computation we are done
     _usedConstant = true;
   }
+
+  _startBuilder.clear();
+  _targetBuilder.clear();
+  
+  VPackSlice start;
+  VPackSlice end;
   if (!_useStartRegister) {
     auto pos = _startVertexId.find('/');
     if (pos == std::string::npos) {
@@ -463,13 +503,15 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
                                            "_id are allowed");
       return false;
     } else {
-      _opts.setStart(_startVertexId);
+      _startBuilder.add(VPackValue(_startVertexId));
+      start = _startBuilder.slice();
     }
   } else {
     AqlValue const& in = items->getValueReference(_pos, _startReg);
     if (in.isObject()) {
       try {
-        _opts.setStart(_trx->extractIdString(in.slice()));
+        _startBuilder.add(VPackValue(_trx->extractIdString(in.slice())));
+        start = _startBuilder.slice();
       }
       catch (...) {
         // _id or _key not present... ignore this error and fall through
@@ -477,8 +519,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
         return false;
       }
     } else if (in.isString()) {
-      _startVertexId = in.slice().copyString();
-      _opts.setStart(_startVertexId);
+      start = in.slice();
     } else {
       _engine->getQuery()->registerWarning(
           TRI_ERROR_BAD_PARAMETER, "Invalid input for Shortest Path: Only "
@@ -498,14 +539,15 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
                                        "_id are allowed");
       return false;
     } else {
-      _opts.setEnd(_targetVertexId);
+      _targetBuilder.add(VPackValue(_targetVertexId));
+      end = _targetBuilder.slice();
     }
   } else {
     AqlValue const& in = items->getValueReference(_pos, _targetReg);
     if (in.isObject()) {
       try {
-        std::string idString = _trx->extractIdString(in.slice());
-        _opts.setEnd(idString);
+        _targetBuilder.add(VPackValue(_trx->extractIdString(in.slice())));
+        end = _targetBuilder.slice();
       }
       catch (...) {
         // _id or _key not present... ignore this error and fall through
@@ -513,8 +555,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
         return false;
       }
     } else if (in.isString()) {
-      _targetVertexId = in.slice().copyString();
-      _opts.setEnd(_targetVertexId);
+      end = in.slice();
     } else {
       _engine->getQuery()->registerWarning(
           TRI_ERROR_BAD_PARAMETER, "Invalid input for Shortest Path: Only "
@@ -524,8 +565,6 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
     }
   }
 
-  VPackSlice start = _opts.getStart();
-  VPackSlice end = _opts.getEnd();
   TRI_ASSERT(_finder != nullptr);
   // We do not need this data anymore. Result has been processed.
   // Save some memory.
