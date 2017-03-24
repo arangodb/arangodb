@@ -44,6 +44,10 @@
     };
 
     var result = internal.loadStartup('server/upgrade-database.js');
+    
+    if (result) {
+      delete global.UPGRADE_TYPE;
+    }
 
     result = global.UPGRADE_STARTED && result;
     delete global.UPGRADE_STARTED;
