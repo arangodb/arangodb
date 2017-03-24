@@ -40,7 +40,8 @@ using namespace arangodb::cache;
 TEST_CASE("cache::Table", "[cache]") {
   SECTION("test static allocation size method") {
     for (uint32_t i = Table::minLogSize; i <= Table::maxLogSize; i++) {
-      REQUIRE(Table::allocationSize(i) == (sizeof(Table) + (BUCKET_SIZE << i)));
+      REQUIRE(Table::allocationSize(i) ==
+              (sizeof(Table) + (BUCKET_SIZE << i) + Table::padding));
     }
   }
 
@@ -48,7 +49,8 @@ TEST_CASE("cache::Table", "[cache]") {
     for (uint32_t i = Table::minLogSize; i <= 20; i++) {
       auto table = std::make_shared<Table>(i);
       REQUIRE(table.get() != nullptr);
-      REQUIRE(table->memoryUsage() == (sizeof(Table) + (BUCKET_SIZE << i)));
+      REQUIRE(table->memoryUsage() ==
+              (sizeof(Table) + (BUCKET_SIZE << i) + Table::padding));
       REQUIRE(table->logSize() == i);
       REQUIRE(table->size() == (static_cast<uint64_t>(1) << i));
     }
