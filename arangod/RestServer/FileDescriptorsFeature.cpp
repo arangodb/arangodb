@@ -33,10 +33,11 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+uint64_t const FileDescriptorsFeature::RECOMMENDED = 8192;
+
 FileDescriptorsFeature::FileDescriptorsFeature(
     application_features::ApplicationServer* server)
-  : ApplicationFeature(server, "FileDescriptors"),
-    _descriptorsMinimum(1024) {
+    : ApplicationFeature(server, "FileDescriptors"), _descriptorsMinimum(0) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -53,9 +54,7 @@ void FileDescriptorsFeature::collectOptions(
 #endif
 }
 
-void FileDescriptorsFeature::prepare() {
-  adjustFileDescriptors();
-}
+void FileDescriptorsFeature::prepare() { adjustFileDescriptors(); }
 
 #ifdef TRI_HAVE_GETRLIMIT
 template <typename T>
@@ -78,71 +77,79 @@ void FileDescriptorsFeature::start() {
               << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
               << StringifyLimitValue(rlim.rlim_cur);
   }
+
+  if (rlim.rlim_cur < RECOMMENDED) {
+    LOG(WARN) << "file-descriptors limit is too low, currently "
+              << StringifyLimitValue(rlim.rlim_cur) << ", raise to at least "
+              << RECOMMENDED;
+  }
 #endif
 }
 
 void FileDescriptorsFeature::adjustFileDescriptors() {
 #ifdef TRI_HAVE_GETRLIMIT
-  if (0 < _descriptorsMinimum) {
-    struct rlimit rlim;
-    int res = getrlimit(RLIMIT_NOFILE, &rlim);
+  struct rlimit rlim;
+  int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
-    if (res != 0) {
-      LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno);
+  if (res != 0) {
+    LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno);
+    FATAL_ERROR_EXIT();
+  }
+
+  LOG(DEBUG) << "file-descriptors (nofiles) hard limit is "
+             << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
+             << StringifyLimitValue(rlim.rlim_cur);
+
+  uint64_t recommended = RECOMMENDED;
+  uint64_t minimum = _descriptorsMinimum;
+
+  if (recommended < minimum) {
+    recommended = minimum;
+  }
+
+  if (rlim.rlim_max < recommended) {
+    LOG(DEBUG) << "hard limit " << rlim.rlim_max
+               << " is too small, trying to raise";
+
+    rlim.rlim_max = recommended;
+    rlim.rlim_cur = recommended;
+
+    res = setrlimit(RLIMIT_NOFILE, &rlim);
+
+    if (0 < minimum && minimum < recommended && res < 0) {
+      rlim.rlim_max = minimum;
+      rlim.rlim_cur = minimum;
+
+      res = setrlimit(RLIMIT_NOFILE, &rlim);
+    }
+
+    if (0 < minimum && res < 0) {
+      LOG(FATAL) << "cannot raise the file descriptor limit to " << minimum
+                 << ": " << strerror(errno);
       FATAL_ERROR_EXIT();
     }
+  } else if (rlim.rlim_cur < recommended) {
+    LOG(DEBUG) << "soft limit " << rlim.rlim_cur
+               << " is too small, trying to raise";
 
-    LOG(DEBUG) << "file-descriptors (nofiles) hard limit is "
-               << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
-               << StringifyLimitValue(rlim.rlim_cur);
+    if (recommended < rlim.rlim_max) {
+      recommended = rlim.rlim_max;
+    }
+    
+    rlim.rlim_cur = recommended;
 
-    bool changed = false;
+    res = setrlimit(RLIMIT_NOFILE, &rlim);
 
-    if (rlim.rlim_max < _descriptorsMinimum) {
-      LOG(DEBUG) << "hard limit " << rlim.rlim_max
-                 << " is too small, trying to raise";
-
-      rlim.rlim_max = _descriptorsMinimum;
-      rlim.rlim_cur = _descriptorsMinimum;
-
-      res = setrlimit(RLIMIT_NOFILE, &rlim);
-
-      if (res < 0) {
-        LOG(FATAL) << "cannot raise the file descriptor limit to "
-                   << _descriptorsMinimum << ": " << strerror(errno);
-        FATAL_ERROR_EXIT();
-      }
-
-      changed = true;
-    } else if (rlim.rlim_cur < _descriptorsMinimum) {
-      LOG(DEBUG) << "soft limit " << rlim.rlim_cur
-                 << " is too small, trying to raise";
-
-      rlim.rlim_cur = _descriptorsMinimum;
+    if (0 < minimum && minimum < recommended && res < 0) {
+      rlim.rlim_cur = minimum;
 
       res = setrlimit(RLIMIT_NOFILE, &rlim);
-
-      if (res < 0) {
-        LOG(FATAL) << "cannot raise the file descriptor limit to "
-                   << _descriptorsMinimum << ": " << strerror(errno);
-        FATAL_ERROR_EXIT();
-      }
-
-      changed = true;
     }
 
-    if (changed) {
-      res = getrlimit(RLIMIT_NOFILE, &rlim);
-
-      if (res != 0) {
-        LOG(FATAL) << "cannot get the file descriptor limit: "
-                   << strerror(errno);
-        FATAL_ERROR_EXIT();
-      }
-
-      LOG(INFO) << "file-descriptors (nofiles) new hard limit is "
-                << StringifyLimitValue(rlim.rlim_max) << ", new soft limit is "
-                << StringifyLimitValue(rlim.rlim_cur);
+    if (0 < minimum && res < 0) {
+      LOG(FATAL) << "cannot raise the file descriptor limit to " << minimum
+                 << ": " << strerror(errno);
+      FATAL_ERROR_EXIT();
     }
   }
 #endif
