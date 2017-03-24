@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_TRANSACTION_COLLECTION_H
-#define ARANGOD_MMFILES_TRANSACTION_COLLECTION_H 1
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_COLLECTION_H
+#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -68,6 +68,13 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
   void release() override;
+
+ private:
+  bool _firstTime;
+  bool _waitForSync;      // whether or not the collection has waitForSync
+  
+  AccessMode::Type _accessType;  // access type (read|write)
+  uint64_t _numOperations;
 };
 
 }

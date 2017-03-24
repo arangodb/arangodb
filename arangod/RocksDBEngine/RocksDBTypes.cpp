@@ -23,55 +23,53 @@
 
 #include "RocksDBTypes.h"
 
-namespace arangodb {
+using namespace arangodb;
+  
+namespace {
 
-rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type) {
-  static RocksDBEntryType database = RocksDBEntryType::Database;
-  static rocksdb::Slice Database(
-      reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-          &database),
-      1);
+static RocksDBEntryType database = arangodb::RocksDBEntryType::Database;
+static rocksdb::Slice Database(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &database),
+    1);
 
-  static RocksDBEntryType collection = RocksDBEntryType::Collection;
-  static rocksdb::Slice Collection(
-      reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-          &collection),
-      1);
+static RocksDBEntryType collection = RocksDBEntryType::Collection;
+static rocksdb::Slice Collection(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &collection),
+    1);
 
-  static RocksDBEntryType index = RocksDBEntryType::Index;
-  static rocksdb::Slice Index(
-      reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&index),
-      1);
+static RocksDBEntryType index = RocksDBEntryType::Index;
+static rocksdb::Slice Index(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&index),
+    1);
 
-  static RocksDBEntryType document = RocksDBEntryType::Document;
-  static rocksdb::Slice Document(
-      reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-          &document),
-      1);
+static RocksDBEntryType document = RocksDBEntryType::Document;
+static rocksdb::Slice Document(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &document),
+    1);
 
-  static RocksDBEntryType indexValue = RocksDBEntryType::IndexValue;
-  static rocksdb::Slice IndexValue(
-      reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-          &indexValue),
-      1);
+static RocksDBEntryType indexValue = RocksDBEntryType::IndexValue;
+static rocksdb::Slice IndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &indexValue),
+    1);
 
-  static RocksDBEntryType uniqueIndexValue = RocksDBEntryType::UniqueIndexValue;
-  static rocksdb::Slice UniqueIndexValue(
-      reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-          &uniqueIndexValue),
-      1);
+static RocksDBEntryType uniqueIndexValue = RocksDBEntryType::UniqueIndexValue;
+static rocksdb::Slice UniqueIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &uniqueIndexValue),
+    1);
 
-  static RocksDBEntryType view = RocksDBEntryType::View;
-  static rocksdb::Slice View(
-      reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&view),
-      1);
+static RocksDBEntryType view = RocksDBEntryType::View;
+static rocksdb::Slice View(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&view),
+    1);
 
-  static RocksDBEntryType crossReference = RocksDBEntryType::Database;
-  static rocksdb::Slice CrossReference(
-      reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-          &crossReference),
-      1);
+}
 
+rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   switch (type) {
     case RocksDBEntryType::Document:
       return Document;
@@ -87,10 +85,7 @@ rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type) {
       return UniqueIndexValue;
     case RocksDBEntryType::View:
       return View;
-    case RocksDBEntryType::CrossReference:
-      return CrossReference;
   }
 
   return Document; //avoids warning - errorslice instead ?!
-}
 }

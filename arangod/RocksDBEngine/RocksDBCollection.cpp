@@ -40,11 +40,16 @@ static std::string const Empty;
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      VPackSlice const& info)
-    : PhysicalCollection(collection, info) {}
+    : PhysicalCollection(collection, info),
+      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
+  TRI_ASSERT(_objectId != 0);
+}
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
-                                     PhysicalCollection*)
-    : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()) {
+                                     PhysicalCollection* physical)
+    : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
+      _objectId(static_cast<RocksDBCollection*>(physical)->_objectId) {
+  TRI_ASSERT(_objectId != 0);
 }
 
 RocksDBCollection::~RocksDBCollection() {}
@@ -87,12 +92,13 @@ void RocksDBCollection::updateCount(int64_t) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
-void RocksDBCollection::getPropertiesVPack(velocypack::Builder&) const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add("objectId", VPackValue(std::to_string(_objectId)));
 }
 
-void RocksDBCollection::getPropertiesVPackCoordinator(velocypack::Builder&) const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+void RocksDBCollection::getPropertiesVPackCoordinator(velocypack::Builder& result) const {
+  getPropertiesVPack(result);
 }
 
 /// @brief closes an open collection

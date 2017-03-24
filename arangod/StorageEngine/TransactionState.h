@@ -144,9 +144,6 @@ class TransactionState {
     return (_type == AccessMode::Type::READ);
   }
 
-  /// @brief free all operations for a transaction
-  void freeOperations(transaction::Methods* activeTrx);
-
   /// @brief release collection locks for a transaction
   int releaseCollections();
 

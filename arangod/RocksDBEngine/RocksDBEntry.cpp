@@ -28,64 +28,44 @@
 using namespace arangodb;
 using namespace arangodb::velocypack;
 
-RocksDBEntry RocksDBEntry::Database(uint64_t id, VPackSlice const& data) {
-  return RocksDBEntry(RocksDBEntryType::Database, id, 0, data);
+RocksDBEntry RocksDBEntry::Database(TRI_voc_tick_t databaseId, VPackSlice const& data) {
+  return RocksDBEntry(RocksDBEntryType::Database, databaseId, data);
 }
 
-RocksDBEntry RocksDBEntry::Collection(uint64_t id, VPackSlice const& data) {
-  return RocksDBEntry(RocksDBEntryType::Collection, id, 0, data);
+RocksDBEntry RocksDBEntry::Collection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, VPackSlice const& data) {
+  return RocksDBEntry(RocksDBEntryType::Collection, databaseId, collectionId, data);
 }
 
-RocksDBEntry RocksDBEntry::Index(uint64_t id, VPackSlice const& data) {
-  return RocksDBEntry(RocksDBEntryType::Index, id, 0, data);
+RocksDBEntry RocksDBEntry::Index(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId, VPackSlice const& data) {
+  return RocksDBEntry(RocksDBEntryType::Index, databaseId, collectionId, indexId, data);
 }
 
-RocksDBEntry RocksDBEntry::Document(uint64_t collectionId, uint64_t revisionId,
+RocksDBEntry RocksDBEntry::Document(uint64_t collectionId, TRI_voc_rid_t revisionId,
                                     VPackSlice const& data) {
   return RocksDBEntry(RocksDBEntryType::Document, collectionId, revisionId, data);
 }
 
-RocksDBEntry RocksDBEntry::IndexValue(uint64_t indexId, uint64_t revisionId,
+RocksDBEntry RocksDBEntry::IndexValue(uint64_t indexId, TRI_voc_rid_t revisionId,
                                       VPackSlice const& indexValues) {
   return RocksDBEntry(RocksDBEntryType::IndexValue, indexId, revisionId, indexValues);
 }
 
 RocksDBEntry RocksDBEntry::UniqueIndexValue(uint64_t indexId,
-                                            uint64_t revisionId,
+                                            TRI_voc_rid_t revisionId,
                                             VPackSlice const& indexValues) {
   return RocksDBEntry(RocksDBEntryType::UniqueIndexValue, indexId, revisionId, indexValues);
 }
 
-RocksDBEntry RocksDBEntry::View(uint64_t id, VPackSlice const& data) {
-  return RocksDBEntry(RocksDBEntryType::View, id, 0, data);
-}
-
-RocksDBEntry RocksDBEntry::CrossReferenceCollection(uint64_t databaseId,
-                                                    uint64_t collectionId) {
-  return RocksDBEntry(RocksDBEntryType::CrossReference, RocksDBEntryType::Collection, databaseId,
-                      collectionId);
-}
-
-RocksDBEntry RocksDBEntry::CrossReferenceIndex(uint64_t databaseId,
-                                               uint64_t collectionId,
-                                               uint64_t indexId) {
-  return RocksDBEntry(RocksDBEntryType::CrossReference, RocksDBEntryType::Index, databaseId,
-                      collectionId, indexId);
-}
-
-RocksDBEntry RocksDBEntry::CrossReferenceView(uint64_t databaseId,
-                                              uint64_t viewId) {
-  return RocksDBEntry(RocksDBEntryType::CrossReference, RocksDBEntryType::View, databaseId, viewId);
+RocksDBEntry RocksDBEntry::View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId, VPackSlice const& data) {
+  return RocksDBEntry(RocksDBEntryType::View, databaseId, viewId, data);
 }
 
 RocksDBEntryType RocksDBEntry::type() const { return _type; }
 
-uint64_t RocksDBEntry::databaseId() const {
+TRI_voc_tick_t RocksDBEntry::databaseId() const {
   switch (_type) {
-    case RocksDBEntryType::Database:
-    case RocksDBEntryType::CrossReference: {
-      return *reinterpret_cast<uint64_t const*>(_keyBuffer.data() +
-                                                sizeof(char));
+    case RocksDBEntryType::Database: {
+      return uint64FromPersistent(_keyBuffer.data() + sizeof(char));
     }
 
     default:
@@ -93,23 +73,10 @@ uint64_t RocksDBEntry::databaseId() const {
   }
 }
 
-uint64_t RocksDBEntry::collectionId() const {
+TRI_voc_cid_t RocksDBEntry::collectionId() const {
   switch (_type) {
-    case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Document: {
-      return *reinterpret_cast<uint64_t const*>(_keyBuffer.data() +
-                                                sizeof(char));
-    }
-
-    case RocksDBEntryType::CrossReference: {
-      RocksDBEntryType subtype =
-          *reinterpret_cast<RocksDBEntryType const*>(_keyBuffer.data() + sizeof(char));
-      if ((subtype == RocksDBEntryType::Collection) || (subtype == RocksDBEntryType::Index)) {
-        return *reinterpret_cast<uint64_t const*>(
-            _keyBuffer.data() + (2 * sizeof(char)) + sizeof(uint64_t));
-      } else {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
-      }
+    case RocksDBEntryType::Collection: {
+      return uint64FromPersistent(_keyBuffer.data() + sizeof(char) + sizeof(uint64_t));
     }
 
     default:
@@ -117,47 +84,10 @@ uint64_t RocksDBEntry::collectionId() const {
   }
 }
 
-uint64_t RocksDBEntry::indexId() const {
-  switch (_type) {
-    case RocksDBEntryType::Index:
-    case RocksDBEntryType::IndexValue:
-    case RocksDBEntryType::UniqueIndexValue: {
-      return *reinterpret_cast<uint64_t const*>(_keyBuffer.data() +
-                                                sizeof(char));
-    }
-
-    case RocksDBEntryType::CrossReference: {
-      RocksDBEntryType subtype =
-          *reinterpret_cast<RocksDBEntryType const*>(_keyBuffer.data() + sizeof(char));
-      if (subtype == RocksDBEntryType::Index) {
-        return *reinterpret_cast<uint64_t const*>(
-            _keyBuffer.data() + (2 * sizeof(char)) + (2 * sizeof(uint64_t)));
-      } else {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
-      }
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
-  }
-}
-
-uint64_t RocksDBEntry::viewId() const {
+TRI_voc_cid_t RocksDBEntry::viewId() const {
   switch (_type) {
     case RocksDBEntryType::View: {
-      return *reinterpret_cast<uint64_t const*>(_keyBuffer.data() +
-                                                sizeof(char));
-    }
-
-    case RocksDBEntryType::CrossReference: {
-      RocksDBEntryType subtype =
-          *reinterpret_cast<RocksDBEntryType const*>(_keyBuffer.data() + sizeof(char));
-      if (subtype == RocksDBEntryType::View) {
-        return *reinterpret_cast<uint64_t const*>(
-            _keyBuffer.data() + (2 * sizeof(char)) + sizeof(uint64_t));
-      } else {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
-      }
+      return uint64FromPersistent(_keyBuffer.data() + sizeof(char) + sizeof(uint64_t));
     }
 
     default:
@@ -165,20 +95,31 @@ uint64_t RocksDBEntry::viewId() const {
   }
 }
 
-uint64_t RocksDBEntry::revisionId() const {
+
+TRI_idx_iid_t RocksDBEntry::indexId() const {
+  switch (_type) {
+    case RocksDBEntryType::Index: {
+      return uint64FromPersistent(_keyBuffer.data() + sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+  }
+}
+
+TRI_voc_rid_t RocksDBEntry::revisionId() const {
   switch (_type) {
     case RocksDBEntryType::Document: {
-      return *reinterpret_cast<uint64_t const*>(
-          _keyBuffer.data() + sizeof(char) + sizeof(uint64_t));
+      return uint64FromPersistent(_keyBuffer.data() + sizeof(char) + sizeof(uint64_t));
     }
 
     case RocksDBEntryType::IndexValue: {
-      return *reinterpret_cast<uint64_t const*>(
+      return *reinterpret_cast<TRI_voc_rid_t const*>(
           _keyBuffer.data() + (_keyBuffer.size() - sizeof(uint64_t)));
     }
 
     case RocksDBEntryType::UniqueIndexValue: {
-      return *reinterpret_cast<uint64_t const*>(_valueBuffer.data());
+      return *reinterpret_cast<TRI_voc_rid_t const*>(_valueBuffer.data());
     }
 
     default:
@@ -190,8 +131,7 @@ VPackSlice RocksDBEntry::indexedValues() const {
   switch (_type) {
     case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::UniqueIndexValue: {
-      return VPackSlice(*reinterpret_cast<VPackSlice const*>(
-          _keyBuffer.data() + sizeof(char) + sizeof(uint64_t)));
+      return VPackSlice(_keyBuffer.data() + sizeof(char) + sizeof(uint64_t));
     }
 
     default:
@@ -206,8 +146,7 @@ VPackSlice RocksDBEntry::data() const {
     case RocksDBEntryType::Index:
     case RocksDBEntryType::Document:
     case RocksDBEntryType::View: {
-      return VPackSlice(
-          *reinterpret_cast<VPackSlice const*>(_valueBuffer.data()));
+      return VPackSlice(_valueBuffer.data());
     }
 
     default:
@@ -220,32 +159,18 @@ std::string const& RocksDBEntry::key() const { return _keyBuffer; }
 std::string const& RocksDBEntry::value() const { return _valueBuffer; }
 
 std::string& RocksDBEntry::valueBuffer() { return _valueBuffer; }
-  
-RocksDBEntry::RocksDBEntry(RocksDBEntryType type, RocksDBEntryType subtype,
-                           uint64_t first, uint64_t second, uint64_t third)
+
+RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first, VPackSlice const& slice)
     : _type(type), _keyBuffer(), _valueBuffer() {
-  TRI_ASSERT(_type == RocksDBEntryType::CrossReference);
-
-  switch (subtype) {
-    case RocksDBEntryType::Collection:
-    case RocksDBEntryType::View: {
-      size_t length = (2 * sizeof(char)) + (2 * sizeof(uint64_t));
+  switch (_type) {
+    case RocksDBEntryType::Database: {
+      size_t length = sizeof(char) + sizeof(uint64_t);
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
-      _keyBuffer.push_back(static_cast<char>(subtype));
-      uint64ToPersistent(_keyBuffer, first);
-      uint64ToPersistent(_keyBuffer, second);
-      break;
-    }
+      uint64ToPersistent(_keyBuffer, first); // databaseId
 
-    case RocksDBEntryType::Index: {
-      size_t length = (2 * sizeof(char)) + (3 * sizeof(uint64_t));
-      _keyBuffer.reserve(length);
-      _keyBuffer.push_back(static_cast<char>(_type));
-      _keyBuffer.push_back(static_cast<char>(subtype));
-      uint64ToPersistent(_keyBuffer, first);
-      uint64ToPersistent(_keyBuffer, second);
-      uint64ToPersistent(_keyBuffer, third);
+      _valueBuffer.append(reinterpret_cast<char const*>(slice.begin()),
+                          static_cast<size_t>(slice.byteSize()));
       break;
     }
 
@@ -253,22 +178,19 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, RocksDBEntryType subtype,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 }
-
+  
 RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
                            uint64_t second, VPackSlice const& slice)
     : _type(type), _keyBuffer(), _valueBuffer() {
-  TRI_ASSERT(_type != RocksDBEntryType::CrossReference);
   switch (_type) {
-    case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Index:
     case RocksDBEntryType::View: {
-      size_t length = sizeof(char) + sizeof(uint64_t);
+      size_t length = sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t);
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_keyBuffer, first);
-
-      _valueBuffer.reserve(static_cast<size_t>(slice.byteSize()));
+      uint64ToPersistent(_keyBuffer, first); // databaseId
+      uint64ToPersistent(_keyBuffer, second); // viewId / collectionId
+      
       _valueBuffer.append(reinterpret_cast<char const*>(slice.begin()),
                           static_cast<size_t>(slice.byteSize()));
 
@@ -282,10 +204,8 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
       uint64ToPersistent(_keyBuffer, first);
       uint64ToPersistent(_keyBuffer, second);
 
-      _valueBuffer.reserve(static_cast<size_t>(slice.byteSize()));
       _valueBuffer.append(reinterpret_cast<char const*>(slice.begin()),
                           static_cast<size_t>(slice.byteSize()));
-
       break;
     }
 
@@ -311,9 +231,30 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
       _keyBuffer.append(reinterpret_cast<char const*>(slice.begin()),
                         static_cast<size_t>(slice.byteSize()));
 
-      _valueBuffer.reserve(sizeof(uint64_t));
       _valueBuffer.append(reinterpret_cast<char const*>(&second),
                           sizeof(uint64_t));
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
+                           uint64_t second, uint64_t third, VPackSlice const& slice)
+    : _type(type), _keyBuffer(), _valueBuffer() {
+  switch (_type) {
+    case RocksDBEntryType::Index: {
+      size_t length = sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t);
+      _keyBuffer.reserve(length);
+      _keyBuffer.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_keyBuffer, first); // databaseId
+      uint64ToPersistent(_keyBuffer, second); // collectionId
+      uint64ToPersistent(_keyBuffer, third); // indexId
+      
+      _valueBuffer.append(reinterpret_cast<char const*>(slice.begin()),
+                          static_cast<size_t>(slice.byteSize()));
       break;
     }
 

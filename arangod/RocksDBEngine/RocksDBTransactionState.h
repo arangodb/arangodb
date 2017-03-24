@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_TRANSACTION_STATE_H
-#define ARANGOD_MMFILES_TRANSACTION_STATE_H 1
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H
+#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
@@ -69,42 +69,8 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief add a WAL operation for a transaction collection
   int addOperation(TRI_voc_rid_t, RocksDBDocumentOperation&, RocksDBWalMarker const* marker, bool&);
 
-  /// @brief get the transaction id for usage in a marker
-  TRI_voc_tid_t idForMarker() {
-    if (isSingleOperation()) {
-      return 0;
-    }
-    return _id;
-  }
-
-  /// @brief get (or create) a rocksdb WriteTransaction
-  rocksdb::Transaction* rocksTransaction();
-
  private:
-  /// @brief whether or not a marker needs to be written
-  bool needWriteMarker(bool isBeginMarker) const {
-    if (isBeginMarker) {
-      return (!isReadOnlyTransaction() && !isSingleOperation());
-    }
-
-    return (_nestingLevel == 0 && _beginWritten &&
-            !isReadOnlyTransaction() && !isSingleOperation());
-  }
-
-  /// @brief write WAL begin marker
-  int writeBeginMarker();
-
-  /// @brief write WAL abort marker
-  int writeAbortMarker();
-
-  /// @brief write WAL commit marker
-  int writeCommitMarker();
-
-  /// @brief free all operations for a transaction
-  void freeOperations(transaction::Methods* activeTrx);
-
- private:
-  rocksdb::Transaction* _rocksTransaction;
+  std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   bool _beginWritten;
   bool _hasOperations;
 };

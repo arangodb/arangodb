@@ -421,7 +421,3 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   return TRI_ERROR_NO_ERROR;
 }
-
-bool MMFilesTransactionCollection::isWrite(AccessMode::Type type) const {
-  return (type == AccessMode::Type::WRITE || type == AccessMode::Type::EXCLUSIVE);
-}

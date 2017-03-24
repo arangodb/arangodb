@@ -23,12 +23,17 @@
 
 #include "RocksDBTransactionState.h"
 #include "Aql/QueryCache.h"
-#include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
+#include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/TransactionManager.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
@@ -39,39 +44,108 @@
 
 using namespace arangodb;
 
+struct RocksDBTransactionData final : public TransactionData {
+};
+
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
     : TransactionState(vocbase),
-      _rocksTransaction(nullptr),
       _beginWritten(false),
       _hasOperations(false) {}
 
 /// @brief free a transaction container
-RocksDBTransactionState::~RocksDBTransactionState() {
-}
-
-/// @brief get (or create) a rocksdb WriteTransaction
-rocksdb::Transaction* RocksDBTransactionState::rocksTransaction() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return nullptr;
-}
+RocksDBTransactionState::~RocksDBTransactionState() {}
 
 /// @brief start a transaction
 int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+  LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
+
+  if (_nestingLevel == 0) {
+    TRI_ASSERT(_status == transaction::Status::CREATED);
+    
+    // get a new id
+    _id = TRI_NewTickServer();
+
+    // register a protector
+    auto data = std::make_unique<RocksDBTransactionData>(); // intentionally empty
+    TransactionManagerFeature::MANAGER->registerTransaction(_id, std::move(data));
+
+    TRI_ASSERT(_rocksTransaction == nullptr);
+
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(engine)->db();
+    _rocksTransaction.reset(db->BeginTransaction(rocksdb::WriteOptions(), rocksdb::TransactionOptions()));
+    
+    updateStatus(transaction::Status::RUNNING);
+  } else {
+    TRI_ASSERT(_status == transaction::Status::RUNNING);
+  }
+    
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief commit a transaction
 int RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+  LOG_TRX(this, _nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
+
+  TRI_ASSERT(_status == transaction::Status::RUNNING);
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (_nestingLevel == 0) {
+    if (_rocksTransaction != nullptr) {
+      auto status = _rocksTransaction->Commit();
+
+      if (!status.ok()) {
+        // TODO: translate status
+        res = TRI_ERROR_INTERNAL;
+        abortTransaction(activeTrx);
+        return res;
+      }
+      _rocksTransaction.reset();
+    }
+
+    updateStatus(transaction::Status::COMMITTED);
+
+    // if a write query, clear the query cache for the participating collections
+    if (AccessMode::isWriteOrExclusive(_type) &&
+        !_collections.empty() &&
+        arangodb::aql::QueryCache::instance()->mayBeActive()) {
+      clearQueryCache();
+    }
+  }
+
+  unuseCollections(_nestingLevel);
+
+  return res;
 }
 
 /// @brief abort and rollback a transaction
 int RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+  LOG_TRX(this, _nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
+
+  TRI_ASSERT(_status == transaction::Status::RUNNING);
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (_nestingLevel == 0) {
+    if (_rocksTransaction != nullptr) {
+      _rocksTransaction->Rollback();
+      _rocksTransaction.reset();
+    }
+
+    updateStatus(transaction::Status::ABORTED);
+
+    if (_hasOperations) {
+      // must clean up the query cache because the transaction
+      // may have queried something via AQL that is now rolled back
+      clearQueryCache();
+    }
+  }
+
+  unuseCollections(_nestingLevel);
+
+  return res;
 }
 
 /// @brief add a WAL operation for a transaction collection
@@ -79,23 +153,7 @@ int RocksDBTransactionState::addOperation(TRI_voc_rid_t revisionId,
                                    RocksDBDocumentOperation& operation,
                                    RocksDBWalMarker const* marker,
                                    bool& waitForSync) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
-}
-
-/// @brief free all operations for a transaction
-void RocksDBTransactionState::freeOperations(transaction::Methods* activeTrx) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
-/// @brief write WAL begin marker
-int RocksDBTransactionState::writeBeginMarker() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
-}
-
-/// @brief write WAL abort marker
-int RocksDBTransactionState::writeAbortMarker() {
+  _hasOperations = true;
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }

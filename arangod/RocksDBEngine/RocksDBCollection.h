@@ -179,6 +179,9 @@ class RocksDBCollection final : public PhysicalCollection {
   void createInitialIndexes();
   void addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
+
+ private:
+  uint64_t _objectId; // rocksdb-specific object id for collection
 };
 
 }

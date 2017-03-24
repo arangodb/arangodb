@@ -22,7 +22,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBComparator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBEntry.h"
 
@@ -51,7 +51,7 @@ int RocksDBComparator::Compare(rocksdb::Slice const& lhs,
       return compareCollections(lhs, rhs);
     }
     case RocksDBEntryType::Index: {
-      return compareIndices(lhs, rhs);
+      return compareIndexes(lhs, rhs);
     }
     case RocksDBEntryType::Document: {
       return compareDocuments(lhs, rhs);
@@ -65,9 +65,6 @@ int RocksDBComparator::Compare(rocksdb::Slice const& lhs,
     case RocksDBEntryType::View: {
       return compareViews(lhs, rhs);
     }
-    case RocksDBEntryType::CrossReference: {
-      return compareCrossReferences(lhs, rhs);
-    }
     default: { return compareLexicographic(lhs, rhs); }
   }
 }
@@ -79,20 +76,20 @@ int RocksDBComparator::compareType(rocksdb::Slice const& lhs,
 
 int RocksDBComparator::compareDatabases(rocksdb::Slice const& lhs,
                                         rocksdb::Slice const& rhs) const {
-  return memcmp((lhs.data() + sizeof(char)), (rhs.data() + sizeof(char)),
-                sizeof(uint64_t));
+  size_t offset = sizeof(char);
+  return memcmp(lhs.data() + offset, rhs.data() + offset, sizeof(uint64_t));
 }
 
 int RocksDBComparator::compareCollections(rocksdb::Slice const& lhs,
                                           rocksdb::Slice const& rhs) const {
   size_t offset = sizeof(char);
-  return memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
+  return memcmp(lhs.data() + offset, rhs.data() + offset, sizeof(uint64_t) + sizeof(uint64_t));
 }
 
-int RocksDBComparator::compareIndices(rocksdb::Slice const& lhs,
+int RocksDBComparator::compareIndexes(rocksdb::Slice const& lhs,
                                       rocksdb::Slice const& rhs) const {
   size_t offset = sizeof(char);
-  return memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
+  return memcmp(lhs.data() + offset, rhs.data() + offset, sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t));
 }
 
 int RocksDBComparator::compareDocuments(rocksdb::Slice const& lhs,
@@ -148,74 +145,7 @@ int RocksDBComparator::compareUniqueIndexValues(
 int RocksDBComparator::compareViews(rocksdb::Slice const& lhs,
                                     rocksdb::Slice const& rhs) const {
   size_t offset = sizeof(char);
-  return memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
-}
-
-int RocksDBComparator::compareCrossReferences(rocksdb::Slice const& lhs,
-                                              rocksdb::Slice const& rhs) const {
-  size_t offset = sizeof(char);
-  int result = lhs[offset] - rhs[offset];
-  if (result != 0) {
-    return result;
-  }
-
-  RocksDBEntryType subtype = static_cast<RocksDBEntryType>(lhs[offset]);
-  switch (subtype) {
-    case RocksDBEntryType::Collection:
-      return compareCrossReferenceCollections(lhs, rhs);
-    case RocksDBEntryType::Index:
-      return compareCrossReferenceIndices(lhs, rhs);
-    case RocksDBEntryType::View:
-      return compareCrossReferenceViews(lhs, rhs);
-    default:
-      return compareLexicographic(lhs, rhs);
-  }
-}
-
-int RocksDBComparator::compareCrossReferenceCollections(
-    rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
-  size_t offset = 2 * sizeof(char);
-  int result =
-      memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
-  if (result != 0) {
-    return result;
-  }
-
-  offset += sizeof(uint64_t);
-  return memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
-}
-
-int RocksDBComparator::compareCrossReferenceIndices(
-    rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
-  size_t offset = 2 * sizeof(char);
-  int result =
-      memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
-  if (result != 0) {
-    return result;
-  }
-
-  offset += sizeof(uint64_t);
-  result =
-      memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
-  if (result != 0) {
-    return result;
-  }
-
-  offset += sizeof(uint64_t);
-  return memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
-}
-
-int RocksDBComparator::compareCrossReferenceViews(
-    rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
-  size_t offset = 2 * sizeof(char);
-  int result =
-      memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
-  if (result != 0) {
-    return result;
-  }
-
-  offset += sizeof(uint64_t);
-  return memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
+  return memcmp(lhs.data() + offset, rhs.data() + offset, sizeof(uint64_t) + sizeof(uint64_t));
 }
 
 int RocksDBComparator::compareLexicographic(rocksdb::Slice const& lhs,
@@ -259,5 +189,5 @@ int RocksDBComparator::compareIndexedValues(VPackSlice const& lhs,
 VPackSlice RocksDBComparator::extractIndexedValues(
     rocksdb::Slice const& key) const {
   size_t offset = sizeof(char) + sizeof(uint64_t);
-  return VPackSlice(*reinterpret_cast<VPackSlice const*>(key.data() + offset));
+  return VPackSlice(key.data() + offset);
 }

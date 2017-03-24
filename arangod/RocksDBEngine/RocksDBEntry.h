@@ -39,32 +39,25 @@ class RocksDBEntry {
  public:
   RocksDBEntry() = delete;
 
-  static RocksDBEntry Database(uint64_t id, VPackSlice const& data);
-  static RocksDBEntry Collection(uint64_t id, VPackSlice const& data);
-  static RocksDBEntry Index(uint64_t id, VPackSlice const& data);
-  static RocksDBEntry Document(uint64_t collectionId, uint64_t revisionId,
+  static RocksDBEntry Database(TRI_voc_tick_t databaseId, VPackSlice const& data);
+  static RocksDBEntry Collection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, VPackSlice const& data);
+  static RocksDBEntry Index(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId, VPackSlice const& data);
+  static RocksDBEntry Document(uint64_t collectionId, TRI_voc_rid_t revisionId,
                                VPackSlice const& data);
-  static RocksDBEntry IndexValue(uint64_t indexId, uint64_t revisionId,
+  static RocksDBEntry IndexValue(uint64_t indexId, TRI_voc_rid_t revisionId,
                                  VPackSlice const& indexValues);
-  static RocksDBEntry UniqueIndexValue(uint64_t indexId, uint64_t revisionId,
+  static RocksDBEntry UniqueIndexValue(uint64_t indexId, TRI_voc_rid_t revisionId,
                                        VPackSlice const& indexValues);
-  static RocksDBEntry View(uint64_t id, VPackSlice const& data);
-
-  static RocksDBEntry CrossReferenceCollection(uint64_t databaseId,
-                                               uint64_t collectionId);
-  static RocksDBEntry CrossReferenceIndex(uint64_t databaseId,
-                                          uint64_t collectionId,
-                                          uint64_t indexId);
-  static RocksDBEntry CrossReferenceView(uint64_t databaseId, uint64_t viewId);
+  static RocksDBEntry View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId, VPackSlice const& data);
 
  public:
   RocksDBEntryType type() const;
 
-  uint64_t databaseId() const;
-  uint64_t collectionId() const;
-  uint64_t indexId() const;
-  uint64_t viewId() const;
-  uint64_t revisionId() const;
+  TRI_voc_tick_t databaseId() const;
+  TRI_voc_cid_t collectionId() const;
+  TRI_idx_iid_t indexId() const;
+  TRI_voc_cid_t viewId() const;
+  TRI_voc_rid_t revisionId() const;
 
   VPackSlice indexedValues() const;
   VPackSlice data() const;
@@ -79,10 +72,9 @@ class RocksDBEntry {
   static void uint64ToPersistent(std::string& out, uint64_t value);
 
  private:
-  RocksDBEntry(RocksDBEntryType type, RocksDBEntryType subtype, uint64_t first, uint64_t second = 0,
-               uint64_t third = 0);
-  RocksDBEntry(RocksDBEntryType type, uint64_t first, uint64_t second = 0,
-               VPackSlice const& slice = VPackSlice());
+  RocksDBEntry(RocksDBEntryType type, uint64_t first, VPackSlice const& slice);
+  RocksDBEntry(RocksDBEntryType type, uint64_t first, uint64_t second, VPackSlice const& slice);
+  RocksDBEntry(RocksDBEntryType type, uint64_t first, uint64_t second, uint64_t third, VPackSlice const& slice);
 
  private:
   RocksDBEntryType const _type;

@@ -136,12 +136,9 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxCollection == nullptr);
-  try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    trxCollection = engine->createTransactionCollection(this, cid, accessType, nestingLevel);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+    
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  trxCollection = engine->createTransactionCollection(this, cid, accessType, nestingLevel);
   
   TRI_ASSERT(trxCollection != nullptr);
 

@@ -36,6 +36,9 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBEntry.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "RocksDBEngine/RocksDBTransactionContextData.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBView.h"
 #include "VocBase/ticks.h"
@@ -133,20 +136,23 @@ void RocksDBEngine::unprepare() {
 }
 
 transaction::ContextData* RocksDBEngine::createTransactionContextData() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return nullptr;
+  return new RocksDBTransactionContextData;
 }
 
-TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return nullptr;
+TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t* vocbase) {
+  return new RocksDBTransactionState(vocbase);
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
     TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
     int nestingLevel) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return nullptr;
+  return new RocksDBTransactionCollection(state, cid, accessType, nestingLevel);
+}
+  
+void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
+  if (!info.hasKey("objectId")) {
+    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+  }
 }
 
 // create storage-engine specific collection
@@ -347,6 +353,20 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   return TRI_ERROR_INTERNAL; // TODO: need translation for RocksDB errors
 }
 
+int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
+                                               TRI_voc_cid_t id,
+                                               VPackSlice const& slice) {
+ 
+  RocksDBEntry entry = RocksDBEntry::Collection(databaseId, id, slice);
+  rocksdb::WriteOptions options; // TODO: check which options would make sense
+
+  rocksdb::Status res = _db->Put(options, entry.key(), entry.value());
+  if (res.ok()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  return TRI_ERROR_INTERNAL; // TODO: need translation for RocksDB errors
+}
+
 void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
                                         bool useWriteMarker, int& status) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
@@ -364,8 +384,8 @@ void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
 
 // wal in recovery
 bool RocksDBEngine::inRecovery() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
+  // recovery is handled outside of this engine
+  return false;
 }
 
 void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
@@ -374,15 +394,42 @@ void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
 
 std::string RocksDBEngine::createCollection(
     TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-    arangodb::LogicalCollection const*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return "not implemented";
+    arangodb::LogicalCollection const* parameters) {
+  
+  VPackBuilder builder =
+      parameters->toVelocyPackIgnore({"path", "statusString"}, true);
+  int res = writeCreateCollectionMarker(vocbase->id(), id, builder.slice());
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return std::string(); // no need to return a path
 }
 
 arangodb::Result RocksDBEngine::persistCollection(
-    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return arangodb::Result{};
+    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) {
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(vocbase != nullptr);
+  if (inRecovery()) {
+    // Nothing to do. In recovery we do not write markers.
+    return {};
+  }
+  VPackBuilder builder =
+      collection->toVelocyPackIgnore({"path", "statusString"}, true);
+  VPackSlice const slice = builder.slice();
+  
+  auto cid = collection->cid();
+  TRI_ASSERT(cid != 0);
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
+
+  int res = writeCreateCollectionMarker(vocbase->id(), cid, slice);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return { res };
+  }
+ 
+  return {};
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t* vocbase,

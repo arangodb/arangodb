@@ -80,6 +80,11 @@ class TransactionCollection {
   virtual int use(int nestingLevel) = 0;
   virtual void unuse(int nestingLevel) = 0;
   virtual void release() = 0;
+
+ protected:
+  inline bool isWrite(AccessMode::Type type) const {
+    return (type == AccessMode::Type::WRITE || type == AccessMode::Type::EXCLUSIVE);
+  }
   
  protected:
   TransactionState* _transaction;  // the transaction state

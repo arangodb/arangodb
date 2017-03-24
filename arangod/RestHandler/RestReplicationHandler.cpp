@@ -1252,7 +1252,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   VPackBuilder builder = VPackCollection::merge(slice, patch.slice(), false);
   slice = builder.slice();
 
-  col = _vocbase->createCollection(slice, cid);
+  col = _vocbase->createCollection(slice);
 
   if (col == nullptr) {
     return TRI_ERROR_INTERNAL;

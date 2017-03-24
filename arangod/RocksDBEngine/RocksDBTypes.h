@@ -38,8 +38,7 @@ enum class RocksDBEntryType : char {
   Document = '3',
   IndexValue = '4',
   UniqueIndexValue = '5',
-  View = '6',
-  CrossReference = '9'
+  View = '6'
 };
 
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);

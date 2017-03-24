@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_TRANSACTION_CONTEXT_DATA_H
-#define ARANGOD_MMFILES_TRANSACTION_CONTEXT_DATA_H 1
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_CONTEXT_DATA_H
+#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_CONTEXT_DATA_H 1
 
 #include "Basics/Common.h"
 #include "Transaction/ContextData.h"
@@ -34,14 +34,16 @@ class LogicalCollection;
 /// @brief transaction type
 class RocksDBTransactionContextData final : public transaction::ContextData {
  public:
-  RocksDBTransactionContextData();
-  ~RocksDBTransactionContextData();
+  RocksDBTransactionContextData() = default;
+  ~RocksDBTransactionContextData() = default;
 
   /// @brief pin data for the collection
-  void pinData(arangodb::LogicalCollection*) override;
+  /// there is nothing to do for the RocksDB engine
+  void pinData(arangodb::LogicalCollection*) override {}
 
   /// @brief whether or not the data for the collection is pinned
-  bool isPinned(TRI_voc_cid_t) const override;
+  /// note that this is always true in RocksDB
+  bool isPinned(TRI_voc_cid_t) const override { return true; }
 };
 
 }

@@ -53,7 +53,7 @@ class RocksDBComparator final : public rocksdb::Comparator {
                        rocksdb::Slice const& rhs) const;
   int compareCollections(rocksdb::Slice const& lhs,
                          rocksdb::Slice const& rhs) const;
-  int compareIndices(rocksdb::Slice const& lhs,
+  int compareIndexes(rocksdb::Slice const& lhs,
                      rocksdb::Slice const& rhs) const;
   int compareDocuments(rocksdb::Slice const& lhs,
                        rocksdb::Slice const& rhs) const;
@@ -62,17 +62,8 @@ class RocksDBComparator final : public rocksdb::Comparator {
   int compareUniqueIndexValues(rocksdb::Slice const& lhs,
                                rocksdb::Slice const& rhs) const;
   int compareViews(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;
-  int compareCrossReferences(rocksdb::Slice const& lhs,
-                             rocksdb::Slice const& rhs) const;
-  int compareCrossReferenceCollections(rocksdb::Slice const& lhs,
-                                       rocksdb::Slice const& rhs) const;
-  int compareCrossReferenceIndices(rocksdb::Slice const& lhs,
-                                   rocksdb::Slice const& rhs) const;
-  int compareCrossReferenceViews(rocksdb::Slice const& lhs,
-                                 rocksdb::Slice const& rhs) const;
   int compareLexicographic(rocksdb::Slice const& lhs,
                            rocksdb::Slice const& rhs) const;
-
   int compareIndexedValues(VPackSlice const& lhs, VPackSlice const& rhs) const;
   VPackSlice extractIndexedValues(rocksdb::Slice const& key) const;
 

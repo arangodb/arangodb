@@ -34,6 +34,7 @@
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 class PhysicalCollection;
@@ -224,12 +225,17 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory*) override;
 
+  void addParametersForNewCollection(arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice info) override;
+  
+  rocksdb::TransactionDB* db() const { return _db; }
+
  private:
   EngineResult dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();
   /// @brief open an existing database. internal function
   TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade);
+  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, VPackSlice const& slice);
 
 public:
   static std::string const EngineName;

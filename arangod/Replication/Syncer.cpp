@@ -495,7 +495,7 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
 
   int res = TRI_ERROR_NO_ERROR;
   try {
-    col = _vocbase->createCollection(merged.slice(), cid);
+    col = _vocbase->createCollection(merged.slice());
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {

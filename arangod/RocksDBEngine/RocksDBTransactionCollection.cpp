@@ -34,75 +34,114 @@
 
 using namespace arangodb;
 
-RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
-    : TransactionCollection(trx, cid) {
-}
+RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx, 
+                                                           TRI_voc_cid_t cid, 
+                                                           AccessMode::Type accessType, 
+                                                           int nestingLevel)
+    : TransactionCollection(trx, cid),
+      _firstTime(true),
+      _waitForSync(false),
+      _accessType(accessType), 
+      _numOperations(0) {} 
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() {
-}
+RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
 
 /// @brief request a main-level lock for a collection
-int RocksDBTransactionCollection::lock() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
-}
+int RocksDBTransactionCollection::lock() { return TRI_ERROR_NO_ERROR; }
 
 /// @brief request a lock for a collection
-int RocksDBTransactionCollection::lock(AccessMode::Type accessType,
-                                       int nestingLevel) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+int RocksDBTransactionCollection::lock(AccessMode::Type accessType, int /*nestingLevel*/) {
+  if (isWrite(accessType) && !isWrite(_accessType)) {
+    // wrong lock type
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief request an unlock for a collection
-int RocksDBTransactionCollection::unlock(AccessMode::Type accessType,
-                                         int nestingLevel) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+int RocksDBTransactionCollection::unlock(AccessMode::Type accessType, int /*nestingLevel*/) {
+  if (isWrite(accessType) && !isWrite(_accessType)) {
+    // wrong lock type: write-unlock requested but collection is read-only
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief check if a collection is locked in a specific mode in a transaction
-bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType, int /*nestingLevel*/) const {
+  if (isWrite(accessType) && !isWrite(_accessType)) {
+    // wrong lock type
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "logic error. checking wrong lock type";
+    return false;
+  }
+
+  // TODO
+  return false;
 }
 
 /// @brief check whether a collection is locked at all
 bool RocksDBTransactionCollection::isLocked() const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO
   return false;
 }
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return false;
+  return (_numOperations > 0);
 }
 
-void RocksDBTransactionCollection::freeOperations(transaction::Methods* activeTrx, bool mustRollback) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
+void RocksDBTransactionCollection::freeOperations(transaction::Methods* /*activeTrx*/, bool /*mustRollback*/) {}
 
 bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return false;
+  // check if access type matches
+  if (AccessMode::isWriteOrExclusive(accessType) && 
+      !AccessMode::isWriteOrExclusive(_accessType)) {
+    // type doesn't match. probably also a mistake by the caller
+    return false;
+  }
+
+  return true;
 }
 
 int RocksDBTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+  if (AccessMode::isWriteOrExclusive(accessType) && 
+      !AccessMode::isWriteOrExclusive(_accessType)) {
+    if (nestingLevel > 0) {
+      // trying to write access a collection that is only marked with
+      // read-access
+      return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+    }
+
+    TRI_ASSERT(nestingLevel == 0);
+
+    // upgrade collection type to write-access
+    _accessType = accessType;
+  }
+
+  // all correct
+  return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBTransactionCollection::use(int nestingLevel) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+int RocksDBTransactionCollection::use(int /*nestingLevel*/) {
+  if (_firstTime) {
+    if (AccessMode::isWriteOrExclusive(_accessType) &&
+        TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
+        !LogicalCollection::IsSystemName(_collection->name())) {
+      return TRI_ERROR_ARANGO_READ_ONLY;
+    }
+
+    // store the waitForSync property
+    _waitForSync = _collection->waitForSync();
+  
+    _firstTime = false;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
-void RocksDBTransactionCollection::unuse(int nestingLevel) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
+void RocksDBTransactionCollection::unuse(int /*nestingLevel*/) {}
 
-void RocksDBTransactionCollection::release() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
+// nothing to do here
+void RocksDBTransactionCollection::release() {}

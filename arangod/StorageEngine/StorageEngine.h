@@ -89,6 +89,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 
+  // when a new collection is created, this method is called to augment the collection
+  // creation data with engine-specific information
+  virtual void addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {}
+
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
 

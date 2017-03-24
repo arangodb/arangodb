@@ -59,7 +59,9 @@ void TransactionManager::unregisterFailedTransactions(
   }
 }
 
-void TransactionManager::registerTransaction(TRI_voc_tid_t transactionId, std::unique_ptr<TransactionData> data) {    
+void TransactionManager::registerTransaction(TRI_voc_tid_t transactionId, std::unique_ptr<TransactionData> data) {
+  TRI_ASSERT(data != nullptr);
+
   size_t bucket = getBucket(transactionId);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
      
