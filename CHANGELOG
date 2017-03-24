@@ -163,6 +163,8 @@ v3.1.16 (2017-XX-XX)
 
 * fixed issue #2392
 
+* try to raise file descriptors to at least 8192, warn otherwise
+
 * ui - aql editor improvements + updated ace editor version (memory leak)
 
 * fixed lost HTTP requests
