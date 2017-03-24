@@ -32,6 +32,7 @@
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Utils/CollectionNameResolver.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
