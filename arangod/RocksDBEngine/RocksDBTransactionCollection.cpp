@@ -36,15 +36,17 @@ using namespace arangodb;
 
 RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx, 
                                                            TRI_voc_cid_t cid, 
-                                                           AccessMode::Type accessType, 
-                                                           int nestingLevel)
+                                                           AccessMode::Type accessType) 
     : TransactionCollection(trx, cid),
-      _firstTime(true),
       _waitForSync(false),
       _accessType(accessType), 
-      _numOperations(0) {} 
+      _numOperations(0) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "ctor rocksdb transaction collection: " << cid;
+} 
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
+RocksDBTransactionCollection::~RocksDBTransactionCollection() {
+    LOG_TOPIC(ERR, Logger::FIXME) << "dtor rocksdb transaction collection: " << _cid;
+}
 
 /// @brief request a main-level lock for a collection
 int RocksDBTransactionCollection::lock() { return TRI_ERROR_NO_ERROR; }
@@ -124,8 +126,17 @@ int RocksDBTransactionCollection::updateUsage(AccessMode::Type accessType, int n
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBTransactionCollection::use(int /*nestingLevel*/) {
-  if (_firstTime) {
+int RocksDBTransactionCollection::use(int nestingLevel) {
+  if (_collection == nullptr) {
+    TRI_vocbase_col_status_e status;
+    LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+    _collection = _transaction->vocbase()->useCollection(_cid, status);
+    LOG_TOPIC(ERR, Logger::FIXME) << "using collection " << _cid << ": " << _collection;
+      
+    if (_collection == nullptr) {
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+    
     if (AccessMode::isWriteOrExclusive(_accessType) &&
         TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
         !LogicalCollection::IsSystemName(_collection->name())) {
@@ -134,8 +145,6 @@ int RocksDBTransactionCollection::use(int /*nestingLevel*/) {
 
     // store the waitForSync property
     _waitForSync = _collection->waitForSync();
-  
-    _firstTime = false;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -143,5 +152,14 @@ int RocksDBTransactionCollection::use(int /*nestingLevel*/) {
 
 void RocksDBTransactionCollection::unuse(int /*nestingLevel*/) {}
 
-// nothing to do here
-void RocksDBTransactionCollection::release() {}
+void RocksDBTransactionCollection::release() {
+  // the top level transaction releases all collections
+  if (_collection != nullptr) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "releasing collection " << _cid << ": " << _collection;
+    // unuse collection, remove usage-lock
+    LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
+
+    _transaction->vocbase()->releaseCollection(_collection);
+    _collection = nullptr;
+  }
+}

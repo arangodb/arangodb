@@ -21,11 +21,14 @@
 /// @author Jan-Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBCollection.h"
 #include "Basics/Result.h"
+#include "Aql/PlanCache.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "RocksDBCollection.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
@@ -104,21 +107,17 @@ void RocksDBCollection::getPropertiesVPackCoordinator(velocypack::Builder& resul
 /// @brief closes an open collection
 int RocksDBCollection::close() {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+  return TRI_ERROR_NO_ERROR;
 }
 
 uint64_t RocksDBCollection::numberDocuments() const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO
   return 0;
-}
-
-void RocksDBCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 /// @brief report extra memory used by indexes etc.
 size_t RocksDBCollection::memory() const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO
   return 0;
 }
 
@@ -182,17 +181,85 @@ void RocksDBCollection::prepareIndexes(
 
 /// @brief Find index by definition
 std::shared_ptr<Index> RocksDBCollection::lookupIndex(
-    velocypack::Slice const&) const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+    velocypack::Slice const& info) const {
+  TRI_ASSERT(info.isObject());
+
+  // extract type
+  VPackSlice value = info.get("type");
+
+  if (!value.isString()) {
+    // Compatibility with old v8-vocindex.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  std::string tmp = value.copyString();
+  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
+
+  for (auto const& idx : _indexes) {
+    if (idx->type() == type) {
+      // Only check relevant indices
+      if (idx->matchesDefinition(info)) {
+        // We found an index for this definition.
+        return idx;
+      }
+    }
+  }
   return nullptr;
 }
 
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return nullptr;
+  // TODO Get LOCK for the vocbase
+  auto idx = lookupIndex(info);
+  if (idx != nullptr) {
+    created = false;
+    // We already have this index.
+    return idx;
+  }
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory(); 
+  TRI_ASSERT(idxFactory != nullptr);
+
+  // We are sure that we do not have an index of this type.
+  // We also hold the lock.
+  // Create it
+
+  idx =
+      idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
+  TRI_ASSERT(idx != nullptr);
+  if (ServerState::instance()->isCoordinator()) {
+    // In the coordinator case we do not fill the index
+    // We only inform the others.
+    addIndexCoordinator(idx);
+    created = true;
+    return idx;
+  }
+
+  int res = saveIndex(trx, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection->vocbase());
+  // Until here no harm is done if sth fails. The shared ptr will clean up. if
+  // left before
+
+  addIndex(idx);
+  {
+    bool const doSync =
+        application_features::ApplicationServer::getFeature<DatabaseFeature>(
+            "Database")
+            ->forceSyncProperties();
+    VPackBuilder builder = _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
+    _logicalCollection->updateProperties(builder.slice(), doSync);
+  }
+  created = true;
+  return idx;
 }
+
 /// @brief Restores an index from VelocyPack.
 int RocksDBCollection::restoreIndex(transaction::Methods*,
                                     velocypack::Slice const&,
@@ -200,21 +267,23 @@ int RocksDBCollection::restoreIndex(transaction::Methods*,
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
+
 /// @brief Drop an index with the given iid.
 bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return false;
 }
+
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
     transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return nullptr;
+  return std::unique_ptr<IndexIterator>(primaryIndex()->allIterator(trx, mdr, reverse));
 }
+
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
     transaction::Methods* trx, ManagedDocumentResult* mdr) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return nullptr;
+  return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
 }
+
 void RocksDBCollection::invokeOnAllElements(
     std::function<bool(DocumentIdentifierToken const&)> callback) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
@@ -350,4 +419,53 @@ void RocksDBCollection::addIndexCoordinator(
   }
 
   _indexes.emplace_back(idx);
+}
+
+int RocksDBCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  // we cannot persist PrimaryIndex
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
+  indexListLocal.emplace_back(idx);
+
+/* TODO
+  int res = fillIndexes(trx, indexListLocal, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+*/
+  std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false);
+  auto vocbase = _logicalCollection->vocbase();
+  auto collectionId = _logicalCollection->cid();
+  VPackSlice data = builder->slice();
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->createIndex(vocbase, collectionId, idx->id(), data);
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+// @brief return the primary index
+// WARNING: Make sure that this LogicalCollection Instance
+// is somehow protected. If it goes out of all scopes
+// or it's indexes are freed the pointer returned will get invalidated.
+arangodb::RocksDBPrimaryIndex* RocksDBCollection::primaryIndex() const {
+  // The primary index always has iid 0
+  auto primary = _logicalCollection->lookupIndex(0);
+  TRI_ASSERT(primary != nullptr);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (primary->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "got invalid indexes for collection '" << _logicalCollection->name()
+        << "'";
+    for (auto const& it : _indexes) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+    }
+  }
+#endif
+  TRI_ASSERT(primary->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  // the primary index must be the index at position #0
+  return static_cast<arangodb::RocksDBPrimaryIndex*>(primary.get());
 }

@@ -195,8 +195,6 @@ class MMFilesCollection final : public PhysicalCollection {
    
   uint64_t numberDocuments() const override;
 
-  void sizeHint(transaction::Methods* trx, int64_t hint) override;
-
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;
 
@@ -379,6 +377,7 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
 
  private:
+  void sizeHint(transaction::Methods* trx, int64_t hint);
 
   /// @brief creates the initial indexes for the collection
   void createInitialIndexes();

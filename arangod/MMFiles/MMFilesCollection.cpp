@@ -23,7 +23,6 @@
 
 #include "MMFilesCollection.h"
 #include "Aql/PlanCache.h"
-#include "Aql/QueryCache.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/PerformanceLogScope.h"
@@ -1370,6 +1369,9 @@ uint64_t MMFilesCollection::numberDocuments() const {
 }
 
 void MMFilesCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
+  if (hint <= 0) {
+    return;
+  }
   primaryIndex()->resize(trx, static_cast<size_t>(hint * 1.1));
 }
 
@@ -1762,7 +1764,7 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
 
   if (_initialCount != -1) {
     _revisionsCache.sizeHint(_initialCount);
-    _logicalCollection->sizeHint(trx, _initialCount);
+    sizeHint(trx, _initialCount);
     openState._initialCount = _initialCount;
   }
 
@@ -1993,8 +1995,6 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   created = true;
   return idx;
 }
-
-
 
 /// @brief Persist an index information to file
 int MMFilesCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) {

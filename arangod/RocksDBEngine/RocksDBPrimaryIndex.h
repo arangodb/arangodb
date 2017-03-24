@@ -151,6 +151,15 @@ class RocksDBPrimaryIndex final : public Index {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  
+  /// @brief request an iterator over all elements in the index in
+  ///        a sequential order.
+  IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*, bool reverse) const;
+
+  /// @brief request an iterator over all elements in the index in
+  ///        a random order. It is guaranteed that each element is found
+  ///        exactly once unless the collection is modified.
+  IndexIterator* anyIterator(transaction::Methods*, ManagedDocumentResult*) const;
 };
 }
 

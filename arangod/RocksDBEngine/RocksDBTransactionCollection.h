@@ -40,7 +40,7 @@ class TransactionState;
 class RocksDBTransactionCollection final : public TransactionCollection {
  public:
 
-  RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel);
+  RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType);
   ~RocksDBTransactionCollection();
 
   /// @brief request a main-level lock for a collection
@@ -70,7 +70,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void release() override;
 
  private:
-  bool _firstTime;
   bool _waitForSync;      // whether or not the collection has waitForSync
   
   AccessMode::Type _accessType;  // access type (read|write)

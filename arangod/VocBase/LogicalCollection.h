@@ -227,10 +227,6 @@ class LogicalCollection {
   /// @brief closes an open collection
   int close();
 
-  /// datafile management
-
-  void sizeHint(transaction::Methods* trx, int64_t hint);
-
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description

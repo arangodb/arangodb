@@ -81,8 +81,6 @@ class PhysicalCollection {
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments() const = 0;
 
-  virtual void sizeHint(transaction::Methods* trx, int64_t hint) = 0;
-
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
     

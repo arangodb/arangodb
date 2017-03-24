@@ -81,12 +81,12 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* collection,
     : IndexIterator(collection, trx, mmdr, index), _reverse(reverse), _total(0) {}
 
 bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
+  // TODO
+  return false;
 }
 
 void RocksDBAllIndexIterator::reset() { 
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO
 }
   
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
@@ -186,4 +186,20 @@ arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
 
   SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.specializeOne(this, node, reference);
+}
+
+/// @brief request an iterator over all elements in the index in
+///        a sequential order.
+IndexIterator* RocksDBPrimaryIndex::allIterator(transaction::Methods* trx,
+                                         ManagedDocumentResult* mmdr,
+                                         bool reverse) const {
+  return new RocksDBAllIndexIterator(_collection, trx, mmdr, this, reverse);
+}
+
+/// @brief request an iterator over all elements in the index in
+///        a random order. It is guaranteed that each element is found
+///        exactly once unless the collection is modified.
+IndexIterator* RocksDBPrimaryIndex::anyIterator(transaction::Methods* trx,
+                                         ManagedDocumentResult* mmdr) const {
+  return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
 }
