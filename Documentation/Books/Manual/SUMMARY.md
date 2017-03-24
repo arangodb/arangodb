@@ -150,6 +150,7 @@
   * [Server Configuration](Administration/Configuration/README.md)
     * [Managing Endpoints](Administration/Configuration/Endpoint.md)
     * [SSL Configuration](Administration/Configuration/SSL.md)
+    * [LDAP Options](Administration/Configuration/Ldap.md)
     * [Logging Options](Administration/Configuration/Logging.md)
     * [General Options](Administration/Configuration/GeneralArangod.md)
     * [Write-Ahead Log Options](Administration/Configuration/Wal.md)
