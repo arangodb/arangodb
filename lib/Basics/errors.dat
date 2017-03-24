@@ -136,6 +136,10 @@ ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised w
 
 ERROR_ARANGO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafile reaches its limit."
 ERROR_ARANGO_EMPTY_DATADIR,1301,"server database directory is empty","Will be raised when encountering an empty server database directory."
+ERROR_ARANGO_TRY_AGAIN,1302,"operation should be tried again","Will be raised when an operation should be retried."
+ERROR_ARANGO_BUSY,1303,"engine is busy","Will be raised when storage engine is busy."
+ERROR_ARANGO_MERGE_IN_PROGRESS,1304,"merge in progress","Will be raised when storage engine has a datafile merge in progress and cannot complete the operation."
+ERROR_ARANGO_IO_ERROR,1305,"storage engine I/O error","Will be raised when storage engine encounters an I/O error."
 
 ################################################################################
 ## ArangoDB replication errors

@@ -426,11 +426,12 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesWalSlots.cpp
   MMFiles/mmfiles-replication-dump.cpp
 )
-  
+
 # add sources for rocksdb engine
 set(ARANGOD_SOURCES
   ${ARANGOD_SOURCES}
   RocksDBEngine/RocksDBCollection.cpp
+  RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
