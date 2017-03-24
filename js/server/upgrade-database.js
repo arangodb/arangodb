@@ -94,7 +94,10 @@
     constant2name[DATABASE_EXISTING] = 'existing';
 
     // path to version file
-    const versionFile = internal.db._path() + '/VERSION';
+    let versionFile;
+    if (internal.db._path()) {
+      versionFile = internal.db._path() + '/VERSION';
+    }
 
     // all defined tasks
     const allTasks = [];
@@ -284,7 +287,7 @@
           lastTasks[task.name] = true;
 
           // save/update version info
-          if (isLocal) {
+          if (isLocal && versionFile) {
             fs.write(
               versionFile,
               JSON.stringify({
@@ -300,7 +303,7 @@
       }
 
       // save file so version gets saved even if there are no tasks
-      if (isLocal) {
+      if (isLocal && versionFile) {
         fs.write(
           versionFile,
           JSON.stringify({
@@ -347,7 +350,7 @@
       }
 
       // VERSION file exists, read its contents
-      if (fs.exists(versionFile)) {
+      if (versionFile && fs.exists(versionFile)) {
         var versionInfo = fs.read(versionFile);
 
         if (versionInfo === '') {
@@ -374,9 +377,7 @@
         const lv = Math.floor(lastVersion / 100);
         const cv = Math.floor(currentVersion / 100);
 
-require("internal").print("AHA");
         if (lv === cv || (lv === 300 && cv === 301)) {
-require("internal").print("AHA2");
           global.UPGRADE_TYPE = 1;
           return runTasks(cluster, DATABASE_EXISTING, lastVersion);
         }
