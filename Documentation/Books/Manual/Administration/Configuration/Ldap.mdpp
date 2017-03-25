@@ -7,14 +7,17 @@ The basic options are `--ldap.enabled`, `--ldap.tls`, `--ldap.port`, `--ldap.ser
 
 `--ldap.server` and `--ldap.port` can be replace by `--ldap.url`.
 
-`--ldap.permissions-attribute-name` has the format *databse-name=(*|rw|none)[,database-name=(*|rw|none)]*.
+The default for `--ldap.port` is *389*.
+
+`--ldap.permissions-attribute-name` has the format *databse-name=(\*|rw|none)[,database-name=(\*|rw|none)]*.
 
 There are two modes of operation: *simple auth* and *bind+search*.
 
 ### simple auth
 
-ArangoDB connects to the ldap server and authenticates with the username and password provided and 
-searches for the database permissions using the attribute name provided by `--ldap.permissions-attribute-name.
+ArangoDB connects to the ldap server and authenticates with the username and password provided by the 
+api authentication request and searches for the database permissions using the attribute name 
+provided by `--ldap.permissions-attribute-name.
 
 Example:
 
@@ -55,7 +58,7 @@ Restrict the search to specific object classes. The default is `objectClass=*`.
 
     --ldap.searchattribute "uid"
 
-`--ldap.searchattribute` specifies which attribute contains the *username*.
+`--ldap.searchattribute` specifies which attribute contains the authenticating *username*.
 
 ### ldap url
 
