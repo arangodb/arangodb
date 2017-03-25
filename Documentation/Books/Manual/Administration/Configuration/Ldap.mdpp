@@ -3,8 +3,25 @@ LDAP
 
 __This feature is available in the Enterprise Edition.__
 
-The basic options are `--ldap.enabled`, `--ldap.tls`, `--ldap.port`, `--ldap.server` and `--ldap.permissionsattributename`.
-`--ldap.server` can be specified multiple times.
+The basic options are `--ldap.enabled`, `--ldap.tls`, `--ldap.port`, `--ldap.server` and `--ldap.permissions-attribute-name`.
+
+`--ldap.server` and `--ldap.port` can be replace by `--ldap.url`.
+
+`--ldap.permissions-attribute-name` has the format *databse-name=(*|rw|none)[,database-name=(*|rw|none)]*.
+
+There are two modes of operation: *simple auth* and *bind+search*.
+
+### simple auth
+
+Example:
+
+    --ldap.enabled true --ldap.server 192.168.2.119 --ldap.permissions-attribute-name description \
+    --ldap.prefix uid= --ldap.suffix ,dc=example,dc=com
+
+`--ldap.prefix` and `--ldap.suffix` build the distinguished name (DN). ArangoDB trys to authenticate
+with *prefix* + *ArangoDB username* + *suffix* against the ldap server and search for the database permissions.
+
+### bind+search
 
 
 
@@ -12,8 +29,6 @@ The basic options are `--ldap.enabled`, `--ldap.tls`, `--ldap.port`, `--ldap.ser
 
 
 
-
---ldap.enabled true --ldap.server 192.168.2.119 --ldap.prefix uid= --ldap.suffix ,dc=example,dc=com --ldap.permissionsattributename description
 
 --ldap.enabled true --ldap.server 192.168.2.119 --ldap.basedn dc=example,dc=com  --ldap.searchfilter "objectClass=simpleSecurityObject"
 --ldap.searchattribute "uid" --ldap.binddn cn=admin,dc=example,dc=com --ldap.bindpasswd hallo --ldap.permissionsattributename description
