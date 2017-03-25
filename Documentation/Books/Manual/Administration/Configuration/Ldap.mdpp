@@ -9,7 +9,7 @@ The basic options are `--ldap.enabled`, `--ldap.tls`, `--ldap.port`, `--ldap.ser
 
 The default for `--ldap.port` is *389*.
 
-`--ldap.permissions-attribute-name` has the format *databse-name=(\*|rw|none)[,database-name=(\*|rw|none)]*.
+`--ldap.permissions-attribute-name` has the format *databse-name=(&#42;|rw|none)[,database-name=(&#42;|rw|none)]*.
 
 There are two modes of operation: *simple auth* and *bind+search*.
 
