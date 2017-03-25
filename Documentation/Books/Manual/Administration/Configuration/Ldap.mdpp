@@ -58,7 +58,7 @@ Restrict the search to specific object classes. The default is `objectClass=*`.
 
     --ldap.searchattribute "uid"
 
-`--ldap.searchattribute` specifies which attribute contains the authenticating *username*.
+`--ldap.searchattribute` specifies which attribute to compare with the *username*.
 
 ### ldap url
 
