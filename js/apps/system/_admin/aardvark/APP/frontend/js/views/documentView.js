@@ -256,8 +256,10 @@
       }
 
       model = JSON.stringify(model);
+      console.log(model);
+      console.log(this.type);
 
-      if (this.type._from && this.type._to) {
+      if (this.type === 'edge' || this.type._from) {
         var callbackE = function (error, data) {
           if (error) {
             arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
@@ -267,7 +269,7 @@
           }
         }.bind(this);
 
-        this.collection.saveEdge(this.colid, this.docid, this.type._from, this.type._to, model, callbackE);
+        this.collection.saveEdge(this.colid, this.docid, $('#document-from').html(), $('#document-to').html(), model, callbackE);
       } else {
         var callback = function (error, data) {
           if (error) {
