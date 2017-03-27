@@ -31,12 +31,11 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
 
-
 namespace arangodb {
 class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
-class RocksDBPrimaryIndex;
+class RocksDBPrimaryMockIndex;
 
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
@@ -180,7 +179,25 @@ class RocksDBCollection final : public PhysicalCollection {
   void addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
   int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx);
-  arangodb::RocksDBPrimaryIndex* primaryIndex() const;
+  arangodb::RocksDBPrimaryMockIndex* primaryIndex() const;
+
+  int insertDocument(arangodb::transaction::Methods* trx,
+                     TRI_voc_rid_t revisionId,
+                     arangodb::velocypack::Slice const& doc,
+                     bool& waitForSync);
+
+  int removeDocument(arangodb::transaction::Methods* trx,
+                     TRI_voc_rid_t revisionId,
+                     arangodb::velocypack::Slice const& doc,
+                     bool& waitForSync);
+
+  int lookupDocument(transaction::Methods* trx,
+                     arangodb::velocypack::Slice key,
+                     ManagedDocumentResult& result);
+
+  int updateDocument(transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
+                     arangodb::velocypack::Slice const& oldDoc, TRI_voc_rid_t newRevisionId,
+                     arangodb::velocypack::Slice const& newDoc, bool& waitForSync);
 
  private:
   uint64_t _objectId; // rocksdb-specific object id for collection

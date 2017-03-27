@@ -1486,7 +1486,7 @@ int fetchEdgesFromEngines(
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
     VPackSlice const vertexId,
     size_t depth,
-    std::unordered_map<VPackSlice, VPackSlice>& cache,
+    std::unordered_map<StringRef, VPackSlice>& cache,
     std::vector<VPackSlice>& result,
     std::vector<std::shared_ptr<VPackBuilder>>& datalake,
     VPackBuilder& builder,
@@ -1547,11 +1547,12 @@ int fetchEdgesFromEngines(
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
       VPackSlice id = e.get(StaticStrings::IdString);
-      auto resE = cache.find(id);
+      StringRef idRef(id);
+      auto resE = cache.find(idRef);
       if (resE == cache.end()) {
         // This edge is not yet cached. 
         allCached = false;
-        cache.emplace(id, e);
+        cache.emplace(idRef, e);
         result.emplace_back(e);
       } else {
         result.emplace_back(resE->second);
@@ -1576,8 +1577,8 @@ int fetchEdgesFromEngines(
 void fetchVerticesFromEngines(
     std::string const& dbname,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::unordered_set<VPackSlice>& vertexIds,
-    std::unordered_map<VPackSlice, std::shared_ptr<VPackBuffer<uint8_t>>>&
+    std::unordered_set<StringRef>& vertexIds,
+    std::unordered_map<StringRef, std::shared_ptr<VPackBuffer<uint8_t>>>&
         result,
     VPackBuilder& builder) {
   auto cc = ClusterComm::instance();
@@ -1594,8 +1595,8 @@ void fetchVerticesFromEngines(
   builder.add(VPackValue("keys"));
   builder.openArray();
   for (auto const& v : vertexIds) {
-    TRI_ASSERT(v.isString());
-    builder.add(v);
+    //TRI_ASSERT(v.isString());
+    builder.add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
   }
   builder.close(); // 'keys' Array
   builder.close(); // base object
@@ -1638,17 +1639,18 @@ void fetchVerticesFromEngines(
                     resSlice, "errorMessage", TRI_errno_string(code)));
     }
     for (auto const& pair : VPackObjectIterator(resSlice)) {
-      if (vertexIds.erase(pair.key) == 0) {
+      StringRef key(pair.key);
+      if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
         // or found a vertex we did not request.
         // Anyways something somewhere went seriously wrong
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
       }
-      TRI_ASSERT(result.find(pair.key) == result.end());
+      TRI_ASSERT(result.find(key) == result.end());
       auto val = VPackBuilder::clone(pair.value);
       VPackSlice id = val.slice().get(StaticStrings::IdString);
       TRI_ASSERT(id.isString());
-      result.emplace(id, val.steal());
+      result.emplace(StringRef(id), val.steal());
     }
   }
 

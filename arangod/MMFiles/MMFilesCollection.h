@@ -490,7 +490,7 @@ class MMFilesCollection final : public PhysicalCollection {
   int deleteSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
                               velocypack::Slice const&, bool isRollback);
 
-  int lookupDocument(transaction::Methods*, velocypack::Slice const,
+  int lookupDocument(transaction::Methods*, velocypack::Slice,
                       ManagedDocumentResult& result);
 
   int updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,

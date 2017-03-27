@@ -226,6 +226,7 @@ class RocksDBEngine final : public StorageEngine {
   void addRestHandlers(rest::RestHandlerFactory*) override;
 
   void addParametersForNewCollection(arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice info) override;
+  void addParametersForNewIndex(arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice info) override;
   
   rocksdb::TransactionDB* db() const { return _db; }
 

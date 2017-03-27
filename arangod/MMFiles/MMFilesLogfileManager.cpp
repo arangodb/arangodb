@@ -109,15 +109,14 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "creating WAL logfile manager";
   TRI_ASSERT(!_allowWrites);
 
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("FeatureCache");
-
-  for (auto const& it : EngineSelectorFeature::availableEngines()) {
-    startsAfter(it.second);
-  }
+  startsAfter("MMFilesEngine");
+  
+  onlyEnabledWith("MMFilesEngine");
 }
 
 // destroy the logfile manager

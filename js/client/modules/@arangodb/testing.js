@@ -101,6 +101,8 @@ const optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '',
+  '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `mmfiles`',
+  '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -190,6 +192,7 @@ const optionsDefaults = {
   'skipShebang': false,
   'skipSsl': false,
   'skipTimeCritical': false,
+  'storageEngine': 'mmfiles',
   'test': undefined,
   'testBuckets': undefined,
   'username': 'root',
@@ -261,6 +264,25 @@ let LOGS_DIR;
 let UNITTESTS_DIR;
 let GDB_OUTPUT = "";
 
+function doOnePathInner(path) {
+  return _.filter(fs.list(makePathUnix(path)),
+                  function (p) {
+                    return p.substr(-3) === '.js';
+                  })
+    .map(function (x) {
+      return fs.join(makePathUnix(path), x);
+    }).sort();
+}
+
+function scanTestPath(path) {
+  var community = doOnePathInner(path);
+  if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
+    return community.concat(doOnePathInner('enterprise/' + path));
+  } else {
+    return community;
+  }
+}
+
 function makeResults (testname, instanceInfo) {
   const startTime = time();
 
@@ -322,13 +344,17 @@ function makeArgsArangod (options, appDir, role) {
     config = "arangod-" + role + ".conf";
   }
 
-  return {
+  let args = {
     'configuration': fs.join(CONFIG_DIR, config),
     'define': 'TOP_DIR=' + TOP_DIR,
     'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
     'http.trusted-origin': options.httpTrustedOrigin || 'all'
   };
+  if (options.storageEngine !== 'mmfiles') {
+    args['server.storage-engine'] = 'rocksdb';
+  }
+  return args;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -545,7 +571,7 @@ function analyzeCrash (binary, arangod, options, checkStr) {
     var cp = corePattern.asciiSlice(0, corePattern.length);
 
     if (matchApport.exec(cp) != null) {
-      print(RED + "apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.");
+      print(RED + "apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis." + RESET);
       return;
     }
 
@@ -556,7 +582,7 @@ function analyzeCrash (binary, arangod, options, checkStr) {
       options.coreDirectory = cp.replace("%e", "*").replace("%t", "*").replace("%p", arangod.pid);
     }
     else {
-      print(RED + "Don't know howto locate corefiles in your system. '" + cpf + "' contains: '" + cp + "'");
+      print(RED + "Don't know howto locate corefiles in your system. '" + cpf + "' contains: '" + cp + "'" + RESET);
       return;
     }
   }
@@ -573,7 +599,7 @@ function analyzeCrash (binary, arangod, options, checkStr) {
     storeArangodPath + ' for later analysis.\n' +
     'Server shut down with :\n' +
     yaml.safeDump(arangod) +
-    'marking build as crashy.');
+    'marking build as crashy.' + RESET);
 
   let corePath = (options.coreDirectory === '')
       ? 'core'
@@ -826,6 +852,7 @@ function performTests (options, testList, testname, runFn) {
 
   let results = {};
   let continueTesting = true;
+  let count = 0;
 
   for (let i = 0; i < testList.length; i++) {
     let te = testList[i];
@@ -834,6 +861,7 @@ function performTests (options, testList, testname, runFn) {
     if (filterTestcaseByOptions(te, options, filtered)) {
       let first = true;
       let loopCount = 0;
+      count += 1;
 
       while (first || options.loopEternal) {
         if (!continueTesting) {
@@ -893,6 +921,15 @@ function performTests (options, testList, testname, runFn) {
         print('Skipped ' + te + ' because of ' + filtered.filter);
       }
     }
+  }
+
+  if (count === 0) {
+      results["ALLTESTS"] = {
+        status: false,
+        skipped: true
+      };
+    results.status = false;
+    print(RED + "No testcase matched the filter." + RESET);
   }
 
   print('Shutting down...');
@@ -1029,7 +1066,7 @@ function executeArangod (cmd, args, options) {
 // / @brief executes a command and wait for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, disableCoreCheck = false) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -1072,7 +1109,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir) {
 
   let errorMessage = ' - ';
 
-  if (res.hasOwnProperty('signal') &&
+  if (!disableCoreCheck &&
+      res.hasOwnProperty('signal') &&
       ((res.signal === 11) ||
        (res.signal === 6) ||
        // Windows sometimes has random numbers in signal...
@@ -1793,11 +1831,13 @@ function rubyTests (options, ssl) {
     }
   };
 
+  let count = 0;
   for (let i = 0; i < files.length; i++) {
     const te = files[i];
 
     if (te.substr(0, 4) === 'api-' && te.substr(-3) === '.rb') {
       if (filterTestcaseByOptions(te, options, filtered)) {
+        count += 1;
         if (!continueTesting) {
           print('Skipping ' + te + ' server is gone.');
 
@@ -1870,6 +1910,15 @@ function rubyTests (options, ssl) {
 
   print('Shutting down...');
 
+  if (count === 0) {
+      result["ALLTESTS"] = {
+        status: false,
+        skipped: true
+      };
+    result.status = false;
+    print(RED + "No testcase matched the filter." + RESET);
+  }
+
   fs.remove(tmpname);
   shutdownInstance(instanceInfo, options);
   print('done.');
@@ -1886,56 +1935,37 @@ let testsCases = {
 };
 
 function findTests () {
-  function doOnePathInner(path) {
-    return _.filter(fs.list(makePathUnix(path)),
-                    function (p) {
-                      return p.substr(-3) === '.js';
-                    })
-            .map(function (x) {
-                   return fs.join(makePathUnix(path), x);
-                 }).sort();
-  }
-
-  function doOnePath(path) {
-    var community = doOnePathInner(path);
-    if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
-      return community.concat(doOnePathInner('enterprise/' + path));
-    } else {
-      return community;
-    }
-  }
-
 
   if (testsCases.setup) {
     return;
   }
 
-  testsCases.common = doOnePath('js/common/tests/shell');
+  testsCases.common = scanTestPath('js/common/tests/shell');
 
-  testsCases.server_only = doOnePath('js/server/tests/shell');
+  testsCases.server_only = scanTestPath('js/server/tests/shell');
 
-  testsCases.client_only = doOnePath('js/client/tests/shell');
+  testsCases.client_only = scanTestPath('js/client/tests/shell');
 
-  testsCases.server_aql = doOnePath('js/server/tests/aql');
+  testsCases.server_aql = scanTestPath('js/server/tests/aql');
   testsCases.server_aql = _.filter(testsCases.server_aql,
     function(p) { return p.indexOf('ranges-combined') === -1; });
 
-  testsCases.server_aql_extended = doOnePath('js/server/tests/aql');
+  testsCases.server_aql_extended = scanTestPath('js/server/tests/aql');
   testsCases.server_aql_extended = _.filter(testsCases.server_aql_extended,
     function(p) { return p.indexOf('ranges-combined') !== -1; });
 
-  testsCases.server_aql_performance = doOnePath('js/server/perftests');
+  testsCases.server_aql_performance = scanTestPath('js/server/perftests');
 
-  testsCases.server_http = doOnePath('js/common/tests/http');
+  testsCases.server_http = scanTestPath('js/common/tests/http');
 
-  testsCases.replication = doOnePath('js/common/tests/replication');
+  testsCases.replication = scanTestPath('js/common/tests/replication');
 
-  testsCases.agency = doOnePath('js/client/tests/agency');
+  testsCases.agency = scanTestPath('js/client/tests/agency');
 
-  testsCases.resilience = doOnePath('js/server/tests/resilience');
+  testsCases.resilience = scanTestPath('js/server/tests/resilience');
 
-  testsCases.client_resilience = doOnePath('js/client/tests/resilience');
-  testsCases.cluster_sync = doOnePath('js/server/tests/cluster-sync');
+  testsCases.client_resilience = scanTestPath('js/client/tests/resilience');
+  testsCases.cluster_sync = scanTestPath('js/server/tests/cluster-sync');
 
   testsCases.server = testsCases.common.concat(testsCases.server_only);
   testsCases.client = testsCases.common.concat(testsCases.client_only);
@@ -1950,7 +1980,7 @@ function findTests () {
 function filterTestcaseByOptions (testname, options, whichFilter) {
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     whichFilter.filter = 'testcase';
-    return testname === options.test;
+    return testname.search(options.test) >= 0;
   }
 
   if (options.replication) {
@@ -2016,6 +2046,14 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === "rocksdb") {
+    whichFilter.filter = 'skip when running as rocksdb';
+    return false;
+  }
+  if ((testname.indexOf('-rocksdb') !== -1) && options.storageEngine === "mmfiles") {
+    whichFilter.filter = 'skip when running as mmfiles';
+    return false;
+  } 
   return true;
 }
 
@@ -3466,8 +3504,7 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
   }
 
   argv = argv.concat([
-    '--javascript.script',
-    fs.join('.', 'js', 'server', 'tests', 'recovery', script + '.js')
+    '--javascript.script', script
   ]);
 
   let binary = ARANGOD_BIN;
@@ -3476,93 +3513,8 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
     argv.unshift(ARANGOD_BIN);
   }
 
-  instanceInfo.pid = executeAndWait(binary, argv, options, "recovery", instanceInfo.rootDir);
+  instanceInfo.pid = executeAndWait(binary, argv, options, "recovery", instanceInfo.rootDir, setup);
 }
-
-const recoveryTests = [
-  'insert-update-replace',
-  'die-during-collector',
-  'disk-full-logfile',
-  'disk-full-logfile-data',
-  'disk-full-datafile',
-  'collection-drop-recreate',
-  'collection-duplicate-name',
-  'create-with-temp',
-  'create-with-temp-old',
-  'create-collection-fail',
-  'create-collection-tmpfile',
-  'create-database-existing',
-  'create-database-fail',
-  'empty-datafiles',
-  'flush-drop-database-and-fail',
-  'drop-database-flush-and-fail',
-  'drop-database-only-tmp',
-  'create-databases',
-  'recreate-databases',
-  'drop-databases',
-  'create-and-drop-databases',
-  'drop-database-and-fail',
-  'flush-drop-database-and-fail',
-  'collection-rename-recreate',
-  'collection-rename-recreate-flush',
-  'collection-unload',
-  'resume-recovery-multi-flush',
-  'resume-recovery-simple',
-  'resume-recovery-all',
-  'resume-recovery-other',
-  'resume-recovery',
-  'foxx-directories',
-  'collection-duplicate',
-  'collection-rename',
-  'collection-properties',
-  'empty-logfiles',
-  'many-logs',
-  'multiple-logs',
-  'collection-recreate',
-  'drop-index',
-  'drop-index-shutdown',
-  'drop-indexes',
-  'create-indexes',
-  'create-collections',
-  'recreate-collection',
-  'drop-single-collection',
-  'drop-collections',
-  'collections-reuse',
-  'collections-different-attributes',
-  'indexes-after-flush',
-  'indexes-hash',
-  'indexes-rocksdb',
-  'indexes-rocksdb-nosync',
-  'indexes-rocksdb-restore',
-  'indexes-sparse-hash',
-  'indexes-skiplist',
-  'indexes-sparse-skiplist',
-  'indexes-geo',
-  'edges',
-  'indexes',
-  'many-inserts',
-  'many-updates',
-  'wait-for-sync',
-  'attributes',
-  'no-journal',
-  'write-throttling',
-  'collector-oom',
-  'transaction-no-abort',
-  'transaction-no-commit',
-  'transaction-just-committed',
-  'multi-database-durability',
-  'disk-full-no-collection-journal',
-  'no-shutdown-info-with-flush',
-  'no-shutdown-info-no-flush',
-  'no-shutdown-info-multiple-logs',
-  'insert-update-remove',
-  'insert-update-remove-distance',
-  'big-transaction-durability',
-  'transaction-durability',
-  'transaction-durability-multiple',
-  'corrupt-wal-marker-multiple',
-  'corrupt-wal-marker-single'
-];
 
 testFuncs.recovery = function (options) {
   let results = {};
@@ -3577,11 +3529,16 @@ testFuncs.recovery = function (options) {
   
   let status = true;
 
+  let recoveryTests = scanTestPath('js/server/tests/recovery');
+  let count = 0;
+  
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
+    let filtered = {};
 
-    if (options.test === undefined || options.test === test) {
+    if (filterTestcaseByOptions (test, options, filtered )) {
       let instanceInfo = {};
+      count += 1;
 
       runArangodRecovery(instanceInfo, options, test, true);
 
@@ -3597,13 +3554,20 @@ testFuncs.recovery = function (options) {
         status = false;
       }
     } else {
-      results[test] = {
-        status: true,
-        skipped: true
-      };
+      if (options.extremeVerbosity) {
+        print('Skipped ' + test + ' because of ' + filtered.filter);
+      }
     }
   }
 
+  if (count === 0) {
+      results["ALLTESTS"] = {
+        status: false,
+        skipped: true
+      };
+    status = false;
+    print(RED + "No testcase matched the filter." + RESET);
+  }
   results.status = status;
 
   return {

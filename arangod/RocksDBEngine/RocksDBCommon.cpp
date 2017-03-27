@@ -23,7 +23,7 @@
 
 #include "RocksDBCommon.h"
 
-using namespace arangodb::rocksdb;
+using namespace arangodb;
 
 arangodb::Result convertStatus(::rocksdb::Status const& status, StatusHint hint) {
   switch (status.code()) {

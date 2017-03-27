@@ -80,14 +80,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
-// TODO - move the following MMFiles includes to the storage engine
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "MMFiles/MMFilesWalRecoveryFeature.h"
-#include "MMFiles/MMFilesEngine.h"
-
-#include "RocksDBEngine/RocksDBEngine.h"
-
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -98,6 +90,10 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
+
+// storage engine
+#include "MMFiles/MMFilesEngine.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 
 using namespace arangodb;
 
@@ -195,9 +191,6 @@ static int runServer(int argc, char** argv) {
 
     // storage engines
     server.addFeature(new MMFilesEngine(&server));
-    server.addFeature(new MMFilesWalRecoveryFeature(&server));
-    server.addFeature(new MMFilesLogfileManager(&server));
-    server.addFeature(new MMFilesPersistentIndexFeature(&server));
     server.addFeature(new RocksDBEngine(&server));
 
     try {

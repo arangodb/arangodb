@@ -21,8 +21,8 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_TYPES_H
-#define ARANGO_ROCKSDB_ROCKSDB_TYPES_H 1
+#ifndef ARANGO_ROCKSDB_ROCKSDB_COMMON_H
+#define ARANGO_ROCKSDB_ROCKSDB_COMMON_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -30,14 +30,14 @@
 #include <rocksdb/status.h>
 
 namespace arangodb {
-namespace rocksdb {
+//namespace rocksdb {
 
 enum StatusHint { none, document, collection, view, index, database };
 
-arangodb::Result convertStatus(::rocksdb::Status const&,
+arangodb::Result convertRocksDBStatus(::rocksdb::Status const&,
                                StatusHint hint = StatusHint::none);
 
-}  // namespace rocksdb
+//}  // namespace rocksdb
 }  // namespace arangodb
 
 #endif
