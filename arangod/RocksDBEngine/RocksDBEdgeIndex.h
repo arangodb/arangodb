@@ -59,9 +59,11 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
  private:
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
+  RocksDBEdgeIndex const* _index;
 };
-
+  
 class RocksDBEdgeIndex final : public Index {
+  friend class RocksDBEdgeIndexIterator;
  public:
   RocksDBEdgeIndex() = delete;
 
@@ -70,7 +72,6 @@ class RocksDBEdgeIndex final : public Index {
 
   ~RocksDBEdgeIndex();
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
 
   char const* typeName() const override { return "edge"; }
@@ -79,7 +80,7 @@ class RocksDBEdgeIndex final : public Index {
 
   bool canBeDropped() const override { return false; }
 
-  bool isSorted() const override { return true; }
+  bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return true; }
 
@@ -128,7 +129,25 @@ class RocksDBEdgeIndex final : public Index {
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
 
- public:
+ private:
+  /// @brief create the iterator
+  IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
+                                  arangodb::aql::AstNode const*,
+                                  arangodb::aql::AstNode const*) const;
+
+  IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
+                                  arangodb::aql::AstNode const*,
+                                  arangodb::aql::AstNode const*) const;
+
+  /// @brief add a single value node to the iterator's keys
+  void handleValNode(VPackBuilder* keys,
+                     arangodb::aql::AstNode const* valNode) const;
+
+  std::unique_ptr<char> buildIndexValue(arangodb::velocypack::Slice const& doc,
+                                        size_t& outSize) const;
+  std::unique_ptr<char> buildRangePrefix(arangodb::velocypack::Slice const& doc,
+                                         size_t& outSize) const;
+
   rocksdb::TransactionDB* _db;
   std::string _directionAttr;
   uint64_t _objectId;

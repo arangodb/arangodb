@@ -25,7 +25,7 @@
 
 using namespace arangodb;
 
-arangodb::Result convertStatus(::rocksdb::Status const& status, StatusHint hint) {
+arangodb::Result arangodb::convertRocksDBStatus(rocksdb::Status const& status, StatusHint hint) {
   switch (status.code()) {
     case rocksdb::Status::Code::kOk:
       return {TRI_ERROR_NO_ERROR};

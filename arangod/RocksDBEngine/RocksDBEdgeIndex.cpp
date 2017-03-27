@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEntry.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBToken.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -62,7 +63,8 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     std::unique_ptr<VPackBuilder>& keys)
     : IndexIterator(collection, trx, mmdr, index),
       _keys(keys.get()),
-      _iterator(_keys->slice()) {
+      _iterator(_keys->slice()),
+      _index(index) {
   keys.release();  // now we have ownership for _keys
 }
 
@@ -75,6 +77,49 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  
+  if (limit == 0 || !_iterator.valid()) {
+    // No limit no data, or we are actually done. The last call should have returned false
+    TRI_ASSERT(limit > 0); // Someone called with limit == 0. Api broken
+    return false;
+  }
+  while (limit > 0) {
+    
+    VPackSlice fromTo = _iterator.value();
+    TRI_ASSERT(fromTo.isString());
+    //if (tmp.isObject()) {
+    //  tmp = tmp.get(StaticStrings::IndexEq);
+    //}
+    
+    size_t prefixSize;
+    std::unique_ptr<char> str = _index->buildRangePrefix(fromTo, prefixSize);
+    
+    rocksdb::ReadOptions readOptions;
+    std::unique_ptr<rocksdb::Iterator> iter(_index->_db->NewIterator(readOptions));
+    
+    rocksdb::Slice rSlice(str.get(), prefixSize);
+    iter->Seek(rSlice);
+    while (iter->Valid() && iter->key().starts_with(rSlice)) {
+      TRI_ASSERT(iter->key().size() > prefixSize);
+      VPackSlice edgeKey = VPackSlice(iter->key().data() + prefixSize);
+      TRI_ASSERT(edgeKey.isString());
+      
+#warning TODO query primary index ?!!
+      cb(RocksDBToken(0));
+
+      if (--limit == 0) {
+        break;
+      }
+      iter->Next();
+    }
+    if (limit > 0) {
+      _iterator.next();
+      if (!_iterator.valid()) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 void RocksDBEdgeIndexIterator::reset() { THROW_ARANGO_NOT_YET_IMPLEMENTED(); }
@@ -120,10 +165,9 @@ double RocksDBEdgeIndex::selectivityEstimate(
     if (attribute->compare(_directionAttr) == 0) {
       // _from
       return 0.2;  //_edgesFrom->selectivity();
-    } /*else if (attribute->compare(StaticStrings::ToString) == 0) {
-      // _to
-      return _edgesTo->selectivity();
-    }*/
+    } else {
+      return 0;
+    }
     // other attribute. now return the average selectivity
   }
 
@@ -158,36 +202,6 @@ void RocksDBEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
-static inline std::unique_ptr<char> buildIndexValue(
-    uint64_t objectId, std::string const& direction, VPackSlice const& doc,
-    size_t& outSize) {
-  VPackSlice key = doc.get(StaticStrings::KeyString);
-  VPackSlice fromTo = doc.get(direction);
-  TRI_ASSERT(key.isString() && fromTo.isString());
-  uint64_t keySize, fromToSize;
-  const char* keyPtr = key.getString(keySize);
-  const char* fromToPtr = key.getString(fromToSize);
-  TRI_ASSERT(keySize > 0 && fromToSize > 0);
-
-  size_t bufSize = 2 * sizeof(char) + sizeof(uint64_t) + fromToSize + keySize;
-  std::unique_ptr<char> buffer(new char[bufSize]);
-
-  // TODO maybe use StringBuffer
-  char* ptr = buffer.get();
-  ptr[0] = (char)RocksDBEntryType::UniqueIndexValue;
-  ptr += sizeof(char);
-  RocksDBEntry::uint64ToPersistent(ptr, objectId);
-  ptr += sizeof(uint64_t);
-  memcpy(ptr, fromToPtr, fromToSize);
-  ptr += fromToSize;
-  *(++ptr) = '\0';
-  memcpy(ptr, keyPtr, keySize);
-  TRI_ASSERT(ptr + keySize == buffer.get() + bufSize);
-
-  outSize = bufSize;
-  return buffer;
-}
-
 int RocksDBEdgeIndex::insert(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
@@ -201,8 +215,7 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   }*/
 
   size_t keySize;
-  std::unique_ptr<char> key =
-      buildIndexValue(_objectId, _directionAttr, doc, keySize);
+  std::unique_ptr<char> key = buildIndexValue(doc, keySize);
   if (key) {
     rocksdb::WriteOptions writeOptions;
     rocksdb::Status status = _db->Put(
@@ -222,8 +235,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
   size_t keySize;
-  std::unique_ptr<char> key =
-      buildIndexValue(_objectId, _directionAttr, doc, keySize);
+  std::unique_ptr<char> key = buildIndexValue(doc, keySize);
   if (key) {
     rocksdb::WriteOptions writeOptions;
     rocksdb::Status status =
@@ -238,7 +250,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
     return TRI_ERROR_INTERNAL;
   }
 }
-
+/*
 struct RDBEdgeInsertTask : public LocalTask {
   RocksDBEdgeIndex* _index;
   std::shared_ptr<rocksdb::Transaction> _rtrx;
@@ -261,7 +273,7 @@ struct RDBEdgeInsertTask : public LocalTask {
       _queue->setStatus(res.errorNumber());
     }
   }
-};
+};*/
 
 void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
@@ -270,11 +282,34 @@ void RocksDBEdgeIndex::batchInsert(
   // setup rocksdb transaction
   rocksdb::WriteOptions writeOptions;
   rocksdb::TransactionOptions transactionOptions;
-  std::shared_ptr<rocksdb::Transaction> rtxr(
+  std::unique_ptr<rocksdb::Transaction> rtxr(
       _db->BeginTransaction(writeOptions, transactionOptions));
 
+  for (std::pair<TRI_voc_rid_t, VPackSlice> doc : documents) {
+    size_t keySize;
+    std::unique_ptr<char> key = buildIndexValue(doc.second, keySize);
+
+    rocksdb::Status status =
+        rtxr->Put(rocksdb::Slice(key.get(), keySize), rocksdb::Slice());
+    if (!status.ok()) {
+      Result res = convertRocksDBStatus(status, StatusHint::index);
+      queue->setStatus(res.errorNumber());
+      rtxr->Rollback();
+      break;
+    }
+
+    // auto task =
+    // std::make_shared<RDBEdgeInsertTask>(queue, this, rtxr, doc.second);
+    // queue->enqueue(task);
+  }
+  rocksdb::Status status = rtxr->Commit();
+  if (!status.ok()) {
+    Result res = convertRocksDBStatus(status);
+    queue->setStatus(res.errorNumber());
+  }
+
   // commit in callback called after all tasks finish
-  std::shared_ptr<LocalCallbackTask> callback(
+  /*std::shared_ptr<LocalCallbackTask> callback(
       new LocalCallbackTask(queue, [rtxr, queue] {
         rocksdb::Status status = rtxr->Commit();
         if (!status.ok()) {
@@ -291,7 +326,7 @@ void RocksDBEdgeIndex::batchInsert(
   } catch (...) {
     queue->setStatus(TRI_ERROR_INTERNAL);
   }
-  queue->enqueueCallback(callback);
+  queue->enqueueCallback(callback);*/
 }
 
 /// @brief unload the index data from memory
@@ -321,7 +356,39 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+  TRI_ASSERT(node->numMembers() == 1);
+
+  auto comp = node->getMember(0);
+
+  // assume a.b == value
+  auto attrNode = comp->getMember(0);
+  auto valNode = comp->getMember(1);
+
+  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // got value == a.b  -> flip sides
+    attrNode = comp->getMember(1);
+    valNode = comp->getMember(0);
+  }
+  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+  TRI_ASSERT(attrNode->stringEquals(_directionAttr));
+
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    // a.b == value
+    return createEqIterator(trx, mmdr, attrNode, valNode);
+  }
+
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    // a.b IN values
+    if (!valNode->isArray()) {
+      return nullptr;
+    }
+
+    return createInIterator(trx, mmdr, attrNode, valNode);
+  }
+
+  // operator type unsupported
   return nullptr;
 }
 
@@ -367,4 +434,124 @@ void RocksDBEdgeIndex::expandInSearchValues(VPackSlice const slice,
     }
   }
   builder.close();
+}
+
+// ===================== Helpers ==================
+
+/// @brief create the iterator
+IndexIterator* RocksDBEdgeIndex::createEqIterator(
+    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    arangodb::aql::AstNode const* attrNode,
+    arangodb::aql::AstNode const* valNode) const {
+  // lease builder, but immediately pass it to the unique_ptr so we don't leak
+  transaction::BuilderLeaser builder(trx);
+  std::unique_ptr<VPackBuilder> keys(builder.steal());
+  keys->openArray();
+
+  handleValNode(keys.get(), valNode);
+  TRI_IF_FAILURE("EdgeIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  keys->close();
+
+  return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys);
+}
+
+/// @brief create the iterator
+IndexIterator* RocksDBEdgeIndex::createInIterator(
+    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    arangodb::aql::AstNode const* attrNode,
+    arangodb::aql::AstNode const* valNode) const {
+  // lease builder, but immediately pass it to the unique_ptr so we don't leak
+  transaction::BuilderLeaser builder(trx);
+  std::unique_ptr<VPackBuilder> keys(builder.steal());
+  keys->openArray();
+
+  size_t const n = valNode->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    handleValNode(keys.get(), valNode->getMemberUnchecked(i));
+    TRI_IF_FAILURE("EdgeIndex::iteratorValNodes") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
+  TRI_IF_FAILURE("EdgeIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  keys->close();
+
+  return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys);
+}
+
+/// @brief add a single value node to the iterator's keys
+void RocksDBEdgeIndex::handleValNode(
+    VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const {
+  if (!valNode->isStringValue() || valNode->getStringLength() == 0) {
+    return;
+  }
+
+  keys->openObject();
+  keys->add(StaticStrings::IndexEq,
+            VPackValuePair(valNode->getStringValue(),
+                           valNode->getStringLength(), VPackValueType::String));
+  keys->close();
+
+  TRI_IF_FAILURE("EdgeIndex::collectKeys") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+}
+
+// ================================= Stuff ===========================
+
+std::unique_ptr<char> RocksDBEdgeIndex::buildIndexValue(VPackSlice const& doc,
+                                                        size_t& outSize) const {
+  VPackSlice key = doc.get(StaticStrings::KeyString);
+  VPackSlice fromTo = doc.get(_directionAttr);
+  TRI_ASSERT(key.isString() && fromTo.isString());
+  uint64_t keySize, fromToSize;
+  const char* keyPtr = key.getString(keySize);
+  const char* fromToPtr = fromTo.getString(fromToSize);
+  TRI_ASSERT(keySize > 0 && fromToSize > 0);
+
+  size_t bufSize = 2 * sizeof(char) + sizeof(uint64_t) + fromToSize + keySize;
+  std::unique_ptr<char> buffer(new char[bufSize]);
+
+  // TODO maybe use StringBuffer
+  char* ptr = buffer.get();
+  ptr[0] = (char)RocksDBEntryType::UniqueIndexValue;
+  ptr += sizeof(char);
+  RocksDBEntry::uint64ToPersistent(ptr, _objectId);
+  ptr += sizeof(uint64_t);
+  memcpy(ptr, fromToPtr, fromToSize);
+  ptr += fromToSize;
+  *(++ptr) = '\0';
+  memcpy(ptr, keyPtr, keySize);
+  TRI_ASSERT(ptr + keySize == buffer.get() + bufSize);
+
+  outSize = bufSize;
+  return buffer;
+}
+
+std::unique_ptr<char> RocksDBEdgeIndex::buildRangePrefix(VPackSlice const& fromTo,
+                                                         size_t& outSize) const {
+  TRI_ASSERT(fromTo.isString());
+  uint64_t keySize, fromToSize;
+  const char* fromToPtr = fromTo.getString(fromToSize);
+  TRI_ASSERT(keySize > 0 && fromToSize > 0);
+
+  size_t bufSize = 2 * sizeof(char) + sizeof(uint64_t) + fromToSize;
+  std::unique_ptr<char> buffer(new char[bufSize]);
+
+  // TODO maybe use StringBuffer
+  char* ptr = buffer.get();
+  ptr[0] = (char)RocksDBEntryType::UniqueIndexValue;
+  ptr += sizeof(char);
+  RocksDBEntry::uint64ToPersistent(ptr, _objectId);
+  ptr += sizeof(uint64_t);
+  memcpy(ptr, fromToPtr, fromToSize);
+  ptr += fromToSize;
+  *(++ptr) = '\0';
+
+  outSize = bufSize;
+  return buffer;
 }
