@@ -1139,9 +1139,14 @@ actions.defineHttp({
     _.each(result.results, function (info, collection) {
       _.each(info.Plan, function (shard, shardkey) {
         // check if shard is out of sync
-        if (!_.isEqual(shard.followers, info.Current[shardkey].followers)) {
+        if (typeof info.Plan[shardkey].leader !== 'string') {
+          info.Plan[shardkey].leader = 'unknown';
+          return;
+        }
+        diff = getDifference(shard.followers, info.Current[shardkey].followers);
+        if (shard.followers[0] === info.Current[shardkey].followers[0] &&
+            diff.length > 0) {
           // if not in sync, get document counts of leader and compare with follower
-          diff = getDifference(shard.followers, info.Current[shardkey].followers);
 
           dbsToCheck.push({
             shard: shardkey,
