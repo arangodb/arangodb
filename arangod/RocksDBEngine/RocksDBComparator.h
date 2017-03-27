@@ -49,23 +49,13 @@ class RocksDBComparator final : public rocksdb::Comparator {
 
  private:
   int compareType(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;
-  int compareDatabases(rocksdb::Slice const& lhs,
-                       rocksdb::Slice const& rhs) const;
-  int compareCollections(rocksdb::Slice const& lhs,
-                         rocksdb::Slice const& rhs) const;
-  int compareIndexes(rocksdb::Slice const& lhs,
-                     rocksdb::Slice const& rhs) const;
-  int compareDocuments(rocksdb::Slice const& lhs,
-                       rocksdb::Slice const& rhs) const;
+  int compareLexicographic(rocksdb::Slice const& lhs,
+                           rocksdb::Slice const& rhs) const;
   int compareIndexValues(rocksdb::Slice const& lhs,
                          rocksdb::Slice const& rhs) const;
   int compareUniqueIndexValues(rocksdb::Slice const& lhs,
                                rocksdb::Slice const& rhs) const;
-  int compareViews(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;
-  int compareLexicographic(rocksdb::Slice const& lhs,
-                           rocksdb::Slice const& rhs) const;
   int compareIndexedValues(VPackSlice const& lhs, VPackSlice const& rhs) const;
-  VPackSlice extractIndexedValues(rocksdb::Slice const& key) const;
 
  private:
   const std::string _name;
