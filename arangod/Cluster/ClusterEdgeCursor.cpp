@@ -26,39 +26,48 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTraverser.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
+#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using ClusterEdgeCursor = arangodb::traverser::ClusterEdgeCursor;
 
-ClusterEdgeCursor::ClusterEdgeCursor(VPackSlice v, uint64_t depth,
+ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
                                      arangodb::traverser::ClusterTraverser* traverser)
-    : _position(0) {
+    : _position(0), _resolver(traverser->_trx->resolver()), _traverser(traverser) {
       transaction::BuilderLeaser leased(traverser->_trx);
-      fetchEdgesFromEngines(traverser->_dbname, traverser->_engines, v, depth,
+      
+      transaction::BuilderLeaser b(traverser->_trx);
+      b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
+
+      
+      fetchEdgesFromEngines(traverser->_dbname, traverser->_engines, b->slice(), depth,
                             traverser->_edges, _edgeList, traverser->_datalake,
                             *(leased.get()), traverser->_filteredPaths,
                             traverser->_readDocuments);
+      
     }
 
-
-bool ClusterEdgeCursor::next(std::vector<VPackSlice>& result, size_t& cursorId) {
+bool ClusterEdgeCursor::next(std::function<void(StringRef const&,
+                                                VPackSlice, size_t)> callback) {
   if (_position < _edgeList.size()) {
-    result.emplace_back(_edgeList[_position]);
+    VPackSlice edge = _edgeList[_position];
+    std::string eid = transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
+    StringRef persId = _traverser->traverserCache()->persistString(StringRef(eid));
+    callback(persId, edge, _position);
     ++_position;
     return true;
   }
   return false;
 }
 
-bool ClusterEdgeCursor::readAll(std::unordered_set<VPackSlice>& result, size_t& cursorId) {
-  if (_position == 0) {
-    // We have not yet returned anything. So we simply return everything at once.
-    std::copy(_edgeList.begin(), _edgeList.end(), std::inserter(result, result.end()));
-    _position++;
-    return true;
+void ClusterEdgeCursor::readAll(std::function<void(StringRef const&,
+                                                VPackSlice, size_t&)> callback) {
+  for (auto const& edge : _edgeList) {
+    std::string eid = transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
+    StringRef persId = _traverser->traverserCache()->persistString(StringRef(eid));
+    callback(persId, edge, _position);
   }
-  // We have already returned everything last time.
-  return false;
 }

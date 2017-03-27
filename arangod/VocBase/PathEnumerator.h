@@ -25,6 +25,7 @@
 #define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/Traverser.h"
 #include "VocBase/TraverserOptions.h"
 #include <velocypack/Slice.h>
 #include <stack>
@@ -43,8 +44,8 @@ class Traverser;
 struct TraverserOptions;
 
 struct EnumeratedPath {
-  std::vector<arangodb::velocypack::Slice> edges;
-  std::vector<arangodb::velocypack::Slice> vertices;
+  std::vector<arangodb::StringRef> edges;
+  std::vector<arangodb::StringRef> vertices;
   EnumeratedPath() {}
 };
 
@@ -69,10 +70,10 @@ class PathEnumerator {
   bool _isFirst;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Maximal path length which should be enumerated.
+  /// @brief Options used in the traversal
   //////////////////////////////////////////////////////////////////////////////
 
-  TraverserOptions const* _opts; 
+  TraverserOptions* _opts; 
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief List of the last path is used to
@@ -81,16 +82,11 @@ class PathEnumerator {
   EnumeratedPath _enumeratedPath;
 
   /// @brief List which edges have been visited already.
-  std::unordered_set<arangodb::velocypack::Slice> _returnedEdges;
+  std::unordered_set<arangodb::StringRef> _returnedEdges;
 
  public:
-  PathEnumerator(Traverser* traverser, arangodb::velocypack::Slice startVertex,
-                 TraverserOptions const* opts)
-      : _traverser(traverser), _isFirst(true), _opts(opts) {
-    TRI_ASSERT(startVertex.isString());
-    _enumeratedPath.vertices.push_back(startVertex);
-    TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
-  }
+  PathEnumerator(Traverser* traverser, std::string const& startVertex,
+                 TraverserOptions* opts);
 
   virtual ~PathEnumerator() {}
 
@@ -117,8 +113,8 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
  public:
   DepthFirstEnumerator(Traverser* traverser,
-                       arangodb::velocypack::Slice startVertex,
-                       TraverserOptions const* opts)
+                       std::string const& startVertex,
+                       TraverserOptions* opts)
       : PathEnumerator(traverser, startVertex, opts) {}
 
   ~DepthFirstEnumerator() {
@@ -142,184 +138,6 @@ class DepthFirstEnumerator final : public PathEnumerator {
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
 
 };
-
-class BreadthFirstEnumerator final : public PathEnumerator {
- private:
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief One entry in the schreier vector 
-  //////////////////////////////////////////////////////////////////////////////
-
-  struct PathStep {
-    size_t sourceIdx;
-    arangodb::velocypack::Slice edge;
-    arangodb::velocypack::Slice vertex;
-
-   private:
-    PathStep() {}
-
-   public:
-    explicit PathStep(arangodb::velocypack::Slice vertex) : sourceIdx(0), vertex(vertex) {}
-
-    PathStep(size_t sourceIdx, arangodb::velocypack::Slice edge,
-             arangodb::velocypack::Slice vertex)
-        : sourceIdx(sourceIdx), edge(edge), vertex(vertex) {}
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Struct to hold all information required to get the list of
-  ///        connected edges
-  //////////////////////////////////////////////////////////////////////////////
-
-  struct NextStep {
-    size_t sourceIdx;
-
-   private:
-    NextStep() = delete;
-
-   public:
-    explicit NextStep(size_t sourceIdx)
-        : sourceIdx(sourceIdx) {}
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief schreier vector to store the visited vertices
-  //////////////////////////////////////////////////////////////////////////////
-  
-   std::vector<PathStep> _schreier;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Next free index in schreier vector.
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t _schreierIndex;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Position of the last returned value in the schreier vector
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t _lastReturned;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Vector to store where to continue search on next depth
-  //////////////////////////////////////////////////////////////////////////////
-
-   std::vector<NextStep> _nextDepth;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Vector storing the position at current search depth
-  //////////////////////////////////////////////////////////////////////////////
-
-   std::vector<NextStep> _toSearch;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Vector storing the position at current search depth
-  //////////////////////////////////////////////////////////////////////////////
-
-   std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Marker for the search depth. Used to abort searching.
-  //////////////////////////////////////////////////////////////////////////////
-
-   uint64_t _currentDepth;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief position in _toSearch. If this is >= _toSearch.size() we are done
-  ///        with this depth.
-  //////////////////////////////////////////////////////////////////////////////
-
-   size_t _toSearchPos;
-
- public:
-  BreadthFirstEnumerator(Traverser* traverser,
-                         arangodb::velocypack::Slice startVertex,
-                         TraverserOptions const* opts);
-
-  ~BreadthFirstEnumerator() {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get the next Path element from the traversal.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool next() override;
-
-  aql::AqlValue lastVertexToAqlValue() override;
-
-  aql::AqlValue lastEdgeToAqlValue() override;
-
-  aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
-
- private:
-
-  inline size_t getDepth(size_t index) const {
-    size_t depth = 0;
-    while (index != 0) {
-      ++depth;
-      index = _schreier[index].sourceIdx;
-    }
-    return depth;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Build the enumerated path for the given index in the schreier
-  ///        vector.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void computeEnumeratedPath(size_t index);
-};
-
-// @brief Enumerator optimized for neighbors. Does not allow edge access
-
-class NeighborsEnumerator final : public PathEnumerator {
-  std::unordered_set<arangodb::basics::VPackHashedSlice,
-                     arangodb::basics::VelocyPackHelper::VPackHashedStringHash,
-                     arangodb::basics::VelocyPackHelper::VPackHashedStringEqual>
-      _allFound;
-
-  std::unordered_set<arangodb::basics::VPackHashedSlice,
-                     arangodb::basics::VelocyPackHelper::VPackHashedStringHash,
-                     arangodb::basics::VelocyPackHelper::VPackHashedStringEqual>
-      _currentDepth;
-
-  std::unordered_set<arangodb::basics::VPackHashedSlice,
-                     arangodb::basics::VelocyPackHelper::VPackHashedStringHash,
-                     arangodb::basics::VelocyPackHelper::VPackHashedStringEqual>
-      _lastDepth;
-
-  std::unordered_set<arangodb::basics::VPackHashedSlice, arangodb::basics::VelocyPackHelper::VPackHashedStringHash, arangodb::basics::VelocyPackHelper::VPackHashedStringEqual>::iterator _iterator;
-  uint64_t _searchDepth;
- 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Vector storing the position at current search depth
-  //////////////////////////////////////////////////////////////////////////////
-
-   std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
-
-
- public:
-   NeighborsEnumerator(Traverser* traverser,
-                       arangodb::velocypack::Slice startVertex,
-                       TraverserOptions const* opts);
-
-   ~NeighborsEnumerator() {
-   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get the next Path element from the traversal.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool next() override;
-
-  aql::AqlValue lastVertexToAqlValue() override;
-
-  aql::AqlValue lastEdgeToAqlValue() override;
-
-  aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
-
-};
-
-
 } // namespace traverser
 } // namespace arangodb
 
