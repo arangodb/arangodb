@@ -3530,7 +3530,7 @@ int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
 /// the caller must make sure the read lock on the collection is held
 /// the key must be a string slice, no revision check is performed
 int MMFilesCollection::lookupDocument(transaction::Methods* trx,
-                                      VPackSlice const key,
+                                      VPackSlice key,
                                       ManagedDocumentResult& result) {
   if (!key.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;

@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBPrimaryMockIndex.h"
-#include "RocksDBEntry.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "RocksDBEngine/RocksDBEntry.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
@@ -140,11 +140,16 @@ void RocksDBPrimaryMockIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   // TODO: implement
 }
 
+RocksDBToken RocksDBPrimaryMockIndex::lookupKey(transaction::Methods* trx, VPackSlice key, ManagedDocumentResult& result) {
+  std::lock_guard<std::mutex> lock(_keyRevMutex);
+  auto it = _keyRevMap.find(key.copyString());
+  if (it == _keyRevMap.end()) {
+    return RocksDBToken();
+  }
+  return RocksDBToken((*it).second);
+}
+
 int RocksDBPrimaryMockIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId, VPackSlice const& slice, bool) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "insert() called for primary index";
-#endif
-//   // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "insert() called for primary index");
   auto value = RocksDBEntry::IndexValue(objectId(), revisionId, slice);
   std::lock_guard<std::mutex> lock(_keyRevMutex);
   auto result = _keyRevMap.emplace(value.key(),value.revisionId());
@@ -155,9 +160,6 @@ int RocksDBPrimaryMockIndex::insert(transaction::Methods*, TRI_voc_rid_t revisio
 }
 
 int RocksDBPrimaryMockIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId, VPackSlice const& slice, bool) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "remove() called for primary index";
-#endif
   auto value = RocksDBEntry::IndexValue(objectId(), revisionId, slice);
   std::lock_guard<std::mutex> lock(_keyRevMutex);
   auto result = _keyRevMap.erase(value.key()); //result number of deleted elements

@@ -186,6 +186,15 @@ class RocksDBCollection final : public PhysicalCollection {
                      arangodb::velocypack::Slice const& doc,
                      bool& waitForSync);
 
+  int removeDocument(arangodb::transaction::Methods* trx,
+                     TRI_voc_rid_t revisionId,
+                     arangodb::velocypack::Slice const& doc,
+                     bool& waitForSync);
+
+  int lookupDocument(transaction::Methods* trx,
+                     arangodb::velocypack::Slice key,
+                     ManagedDocumentResult& result);
+
  private:
   uint64_t _objectId; // rocksdb-specific object id for collection
 };
