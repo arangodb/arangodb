@@ -3359,7 +3359,6 @@ function unitTest (cases, options) {
   if (globalStatus && !pu.serverCrashed) {
     pu.cleanupDBDirectories(options);
   } else {
-    print(pu.cleanupDirectories)
     print('not cleaning up as some tests weren\'t successful:\n' +
       pu.getCleanupDBDirectories);
   }

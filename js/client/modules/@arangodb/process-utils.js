@@ -579,7 +579,6 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
     if (options.extremeVerbosity) {
       print('failed to read ' + instanceInfo.rootDir + '/testresult.json');
     }
-    print(rc)
     return rc;
   }
 
