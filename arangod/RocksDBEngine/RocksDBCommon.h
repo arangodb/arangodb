@@ -30,14 +30,18 @@
 #include <rocksdb/status.h>
 
 namespace arangodb {
-//namespace rocksdb {
+namespace rocksutils {
 
 enum StatusHint { none, document, collection, view, index, database };
 
-arangodb::Result convertRocksDBStatus(::rocksdb::Status const&,
+arangodb::Result convertStatus(rocksdb::Status const&,
                                StatusHint hint = StatusHint::none);
 
-//}  // namespace rocksdb
+uint64_t uint64FromPersistent(char const* p);
+void uint64ToPersistent(char* p, uint64_t value);
+void uint64ToPersistent(std::string& out, uint64_t value);
+
+}  // namespace rocksutils
 }  // namespace arangodb
 
 #endif

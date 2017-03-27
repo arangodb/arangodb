@@ -34,8 +34,9 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBEntry.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBToken.h"
 
@@ -103,8 +104,11 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       TRI_ASSERT(iter->key().size() > prefixSize);
       VPackSlice edgeKey = VPackSlice(iter->key().data() + prefixSize);
       TRI_ASSERT(edgeKey.isString());
+
+      // TODO how to make a primary index lookup?
+      //RocksDBCollection *coll = RocksDBCollection::toRocksDBCollection(_collection);
+      //RocksDBKey::PrimaryIndexValue(<#uint64_t indexId#>, <#const std::string &primaryKey#>)
       
-#warning TODO query primary index ?!!
       cb(RocksDBToken(0));
 
       if (--limit == 0) {
@@ -143,9 +147,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(rocksdb::TransactionDB* db,
   TRI_ASSERT(iid != 0);
 #warning how to look this up?
   TRI_voc_tick_t databaseId = collection->vocbase()->id();
-  RocksDBEntry entry =
-      RocksDBEntry::Index(databaseId, collection->cid(), iid, VPackSlice());
-  _objectId = 0;
+  RocksDBKey entry = RocksDBKey::Index(databaseId, collection->cid(), iid);
+  _objectId = 0;//entry.key;
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
@@ -243,7 +246,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
     if (status.ok()) {
       return TRI_ERROR_NO_ERROR;
     } else {
-      Result res = convertRocksDBStatus(status);
+      Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
       return res.errorNumber();
     }
   } else {
@@ -292,7 +295,7 @@ void RocksDBEdgeIndex::batchInsert(
     rocksdb::Status status =
         rtxr->Put(rocksdb::Slice(key.get(), keySize), rocksdb::Slice());
     if (!status.ok()) {
-      Result res = convertRocksDBStatus(status, StatusHint::index);
+      Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
       queue->setStatus(res.errorNumber());
       rtxr->Rollback();
       break;
@@ -304,7 +307,7 @@ void RocksDBEdgeIndex::batchInsert(
   }
   rocksdb::Status status = rtxr->Commit();
   if (!status.ok()) {
-    Result res = convertRocksDBStatus(status);
+    Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
     queue->setStatus(res.errorNumber());
   }
 

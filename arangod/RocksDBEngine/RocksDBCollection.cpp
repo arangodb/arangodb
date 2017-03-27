@@ -22,18 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBCollection.h"
+#include "Aql/PlanCache.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Aql/PlanCache.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBEntry.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -48,7 +49,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-  
+
 static std::string const Empty;
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
@@ -68,7 +69,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
 RocksDBCollection::~RocksDBCollection() {}
 
 std::string const& RocksDBCollection::path() const {
-  return Empty; // we do not have any path
+  return Empty;  // we do not have any path
 }
 
 void RocksDBCollection::setPath(std::string const&) {
@@ -110,7 +111,8 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   result.add("objectId", VPackValue(std::to_string(_objectId)));
 }
 
-void RocksDBCollection::getPropertiesVPackCoordinator(velocypack::Builder& result) const {
+void RocksDBCollection::getPropertiesVPackCoordinator(
+    velocypack::Builder& result) const {
   getPropertiesVPack(result);
 }
 
@@ -181,7 +183,9 @@ void RocksDBCollection::prepareIndexes(
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid indexes for collection '" << _logicalCollection->name() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "got invalid indexes for collection '" << _logicalCollection->name()
+        << "'";
     for (auto const& it : _indexes) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
     }
@@ -229,7 +233,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory(); 
+  IndexFactory const* idxFactory = engine->indexFactory();
   TRI_ASSERT(idxFactory != nullptr);
 
   // We are sure that we do not have an index of this type.
@@ -253,7 +257,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection->vocbase());
+  arangodb::aql::PlanCache::instance()->invalidate(
+      _logicalCollection->vocbase());
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
 
@@ -263,7 +268,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
         application_features::ApplicationServer::getFeature<DatabaseFeature>(
             "Database")
             ->forceSyncProperties();
-    VPackBuilder builder = _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
+    VPackBuilder builder =
+        _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
   created = true;
@@ -286,7 +292,8 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
     transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) {
-  return std::unique_ptr<IndexIterator>(primaryIndex()->allIterator(trx, mdr, reverse));
+  return std::unique_ptr<IndexIterator>(
+      primaryIndex()->allIterator(trx, mdr, reverse));
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
@@ -386,18 +393,18 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     newSlice = slice;
   }
 
-  TRI_voc_rid_t revisionId = transaction::helpers::extractRevFromDocument(newSlice);
+  TRI_voc_rid_t revisionId =
+      transaction::helpers::extractRevFromDocument(newSlice);
 
-  res = insertDocument(trx, revisionId, newSlice, options.waitForSync);  
-  
+  res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
+
   if (res == TRI_ERROR_NO_ERROR) {
     // TODO: handle returning of result value!
 
-//    uint8_t const* vpack = lookupRevisionVPack(revisionId);
-//    if (vpack != nullptr) {
-//      result.addExisting(vpack, revisionId);
-//    }
-
+    //    uint8_t const* vpack = lookupRevisionVPack(revisionId);
+    //    if (vpack != nullptr) {
+    //      result.addExisting(vpack, revisionId);
+    //    }
   }
   return res;
 }
@@ -422,10 +429,10 @@ int RocksDBCollection::replace(
     ManagedDocumentResult& previous, TRI_voc_rid_t const revisionId,
     arangodb::velocypack::Slice const fromSlice,
     arangodb::velocypack::Slice const toSlice) {
-
   resultMarkerTick = 0;
 
-  bool const isEdgeCollection = (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection =
+      (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
   // get the previous revision
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
@@ -442,7 +449,8 @@ int RocksDBCollection::replace(
 
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = transaction::helpers::extractRevFromDocument(oldDoc);
+  TRI_voc_rid_t oldRevisionId =
+      transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   // Check old revision:
@@ -473,13 +481,14 @@ int RocksDBCollection::replace(
     }
   }
 
-  res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, VPackSlice(builder->slice()), options.waitForSync);
-   /*  TODO: handle result handling
-    uint8_t const* vpack = lookupRevisionVPack(revisionId);
-    if (vpack != nullptr) {
-      result.addExisting(vpack, revisionId);
-    }
-    */
+  res = updateDocument(trx, oldRevisionId, oldDoc, revisionId,
+                       VPackSlice(builder->slice()), options.waitForSync);
+  /*  TODO: handle result handling
+   uint8_t const* vpack = lookupRevisionVPack(revisionId);
+   if (vpack != nullptr) {
+     result.addExisting(vpack, revisionId);
+   }
+   */
 
   return res;
 }
@@ -516,7 +525,8 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
 
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
+  TRI_voc_rid_t oldRevisionId =
+      arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   // Check old revision:
@@ -530,7 +540,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   }
 
   res = removeDocument(trx, oldRevisionId, oldDoc, options.waitForSync);
-  
+
   return res;
 }
 
@@ -538,9 +548,10 @@ void RocksDBCollection::deferDropCollection(
     std::function<bool(LogicalCollection*)> callback) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
-  
+
 /// @brief return engine-specific figures
-void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) {
+void RocksDBCollection::figuresSpecific(
+    std::shared_ptr<arangodb::velocypack::Builder>&) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
@@ -552,7 +563,7 @@ void RocksDBCollection::createInitialIndexes() {
 
   std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory(); 
+  IndexFactory const* idxFactory = engine->indexFactory();
   TRI_ASSERT(idxFactory != nullptr);
 
   idxFactory->fillSystemIndexes(_logicalCollection, systemIndexes);
@@ -592,20 +603,21 @@ void RocksDBCollection::addIndexCoordinator(
   _indexes.emplace_back(idx);
 }
 
-int RocksDBCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) {
+int RocksDBCollection::saveIndex(transaction::Methods* trx,
+                                 std::shared_ptr<arangodb::Index> idx) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   // we cannot persist PrimaryMockIndex
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
   indexListLocal.emplace_back(idx);
 
-/* TODO
-  int res = fillIndexes(trx, indexListLocal, false);
+  /* TODO
+    int res = fillIndexes(trx, indexListLocal, false);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-*/
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  */
   std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false);
   auto vocbase = _logicalCollection->vocbase();
   auto collectionId = _logicalCollection->cid();
@@ -613,7 +625,7 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<aran
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->createIndex(vocbase, collectionId, idx->id(), data);
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -640,7 +652,7 @@ arangodb::RocksDBPrimaryMockIndex* RocksDBCollection::primaryIndex() const {
   // the primary index must be the index at position #0
   return static_cast<arangodb::RocksDBPrimaryMockIndex*>(primary.get());
 }
-        
+
 int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                       TRI_voc_rid_t revisionId,
                                       VPackSlice const& doc,
@@ -648,11 +660,12 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  RocksDBEntry entry(RocksDBEntry::Document(_objectId, revisionId, doc));
+  RocksDBKey key(RocksDBKey::Document(_objectId, revisionId));
+  RocksDBValue value(RocksDBValue::Document(doc));
 
   rocksdb::WriteBatch writeBatch;
-  writeBatch.Put(entry.key(), entry.value());
-  
+  writeBatch.Put(key.key(), value.value());
+
   auto indexes = _indexes;
   size_t const n = indexes.size();
 
@@ -682,10 +695,10 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     if (_logicalCollection->waitForSync()) {
       waitForSync = true;
     }
-    
+
     if (waitForSync) {
       trx->state()->waitForSync(true);
-    
+
       // handle waitForSync for single operations here
       if (trx->state()->isSingleOperation()) {
         writeOptions.sync = true;
@@ -707,11 +720,11 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  RocksDBEntry entry(RocksDBEntry::Document(_objectId, revisionId, basics::VelocyPackHelper::EmptyObjectValue()));
+  auto key = RocksDBKey::Document(_objectId, revisionId);
 
   rocksdb::WriteBatch writeBatch;
-  writeBatch.Delete(entry.key());
-  
+  writeBatch.Delete(key.key());
+
   auto indexes = _indexes;
   size_t const n = indexes.size();
 
@@ -734,10 +747,10 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
     if (_logicalCollection->waitForSync()) {
       waitForSync = true;
     }
-    
+
     if (waitForSync) {
       trx->state()->waitForSync(true);
-    
+
       // handle waitForSync for single operations here
       if (trx->state()->isSingleOperation()) {
         writeOptions.sync = true;
@@ -754,8 +767,7 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
 /// @brief looks up a document by key, low level worker
 /// the key must be a string slice, no revision check is performed
-int RocksDBCollection::lookupDocument(transaction::Methods* trx,
-                                      VPackSlice key,
+int RocksDBCollection::lookupDocument(transaction::Methods* trx, VPackSlice key,
                                       ManagedDocumentResult& result) {
   if (!key.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
@@ -766,21 +778,23 @@ int RocksDBCollection::lookupDocument(transaction::Methods* trx,
 
   if (revisionId > 0) {
     // TODO: add result handling!
-/*    uint8_t const* vpack = lookupRevisionVPack(revisionId);
-    if (vpack != nullptr) {
-      result.addExisting(vpack, revisionId);
-    }
-*/
+    /*    uint8_t const* vpack = lookupRevisionVPack(revisionId);
+        if (vpack != nullptr) {
+          result.addExisting(vpack, revisionId);
+        }
+    */
     return TRI_ERROR_NO_ERROR;
   }
 
   return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
 }
 
-int RocksDBCollection::updateDocument(
-    transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
-    VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
-    VPackSlice const& newDoc, bool& waitForSync) {
+int RocksDBCollection::updateDocument(transaction::Methods* trx,
+                                      TRI_voc_rid_t oldRevisionId,
+                                      VPackSlice const& oldDoc,
+                                      TRI_voc_rid_t newRevisionId,
+                                      VPackSlice const& newDoc,
+                                      bool& waitForSync) {
   // TODO
   return TRI_ERROR_NO_ERROR;
 }
