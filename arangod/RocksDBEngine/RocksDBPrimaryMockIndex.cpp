@@ -140,9 +140,11 @@ void RocksDBPrimaryMockIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   // TODO: implement
 }
 
-RocksDBToken RocksDBPrimaryMockIndex::lookupKey(transaction::Methods* trx, VPackSlice key, ManagedDocumentResult& result) {
+RocksDBToken RocksDBPrimaryMockIndex::lookupKey(transaction::Methods* trx, VPackSlice slice, ManagedDocumentResult& result) {
+  std::string key = slice.copyString();
   std::lock_guard<std::mutex> lock(_keyRevMutex);
-  auto it = _keyRevMap.find(key.copyString());
+  LOG_TOPIC(ERR, Logger::FIXME) << "LOOKUP. THE KEY IS: " << key;
+  auto it = _keyRevMap.find(key);
   if (it == _keyRevMap.end()) {
     return RocksDBToken();
   }
@@ -150,9 +152,10 @@ RocksDBToken RocksDBPrimaryMockIndex::lookupKey(transaction::Methods* trx, VPack
 }
 
 int RocksDBPrimaryMockIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId, VPackSlice const& slice, bool) {
-  auto value = RocksDBEntry::IndexValue(objectId(), revisionId, slice);
+  std::string key = slice.get("_key").copyString();
   std::lock_guard<std::mutex> lock(_keyRevMutex);
-  auto result = _keyRevMap.emplace(value.key(),value.revisionId());
+  LOG_TOPIC(ERR, Logger::FIXME) << "INSERT. THE KEY IS: " << key << "; THE REVISION IS: " << revisionId;
+  auto result = _keyRevMap.emplace(key, revisionId);
   if(result.second){
     return TRI_ERROR_NO_ERROR;
   }
@@ -160,9 +163,10 @@ int RocksDBPrimaryMockIndex::insert(transaction::Methods*, TRI_voc_rid_t revisio
 }
 
 int RocksDBPrimaryMockIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId, VPackSlice const& slice, bool) {
-  auto value = RocksDBEntry::IndexValue(objectId(), revisionId, slice);
+  std::string key = slice.get("_key").copyString();
   std::lock_guard<std::mutex> lock(_keyRevMutex);
-  auto result = _keyRevMap.erase(value.key()); //result number of deleted elements
+  LOG_TOPIC(ERR, Logger::FIXME) << "REMOVE. THE KEY IS: " << key;
+  auto result = _keyRevMap.erase(key); //result number of deleted elements
   if(result){
     return TRI_ERROR_NO_ERROR;
   }

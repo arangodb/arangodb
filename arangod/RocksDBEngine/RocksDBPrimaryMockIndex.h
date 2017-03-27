@@ -36,7 +36,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <mutex>
-#include <unordered_map>
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -169,7 +168,7 @@ class RocksDBPrimaryMockIndex final : public Index {
   uint64_t objectId() const { return _objectId; }
  private:
   uint64_t _objectId;
-  std::map<std::string const,TRI_voc_rid_t const> _keyRevMap;
+  std::unordered_map<std::string, TRI_voc_rid_t> _keyRevMap;
   std::mutex _keyRevMutex;
 };
 }
