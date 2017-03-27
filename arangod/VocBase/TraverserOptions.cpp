@@ -34,7 +34,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb::transaction;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
+using TraverserOptions = arangodb::traverser::TraverserOptions;
 
 arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo()
     : expression(nullptr),

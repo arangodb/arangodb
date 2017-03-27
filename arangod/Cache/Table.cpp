@@ -79,19 +79,23 @@ Table::Table(uint32_t logSize)
       _size(static_cast<uint64_t>(1) << _logSize),
       _shift(32 - _logSize),
       _mask((_size - 1) << _shift),
-      _buckets(new GenericBucket[_size]),
+      _buffer(new uint8_t[(_size * BUCKET_SIZE) + Table::padding]),
+      _buckets(reinterpret_cast<GenericBucket*>(
+          reinterpret_cast<uint64_t>((_buffer.get() + 63)) &
+          ~(static_cast<uint64_t>(0x3fU)))),
       _auxiliary(nullptr),
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),
-      _slotsUsed(0) {
+      _slotsUsed(static_cast<uint64_t>(0)) {
   _state.lock();
   _state.toggleFlag(State::Flag::disabled);
-  memset(_buckets.get(), 0, BUCKET_SIZE * _size);
+  memset(_buckets, 0, BUCKET_SIZE * _size);
   _state.unlock();
 }
 
 uint64_t Table::allocationSize(uint32_t logSize) {
-  return sizeof(Table) + (BUCKET_SIZE * (static_cast<uint64_t>(1) << logSize));
+  return sizeof(Table) + (BUCKET_SIZE * (static_cast<uint64_t>(1) << logSize)) +
+         Table::padding;
 }
 
 uint64_t Table::memoryUsage() const { return Table::allocationSize(_logSize); }
@@ -108,7 +112,6 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
   if (ok) {
     ok = !_state.isSet(State::Flag::disabled);
     if (ok) {
-      TRI_ASSERT(_buckets.get() != nullptr);
       bucket = &(_buckets[(hash & _mask) >> _shift]);
       source = shared_from_this();
       ok = bucket->lock(maxTries);
@@ -154,7 +157,6 @@ void* Table::primaryBucket(uint32_t index) {
   if (!isEnabled()) {
     return nullptr;
   }
-  TRI_ASSERT(_buckets.get() != nullptr);
   return &(_buckets[index]);
 }
 
