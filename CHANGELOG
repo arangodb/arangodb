@@ -21,6 +21,10 @@ v3.1.16 (2017-XX-XX)
 
 * increase various cluster timeouts
 
+* limit default target size for revision cache to 1GB, which is better for
+  tight RAM situations (used to be 40% of (totalRAM - 1GB), use 
+  --database.revision-cache-target-size <VALUEINBYTES> to get back the
+  old behaviour
 
 v3.1.15 (2017-03-20)
 --------------------
