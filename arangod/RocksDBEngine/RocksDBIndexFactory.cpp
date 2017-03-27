@@ -330,7 +330,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create primary index");
       }
-      newIdx.reset(new arangodb::RocksDBPrimaryMockIndex(col));
+      newIdx.reset(new arangodb::RocksDBPrimaryMockIndex(col,info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
@@ -362,8 +362,11 @@ void RocksDBIndexFactory::fillSystemIndexes(
     arangodb::LogicalCollection* col,
     std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
   // create primary index
+
+  VPackBuilder builder;
   systemIndexes.emplace_back(
-      std::make_shared<arangodb::RocksDBPrimaryMockIndex>(col));
+      std::make_shared<arangodb::RocksDBPrimaryMockIndex>(col, builder.slice()));
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
 
   // create edges index
   if (col->type() == TRI_COL_TYPE_EDGE) {

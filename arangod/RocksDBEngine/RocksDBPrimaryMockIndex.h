@@ -34,6 +34,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <mutex>
+
 namespace arangodb {
 
 class RocksDBPrimaryMockIndex;
@@ -105,7 +107,7 @@ class RocksDBPrimaryMockIndex final : public Index {
  public:
   RocksDBPrimaryMockIndex() = delete;
 
-  explicit RocksDBPrimaryMockIndex(arangodb::LogicalCollection*);
+  explicit RocksDBPrimaryMockIndex(arangodb::LogicalCollection*, VPackSlice const& info);
 
   ~RocksDBPrimaryMockIndex();
 
@@ -160,6 +162,11 @@ class RocksDBPrimaryMockIndex final : public Index {
   ///        a random order. It is guaranteed that each element is found
   ///        exactly once unless the collection is modified.
   IndexIterator* anyIterator(transaction::Methods*, ManagedDocumentResult*) const;
+  uint64_t objectId() const { return _objectId; }
+ private:
+  uint64_t _objectId;
+  std::map<std::string const,TRI_voc_rid_t const> _keyRevMap;
+  std::mutex _keyRevMutex;
 };
 }
 

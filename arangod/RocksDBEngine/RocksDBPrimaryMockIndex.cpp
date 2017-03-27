@@ -22,9 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBPrimaryMockIndex.h"
+#include "RocksDBEntry.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -35,6 +37,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <mutex>
 
 using namespace arangodb;
 
@@ -103,11 +107,12 @@ void RocksDBAnyIndexIterator::reset() {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
-RocksDBPrimaryMockIndex::RocksDBPrimaryMockIndex(arangodb::LogicalCollection* collection)
-    : Index(0, collection,
+RocksDBPrimaryMockIndex::RocksDBPrimaryMockIndex(arangodb::LogicalCollection* collection, VPackSlice const& info)
+    : Index(basics::VelocyPackHelper::stringUInt64(info, "objectId"), collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
-            true, false) {
+            true, false),
+            _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")){
 }
 
 RocksDBPrimaryMockIndex::~RocksDBPrimaryMockIndex() {}
@@ -137,11 +142,14 @@ void RocksDBPrimaryMockIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   // TODO: implement
 }
 
-int RocksDBPrimaryMockIndex::insert(transaction::Methods*, TRI_voc_rid_t, VPackSlice const&, bool) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "insert() called for primary index";
-#endif
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "insert() called for primary index");
+int RocksDBPrimaryMockIndex::insert(transaction::Methods*, TRI_voc_rid_t revision_id, VPackSlice const& slice, bool) {
+// #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "insert() called for primary index";
+// #endif
+//   // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "insert() called for primary index");
+  auto value = RocksDBEntry::IndexValue(objectId(), revision_id, slice);
+  std::lock_guard<std::mutex> lock(_keyRevMutex);
+  _keyRevMap.emplace(value.key(),value.revisionId());
 }
 
 int RocksDBPrimaryMockIndex::remove(transaction::Methods*, TRI_voc_rid_t, VPackSlice const&, bool) {
