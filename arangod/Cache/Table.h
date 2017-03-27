@@ -48,7 +48,7 @@ class Table : public std::enable_shared_from_this<Table> {
   typedef std::function<void(void*)> BucketClearer;
 
  private:
-  struct alignas(BUCKET_SIZE) GenericBucket {
+  struct GenericBucket {
     State _state;
     uint8_t _filler[BUCKET_SIZE - sizeof(State)];
     bool lock(int64_t maxTries);
