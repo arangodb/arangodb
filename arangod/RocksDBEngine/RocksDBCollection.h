@@ -31,7 +31,6 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
 
-
 namespace arangodb {
 class LogicalCollection;
 class ManagedDocumentResult;
@@ -181,6 +180,11 @@ class RocksDBCollection final : public PhysicalCollection {
   void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
   int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx);
   arangodb::RocksDBPrimaryMockIndex* primaryIndex() const;
+
+  int insertDocument(arangodb::transaction::Methods* trx,
+                     TRI_voc_rid_t revisionId,
+                     arangodb::velocypack::Slice const& doc,
+                     bool& waitForSync);
 
  private:
   uint64_t _objectId; // rocksdb-specific object id for collection

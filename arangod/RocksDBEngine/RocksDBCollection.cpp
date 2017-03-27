@@ -23,17 +23,23 @@
 
 #include "RocksDBCollection.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Aql/PlanCache.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBEntry.h"
 #include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <rocksdb/utilities/transaction.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -320,12 +326,72 @@ bool RocksDBCollection::readDocumentConditional(
 }
 
 int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
-                              arangodb::velocypack::Slice const newSlice,
+                              arangodb::velocypack::Slice const slice,
                               arangodb::ManagedDocumentResult& result,
                               OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool lock) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+                              TRI_voc_tick_t& resultMarkerTick, bool /*lock*/) {
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
+
+  bool const isEdgeCollection =
+      (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
+
+  if (isEdgeCollection) {
+    // _from:
+    fromSlice = slice.get(StaticStrings::FromString);
+    if (!fromSlice.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    VPackValueLength len;
+    char const* docId = fromSlice.getString(len);
+    size_t split;
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
+                                            &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    // _to:
+    toSlice = slice.get(StaticStrings::ToString);
+    if (!toSlice.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    docId = toSlice.getString(len);
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
+                                            &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+  }
+
+  transaction::BuilderLeaser builder(trx);
+  VPackSlice newSlice;
+  int res = TRI_ERROR_NO_ERROR;
+  if (options.recoveryData == nullptr) {
+    res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+                             *builder.get(), options.isRestore);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    newSlice = builder->slice();
+  } else {
+    TRI_ASSERT(slice.isObject());
+    // we can get away with the fast hash function here, as key values are
+    // restricted to strings
+    newSlice = slice;
+  }
+
+  TRI_voc_rid_t revisionId = transaction::helpers::extractRevFromDocument(newSlice);
+
+  res = insertDocument(trx, revisionId, newSlice, options.waitForSync);  
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+//    uint8_t const* vpack = lookupRevisionVPack(revisionId);
+//    if (vpack != nullptr) {
+//      result.addExisting(vpack, revisionId);
+//    }
+
+    // store the tick that was used for writing the document
+//    resultMarkerTick = operation.tick();
+  }
+  return res;
 }
 
 int RocksDBCollection::update(arangodb::transaction::Methods* trx,
@@ -468,4 +534,49 @@ arangodb::RocksDBPrimaryMockIndex* RocksDBCollection::primaryIndex() const {
   TRI_ASSERT(primary->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   // the primary index must be the index at position #0
   return static_cast<arangodb::RocksDBPrimaryMockIndex*>(primary.get());
+}
+        
+int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
+                                      TRI_voc_rid_t revisionId,
+                                      VPackSlice const& doc,
+                                      bool& waitForSync) {
+  // Coordinator doesn't know index internals
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  RocksDBEntry entry(RocksDBEntry::Document(_objectId, revisionId, doc));
+
+  rocksdb::WriteBatch writeBatch;
+  writeBatch.Put(entry.key(), entry.value());
+  
+  auto indexes = _indexes;
+  size_t const n = indexes.size();
+
+  int result = TRI_ERROR_NO_ERROR;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto idx = indexes[i];
+
+    int res = idx->insert(trx, revisionId, doc, false);
+
+    // in case of no-memory, return immediately
+    if (res == TRI_ERROR_OUT_OF_MEMORY) {
+      return res;
+    }
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+          result == TRI_ERROR_NO_ERROR) {
+        // "prefer" unique constraint violated
+        result = res;
+      }
+    }
+  }
+
+  // TODO: handle waitForSync here? 
+  if (result != TRI_ERROR_NO_ERROR) { 
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(engine)->db();
+    db->Write(rocksdb::WriteOptions(), &writeBatch);
+  }
+
+  return result;
 }
