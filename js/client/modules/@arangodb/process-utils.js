@@ -1164,6 +1164,7 @@ exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashed;
 
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
+exports.cleanupDBDirectories = cleanupDBDirectories;
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 
 Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
