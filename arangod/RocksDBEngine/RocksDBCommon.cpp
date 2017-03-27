@@ -25,7 +25,7 @@
 
 using namespace arangodb::rocksdb;
 
-arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
+arangodb::Result convertStatus(::rocksdb::Status const& status, StatusHint hint) {
   switch (status.code()) {
     case rocksdb::Status::Code::kOk:
       return {TRI_ERROR_NO_ERROR};
@@ -65,10 +65,10 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kBusy:
       return {TRI_ERROR_ARANGO_BUSY, status.ToString()};
     case rocksdb::Status::Code::kExpired:
-      return {TRI_ERROR_INTERNAL_ERROR, "key expired; TTL was set in error"};
+      return {TRI_ERROR_INTERNAL, "key expired; TTL was set in error"};
     case rocksdb::Status::Code::kTryAgain:
       return {TRI_ERROR_ARANGO_TRY_AGAIN, status.ToString()};
     default:
-      return {TRI_ERROR_INTERNAL_ERROR, "unknown RocksDB status code"};
+      return {TRI_ERROR_INTERNAL, "unknown RocksDB status code"};
   }
 }
