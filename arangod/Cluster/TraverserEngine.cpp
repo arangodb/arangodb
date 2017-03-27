@@ -136,42 +136,38 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
   // We just hope someone has locked the shards properly. We have no clue... Thanks locking
 
   TRI_ASSERT(vertex.isString() || vertex.isArray());
-  size_t cursorId = 0;
   size_t read = 0;
   size_t filtered = 0;
   ManagedDocumentResult mmdr;
-  std::vector<VPackSlice> result;
+  //std::vector<VPackSlice> result;
   builder.openObject();
   builder.add(VPackValue("edges"));
   builder.openArray();
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       TRI_ASSERT(v.isString());
-      result.clear();
-      auto edgeCursor = _opts->nextCursor(&mmdr, v, depth);
-      while (edgeCursor->next(result, cursorId)) {
-        if (!_opts->evaluateEdgeExpression(result.back(), v, depth, cursorId)) {
+      //result.clear();
+      StringRef vertexId(v);
+      auto edgeCursor = _opts->nextCursor(&mmdr, vertexId, depth);
+      
+      edgeCursor->readAll([&] (StringRef const& documentId, VPackSlice edge, size_t cursorId) {
+        if (!_opts->evaluateEdgeExpression(edge, StringRef(v), depth, cursorId)) {
           filtered++;
-          result.pop_back();
+        } else {
+          builder.add(edge);
         }
-      }
-      for (auto const& it : result) {
-        builder.add(it);
-      }
+      });
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
-    std::unique_ptr<arangodb::traverser::EdgeCursor> edgeCursor(_opts->nextCursor(&mmdr, vertex, depth));
-
-    while (edgeCursor->next(result, cursorId)) {
-      if (!_opts->evaluateEdgeExpression(result.back(), vertex, depth, cursorId)) {
+    std::unique_ptr<arangodb::traverser::EdgeCursor> edgeCursor(_opts->nextCursor(&mmdr, StringRef(vertex), depth));
+    edgeCursor->readAll([&] (StringRef const& documentId, VPackSlice edge, size_t cursorId) {
+      if (!_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth, cursorId)) {
         filtered++;
-        result.pop_back();
+      } else {
+        builder.add(edge);
       }
-    }
-    for (auto const& it : result) {
-      builder.add(it);
-    }
+    });
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);

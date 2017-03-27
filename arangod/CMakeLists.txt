@@ -218,6 +218,8 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VppCommTask.cpp
+  Graph/BreadthFirstEnumerator.cpp
+  Graph/NeighborsEnumerator.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
@@ -337,6 +339,7 @@ SET(ARANGOD_SOURCES
   VocBase/SingleServerTraverser.cpp
   VocBase/TransactionManager.cpp
   VocBase/Traverser.cpp
+  VocBase/TraverserCache.cpp
   VocBase/TraverserOptions.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
