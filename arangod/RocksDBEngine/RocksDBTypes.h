@@ -36,9 +36,10 @@ enum class RocksDBEntryType : char {
   Collection = '1',
   Index = '2',
   Document = '3',
-  IndexValue = '4',
-  UniqueIndexValue = '5',
-  View = '6'
+  PrimaryIndexValue = '4',
+  EdgeIndexValue = '5',
+  IndexValue = '6' UniqueIndexValue = '7',
+  View = '8'
 };
 
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);

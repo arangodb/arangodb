@@ -37,6 +37,10 @@ enum StatusHint { none, document, collection, view, index, database };
 arangodb::Result convertStatus(rocksdb::Status const&,
                                StatusHint hint = StatusHint::none);
 
+uint64_t uint64FromPersistent(char const* p);
+void uint64ToPersistent(char* p, uint64_t value);
+void uint64ToPersistent(std::string& out, uint64_t value);
+
 }  // namespace rocksdb
 }  // namespace arangodb
 

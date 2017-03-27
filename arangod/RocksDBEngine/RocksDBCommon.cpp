@@ -72,3 +72,30 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
       return {TRI_ERROR_INTERNAL_ERROR, "unknown RocksDB status code"};
   }
 }
+
+uint64_t uint64FromPersistent(char const* p) {
+  uint64_t value = 0;
+  uint64_t x = 0;
+  char const* end = p + sizeof(uint64_t);
+  do {
+    value += static_cast<uint64_t>(*p++) << x;
+    x += 8;
+  } while (p < end);
+  return value;
+}
+
+void uint64ToPersistent(char* p, uint64_t value) {
+  char* end = p + sizeof(uint64_t);
+  do {
+    *p++ = static_cast<uint8_t>(value & 0xff);
+    value >>= 8;
+  } while (p < end);
+}
+
+void uint64ToPersistent(std::string& p, uint64_t value) {
+  size_t len = 0;
+  do {
+    p.push_back(static_cast<char>(value & 0xff));
+    value >>= 8;
+  } while (++len < sizeof(uint64_t));
+}

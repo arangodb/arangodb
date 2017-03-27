@@ -435,8 +435,8 @@ set(ARANGOD_SOURCES
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
-  RocksDBEngine/RocksDBEntry.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
+  RocksDBEngine/RocksDBKey.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
