@@ -27,7 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -330,7 +330,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create primary index");
       }
-      newIdx.reset(new arangodb::RocksDBPrimaryIndex(col));
+      newIdx.reset(new arangodb::RocksDBPrimaryMockIndex(col));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
@@ -363,7 +363,7 @@ void RocksDBIndexFactory::fillSystemIndexes(
     std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
   // create primary index
   systemIndexes.emplace_back(
-      std::make_shared<arangodb::RocksDBPrimaryIndex>(col));
+      std::make_shared<arangodb::RocksDBPrimaryMockIndex>(col));
 
   // create edges index
   if (col->type() == TRI_COL_TYPE_EDGE) {

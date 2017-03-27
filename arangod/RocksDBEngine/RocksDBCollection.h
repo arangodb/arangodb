@@ -36,7 +36,7 @@ namespace arangodb {
 class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
-class RocksDBPrimaryIndex;
+class RocksDBPrimaryMockIndex;
 
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
@@ -180,7 +180,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
   int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx);
-  arangodb::RocksDBPrimaryIndex* primaryIndex() const;
+  arangodb::RocksDBPrimaryMockIndex* primaryIndex() const;
 
  private:
   uint64_t _objectId; // rocksdb-specific object id for collection

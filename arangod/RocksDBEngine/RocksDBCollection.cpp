@@ -28,7 +28,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
@@ -423,7 +423,7 @@ void RocksDBCollection::addIndexCoordinator(
 
 int RocksDBCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  // we cannot persist PrimaryIndex
+  // we cannot persist PrimaryMockIndex
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
   indexListLocal.emplace_back(idx);
@@ -450,7 +450,7 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<aran
 // WARNING: Make sure that this LogicalCollection Instance
 // is somehow protected. If it goes out of all scopes
 // or it's indexes are freed the pointer returned will get invalidated.
-arangodb::RocksDBPrimaryIndex* RocksDBCollection::primaryIndex() const {
+arangodb::RocksDBPrimaryMockIndex* RocksDBCollection::primaryIndex() const {
   // The primary index always has iid 0
   auto primary = _logicalCollection->lookupIndex(0);
   TRI_ASSERT(primary != nullptr);
@@ -467,5 +467,5 @@ arangodb::RocksDBPrimaryIndex* RocksDBCollection::primaryIndex() const {
 #endif
   TRI_ASSERT(primary->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   // the primary index must be the index at position #0
-  return static_cast<arangodb::RocksDBPrimaryIndex*>(primary.get());
+  return static_cast<arangodb::RocksDBPrimaryMockIndex*>(primary.get());
 }
