@@ -34,6 +34,7 @@
 #include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
@@ -389,7 +390,8 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 //    }
 
     // store the tick that was used for writing the document
-//    resultMarkerTick = operation.tick();
+    // note that we don't need it for this engine
+    resultMarkerTick = 0;
   }
   return res;
 }
@@ -571,11 +573,25 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     }
   }
 
-  // TODO: handle waitForSync here? 
-  if (result != TRI_ERROR_NO_ERROR) { 
+  if (result != TRI_ERROR_NO_ERROR) {
+    rocksdb::WriteOptions writeOptions;
+
+    if (_logicalCollection->waitForSync()) {
+      waitForSync = true;
+    }
+    
+    if (waitForSync) {
+      trx->state()->waitForSync(true);
+    
+      // handle waitForSync for single operations here
+      if (trx->state()->isSingleOperation()) {
+        writeOptions.sync = true;
+      }
+    }
+
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(engine)->db();
-    db->Write(rocksdb::WriteOptions(), &writeBatch);
+    db->Write(writeOptions, &writeBatch);
   }
 
   return result;

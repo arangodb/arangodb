@@ -70,8 +70,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void release() override;
 
  private:
-  bool _waitForSync;      // whether or not the collection has waitForSync
-  
   AccessMode::Type _accessType;  // access type (read|write)
   uint64_t _numOperations;
 };

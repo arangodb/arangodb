@@ -38,7 +38,6 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            TRI_voc_cid_t cid, 
                                                            AccessMode::Type accessType) 
     : TransactionCollection(trx, cid),
-      _waitForSync(false),
       _accessType(accessType), 
       _numOperations(0) {} 
 
@@ -137,9 +136,6 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
         !LogicalCollection::IsSystemName(_collection->name())) {
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
-
-    // store the waitForSync property
-    _waitForSync = _collection->waitForSync();
   }
 
   return TRI_ERROR_NO_ERROR;
