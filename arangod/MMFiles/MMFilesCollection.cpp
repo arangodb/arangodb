@@ -2588,7 +2588,6 @@ int MMFilesCollection::insert(transaction::Methods* trx,
     }
   }
 
-
   transaction::BuilderLeaser builder(trx);
   VPackSlice newSlice;
   int res = TRI_ERROR_NO_ERROR;
@@ -2825,7 +2824,7 @@ int MMFilesCollection::insertSecondaryIndexes(arangodb::transaction::Methods* tr
                                               TRI_voc_rid_t revisionId,
                                               VPackSlice const& doc,
                                               bool isRollback) {
-  // Coordintor doesn't know index internals
+  // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
 
@@ -3531,7 +3530,7 @@ int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
 /// the caller must make sure the read lock on the collection is held
 /// the key must be a string slice, no revision check is performed
 int MMFilesCollection::lookupDocument(transaction::Methods* trx,
-                                      VPackSlice const key,
+                                      VPackSlice key,
                                       ManagedDocumentResult& result) {
   if (!key.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;

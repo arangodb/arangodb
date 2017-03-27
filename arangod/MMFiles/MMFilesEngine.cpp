@@ -48,6 +48,7 @@
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesV8Functions.h"
 #include "MMFiles/MMFilesView.h"
+#include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -142,6 +143,10 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
       _isUpgrade(false),
       _maxTick(0) {
   startsAfter("MMFilesPersistentIndex");
+    
+  server->addFeature(new MMFilesWalRecoveryFeature(server));
+  server->addFeature(new MMFilesLogfileManager(server));
+  server->addFeature(new MMFilesPersistentIndexFeature(server));
 }
 
 MMFilesEngine::~MMFilesEngine() {}

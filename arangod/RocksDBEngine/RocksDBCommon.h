@@ -34,7 +34,7 @@ namespace rocksdb {
 
 enum StatusHint { none, document, collection, view, index, database };
 
-arangodb::Result convertStatus(rocksdb::Status const&,
+arangodb::Result convertStatus(::rocksdb::Status const&,
                                StatusHint hint = StatusHint::none);
 
 uint64_t uint64FromPersistent(char const* p);

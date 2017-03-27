@@ -92,6 +92,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   // when a new collection is created, this method is called to augment the collection
   // creation data with engine-specific information
   virtual void addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {}
+  
+  // when a new index is created, this method is called to augment the index
+  // creation data with engine-specific information
+  virtual void addParametersForNewIndex(VPackBuilder& builder, VPackSlice info) {}
 
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;

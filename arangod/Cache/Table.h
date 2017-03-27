@@ -43,6 +43,7 @@ class Table : public std::enable_shared_from_this<Table> {
   static const uint32_t maxLogSize;
   static constexpr uint32_t standardLogSizeAdjustment = 6;
   static constexpr int64_t triesGuarantee = -1;
+  static constexpr uint64_t padding = 64;
 
   typedef std::function<void(void*)> BucketClearer;
 
@@ -187,7 +188,8 @@ class Table : public std::enable_shared_from_this<Table> {
   uint64_t _size;
   uint32_t _shift;
   uint32_t _mask;
-  std::unique_ptr<GenericBucket[]> _buckets;
+  std::unique_ptr<uint8_t[]> _buffer;
+  GenericBucket* _buckets;
 
   std::shared_ptr<Table> _auxiliary;
 

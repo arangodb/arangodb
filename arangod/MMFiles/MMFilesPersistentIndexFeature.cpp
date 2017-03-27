@@ -65,8 +65,9 @@ MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(
       _keepLogFileNum(1000), _logFileTimeToRoll(0), _compactionReadaheadSize(0) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  // startsAfter("MMFilesLogfileManager");
   startsAfter("DatabasePath");
+  
+  onlyEnabledWith("MMFilesEngine");
 }
 
 MMFilesPersistentIndexFeature::~MMFilesPersistentIndexFeature() {

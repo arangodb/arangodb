@@ -21,38 +21,28 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H
-#define ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H 1
+#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_TOKEN_H
+#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_TOKEN_H 1
 
-#include "VocBase/TraverserOptions.h"
+#include "StorageEngine/DocumentIdentifierToken.h"
 
 namespace arangodb {
-class CollectionNameResolver;
-namespace traverser {
 
-class Traverser;
-
-class ClusterEdgeCursor : public EdgeCursor {
-
+struct RocksDBToken : public DocumentIdentifierToken {
  public:
-  ClusterEdgeCursor(StringRef vid, uint64_t, ClusterTraverser*);
+  RocksDBToken() : DocumentIdentifierToken() {}
+  explicit RocksDBToken(TRI_voc_rid_t revisionId)
+      : DocumentIdentifierToken(revisionId) {}
+  RocksDBToken(RocksDBToken const& other)
+      : DocumentIdentifierToken(other._data) {}
 
-  ~ClusterEdgeCursor() {
+  inline TRI_voc_rid_t revisionId() const {
+    return static_cast<TRI_voc_rid_t>(_data);
   }
-
-  bool next(std::function<void(arangodb::StringRef const&, arangodb::velocypack::Slice, size_t)> callback) override;
-
-  void readAll(std::function<void(arangodb::StringRef const&, arangodb::velocypack::Slice, size_t&)> callback) override;
-
- private:
-
-  std::vector<arangodb::velocypack::Slice> _edgeList;
-
-  size_t _position;
-  CollectionNameResolver const* _resolver;
-  arangodb::traverser::Traverser* _traverser;
 };
-}
+
+static_assert(sizeof(RocksDBToken) == sizeof(uint64_t), "invalid RocksDBToken size");
+
 }
 
 #endif
