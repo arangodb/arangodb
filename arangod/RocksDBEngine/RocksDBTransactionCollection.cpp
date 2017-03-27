@@ -40,13 +40,9 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
     : TransactionCollection(trx, cid),
       _waitForSync(false),
       _accessType(accessType), 
-      _numOperations(0) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "ctor rocksdb transaction collection: " << cid;
-} 
+      _numOperations(0) {} 
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() {
-    LOG_TOPIC(ERR, Logger::FIXME) << "dtor rocksdb transaction collection: " << _cid;
-}
+RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
 
 /// @brief request a main-level lock for a collection
 int RocksDBTransactionCollection::lock() { return TRI_ERROR_NO_ERROR; }
@@ -131,7 +127,6 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
     TRI_vocbase_col_status_e status;
     LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
     _collection = _transaction->vocbase()->useCollection(_cid, status);
-    LOG_TOPIC(ERR, Logger::FIXME) << "using collection " << _cid << ": " << _collection;
       
     if (_collection == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -155,7 +150,6 @@ void RocksDBTransactionCollection::unuse(int /*nestingLevel*/) {}
 void RocksDBTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "releasing collection " << _cid << ": " << _collection;
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 

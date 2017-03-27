@@ -51,14 +51,10 @@ struct RocksDBTransactionData final : public TransactionData {
 RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
     : TransactionState(vocbase),
       _beginWritten(false),
-      _hasOperations(false) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "ctor rocksdb transaction state: " << this;
-}
+      _hasOperations(false) {}
 
 /// @brief free a transaction container
-RocksDBTransactionState::~RocksDBTransactionState() {
-  LOG_TOPIC(ERR, Logger::FIXME) << "dtor rocksdb transaction state: " << this;
-}
+RocksDBTransactionState::~RocksDBTransactionState() {}
 
 /// @brief start a transaction
 int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
@@ -84,8 +80,6 @@ int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   }
   
   int res = useCollections(_nestingLevel);
-
-  LOG_TOPIC(ERR, Logger::FIXME) << "USE COLLECTIONS RETURNED: " << res << ", NESTING: " << _nestingLevel;
 
   if (res == TRI_ERROR_NO_ERROR) {
     // all valid
