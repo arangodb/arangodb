@@ -82,8 +82,8 @@ void FileDescriptorsFeature::start() {
   if (rlim.rlim_cur < RECOMMENDED) {
     LOG_TOPIC(WARN, arangodb::Logger::SYSCALL)
         << "file-descriptors limit is too low, currently "
-        << StringifyLimitValue(rlim.rlim_cur) << ", raise to at least "
-        << RECOMMENDED;
+        << StringifyLimitValue(rlim.rlim_cur) << ", please raise to at least "
+        << RECOMMENDED << " (e.g. ulimit -n " << RECOMMENDED << ")";
   }
 #endif
 }
