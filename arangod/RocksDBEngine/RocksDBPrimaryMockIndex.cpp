@@ -38,8 +38,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <mutex>
-
 using namespace arangodb;
 
 /// @brief hard-coded vector of the index attributes
@@ -142,21 +140,31 @@ void RocksDBPrimaryMockIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   // TODO: implement
 }
 
-int RocksDBPrimaryMockIndex::insert(transaction::Methods*, TRI_voc_rid_t revision_id, VPackSlice const& slice, bool) {
-// #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-//   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "insert() called for primary index";
-// #endif
+int RocksDBPrimaryMockIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId, VPackSlice const& slice, bool) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "insert() called for primary index";
+#endif
 //   // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "insert() called for primary index");
-  auto value = RocksDBEntry::IndexValue(objectId(), revision_id, slice);
+  auto value = RocksDBEntry::IndexValue(objectId(), revisionId, slice);
   std::lock_guard<std::mutex> lock(_keyRevMutex);
-  _keyRevMap.emplace(value.key(),value.revisionId());
+  auto result = _keyRevMap.emplace(value.key(),value.revisionId());
+  if(result.second){
+    return TRI_ERROR_NO_ERROR;
+  }
+  return TRI_ERROR_INTERNAL;
 }
 
-int RocksDBPrimaryMockIndex::remove(transaction::Methods*, TRI_voc_rid_t, VPackSlice const&, bool) {
+int RocksDBPrimaryMockIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId, VPackSlice const& slice, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "remove() called for primary index";
 #endif
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "remove() called for primary index");
+  auto value = RocksDBEntry::IndexValue(objectId(), revisionId, slice);
+  std::lock_guard<std::mutex> lock(_keyRevMutex);
+  auto result = _keyRevMap.erase(value.key()); //result number of deleted elements
+  if(result){
+    return TRI_ERROR_NO_ERROR;
+  }
+  return TRI_ERROR_INTERNAL;
 }
 
 /// @brief unload the index data from memory

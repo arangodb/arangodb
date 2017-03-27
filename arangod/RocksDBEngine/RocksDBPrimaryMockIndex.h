@@ -35,6 +35,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <mutex>
+#include <unordered_map>
 
 namespace arangodb {
 
