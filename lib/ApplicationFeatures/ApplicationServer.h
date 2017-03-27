@@ -247,14 +247,15 @@ class ApplicationServer {
   // allows features to cross-validate their program options
   void validateOptions();
 
-  // enable automatic features
-  void enableAutomaticFeatures();
-
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
   // allows process control
   void daemonize();
+
+  // disables all features that depend on other features, which, themselves
+  // are disabled
+  void disableDependentFeatures();
 
   // allows features to prepare themselves
   void prepare();
