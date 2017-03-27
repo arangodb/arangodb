@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H
@@ -33,18 +33,23 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+namespace rocksdb {
+class TransactionDB;
+}
+
 namespace arangodb {
 class RocksDBEdgeIndex;
-  
+
 class RocksDBEdgeIndexIterator final : public IndexIterator {
  public:
-  RocksDBEdgeIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                    ManagedDocumentResult* mmdr,
-                    arangodb::RocksDBEdgeIndex const* index,
-                    std::unique_ptr<VPackBuilder>& keys);
+  RocksDBEdgeIndexIterator(LogicalCollection* collection,
+                           transaction::Methods* trx,
+                           ManagedDocumentResult* mmdr,
+                           arangodb::RocksDBEdgeIndex const* index,
+                           std::unique_ptr<VPackBuilder>& keys);
 
   ~RocksDBEdgeIndexIterator();
-  
+
   char const* typeName() const override { return "edge-index-iterator"; }
 
   bool next(TokenCallback const& cb, size_t limit) override;
@@ -60,20 +65,21 @@ class RocksDBEdgeIndex final : public Index {
  public:
   RocksDBEdgeIndex() = delete;
 
-  RocksDBEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
+  RocksDBEdgeIndex(rocksdb::TransactionDB*, TRI_idx_iid_t,
+                   arangodb::LogicalCollection*, std::string const&);
 
   ~RocksDBEdgeIndex();
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
-  
+
   char const* typeName() const override { return "edge"; }
 
   bool allowExpansion() const override { return false; }
 
   bool canBeDropped() const override { return false; }
 
-  bool isSorted() const override { return false; }
+  bool isSorted() const override { return true; }
 
   bool hasSelectivityEstimate() const override { return true; }
 
@@ -91,6 +97,11 @@ class RocksDBEdgeIndex final : public Index {
 
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
+
+  void batchInsert(
+      transaction::Methods*,
+      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      arangodb::basics::LocalTaskQueue* queue = nullptr) override;
 
   int unload() override;
 
@@ -116,6 +127,11 @@ class RocksDBEdgeIndex final : public Index {
   ///        entries.
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
+
+ public:
+  rocksdb::TransactionDB* _db;
+  std::string _directionAttr;
+  uint64_t _objectId;
 };
 }
 

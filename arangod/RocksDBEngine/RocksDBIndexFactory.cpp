@@ -26,8 +26,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -322,6 +324,10 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     TRI_ASSERT(generateKey);
     iid = arangodb::Index::generateId();
   }
+  
+  // no need to access this in every single index
+  RocksDBEngine *engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  rocksdb::TransactionDB *db = engine->db();
 
   switch (type) {
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
@@ -339,12 +345,12 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create edge index");
       }
-      newIdx.reset(new arangodb::RocksDBEdgeIndex(iid, col));
+      newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
       // TODO: fix this wrong index type. only used temporarily because we don't have other indexes
-      newIdx.reset(new arangodb::RocksDBEdgeIndex(iid, col)); 
+      newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
       break;
     }
     
@@ -364,10 +370,15 @@ void RocksDBIndexFactory::fillSystemIndexes(
   // create primary index
   systemIndexes.emplace_back(
       std::make_shared<arangodb::RocksDBPrimaryIndex>(col));
-
+  
   // create edges index
   if (col->type() == TRI_COL_TYPE_EDGE) {
+    RocksDBEngine *engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    rocksdb::TransactionDB *db = engine->db();
+    
     systemIndexes.emplace_back(
-        std::make_shared<arangodb::RocksDBEdgeIndex>(1, col));
+        std::make_shared<arangodb::RocksDBEdgeIndex>(db, 1, col, StaticStrings::FromString));
+    systemIndexes.emplace_back(
+        std::make_shared<arangodb::RocksDBEdgeIndex>(db, 2, col, StaticStrings::ToString));
   }
 }
