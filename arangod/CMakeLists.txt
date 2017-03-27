@@ -445,6 +445,7 @@ set(ARANGOD_SOURCES
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBTypes.cpp
+  RocksDBEngine/RocksDBValue.cpp
   RocksDBEngine/RocksDBView.cpp
 )
 

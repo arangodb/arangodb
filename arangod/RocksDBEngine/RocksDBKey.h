@@ -22,12 +22,14 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_ENTRY_H
-#define ARANGO_ROCKSDB_ROCKSDB_ENTRY_H 1
+#ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_H
+#define ARANGO_ROCKSDB_ROCKSDB_KEY_H 1
 
 #include "Basics/Common.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
+
+#include <rocksdb/slice.h>
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -38,14 +40,12 @@ class RocksDBKey {
  public:
   RocksDBKey() = delete;
 
-  static RocksDBKey Database(TRI_voc_tick_t databaseId, VPackSlice const& data);
+  static RocksDBKey Database(TRI_voc_tick_t databaseId);
   static RocksDBKey Collection(TRI_voc_tick_t databaseId,
-                               TRI_voc_cid_t collectionId,
-                               VPackSlice const& data);
+                               TRI_voc_cid_t collectionId);
   static RocksDBKey Index(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                          TRI_idx_iid_t indexId, VPackSlice const& data);
-  static RocksDBKey Document(uint64_t collectionId, TRI_voc_rid_t revisionId,
-                             VPackSlice const& data);
+                          TRI_idx_iid_t indexId);
+  static RocksDBKey Document(uint64_t collectionId, TRI_voc_rid_t revisionId);
   static RocksDBKey PrimaryIndexValue(uint64_t indexId,
                                       std::string const& primaryKey);
   static RocksDBKey EdgeIndexValue(uint64_t indexId,
@@ -55,8 +55,7 @@ class RocksDBKey {
                                VPackSlice const& indexValues);
   static RocksDBKey UniqueIndexValue(uint64_t indexId,
                                      VPackSlice const& indexValues);
-  static RocksDBKey View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId,
-                         VPackSlice const& data);
+  static RocksDBKey View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId);
 
  public:
   static RocksDBEntryType type(RocksDBKey const&);
@@ -105,7 +104,6 @@ class RocksDBKey {
              std::string const& third);
 
  private:
- public:
   static RocksDBEntryType type(char const* data, size_t size);
   static TRI_voc_tick_t databaseId(char const* data, size_t size);
   static TRI_voc_cid_t collectionId(char const* data, size_t size);

@@ -21,11 +21,12 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 
-using namespace arangodb::rocksdb;
+namespace arangodb {
+namespace rocksutils {
 
-arangodb::Result convertStatus(::rocksdb::Status const& status, StatusHint hint) {
+arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
   switch (status.code()) {
     case rocksdb::Status::Code::kOk:
       return {TRI_ERROR_NO_ERROR};
@@ -99,3 +100,6 @@ void uint64ToPersistent(std::string& p, uint64_t value) {
     value >>= 8;
   } while (++len < sizeof(uint64_t));
 }
+
+}  // namespace rocksutils
+}  // namespace arangodb

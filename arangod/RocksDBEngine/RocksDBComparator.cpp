@@ -24,7 +24,7 @@
 
 #include "RocksDBComparator.h"
 #include "Basics/VelocyPackHelper.h"
-#include "RocksDBEngine/RocksDBEntry.h"
+#include "RocksDBEngine/RocksDBTypes.h"
 
 using namespace arangodb;
 using namespace arangodb::velocypack;
@@ -83,13 +83,15 @@ int RocksDBComparator::compareDatabases(rocksdb::Slice const& lhs,
 int RocksDBComparator::compareCollections(rocksdb::Slice const& lhs,
                                           rocksdb::Slice const& rhs) const {
   size_t offset = sizeof(char);
-  return memcmp(lhs.data() + offset, rhs.data() + offset, sizeof(uint64_t) + sizeof(uint64_t));
+  return memcmp(lhs.data() + offset, rhs.data() + offset,
+                sizeof(uint64_t) + sizeof(uint64_t));
 }
 
 int RocksDBComparator::compareIndexes(rocksdb::Slice const& lhs,
                                       rocksdb::Slice const& rhs) const {
   size_t offset = sizeof(char);
-  return memcmp(lhs.data() + offset, rhs.data() + offset, sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t));
+  return memcmp(lhs.data() + offset, rhs.data() + offset,
+                sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t));
 }
 
 int RocksDBComparator::compareDocuments(rocksdb::Slice const& lhs,
@@ -145,7 +147,8 @@ int RocksDBComparator::compareUniqueIndexValues(
 int RocksDBComparator::compareViews(rocksdb::Slice const& lhs,
                                     rocksdb::Slice const& rhs) const {
   size_t offset = sizeof(char);
-  return memcmp(lhs.data() + offset, rhs.data() + offset, sizeof(uint64_t) + sizeof(uint64_t));
+  return memcmp(lhs.data() + offset, rhs.data() + offset,
+                sizeof(uint64_t) + sizeof(uint64_t));
 }
 
 int RocksDBComparator::compareLexicographic(rocksdb::Slice const& lhs,

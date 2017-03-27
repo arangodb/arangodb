@@ -38,7 +38,8 @@ enum class RocksDBEntryType : char {
   Document = '3',
   PrimaryIndexValue = '4',
   EdgeIndexValue = '5',
-  IndexValue = '6' UniqueIndexValue = '7',
+  IndexValue = '6',
+  UniqueIndexValue = '7',
   View = '8'
 };
 
