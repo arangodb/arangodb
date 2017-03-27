@@ -54,9 +54,6 @@ TraverserCache::TraverserCache(transaction::Methods* trx)
 
 TraverserCache::~TraverserCache() {
   auto cacheManager = CacheManagerFeature::MANAGER;
-  // TODO REMOVE ME
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traverser-Cache used in total "
-                                          << _cache->size();
   cacheManager->destroyCache(_cache);
 }
 
