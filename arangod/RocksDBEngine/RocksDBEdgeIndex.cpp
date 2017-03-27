@@ -226,7 +226,7 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
     if (status.ok()) {
       return TRI_ERROR_NO_ERROR;
     } else {
-      Result res = convertRocksDBStatus(status);
+      Result res = rocksutils::convertStatus(status);
       return res.errorNumber();
     }
   } else {
@@ -504,7 +504,7 @@ void RocksDBEdgeIndex::handleValNode(
   }
 }
 
-// ================================= Stuff ===========================
+// ================================= TODO use RocksDBKey ===========================
 
 std::unique_ptr<char> RocksDBEdgeIndex::buildIndexValue(VPackSlice const& doc,
                                                         size_t& outSize) const {
@@ -523,7 +523,7 @@ std::unique_ptr<char> RocksDBEdgeIndex::buildIndexValue(VPackSlice const& doc,
   char* ptr = buffer.get();
   ptr[0] = (char)RocksDBEntryType::UniqueIndexValue;
   ptr += sizeof(char);
-  RocksDBEntry::uint64ToPersistent(ptr, _objectId);
+  rocksutils::uint64ToPersistent(ptr, _objectId);
   ptr += sizeof(uint64_t);
   memcpy(ptr, fromToPtr, fromToSize);
   ptr += fromToSize;
@@ -537,10 +537,9 @@ std::unique_ptr<char> RocksDBEdgeIndex::buildIndexValue(VPackSlice const& doc,
 
 std::unique_ptr<char> RocksDBEdgeIndex::buildRangePrefix(VPackSlice const& fromTo,
                                                          size_t& outSize) const {
-  TRI_ASSERT(fromTo.isString());
-  uint64_t keySize, fromToSize;
+  uint64_t fromToSize;
   const char* fromToPtr = fromTo.getString(fromToSize);
-  TRI_ASSERT(keySize > 0 && fromToSize > 0);
+  TRI_ASSERT(fromToSize > 0);
 
   size_t bufSize = 2 * sizeof(char) + sizeof(uint64_t) + fromToSize;
   std::unique_ptr<char> buffer(new char[bufSize]);
@@ -549,7 +548,7 @@ std::unique_ptr<char> RocksDBEdgeIndex::buildRangePrefix(VPackSlice const& fromT
   char* ptr = buffer.get();
   ptr[0] = (char)RocksDBEntryType::UniqueIndexValue;
   ptr += sizeof(char);
-  RocksDBEntry::uint64ToPersistent(ptr, _objectId);
+  rocksutils::uint64ToPersistent(ptr, _objectId);
   ptr += sizeof(uint64_t);
   memcpy(ptr, fromToPtr, fromToSize);
   ptr += fromToSize;
