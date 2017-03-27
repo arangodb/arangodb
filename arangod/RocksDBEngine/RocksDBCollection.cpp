@@ -26,6 +26,7 @@
 #include "Basics/StaticStrings.h"
 #include "Aql/PlanCache.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -37,6 +38,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -416,12 +418,70 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
 int RocksDBCollection::replace(
     transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     ManagedDocumentResult& result, OperationOptions& options,
-    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
+    TRI_voc_tick_t& resultMarkerTick, bool /*lock*/, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous, TRI_voc_rid_t const revisionId,
     arangodb::velocypack::Slice const fromSlice,
     arangodb::velocypack::Slice const toSlice) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+
+  resultMarkerTick = 0;
+
+  bool const isEdgeCollection = (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
+
+  // get the previous revision
+  VPackSlice key = newSlice.get(StaticStrings::KeyString);
+  if (key.isNone()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  // get the previous revision
+  int res = lookupDocument(trx, key, previous);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  uint8_t const* vpack = previous.vpack();
+  VPackSlice oldDoc(vpack);
+  TRI_voc_rid_t oldRevisionId = transaction::helpers::extractRevFromDocument(oldDoc);
+  prevRev = oldRevisionId;
+
+  // Check old revision:
+  if (!options.ignoreRevs) {
+    TRI_voc_rid_t expectedRev = 0;
+    if (newSlice.isObject()) {
+      expectedRev = TRI_ExtractRevisionId(newSlice);
+    }
+    int res = checkRevision(trx, expectedRev, prevRev);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
+  // merge old and new values
+  transaction::BuilderLeaser builder(trx);
+  newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
+                      isEdgeCollection, TRI_RidToString(revisionId),
+                      *builder.get());
+
+  if (trx->state()->isDBServer()) {
+    // Need to check that no sharding keys have changed:
+    if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
+                                   trx->resolver()->getCollectionNameCluster(
+                                       _logicalCollection->planId()),
+                                   oldDoc, builder->slice(), false)) {
+      return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+    }
+  }
+
+  res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, VPackSlice(builder->slice()), options.waitForSync);
+   /*  TODO: handle result handling
+    uint8_t const* vpack = lookupRevisionVPack(revisionId);
+    if (vpack != nullptr) {
+      result.addExisting(vpack, revisionId);
+    }
+    */
+
+  return res;
 }
 
 int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
@@ -715,4 +775,12 @@ int RocksDBCollection::lookupDocument(transaction::Methods* trx,
   }
 
   return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+}
+
+int RocksDBCollection::updateDocument(
+    transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
+    VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
+    VPackSlice const& newDoc, bool& waitForSync) {
+  // TODO
+  return TRI_ERROR_NO_ERROR;
 }

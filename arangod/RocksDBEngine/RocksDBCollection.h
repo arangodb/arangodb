@@ -195,6 +195,10 @@ class RocksDBCollection final : public PhysicalCollection {
                      arangodb::velocypack::Slice key,
                      ManagedDocumentResult& result);
 
+  int updateDocument(transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
+                     arangodb::velocypack::Slice const& oldDoc, TRI_voc_rid_t newRevisionId,
+                     arangodb::velocypack::Slice const& newDoc, bool& waitForSync);
+
  private:
   uint64_t _objectId; // rocksdb-specific object id for collection
 };
