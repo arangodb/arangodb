@@ -1045,7 +1045,6 @@ testFuncs.arangosh = function (options) {
     }
 
     const startTime = time();
-    print(args);
     let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args));
     const deltaTime = time() - startTime;
     const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === expectedReturnCode);
@@ -1060,6 +1059,12 @@ testFuncs.arangosh = function (options) {
     ret[section]['status'] = failSuccess;
     ret[section]['duration'] = deltaTime;
     print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
+    if (options.extremeVerbosity) {
+      print(toArgv(args));
+      print(ret[section]);
+      print(rc);
+      print('expect rc: ' + expectedReturnCode);
+    }
   }
 
   runTest('testArangoshExitCodeNoConnect',

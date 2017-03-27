@@ -1169,6 +1169,7 @@ exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 
 Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
 Object.defineProperty(exports, 'ARANGOD_BIN', {get: () => ARANGOD_BIN});
+Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => ARANGOSH_BIN});
 Object.defineProperty(exports, 'CONFIG_DIR', {get: () => CONFIG_DIR});
 Object.defineProperty(exports, 'TOP_DIR', {get: () => TOP_DIR});
 Object.defineProperty(exports, 'LOGS_DIR', {get: () => LOGS_DIR});
