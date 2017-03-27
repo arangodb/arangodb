@@ -522,9 +522,9 @@ void Worker<V, E, M>::_finishedProcessing() {
       // async adaptive message buffering
       _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
     } else {
-      uint32_t tn = _config.parallelism();
-      uint32_t s = _messageStats.sendCount / tn / 2UL;
-      _messageBatchSize = s > 1000 ? s : 1000;
+      uint64_t tn = _config.parallelism();
+      uint64_t s = _messageStats.sendCount / tn / 2UL;
+      _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
     }
     _messageStats.resetTracking();
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Batch size: " << _messageBatchSize;

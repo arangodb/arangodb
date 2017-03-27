@@ -32,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
-static float EPS = 0.00001;
+static float EPS = 0.00001f;
 static std::string const kConvergence = "convergence";
 
 struct PRWorkerContext : public WorkerContext {
@@ -41,9 +41,9 @@ struct PRWorkerContext : public WorkerContext {
   float commonProb = 0;
   void preGlobalSuperstep(uint64_t gss) override {
     if (gss == 0) {
-      commonProb = 1.0 / vertexCount();
+      commonProb = 1.0f / vertexCount();
     } else {
-      commonProb = 0.15 / vertexCount();
+      commonProb = 0.15f / vertexCount();
     }
   }
 };
@@ -64,11 +64,11 @@ struct PRComputation : public VertexComputation<float, float, float> {
     if (globalSuperstep() == 0) {
       *ptr = ctx->commonProb;
     } else {
-      float sum = 0.0;
+      float sum = 0.0f;
       for (const float* msg : messages) {
         sum += *msg;
       }
-      *ptr = 0.85 * sum + ctx->commonProb;
+      *ptr = 0.85f * sum + ctx->commonProb;
     }
     float diff = fabs(copy - *ptr);
     aggregate<float>(kConvergence, diff);
