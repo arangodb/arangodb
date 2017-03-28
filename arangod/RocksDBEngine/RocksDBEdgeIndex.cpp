@@ -104,7 +104,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
     rocksdb::ReadOptions readOptions;
     std::unique_ptr<rocksdb::Iterator> iter(
-        rtrx->NewIterator(readOptions));
+        rtrx->GetIterator(readOptions));
 
     rocksdb::Slice rSlice(prefix.key());
     iter->Seek(rSlice);

@@ -356,7 +356,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create edge index");
       }
-      newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
+      newIdx.reset(new arangodb::RocksDBEdgeIndex(iid, col, StaticStrings::FromString));
       break;
     }
     //case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
@@ -392,8 +392,8 @@ void RocksDBIndexFactory::fillSystemIndexes(
     rocksdb::TransactionDB *db = engine->db();
     
     systemIndexes.emplace_back(
-        std::make_shared<arangodb::RocksDBEdgeIndex>(db, 1, col, StaticStrings::FromString));
+        std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, StaticStrings::FromString));
     systemIndexes.emplace_back(
-        std::make_shared<arangodb::RocksDBEdgeIndex>(db, 2, col, StaticStrings::ToString));
+        std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, StaticStrings::ToString));
   }
 }

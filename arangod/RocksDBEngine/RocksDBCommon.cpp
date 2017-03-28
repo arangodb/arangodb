@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 namespace rocksutils {
