@@ -24,10 +24,10 @@
 #ifndef ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H
 #define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
 
-#include "velocypack/Slice.h"
-#include "velocypack/Buffer.h"
-#include "velocypack/velocypack-aliases.h"
 #include "Basics/Common.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
