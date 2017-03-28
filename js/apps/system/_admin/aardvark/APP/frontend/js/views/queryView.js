@@ -1790,7 +1790,13 @@
 
           var time = '-';
           if (data && data.extra && data.extra.stats) {
-            time = data.extra.stats.executionTime.toFixed(3) + ' s';
+            if (data.extra.stats.executionTime > 1) {
+              time = numeral(data.extra.stats.executionTime).format('0.000');
+              time += ' s';
+            } else {
+              time = numeral(data.extra.stats.executionTime * 1000).format('0.000');
+              time += ' ms';
+            }
           }
           appendSpan(
             data.result.length + ' elements', 'fa-calculator'
@@ -2109,14 +2115,20 @@
           var width;
           var adjustWidth = 0;
 
+          var time = '';
           _.each(data, function (value, key) {
-            var ms = numeral(value * 1000).format('0.000');
-            ms += ' ms';
+            if (value > 1) {
+              time = numeral(value).format('0.000');
+              time += ' s';
+            } else {
+              time = numeral(value * 1000).format('0.000');
+              time += ' ms';
+            }
 
             queryProfile.find('.pure-g').append(
               '<div class="pure-table-row noHover">' +
               '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
-              '<div class="pure-u-4-24 left">' + ms + '</div>' +
+              '<div class="pure-u-4-24 left">' + time + '</div>' +
               '<div class="pure-u-6-24 left">' + key + '</div>' +
               '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
               '</div>'
