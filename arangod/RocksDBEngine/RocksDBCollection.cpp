@@ -307,7 +307,7 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
     transaction::Methods* trx, ManagedDocumentResult* mdr) {
-  return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "this engine does not provide an any iterator");
 }
 
 void RocksDBCollection::invokeOnAllElements(
@@ -804,6 +804,6 @@ void RocksDBCollection::lookupRevisionVPack(TRI_voc_rid_t revisionId, transactio
   std::string value;
   TRI_ASSERT(value.data());
   auto* state = toRocksTransactionState(trx);
-  state->rocksTransaction()->Get(rocksdb::ReadOptions(), rocksdb::Slice(key.string()), &value);
-  result.setManaged(reinterpret_cast<uint8_t const * >(value.data()), revisionId);
+  state->rocksTransaction()->Get(state->readOptions(), key.string(), &value);
+  result.setManaged(std::move(value), revisionId);
 }

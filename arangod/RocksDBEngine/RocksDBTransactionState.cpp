@@ -41,6 +41,7 @@
 #include <rocksdb/options.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
+#include <rocksdb/status.h>
 
 using namespace arangodb;
 
@@ -50,6 +51,7 @@ struct RocksDBTransactionData final : public TransactionData {
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
     : TransactionState(vocbase),
+      _rocksReadOptions(),
       _hasOperations(false) {}
 
 /// @brief free a transaction container
@@ -174,9 +176,3 @@ int RocksDBTransactionState::addOperation(TRI_voc_rid_t revisionId,
   return 0;
 }
 
-rocksdb::ReadOptions RocksDBTransactionState::readOptions() {
-  TRI_ASSERT(_rocksTransaction);
-  rocksdb::ReadOptions readOptions;
-  readOptions.snapshot = _rocksTransaction->GetSnapshot();
-  return readOptions;
-}

@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -88,22 +89,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   std::unordered_map<std::string, TRI_voc_rid_t>::const_iterator _iterator;
 };
 
-class RocksDBAnyIndexIterator final : public IndexIterator {
- public:
-  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
-                   ManagedDocumentResult* mmdr,
-                   RocksDBPrimaryMockIndex const* index);
-
-  ~RocksDBAnyIndexIterator() {}
-  
-  char const* typeName() const override { return "any-index-iterator"; }
-
-  bool next(TokenCallback const& cb, size_t limit) override;
-
-  void reset() override;
-};
-
-class RocksDBPrimaryMockIndex final : public Index {
+class RocksDBPrimaryMockIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryMockIndexIterator;
   friend class RocksDBAllIndexIterator;
 
@@ -164,14 +150,8 @@ class RocksDBPrimaryMockIndex final : public Index {
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
   IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*, bool reverse) const;
-
-  /// @brief request an iterator over all elements in the index in
-  ///        a random order. It is guaranteed that each element is found
-  ///        exactly once unless the collection is modified.
-  IndexIterator* anyIterator(transaction::Methods*, ManagedDocumentResult*) const;
-  uint64_t objectId() const { return _objectId; }
+ 
  private:
-  uint64_t _objectId;
   std::unordered_map<std::string, TRI_voc_rid_t> _keyRevMap;
   mutable std::mutex _keyRevMutex;
 };

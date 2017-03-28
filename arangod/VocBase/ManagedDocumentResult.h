@@ -33,14 +33,21 @@ namespace arangodb {
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() : _length(0), _lastRevisionId(0), _vpack(nullptr),
-                             _managed(false) {}
+  ManagedDocumentResult() :
+    _length(0),
+    _lastRevisionId(0),
+    _vpack(nullptr),
+    _managed(false),
+    _useString(false) {}
   ~ManagedDocumentResult() { reset(); }
   ManagedDocumentResult(ManagedDocumentResult const& other) = delete;
   ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = delete;
 
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other){
-    if (other._managed){
+    if (other._useString){
+      setManaged(std::move(other._string), other._lastRevisionId);
+    }
+    else if (other._managed){
       reset();
       _vpack = other._vpack;
       _length = other._length;
@@ -63,7 +70,7 @@ class ManagedDocumentResult {
 
   //add unmanaged vpack 
   inline void setUnmanaged(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
-    if(_managed) {
+    if(_managed || _useString) {
       reset();
     }
     TRI_ASSERT(_length == 0);
@@ -86,24 +93,39 @@ class ManagedDocumentResult {
     _managed = true;
   }
 
+  inline void setManaged(std::string&& str, TRI_voc_rid_t revisionId) {
+    reset();
+    _string = std::move(str);
+    _vpack = reinterpret_cast<uint8_t*>(const_cast<char *>(_string.data()));
+    _lastRevisionId = revisionId;
+    _useString = true;
+  }
+
   inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
 
   void reset() noexcept {
     if(_managed) {
       delete _vpack;
     }
-    _vpack = nullptr;
-    _lastRevisionId = 0;
     _managed = false;
     _length = 0;
+
+    if(_useString){
+      _string.clear();
+    }
+    _useString = false;
+
+    _lastRevisionId = 0;
+    _vpack = nullptr;
   }
 
  private:
   uint64_t _length;
   TRI_voc_rid_t _lastRevisionId;
   uint8_t* _vpack;
+  std::string _string;
   bool _managed;
-
+  bool _useString;
 };
 
 }

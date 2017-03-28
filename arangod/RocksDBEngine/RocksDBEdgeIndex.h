@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -62,8 +63,8 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   arangodb::velocypack::ArrayIterator _iterator;
   RocksDBEdgeIndex const* _index;
 };
-
-class RocksDBEdgeIndex final : public Index {
+  
+class RocksDBEdgeIndex final : public RocksDBIndex {
   friend class RocksDBEdgeIndexIterator;
 
  public:
