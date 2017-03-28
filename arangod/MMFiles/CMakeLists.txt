@@ -1,0 +1,58 @@
+# -*- mode: CMAKE; -*-
+
+# add sources for mmfiles engine
+set(MMFILES_SOURCES
+  MMFiles/mmfiles-fulltext-handles.cpp
+  MMFiles/mmfiles-fulltext-index.cpp
+  MMFiles/mmfiles-fulltext-list.cpp
+  MMFiles/mmfiles-fulltext-query.cpp
+  MMFiles/mmfiles-fulltext-result.cpp
+  MMFiles/mmfiles-geo-index.cpp
+  MMFiles/MMFilesAllocatorThread.cpp
+  MMFiles/MMFilesAqlFunctions.cpp
+  MMFiles/MMFilesCleanupThread.cpp
+  MMFiles/MMFilesCollection.cpp
+  MMFiles/MMFilesCollectionExport.cpp
+  MMFiles/MMFilesCollectionKeys.cpp
+  MMFiles/MMFilesCollectorThread.cpp
+  MMFiles/MMFilesCompactorThread.cpp
+  MMFiles/MMFilesDatafile.cpp
+  MMFiles/MMFilesDatafileStatistics.cpp
+  MMFiles/MMFilesDatafileStatisticsContainer.cpp
+  MMFiles/MMFilesDitch.cpp
+  MMFiles/MMFilesDocumentOperation.cpp
+  MMFiles/MMFilesEdgeIndex.cpp
+  MMFiles/MMFilesEngine.cpp
+  MMFiles/MMFilesExportCursor.cpp
+  MMFiles/MMFilesIndexElement.cpp
+  MMFiles/MMFilesIndexFactory.cpp
+  MMFiles/MMFilesLogfileManager.cpp
+  MMFiles/MMFilesFulltextIndex.cpp
+  MMFiles/MMFilesGeoIndex.cpp
+  MMFiles/MMFilesHashIndex.cpp
+  MMFiles/MMFilesOptimizerRules.cpp
+  MMFiles/MMFilesPathBasedIndex.cpp
+  MMFiles/MMFilesPersistentIndexFeature.cpp
+  MMFiles/MMFilesPersistentIndex.cpp
+  MMFiles/MMFilesPersistentIndexKeyComparator.cpp
+  MMFiles/MMFilesPrimaryIndex.cpp
+  MMFiles/MMFilesRemoverThread.cpp
+  MMFiles/MMFilesRestExportHandler.cpp
+  MMFiles/MMFilesRestHandlers.cpp
+  MMFiles/MMFilesRestWalHandler.cpp
+  MMFiles/MMFilesRevisionsCache.cpp
+  MMFiles/MMFilesSkiplistIndex.cpp
+  MMFiles/MMFilesSynchronizerThread.cpp
+  MMFiles/MMFilesTransactionCollection.cpp
+  MMFiles/MMFilesTransactionContextData.cpp
+  MMFiles/MMFilesTransactionState.cpp
+  MMFiles/MMFilesV8Functions.cpp
+  MMFiles/MMFilesView.cpp
+  MMFiles/MMFilesWalLogfile.cpp
+  MMFiles/MMFilesWalRecoverState.cpp
+  MMFiles/MMFilesWalRecoveryFeature.cpp
+  MMFiles/MMFilesWalSlot.cpp
+  MMFiles/MMFilesWalSlots.cpp
+  MMFiles/mmfiles-replication-dump.cpp
+  )
+set(MMFILES_SOURCES ${MMFILES_SOURCES} PARENT_SCOPE)

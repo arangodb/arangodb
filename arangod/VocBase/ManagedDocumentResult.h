@@ -24,35 +24,86 @@
 #ifndef ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H
 #define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
 
+#include "velocypack/Slice.h"
+#include "velocypack/Buffer.h"
+#include "velocypack/velocypack-aliases.h"
 #include "Basics/Common.h"
 
 namespace arangodb {
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() : _vpack(nullptr), _lastRevisionId(0) {}
-  ~ManagedDocumentResult() = default;
+  ManagedDocumentResult() : _length(0), _lastRevisionId(0), _vpack(nullptr),
+                             _managed(false) {}
+  ~ManagedDocumentResult() { reset(); }
+  ManagedDocumentResult(ManagedDocumentResult const& other) = delete;
+  ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = delete;
 
-  inline uint8_t const* vpack() const { 
-    TRI_ASSERT(_vpack != nullptr); 
-    return _vpack; 
+  ManagedDocumentResult& operator=(ManagedDocumentResult&& other){
+    if (other._managed){
+      reset();
+      _vpack = other._vpack;
+      _length = other._length;
+      _lastRevisionId = other._lastRevisionId;
+      _managed = true;
+      other._managed = false;
+      other.reset();
+    } else {
+      setUnmanaged(other._vpack, other._lastRevisionId);
+    }
+    return *this;
   }
-  
-  inline void addExisting(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
-    _vpack = vpack;
+
+  ManagedDocumentResult(ManagedDocumentResult&& other) = delete;
+
+  inline uint8_t const* vpack() const {
+    TRI_ASSERT(_vpack != nullptr);
+    return _vpack;
+  }
+
+  //add unmanaged vpack 
+  inline void setUnmanaged(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
+    if(_managed) {
+      reset();
+    }
+    TRI_ASSERT(_length == 0);
+    _vpack = const_cast<uint8_t*>(vpack);
     _lastRevisionId = revisionId;
+  }
+
+  inline void setManaged(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
+    VPackSlice slice(vpack);
+    auto newLen = slice.byteSize();
+    if (_length >= newLen && _managed){
+      std::memcpy(_vpack, vpack, newLen);
+    } else {
+      reset();
+      _vpack = new uint8_t[newLen];
+      std::memcpy(_vpack, vpack, newLen);
+      _length=newLen;
+    }
+    _lastRevisionId = revisionId;
+    _managed = true;
   }
 
   inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
 
-  void clear() {
+  void reset() noexcept {
+    if(_managed) {
+      delete _vpack;
+    }
     _vpack = nullptr;
     _lastRevisionId = 0;
+    _managed = false;
+    _length = 0;
   }
 
  private:
-  uint8_t const* _vpack;
+  uint64_t _length;
   TRI_voc_rid_t _lastRevisionId;
+  uint8_t* _vpack;
+  bool _managed;
+
 };
 
 }
