@@ -158,7 +158,7 @@ VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
   return indexedVPack(slice.data(), slice.size());
 }
 
-std::string const& RocksDBKey::key() const { return _buffer; }
+std::string const& RocksDBKey::string() const { return _buffer; }
 
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first)
     : _type(type), _buffer() {

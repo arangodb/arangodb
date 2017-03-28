@@ -356,7 +356,7 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   auto value = RocksDBValue::Database(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
-  rocksdb::Status res = _db->Put(options, key.key(), value.value());
+  rocksdb::Status res = _db->Put(options, key.string(), value.value());
   if (res.ok()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -370,7 +370,7 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   auto value = RocksDBValue::Collection(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
-  rocksdb::Status res = _db->Put(options, key.key(), value.value());
+  rocksdb::Status res = _db->Put(options, key.string(), value.value());
   if (res.ok()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -473,7 +473,7 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
   auto value = RocksDBValue::Index(data);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
-  rocksdb::Status res = _db->Put(options, key.key(), value.value());
+  rocksdb::Status res = _db->Put(options, key.string(), value.value());
   if (!res.ok()) {
     // TODO: need translation for RocksDB errors
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);

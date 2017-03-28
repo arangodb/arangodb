@@ -106,7 +106,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     std::unique_ptr<rocksdb::Iterator> iter(
         rtrx->GetIterator(readOptions));
 
-    rocksdb::Slice rSlice(prefix.key());
+    rocksdb::Slice rSlice(prefix.string());
     iter->Seek(rSlice);
     while (iter->Valid() && iter->key().starts_with(rSlice)) {
       TRI_ASSERT(iter->key().size() > rSlice.size());
@@ -235,7 +235,7 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   
-  rocksdb::Status status = rtrx->Put(rocksdb::Slice(key.key()), rocksdb::Slice());
+  rocksdb::Status status = rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
   if (status.ok()) {
     return TRI_ERROR_NO_ERROR;
   } else {
@@ -257,7 +257,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   RocksDBTransactionState *state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction *rtrx = state->rocksTransaction();
   
-  rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.key()));
+  rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
   if (status.ok()) {
     return TRI_ERROR_NO_ERROR;
   } else {
@@ -284,7 +284,7 @@ void RocksDBEdgeIndex::batchInsert(
                                                 primaryKey.copyString());
 
     rocksdb::Status status =
-        rtrx->Put(rocksdb::Slice(key.key()), rocksdb::Slice());
+        rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
     if (!status.ok()) {
       Result res =
           rocksutils::convertStatus(status, rocksutils::StatusHint::index);

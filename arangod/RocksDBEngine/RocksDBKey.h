@@ -200,7 +200,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the full, constructed key
   //////////////////////////////////////////////////////////////////////////////
-  std::string const& key() const;
+  std::string const& string() const;
 
  private:
   RocksDBKey(RocksDBEntryType type, uint64_t first);
