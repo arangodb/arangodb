@@ -490,12 +490,12 @@
           return false;
         }
 
-        users.ensureIndex({
-          type: 'hash',
-          fields: ['user'],
-          unique: true,
-          sparse: true
-        });
+        //users.ensureIndex({
+        //  type: 'hash',
+        //  fields: ['user'],
+        //  unique: true,
+        //  sparse: true
+        //});
 
         return true;
       }
