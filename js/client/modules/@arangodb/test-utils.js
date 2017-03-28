@@ -31,6 +31,7 @@ const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const yaml = require('js-yaml');
 
+const toArgv = require('internal').toArgv;
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const download = require('internal').download;
@@ -373,6 +374,46 @@ function runThere (options, instanceInfo, file) {
 }
 runThere.info = 'runThere';
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs a local unittest file using arangosh
+// //////////////////////////////////////////////////////////////////////////////
+
+function runInArangosh (options, instanceInfo, file, addArgs) {
+  let args = pu.makeArgs.arangosh(options);
+  args['server.endpoint'] = instanceInfo.endpoint;
+
+  args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
+
+  if (!options.verbose) {
+    args['log.level'] = 'warning';
+  }
+
+  if (addArgs !== undefined) {
+    args = Object.assign(args, addArgs);
+  }
+  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
+  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir);
+  let result;
+  try {
+    result = JSON.parse(fs.read(instanceInfo.rootDir + '/testresult.json'));
+
+    fs.remove(instanceInfo.rootDir + '/testresult.json');
+  } catch (x) {
+    if (options.extremeVerbosity) {
+      print('failed to read ' + instanceInfo.rootDir + '/testresult.json');
+    }
+    return rc;
+  }
+
+  if ((typeof result[0] === 'object') &&
+    result[0].hasOwnProperty('status')) {
+    return result[0];
+  } else {
+    return rc;
+  }
+}
+runInArangosh.info = 'arangosh';
+
 function makeResults (testname, instanceInfo) {
   const startTime = time();
 
@@ -418,6 +459,8 @@ function makeResults (testname, instanceInfo) {
 }
 
 exports.runThere = runThere;
+exports.runInArangosh = runInArangosh;
+
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
 exports.performTests = performTests;

@@ -61,7 +61,7 @@ function clientResilience (options) {
     options.coordinators = 2;
   }
 
-  return tu.performTests(options, testCases, 'client_resilience', pu.createArangoshRunner());
+  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh);
 }
 
 // //////////////////////////////////////////////////////////////////////////////

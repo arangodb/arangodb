@@ -70,7 +70,7 @@ function dump (options) {
   print(CYAN + Date() + ': Setting up' + RESET);
 
   let results = {};
-  results.setup = pu.runInArangosh(options, instanceInfo,
+  results.setup = tu.runInArangosh(options, instanceInfo,
     tu.makePathUnix('js/server/tests/dump/dump-setup' + cluster + '.js'));
 
   if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
@@ -91,7 +91,7 @@ function dump (options) {
         (results.restore.status === true)) {
         print(CYAN + Date() + ': Dump and Restore - dump after restore' + RESET);
 
-        results.test = pu.runInArangosh(options, instanceInfo,
+        results.test = tu.runInArangosh(options, instanceInfo,
           tu.makePathUnix('js/server/tests/dump/dump' + cluster + '.js'), {
             'server.database': 'UnitTestsDumpDst'
           });
@@ -100,7 +100,7 @@ function dump (options) {
           (results.test.status === true)) {
           print(CYAN + Date() + ': Dump and Restore - teardown' + RESET);
 
-          results.tearDown = pu.runInArangosh(options, instanceInfo,
+          results.tearDown = tu.runInArangosh(options, instanceInfo,
             tu.makePathUnix('js/server/tests/dump/dump-teardown' + cluster + '.js'));
         }
       }

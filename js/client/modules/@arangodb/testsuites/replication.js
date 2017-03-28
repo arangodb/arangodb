@@ -42,7 +42,6 @@ const tu = require('@arangodb/test-utils');
 
 function replicationOngoing (options) {
   let master = pu.startInstance('tcp', options, {}, 'master_ongoing');
-
   const mr = tu.makeResults('replication', master);
 
   if (master === false) {
@@ -56,18 +55,21 @@ function replicationOngoing (options) {
     return mr(false, 'failed to start slave!');
   }
 
-  let res = pu.run.arangoshCmd(options, master, {}, [
-    '--javascript.unit-tests',
+  let results = {};
+  let reply = tu.runInArangosh(
+    options,
+    master,
     './js/server/tests/replication/replication-ongoing.js',
-    slave.endpoint
-  ]);
+    {'flatCommands': slave.endpoint}
+  );
 
-  let results;
-
-  if (!res.status) {
-    results = mr(false, 'replication-ongoing.js failed');
+  if (reply.hasOwnProperty('status')) {
+    results['replication_ongoing'] = reply;
   } else {
-    results = mr(true);
+    results['replication_ongoing'] = {
+      status: false,
+      message: 'replication-ongoing.js failed: ' + JSON.stringify(reply)
+    };
   }
 
   print('Shutting down...');
@@ -108,19 +110,23 @@ function replicationStatic (options) {
     'users.reload();'
   ]);
 
-  let results;
+  let results = {};
 
   if (res.status) {
-    res = pu.run.arangoshCmd(options, master, {}, [
-      '--javascript.unit-tests',
+    let reply = tu.runInArangosh(
+      options,
+      master,
       './js/server/tests/replication/replication-static.js',
-      slave.endpoint
-    ]);
+      {'flatCommands': slave.endpoint}
+    );
 
-    if (res.status) {
-      results = mr(true);
+    if (reply.hasOwnProperty('status')) {
+          results['replication_static'] = reply;
     } else {
-      results = mr(false, 'replication-static.js failed');
+      results['replication_static'] = {
+        status: false,
+        message: 'replication-static.js failed: ' + JSON.stringify(reply)
+      };
     }
   } else {
     results = mr(false, 'cannot create users');
@@ -160,19 +166,23 @@ function replicationSync (options) {
     'users.reload();'
   ]);
 
-  let results;
+  let results = {};
 
   if (res.status) {
-    res = pu.run.arangoshCmd(options, master, {}, [
-      '--javascript.unit-tests',
+    let reply = tu.runInArangosh(
+      options,
+      master,
       './js/server/tests/replication/replication-sync.js',
-      slave.endpoint
-    ]);
+      {'flatCommands': slave.endpoint}
+    );
 
-    if (res.status) {
-      results = mr(true);
+    if (reply.hasOwnProperty('status')) {
+          results['replication_sync'] = reply;
     } else {
-      results = mr(false, 'replication-sync.js failed');
+      results['replication_sync'] = {
+        status: false,
+        message: 'replication-sync.js failed: ' + JSON.stringify(reply)
+      };
     }
   } else {
     results = mr(false, 'cannot create users');

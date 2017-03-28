@@ -450,52 +450,6 @@ function makeArgsArangosh (options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief runs file in arangosh
-// //////////////////////////////////////////////////////////////////////////////
-
-function runInArangosh (options, instanceInfo, file, addArgs) {
-  let args = makeArgsArangosh(options);
-  args['server.endpoint'] = instanceInfo.endpoint;
-  args['javascript.unit-tests'] = fs.join(TOP_DIR, file);
-
-  if (!options.verbose) {
-    args['log.level'] = 'warning';
-  }
-
-  if (addArgs !== undefined) {
-    args = Object.assign(args, addArgs);
-  }
-  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
-  let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir);
-
-  let result;
-  try {
-    result = JSON.parse(fs.read(instanceInfo.rootDir + '/testresult.json'));
-    fs.remove(instanceInfo.rootDir + '/testresult.json');
-  } catch (x) {
-    if (options.extremeVerbosity) {
-      print('failed to read ' + instanceInfo.rootDir + '/testresult.json');
-    }
-    return rc;
-  }
-
-  if ((typeof result[0] === 'object') &&
-    result[0].hasOwnProperty('status')) {
-    return result[0];
-  } else {
-    return rc;
-  }
-}
-
-function createArangoshRunner (args) {
-  let runner = function (options, instanceInfo, file) {
-    return runInArangosh(options, instanceInfo, file, args);
-  };
-  runner.info = 'arangosh';
-  return runner;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1188,9 +1142,6 @@ exports.findFreePort = findFreePort;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;
-
-exports.runInArangosh = runInArangosh;
-exports.createArangoshRunner = createArangoshRunner;
 
 exports.run = {
   arangoshCmd: runArangoshCmd,
