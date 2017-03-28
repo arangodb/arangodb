@@ -359,11 +359,11 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
       break;
     }
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      // TODO: fix this wrong index type. only used temporarily because we don't have other indexes
-      newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
-      break;
-    }
+    //case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
+    //  // TODO: fix this wrong index type. only used temporarily because we don't have other indexes
+    //  newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
+    //  break;
+    //}
     
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: 
     default: {

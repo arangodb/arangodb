@@ -490,12 +490,13 @@
           return false;
         }
 
-        users.ensureIndex({
+        // TODO: fix hashindex
+        /*users.ensureIndex({
           type: 'hash',
           fields: ['user'],
           unique: true,
           sparse: true
-        });
+        });*/
 
         return true;
       }

@@ -134,7 +134,7 @@ size_t RocksDBCollection::memory() const {
 }
 
 void RocksDBCollection::open(bool ignoreErrors) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // doesn't need to be opened
 }
 
 /// @brief iterate all markers of a collection on load

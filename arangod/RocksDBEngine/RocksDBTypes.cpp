@@ -49,6 +49,9 @@ static rocksdb::Slice Document(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &document),
     1);
+  
+static RocksDBEntryType edgeIndexValue = RocksDBEntryType::EdgeIndexValue;
+static rocksdb::Slice EdgeIndexValue(reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&edgeIndexValue), 1);
 
 static RocksDBEntryType indexValue = RocksDBEntryType::IndexValue;
 static rocksdb::Slice IndexValue(
@@ -77,6 +80,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return Collection;
     case RocksDBEntryType::Database:
       return Database;
+    case RocksDBEntryType::EdgeIndexValue:
+      return EdgeIndexValue;
     case RocksDBEntryType::Index:
       return Index;
     case RocksDBEntryType::IndexValue:

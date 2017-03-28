@@ -526,7 +526,7 @@ std::unique_ptr<char> RocksDBEdgeIndex::buildIndexValue(VPackSlice const& doc,
 
   // TODO maybe use StringBuffer
   char* ptr = buffer.get();
-  ptr[0] = (char)RocksDBEntryType::UniqueIndexValue;
+  ptr[0] = (char)RocksDBEntryType::EdgeIndexValue;
   ptr += sizeof(char);
   rocksutils::uint64ToPersistent(ptr, _objectId);
   ptr += sizeof(uint64_t);
@@ -551,7 +551,7 @@ std::unique_ptr<char> RocksDBEdgeIndex::buildRangePrefix(VPackSlice const& fromT
 
   // TODO maybe use StringBuffer
   char* ptr = buffer.get();
-  ptr[0] = (char)RocksDBEntryType::UniqueIndexValue;
+  ptr[0] = (char)RocksDBEntryType::EdgeIndexValue;
   ptr += sizeof(char);
   rocksutils::uint64ToPersistent(ptr, _objectId);
   ptr += sizeof(uint64_t);
