@@ -54,11 +54,19 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
+namespace {
+
 static std::string const Empty;
  
-rocksdb::TransactionDB* db() {
+static rocksdb::TransactionDB* db() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   return static_cast<RocksDBEngine*>(engine)->db();
+}
+    
+static inline rocksdb::Transaction* rocksTransaction(arangodb::transaction::Methods* trx) {
+  return static_cast<RocksDBTransactionState*>(trx->state())->rocksTransaction();
+}
+
 }
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
@@ -661,8 +669,10 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   RocksDBKey key(RocksDBKey::Document(_objectId, revisionId));
   RocksDBValue value(RocksDBValue::Document(doc));
 
-  rocksdb::WriteBatch writeBatch;
-  writeBatch.Put(key.string(), value.value());
+  rocksdb::Transaction* rtrx = rocksTransaction(trx);
+  RocksDBSavePoint guard(rtrx);
+
+  rtrx->Put(key.string(), value.value());
 
   auto indexes = _indexes;
   size_t const n = indexes.size();
@@ -688,24 +698,13 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
-    rocksdb::WriteOptions writeOptions;
-
     if (_logicalCollection->waitForSync()) {
       waitForSync = true;
     }
 
     if (waitForSync) {
       trx->state()->waitForSync(true);
-
-      // handle waitForSync for single operations here
-      if (trx->state()->isSingleOperation()) {
-        writeOptions.sync = true;
-      }
     }
-
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(engine)->db();
-    db->Write(writeOptions, &writeBatch);
   }
 
   return result;
@@ -720,8 +719,11 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
 
-  rocksdb::WriteBatch writeBatch;
-  writeBatch.Delete(key.string());
+  rocksdb::Transaction* rtrx = rocksTransaction(trx);
+
+  RocksDBSavePoint guard(rtrx);
+
+  rtrx->Delete(key.string());
 
   auto indexes = _indexes;
   size_t const n = indexes.size();
@@ -740,24 +742,13 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
-    rocksdb::WriteOptions writeOptions;
-
     if (_logicalCollection->waitForSync()) {
       waitForSync = true;
     }
 
     if (waitForSync) {
       trx->state()->waitForSync(true);
-
-      // handle waitForSync for single operations here
-      if (trx->state()->isSingleOperation()) {
-        writeOptions.sync = true;
-      }
     }
-
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(engine)->db();
-    db->Write(writeOptions, &writeBatch);
   }
 
   return result;
@@ -799,11 +790,16 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
   return outToken.revisionId() > 0 ? Result() : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
-void RocksDBCollection::lookupRevisionVPack(TRI_voc_rid_t revisionId, transaction::Methods* trx,arangodb::ManagedDocumentResult& result){
-  auto key = RocksDBKey::Document(_objectId,revisionId);
+void RocksDBCollection::lookupRevisionVPack(TRI_voc_rid_t revisionId, transaction::Methods* trx,arangodb::ManagedDocumentResult& result) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "LOOKING UP DOCUMENT: " << _objectId << ", REV: " << revisionId;
+  auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;
   TRI_ASSERT(value.data());
   auto* state = toRocksTransactionState(trx);
-  state->rocksTransaction()->Get(state->readOptions(), key.string(), &value);
-  result.setManaged(std::move(value), revisionId);
+  rocksdb::Status status = state->rocksTransaction()->Get(state->readOptions(), key.string(), &value);
+
+  if (status.ok()) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "FOUND";
+    result.setManaged(std::move(value), revisionId);
+  }
 }

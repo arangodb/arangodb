@@ -88,8 +88,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   }
   
   // aquire rocksdb transaction
-  RocksDBTransactionState *state = rocksutils::toRocksTransactionState(_trx);
-  rocksdb::Transaction *rtrx = state->rocksTransaction();
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
   auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
   
   while (limit > 0) {
@@ -254,8 +254,8 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                                               primaryKey.copyString());
 
   // aquire rocksdb transaction
-  RocksDBTransactionState *state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction *rtrx = state->rocksTransaction();
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
   
   rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
   if (status.ok()) {
@@ -274,7 +274,7 @@ void RocksDBEdgeIndex::batchInsert(
   
   // aquire rocksdb transaction
   RocksDBTransactionState *state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction *rtrx = state->rocksTransaction();
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
   
   for (std::pair<TRI_voc_rid_t, VPackSlice> const& doc : documents) {
     VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);

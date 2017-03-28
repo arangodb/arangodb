@@ -44,8 +44,25 @@
 
 using namespace arangodb;
 
-struct RocksDBTransactionData final : public TransactionData {
-};
+struct RocksDBTransactionData final : public TransactionData {};
+
+RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx) 
+    : _trx(trx), _committed(false) {}
+
+RocksDBSavePoint::~RocksDBSavePoint() {
+  if (!_committed) {
+    rollback();
+  }
+}
+
+void RocksDBSavePoint::commit() {
+  _committed = true; // this will prevent the rollback
+}
+
+void RocksDBSavePoint::rollback() {
+  _trx->RollbackToSavePoint();
+  _committed = true; // in order to not roll back again by accident
+}
 
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
@@ -74,7 +91,7 @@ int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(engine)->db();
-    _rocksTransaction.reset(db->BeginTransaction(rocksdb::WriteOptions(), rocksdb::TransactionOptions()));
+    _rocksTransaction.reset(db->BeginTransaction(_rocksWriteOptions, rocksdb::TransactionOptions()));
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -109,6 +126,11 @@ int RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) 
 
   if (_nestingLevel == 0) {
     if (_rocksTransaction != nullptr) {
+      // set wait for sync flag if required
+      if (waitForSync()) {
+        _rocksWriteOptions.sync = true;
+      }
+
       auto status = _rocksTransaction->Commit();
 
       if (!status.ok()) {
