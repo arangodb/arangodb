@@ -337,8 +337,8 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
   }
   
   // no need to access this in every single index
-  RocksDBEngine *engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  rocksdb::TransactionDB *db = engine->db();
+  //RocksDBEngine *engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  //rocksdb::TransactionDB *db = engine->db();
 
   switch (type) {
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
@@ -388,8 +388,8 @@ void RocksDBIndexFactory::fillSystemIndexes(
       std::make_shared<arangodb::RocksDBPrimaryMockIndex>(col, builder.slice()));
   // create edges index
   if (col->type() == TRI_COL_TYPE_EDGE) {
-    RocksDBEngine *engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    rocksdb::TransactionDB *db = engine->db();
+    //RocksDBEngine *engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    //rocksdb::TransactionDB *db = engine->db();
     
     systemIndexes.emplace_back(
         std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, StaticStrings::FromString));
