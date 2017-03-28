@@ -136,6 +136,7 @@ class RocksDBPrimaryMockIndex final : public Index {
   void toVelocyPack(VPackBuilder&, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
+  RocksDBToken lookupKey(transaction::Methods* trx, arangodb::StringRef key);
   RocksDBToken lookupKey(transaction::Methods* trx, arangodb::velocypack::Slice key, ManagedDocumentResult& result);
 
   int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;

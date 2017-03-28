@@ -29,6 +29,7 @@
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "RocksDBEngine/RocksDBKey.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -142,11 +143,6 @@ class RocksDBEdgeIndex final : public Index {
   /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode) const;
-
-  std::unique_ptr<char> buildIndexValue(arangodb::velocypack::Slice const& doc,
-                                        size_t& outSize) const;
-  std::unique_ptr<char> buildRangePrefix(arangodb::velocypack::Slice const& doc,
-                                         size_t& outSize) const;
 
   rocksdb::TransactionDB* _db;
   std::string _directionAttr;

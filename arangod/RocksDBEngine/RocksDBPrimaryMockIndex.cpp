@@ -140,6 +140,17 @@ void RocksDBPrimaryMockIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   // TODO: implement
 }
 
+RocksDBToken RocksDBPrimaryMockIndex::lookupKey(transaction::Methods* trx, arangodb::StringRef keyRef) {
+  std::string key (keyRef.toString());
+  std::lock_guard<std::mutex> lock(_keyRevMutex);
+  LOG_TOPIC(ERR, Logger::FIXME) << "LOOKUP. THE KEY IS: " << key;
+  auto it = _keyRevMap.find(key);
+  if (it == _keyRevMap.end()) {
+    return RocksDBToken();
+  }
+  return RocksDBToken((*it).second);
+}
+
 RocksDBToken RocksDBPrimaryMockIndex::lookupKey(transaction::Methods* trx,
                                                 VPackSlice slice,
                                                 ManagedDocumentResult& result) {
