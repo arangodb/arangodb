@@ -241,6 +241,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("InitDatabase");
   startsAfter("MMFilesEngine");
   startsAfter("MMFilesPersistentIndex");
+  startsAfter("RocksDBEngine");
 }
 
 DatabaseFeature::~DatabaseFeature() {
