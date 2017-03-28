@@ -99,7 +99,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     RocksDBKey prefix =
         RocksDBKey::EdgeIndexPrefix(_index->_objectId, fromTo.copyString());
 
-    std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(state->readOptions()));
+    std::unique_ptr<rocksdb::Iterator> iter(
+        rtrx->GetIterator(state->readOptions()));
 
     rocksdb::Slice rSlice(prefix.string());
     iter->Seek(rSlice);
