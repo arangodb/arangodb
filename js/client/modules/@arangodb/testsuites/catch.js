@@ -94,7 +94,7 @@ function catchRunner (options) {
 
   if (!options.skipGeo) {
     if (run !== '') {
-      let argv = ['[geo]',
+      let argv = ['[geo][exclude:longRunning]',
                   '-r',
                   'junit',
                   '-o',
