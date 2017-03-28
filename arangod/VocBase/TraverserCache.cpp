@@ -152,7 +152,7 @@ void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Sl
     if (value) {
       bool success = _cache->insert(value.get());
       if (!success) {
-        LOG_TOPIC(ERR, Logger::GRAPHS) << "Insert document into cache failed";
+        LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert document into cache failed";
       }
       // Cache is responsible.
       // If this failed, well we do not store it and read it again next time.
