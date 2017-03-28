@@ -19,10 +19,11 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_TYPES_H
-#define ARANGO_ROCKSDB_ROCKSDB_TYPES_H 1
+#ifndef ARANGO_ROCKSDB_ROCKSDB_COMMON_H
+#define ARANGO_ROCKSDB_ROCKSDB_COMMON_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -30,14 +31,18 @@
 #include <rocksdb/status.h>
 
 namespace arangodb {
-namespace rocksdb {
+namespace rocksutils {
 
 enum StatusHint { none, document, collection, view, index, database };
 
-arangodb::Result convertStatus(::rocksdb::Status const&,
+arangodb::Result convertStatus(rocksdb::Status const&,
                                StatusHint hint = StatusHint::none);
 
-}  // namespace rocksdb
+uint64_t uint64FromPersistent(char const* p);
+void uint64ToPersistent(char* p, uint64_t value);
+void uint64ToPersistent(std::string& out, uint64_t value);
+
+}  // namespace rocksutils
 }  // namespace arangodb
 
 #endif
