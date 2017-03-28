@@ -74,6 +74,8 @@ int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(engine)->db();
     _rocksTransaction.reset(db->BeginTransaction(rocksdb::WriteOptions(), rocksdb::TransactionOptions()));
+    // _rocksTransaction->SetSnapshot()
+    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -170,4 +172,11 @@ int RocksDBTransactionState::addOperation(TRI_voc_rid_t revisionId,
   _hasOperations = true;
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
+}
+
+rocksdb::ReadOptions RocksDBTransactionState::readOptions() {
+  TRI_ASSERT(_rocksTransaction);
+  rocksdb::ReadOptions readOptions;
+  readOptions.snapshot = _rocksTransaction->GetSnapshot();
+  return readOptions;
 }

@@ -95,9 +95,6 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     VPackSlice fromTo = _iterator.value();
     TRI_ASSERT(fromTo.isString());
-    // if (tmp.isObject()) {
-    //  tmp = tmp.get(StaticStrings::IndexEq);
-    //}
 
     RocksDBKey prefix =
         RocksDBKey::EdgeIndexPrefix(_index->_objectId, fromTo.copyString());
@@ -113,7 +110,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       size_t edgeKeySize = iter->key().size() - rSlice.size();
       const char* edgeKey = iter->key().data() + rSlice.size();
 
-      // TODO do we need to handle failed lookups here?
+      // aquire the document token through the primary index
       RocksDBToken token;
       Result res = rocksColl->lookupDocumentToken(
           _trx, StringRef(edgeKey, edgeKeySize), token);
@@ -122,7 +119,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         if (--limit == 0) {
           break;
         }
-      }
+      }// TODO do we need to handle failed lookups here?
 
       iter->Next();
     }

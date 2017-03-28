@@ -36,6 +36,9 @@ struct TRI_vocbase_t;
 
 namespace rocksdb {
 class Transaction;
+struct ReadOptions;
+class Slice;
+class Iterator;
 }
 
 namespace arangodb {
@@ -73,9 +76,12 @@ class RocksDBTransactionState final : public TransactionState {
     return _rocksTransaction.get();
   }
   
+  rocksdb::ReadOptions readOptions();
+  
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   bool _hasOperations;
+  
 };
 
 }
