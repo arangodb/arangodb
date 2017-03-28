@@ -57,10 +57,13 @@ namespace {
 
 static std::string const Empty;
 
+#if 0
+// currently unused. remove?
 static rocksdb::TransactionDB* db() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   return static_cast<RocksDBEngine*>(engine)->db();
 }
+#endif
 
 static inline rocksdb::Transaction* rocksTransaction(
     arangodb::transaction::Methods* trx) {
