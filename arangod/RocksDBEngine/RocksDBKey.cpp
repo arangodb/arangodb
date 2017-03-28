@@ -65,6 +65,11 @@ RocksDBKey RocksDBKey::EdgeIndexValue(uint64_t indexId,
                     primaryKey);
 }
 
+RocksDBKey RocksDBKey::EdgeIndexPrefix(uint64_t indexId,
+                                       std::string const& vertexId) {
+  return RocksDBKey(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
+}
+
 RocksDBKey RocksDBKey::IndexValue(uint64_t indexId,
                                   std::string const& primaryKey,
                                   VPackSlice const& indexValues) {
@@ -265,6 +270,17 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.append(second);
       break;
     }
+    
+    case RocksDBEntryType::EdgeIndexValue: {// actually just a prefix
+      size_t length = sizeof(char) + sizeof(uint64_t) + second.size()
+                      + sizeof(char);
+      _buffer.reserve(length);
+      _buffer.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_buffer, first);
+      _buffer.append(second);
+      _buffer.push_back(_stringSeparator);
+      break;
+    }
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -286,6 +302,18 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.append(third);
       TRI_ASSERT(third.size() <= 254);
       _buffer.push_back(static_cast<char>(third.size() & 0xff));
+      break;
+    }
+      
+    case RocksDBEntryType::EdgeIndexValue: {
+      size_t length = sizeof(char) + sizeof(uint64_t) + second.size() +
+                      sizeof(char) + third.size();
+      _buffer.reserve(length);
+      _buffer.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_buffer, first);
+      _buffer.append(second);
+      _buffer.push_back(_stringSeparator);
+      _buffer.append(third);
       break;
     }
 

@@ -173,7 +173,7 @@ class RocksDBCollection final : public PhysicalCollection {
   uint64_t objectId() const { return _objectId; }
   
   Result lookupDocumentToken(transaction::Methods* trx,
-                             arangodb::velocypack::Slice key, RocksDBToken &outToken);
+                             arangodb::StringRef key, RocksDBToken &token);
 
  private:
   /// @brief return engine-specific figures

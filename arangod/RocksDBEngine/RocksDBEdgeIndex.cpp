@@ -94,22 +94,23 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     //  tmp = tmp.get(StaticStrings::IndexEq);
     //}
     
-    size_t prefixSize;
-    std::unique_ptr<char> str = _index->buildRangePrefix(fromTo, prefixSize);
+    RocksDBKey prefix = RocksDBKey::EdgeIndexPrefix(_index->_objectId,
+                                                    fromTo.copyString());
     
     rocksdb::ReadOptions readOptions;
     std::unique_ptr<rocksdb::Iterator> iter(_index->_db->NewIterator(readOptions));
     
-    rocksdb::Slice rSlice(str.get(), prefixSize);
+    rocksdb::Slice rSlice(prefix.key());
     iter->Seek(rSlice);
     while (iter->Valid() && iter->key().starts_with(rSlice)) {
-      TRI_ASSERT(iter->key().size() > prefixSize);
-      VPackSlice edgeKey = VPackSlice(iter->key().data() + prefixSize);
-      TRI_ASSERT(edgeKey.isString());
-
+      
+      TRI_ASSERT(iter->key().size() > rSlice.size());
+      size_t edgeKeySize = iter->key().size() - rSlice.size();
+      const char* edgeKey = iter->key().data() + rSlice.size();
+      
       // TODO do we need to handle failed lookups here?
       RocksDBToken token;
-      Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
+      Result res = rocksColl->lookupDocumentToken(_trx, StringRef(edgeKey, edgeKeySize), token);
       if (res.ok()) {
         cb(token);
         if (--limit == 0) {
@@ -221,41 +222,41 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   } else {
     key = doc.get(StaticStrings::FromString);
   }*/
+  
+  VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
+  VPackSlice fromTo = doc.get(_directionAttr);
+  TRI_ASSERT(primaryKey.isString() && fromTo.isString());
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
+                                              primaryKey.copyString());
 
-  size_t keySize;
-  std::unique_ptr<char> key = buildIndexValue(doc, keySize);
-  if (key) {
-    rocksdb::WriteOptions writeOptions;
-    rocksdb::Status status = _db->Put(
-        writeOptions, rocksdb::Slice(key.get(), keySize), rocksdb::Slice());
-    if (status.ok()) {
-      return TRI_ERROR_NO_ERROR;
-    } else {
-      Result res = rocksutils::convertStatus(status);
-      return res.errorNumber();
-    }
+  rocksdb::WriteOptions writeOptions;
+  rocksdb::Status status = _db->Put(
+      writeOptions, rocksdb::Slice(key.key()), rocksdb::Slice());
+  if (status.ok()) {
+    return TRI_ERROR_NO_ERROR;
   } else {
-    return TRI_ERROR_INTERNAL;
+    Result res = rocksutils::convertStatus(status);
+    return res.errorNumber();
   }
 }
 
 int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
-  size_t keySize;
-  std::unique_ptr<char> key = buildIndexValue(doc, keySize);
-  if (key) {
-    rocksdb::WriteOptions writeOptions;
-    rocksdb::Status status =
-        _db->Delete(writeOptions, rocksdb::Slice(key.get(), keySize));
-    if (status.ok()) {
-      return TRI_ERROR_NO_ERROR;
-    } else {
-      Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-      return res.errorNumber();
-    }
+  VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
+  VPackSlice fromTo = doc.get(_directionAttr);
+  TRI_ASSERT(primaryKey.isString() && fromTo.isString());
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
+                                              primaryKey.copyString());
+  
+  rocksdb::WriteOptions writeOptions;
+  rocksdb::Status status =
+      _db->Delete(writeOptions, rocksdb::Slice(key.key()));
+  if (status.ok()) {
+    return TRI_ERROR_NO_ERROR;
   } else {
-    return TRI_ERROR_INTERNAL;
+    Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
+    return res.errorNumber();
   }
 }
 /*
@@ -294,11 +295,15 @@ void RocksDBEdgeIndex::batchInsert(
       _db->BeginTransaction(writeOptions, transactionOptions));
 
   for (std::pair<TRI_voc_rid_t, VPackSlice> doc : documents) {
-    size_t keySize;
-    std::unique_ptr<char> key = buildIndexValue(doc.second, keySize);
+    
+    VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
+    VPackSlice fromTo = doc.second.get(_directionAttr);
+    TRI_ASSERT(primaryKey.isString() && fromTo.isString());
+    RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
+                                                primaryKey.copyString());
 
     rocksdb::Status status =
-        rtxr->Put(rocksdb::Slice(key.get(), keySize), rocksdb::Slice());
+        rtxr->Put(rocksdb::Slice(key.key()), rocksdb::Slice());
     if (!status.ok()) {
       Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
       queue->setStatus(res.errorNumber());
@@ -507,58 +512,4 @@ void RocksDBEdgeIndex::handleValNode(
   TRI_IF_FAILURE("EdgeIndex::collectKeys") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-}
-
-// ================================= TODO use RocksDBKey ===========================
-
-std::unique_ptr<char> RocksDBEdgeIndex::buildIndexValue(VPackSlice const& doc,
-                                                        size_t& outSize) const {
-  VPackSlice key = doc.get(StaticStrings::KeyString);
-  VPackSlice fromTo = doc.get(_directionAttr);
-  TRI_ASSERT(key.isString() && fromTo.isString());
-  uint64_t keySize, fromToSize;
-  const char* keyPtr = key.getString(keySize);
-  const char* fromToPtr = fromTo.getString(fromToSize);
-  TRI_ASSERT(keySize > 0 && fromToSize > 0);
-
-  size_t bufSize = 2 * sizeof(char) + sizeof(uint64_t) + fromToSize + keySize;
-  std::unique_ptr<char> buffer(new char[bufSize]);
-
-  // TODO maybe use StringBuffer
-  char* ptr = buffer.get();
-  ptr[0] = (char)RocksDBEntryType::EdgeIndexValue;
-  ptr += sizeof(char);
-  rocksutils::uint64ToPersistent(ptr, _objectId);
-  ptr += sizeof(uint64_t);
-  memcpy(ptr, fromToPtr, fromToSize);
-  ptr += fromToSize;
-  *(++ptr) = '\0';
-  memcpy(ptr, keyPtr, keySize);
-  TRI_ASSERT(ptr + keySize == buffer.get() + bufSize);
-
-  outSize = bufSize;
-  return buffer;
-}
-
-std::unique_ptr<char> RocksDBEdgeIndex::buildRangePrefix(VPackSlice const& fromTo,
-                                                         size_t& outSize) const {
-  uint64_t fromToSize;
-  const char* fromToPtr = fromTo.getString(fromToSize);
-  TRI_ASSERT(fromToSize > 0);
-
-  size_t bufSize = 2 * sizeof(char) + sizeof(uint64_t) + fromToSize;
-  std::unique_ptr<char> buffer(new char[bufSize]);
-
-  // TODO maybe use StringBuffer
-  char* ptr = buffer.get();
-  ptr[0] = (char)RocksDBEntryType::EdgeIndexValue;
-  ptr += sizeof(char);
-  rocksutils::uint64ToPersistent(ptr, _objectId);
-  ptr += sizeof(uint64_t);
-  memcpy(ptr, fromToPtr, fromToSize);
-  ptr += fromToSize;
-  *(++ptr) = '\0';
-
-  outSize = bufSize;
-  return buffer;
 }
