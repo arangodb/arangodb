@@ -95,7 +95,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     ManagedDocumentResult* mmdr,  RocksDBPrimaryMockIndex const* index,
     bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
-      _reverse(reverse),
+      //_reverse(reverse),
       _keyRevMap(index->_keyRevMap),
       _iterator(index->_keyRevMap.begin()) {}
 
