@@ -65,7 +65,7 @@ function shellClient (options) {
   let testCases = tu.scanTestPath('js/common/tests/shell');
   testCases = testCases.concat(tu.scanTestPath('js/client/tests/shell'));
 
-  return tu.performTests(options, testCases, 'shell_client', pu.createArangoshRunner());
+  return tu.performTests(options, testCases, 'shell_client', tu.runInArangosh);
 }
 
 // //////////////////////////////////////////////////////////////////////////////

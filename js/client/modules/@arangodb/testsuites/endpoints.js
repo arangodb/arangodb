@@ -33,6 +33,7 @@ const optionsDocumentation = [
 ];
 
 const pu = require('@arangodb/process-utils');
+const tu = require('@arangodb/test-utils');
 
 const platform = require('internal').platform;
 
@@ -82,7 +83,7 @@ function endpoints (options) {
           };
         }
 
-        let result = pu.runInArangosh(options, instanceInfo, 'js/client/tests/endpoint-spec.js');
+        let result = tu.runInArangosh(options, instanceInfo, 'js/client/tests/endpoint-spec.js');
 
         print(CYAN + 'Shutting down...' + RESET);
         // mop: mehhh...when launched with a socket we can't use download :S

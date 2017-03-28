@@ -190,7 +190,7 @@ function importing (options) {
   let result = {};
 
   try {
-    result.setup = pu.runInArangosh(options, instanceInfo,
+    result.setup = tu.runInArangosh(options, instanceInfo,
       tu.makePathUnix('js/server/tests/import/import-setup.js'));
 
     if (result.setup.status !== true) {
@@ -207,10 +207,10 @@ function importing (options) {
       }
     }
 
-    result.check = pu.runInArangosh(options, instanceInfo,
+    result.check = tu.runInArangosh(options, instanceInfo,
       tu.makePathUnix('js/server/tests/import/import.js'));
 
-    result.teardown = pu.runInArangosh(options, instanceInfo,
+    result.teardown = tu.runInArangosh(options, instanceInfo,
       tu.makePathUnix('js/server/tests/import/import-teardown.js'));
   } catch (banana) {
     print('An exceptions of the following form was caught:',

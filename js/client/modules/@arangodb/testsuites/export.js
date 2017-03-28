@@ -105,7 +105,7 @@ function exportTest (options) {
     return results;
   }
 
-  results.setup = pu.runInArangosh(options, instanceInfo, tu.makePathUnix('js/server/tests/export/export-setup' + cluster + '.js'));
+  results.setup = tu.runInArangosh(options, instanceInfo, tu.makePathUnix('js/server/tests/export/export-setup' + cluster + '.js'));
   if (!pu.arangod.check.instanceAlive(instanceInfo, options) || results.setup.status !== true) {
     return shutdown();
   }

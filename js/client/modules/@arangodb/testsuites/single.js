@@ -84,7 +84,7 @@ function singleClient (options) {
 
     let result = {};
 
-    result[te] = pu.runInArangosh(options, instanceInfo, te);
+    result[te] = tu.runInArangosh(options, instanceInfo, te);
 
     print('Shutting down...');
 

@@ -34,6 +34,7 @@ const optionsDocumentation = [
 ];
 
 const pu = require('@arangodb/process-utils');
+const tu = require('@arangodb/test-utils');
 const fs = require('fs');
 const yaml = require('js-yaml');
 
@@ -90,7 +91,7 @@ function authentication (options) {
 
   let results = {};
 
-  results.authentication = pu.runInArangosh(options, instanceInfo,
+  results.authentication = tu.runInArangosh(options, instanceInfo,
     fs.join('js', 'client', 'tests', 'auth.js'));
 
   print(CYAN + 'Shutting down...' + RESET);
