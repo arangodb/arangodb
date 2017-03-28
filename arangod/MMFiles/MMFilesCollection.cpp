@@ -398,12 +398,12 @@ bool MMFilesCollection::OpenIterator(MMFilesMarker const* marker, MMFilesCollect
     }
     
     if (++data->_operations % 1024 == 0) {
-      data->_mmdr.clear();
+      data->_mmdr.reset();
     }
   } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile, data);
     if (++data->_operations % 1024 == 0) {
-      data->_mmdr.clear();
+      data->_mmdr.reset();
     }
   } else {
     if (type == TRI_DF_MARKER_HEADER) {
@@ -1837,7 +1837,7 @@ bool MMFilesCollection::readDocument(transaction::Methods* trx,
   TRI_voc_rid_t revisionId = tkn->revisionId();
   uint8_t const* vpack = lookupRevisionVPack(revisionId);
   if (vpack != nullptr) {
-    result.addExisting(vpack, revisionId);
+    result.setUnmanaged(vpack, revisionId);
     return true;
   } 
   return false;
@@ -1852,7 +1852,7 @@ bool MMFilesCollection::readDocumentConditional(
   TRI_ASSERT(revisionId != 0);
   uint8_t const* vpack  = lookupRevisionVPackConditional(revisionId, maxTick, true);
   if (vpack != nullptr) {
-    result.addExisting(vpack, revisionId);
+    result.setUnmanaged(vpack, revisionId);
     return true;
   } 
   return false;
@@ -2705,7 +2705,7 @@ int MMFilesCollection::insert(transaction::Methods* trx,
   if (res == TRI_ERROR_NO_ERROR) {
     uint8_t const* vpack = lookupRevisionVPack(revisionId);
     if (vpack != nullptr) {
-      result.addExisting(vpack, revisionId);
+      result.setUnmanaged(vpack, revisionId);
     }
 
     // store the tick that was used for writing the document
@@ -3030,7 +3030,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
 
   if (newSlice.length() <= 1) {
     // no need to do anything
-    result = previous;
+    result = std::move(previous);
     if (_logicalCollection->waitForSync()) {
       options.waitForSync = true;
     }
@@ -3080,7 +3080,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
     
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
-      result.clear();
+      result.reset();
     }
 
     res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
@@ -3098,7 +3098,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
   } else {
     uint8_t const* vpack = lookupRevisionVPack(revisionId);
     if (vpack != nullptr) {
-      result.addExisting(vpack, revisionId);
+      result.setUnmanaged(vpack, revisionId);
     }
     if (options.waitForSync) {
       // store the tick that was used for writing the new document
@@ -3203,7 +3203,7 @@ int MMFilesCollection::replace(
     
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
-      result.clear();
+      result.reset();
     }
 
     res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
@@ -3221,11 +3221,11 @@ int MMFilesCollection::replace(
   } else {
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
-      result.clear();
+      result.reset();
     }
     uint8_t const* vpack = lookupRevisionVPack(revisionId);
     if (vpack != nullptr) {
-      result.addExisting(vpack, revisionId);
+      result.setUnmanaged(vpack, revisionId);
     }
 
     if (options.waitForSync) {
@@ -3542,7 +3542,7 @@ int MMFilesCollection::lookupDocument(transaction::Methods* trx,
     TRI_voc_rid_t revisionId = element.revisionId();
     uint8_t const* vpack = lookupRevisionVPack(revisionId);
     if (vpack != nullptr) {
-      result.addExisting(vpack, revisionId);
+      result.setUnmanaged(vpack, revisionId);
     }
     return TRI_ERROR_NO_ERROR;
   }
