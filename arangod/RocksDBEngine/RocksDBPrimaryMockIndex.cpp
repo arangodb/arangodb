@@ -79,18 +79,18 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
       _reverse(reverse),
-      _iterator(index->_keyRevMap.begin()),
-      _end(index->_keyRevMap.end()) {}
+      _keyRevMap(index->_keyRevMap),
+      _iterator(index->_keyRevMap.begin()) {}
 
 bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  if (limit == 0 || _iterator == _end) {
+  if (limit == 0 || _iterator == _keyRevMap.end()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
   
-  while (limit > 0 && _iterator != _end) {
+  while (limit > 0 && _iterator != _keyRevMap.end()) {
     
     TRI_voc_rid_t revisionId = _iterator->second;
     cb(RocksDBToken(revisionId));
@@ -98,11 +98,11 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
     limit--;
     _iterator++;
   }
-  return _iterator != _end;
+  return _iterator != _keyRevMap.end();
 }
 
 void RocksDBAllIndexIterator::reset() {
-  // TODO
+  _iterator = _keyRevMap.begin();
 }
 
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(

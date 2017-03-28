@@ -84,8 +84,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
  private:
   bool const _reverse;
+  std::unordered_map<std::string, TRI_voc_rid_t> const& _keyRevMap;
   std::unordered_map<std::string, TRI_voc_rid_t>::const_iterator _iterator;
-  std::unordered_map<std::string, TRI_voc_rid_t>::const_iterator _end;
   //uint64_t _total;
 };
 
