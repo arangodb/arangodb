@@ -1581,7 +1581,6 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
     TRI_ASSERT(outvars.size() == 1);
     auto varsUsedLater = n->getVarsUsedLater();
 
-
     if (varsUsedLater.find(outvars[0]) == varsUsedLater.end()) {
       // The variable whose value is calculated here is not used at
       // all further down the pipeline! We remove the whole
@@ -1669,7 +1668,6 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         vars.clear();
       }
 
-
       if (usageCount == 1) {
         // our variable is used by exactly one other calculation
         // now we can replace the reference to our variable in the other
@@ -1685,6 +1683,15 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
 
         if (rootNode->isSimple() != otherExpression->node()->isSimple()) {
           // expression types (V8 vs. non-V8) do not match. give up
+          continue;
+        }
+ 
+        if (!n->isInInnerLoop() && 
+            rootNode->callsFunction() && 
+            other->isInInnerLoop()) {
+          // original expression calls a function and is not contained in a loop
+          // we're about to move this expression into a loop, but we don't want
+          // to move (expensive) function calls into loops
           continue;
         }
 
