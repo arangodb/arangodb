@@ -93,12 +93,7 @@ function resultsToXml(results, baseName, cluster) {
             total = current.total;
           }
 
-          let failuresFound = 0;
-
-          if (current.hasOwnProperty('failed')) {
-            failuresFound = current.failed;
-          }
-
+          let failuresFound = current.failed;
           xml.elem("testsuite", {
             errors: 0,
             failures: failuresFound,

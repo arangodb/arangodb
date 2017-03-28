@@ -30,7 +30,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
@@ -2596,10 +2595,8 @@ int MMFilesCollection::insert(transaction::Methods* trx,
   VPackSlice newSlice;
   int res = TRI_ERROR_NO_ERROR;
   if (options.recoveryData == nullptr) {
-    TIMER_START(TRANSACTION_NEW_OBJECT_FOR_INSERT);
     res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
                              *builder.get(), options.isRestore);
-    TIMER_STOP(TRANSACTION_NEW_OBJECT_FOR_INSERT);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }

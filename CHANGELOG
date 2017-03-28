@@ -96,6 +96,10 @@ devel
 
 * arangoimp: fixed issue #2214
 
+* Foxx: automatically add CORS response headers
+
+* added "OPTIONS" to CORS `access-control-allow-methods` header
+
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
@@ -158,7 +162,17 @@ v3.2.alpha1 (2017-02-05)
 * generated Foxx services now use swagger tags
 
 
-v3.1.16 (2017-XX-XX)
+v3.1.17 (2017-XX-XX)
+--------------------
+
+* ui - fixed smart graph option not appearing
+
+* fixed issue #2389
+
+* fixed issue #2400
+
+
+v3.1.16 (2017-03-27)
 --------------------
 
 * fixed issue #2392
@@ -172,6 +186,22 @@ v3.1.16 (2017-XX-XX)
 * ui - fixed some event issues
 
 * avoid name resolution when given connection string is a valid ip address
+
+* helps with issue #1842, bug in COLLECT statement in connection with LIMIT.
+
+* fix locking bug in cluster traversals
+
+* increase lock timeout defaults
+
+* increase various cluster timeouts
+
+* limit default target size for revision cache to 1GB, which is better for
+  tight RAM situations (used to be 40% of (totalRAM - 1GB), use
+  --database.revision-cache-target-size <VALUEINBYTES> to get back the
+  old behaviour
+
+* fixed a bug with restarted servers indicating status as "STARTUP"
+  rather that "SERVING" in Nodes UI.
 
 
 v3.1.15 (2017-03-20)

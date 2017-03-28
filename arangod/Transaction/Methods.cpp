@@ -30,7 +30,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterComm.h"
@@ -1182,7 +1181,6 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
 OperationResult transaction::Methods::documentLocal(std::string const& collectionName,
                                            VPackSlice const value,
                                            OperationOptions& options) {
-  TIMER_START(TRANSACTION_DOCUMENT_LOCAL);
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
@@ -1193,8 +1191,6 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
   VPackBuilder resultBuilder;
 
   auto workForOneDocument = [&](VPackSlice const value, bool isMultiple) -> int {
-    TIMER_START(TRANSACTION_DOCUMENT_EXTRACT);
-
     StringRef key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -1205,13 +1201,9 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
       expectedRevision = TRI_ExtractRevisionId(value);
     }
     
-    TIMER_STOP(TRANSACTION_DOCUMENT_EXTRACT);
-
     ManagedDocumentResult result;
-    TIMER_START(TRANSACTION_DOCUMENT_DOCUMENT_DOCUMENT);
     int res = collection->read(this, key, result,
                                !isLocked(collection, AccessMode::Type::READ));
-    TIMER_STOP(TRANSACTION_DOCUMENT_DOCUMENT_DOCUMENT);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -1242,8 +1234,6 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
     return TRI_ERROR_NO_ERROR;
   };
 
-  TIMER_START(TRANSACTION_DOCUMENT_WORK_FOR_ONE);
-
   int res = TRI_ERROR_NO_ERROR;
   std::unordered_map<int, size_t> countErrorCodes;
   if (!value.isArray()) {
@@ -1259,10 +1249,6 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
     res = TRI_ERROR_NO_ERROR;
   }
   
-  TIMER_STOP(TRANSACTION_DOCUMENT_WORK_FOR_ONE);
-  
-  TIMER_STOP(TRANSACTION_DOCUMENT_LOCAL);
-
   return OperationResult(resultBuilder.steal(), 
                          _transactionContextPtr->orderCustomTypeHandler(), "",
                          res, options.waitForSync, countErrorCodes); 
@@ -1340,7 +1326,6 @@ static double chooseTimeout(size_t count) {
 OperationResult transaction::Methods::insertLocal(std::string const& collectionName,
                                          VPackSlice const value,
                                          OperationOptions& options) {
-  TIMER_START(TRANSACTION_INSERT_LOCAL);
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
@@ -1359,10 +1344,8 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     ManagedDocumentResult result;
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    TIMER_START(TRANSACTION_INSERT_DOCUMENT_INSERT);
     int res = collection->insert(this, value, result, options, resultMarkerTick,
                                  !isLocked(collection, AccessMode::Type::WRITE));
-    TIMER_STOP(TRANSACTION_INSERT_DOCUMENT_INSERT);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -1379,18 +1362,12 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     
     StringRef keyString(transaction::helpers::extractKeyFromDocument(VPackSlice(vpack)));
 
-    TIMER_START(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
-
     buildDocumentIdentity(collection, resultBuilder, cid, keyString, 
         transaction::helpers::extractRevFromDocument(VPackSlice(vpack)), 0,
         nullptr, options.returnNew ? vpack : nullptr);
 
-    TIMER_STOP(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
-
     return TRI_ERROR_NO_ERROR;
   };
-
-  TIMER_START(TRANSACTION_INSERT_WORK_FOR_ONE);
 
   int res = TRI_ERROR_NO_ERROR;
   bool const multiCase = value.isArray();
@@ -1409,8 +1386,6 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     res = workForOneDocument(value);
   }
   
-  TIMER_STOP(TRANSACTION_INSERT_WORK_FOR_ONE);
- 
   // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
     EngineSelectorFeature::ENGINE->waitForSync(maxTick);
@@ -1519,8 +1494,6 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     resultBuilder.clear();
   }
   
-  TIMER_STOP(TRANSACTION_INSERT_LOCAL);
-
   return OperationResult(resultBuilder.steal(), nullptr, "", res,
                          options.waitForSync, countErrorCodes);
 }

@@ -73,6 +73,7 @@ Installation/MacOSX/Bundle/Info.plist
 
 nbproject/
 .idea
+.vscode
 
 test.cpp.txt
 
