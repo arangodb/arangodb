@@ -101,6 +101,13 @@ void uint64ToPersistent(std::string& p, uint64_t value) {
     value >>= 8;
   } while (++len < sizeof(uint64_t));
 }
+  
+RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(trx->state());
+}
 
 }  // namespace rocksutils
 }  // namespace arangodb

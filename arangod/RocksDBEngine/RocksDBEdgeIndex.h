@@ -27,9 +27,9 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "RocksDBEngine/RocksDBKey.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -62,14 +62,14 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   arangodb::velocypack::ArrayIterator _iterator;
   RocksDBEdgeIndex const* _index;
 };
-  
+
 class RocksDBEdgeIndex final : public Index {
   friend class RocksDBEdgeIndexIterator;
+
  public:
   RocksDBEdgeIndex() = delete;
 
-  RocksDBEdgeIndex(rocksdb::TransactionDB*, TRI_idx_iid_t,
-                   arangodb::LogicalCollection*, std::string const&);
+  RocksDBEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*, std::string const&);
 
   ~RocksDBEdgeIndex();
 
@@ -144,7 +144,6 @@ class RocksDBEdgeIndex final : public Index {
   void handleValNode(VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode) const;
 
-  rocksdb::TransactionDB* _db;
   std::string _directionAttr;
   uint64_t _objectId;
 };

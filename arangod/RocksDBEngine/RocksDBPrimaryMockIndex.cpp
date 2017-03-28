@@ -82,8 +82,16 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _total(0) {}
 
 bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  // TODO
-  return false;
+  if (limit == 0 || !_iterator.valid()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  while (limit > 0) {
+    <#statements#>
+  }  return false;
 }
 
 void RocksDBAllIndexIterator::reset() {

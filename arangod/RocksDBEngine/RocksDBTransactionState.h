@@ -68,7 +68,11 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief add a WAL operation for a transaction collection
   int addOperation(TRI_voc_rid_t, RocksDBDocumentOperation&, RocksDBWalMarker const* marker, bool&);
-
+  
+  rocksdb::Transaction* rocksTransaction() {
+    return _rocksTransaction.get();
+  }
+  
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   bool _beginWritten;
