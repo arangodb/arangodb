@@ -242,9 +242,11 @@ void MMFilesEngine::start() {
 void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 
-  auto logfileManager = MMFilesLogfileManager::instance();
-  logfileManager->flush(true, true, false);
-  logfileManager->waitForCollector();
+  if (!inRecovery()) {
+    auto logfileManager = MMFilesLogfileManager::instance();
+    logfileManager->flush(true, true, false);
+    logfileManager->waitForCollector();
+  }
 }
 
 transaction::ContextData* MMFilesEngine::createTransactionContextData() {
@@ -557,10 +559,9 @@ int MMFilesEngine::getCollectionsAndIndexes(
       return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
     }
     
-    std::vector<std::string> files = TRI_FullTreeDirectory(directory.c_str());
-    if (files.size() == 1) {
+    std::vector<std::string> files = TRI_FilesDirectory(directory.c_str());
+    if (files.empty()) {
       // the list always contains the empty string as its first element
-      TRI_ASSERT(files[0] == "");
       // if the list is empty otherwise, this means the directory is also empty and
       // we can ignore it
       LOG_TOPIC(TRACE, Logger::FIXME) << "ignoring empty collection directory '" << directory << "'";
@@ -742,11 +743,18 @@ void MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force,
   // wait for at most 30 seconds for the directory to be removed
   while (TRI_IsDirectory(path.c_str())) {
     if (iterations == 0) {
+      if (TRI_FilesDirectory(path.c_str()).empty()) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "deleting empty database directory '" << path << "'";
+        status = dropDatabaseDirectory(path);
+        return;
+      }
+
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "waiting for deletion of database directory '" << path << "'";
     } else if (iterations >= 30 * 20) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-          << "unable to remove database directory '" << path << "'";
+          << "timed out waiting for deletion of database directory '" << path << "'";
 
       if (force) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME)
