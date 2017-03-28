@@ -34,6 +34,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -69,7 +70,8 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
-      _db(nullptr) {
+      _db(nullptr),
+      _cmp(new RocksDBComparator()) {
   // inherits order from StorageEngine
 }
 
@@ -106,6 +108,7 @@ void RocksDBEngine::start() {
 
   _options.create_if_missing = true;
   _options.max_open_files = -1;
+  _options.comparator = _cmp.get();
 
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);

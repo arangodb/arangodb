@@ -22,14 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
-RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-        std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-        bool unique, bool sparse,
-        uint64_t objectId) 
+RocksDBIndex::RocksDBIndex(
+    TRI_idx_iid_t id, LogicalCollection* collection,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+    bool unique, bool sparse, uint64_t objectId)
     : Index(id, collection, attributes, unique, sparse),
-      _objectId(objectId) {}
-
+      _objectId(objectId),
+      _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()) {}
