@@ -77,7 +77,7 @@ class RocksDBTransactionState final : public TransactionState {
     return _rocksTransaction.get();
   }
   
-  rocksdb::ReadOptions& readOptions(){
+  rocksdb::ReadOptions const& readOptions(){
     return _rocksReadOptions;
   }
   
