@@ -329,7 +329,7 @@ MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fi
   // sanity check maximal size
   if (sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker) >
       maximalSize) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create datafile, maximal size '" << (unsigned int)maximalSize << "' is too small";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create datafile, maximal size '" << maximalSize << "' is too small";
     TRI_set_errno(TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL);
 
     return nullptr;

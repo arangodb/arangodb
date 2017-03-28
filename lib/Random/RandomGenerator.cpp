@@ -316,7 +316,7 @@ class RandomDeviceCombined : public RandomDevice {
 
       rseed = buffer[0];
 
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using seed " << (long unsigned int)rseed;
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using seed " << rseed;
     }
 
     if (0 < n) {
