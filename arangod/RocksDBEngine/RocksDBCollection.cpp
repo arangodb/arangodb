@@ -805,5 +805,5 @@ void RocksDBCollection::lookupRevisionVPack(TRI_voc_rid_t revisionId, transactio
   TRI_ASSERT(value.data());
   auto* state = toRocksTransactionState(trx);
   state->rocksTransaction()->Get(rocksdb::ReadOptions(), rocksdb::Slice(key.string()), &value);
-  result.setManaged(reinterpret_cast<uint8_t const * >(value.data()), revisionId);
+  result.setManaged(std::move(value), revisionId);
 }
