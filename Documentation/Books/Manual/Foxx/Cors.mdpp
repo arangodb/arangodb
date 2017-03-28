@@ -1,0 +1,10 @@
+Cross Origin Resource Sharing (CORS)
+====================================
+
+To use CORS in your Foxx services you first need to [configure ArangoDB for CORS](../../HTTP/General/#cross-origin-resource-sharing-cors-requests). As of 3.2 Foxx will then automatically whitelist all response headers and cookies as they are used.
+
+If you want more control over the whitelist or are using an older version of ArangoDB you can set the following response headers in your request handler:
+
+* `access-control-expose-headers`: comma-separated list of response headers (defaults to a list of all headers the response is actually using)
+
+* `access-control-allow-credentials`: `"false"` to forbid exposing cookies (Default: `"true"`)
