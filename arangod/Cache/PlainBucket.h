@@ -44,7 +44,7 @@ namespace cache {
 /// synchronization. Data entries are carefully laid out to ensure the structure
 /// fits in a single cacheline.
 ////////////////////////////////////////////////////////////////////////////////
-struct alignas(BUCKET_SIZE) PlainBucket {
+struct PlainBucket {
   State _state;
 
   // actual cached entries
