@@ -85,6 +85,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
  private:
   bool const _reverse;
   std::unordered_map<std::string, TRI_voc_rid_t>::const_iterator _iterator;
+  std::unordered_map<std::string, TRI_voc_rid_t>::const_iterator _end;
   //uint64_t _total;
 };
 
@@ -105,6 +106,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
 class RocksDBPrimaryMockIndex final : public Index {
   friend class RocksDBPrimaryMockIndexIterator;
+  friend class RocksDBAllIndexIterator;
 
  public:
   RocksDBPrimaryMockIndex() = delete;
