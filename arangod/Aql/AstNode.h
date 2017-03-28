@@ -481,6 +481,10 @@ struct AstNode {
   /// @brief whether or not a node (and its subnodes) may contain a call to a
   /// user-defined function
   bool callsUserDefinedFunction() const;
+  
+  /// @brief whether or not a node (and its subnodes) may contain a call to a
+  /// a function or a user-defined function
+  bool callsFunction() const;
 
   /// @brief whether or not the object node contains dynamically named
   /// attributes
