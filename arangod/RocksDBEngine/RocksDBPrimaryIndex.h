@@ -131,16 +131,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   void toVelocyPack(VPackBuilder&, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
-                arangodb::velocypack::Slice const&);
-  int insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
-                arangodb::velocypack::Slice const&, ManagedDocumentResult&);
-
-  int removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
-                arangodb::velocypack::Slice const&);
-  int removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
-                arangodb::velocypack::Slice const&, ManagedDocumentResult&);
-
   RocksDBToken lookupKey(transaction::Methods* trx, arangodb::StringRef key);
   RocksDBToken lookupKey(transaction::Methods* trx,
                          arangodb::velocypack::Slice key,

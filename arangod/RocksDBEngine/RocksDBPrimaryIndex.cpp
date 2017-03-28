@@ -239,9 +239,9 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(
   return RocksDBToken(RocksDBValue::revisionId(value));
 }
 
-int RocksDBPrimaryIndex::insertKey(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   arangodb::velocypack::Slice const& slice) {
+int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
+                                TRI_voc_rid_t revisionId,
+                                VPackSlice const& slice, bool) {
   // TODO: deal with uniqueness?
   auto key =
       RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
@@ -261,32 +261,9 @@ int RocksDBPrimaryIndex::insertKey(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBPrimaryIndex::insertKey(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   arangodb::velocypack::Slice const& slice,
-                                   ManagedDocumentResult&) {
-  // TODO: deal with uniqueness?
-  auto key =
-      RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
-  auto value = RocksDBValue::PrimaryIndexValue(revisionId);
-
-  // aquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-
-  auto status = rtrx->Put(key.string(), *value.string());
-  if (!status.ok()) {
-    auto converted =
-        rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-    return converted.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-int RocksDBPrimaryIndex::removeKey(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   arangodb::velocypack::Slice const& slice) {
+int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
+                                TRI_voc_rid_t revisionId,
+                                VPackSlice const& slice, bool) {
   // TODO: deal with matching revisions?
   auto key =
       RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
@@ -303,48 +280,6 @@ int RocksDBPrimaryIndex::removeKey(transaction::Methods* trx,
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-int RocksDBPrimaryIndex::removeKey(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   arangodb::velocypack::Slice const& slice,
-                                   ManagedDocumentResult&) {
-  // TODO: deal with matching revisions?
-  auto key =
-      RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
-
-  // aquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-
-  auto status = rtrx->Delete(key.string());
-  if (!status.ok()) {
-    auto converted =
-        rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-    return converted.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-int RocksDBPrimaryIndex::insert(transaction::Methods*, TRI_voc_rid_t,
-                                VPackSlice const&, bool) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-      << "insert() called for primary index";
-#endif
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "insert() called for primary index");
-}
-
-int RocksDBPrimaryIndex::remove(transaction::Methods*, TRI_voc_rid_t,
-                                VPackSlice const&, bool) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-      << "remove() called for primary index";
-#endif
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "remove() called for primary index");
 }
 
 /// @brief unload the index data from memory
