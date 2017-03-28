@@ -1894,7 +1894,7 @@ bool AstNode::isCacheable() const {
 /// user-defined function
 bool AstNode::callsUserDefinedFunction() const {
   if (isConstant()) {
-    return true;
+    return false;
   }
 
   // check sub-nodes first
@@ -1903,12 +1903,34 @@ bool AstNode::callsUserDefinedFunction() const {
   for (size_t i = 0; i < n; ++i) {
     auto member = getMemberUnchecked(i);
 
-    if (!member->callsUserDefinedFunction()) {
-      return false;
+    if (member->callsUserDefinedFunction()) {
+      return true;
     }
   }
 
   return (type == NODE_TYPE_FCALL_USER);
+}
+
+/// @brief whether or not a node (and its subnodes) may contain a call to a
+/// function or user-defined function
+bool AstNode::callsFunction() const {
+  if (isConstant()) {
+    return false;
+  }
+
+  // check sub-nodes first
+  size_t const n = numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMemberUnchecked(i);
+
+    if (member->callsFunction()) {
+      // abort early
+      return true;
+    }
+  }
+
+  return (type == NODE_TYPE_FCALL || type == NODE_TYPE_FCALL_USER);
 }
 
 /// @brief whether or not the object node contains dynamically named attributes
