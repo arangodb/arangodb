@@ -490,7 +490,7 @@
           return false;
         }
 
-        if (db._engine() != "rocksdb") {
+        if (db._engine().name != "rocksdb") {
           users.ensureIndex({
             type: 'hash',
             fields: ['user'],
