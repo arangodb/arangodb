@@ -36,6 +36,7 @@ class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
 class RocksDBPrimaryMockIndex;
+struct RocksDBToken;
 
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
@@ -170,6 +171,9 @@ class RocksDBCollection final : public PhysicalCollection {
       std::function<bool(LogicalCollection*)> callback) override;
   
   uint64_t objectId() const { return _objectId; }
+  
+  Result lookupDocumentToken(transaction::Methods* trx,
+                             arangodb::velocypack::Slice key, RocksDBToken &outToken);
 
  private:
   /// @brief return engine-specific figures

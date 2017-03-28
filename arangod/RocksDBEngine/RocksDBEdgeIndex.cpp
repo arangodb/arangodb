@@ -84,6 +84,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     TRI_ASSERT(limit > 0); // Someone called with limit == 0. Api broken
     return false;
   }
+  RocksDBCollection *rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
+
   while (limit > 0) {
     
     VPackSlice fromTo = _iterator.value();
@@ -105,15 +107,16 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       VPackSlice edgeKey = VPackSlice(iter->key().data() + prefixSize);
       TRI_ASSERT(edgeKey.isString());
 
-      // TODO how to make a primary index lookup?
-      //RocksDBCollection *coll = RocksDBCollection::toRocksDBCollection(_collection);
-      //RocksDBKey::PrimaryIndexValue(<#uint64_t indexId#>, <#const std::string &primaryKey#>)
-      
-      cb(RocksDBToken(0));
-
-      if (--limit == 0) {
-        break;
+      // TODO do we need to handle failed lookups here?
+      RocksDBToken token;
+      Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
+      if (res.ok()) {
+        cb(token);
+        if (--limit == 0) {
+          break;
+        }
       }
+      
       iter->Next();
     }
     if (limit > 0) {
@@ -126,7 +129,9 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
-void RocksDBEdgeIndexIterator::reset() { THROW_ARANGO_NOT_YET_IMPLEMENTED(); }
+void RocksDBEdgeIndexIterator::reset() {
+  _iterator.reset();
+}
 
 // ============================= Index ====================================
 
@@ -145,10 +150,10 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(rocksdb::TransactionDB* db,
                    {arangodb::basics::AttributeName(StaticStrings::ToString,
                                                     false)}})*/
   TRI_ASSERT(iid != 0);
-#warning how to look this up?
+#warning fix object ID
   TRI_voc_tick_t databaseId = collection->vocbase()->id();
   RocksDBKey entry = RocksDBKey::Index(databaseId, collection->cid(), iid);
-  _objectId = 0;//entry.key;
+  _objectId = 3413415 + iid;//entry.key;
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}

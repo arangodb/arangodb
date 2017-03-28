@@ -798,3 +798,11 @@ int RocksDBCollection::updateDocument(transaction::Methods* trx,
   // TODO
   return TRI_ERROR_NO_ERROR;
 }
+
+Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
+                           arangodb::velocypack::Slice key, RocksDBToken &outToken) {
+  // TODO fix as soon as we got a real primary index
+  ManagedDocumentResult result;
+  outToken = primaryIndex()->lookupKey(trx, key, result);
+  return outToken.revisionId() > 0 ? Result() : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+}
