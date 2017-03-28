@@ -2369,7 +2369,7 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
 
   let binary = pu.ARANGOD_BIN;
   if (setup) {
-    binary = cu.TOP_DIR + '/scripts/disable-cores.sh';
+    binary = pu.TOP_DIR + '/scripts/disable-cores.sh';
     argv.unshift(pu.ARANGOD_BIN);
   }
 
