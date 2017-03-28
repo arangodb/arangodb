@@ -24,14 +24,16 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H
 #define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H 1
 
+
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
-
+#include "rocksdb/status.h"
+#include "rocksdb/options.h"
 struct TRI_vocbase_t;
 
 namespace rocksdb {
@@ -72,9 +74,14 @@ class RocksDBTransactionState final : public TransactionState {
   rocksdb::Transaction* rocksTransaction() {
     return _rocksTransaction.get();
   }
-  
+
+  rocksdb::ReadOptions& readOptions(){
+    return _rocksReadOptions;
+  }
+
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
+  rocksdb::ReadOptions _rocksReadOptions;
   bool _hasOperations;
 };
 
