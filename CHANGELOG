@@ -96,6 +96,10 @@ devel
 
 * arangoimp: fixed issue #2214
 
+* Foxx: automatically add CORS response headers
+
+* added "OPTIONS" to CORS `access-control-allow-methods` header
+
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
