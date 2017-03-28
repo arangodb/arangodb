@@ -52,16 +52,6 @@ function runSetup () {
   for (i = 0; i < 10; ++i) {
     var path = paths[i];
     fs.makeDirectory(path);
-
-    if (i < 5) {
-      // create a leftover parameter.json.tmp file
-      fs.write(fs.join(path, 'parameter.json.tmp'), '');
-    } else {
-      // create an empty parameter.json file
-      fs.write(fs.join(path, 'parameter.json'), '');
-      // create some other file
-      fs.write(fs.join(path, 'foobar'), 'foobar');
-    }
   }
 
   internal.debugSegfault('crashing server');

@@ -556,6 +556,16 @@ int MMFilesEngine::getCollectionsAndIndexes(
 
       return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
     }
+    
+    std::vector<std::string> files = TRI_FullTreeDirectory(directory.c_str());
+    if (files.size() == 1) {
+      // the list always contains the empty string as its first element
+      TRI_ASSERT(files[0] == "");
+      // if the list is empty otherwise, this means the directory is also empty and
+      // we can ignore it
+      LOG_TOPIC(TRACE, Logger::FIXME) << "ignoring empty collection directory '" << directory << "'";
+      continue;
+    }
 
     int res = TRI_ERROR_NO_ERROR;
 
@@ -2265,6 +2275,9 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
   if (!TRI_ExistsFile(filename.c_str())) {
     filename += ".tmp";  // try file with .tmp extension
     if (!TRI_ExistsFile(filename.c_str())) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "collection directory '" << path << " ' does not contain a "
+          << "parameters file '" << filename.substr(0, filename.size() - 4) << "'";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
     }
   }
