@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 namespace rocksutils {
@@ -100,6 +102,13 @@ void uint64ToPersistent(std::string& p, uint64_t value) {
     p.push_back(static_cast<char>(value & 0xff));
     value >>= 8;
   } while (++len < sizeof(uint64_t));
+}
+  
+RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(trx->state());
 }
 
 }  // namespace rocksutils

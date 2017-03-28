@@ -84,12 +84,14 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  bool const _reverse;
-  uint64_t _total;
+  //bool const _reverse;
+  std::unordered_map<std::string, TRI_voc_rid_t> const& _keyRevMap;
+  std::unordered_map<std::string, TRI_voc_rid_t>::const_iterator _iterator;
 };
 
 class RocksDBPrimaryMockIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryMockIndexIterator;
+  friend class RocksDBAllIndexIterator;
 
  public:
   RocksDBPrimaryMockIndex() = delete;
@@ -123,7 +125,8 @@ class RocksDBPrimaryMockIndex final : public RocksDBIndex {
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   RocksDBToken lookupKey(transaction::Methods* trx, arangodb::StringRef key);
-  RocksDBToken lookupKey(transaction::Methods* trx, arangodb::velocypack::Slice key, ManagedDocumentResult& result);
+  RocksDBToken lookupKey(transaction::Methods* trx, arangodb::velocypack::Slice key,
+                         ManagedDocumentResult& result) const;
 
   int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
@@ -150,7 +153,7 @@ class RocksDBPrimaryMockIndex final : public RocksDBIndex {
  
  private:
   std::unordered_map<std::string, TRI_voc_rid_t> _keyRevMap;
-  std::mutex _keyRevMutex;
+  mutable std::mutex _keyRevMutex;
 };
 }
 

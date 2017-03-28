@@ -37,8 +37,9 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBToken.h"
+#include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -78,46 +79,51 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  
+
   if (limit == 0 || !_iterator.valid()) {
-    // No limit no data, or we are actually done. The last call should have returned false
-    TRI_ASSERT(limit > 0); // Someone called with limit == 0. Api broken
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
-  RocksDBCollection *rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
-
+  
+  // aquire rocksdb transaction
+  RocksDBTransactionState *state = rocksutils::toRocksTransactionState(_trx);
+  rocksdb::Transaction *rtrx = state->rocksTransaction();
+  auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
+  
   while (limit > 0) {
-    
     VPackSlice fromTo = _iterator.value();
     TRI_ASSERT(fromTo.isString());
-    //if (tmp.isObject()) {
+    // if (tmp.isObject()) {
     //  tmp = tmp.get(StaticStrings::IndexEq);
     //}
-    
-    RocksDBKey prefix = RocksDBKey::EdgeIndexPrefix(_index->_objectId,
-                                                    fromTo.copyString());
-    
+
+    RocksDBKey prefix =
+        RocksDBKey::EdgeIndexPrefix(_index->_objectId, fromTo.copyString());
+
     rocksdb::ReadOptions readOptions;
-    std::unique_ptr<rocksdb::Iterator> iter(_index->_db->NewIterator(readOptions));
-    
-    rocksdb::Slice rSlice(prefix.key());
+    std::unique_ptr<rocksdb::Iterator> iter(
+        rtrx->GetIterator(readOptions));
+
+    rocksdb::Slice rSlice(prefix.string());
     iter->Seek(rSlice);
     while (iter->Valid() && iter->key().starts_with(rSlice)) {
-      
       TRI_ASSERT(iter->key().size() > rSlice.size());
       size_t edgeKeySize = iter->key().size() - rSlice.size();
       const char* edgeKey = iter->key().data() + rSlice.size();
-      
+
       // TODO do we need to handle failed lookups here?
       RocksDBToken token;
-      Result res = rocksColl->lookupDocumentToken(_trx, StringRef(edgeKey, edgeKeySize), token);
+      Result res = rocksColl->lookupDocumentToken(
+          _trx, StringRef(edgeKey, edgeKeySize), token);
       if (res.ok()) {
         cb(token);
         if (--limit == 0) {
           break;
         }
       }
-      
+
       iter->Next();
     }
     if (limit > 0) {
@@ -130,20 +136,16 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
-void RocksDBEdgeIndexIterator::reset() {
-  _iterator.reset();
-}
+void RocksDBEdgeIndexIterator::reset() { _iterator.reset(); }
 
 // ============================= Index ====================================
 
-RocksDBEdgeIndex::RocksDBEdgeIndex(rocksdb::TransactionDB* db,
-                                   TRI_idx_iid_t iid,
+RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    arangodb::LogicalCollection* collection,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
                                  {{AttributeName(attr, false)}}),
             false, false),
-      _db(db),
       _directionAttr(attr) {
   /*std::vector<std::vector<arangodb::basics::AttributeName>>(
                   {{arangodb::basics::AttributeName(StaticStrings::FromString,
@@ -154,7 +156,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(rocksdb::TransactionDB* db,
 #warning fix object ID
   TRI_voc_tick_t databaseId = collection->vocbase()->id();
   RocksDBKey entry = RocksDBKey::Index(databaseId, collection->cid(), iid);
-  _objectId = 3413415 + iid;//entry.key;
+  _objectId = 3413415 + iid;  // entry.key;
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
@@ -222,16 +224,18 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   } else {
     key = doc.get(StaticStrings::FromString);
   }*/
-  
+
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
                                               primaryKey.copyString());
 
-  rocksdb::WriteOptions writeOptions;
-  rocksdb::Status status = _db->Put(
-      writeOptions, rocksdb::Slice(key.key()), rocksdb::Slice());
+  // aquire rocksdb transaction
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  
+  rocksdb::Status status = rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
   if (status.ok()) {
     return TRI_ERROR_NO_ERROR;
   } else {
@@ -248,54 +252,31 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
                                               primaryKey.copyString());
+
+  // aquire rocksdb transaction
+  RocksDBTransactionState *state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction *rtrx = state->rocksTransaction();
   
-  rocksdb::WriteOptions writeOptions;
-  rocksdb::Status status =
-      _db->Delete(writeOptions, rocksdb::Slice(key.key()));
+  rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
   if (status.ok()) {
     return TRI_ERROR_NO_ERROR;
   } else {
-    Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
+    Result res =
+        rocksutils::convertStatus(status, rocksutils::StatusHint::index);
     return res.errorNumber();
   }
 }
-/*
-struct RDBEdgeInsertTask : public LocalTask {
-  RocksDBEdgeIndex* _index;
-  std::shared_ptr<rocksdb::Transaction> _rtrx;
-  VPackSlice _doc;
-
-  RDBEdgeInsertTask(arangodb::basics::LocalTaskQueue* queue,
-                    RocksDBEdgeIndex* index,
-                    std::shared_ptr<rocksdb::Transaction> rtrx, VPackSlice doc)
-      : LocalTask(queue), _index(index), _rtrx(rtrx), _doc(doc) {}
-
-  void run() override {
-    size_t keySize;
-    std::unique_ptr<char> key = buildIndexValue(
-        _index->_objectId, _index->_directionAttr, _doc, keySize);
-
-    rocksdb::Status status =
-        _rtrx->Put(rocksdb::Slice(key.get(), keySize), rocksdb::Slice());
-    if (!status.ok()) {
-      Result res = convertRocksDBStatus(status, StatusHint::index);
-      _queue->setStatus(res.errorNumber());
-    }
-  }
-};*/
 
 void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     arangodb::basics::LocalTaskQueue* queue) {
-  // setup rocksdb transaction
-  rocksdb::WriteOptions writeOptions;
-  rocksdb::TransactionOptions transactionOptions;
-  std::unique_ptr<rocksdb::Transaction> rtxr(
-      _db->BeginTransaction(writeOptions, transactionOptions));
-
-  for (std::pair<TRI_voc_rid_t, VPackSlice> doc : documents) {
-    
+  
+  // aquire rocksdb transaction
+  RocksDBTransactionState *state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction *rtrx = state->rocksTransaction();
+  
+  for (std::pair<TRI_voc_rid_t, VPackSlice> const& doc : documents) {
     VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
     VPackSlice fromTo = doc.second.get(_directionAttr);
     TRI_ASSERT(primaryKey.isString() && fromTo.isString());
@@ -303,43 +284,14 @@ void RocksDBEdgeIndex::batchInsert(
                                                 primaryKey.copyString());
 
     rocksdb::Status status =
-        rtxr->Put(rocksdb::Slice(key.key()), rocksdb::Slice());
+        rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
     if (!status.ok()) {
-      Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
+      Result res =
+          rocksutils::convertStatus(status, rocksutils::StatusHint::index);
       queue->setStatus(res.errorNumber());
-      rtxr->Rollback();
       break;
     }
-
-    // auto task =
-    // std::make_shared<RDBEdgeInsertTask>(queue, this, rtxr, doc.second);
-    // queue->enqueue(task);
   }
-  rocksdb::Status status = rtxr->Commit();
-  if (!status.ok()) {
-    Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-    queue->setStatus(res.errorNumber());
-  }
-
-  // commit in callback called after all tasks finish
-  /*std::shared_ptr<LocalCallbackTask> callback(
-      new LocalCallbackTask(queue, [rtxr, queue] {
-        rocksdb::Status status = rtxr->Commit();
-        if (!status.ok()) {
-          Result res = convertRocksDBStatus(status);
-          queue->setStatus(res.errorNumber());
-        }
-      }));
-  try {
-    for (std::pair<TRI_voc_rid_t, VPackSlice> doc : documents) {
-      auto task =
-          std::make_shared<RDBEdgeInsertTask>(queue, this, rtxr, doc.second);
-      queue->enqueue(task);
-    }
-  } catch (...) {
-    queue->setStatus(TRI_ERROR_INTERNAL);
-  }
-  queue->enqueueCallback(callback);*/
 }
 
 /// @brief unload the index data from memory

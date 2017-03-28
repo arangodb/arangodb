@@ -21,7 +21,6 @@
 /// @author Jan-Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBCollection.h"
 #include "Aql/PlanCache.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -30,12 +29,16 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -49,8 +52,14 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::rocksutils;
 
 static std::string const Empty;
+ 
+rocksdb::TransactionDB* db() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  return static_cast<RocksDBEngine*>(engine)->db();
+}
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      VPackSlice const& info)
@@ -399,12 +408,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    // TODO: handle returning of result value!
-
-    //    uint8_t const* vpack = lookupRevisionVPack(revisionId);
-    //    if (vpack != nullptr) {
-    //      result.addExisting(vpack, revisionId);
-    //    }
+    lookupRevisionVPack(revisionId, trx, result);
   }
   return res;
 }
@@ -483,13 +487,7 @@ int RocksDBCollection::replace(
 
   res = updateDocument(trx, oldRevisionId, oldDoc, revisionId,
                        VPackSlice(builder->slice()), options.waitForSync);
-  /*  TODO: handle result handling
-   uint8_t const* vpack = lookupRevisionVPack(revisionId);
-   if (vpack != nullptr) {
-     result.addExisting(vpack, revisionId);
-   }
-   */
-
+  lookupRevisionVPack(revisionId, trx, result);
   return res;
 }
 
@@ -664,7 +662,7 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   RocksDBValue value(RocksDBValue::Document(doc));
 
   rocksdb::WriteBatch writeBatch;
-  writeBatch.Put(key.key(), value.value());
+  writeBatch.Put(key.string(), value.value());
 
   auto indexes = _indexes;
   size_t const n = indexes.size();
@@ -723,7 +721,7 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   auto key = RocksDBKey::Document(_objectId, revisionId);
 
   rocksdb::WriteBatch writeBatch;
-  writeBatch.Delete(key.key());
+  writeBatch.Delete(key.string());
 
   auto indexes = _indexes;
   size_t const n = indexes.size();
@@ -777,12 +775,7 @@ int RocksDBCollection::lookupDocument(transaction::Methods* trx, VPackSlice key,
   TRI_voc_rid_t revisionId = token.revisionId();
 
   if (revisionId > 0) {
-    // TODO: add result handling!
-    /*    uint8_t const* vpack = lookupRevisionVPack(revisionId);
-        if (vpack != nullptr) {
-          result.addExisting(vpack, revisionId);
-        }
-    */
+    lookupRevisionVPack(revisionId, trx, result);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -804,4 +797,13 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
   // TODO fix as soon as we got a real primary index
   outToken = primaryIndex()->lookupKey(trx, key);
   return outToken.revisionId() > 0 ? Result() : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+}
+
+void RocksDBCollection::lookupRevisionVPack(TRI_voc_rid_t revisionId, transaction::Methods* trx,arangodb::ManagedDocumentResult& result){
+  auto key = RocksDBKey::Document(_objectId,revisionId);
+  std::string value;
+  TRI_ASSERT(value.data());
+  auto* state = toRocksTransactionState(trx);
+  state->rocksTransaction()->Get(rocksdb::ReadOptions(), rocksdb::Slice(key.string()), &value);
+  result.setManaged(std::move(value), revisionId);
 }

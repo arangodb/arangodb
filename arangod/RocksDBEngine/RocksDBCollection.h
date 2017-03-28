@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan-Christoph Uhde
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
@@ -203,6 +203,9 @@ class RocksDBCollection final : public PhysicalCollection {
   int updateDocument(transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
                      arangodb::velocypack::Slice const& oldDoc, TRI_voc_rid_t newRevisionId,
                      arangodb::velocypack::Slice const& newDoc, bool& waitForSync);
+
+ void lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*, arangodb::ManagedDocumentResult&);
+
 
  private:
   uint64_t const _objectId; // rocksdb-specific object id for collection

@@ -53,7 +53,7 @@ RocksDBPrimaryMockIndexIterator::RocksDBPrimaryMockIndexIterator(
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _keys(keys.get()),
-      _iterator(_keys->slice()) {
+      _iterator(_keys->slice()){
   keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
 }
@@ -67,27 +67,61 @@ RocksDBPrimaryMockIndexIterator::~RocksDBPrimaryMockIndexIterator() {
 
 bool RocksDBPrimaryMockIndexIterator::next(TokenCallback const& cb,
                                            size_t limit) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return false;
+  if (limit == 0 || !_iterator.valid()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  ManagedDocumentResult result;
+  while (limit > 0) {
+    
+    RocksDBToken token = _index->lookupKey(_trx, *_iterator, result);
+    cb(token);
+    
+    _iterator.next();
+    if (!_iterator.valid()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void RocksDBPrimaryMockIndexIterator::reset() { _iterator.reset(); }
 
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBPrimaryMockIndex const* index,
+    ManagedDocumentResult* mmdr,  RocksDBPrimaryMockIndex const* index,
     bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
-      _reverse(reverse),
-      _total(0) {}
+      //_reverse(reverse),
+      _keyRevMap(index->_keyRevMap),
+      _iterator(index->_keyRevMap.begin()) {}
 
 bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  // TODO
-  return false;
+  if (limit == 0 || _iterator == _keyRevMap.end()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  while (limit > 0) {
+    TRI_voc_rid_t revisionId = _iterator->second;
+    cb(RocksDBToken(revisionId));
+    
+    limit--;
+    _iterator++;
+    if (_iterator == _keyRevMap.end()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void RocksDBAllIndexIterator::reset() {
-  // TODO
+  _iterator = _keyRevMap.begin();
 }
 
 RocksDBPrimaryMockIndex::RocksDBPrimaryMockIndex(
@@ -141,7 +175,7 @@ RocksDBToken RocksDBPrimaryMockIndex::lookupKey(transaction::Methods* trx, arang
 
 RocksDBToken RocksDBPrimaryMockIndex::lookupKey(transaction::Methods* trx,
                                                 VPackSlice slice,
-                                                ManagedDocumentResult& result) {
+                                                ManagedDocumentResult& result) const {
   std::string key = slice.copyString();
   std::lock_guard<std::mutex> lock(_keyRevMutex);
   LOG_TOPIC(ERR, Logger::FIXME) << "LOOKUP. THE KEY IS: " << key;
