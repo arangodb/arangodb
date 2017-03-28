@@ -40,6 +40,12 @@ class RocksDBValue {
  public:
   RocksDBValue() = delete;
 
+  //----------------------------------------------------------------------------
+  // SECTION Constructors
+  // Each of these simply specifies the correct type and copies the input
+  // parameter in an appropriate format into the underlying string buffer.
+  //----------------------------------------------------------------------------
+
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
   static RocksDBValue Index(VPackSlice const& data);
@@ -51,19 +57,39 @@ class RocksDBValue {
   static RocksDBValue View(VPackSlice const& data);
 
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the revisionId from a value
+  ///
+  /// May be called only on PrimaryIndexValue values. Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
+
   static TRI_voc_rid_t revisionId(RocksDBValue const&);
   static TRI_voc_rid_t revisionId(rocksdb::Slice const&);
   static TRI_voc_rid_t revisionId(std::string const&);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the primary key (`_key`) from a value
+  ///
+  /// May be called only on UniqueIndexValue values. Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
   static std::string primaryKey(RocksDBValue const&);
   static std::string primaryKey(rocksdb::Slice const&);
   static std::string primaryKey(std::string const&);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the VelocyPack data from a value
+  ///
+  /// May be called only values of the following types: Database, Collection,
+  /// Index, Document, and View. Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
   static VPackSlice data(RocksDBValue const&);
   static VPackSlice data(rocksdb::Slice const&);
   static VPackSlice data(std::string const&);
 
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns a reference to the underlying string buffer.
+  //////////////////////////////////////////////////////////////////////////////
   std::string const& value() const;
 
  private:

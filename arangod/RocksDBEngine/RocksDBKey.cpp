@@ -155,21 +155,6 @@ VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
 
 std::string const& RocksDBKey::key() const { return _buffer; }
 
-bool RocksDBKey::isSameDatabase(RocksDBEntryType type, TRI_voc_tick_t id,
-                                rocksdb::Slice const& slice) {
-  switch (type) {
-    case RocksDBEntryType::Collection:
-    case RocksDBEntryType::View: {
-      TRI_ASSERT(slice.size() ==
-                 sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-      return id == uint64FromPersistent(slice.data() + sizeof(char));
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-}
-
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first)
     : _type(type), _buffer() {
   switch (_type) {

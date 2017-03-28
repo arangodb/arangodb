@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_COMMON_H
