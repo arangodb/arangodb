@@ -112,7 +112,7 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
     cb(RocksDBToken(revisionId));
     
     limit--;
-    _iterator++;
+    ++_iterator;
     if (_iterator == _keyRevMap.end()) {
       return false;
     }
