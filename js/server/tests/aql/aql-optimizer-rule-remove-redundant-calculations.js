@@ -69,7 +69,9 @@ function optimizerRuleTestSuite () {
       var queries = [
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = i.a LET b = i.a RETURN [ a, b ]",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = LENGTH(i), b = LENGTH(i) RETURN [ a, b ]",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = MAX(i) RETURN MAX(i)"
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = MAX(i) RETURN MAX(i)",
+        "LET a = NOOPT(CONCAT('a', 'b')) FOR i IN [ 1, 2, 3 ] RETURN CONCAT(a, 'b')",
+        "FOR i IN [ 1, 2, 3 ] LET a = CONCAT(i, 'b') RETURN CONCAT(a, 'b')"
       ];
 
       queries.forEach(function(query) {
@@ -89,7 +91,8 @@ function optimizerRuleTestSuite () {
         ["FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = LENGTH(i), b = LENGTH(i) + 1 RETURN [ a, b ]", true],
         ["FOR i IN [ " + collection + " ] LET a = MAX(i.a) RETURN MIN(i.a)", true],
         ["FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = RAND(), b = RAND() RETURN [ a, b ]", false],
-        ["FOR i IN [ " + collection + " ] LET c = MAX(i.a) COLLECT d = c LET i = RAND() LET b = i.a RETURN d",true]
+        ["FOR i IN [ " + collection + " ] LET c = MAX(i.a) COLLECT d = c LET i = RAND() LET b = i.a RETURN d", true],
+        ["LET a = NOOPT(CONCAT('a', 'b')) FOR i IN [ 1, 2, 3 ] RETURN CONCAT(a, 'b')", true]
       ];
 
       queryList.forEach(function(query) {
