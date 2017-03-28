@@ -10,8 +10,6 @@ else
     PS='/'
 fi;
 
-ulimit -n 8192
-
 export PORT=`expr 1024 + $RANDOM`
 
 if [ -z "${ARANGOSH}" ];  then

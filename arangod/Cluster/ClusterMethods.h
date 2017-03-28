@@ -25,7 +25,7 @@
 #define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringRef.h"
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -130,9 +130,8 @@ int getDocumentOnCoordinator(
 int fetchEdgesFromEngines(
     std::string const&,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    arangodb::velocypack::Slice const, size_t,
-    std::unordered_map<arangodb::velocypack::Slice,
-                       arangodb::velocypack::Slice>&,
+    arangodb::velocypack::Slice vertexId, size_t,
+    std::unordered_map<StringRef, arangodb::velocypack::Slice>&,
     std::vector<arangodb::velocypack::Slice>&,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>&,
     arangodb::velocypack::Builder&, size_t&, size_t&);
@@ -149,9 +148,8 @@ int fetchEdgesFromEngines(
 void fetchVerticesFromEngines(
     std::string const&,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    std::unordered_set<arangodb::velocypack::Slice>&,
-    std::unordered_map<arangodb::velocypack::Slice,
-                       std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
+    std::unordered_set<StringRef>&,
+    std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
     arangodb::velocypack::Builder&);
 
 ////////////////////////////////////////////////////////////////////////////////

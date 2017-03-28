@@ -61,57 +61,56 @@ class ClusterTraverser final : public Traverser {
   ///        Returns true if the vertex passes filtering conditions
   ///        Also apppends the _id value of the vertex in the given vector
 
-  bool getVertex(arangodb::velocypack::Slice,
-                 std::vector<arangodb::velocypack::Slice>&) override;
+  bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::StringRef>&) override;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-
-  bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::Slice,
-                       uint64_t, arangodb::velocypack::Slice&) override;
+  bool getSingleVertex(arangodb::velocypack::Slice edge,
+                       StringRef const sourceVertexId,
+                       uint64_t depth,
+                       StringRef& targetVertexId) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchVertexData(arangodb::velocypack::Slice) override;
+  aql::AqlValue fetchVertexData(StringRef) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of an edge into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchEdgeData(arangodb::velocypack::Slice) override;
+  aql::AqlValue fetchEdgeData(StringRef) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(arangodb::velocypack::Slice,
+  void addVertexToVelocyPack(StringRef,
                              arangodb::velocypack::Builder&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of an edge into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addEdgeToVelocyPack(arangodb::velocypack::Slice,
+  void addEdgeToVelocyPack(StringRef,
                            arangodb::velocypack::Builder&) override;
 
  private:
 
   void fetchVertices();
 
-  std::unordered_map<arangodb::velocypack::Slice, arangodb::velocypack::Slice>
+  std::unordered_map<StringRef, arangodb::velocypack::Slice>
       _edges;
 
-  std::unordered_map<arangodb::velocypack::Slice,
-                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+  std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
       _vertices;
 
   std::string _dbname;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
-  std::unordered_set<arangodb::velocypack::Slice> _verticesToFetch;
+  std::unordered_set<StringRef> _verticesToFetch;
 
   std::vector<std::shared_ptr<arangodb::velocypack::Builder>> _datalake;
 

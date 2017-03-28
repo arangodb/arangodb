@@ -483,7 +483,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"V8", "AQL_PASSTHRU", ".", false, true, false, true, true});
   add({"TEST_INTERNAL", "AQL_TEST_INTERNAL", "s,.", false, false, false, true,
        false});
-  add({"SLEEP", "AQL_SLEEP", "n", false, false, true, true, true});
+  add({"SLEEP", "AQL_SLEEP", "n", false, false, true, true, true, &Functions::Sleep});
   add({"COLLECTIONS", "AQL_COLLECTIONS", "", false, false, true, false, true});
   add({"NOT_NULL", "AQL_NOT_NULL", ".|+", true, true, false, true, true,
        &Functions::NotNull});
