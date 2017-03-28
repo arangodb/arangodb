@@ -30,7 +30,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -365,8 +364,6 @@ static void DocumentVocbaseCol(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   
-  TIMER_START(JS_DOCUMENT_ALL);
-
   // first and only argument should be a document handle or key or an object
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle> or <document-key> or <object> or <array>)");
@@ -417,8 +414,6 @@ static void DocumentVocbaseCol(
 
   VPackSlice search = searchBuilder.slice();
 
-
-  TIMER_START(JS_DOCUMENT_CREATE_TRX);
   auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
 
   SingleCollectionTransaction trx(transactionContext, collectionName, 
@@ -427,16 +422,12 @@ static void DocumentVocbaseCol(
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
   
-  TIMER_STOP(JS_DOCUMENT_CREATE_TRX);
-
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   
-  TIMER_START(JS_DOCUMENT_DOCUMENT);
   OperationResult opResult = trx.document(collectionName, search, options);
-  TIMER_STOP(JS_DOCUMENT_DOCUMENT);
 
   res = trx.finish(opResult.code);
 
@@ -448,15 +439,9 @@ static void DocumentVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
   
-  TIMER_START(JS_DOCUMENT_VPACK_TO_V8);
-
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(),
       transactionContext->getVPackOptions());
   
-  TIMER_STOP(JS_DOCUMENT_VPACK_TO_V8);
-
-  TIMER_STOP(JS_DOCUMENT_ALL);
-
   TRI_V8_RETURN(result);
 }
 
@@ -2258,8 +2243,6 @@ static void JS_InsertVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TIMER_START(JS_INSERT_ALL);
-
   auto collection = TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
@@ -2330,17 +2313,13 @@ static void JS_InsertVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   
-  TIMER_START(JS_INSERT_V8_TO_VPACK);
-
   // copy default options (and set exclude handler in copy)
   VPackOptions vpackOptions = VPackOptions::Defaults;
   vpackOptions.attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
   VPackBuilder builder(&vpackOptions);
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
-    TIMER_START(JS_INSERT_V8_TO_VPACK2);
     int res = TRI_V8ToVPack(isolate, builder, obj, true);
-    TIMER_STOP(JS_INSERT_V8_TO_VPACK2);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2379,9 +2358,6 @@ static void JS_InsertVocbaseCol(
     doOneDocument(payload);
   }
   
-  TIMER_STOP(JS_INSERT_V8_TO_VPACK);
-
-  TIMER_START(JS_INSERT_CREATE_TRX);
   // load collection
   auto transactionContext =
       std::make_shared<transaction::V8Context>(collection->vocbase(), true);
@@ -2391,7 +2367,6 @@ static void JS_InsertVocbaseCol(
   if (!payloadIsArray) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
-  TIMER_STOP(JS_INSERT_CREATE_TRX);
 
   int res = trx.begin();
 
@@ -2399,9 +2374,7 @@ static void JS_InsertVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TIMER_START(JS_INSERT_INSERT);
   OperationResult result = trx.insert(collection->name(), builder.slice(), options);
-  TIMER_STOP(JS_INSERT_INSERT);
 
   res = trx.finish(result.code);
 
@@ -2416,14 +2389,8 @@ static void JS_InsertVocbaseCol(
 
   VPackSlice resultSlice = result.slice();
   
-  TIMER_START(JS_INSERT_VPACK_TO_V8);
-  
   auto v8Result = TRI_VPackToV8(isolate, resultSlice,
                                 transactionContext->getVPackOptions());
-  
-  TIMER_STOP(JS_INSERT_VPACK_TO_V8);
-
-  TIMER_STOP(JS_INSERT_ALL);
   
   TRI_V8_RETURN(v8Result);
   TRI_V8_TRY_CATCH_END
