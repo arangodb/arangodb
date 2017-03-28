@@ -490,13 +490,14 @@
           return false;
         }
 
-        // TODO: fix hashindex
-        /*users.ensureIndex({
-          type: 'hash',
-          fields: ['user'],
-          unique: true,
-          sparse: true
-        });*/
+        if (db._engine() != "rocksdb") {
+          users.ensureIndex({
+            type: 'hash',
+            fields: ['user'],
+            unique: true,
+            sparse: true
+          });
+        }
 
         return true;
       }
