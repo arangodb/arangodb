@@ -88,6 +88,11 @@ const TOP_DIR = (function findTopDir () {
   return topDir;
 }());
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief calculates all the path locations
+// / required to be called first.
+// //////////////////////////////////////////////////////////////////////////////
+
 function setupBinaries (builddir, buildType, configDir) {
   if (builddir === '') {
     if (fs.exists('build') && fs.exists(fs.join('build', 'bin'))) {
@@ -244,14 +249,6 @@ function getCleanupDBDirectories () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief the bad has happened, tell it the user and try to gather more
-// /        information about the incident.
-// //////////////////////////////////////////////////////////////////////////////
-function analyzeServerCrash (arangod, options, checkStr) {
-  return crashUtils.analyzeCrash(ARANGOD_BIN, arangod, options, checkStr);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief adds authorization headers
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -312,131 +309,9 @@ function makeArgsArangod (options, appDir, role) {
   return args;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief arguments for testing (client)
-// //////////////////////////////////////////////////////////////////////////////
-
-function makeArgsArangosh (options) {
-  return {
-    'configuration': fs.join(CONFIG_DIR, 'arangosh.conf'),
-    'javascript.startup-directory': JS_DIR,
-    'javascript.module-directory': JS_ENTERPRISE_DIR,
-    'server.username': options.username,
-    'server.password': options.password,
-    'flatCommands': ['--console.colors', 'false', '--quiet']
-  };
-}
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief periodic checks whether spawned arangod processes are still alive
-// //////////////////////////////////////////////////////////////////////////////
-function checkArangoAlive (arangod, options) {
-  const res = statusExternal(arangod.pid, false);
-  const ret = res.status === 'RUNNING';
-
-  if (!ret) {
-    print('ArangoD with PID ' + arangod.pid + ' gone:');
-    print(arangod);
-
-    if (res.hasOwnProperty('signal') &&
-      ((res.signal === 11) ||
-      (res.signal === 6) ||
-      // Windows sometimes has random numbers in signal...
-      (platform.substr(0, 3) === 'win')
-      )
-    ) {
-      arangod.exitStatus = res;
-      analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
-      serverCrashed = true;
-    }
-  }
-
-  return ret;
-}
-
-function checkInstanceAlive (instanceInfo, options) {
-  return instanceInfo.arangods.reduce((previous, arangod) => {
-    return previous && checkArangoAlive(arangod, options);
-  }, true);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief waits for garbage collection using /_admin/execute
-// //////////////////////////////////////////////////////////////////////////////
-
-function waitOnServerForGC (instanceInfo, options, waitTime) {
-  try {
-    print('waiting ' + waitTime + ' for server GC');
-    const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
-
-    const requestOptions = makeAuthorizationHeaders(options);
-    requestOptions.method = 'POST';
-    requestOptions.timeout = waitTime * 10;
-    requestOptions.returnBodyOnError = true;
-
-    const reply = download(
-      instanceInfo.url + '/_admin/execute?returnAsJSON=true',
-      remoteCommand,
-      requestOptions);
-
-    print('waiting ' + waitTime + ' for server GC - done.');
-
-    if (!reply.error && reply.code === 200) {
-      return JSON.parse(reply.body);
-    } else {
-      return {
-        status: false,
-        message: yaml.safedump(reply.body)
-      };
-    }
-  } catch (ex) {
-    return {
-      status: false,
-      message: ex.message || String(ex),
-      stack: ex.stack
-    };
-  }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes a command, possible with valgrind
-// //////////////////////////////////////////////////////////////////////////////
-
-function executeArangod (cmd, args, options) {
-  if (options.valgrind) {
-    let valgrindOpts = {};
-
-    if (options.valgrindArgs) {
-      valgrindOpts = options.valgrindArgs;
-    }
-
-    let testfn = options.valgrindFileBase;
-
-    if (testfn.length > 0) {
-      testfn += '_';
-    }
-
-    if (valgrindOpts.xml === 'yes') {
-      valgrindOpts['xml-file'] = testfn + '.%p.xml';
-    }
-
-    valgrindOpts['log-file'] = testfn + '.%p.valgrind.log';
-
-    args = toArgv(valgrindOpts, true).concat([cmd]).concat(args);
-    cmd = options.valgrind;
-  } else if (options.rr) {
-    args = [cmd].concat(args);
-    cmd = 'rr';
-  }
-
-  if (options.extremeVerbosity) {
-    print('starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
-  }
-  return executeExternal(cmd, args);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes a command and wait for result
+// / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
 function executeAndWait (cmd, args, options, valgrindTest, rootDir, disableCoreCheck = false) {
@@ -552,6 +427,28 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, disableCoreC
     };
   }
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / operate the arango commandline utilities
+// //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief arguments for testing (client)
+// //////////////////////////////////////////////////////////////////////////////
+
+function makeArgsArangosh (options) {
+  return {
+    'configuration': fs.join(CONFIG_DIR, 'arangosh.conf'),
+    'javascript.startup-directory': JS_DIR,
+    'javascript.module-directory': JS_ENTERPRISE_DIR,
+    'server.username': options.username,
+    'server.password': options.password,
+    'flatCommands': ['--console.colors', 'false', '--quiet']
+  };
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs file in arangosh
 // //////////////////////////////////////////////////////////////////////////////
@@ -704,6 +601,132 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir) {
 
   return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir);
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / Server up/down utilities
+// //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief the bad has happened, tell it the user and try to gather more
+// /        information about the incident. (arangod wrapper for the crash-utils)
+// //////////////////////////////////////////////////////////////////////////////
+function analyzeServerCrash (arangod, options, checkStr) {
+  return crashUtils.analyzeCrash(ARANGOD_BIN, arangod, options, checkStr);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief periodic checks whether spawned arangod processes are still alive
+// //////////////////////////////////////////////////////////////////////////////
+function checkArangoAlive (arangod, options) {
+  const res = statusExternal(arangod.pid, false);
+  const ret = res.status === 'RUNNING';
+
+  if (!ret) {
+    print('ArangoD with PID ' + arangod.pid + ' gone:');
+    print(arangod);
+
+    if (res.hasOwnProperty('signal') &&
+      ((res.signal === 11) ||
+      (res.signal === 6) ||
+      // Windows sometimes has random numbers in signal...
+      (platform.substr(0, 3) === 'win')
+      )
+    ) {
+      arangod.exitStatus = res;
+      analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
+      serverCrashed = true;
+    }
+  }
+
+  return ret;
+}
+
+function checkInstanceAlive (instanceInfo, options) {
+  return instanceInfo.arangods.reduce((previous, arangod) => {
+    return previous && checkArangoAlive(arangod, options);
+  }, true);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief waits for garbage collection using /_admin/execute
+// //////////////////////////////////////////////////////////////////////////////
+
+function waitOnServerForGC (instanceInfo, options, waitTime) {
+  try {
+    print('waiting ' + waitTime + ' for server GC');
+    const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
+
+    const requestOptions = makeAuthorizationHeaders(options);
+    requestOptions.method = 'POST';
+    requestOptions.timeout = waitTime * 10;
+    requestOptions.returnBodyOnError = true;
+
+    const reply = download(
+      instanceInfo.url + '/_admin/execute?returnAsJSON=true',
+      remoteCommand,
+      requestOptions);
+
+    print('waiting ' + waitTime + ' for server GC - done.');
+
+    if (!reply.error && reply.code === 200) {
+      return JSON.parse(reply.body);
+    } else {
+      return {
+        status: false,
+        message: yaml.safedump(reply.body)
+      };
+    }
+  } catch (ex) {
+    return {
+      status: false,
+      message: ex.message || String(ex),
+      stack: ex.stack
+    };
+  }
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes a command, possible with valgrind
+// //////////////////////////////////////////////////////////////////////////////
+
+function executeArangod (cmd, args, options) {
+  if (options.valgrind) {
+    let valgrindOpts = {};
+
+    if (options.valgrindArgs) {
+      valgrindOpts = options.valgrindArgs;
+    }
+
+    let testfn = options.valgrindFileBase;
+
+    if (testfn.length > 0) {
+      testfn += '_';
+    }
+
+    if (valgrindOpts.xml === 'yes') {
+      valgrindOpts['xml-file'] = testfn + '.%p.xml';
+    }
+
+    valgrindOpts['log-file'] = testfn + '.%p.valgrind.log';
+
+    args = toArgv(valgrindOpts, true).concat([cmd]).concat(args);
+    cmd = options.valgrind;
+  } else if (options.rr) {
+    args = [cmd].concat(args);
+    cmd = 'rr';
+  }
+
+  if (options.extremeVerbosity) {
+    print('starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
+  }
+  return executeExternal(cmd, args);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief commands a server to shut down via webcall
+// //////////////////////////////////////////////////////////////////////////////
 
 function shutdownArangod (arangod, options) {
   if (options.hasOwnProperty('server')) {
@@ -913,6 +936,12 @@ function startInstanceCluster (instanceInfo, protocol, options,
   return true;
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief starts an instance
+// /
+// / protocol must be one of ["tcp", "ssl", "unix"]
+// //////////////////////////////////////////////////////////////////////////////
+
 function startArango (protocol, options, addArgs, rootDir, role) {
   const dataDir = fs.join(rootDir, 'data');
   const appDir = fs.join(rootDir, 'apps');
@@ -986,6 +1015,12 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   return instanceInfo;
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief starts an agency instance
+// /
+// / protocol must be one of ["tcp", "ssl", "unix"]
+// //////////////////////////////////////////////////////////////////////////////
+
 function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir) {
   const dataDir = fs.join(rootDir, 'data');
 
@@ -1036,6 +1071,12 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
   return instanceInfo;
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief starts a single server instance
+// /
+// / protocol must be one of ["tcp", "ssl", "unix"]
+// //////////////////////////////////////////////////////////////////////////////
+
 function startInstanceSingleServer (instanceInfo, protocol, options,
   addArgs, rootDir, role) {
   instanceInfo.arangods.push(startArango(protocol, options, addArgs, rootDir, role));
@@ -1045,6 +1086,12 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 
   return instanceInfo;
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief starts any sort server instance
+// /
+// / protocol must be one of ["tcp", "ssl", "unix"]
+// //////////////////////////////////////////////////////////////////////////////
 
 function startInstance (protocol, options, addArgs, testname, tmpDir) {
   let rootDir = fs.join(tmpDir || fs.getTempFile(), testname);
@@ -1165,6 +1212,8 @@ exports.serverCrashed = serverCrashed;
 
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
 exports.cleanupDBDirectories = cleanupDBDirectories;
+exports.getCleanupDBDirectories = getCleanupDBDirectories;
+
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 
 Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
@@ -1178,4 +1227,3 @@ Object.defineProperty(exports, 'BIN_DIR', {get: () => BIN_DIR});
 Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => CONFIG_ARANGODB_DIR});
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => CONFIG_RELATIVE_DIR});
 Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashed});
-
