@@ -1739,6 +1739,31 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
+/// @brief function SLEEP
+AqlValue Functions::Sleep(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isNumber() || value.toDouble(trx) < 0) {
+    RegisterWarning(query, "SLEEP",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  
+  double const until = TRI_microtime() + value.toDouble(trx);
+
+  while (TRI_microtime() < until) {
+    usleep(25000);
+
+    if (query->killed()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+  }
+
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
 /// @brief function RANDOM_TOKEN
 AqlValue Functions::RandomToken(arangodb::aql::Query* query,
                                 transaction::Methods* trx,

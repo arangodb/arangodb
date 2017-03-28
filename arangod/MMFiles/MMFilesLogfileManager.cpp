@@ -481,7 +481,9 @@ void MMFilesLogfileManager::unprepare() {
   }
 
   // do a final flush at shutdown
-  this->flush(true, true, false);
+  if (!_inRecovery) {
+    flush(true, true, false);
+  }
 
   // stop other threads
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "sending shutdown request to WAL threads";

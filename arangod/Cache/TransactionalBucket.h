@@ -45,7 +45,7 @@ namespace cache {
 /// Data entries are carefully laid out to ensure the structure fits in a single
 /// cacheline.
 ////////////////////////////////////////////////////////////////////////////////
-struct alignas(BUCKET_SIZE) TransactionalBucket {
+struct TransactionalBucket {
   State _state;
 
   // actual cached entries

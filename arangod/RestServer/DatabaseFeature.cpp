@@ -241,6 +241,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("InitDatabase");
   startsAfter("MMFilesEngine");
   startsAfter("MMFilesPersistentIndex");
+  startsAfter("RocksDBEngine");
 }
 
 DatabaseFeature::~DatabaseFeature() {
@@ -1162,6 +1163,8 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   try {
     for (auto const& it : VPackArrayIterator(databases)) {
       TRI_ASSERT(it.isObject());
+
+      LOG_TOPIC(TRACE, Logger::FIXME) << "processing database: " << it.toJson();
 
       VPackSlice deleted = it.get("deleted");
       if (deleted.isBoolean() && deleted.getBoolean()) {

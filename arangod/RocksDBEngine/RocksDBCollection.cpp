@@ -134,7 +134,7 @@ size_t RocksDBCollection::memory() const {
 }
 
 void RocksDBCollection::open(bool ignoreErrors) {
-  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // doesn't need to be opened
 }
 
 /// @brief iterate all markers of a collection on load
@@ -797,4 +797,12 @@ int RocksDBCollection::updateDocument(transaction::Methods* trx,
                                       bool& waitForSync) {
   // TODO
   return TRI_ERROR_NO_ERROR;
+}
+
+Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
+                           arangodb::velocypack::Slice key, RocksDBToken &outToken) {
+  // TODO fix as soon as we got a real primary index
+  ManagedDocumentResult result;
+  outToken = primaryIndex()->lookupKey(trx, key, result);
+  return outToken.revisionId() > 0 ? Result() : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }

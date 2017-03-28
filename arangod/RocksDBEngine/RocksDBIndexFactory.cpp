@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -241,6 +242,16 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       enhanced.add("id", VPackValue(std::to_string(id)));
     }
 
+    if (create) {
+      if (!definition.hasKey("objectId")) {
+        enhanced.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+      }
+    } else {
+      if (!definition.hasKey("objectId")) {
+        // objectId missing, but must be present
+        return TRI_ERROR_INTERNAL;
+      }
+    }
     
     enhanced.add("type", VPackValue(Index::oldtypeName(type)));
 
@@ -348,11 +359,11 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
       break;
     }
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      // TODO: fix this wrong index type. only used temporarily because we don't have other indexes
-      newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
-      break;
-    }
+    //case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
+    //  // TODO: fix this wrong index type. only used temporarily because we don't have other indexes
+    //  newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
+    //  break;
+    //}
     
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: 
     default: {

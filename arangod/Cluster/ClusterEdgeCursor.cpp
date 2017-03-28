@@ -33,6 +33,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using ClusterEdgeCursor = arangodb::traverser::ClusterEdgeCursor;
+using StringRef = arangodb::StringRef;
 
 ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
                                      arangodb::traverser::ClusterTraverser* traverser)

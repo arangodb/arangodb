@@ -379,9 +379,6 @@ class MMFilesCollection final : public PhysicalCollection {
  private:
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
-  /// @brief creates the initial indexes for the collection
-  void createInitialIndexes();
-
   bool openIndex(VPackSlice const& description, transaction::Methods* trx);
 
   /// @brief initializes an index with all existing documents
@@ -458,8 +455,8 @@ class MMFilesCollection final : public PhysicalCollection {
       TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal)
       const;
 
-  void addIndex(std::shared_ptr<arangodb::Index> idx);
-
+  bool addIndex(std::shared_ptr<arangodb::Index> idx);
+  void addIndexLocal(std::shared_ptr<arangodb::Index> idx);
   void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
 
   bool removeIndex(TRI_idx_iid_t iid);

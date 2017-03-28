@@ -242,9 +242,11 @@ void MMFilesEngine::start() {
 void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 
-  auto logfileManager = MMFilesLogfileManager::instance();
-  logfileManager->flush(true, true, false);
-  logfileManager->waitForCollector();
+  if (!inRecovery()) {
+    auto logfileManager = MMFilesLogfileManager::instance();
+    logfileManager->flush(true, true, false);
+    logfileManager->waitForCollector();
+  }
 }
 
 transaction::ContextData* MMFilesEngine::createTransactionContextData() {
@@ -556,10 +558,20 @@ int MMFilesEngine::getCollectionsAndIndexes(
 
       return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
     }
+    
+    std::vector<std::string> files = TRI_FilesDirectory(directory.c_str());
+    if (files.empty()) {
+      // the list always contains the empty string as its first element
+      // if the list is empty otherwise, this means the directory is also empty and
+      // we can ignore it
+      LOG_TOPIC(TRACE, Logger::FIXME) << "ignoring empty collection directory '" << directory << "'";
+      continue;
+    }
 
     int res = TRI_ERROR_NO_ERROR;
 
     try {
+      LOG_TOPIC(TRACE, Logger::FIXME) << "loading collection info from directory '" << directory << "'";
       VPackBuilder builder = loadCollectionInfo(vocbase, directory);
       VPackSlice info = builder.slice();
 
@@ -687,7 +699,7 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(
   bool const wasCleanShutdown =
       MMFilesLogfileManager::instance()->hasFoundLastTick();
   status = TRI_ERROR_NO_ERROR;
-
+      
   return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
 }
 
@@ -731,11 +743,18 @@ void MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force,
   // wait for at most 30 seconds for the directory to be removed
   while (TRI_IsDirectory(path.c_str())) {
     if (iterations == 0) {
+      if (TRI_FilesDirectory(path.c_str()).empty()) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "deleting empty database directory '" << path << "'";
+        status = dropDatabaseDirectory(path);
+        return;
+      }
+
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "waiting for deletion of database directory '" << path << "'";
     } else if (iterations >= 30 * 20) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-          << "unable to remove database directory '" << path << "'";
+          << "timed out waiting for deletion of database directory '" << path << "'";
 
       if (force) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -2008,6 +2027,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
+      LOG_TOPIC(TRACE, Logger::FIXME) << "processing view: " << it.toJson();
 
       std::string type = it.get("type").copyString();
       // will throw if type is invalid
@@ -2029,12 +2049,12 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       view->getImplementation()->open();
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database views: "
                                             << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error while opening database: unknown exception";
+        << "error while opening database views: unknown exception";
     throw;
   }
 
@@ -2052,6 +2072,8 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
     TRI_ASSERT(slice.isArray());
 
     for (auto const& it : VPackArrayIterator(slice)) {
+      LOG_TOPIC(TRACE, Logger::FIXME) << "processing collection: " << it.toJson();
+
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
@@ -2088,12 +2110,12 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     return vocbase.release();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database collections: "
                                             << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error while opening database: unknown exception";
+        << "error while opening database collections: unknown exception";
     throw;
   }
 }
@@ -2261,20 +2283,31 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
   if (!TRI_ExistsFile(filename.c_str())) {
     filename += ".tmp";  // try file with .tmp extension
     if (!TRI_ExistsFile(filename.c_str())) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "collection directory '" << path << " ' does not contain a "
+          << "parameters file '" << filename.substr(0, filename.size() - 4) << "'";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
     }
   }
-
-  std::shared_ptr<VPackBuilder> content =
+      
+  std::shared_ptr<VPackBuilder> content;
+  VPackSlice slice;
+  
+  try {
+    content =
       arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-  VPackSlice slice = content->slice();
+    slice = content->slice();
+  } catch (...) {
+    // ignore errors right now but re-throw with the following exception
+  }
+
   if (!slice.isObject()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "cannot open '" << filename
         << "', collection parameters are not readable";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
-
+      
   if (filename.substr(filename.size() - 4, 4) == ".tmp") {
     // we got a tmp file. Now try saving the original file
     std::string const original(filename.substr(0, filename.size() - 4));
@@ -2286,7 +2319,7 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
           << "cannot store collection parameters in file '" << original << "'";
     }
   }
-
+  
   // fiddle "isSystem" value, which is not contained in the JSON file
   bool isSystemValue = false;
   if (slice.hasKey("name")) {

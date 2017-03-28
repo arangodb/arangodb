@@ -490,13 +490,13 @@
           return false;
         }
 
-        //users.ensureIndex({
-        //  type: 'hash',
-        //  fields: ['user'],
-        //  unique: true,
-        //  sparse: true
-        //});
-
+        // TODO: fix hashindex
+        /*users.ensureIndex({
+          type: 'hash',
+          fields: ['user'],
+          unique: true,
+          sparse: true
+        });*/
         return true;
       }
     });

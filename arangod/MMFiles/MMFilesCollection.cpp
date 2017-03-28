@@ -1859,35 +1859,37 @@ bool MMFilesCollection::readDocumentConditional(
 }
 
 void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
-  createInitialIndexes();
-  if (indexesSlice.isArray()) {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    IndexFactory const* idxFactory = engine->indexFactory();
-    TRI_ASSERT(idxFactory != nullptr);
-    for (auto const& v : VPackArrayIterator(indexesSlice)) {
-      if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
-                                                              false)) {
-        // We have an error here.
-        // Do not add index.
-        // TODO Handle Properly
-        continue;
-      }
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory();
+  TRI_ASSERT(idxFactory != nullptr);
 
-      auto idx =
-          idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+  TRI_ASSERT(_indexes.empty());
 
-      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-          idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        continue;
-      }
+  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
+                                                            false)) {
+      // We have an error here.
+      // Do not add index.
+      // TODO Handle Properly
+      continue;
+    }
 
-      if (ServerState::instance()->isRunningInCluster()) {
-        addIndexCoordinator(idx);
-      } else {
-        addIndex(idx);
-      }
+    auto idx =
+        idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+/*
+    if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+        idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      continue;
+    }
+*/
+    if (ServerState::instance()->isRunningInCluster()) {
+      addIndexCoordinator(idx);
+    } else {
+      addIndexLocal(idx);
     }
   }
+
+  TRI_ASSERT(!_indexes.empty());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
@@ -1924,23 +1926,6 @@ std::shared_ptr<Index> MMFilesCollection::lookupIndex(
     }
   }
   return nullptr;
-}
-
-/// @brief creates the initial indexes for the collection
-void MMFilesCollection::createInitialIndexes() {
-  if (!_indexes.empty()) {
-    return;
-  }
-
-  std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory(); 
-  TRI_ASSERT(idxFactory != nullptr);
-
-  idxFactory->fillSystemIndexes(_logicalCollection, systemIndexes);
-  for (auto const& it : systemIndexes) {
-    addIndex(it);
-  }
 }
 
 std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
@@ -1983,7 +1968,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
 
-  addIndex(idx);
+  addIndexLocal(idx);
   {
     bool const doSync =
         application_features::ApplicationServer::getFeature<DatabaseFeature>(
@@ -2048,22 +2033,29 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<aran
   return res;
 }
 
-void MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
-  // primary index must be added at position 0
-  TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-             _indexes.empty());
-
+bool MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   auto const id = idx->id();
   for (auto const& it : _indexes) {
     if (it->id() == id) {
       // already have this particular index. do not add it again
-      return;
+      return false;
     }
   }
 
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
   _indexes.emplace_back(idx);
+  return true;
+}
+
+void MMFilesCollection::addIndexLocal(std::shared_ptr<arangodb::Index> idx) {
+  // primary index must be added at position 0
+  TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+             _indexes.empty());
+
+  if (!addIndex(idx)) {
+    return;
+  }
 
   // update statistics
   if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
@@ -2076,15 +2068,7 @@ void MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
 
 void MMFilesCollection::addIndexCoordinator(
     std::shared_ptr<arangodb::Index> idx) {
-  auto const id = idx->id();
-  for (auto const& it : _indexes) {
-    if (it->id() == id) {
-      // already have this particular index. do not add it again
-      return;
-    }
-  }
-
-  _indexes.emplace_back(idx);
+  addIndex(idx);
 }
 
 int MMFilesCollection::restoreIndex(transaction::Methods* trx,
@@ -2126,7 +2110,7 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     return res;
   }
 
-  addIndex(newIdx);
+  addIndexLocal(newIdx);
   idx = newIdx;
   return TRI_ERROR_NO_ERROR;
 }
