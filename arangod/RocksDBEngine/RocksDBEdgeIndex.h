@@ -63,14 +63,15 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   arangodb::velocypack::ArrayIterator _iterator;
   RocksDBEdgeIndex const* _index;
 };
-  
+
 class RocksDBEdgeIndex final : public RocksDBIndex {
   friend class RocksDBEdgeIndexIterator;
 
  public:
   RocksDBEdgeIndex() = delete;
 
-  RocksDBEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*, std::string const&);
+  RocksDBEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
+                   std::string const&);
 
   ~RocksDBEdgeIndex();
 

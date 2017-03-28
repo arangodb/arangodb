@@ -24,13 +24,12 @@
 #include "RocksDBTypes.h"
 
 using namespace arangodb;
-  
+
 namespace {
 
 static RocksDBEntryType database = arangodb::RocksDBEntryType::Database;
 static rocksdb::Slice Database(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &database),
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&database),
     1);
 
 static RocksDBEntryType collection = RocksDBEntryType::Collection;
@@ -41,17 +40,24 @@ static rocksdb::Slice Collection(
 
 static RocksDBEntryType index = RocksDBEntryType::Index;
 static rocksdb::Slice Index(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&index),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&index), 1);
 
 static RocksDBEntryType document = RocksDBEntryType::Document;
 static rocksdb::Slice Document(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &document),
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&document),
     1);
-  
+
+static RocksDBEntryType primaryIndexValue = RocksDBEntryType::PrimaryIndexValue;
+static rocksdb::Slice PrimaryIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &primaryIndexValue),
+    1);
+
 static RocksDBEntryType edgeIndexValue = RocksDBEntryType::EdgeIndexValue;
-static rocksdb::Slice EdgeIndexValue(reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&edgeIndexValue), 1);
+static rocksdb::Slice EdgeIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &edgeIndexValue),
+    1);
 
 static RocksDBEntryType indexValue = RocksDBEntryType::IndexValue;
 static rocksdb::Slice IndexValue(
@@ -67,9 +73,7 @@ static rocksdb::Slice UniqueIndexValue(
 
 static RocksDBEntryType view = RocksDBEntryType::View;
 static rocksdb::Slice View(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&view),
-    1);
-
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&view), 1);
 }
 
 rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
@@ -80,6 +84,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return Collection;
     case RocksDBEntryType::Database:
       return Database;
+    case RocksDBEntryType::PrimaryIndexValue:
+      return PrimaryIndexValue;
     case RocksDBEntryType::EdgeIndexValue:
       return EdgeIndexValue;
     case RocksDBEntryType::Index:
@@ -92,5 +98,5 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return View;
   }
 
-  return Document; //avoids warning - errorslice instead ?!
+  return Document;  // avoids warning - errorslice instead ?!
 }
