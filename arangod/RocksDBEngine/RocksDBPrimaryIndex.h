@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -84,22 +85,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   uint64_t _total;
 };
 
-class RocksDBAnyIndexIterator final : public IndexIterator {
- public:
-  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
-                   ManagedDocumentResult* mmdr,
-                   RocksDBPrimaryIndex const* index);
-
-  ~RocksDBAnyIndexIterator() {}
-  
-  char const* typeName() const override { return "any-index-iterator"; }
-
-  bool next(TokenCallback const& cb, size_t limit) override;
-
-  void reset() override;
-};
-
-class RocksDBPrimaryIndex final : public Index {
+class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexIterator;
 
  public:
@@ -155,11 +141,6 @@ class RocksDBPrimaryIndex final : public Index {
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
   IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*, bool reverse) const;
-
-  /// @brief request an iterator over all elements in the index in
-  ///        a random order. It is guaranteed that each element is found
-  ///        exactly once unless the collection is modified.
-  IndexIterator* anyIterator(transaction::Methods*, ManagedDocumentResult*) const;
 };
 }
 

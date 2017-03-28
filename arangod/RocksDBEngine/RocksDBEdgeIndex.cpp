@@ -140,7 +140,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(rocksdb::TransactionDB* db,
                                    TRI_idx_iid_t iid,
                                    arangodb::LogicalCollection* collection,
                                    std::string const& attr)
-    : Index(iid, collection, std::vector<std::vector<AttributeName>>(
+    : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
                                  {{AttributeName(attr, false)}}),
             false, false),
       _db(db),

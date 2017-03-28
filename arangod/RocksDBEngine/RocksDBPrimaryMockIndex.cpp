@@ -90,27 +90,15 @@ void RocksDBAllIndexIterator::reset() {
   // TODO
 }
 
-RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
-    LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBPrimaryMockIndex const* index)
-    : IndexIterator(collection, trx, mmdr, index) {}
-
-bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
-}
-
-void RocksDBAnyIndexIterator::reset() { THROW_ARANGO_NOT_YET_IMPLEMENTED(); }
-
 RocksDBPrimaryMockIndex::RocksDBPrimaryMockIndex(
     arangodb::LogicalCollection* collection, VPackSlice const& info)
-    : Index(basics::VelocyPackHelper::stringUInt64(info, "objectId"),
+    : RocksDBIndex(basics::VelocyPackHelper::stringUInt64(info, "objectId"),
             collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{arangodb::basics::AttributeName(StaticStrings::KeyString,
                                                   false)}}),
-            true, false),
-      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")) {}
+            true, false,
+            basics::VelocyPackHelper::stringUInt64(info, "objectId")) {}
 
 RocksDBPrimaryMockIndex::~RocksDBPrimaryMockIndex() {}
 
@@ -230,12 +218,4 @@ IndexIterator* RocksDBPrimaryMockIndex::allIterator(transaction::Methods* trx,
                                                     ManagedDocumentResult* mmdr,
                                                     bool reverse) const {
   return new RocksDBAllIndexIterator(_collection, trx, mmdr, this, reverse);
-}
-
-/// @brief request an iterator over all elements in the index in
-///        a random order. It is guaranteed that each element is found
-///        exactly once unless the collection is modified.
-IndexIterator* RocksDBPrimaryMockIndex::anyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr) const {
-  return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
 }

@@ -89,26 +89,11 @@ void RocksDBAllIndexIterator::reset() {
   // TODO
 }
   
-RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
-                                   ManagedDocumentResult* mmdr,
-                                   RocksDBPrimaryIndex const* index)
-    : IndexIterator(collection, trx, mmdr, index) {}
-
-bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
-}
-
-void RocksDBAnyIndexIterator::reset() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection* collection)
-    : Index(0, collection,
+    : RocksDBIndex(0, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
-            true, false) {
-}
+            true, false) {}
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
 
@@ -194,12 +179,4 @@ IndexIterator* RocksDBPrimaryIndex::allIterator(transaction::Methods* trx,
                                          ManagedDocumentResult* mmdr,
                                          bool reverse) const {
   return new RocksDBAllIndexIterator(_collection, trx, mmdr, this, reverse);
-}
-
-/// @brief request an iterator over all elements in the index in
-///        a random order. It is guaranteed that each element is found
-///        exactly once unless the collection is modified.
-IndexIterator* RocksDBPrimaryIndex::anyIterator(transaction::Methods* trx,
-                                         ManagedDocumentResult* mmdr) const {
-  return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
 }

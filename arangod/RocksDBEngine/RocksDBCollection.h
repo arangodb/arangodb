@@ -117,6 +117,7 @@ class RocksDBCollection final : public PhysicalCollection {
                                                 bool reverse) override;
   std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx, ManagedDocumentResult* mdr) override;
+
   void invokeOnAllElements(
       std::function<bool(DocumentIdentifierToken const&)> callback) override;
 

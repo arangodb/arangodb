@@ -27,9 +27,10 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "RocksDBEngine/RocksDBKey.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -63,7 +64,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   RocksDBEdgeIndex const* _index;
 };
   
-class RocksDBEdgeIndex final : public Index {
+class RocksDBEdgeIndex final : public RocksDBIndex {
   friend class RocksDBEdgeIndexIterator;
  public:
   RocksDBEdgeIndex() = delete;
