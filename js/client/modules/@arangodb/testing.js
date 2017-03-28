@@ -2379,7 +2379,8 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
 testFuncs.recovery = function (options) {
   let results = {};
 
-  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests']) {
+  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
+      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === "false") {
     results.recovery = {
       status: false,
       message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
