@@ -204,7 +204,7 @@ class RocksDBCollection final : public PhysicalCollection {
                      arangodb::velocypack::Slice const& newDoc, bool& waitForSync);
 
  private:
-  uint64_t _objectId; // rocksdb-specific object id for collection
+  uint64_t const _objectId; // rocksdb-specific object id for collection
 };
 
 }
