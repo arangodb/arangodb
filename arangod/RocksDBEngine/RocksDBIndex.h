@@ -24,29 +24,30 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 #include "Indexes/Index.h"
 
 namespace arangodb {
 class LogicalCollection;
+class RocksDBComparator;
 
 class RocksDBIndex : public Index {
  protected:
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-        std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-        bool unique, bool sparse,
-        uint64_t objectId = 0);
- 
+               std::vector<std::vector<arangodb::basics::AttributeName>> const&
+                   attributes,
+               bool unique, bool sparse, uint64_t objectId = 0);
+
  public:
   uint64_t objectId() const { return _objectId; }
-  
+
   bool isPersistent() const override final { return true; }
-   
+
  protected:
   uint64_t _objectId;
+  RocksDBComparator* _cmp;
 };
-
 }
 
 #endif
