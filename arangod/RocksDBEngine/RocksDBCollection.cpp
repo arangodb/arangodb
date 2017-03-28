@@ -21,6 +21,7 @@
 /// @author Jan-Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBCollection.h"
 #include "Aql/PlanCache.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -29,16 +30,14 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
-#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/TransactionState.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -55,7 +54,7 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 static std::string const Empty;
- 
+
 rocksdb::TransactionDB* db() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   return static_cast<RocksDBEngine*>(engine)->db();
@@ -307,7 +306,9 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
     transaction::Methods* trx, ManagedDocumentResult* mdr) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "this engine does not provide an any iterator");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "this engine does not provide an any iterator");
 }
 
 void RocksDBCollection::invokeOnAllElements(
@@ -662,7 +663,7 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   RocksDBValue value(RocksDBValue::Document(doc));
 
   rocksdb::WriteBatch writeBatch;
-  writeBatch.Put(key.string(), value.value());
+  writeBatch.Put(key.string(), *value.string());
 
   auto indexes = _indexes;
   size_t const n = indexes.size();
@@ -793,14 +794,19 @@ int RocksDBCollection::updateDocument(transaction::Methods* trx,
 }
 
 Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
-                           arangodb::StringRef key, RocksDBToken &outToken) {
+                                              arangodb::StringRef key,
+                                              RocksDBToken& outToken) {
   // TODO fix as soon as we got a real primary index
   outToken = primaryIndex()->lookupKey(trx, key);
-  return outToken.revisionId() > 0 ? Result() : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  return outToken.revisionId() > 0
+             ? Result()
+             : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
-void RocksDBCollection::lookupRevisionVPack(TRI_voc_rid_t revisionId, transaction::Methods* trx,arangodb::ManagedDocumentResult& result){
-  auto key = RocksDBKey::Document(_objectId,revisionId);
+void RocksDBCollection::lookupRevisionVPack(
+    TRI_voc_rid_t revisionId, transaction::Methods* trx,
+    arangodb::ManagedDocumentResult& result) {
+  auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;
   TRI_ASSERT(value.data());
   auto* state = toRocksTransactionState(trx);

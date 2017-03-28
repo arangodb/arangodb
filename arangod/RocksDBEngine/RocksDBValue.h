@@ -38,8 +38,6 @@ namespace arangodb {
 
 class RocksDBValue {
  public:
-  RocksDBValue() = delete;
-
   //----------------------------------------------------------------------------
   // SECTION Constructors
   // Each of these simply specifies the correct type and copies the input
@@ -55,6 +53,11 @@ class RocksDBValue {
   static RocksDBValue IndexValue();
   static RocksDBValue UniqueIndexValue(std::string const& primaryKey);
   static RocksDBValue View(VPackSlice const& data);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Used to construct an empty value of the given type for retrieval
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBValue Empty(RocksDBEntryType type);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -90,9 +93,10 @@ class RocksDBValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.
   //////////////////////////////////////////////////////////////////////////////
-  std::string const& value() const;
+  std::string* string();
 
  private:
+  RocksDBValue();
   RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, uint64_t data);
   RocksDBValue(RocksDBEntryType type, std::string const& data);

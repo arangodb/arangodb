@@ -66,6 +66,10 @@ RocksDBValue RocksDBValue::View(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::View, data);
 }
 
+RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
+  return RocksDBValue(type);
+}
+
 TRI_voc_rid_t RocksDBValue::revisionId(RocksDBValue const& value) {
   return revisionId(value._buffer.data(), value._buffer.size());
 }
@@ -102,19 +106,9 @@ VPackSlice RocksDBValue::data(std::string const& s) {
   return data(s.data(), s.size());
 }
 
-std::string const& RocksDBValue::value() const { return _buffer; }
+std::string* RocksDBValue::string() { return &_buffer; }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {
-  switch (_type) {
-    case RocksDBEntryType::EdgeIndexValue:
-    case RocksDBEntryType::IndexValue: {
-      break;
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-}
+RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
     : _type(type), _buffer() {
