@@ -71,7 +71,6 @@ class RocksDBTransactionState final : public TransactionState {
 
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
-  bool _beginWritten;
   bool _hasOperations;
 };
 

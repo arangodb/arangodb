@@ -50,7 +50,6 @@ struct RocksDBTransactionData final : public TransactionData {
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
     : TransactionState(vocbase),
-      _beginWritten(false),
       _hasOperations(false) {}
 
 /// @brief free a transaction container
