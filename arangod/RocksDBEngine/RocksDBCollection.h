@@ -35,7 +35,7 @@ namespace arangodb {
 class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
-class RocksDBPrimaryMockIndex;
+class RocksDBPrimaryIndex;
 struct RocksDBToken;
 
 class RocksDBCollection final : public PhysicalCollection {
@@ -74,7 +74,7 @@ class RocksDBCollection final : public PhysicalCollection {
                                     PhysicalCollection*) override;
 
   TRI_voc_rid_t revision() const override;
-  
+
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
 
@@ -170,47 +170,47 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;
-  
+
   uint64_t objectId() const { return _objectId; }
-  
-  Result lookupDocumentToken(transaction::Methods* trx,
-                             arangodb::StringRef key, RocksDBToken &token);
+
+  Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
+                             RocksDBToken& token);
 
  private:
   /// @brief return engine-specific figures
-  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(
+      std::shared_ptr<arangodb::velocypack::Builder>&) override;
   /// @brief creates the initial indexes for the collection
   void createInitialIndexes();
   void addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
-  int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx);
-  arangodb::RocksDBPrimaryMockIndex* primaryIndex() const;
+  int saveIndex(transaction::Methods* trx,
+                std::shared_ptr<arangodb::Index> idx);
+  arangodb::RocksDBPrimaryIndex* primaryIndex() const;
 
   int insertDocument(arangodb::transaction::Methods* trx,
                      TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const& doc,
-                     bool& waitForSync);
+                     arangodb::velocypack::Slice const& doc, bool& waitForSync);
 
   int removeDocument(arangodb::transaction::Methods* trx,
                      TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const& doc,
-                     bool& waitForSync);
+                     arangodb::velocypack::Slice const& doc, bool& waitForSync);
 
-  int lookupDocument(transaction::Methods* trx,
-                     arangodb::velocypack::Slice key,
+  int lookupDocument(transaction::Methods* trx, arangodb::velocypack::Slice key,
                      ManagedDocumentResult& result);
 
   int updateDocument(transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
-                     arangodb::velocypack::Slice const& oldDoc, TRI_voc_rid_t newRevisionId,
-                     arangodb::velocypack::Slice const& newDoc, bool& waitForSync);
+                     arangodb::velocypack::Slice const& oldDoc,
+                     TRI_voc_rid_t newRevisionId,
+                     arangodb::velocypack::Slice const& newDoc,
+                     bool& waitForSync);
 
- void lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*, arangodb::ManagedDocumentResult&);
-
+  void lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
+                           arangodb::ManagedDocumentResult&);
 
  private:
-  uint64_t const _objectId; // rocksdb-specific object id for collection
+  uint64_t const _objectId;  // rocksdb-specific object id for collection
 };
-
 }
 
 #endif

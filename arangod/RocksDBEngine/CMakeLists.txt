@@ -12,7 +12,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBKey.cpp
   RocksDBEngine/RocksDBKeyBounds.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
-  RocksDBEngine/RocksDBPrimaryMockIndex.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBTypes.cpp

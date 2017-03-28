@@ -26,9 +26,9 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
-#include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -232,7 +232,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
   try {
     VPackObjectBuilder b(&enhanced);
     current = definition.get("id");
-    uint64_t id = 0; 
+    uint64_t id = 0;
     if (current.isNumber()) {
       id = current.getNumericValue<uint64_t>();
     } else if (current.isString()) {
@@ -244,7 +244,8 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
 
     if (create) {
       if (!definition.hasKey("objectId")) {
-        enhanced.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+        enhanced.add("objectId",
+                     VPackValue(std::to_string(TRI_NewTickServer())));
       }
     } else {
       if (!definition.hasKey("objectId")) {
@@ -252,7 +253,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
         return TRI_ERROR_INTERNAL;
       }
     }
-    
+
     enhanced.add("type", VPackValue(Index::oldtypeName(type)));
 
     switch (type) {
@@ -276,8 +277,8 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
         res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
         break;
-      
-      case Index::TRI_IDX_TYPE_UNKNOWN: 
+
+      case Index::TRI_IDX_TYPE_UNKNOWN:
       default: {
         res = TRI_ERROR_BAD_PARAMETER;
         break;
@@ -335,7 +336,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     TRI_ASSERT(generateKey);
     iid = arangodb::Index::generateId();
   }
-  
+
   switch (type) {
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (!isClusterConstructor) {
@@ -343,7 +344,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create primary index");
       }
-      newIdx.reset(new arangodb::RocksDBPrimaryMockIndex(col, info));
+      newIdx.reset(new arangodb::RocksDBPrimaryIndex(col, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
@@ -352,21 +353,24 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create edge index");
       }
-      newIdx.reset(new arangodb::RocksDBEdgeIndex(iid, col, StaticStrings::FromString));
+      newIdx.reset(
+          new arangodb::RocksDBEdgeIndex(iid, col, StaticStrings::FromString));
       break;
     }
-    //case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-    //  // TODO: fix this wrong index type. only used temporarily because we don't have other indexes
-    //  newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col, StaticStrings::FromString));
+    // case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
+    //  // TODO: fix this wrong index type. only used temporarily because we
+    //  don't have other indexes
+    //  newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col,
+    //  StaticStrings::FromString));
     //  break;
     //}
-    
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: 
+
+    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     default: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
     }
   }
-  
+
   TRI_ASSERT(newIdx != nullptr);
   return newIdx;
 }
@@ -374,19 +378,18 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
 void RocksDBIndexFactory::fillSystemIndexes(
     arangodb::LogicalCollection* col,
     std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
-  
   // create primary index
   VPackBuilder builder;
   builder.openObject();
   builder.close();
 
   systemIndexes.emplace_back(
-      std::make_shared<arangodb::RocksDBPrimaryMockIndex>(col, builder.slice()));
+      std::make_shared<arangodb::RocksDBPrimaryIndex>(col, builder.slice()));
   // create edges index
   if (col->type() == TRI_COL_TYPE_EDGE) {
-    systemIndexes.emplace_back(
-        std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, StaticStrings::FromString));
-    systemIndexes.emplace_back(
-        std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, StaticStrings::ToString));
+    systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
+        1, col, StaticStrings::FromString));
+    systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
+        2, col, StaticStrings::ToString));
   }
 }

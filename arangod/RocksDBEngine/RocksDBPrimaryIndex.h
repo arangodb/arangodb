@@ -28,12 +28,18 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "VocBase/vocbase.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBToken.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace rocksdb {
+class Iterator;
+}
 
 namespace arangodb {
 
@@ -41,17 +47,17 @@ class RocksDBPrimaryIndex;
 namespace transaction {
 class Methods;
 }
-  
+
 class RocksDBPrimaryIndexIterator final : public IndexIterator {
  public:
   RocksDBPrimaryIndexIterator(LogicalCollection* collection,
-                       transaction::Methods* trx, 
-                       ManagedDocumentResult* mmdr,
-                       RocksDBPrimaryIndex const* index,
-                       std::unique_ptr<VPackBuilder>& keys);
+                              transaction::Methods* trx,
+                              ManagedDocumentResult* mmdr,
+                              RocksDBPrimaryIndex const* index,
+                              std::unique_ptr<VPackBuilder>& keys);
 
   ~RocksDBPrimaryIndexIterator();
-    
+
   char const* typeName() const override { return "primary-index-iterator"; }
 
   bool next(TokenCallback const& cb, size_t limit) override;
@@ -67,13 +73,12 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
   RocksDBAllIndexIterator(LogicalCollection* collection,
-                   transaction::Methods* trx, 
-                   ManagedDocumentResult* mmdr,
-                   RocksDBPrimaryIndex const* index,
-                   bool reverse);
+                          transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr,
+                          RocksDBPrimaryIndex const* index, bool reverse);
 
   ~RocksDBAllIndexIterator() {}
-    
+
   char const* typeName() const override { return "all-index-iterator"; }
 
   bool next(TokenCallback const& cb, size_t limit) override;
@@ -81,8 +86,13 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
+  bool outOfRange() const;
+
+  RocksDBComparator const* _cmp;
   bool const _reverse;
   uint64_t _total;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+  RocksDBKeyBounds _bounds;
 };
 
 class RocksDBPrimaryIndex final : public RocksDBIndex {
@@ -91,15 +101,14 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  public:
   RocksDBPrimaryIndex() = delete;
 
-  explicit RocksDBPrimaryIndex(arangodb::LogicalCollection*);
+  explicit RocksDBPrimaryIndex(arangodb::LogicalCollection*,
+                               VPackSlice const& info);
 
   ~RocksDBPrimaryIndex();
 
  public:
-  IndexType type() const override {
-    return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
-  }
-  
+  IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
+
   char const* typeName() const override { return "primary"; }
 
   bool allowExpansion() const override { return false; }
@@ -110,7 +119,10 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override { return 1.0; }
+  double selectivityEstimate(
+      arangodb::StringRef const* = nullptr) const override {
+    return 1.0;
+  }
 
   size_t size() const;
 
@@ -119,12 +131,29 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   void toVelocyPack(VPackBuilder&, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+                arangodb::velocypack::Slice const&);
+  int insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+                arangodb::velocypack::Slice const&, ManagedDocumentResult&);
 
-  int remove(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+                arangodb::velocypack::Slice const&);
+  int removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+                arangodb::velocypack::Slice const&, ManagedDocumentResult&);
+
+  RocksDBToken lookupKey(transaction::Methods* trx, arangodb::StringRef key);
+  RocksDBToken lookupKey(transaction::Methods* trx,
+                         arangodb::velocypack::Slice key,
+                         ManagedDocumentResult& result) const;
+
+  int insert(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
+
+  int remove(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int unload() override;
- 
+
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
@@ -137,10 +166,26 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
-  
+
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
-  IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*, bool reverse) const;
+  IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*,
+                             bool reverse) const;
+
+ private:
+  /// @brief create the iterator, for a single attribute, IN operator
+  IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
+                                  arangodb::aql::AstNode const*,
+                                  arangodb::aql::AstNode const*) const;
+
+  /// @brief create the iterator, for a single attribute, EQ operator
+  IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
+                                  arangodb::aql::AstNode const*,
+                                  arangodb::aql::AstNode const*) const;
+
+  /// @brief add a single value node to the iterator's keys
+  void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
+                     arangodb::aql::AstNode const* valNode, bool isId) const;
 };
 }
 

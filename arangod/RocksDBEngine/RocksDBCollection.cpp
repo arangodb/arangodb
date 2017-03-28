@@ -33,7 +33,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -56,16 +56,17 @@ using namespace arangodb::rocksutils;
 namespace {
 
 static std::string const Empty;
- 
+
 static rocksdb::TransactionDB* db() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   return static_cast<RocksDBEngine*>(engine)->db();
 }
-    
-static inline rocksdb::Transaction* rocksTransaction(arangodb::transaction::Methods* trx) {
-  return static_cast<RocksDBTransactionState*>(trx->state())->rocksTransaction();
-}
 
+static inline rocksdb::Transaction* rocksTransaction(
+    arangodb::transaction::Methods* trx) {
+  return static_cast<RocksDBTransactionState*>(trx->state())
+      ->rocksTransaction();
+}
 }
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
@@ -640,7 +641,7 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
 // WARNING: Make sure that this LogicalCollection Instance
 // is somehow protected. If it goes out of all scopes
 // or it's indexes are freed the pointer returned will get invalidated.
-arangodb::RocksDBPrimaryMockIndex* RocksDBCollection::primaryIndex() const {
+arangodb::RocksDBPrimaryIndex* RocksDBCollection::primaryIndex() const {
   // The primary index always has iid 0
   auto primary = _logicalCollection->lookupIndex(0);
   TRI_ASSERT(primary != nullptr);
@@ -657,7 +658,7 @@ arangodb::RocksDBPrimaryMockIndex* RocksDBCollection::primaryIndex() const {
 #endif
   TRI_ASSERT(primary->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   // the primary index must be the index at position #0
-  return static_cast<arangodb::RocksDBPrimaryMockIndex*>(primary.get());
+  return static_cast<arangodb::RocksDBPrimaryIndex*>(primary.get());
 }
 
 int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
@@ -797,16 +798,18 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
 void RocksDBCollection::lookupRevisionVPack(
     TRI_voc_rid_t revisionId, transaction::Methods* trx,
     arangodb::ManagedDocumentResult& result) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "LOOKING UP DOCUMENT: " << _objectId << ", REV: " << revisionId;
+  LOG_TOPIC(ERR, Logger::FIXME) << "LOOKING UP DOCUMENT: " << _objectId
+                                << ", REV: " << revisionId;
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;
   TRI_ASSERT(value.data());
   auto* state = toRocksTransactionState(trx);
-  rocksdb::Status status = state->rocksTransaction()->Get(state->readOptions(), key.string(), &value);
+  rocksdb::Status status = state->rocksTransaction()->Get(state->readOptions(),
+                                                          key.string(), &value);
 
   if (status.ok()) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "FOUND";
+    LOG_TOPIC(ERR, Logger::FIXME) << "FOUND";
     result.setManaged(std::move(value), revisionId);
   }
 }
