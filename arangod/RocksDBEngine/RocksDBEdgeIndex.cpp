@@ -38,8 +38,8 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBToken.h"
-#include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBTypes.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -86,25 +86,20 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
-  
+
   // aquire rocksdb transaction
-  RocksDBTransactionState *state = rocksutils::toRocksTransactionState(_trx);
-  rocksdb::Transaction *rtrx = state->rocksTransaction();
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
   auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
-  
+
   while (limit > 0) {
     VPackSlice fromTo = _iterator.value();
     TRI_ASSERT(fromTo.isString());
-    // if (tmp.isObject()) {
-    //  tmp = tmp.get(StaticStrings::IndexEq);
-    //}
 
     RocksDBKey prefix =
         RocksDBKey::EdgeIndexPrefix(_index->_objectId, fromTo.copyString());
 
-    rocksdb::ReadOptions readOptions;
-    std::unique_ptr<rocksdb::Iterator> iter(
-        rtrx->GetIterator(readOptions));
+    std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(state->readOptions()));
 
     rocksdb::Slice rSlice(prefix.string());
     iter->Seek(rSlice);
@@ -113,7 +108,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       size_t edgeKeySize = iter->key().size() - rSlice.size();
       const char* edgeKey = iter->key().data() + rSlice.size();
 
-      // TODO do we need to handle failed lookups here?
+      // aquire the document token through the primary index
       RocksDBToken token;
       Result res = rocksColl->lookupDocumentToken(
           _trx, StringRef(edgeKey, edgeKeySize), token);
@@ -122,7 +117,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         if (--limit == 0) {
           break;
         }
-      }
+      }  // TODO do we need to handle failed lookups here?
 
       iter->Next();
     }
@@ -144,8 +139,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    arangodb::LogicalCollection* collection,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
-                                 {{AttributeName(attr, false)}}),
-            false, false),
+                                        {{AttributeName(attr, false)}}),
+                   false, false),
       _directionAttr(attr) {
   /*std::vector<std::vector<arangodb::basics::AttributeName>>(
                   {{arangodb::basics::AttributeName(StaticStrings::FromString,
@@ -234,8 +229,9 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   // aquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  
-  rocksdb::Status status = rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
+
+  rocksdb::Status status =
+      rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
   if (status.ok()) {
     return TRI_ERROR_NO_ERROR;
   } else {
@@ -254,9 +250,9 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                                               primaryKey.copyString());
 
   // aquire rocksdb transaction
-  RocksDBTransactionState *state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction *rtrx = state->rocksTransaction();
-  
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+
   rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
   if (status.ok()) {
     return TRI_ERROR_NO_ERROR;
@@ -271,11 +267,10 @@ void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     arangodb::basics::LocalTaskQueue* queue) {
-  
   // aquire rocksdb transaction
-  RocksDBTransactionState *state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction *rtrx = state->rocksTransaction();
-  
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+
   for (std::pair<TRI_voc_rid_t, VPackSlice> const& doc : documents) {
     VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
     VPackSlice fromTo = doc.second.get(_directionAttr);

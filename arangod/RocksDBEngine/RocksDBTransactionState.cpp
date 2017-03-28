@@ -41,6 +41,7 @@
 #include <rocksdb/options.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
+#include <rocksdb/status.h>
 
 using namespace arangodb;
 
@@ -75,6 +76,8 @@ int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(engine)->db();
     _rocksTransaction.reset(db->BeginTransaction(rocksdb::WriteOptions(), rocksdb::TransactionOptions()));
+    // _rocksTransaction->SetSnapshot()
+    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -172,3 +175,4 @@ int RocksDBTransactionState::addOperation(TRI_voc_rid_t revisionId,
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
+

@@ -32,12 +32,14 @@
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
-#include "rocksdb/status.h"
-#include "rocksdb/options.h"
+#include <rocksdb/options.h>
+
 struct TRI_vocbase_t;
 
 namespace rocksdb {
 class Transaction;
+class Slice;
+class Iterator;
 }
 
 namespace arangodb {
@@ -74,17 +76,17 @@ class RocksDBTransactionState final : public TransactionState {
   rocksdb::Transaction* rocksTransaction() {
     return _rocksTransaction.get();
   }
-
-  rocksdb::ReadOptions& readOptions(){
+  
+  rocksdb::ReadOptions const& readOptions(){
     return _rocksReadOptions;
   }
-
+  
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   rocksdb::ReadOptions _rocksReadOptions;
   bool _hasOperations;
+  
 };
-
 }
 
 #endif
