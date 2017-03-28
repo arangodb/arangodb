@@ -28,6 +28,7 @@
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryMockIndex.h"
+#include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -239,6 +240,16 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       enhanced.add("id", VPackValue(std::to_string(id)));
     }
 
+    if (create) {
+      if (!definition.hasKey("objectId")) {
+        enhanced.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+      }
+    } else {
+      if (!definition.hasKey("objectId")) {
+        // objectId missing, but must be present
+        return TRI_ERROR_INTERNAL;
+      }
+    }
     
     enhanced.add("type", VPackValue(Index::oldtypeName(type)));
 

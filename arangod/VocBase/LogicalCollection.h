@@ -292,6 +292,7 @@ class LogicalCollection {
   void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback);
 
  private:
+  void prepareIndexes(velocypack::Slice indexesSlice);
 
   // SECTION: Indexes (local only)
   // @brief create index with the given definition.
