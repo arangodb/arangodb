@@ -92,7 +92,10 @@ function authentication (options) {
   let results = {};
 
   results.authentication = tu.runInArangosh(options, instanceInfo,
-    fs.join('js', 'client', 'tests', 'auth.js'));
+    fs.join('js', 'client', 'tests', 'authentication', 'auth.js'));
+
+  results.foxxArangoAuth = tu.runInArangosh(options, instanceInfo,
+    fs.join('js', 'client', 'tests', 'authentication', 'foxx-arango-auth-spec.js'));
 
   print(CYAN + 'Shutting down...' + RESET);
   pu.shutdownInstance(instanceInfo, options);
