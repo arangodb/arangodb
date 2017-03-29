@@ -45,6 +45,20 @@ class Result {
  public:
   bool ok() const { return _errorNumber == TRI_ERROR_NO_ERROR; }
   int errorNumber() const { return _errorNumber; }
+  void reset(int errorNumber) {
+    _errorNumber = errorNumber;
+    _errorMessage = TRI_errno_string(errorNumber);
+  }
+
+  void reset(int errorNumber, std::string const& errorMessage) {
+    _errorNumber = errorNumber;
+    _errorMessage = errorMessage;
+  }
+
+  void reset(int errorNumber, std::string&& errorMessage) {
+    _errorNumber = errorNumber;
+    _errorMessage = std::move(errorMessage);
+  }
 
   // the default implementations is const, but sub-classes might
   // really do more work to compute.

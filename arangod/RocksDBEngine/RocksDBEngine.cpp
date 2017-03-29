@@ -35,6 +35,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -360,10 +361,8 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   rocksdb::Status res = _db->Put(options, key.string(), *value.string());
-  if (res.ok()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  return TRI_ERROR_INTERNAL;  // TODO: need translation for RocksDB errors
+  auto result = rocksutils::convertStatus(res);
+  return result.errorNumber();
 }
 
 int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
@@ -374,10 +373,8 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   rocksdb::Status res = _db->Put(options, key.string(), *value.string());
-  if (res.ok()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  return TRI_ERROR_INTERNAL;  // TODO: need translation for RocksDB errors
+  auto result = rocksutils::convertStatus(res);
+  return result.errorNumber();
 }
 
 void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
@@ -423,9 +420,10 @@ arangodb::Result RocksDBEngine::persistCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) {
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(vocbase != nullptr);
+  arangodb::Result result;
   if (inRecovery()) {
     // Nothing to do. In recovery we do not write markers.
-    return {};
+    return result;
   }
   VPackBuilder builder =
       collection->toVelocyPackIgnore({"path", "statusString"}, true);
@@ -436,12 +434,8 @@ arangodb::Result RocksDBEngine::persistCollection(
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
   int res = writeCreateCollectionMarker(vocbase->id(), cid, slice);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return {res};
-  }
-
-  return {};
+  result.reset(res);
+  return result;
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t* vocbase,
@@ -477,9 +471,9 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   rocksdb::Status res = _db->Put(options, key.string(), *value.string());
-  if (!res.ok()) {
-    // TODO: need translation for RocksDB errors
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  auto result = rocksutils::convertStatus(res);
+  if (!result.ok()) {
+    THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
 }
 
@@ -634,9 +628,9 @@ void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
   // TODO: add /_api/export and /_admin/wal later
 }
 
-EngineResult RocksDBEngine::dropDatabase(TRI_voc_tick_t str) {
+Result RocksDBEngine::dropDatabase(TRI_voc_tick_t str) {
   LOG_TOPIC(WARN, Logger::STARTUP) << "rocksdb - dropping database: " << str;
-  return EngineResult{};
+  return Result{};
 }
 
 bool RocksDBEngine::systemDatabaseExists() {
