@@ -97,7 +97,8 @@ bool RocksDBPathBasedIndex::implicitlyUnique() const {
 }
 
 /// @brief helper function to insert a document into any index type
-/// Should result in a
+/// Should result in an elements vector filled with the new index entries
+/// uses the _unique field to determine the kind of key structure
 int RocksDBPathBasedIndex::fillElement(
     transaction::Methods* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc,
     std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements) {
