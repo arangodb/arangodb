@@ -80,18 +80,19 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
 uint64_t uint64FromPersistent(char const* p) {
   uint64_t value = 0;
   uint64_t x = 0;
-  char const* end = p + sizeof(uint64_t);
+  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(p);
+  uint8_t const* end = ptr + sizeof(uint64_t);
   do {
-    value += static_cast<uint64_t>(*p++) << x;
+    value += static_cast<uint64_t>(*ptr++) << x;
     x += 8;
-  } while (p < end);
+  } while (ptr < end);
   return value;
 }
 
 void uint64ToPersistent(char* p, uint64_t value) {
   char* end = p + sizeof(uint64_t);
   do {
-    *p++ = static_cast<uint8_t>(value & 0xff);
+    *p++ = static_cast<uint8_t>(value & 0xffU);
     value >>= 8;
   } while (p < end);
 }
@@ -99,7 +100,7 @@ void uint64ToPersistent(char* p, uint64_t value) {
 void uint64ToPersistent(std::string& p, uint64_t value) {
   size_t len = 0;
   do {
-    p.push_back(static_cast<char>(value & 0xff));
+    p.push_back(static_cast<char>(value & 0xffU));
     value >>= 8;
   } while (++len < sizeof(uint64_t));
 }

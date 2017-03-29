@@ -119,6 +119,8 @@ class ManagedDocumentResult {
     _vpack = nullptr;
   }
 
+  bool empty() const { return _vpack == nullptr; }
+
  private:
   uint64_t _length;
   TRI_voc_rid_t _lastRevisionId;

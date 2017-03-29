@@ -208,7 +208,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second)
       uint64ToPersistent(_buffer,
                          first);  // databaseId / collectionId / databaseId
       uint64ToPersistent(_buffer,
-                         second);  // collectionId / collectionId / viewId
+                         second);  // collectionId / revisionId / viewId
       break;
     }
 

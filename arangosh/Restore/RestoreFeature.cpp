@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -528,7 +529,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                       << " collection '" << cname << "'..." << std::endl;
           }
 
-          int fd = TRI_OPEN(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+          int fd = TRI_TRACKED_OPEN_FILE(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
           if (fd < 0) {
             errorMsg = "cannot open collection data file '" + datafile + "'";
@@ -540,7 +541,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
           while (true) {
             if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
-              TRI_CLOSE(fd);
+              TRI_TRACKED_CLOSE_FILE(fd);
               errorMsg = "out of memory";
 
               return TRI_ERROR_OUT_OF_MEMORY;
@@ -551,7 +552,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             if (numRead < 0) {
               // error while reading
               int res = TRI_errno();
-              TRI_CLOSE(fd);
+              TRI_TRACKED_CLOSE_FILE(fd);
               errorMsg = std::string(TRI_errno_string(res));
 
               return res;
@@ -607,7 +608,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                   std::cerr << errorMsg << std::endl;
                   continue;
                 }
-                TRI_CLOSE(fd);
+                TRI_TRACKED_CLOSE_FILE(fd);
 
                 return res;
               }
@@ -621,7 +622,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             }
           }
 
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
         }
       }
 

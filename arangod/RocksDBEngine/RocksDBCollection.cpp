@@ -337,23 +337,37 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
-int RocksDBCollection::read(transaction::Methods*,
+int RocksDBCollection::read(transaction::Methods* trx,
                             arangodb::velocypack::Slice const key,
                             ManagedDocumentResult& result, bool) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+  TRI_ASSERT(key.isString());
+  RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
+  LOG_TOPIC(ERR, Logger::FIXME) << "READ IN COLLECTION '" << _logicalCollection->name() << "', KEY: " << key.copyString() << ", FOUND REVISION ID: " << token.revisionId();
+  
+  if (token.revisionId()) {
+    if (readDocument(trx, token, result)) {
+      // found
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // not found
+  return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
 }
 
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      DocumentIdentifierToken const& token,
                                      ManagedDocumentResult& result) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return false;
+  // TODO: why do we have read(), readDocument() and lookupKey()?
+  auto tkn = static_cast<RocksDBToken const*>(&token);
+  TRI_voc_rid_t revisionId = tkn->revisionId();
+  lookupRevisionVPack(revisionId, trx, result);
+  return !result.empty();
 }
 
 bool RocksDBCollection::readDocumentConditional(
     transaction::Methods* trx, DocumentIdentifierToken const& token,
     TRI_voc_tick_t maxTick, ManagedDocumentResult& result) {
+  // should not be called for RocksDB engine. TODO: move this out of general API!
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return false;
 }
@@ -682,8 +696,15 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
   RocksDBSavePoint guard(rtrx);
+    
+  LOG_TOPIC(ERR, Logger::FIXME) << "INSERT DOCUMENT. COLLECTION '" << _logicalCollection->name() << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId;
 
-  rtrx->Put(key.string(), *value.string());
+  rocksdb::Status status = rtrx->Put(key.string(), *value.string());
+  if (!status.ok()) {
+    auto converted =
+        rocksutils::convertStatus(status, rocksutils::StatusHint::document);
+    return converted.errorNumber();
+  }
 
   auto indexes = _indexes;
   size_t const n = indexes.size();
@@ -691,7 +712,7 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   int result = TRI_ERROR_NO_ERROR;
 
   for (size_t i = 0; i < n; ++i) {
-    auto idx = indexes[i];
+    auto& idx = indexes[i];
 
     int res = idx->insert(trx, revisionId, doc, false);
 
@@ -808,8 +829,6 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
 arangodb::Result RocksDBCollection::lookupRevisionVPack(
     TRI_voc_rid_t revisionId, transaction::Methods* trx,
     arangodb::ManagedDocumentResult& mdr) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "LOOKING UP DOCUMENT: " << _objectId
-                                << ", REV: " << revisionId;
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;
@@ -819,8 +838,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
                                                           key.string(), &value);
   auto result = convertStatus(status);
   if (result.ok()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "FOUND";
+    LOG_TOPIC(ERR, Logger::FIXME) << "LOOKUPREVISIONVPACK. COLLECTION '" << _logicalCollection->name() << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId << " -> FOUND";
     mdr.setManaged(std::move(value), revisionId);
+  } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "LOOKUPREVISIONVPACK. COLLECTION '" << _logicalCollection->name() << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId << " -> NOT FOUND";
   }
   return result;
 }
