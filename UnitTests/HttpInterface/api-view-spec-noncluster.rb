@@ -384,6 +384,23 @@ describe ArangoDB do
         doc2.parsed_response['extra'].should eq(nil)
       end
 
+      it "accept updates via PATCH as well" do
+        cmd1 = api + '/abc/properties'
+        body1 = <<-JSON
+                { "level": "TRACE" }
+                JSON
+        doc1 = ArangoDB.log_patch("#{prefix}-accept-patch", cmd1, :body => body1)
+        doc1.code.should eq(200)
+        doc1.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc1.parsed_response['level'].should eq("TRACE")
+
+        cmd2 = api + '/abc/properties'
+        doc2 = ArangoDB.log_get("#{prefix}-accept-patch", cmd2)
+        doc2.code.should eq(200)
+        doc2.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc2.parsed_response['level'].should eq("TRACE")
+      end
+
     end
 
   end
