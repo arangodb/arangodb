@@ -52,7 +52,6 @@
     },
 
     hideSmartGraphOptions: function () {
-      $('#tab-smartGraph').parent().remove();
       $('#row_general-numberOfShards').show();
       $('#smartGraphInfo').hide();
       $('#row_new-numberOfShards').hide();
@@ -130,7 +129,13 @@
 
     addNewGraph: function (e) {
       e.preventDefault();
-      this.createEditGraphModal();
+      if (frontendConfig.isCluster && frontendConfig.isEnterprise) {
+        this.createEditGraphModal();
+      } else {
+        this.createEditGraphModal();
+        // hide tab entry
+        $('#tab-smartGraph').parent().remove();
+      }
     },
 
     deleteGraph: function () {

@@ -277,6 +277,16 @@ The response to the HTTP OPTIONS request will however be a generic response that
 will not expose any private data and thus can be considered "safe" even without
 credentials.
 
+**Note**: in order to ensure that ArangoDB will respond with the correct
+*access-control-allow-credentials* header you'll need to make sure to tell the
+browser to use credentials:
+
+* When using the Fetch API you need to set the
+  [`credentials` option to `include`](https://fetch.spec.whatwg.org/#cors-protocol-and-credentials).
+
+* When using `XMLHttpRequest` you need to set the
+  [`withCredentials` option to `true`](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials).
+
 HTTP method overriding
 ----------------------
 

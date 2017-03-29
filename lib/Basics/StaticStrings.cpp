@@ -89,7 +89,7 @@ std::string const StaticStrings::ContentLength("content-length");
 std::string const StaticStrings::ContentTypeHeader("content-type");
 std::string const StaticStrings::Coordinator("x-arango-coordinator");
 std::string const StaticStrings::CorsMethods(
-    "DELETE, GET, HEAD, PATCH, POST, PUT");
+    "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
 std::string const StaticStrings::Error("error");
 std::string const StaticStrings::ErrorMessage("errorMessage");
 std::string const StaticStrings::ErrorNum("errorNum");

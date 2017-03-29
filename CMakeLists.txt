@@ -52,13 +52,6 @@ option(SKIP_PACKAGING "" OFF)
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
-# enable timer for development
-option(USE_DEV_TIMERS "enable timer for development" OFF)
-
-if (USE_DEV_TIMERS)
-  add_definitions("-DUSE_DEV_TIMERS=1")
-endif ()
-
 # enable enterprise features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
