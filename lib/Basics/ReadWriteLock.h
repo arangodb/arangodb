@@ -27,10 +27,14 @@
 
 #include "Basics/Common.h"
 #include "Basics/locks.h"
+#include "Basics/ReadWriteLockCPP11.h"
 
 namespace arangodb {
 namespace basics {
 
+typedef ReadWriteLockCPP11 ReadWriteLock;
+
+#if 0
 /// @brief read-write lock
 class ReadWriteLock {
   ReadWriteLock(ReadWriteLock const&) = delete;
@@ -82,6 +86,9 @@ class ReadWriteLock {
   /// @brief write lock marker
   bool _writeLocked;
 };
+
+#endif
+
 }
 }
 
