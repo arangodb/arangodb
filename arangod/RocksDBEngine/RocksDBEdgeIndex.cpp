@@ -34,6 +34,7 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -96,13 +97,13 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     VPackSlice fromTo = _iterator.value();
     TRI_ASSERT(fromTo.isString());
 
-    RocksDBKey prefix =
-        RocksDBKey::EdgeIndexPrefix(_index->_objectId, fromTo.copyString());
+    RocksDBKeyBounds prefix = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId,
+                                                                fromTo.copyString());
 
     std::unique_ptr<rocksdb::Iterator> iter(
         rtrx->GetIterator(state->readOptions()));
 
-    rocksdb::Slice rSlice(prefix.string());
+    rocksdb::Slice rSlice(prefix.start());
     iter->Seek(rSlice);
     while (iter->Valid() && iter->key().starts_with(rSlice)) {
       TRI_ASSERT(iter->key().size() > rSlice.size());
