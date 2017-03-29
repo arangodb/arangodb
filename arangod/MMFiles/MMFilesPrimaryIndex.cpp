@@ -188,7 +188,7 @@ MMFilesPrimaryIndex::MMFilesPrimaryIndex(arangodb::LogicalCollection* collection
                 {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
             true, false),
       _primaryIndex(nullptr) {
-  uint32_t indexBuckets = 1;
+  size_t indexBuckets = 1;
 
   if (collection != nullptr) {
     // collection is a nullptr in the coordinator case

@@ -65,7 +65,7 @@ cache::Finding TraverserCache::lookup(StringRef idString) {
   VPackValueLength keySize = idString.length();
   void const* key = idString.data();
   //uint32_t keySize = static_cast<uint32_t>(idString.byteSize());
-  return _cache->find(key, keySize);
+  return _cache->find(key, (uint32_t)keySize);
 }
 
 VPackSlice TraverserCache::lookupInCollection(StringRef id) {
@@ -98,7 +98,7 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   void const* resVal = result.begin();
   uint64_t resValSize = static_cast<uint64_t>(result.byteSize());
   std::unique_ptr<cache::CachedValue> value(
-      cache::CachedValue::construct(key, keySize, resVal, resValSize));
+      cache::CachedValue::construct(key, (uint32_t)keySize, resVal, resValSize));
 
   if (value) {
     bool success = _cache->insert(value.get());
@@ -146,8 +146,8 @@ void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Sl
     
     void const* resVal = document.begin();
     uint64_t resValSize = static_cast<uint64_t>(document.byteSize());
-    std::unique_ptr<cache::CachedValue> value(
-                                              cache::CachedValue::construct(key, keySize, resVal, resValSize));
+    std::unique_ptr<cache::CachedValue> value(cache::CachedValue::construct(key, (uint32_t)keySize,
+                                                                            resVal, resValSize));
     
     if (value) {
       bool success = _cache->insert(value.get());

@@ -40,7 +40,7 @@ struct DMIDMessageFormat : public MessageFormat<DMIDMessage> {
     VPackArrayIterator array(s);
     message.senderId.shard = (*array).getUInt();
     message.senderId.key = (*(++array)).copyString();
-    message.leaderId.shard = (*array).getUInt();
+    message.leaderId.shard = (PregelShard) (*array).getUInt();
     message.leaderId.key = (*(++array)).copyString();
     message.weight = (*(++array)).getNumber<float>();
   }
