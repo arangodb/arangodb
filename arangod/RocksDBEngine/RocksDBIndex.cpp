@@ -25,6 +25,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 
@@ -33,5 +34,5 @@ RocksDBIndex::RocksDBIndex(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse, uint64_t objectId)
     : Index(id, collection, attributes, unique, sparse),
-      _objectId(objectId),
+      _objectId(TRI_NewTickServer()), // TODO!
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()) {}

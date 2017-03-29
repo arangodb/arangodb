@@ -24,6 +24,7 @@
 
 #include "ImportHelper.h"
 
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
@@ -191,7 +192,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       _errorMessage = TRI_LAST_ERROR_STR;
@@ -210,7 +211,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   if (separator == nullptr) {
     if (fd != STDIN_FILENO) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
 
     _errorMessage = "out of memory";
@@ -245,7 +246,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
       TRI_DestroyCsvParser(&parser);
       if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
       }
       _errorMessage = TRI_LAST_ERROR_STR;
       return false;
@@ -272,7 +273,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
 
   if (fd != STDIN_FILENO) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
   }
 
   _outputBuffer.clear();
@@ -299,7 +300,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       _errorMessage = TRI_LAST_ERROR_STR;
@@ -327,7 +328,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
       _errorMessage = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
 
       if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
       }
       return false;
     }
@@ -338,7 +339,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (n < 0) {
       _errorMessage = TRI_LAST_ERROR_STR;
       if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
       }
       return false;
     } else if (n == 0) {
@@ -370,7 +371,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (_outputBuffer.length() > _maxUploadSize) {
       if (isObject) {
         if (fd != STDIN_FILENO) {
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
         }
         _errorMessage =
             "import file is too big. please increase the value of --batch-size "
@@ -396,7 +397,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   if (fd != STDIN_FILENO) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
   }
 
   // this is an approximation only. _numberLines is more meaningful for CSV

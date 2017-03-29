@@ -23,6 +23,7 @@
 
 #include "FileDescriptorsFeature.h"
 
+#include "Basics/OpenFilesTracker.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -84,6 +85,11 @@ void FileDescriptorsFeature::start() {
         << "file-descriptors limit is too low, currently "
         << StringifyLimitValue(rlim.rlim_cur) << ", please raise to at least "
         << RECOMMENDED << " (e.g. ulimit -n " << RECOMMENDED << ")";
+  }
+
+  if (rlim.rlim_cur >= 1024) {
+    // set file descriptor warning threshold value to 95% of max available descriptors
+    OpenFilesTracker::instance()->warnThreshold(uint64_t(rlim.rlim_cur * 0.95));
   }
 #endif
 }

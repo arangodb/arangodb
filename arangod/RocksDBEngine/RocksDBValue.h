@@ -97,7 +97,7 @@ class RocksDBValue {
 
  private:
   RocksDBValue();
-  RocksDBValue(RocksDBEntryType type);
+  explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, uint64_t data);
   RocksDBValue(RocksDBEntryType type, std::string const& data);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);

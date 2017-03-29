@@ -46,7 +46,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
@@ -2370,39 +2369,6 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_ClearTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  
-  arangodb::basics::Timers::clear();
-
-  TRI_V8_RETURN(v8::Undefined(isolate));
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_GetTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  v8::Handle<v8::Object> totals = v8::Object::New(isolate);
-  v8::Handle<v8::Object> counts = v8::Object::New(isolate);
-
-  for (auto& it : arangodb::basics::Timers::get()) {
-    totals->ForceSet(TRI_V8_STD_STRING(it.first),
-                     v8::Number::New(isolate, it.second.first));
-    counts->ForceSet(
-        TRI_V8_STD_STRING(it.first),
-        v8::Number::New(isolate, static_cast<double>(it.second.second)));
-  }
-
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->ForceSet(TRI_V8_ASCII_STRING("totals"), totals);
-  result->ForceSet(TRI_V8_ASCII_STRING("counts"), counts);
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
 static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
 
@@ -2766,13 +2732,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("Debug"),
                                JS_Debug, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("CLEAR_TIMERS"),
-                               JS_ClearTimers, true);
-
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("GET_TIMERS"), JS_GetTimers, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("AUTHENTICATION_ENABLED"),

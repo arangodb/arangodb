@@ -1,6 +1,11 @@
 devel
 -----
 
+* removed internal build option `USE_DEV_TIMERS`
+
+  Enabling this option activated some proprietary timers for only selected 
+  events in arangod. Instead better use `perf` to gather timings.
+
 * increase default collection lock timeout from 30 to 900 seconds
 
 * added function `db._engine()` for retrieval of storage engine information at
@@ -96,6 +101,10 @@ devel
 
 * arangoimp: fixed issue #2214
 
+* Foxx: automatically add CORS response headers
+
+* added "OPTIONS" to CORS `access-control-allow-methods` header
+
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
@@ -160,6 +169,10 @@ v3.2.alpha1 (2017-02-05)
 
 v3.1.17 (2017-XX-XX)
 --------------------
+
+* ui - fixed smart graph option not appearing
+
+* fixed issue #2389
 
 * fixed issue #2400
 

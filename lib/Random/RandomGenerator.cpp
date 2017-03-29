@@ -32,6 +32,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/Thread.h"
 #include "Basics/hashes.h"
 #include "Logger/Logger.h"
@@ -183,7 +184,7 @@ template <int N>
 class RandomDeviceDirect : public RandomDevice {
  public:
   explicit RandomDeviceDirect(std::string const& path) : fd(-1), pos(0) {
-    fd = TRI_OPEN(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_TRACKED_OPEN_FILE(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       std::string message("cannot open random source '" + path + "'");
@@ -195,7 +196,7 @@ class RandomDeviceDirect : public RandomDevice {
 
   ~RandomDeviceDirect() {
     if (fd >= 0) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
   }
 
@@ -252,7 +253,7 @@ class RandomDeviceCombined : public RandomDevice {
  public:
   explicit RandomDeviceCombined(std::string const& path)
       : fd(-1), pos(0), rseed(0) {
-    fd = TRI_OPEN(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_TRACKED_OPEN_FILE(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       std::string message("cannot open random source '" + path + "'");
@@ -279,7 +280,7 @@ class RandomDeviceCombined : public RandomDevice {
 
   ~RandomDeviceCombined() {
     if (fd >= 0) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
   }
 
@@ -316,7 +317,7 @@ class RandomDeviceCombined : public RandomDevice {
 
       rseed = buffer[0];
 
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using seed " << (long unsigned int)rseed;
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using seed " << rseed;
     }
 
     if (0 < n) {
