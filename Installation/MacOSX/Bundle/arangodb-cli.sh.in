@@ -17,7 +17,7 @@ for script in $SCRIPTS; do
     echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
     echo
 
-    echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}@CMAKE_INSTALL_SYSCONFDIR_ARANGO@/${base}.conf\" \$*"
+    echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}/@CMAKE_INSTALL_SYSCONFDIR_ARANGO@/${base}.conf\" \$*"
   ) > ${ROOTDIR}/$base.$$
 
   chmod 755 ${ROOTDIR}/$base.$$
