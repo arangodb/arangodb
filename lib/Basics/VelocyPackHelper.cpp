@@ -23,6 +23,7 @@
 
 #include "VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
@@ -638,7 +639,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     TRI_UnlinkFile(tmp.c_str());
   }
 
-  int fd = TRI_CREATE(tmp.c_str(),
+  int fd = TRI_TRACKED_CREATE_FILE(tmp.c_str(),
                       O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
@@ -650,7 +651,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
   }
 
   if (!PrintVelocyPack(fd, slice, true)) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot write to json file '" << tmp
              << "': " << TRI_LAST_ERROR_STR;
@@ -662,7 +663,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot sync saved json '" << tmp
                << "': " << TRI_LAST_ERROR_STR;
@@ -671,7 +672,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     }
   }
 
-  int res = TRI_CLOSE(fd);
+  int res = TRI_TRACKED_CLOSE_FILE(fd);
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
