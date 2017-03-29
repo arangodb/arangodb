@@ -1346,6 +1346,7 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
       builder->add("readCache", VPackValue(VPackValueType::Object));
       builder->add("count", VPackValue(_revisionsCache->size()));
       builder->add("size", VPackValue(_revisionsCache->memoryUsage()));
+      builder->add("total", VPackValue(_revisionsCache->chunksMemoryUsage()));
       builder->close();  // readCache
     }
 
