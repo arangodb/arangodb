@@ -105,6 +105,8 @@ devel
 
 * added "OPTIONS" to CORS `access-control-allow-methods` header
 
+* Foxx: Fix arangoUser sometimes not being set correctly
+
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
