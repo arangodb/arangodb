@@ -47,10 +47,10 @@ using namespace arangodb::pregel;
 TEST_CASE("tst_pregel1", "[pregel][mmap]") {
   MappedFileBuffer<int> mapped(1024);
   int *ptr = mapped.data();
-  for (size_t i = 0; i < 1024; i++) {
+  for (int i = 0; i < 1024; i++) {
     *(ptr+i) = i;
   }
-  for (size_t i = 0; i < 1024; i++) {
+  for (int i = 0; i < 1024; i++) {
     REQUIRE(*(ptr+i) == i);
   }
   
@@ -58,7 +58,7 @@ TEST_CASE("tst_pregel1", "[pregel][mmap]") {
   mapped.resize(2048);
   REQUIRE(mapped.size() == 2048);
   ptr = mapped.data();
-  for (size_t i = 0; i < 1024; i++) {
+  for (int i = 0; i < 1024; i++) {
     REQUIRE(*(ptr+i) == i);
   }
 #endif
@@ -66,7 +66,7 @@ TEST_CASE("tst_pregel1", "[pregel][mmap]") {
   mapped.resize(512);
   ptr = mapped.data();
   REQUIRE(mapped.size() == 512);
-  for (size_t i = 0; i < 512; i++) {
+  for (int i = 0; i < 512; i++) {
     REQUIRE(*(ptr+i) == i);
   }
   

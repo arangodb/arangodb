@@ -23,6 +23,7 @@
 #include <cmath>
 #include "Pregel/CommonFormats.h"
 #include "Pregel/Graph.h"
+#include "Basics/fasthash.h"
 
 using namespace arangodb::pregel;
 
@@ -33,11 +34,11 @@ using namespace arangodb::pregel;
 
 #else
 
-inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
+inline uint8_t _get_leading_zero_count(uint64_t x, uint8_t b) {
   
 #if defined (_MSC_VER)
   unsigned long leading_zero_len = 32;
-  ::_BitScanReverse(&leading_zero_len, x);
+  ::BitScanReverse(&leading_zero_len, x);
   --leading_zero_len;
   return std::min(b, (uint8_t)leading_zero_len);
 #else
@@ -53,12 +54,17 @@ inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
 #define _GET_CLZ(x, b) _get_leading_zero_count(x, b)
 #endif /* defined(__GNUC__) */
 
+static uint32_t hashPregelId(PregelID const& pregelId) {
+  uint32_t h1 = fasthash32(pregelId.key.data(), pregelId.key.length(), 0xf007ba11UL);
+  uint64_t h2 = fasthash64_uint64(pregelId.shard, 0xdefec7edUL);
+  uint32_t h3 = (uint32_t)(h2 - (h2 >> 32));
+  return h1 ^ (h3 << 1);
+}
 
-static std::hash<PregelID> _hashFn;
 void HLLCounter::addNode(PregelID const& pregelId) {
-  uint64_t hash = _hashFn(pregelId);
+  uint32_t hash = hashPregelId(pregelId);
   // last 6 bits as bucket index
-  uint64_t index = hash >> (32 - 6);
+  uint32_t index = hash >> (32 - 6);
   uint8_t rank = _GET_CLZ((hash << 6), 32 - 6);
   if (rank > _buckets[index]) {
     _buckets[index] = rank;

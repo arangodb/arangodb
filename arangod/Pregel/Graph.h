@@ -182,8 +182,8 @@ struct hash<arangodb::pregel::PregelID> {
     // Compute individual hash values for first,
     // second and third and combine them using XOR
     // and bit shifting:
-    std::size_t h1 = std::hash<arangodb::pregel::PregelKey>()(k.key);
-    std::size_t h2 = std::hash<int32_t>()(k.shard);
+    size_t h1 = std::hash<arangodb::pregel::PregelKey>()(k.key);
+    size_t h2 = std::hash<size_t>()(k.shard);
     return h1 ^ (h2 << 1);
   }
 };

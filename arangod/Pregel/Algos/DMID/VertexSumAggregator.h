@@ -127,7 +127,7 @@ struct VertexSumAggregator : public IAggregator {
     _default += empty;
   }
   
-  void forEach(std::function<void(PregelID const& _id, float value)> func) {
+  void forEach(std::function<void(PregelID const& _id, double value)> func) {
     for (auto const& pair : _entries) {
       PregelShard shard = pair.first;
       std::unordered_map<std::string, double> const& vertexMap = pair.second;
