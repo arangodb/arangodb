@@ -144,7 +144,7 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   defaultFns.push('shell_server_aql');
 
   opts['skipAql'] = false;
-  opts['skipRanges'] = false;
+  opts['skipRanges'] = true;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
