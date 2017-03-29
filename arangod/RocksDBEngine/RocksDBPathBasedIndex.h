@@ -77,7 +77,7 @@ class RocksDBPathBasedIndex : public RocksDBIndex {
   std::vector<std::pair<VPackSlice, uint32_t>> buildIndexValue(
       VPackSlice const documentSlice);
 
-  void addIndexValue(VPackSlice const& key,
+  void addIndexValue(VPackSlice const& document,
                      std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
                      std::vector<VPackSlice>& sliceStack);
 

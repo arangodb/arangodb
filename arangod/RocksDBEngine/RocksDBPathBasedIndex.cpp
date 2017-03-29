@@ -97,6 +97,7 @@ bool RocksDBPathBasedIndex::implicitlyUnique() const {
 }
 
 /// @brief helper function to insert a document into any index type
+/// Should result in a
 int RocksDBPathBasedIndex::fillElement(
     transaction::Methods* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc,
     std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements) {
@@ -164,7 +165,7 @@ int RocksDBPathBasedIndex::fillElement(
 }
 
 void RocksDBPathBasedIndex::addIndexValue(
-    VPackSlice const& key,
+    VPackSlice const& document,
     std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
     std::vector<VPackSlice>& sliceStack) {
   // TODO maybe use leaded Builder from transaction.
@@ -174,9 +175,23 @@ void RocksDBPathBasedIndex::addIndexValue(
     b.add(s);
   }
   b.close();
-  elements.emplace_back(
-      RocksDBKey::IndexValue(_objectId, StringRef(key), b.slice()),
-      RocksDBValue::IndexValue());
+  
+  StringRef key (document.get(StaticStrings::KeyString));
+  if (_unique) {
+    // Unique VPack index values are stored as follows:
+    // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
+    // - Value: primary key
+    elements.emplace_back(RocksDBKey::UniqueIndexValue(_objectId, b.slice()),
+                          RocksDBValue::UniqueIndexValue(key));
+  } else {
+    // Non-unique VPack index values are stored as follows:
+    // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
+    // + primary key
+    // - Value: empty
+    elements.emplace_back(
+                          RocksDBKey::IndexValue(_objectId, StringRef(key), b.slice()),
+                          RocksDBValue::IndexValue());
+  }
 }
 
 /// @brief helper function to create a set of index combinations to insert
@@ -188,7 +203,7 @@ void RocksDBPathBasedIndex::buildIndexValues(
 
   // Stop the recursion:
   if (level == _paths.size()) {
-    addIndexValue(document.get(StaticStrings::KeyString), elements, sliceStack);
+    addIndexValue(document, elements, sliceStack);
     return;
   }
 
