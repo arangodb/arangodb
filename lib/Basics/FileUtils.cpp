@@ -32,6 +32,7 @@
 #endif
 
 #include "Basics/Exceptions.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
@@ -126,7 +127,7 @@ static void throwFileReadError(int fd, std::string const& filename) {
   int res = TRI_errno();
 
   if (fd >= 0) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
   }
 
   std::string message("read failed for file '" + filename + "': " +
@@ -137,7 +138,7 @@ static void throwFileReadError(int fd, std::string const& filename) {
 }
 
 std::string slurp(std::string const& filename) {
-  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(fd, filename);
@@ -160,7 +161,7 @@ std::string slurp(std::string const& filename) {
     result.appendText(buffer, n);
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 
   std::string r(result.c_str(), result.length());
 
@@ -168,7 +169,7 @@ std::string slurp(std::string const& filename) {
 }
 
 void slurp(std::string const& filename, StringBuffer& result) {
-  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(fd, filename);
@@ -196,7 +197,7 @@ void slurp(std::string const& filename, StringBuffer& result) {
     result.appendText(buffer, n);
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 }
 
 static void throwFileWriteError(int fd, std::string const& filename) {
@@ -204,7 +205,7 @@ static void throwFileWriteError(int fd, std::string const& filename) {
   int res = TRI_errno();
 
   if (fd >= 0) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
   }
 
   std::string message("write failed for file '" + filename + "': " +
@@ -216,7 +217,7 @@ static void throwFileWriteError(int fd, std::string const& filename) {
 
 void spit(std::string const& filename, char const* ptr, size_t len) {
   int fd =
-      TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+      TRI_TRACKED_CREATE_FILE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
@@ -234,12 +235,12 @@ void spit(std::string const& filename, char const* ptr, size_t len) {
     len -= n;
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 }
 
 void spit(std::string const& filename, std::string const& content) {
   int fd =
-      TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+      TRI_TRACKED_CREATE_FILE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
@@ -260,12 +261,12 @@ void spit(std::string const& filename, std::string const& content) {
     len -= n;
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 }
 
 void spit(std::string const& filename, StringBuffer const& content) {
   int fd =
-      TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+      TRI_TRACKED_CREATE_FILE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
@@ -286,7 +287,7 @@ void spit(std::string const& filename, StringBuffer const& content) {
     len -= n;
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 }
 
 bool remove(std::string const& fileName, int* errorNumber) {

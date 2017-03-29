@@ -25,6 +25,7 @@
 
 #include "Basics/csv.h"
 #include "Basics/Exceptions.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/shell-colors.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-globals.h"
@@ -156,7 +157,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // read and convert
-  int fd = TRI_OPEN(*filename, O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_TRACKED_OPEN_FILE(*filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     TRI_V8_THROW_EXCEPTION_SYS("cannot open file");
@@ -186,7 +187,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
       TRI_V8_THROW_EXCEPTION_SYS("cannot read file");
     } else if (n == 0) {
       TRI_DestroyCsvParser(&parser);
@@ -196,7 +197,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_ParseCsvString(&parser, buffer, n);
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

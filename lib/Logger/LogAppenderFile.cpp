@@ -23,11 +23,12 @@
 
 #include "Logger/LogAppenderFile.h"
 
-#include <iostream>
-
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Logger/Logger.h"
+
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -56,7 +57,7 @@ void LogAppenderFile::reopen() {
     FileUtils::rename(filename, backup);
 
     // open new log file
-    int fd = TRI_CREATE(filename.c_str(),
+    int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
                         O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
                         S_IRUSR | S_IWUSR | S_IRGRP);
 
@@ -72,7 +73,7 @@ void LogAppenderFile::reopen() {
     _fds[pos].first = fd;
 
     if (old > STDERR_FILENO) {
-      TRI_CLOSE(old);
+      TRI_TRACKED_CLOSE_FILE(old);
     }
   }
 }
@@ -83,7 +84,7 @@ void LogAppenderFile::close() {
     _fds[pos].first = -1;
 
     if (fd > STDERR_FILENO) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
   }
 }
@@ -112,7 +113,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename,
     }
 
     if (pos == _fds.size() || _fds[pos].first == -1) {
-      int fd = TRI_CREATE(filename.c_str(),
+      int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
                           O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
                           S_IRUSR | S_IWUSR | S_IRGRP);
 

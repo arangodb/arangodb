@@ -247,7 +247,7 @@ struct IndexBucket {
 #if 0
     if (_file >= 0) {
       // close file pointer and reset fd
-      TRI_CLOSE(_file);
+      TRI_TRACKED_CLOSE_FILE(_file);
       _file = -1;
     }
     if (_filename != nullptr) {

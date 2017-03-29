@@ -32,6 +32,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Thread.h"
 #include "Basics/conversions.h"
@@ -180,7 +181,7 @@ static void RemoveAllLockedFiles(void) {
     CloseHandle(fd);
 #else
     int fd = *(int*)TRI_AtVector(&FileDescriptors, i);
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
 #endif
 
     TRI_UnlinkFile(FileNames._buffer[i]);
@@ -986,7 +987,7 @@ int TRI_WriteFile(char const* filename, char const* data, size_t length) {
   int fd;
   bool result;
 
-  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  fd = TRI_TRACKED_CREATE_FILE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                   S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
@@ -995,7 +996,7 @@ int TRI_WriteFile(char const* filename, char const* data, size_t length) {
 
   result = TRI_WritePointer(fd, data, length);
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 
   if (!result) {
     return TRI_errno();
@@ -1033,7 +1034,7 @@ bool TRI_fsync(int fd) {
 
 char* TRI_SlurpFile(TRI_memory_zone_t* zone, char const* filename,
                     size_t* length) {
-  int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1047,7 +1048,7 @@ char* TRI_SlurpFile(TRI_memory_zone_t* zone, char const* filename,
     int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
       TRI_AnnihilateStringBuffer(&result);
 
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1061,7 +1062,7 @@ char* TRI_SlurpFile(TRI_memory_zone_t* zone, char const* filename,
     }
 
     if (n < 0) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
 
       TRI_AnnihilateStringBuffer(&result);
 
@@ -1076,7 +1077,7 @@ char* TRI_SlurpFile(TRI_memory_zone_t* zone, char const* filename,
     *length = TRI_LengthStringBuffer(&result);
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
   return result._buffer;
 }
 
@@ -1172,7 +1173,7 @@ int TRI_CreateLockFile(char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  int fd = TRI_TRACKED_CREATE_FILE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
@@ -1189,7 +1190,7 @@ int TRI_CreateLockFile(char const* filename) {
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
 
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     TRI_UNLINK(filename);
 
     return res;
@@ -1209,7 +1210,7 @@ int TRI_CreateLockFile(char const* filename) {
   if (rv == -1) {
     int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     TRI_UNLINK(filename);
 
     return res;
@@ -1264,7 +1265,7 @@ int TRI_VerifyLockFile(char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     return TRI_ERROR_NO_ERROR;
@@ -1276,19 +1277,19 @@ int TRI_VerifyLockFile(char const* filename) {
   ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
   if (n < 0) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
   // pid too long
   if (n == sizeof(buffer)) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
   // file empty
   if (n == 0) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -1296,19 +1297,19 @@ int TRI_VerifyLockFile(char const* filename) {
   int res = TRI_errno();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
   TRI_pid_t pid = fc;
   
   if (pid == Thread::currentProcessId()) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
   if (kill(pid, 0) == -1) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -1334,7 +1335,7 @@ int TRI_VerifyLockFile(char const* filename) {
                 << ". a possible reason is that the filesystem does not support file-locking";
     }
 
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -1350,7 +1351,7 @@ int TRI_VerifyLockFile(char const* filename) {
   }
 #endif
   
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
@@ -1395,7 +1396,7 @@ int TRI_DestroyLockFile(char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int fd = TRI_OPEN(filename, O_RDWR | TRI_O_CLOEXEC);
+  int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     return TRI_ERROR_NO_ERROR;
@@ -1409,7 +1410,7 @@ int TRI_DestroyLockFile(char const* filename) {
   lock.l_whence = SEEK_SET;
   // release the lock
   int res = fcntl(fd, F_SETLK, &lock);
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 
   if (res == 0) {
     TRI_UnlinkFile(filename);
@@ -1417,7 +1418,7 @@ int TRI_DestroyLockFile(char const* filename) {
 
   // close lock file descriptor
   fd = *(int*)TRI_AtVector(&FileDescriptors, n);
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 
   TRI_WriteLockReadWriteLock(&FileNamesLock);
   TRI_RemoveVectorString(&FileNames, n);
@@ -2448,12 +2449,12 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
   TRI_ERRORBUF;
 
   // open the file
-  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
+  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   TRI_IF_FAILURE("CreateDatafile1") {
     // intentionally fail
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     fd = -1;
     errno = ENOSPC;
   }
@@ -2511,7 +2512,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
           LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
         }
 
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
         TRI_UnlinkFile(filename.c_str());
 
         return -1;
@@ -2527,7 +2528,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
   if (offset == (TRI_lseek_t)-1) {
     TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
