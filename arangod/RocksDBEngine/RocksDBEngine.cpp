@@ -130,6 +130,10 @@ void RocksDBEngine::start() {
 void RocksDBEngine::stop() {}
 
 void RocksDBEngine::unprepare() {
+  if (!isEnabled()) {
+    return;
+  }
+
   if (_db) {
     delete _db;
     _db = nullptr;
