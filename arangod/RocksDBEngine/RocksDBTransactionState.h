@@ -24,7 +24,6 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H
 #define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H 1
 
-
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
@@ -32,10 +31,12 @@
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
+
+#include <rocksdb/status.h>
 #include <rocksdb/options.h>
 
 struct TRI_vocbase_t;
-
+ 
 namespace rocksdb {
 class Transaction;
 class Slice;
@@ -50,6 +51,19 @@ namespace transaction {
 class Methods;
 }
 class TransactionCollection;
+  
+class RocksDBSavePoint {
+public:
+  explicit RocksDBSavePoint(rocksdb::Transaction* trx);
+  ~RocksDBSavePoint();
+
+  void commit();
+  void rollback();
+
+ private:
+  rocksdb::Transaction* _trx;
+  bool _committed;
+};
 
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
@@ -83,6 +97,7 @@ class RocksDBTransactionState final : public TransactionState {
   
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
+  rocksdb::WriteOptions _rocksWriteOptions;
   rocksdb::ReadOptions _rocksReadOptions;
   bool _hasOperations;
   

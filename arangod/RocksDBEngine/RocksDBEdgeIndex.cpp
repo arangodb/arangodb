@@ -253,7 +253,6 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   // aquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-
   rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
   if (status.ok()) {
     return TRI_ERROR_NO_ERROR;
