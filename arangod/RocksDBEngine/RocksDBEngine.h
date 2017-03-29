@@ -241,7 +241,7 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBComparator* cmp() const { return _cmp.get(); }
 
  private:
-  EngineResult dropDatabase(TRI_voc_tick_t);
+  Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();
   /// @brief open an existing database. internal function

@@ -57,8 +57,6 @@ namespace transaction {
 class ContextData;
 }
 
-class EngineResult : Result {};
-
 class StorageEngine : public application_features::ApplicationFeature {
  public:
 
