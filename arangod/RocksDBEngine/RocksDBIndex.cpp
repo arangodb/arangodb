@@ -36,3 +36,8 @@ RocksDBIndex::RocksDBIndex(
     : Index(id, collection, attributes, unique, sparse),
       _objectId(TRI_NewTickServer()), // TODO!
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()) {}
+
+RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection, VPackSlice const& info)
+: Index(id, collection, info),
+_objectId(TRI_NewTickServer()), // TODO!
+_cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()) {}

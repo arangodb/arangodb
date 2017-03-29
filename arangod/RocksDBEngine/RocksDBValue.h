@@ -26,6 +26,7 @@
 #define ARANGO_ROCKSDB_ROCKSDB_VALUE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
 
@@ -51,7 +52,7 @@ class RocksDBValue {
   static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue EdgeIndexValue();
   static RocksDBValue IndexValue();
-  static RocksDBValue UniqueIndexValue(std::string const& primaryKey);
+  static RocksDBValue UniqueIndexValue(arangodb::StringRef const& primaryKey);
   static RocksDBValue View(VPackSlice const& data);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -99,7 +100,7 @@ class RocksDBValue {
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, uint64_t data);
-  RocksDBValue(RocksDBEntryType type, std::string const& data);
+  RocksDBValue(RocksDBEntryType type, StringRef const& data);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
 
  private:

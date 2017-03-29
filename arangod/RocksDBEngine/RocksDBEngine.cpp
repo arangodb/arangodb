@@ -185,13 +185,13 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "getting existing databases";
 
   rocksdb::ReadOptions readOptions;
-  auto& iter = *_db->NewIterator(readOptions);
+  std::unique_ptr<rocksdb::Iterator> iter (_db->NewIterator(readOptions));
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
-  for (iter.Seek(rSlice); iter.Valid() && iter.key().starts_with(rSlice);
-       iter.Next()) {
-    auto slice = VPackSlice(iter.value().data());
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
+       iter->Next()) {
+    auto slice = VPackSlice(iter->value().data());
 
     //// check format
     // id
@@ -242,17 +242,17 @@ int RocksDBEngine::getCollectionsAndIndexes(
     TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
     bool wasCleanShutdown, bool isUpgrade) {
   rocksdb::ReadOptions readOptions;
-  auto& iter = *_db->NewIterator(readOptions);
+  std::unique_ptr<rocksdb::Iterator> iter (_db->NewIterator(readOptions));
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
-  for (iter.Seek(rSlice); iter.Valid() && iter.key().starts_with(rSlice);
-       iter.Next()) {
-    if (vocbase->id() != RocksDBKey::databaseId(iter.key())) {
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
+       iter->Next()) {
+    if (vocbase->id() != RocksDBKey::databaseId(iter->key())) {
       continue;
     }
 
-    auto slice = VPackSlice(iter.value().data());
+    auto slice = VPackSlice(iter->value().data());
 
     LOG_TOPIC(TRACE, Logger::FIXME) << "got collection slice: "
                                     << slice.toJson();
@@ -272,17 +272,17 @@ int RocksDBEngine::getCollectionsAndIndexes(
 int RocksDBEngine::getViews(TRI_vocbase_t* vocbase,
                             arangodb::velocypack::Builder& result) {
   rocksdb::ReadOptions readOptions;
-  auto& iter = *_db->NewIterator(readOptions);
+  std::unique_ptr<rocksdb::Iterator> iter (_db->NewIterator(readOptions));
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::View);
-  for (iter.Seek(rSlice); iter.Valid() && iter.key().starts_with(rSlice);
-       iter.Next()) {
-    if (vocbase->id() != !RocksDBKey::databaseId(iter.key())) {
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
+       iter->Next()) {
+    if (vocbase->id() != !RocksDBKey::databaseId(iter->key())) {
       continue;
     }
 
-    auto slice = VPackSlice(iter.value().data());
+    auto slice = VPackSlice(iter->value().data());
 
     LOG_TOPIC(TRACE, Logger::FIXME) << "got view slice: " << slice.toJson();
 

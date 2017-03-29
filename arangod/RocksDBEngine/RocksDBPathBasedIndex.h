@@ -26,9 +26,11 @@
 
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
-#include "VocBase/vocbase.h"
-#include "VocBase/voc-types.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBValue.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace aql {
@@ -38,74 +40,52 @@ enum AstNodeType : uint32_t;
 class FixedSizeAllocator;
 
 class RocksDBPathBasedIndex : public RocksDBIndex {
- protected:
-  struct PermutationState {
-    PermutationState(arangodb::aql::AstNodeType type,
-                     arangodb::aql::AstNode const* value,
-                     size_t attributePosition, size_t n)
-        : type(type),
-          value(value),
-          attributePosition(attributePosition),
-          current(0),
-          n(n) {
-      TRI_ASSERT(n > 0);
-    }
-
-    arangodb::aql::AstNode const* getValue() const;
-
-    arangodb::aql::AstNodeType type;
-    arangodb::aql::AstNode const* value;
-    size_t const attributePosition;
-    size_t current;
-    size_t const n;
-  };
-
  public:
   RocksDBPathBasedIndex() = delete;
 
   RocksDBPathBasedIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                 arangodb::velocypack::Slice const&, size_t baseSize, bool allowPartialIndex);
+                        arangodb::velocypack::Slice const&, size_t baseSize,
+                        bool allowPartialIndex);
 
   ~RocksDBPathBasedIndex();
 
  public:
-
   /// @brief return the attribute paths
-  std::vector<std::vector<std::string>> const& paths()
-      const {
-    return _paths;
-  }
+  std::vector<std::vector<std::string>> const& paths() const { return _paths; }
 
   /// @brief return the attribute paths, a -1 entry means none is expanding,
   /// otherwise the non-negative number is the index of the expanding one.
-  std::vector<int> const& expanding() const {
-    return _expanding;
-  }
+  std::vector<int> const& expanding() const { return _expanding; }
 
   bool implicitlyUnique() const override;
 
  protected:
   /// @brief helper function to insert a document into any index type
-  template<typename T>
-  int fillElement(std::vector<T*>& elements, 
-          TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
+  int fillElement(transaction::Methods* trx, TRI_voc_rid_t revisionId,
+                  VPackSlice const& doc,
+                  std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements);
 
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
 
  private:
-
   /// @brief helper function to transform AttributeNames into string lists
   void fillPaths(std::vector<std::vector<std::string>>& paths,
                  std::vector<int>& expanding);
 
   /// @brief helper function to create a set of index combinations to insert
-  std::vector<std::pair<VPackSlice, uint32_t>> buildIndexValue(VPackSlice const documentSlice);
+  std::vector<std::pair<VPackSlice, uint32_t>> buildIndexValue(
+      VPackSlice const documentSlice);
+
+  void addIndexValue(VPackSlice const& key,
+                     std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
+                     std::vector<VPackSlice>& sliceStack);
 
   /// @brief helper function to create a set of index combinations to insert
-  void buildIndexValues(VPackSlice const document, size_t level,
-                        std::vector<std::vector<std::pair<VPackSlice, uint32_t>>>& toInsert,
-                        std::vector<std::pair<VPackSlice, uint32_t>>& sliceStack);
+  void buildIndexValues(
+      VPackSlice const document, size_t level,
+      std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
+      std::vector<VPackSlice>& sliceStack);
 
  protected:
   std::unique_ptr<FixedSizeAllocator> _allocator;
