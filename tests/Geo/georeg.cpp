@@ -42,8 +42,8 @@
 
 #include "catch.hpp"
 
-#include "MMFiles/mmfiles-geo-index.h"
 #include "Basics/StringUtils.h"
+#include "MMFiles/mmfiles-geo-index.h"
 
 using namespace arangodb::basics;
 
@@ -259,7 +259,7 @@ void litnum(GeoCoordinate * gc, int num)
 
 /***********************************/
 /* 1000-1100 first tests on cursor  */
-TEST_CASE("tst_geo1000", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo1000", "[geo][!hide]") {
   gi=GeoIndex_new();
   la=41.23456789;
   lo=39.87654321;
@@ -303,7 +303,7 @@ TEST_CASE("tst_geo1000", "[geo][!hide][longRunning]") {
   MyFree(gi);
 }
 /***************************************/
-TEST_CASE("tst_geo1", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo1", "[geo][!hide]") {
   gcp1.latitude  =   51.5;
   gcp1.longitude =   -0.166666;
   gcp2.latitude  =   21.306111;
@@ -332,7 +332,7 @@ TEST_CASE("tst_geo1", "[geo][!hide][longRunning]") {
 /* first some easily recognizable GeoStrings       */
 /* mainly for debugging rather than regression     */
 
-TEST_CASE("tst_geo15", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo15", "[geo][!hide]") {
 gi=GeoIndex_new();
 GeoIndex_hint(gi,10);  /* set it to "robust" mode */
 for(i=0;i<50;i++)
@@ -360,7 +360,8 @@ gicheck(14,gi);
 /*GeoIndex_INDEXDUMP(gi,stdout);*/
 MyFree(gi);
 }
-TEST_CASE("tst_geo10", "[geo][!hide][longRunning]") {
+
+TEST_CASE("tst_geo10", "[geo][!hide]") {
 gi=GeoIndex_new();
 GeoIndex_hint(gi,10);  /* set it to "robust" mode */
 for(i=0;i<50;i++)
@@ -391,7 +392,7 @@ MyFree(gi);
 /*               20 - 39                           */
 /* Make sure things work with an empty index       */
 
-TEST_CASE("tst_geo20", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo20", "[geo][!hide]") {
 gi=GeoIndex_new();
 
 /* do both searches with an empty index  */
@@ -442,7 +443,7 @@ MyFree(gi);
 /*                                                 */
 
 /* now some tests on invalid data  */
-TEST_CASE("tst_geo50", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo50", "[geo][!hide]") {
 gi=GeoIndex_new();
 
 gcp.latitude  = 91.2;
@@ -526,7 +527,7 @@ MyFree(gi);
 /* now some tests inserting and deleting in        */
 /*   in some chaotic ways                          */
 
-TEST_CASE("tst_geo70", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo70", "[geo][!hide]") {
   gi=GeoIndex_new();
 
   gcp.latitude  = 0.0;
@@ -662,7 +663,7 @@ TEST_CASE("tst_geo70", "[geo][!hide][longRunning]") {
 /* then do some searches, results checked against  */
 /* the same run with full table scan               */
 
-TEST_CASE("tst_geo100", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo100", "[geo][!hide]") {
   gi=GeoIndex_new();
   la=-89.0;
   for(i=0;i<10;i++)
@@ -737,7 +738,7 @@ TEST_CASE("tst_geo100", "[geo][!hide][longRunning]") {
 /* the data is a known set of points, so that the  */
 /* distances can be computed manually              */
 
-TEST_CASE("tst_geo200", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo200", "[geo][!hide]") {
   gi=GeoIndex_new();
   for(i=1;i<=10;i++)
   {
@@ -934,7 +935,7 @@ TEST_CASE("tst_geo200", "[geo][!hide][longRunning]") {
 /* only by using (early versions of) this program  */
 /* so are more a way of checking it hasn't changed */
 
-TEST_CASE("tst_geo300", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo300", "[geo][!hide]") {
   gi=GeoIndex_new();
   la=1.23456789;
   lo=9.87654321;
@@ -1198,7 +1199,7 @@ TEST_CASE("tst_geo400", "[geo][!hide][longRunning]") {
 /* This set of tests aims to cluster the points in */
 /* a sligtly more realistic way.       */
 
-TEST_CASE("tst_geo500", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo500", "[geo][!hide]") {
   gi=GeoIndex_new();
   for(i=1;i<135212;i++)
   {
@@ -1264,7 +1265,7 @@ TEST_CASE("tst_geo600", "[geo][!hide][longRunning]") {
 /* then puts in loads and deletes them again and   */
 /* looks again.  Testing deletion balancing        */
  
-TEST_CASE("tst_geo650", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo650", "[geo][!hide]") {
   gi=GeoIndex_new();
   for(i=1;i<13;i++)    /* put in points 1-12     */
   {
@@ -1310,7 +1311,7 @@ TEST_CASE("tst_geo650", "[geo][!hide][longRunning]") {
 /* this went into sin(theta) to give small value, so it */
 /* found that many points were not within 30000 Km      */
 
-TEST_CASE("tst_geo900", "[geo][!hide][longRunning]") {
+TEST_CASE("tst_geo900", "[geo][!hide]") {
   gi=GeoIndex_new();
   la=41.23456789;
   lo=39.87654321;

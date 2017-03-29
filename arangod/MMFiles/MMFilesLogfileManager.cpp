@@ -1288,7 +1288,7 @@ int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
           // found a logfile, update the status variable and return the logfile
 
           {
-            // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "setting lastOpenedId " << // logfile->id();
+            // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "setting lastOpenedId " << logfile->id();
             MUTEX_LOCKER(mutexLocker, _idLock);
             _lastOpenedId = logfile->id();
           }
@@ -1485,8 +1485,7 @@ void MMFilesLogfileManager::setCollectionDone(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
   MMFilesWalLogfile::IdType id = logfile->id();
 
-  // LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "setCollectionDone setting lastCollectedId to " << (unsigned
-  // long long) id;
+  // LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "setCollectionDone setting lastCollectedId to " << id
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
     logfile->setStatus(MMFilesWalLogfile::StatusType::COLLECTED);

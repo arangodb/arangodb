@@ -21,44 +21,45 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ENCODING_H
-#define ARANGODB_BASICS_ENCODING_H 1
+#ifndef ARANGODB_BASICS_OPEN_FILES_TRACKER_H
+#define ARANGODB_BASICS_OPEN_FILES_TRACKER_H 1
 
 #include "Basics/Common.h"
+  
+#define TRI_TRACKED_CREATE_FILE(a, b, c) arangodb::OpenFilesTracker::instance()->create((a), (b), (c))
+#define TRI_TRACKED_OPEN_FILE(a, b) arangodb::OpenFilesTracker::instance()->open((a), (b))
+#define TRI_TRACKED_CLOSE_FILE arangodb::OpenFilesTracker::instance()->close
 
 namespace arangodb {
-namespace encoding {
 
-/// @brief returns the 8-byte aligned size for the value
-template <typename T, size_t alignment = 8>
-static constexpr inline T alignedSize(T value) {
-  return (value + (alignment - 1)) - ((value + (alignment - 1)) & (alignment - 1));
-}
+class OpenFilesTracker {
+ public:
+  OpenFilesTracker();
+  ~OpenFilesTracker();
 
-/// @brief portably and safely reads a number from little endian storage
-template <typename T>
-static inline T readNumber(uint8_t const* source, uint32_t length) {
-  T value = 0;
-  uint64_t x = 0;
-  uint8_t const* end = source + length;
-  do {
-    value += static_cast<T>(*source++) << x;
-    x += 8;
-  } while (source < end);
-  return value;
-}
+  int create(char const* path, int oflag, int mode);
+  int open(char const* path, int oflag);
+  int close(int fd) noexcept;
 
-/// @brief portably and safely stores a number in little endian format
-template <typename T>
-static inline void storeNumber(uint8_t* dest, T value, uint32_t length) {
-  uint8_t* end = dest + length;
-  do {
-    *dest++ = static_cast<uint8_t>(value & 0xff);
-    value >>= 8;
-  } while (dest < end);
-}
+  uint64_t numOpenFiles() const { return _numOpenFiles.load(); }
+ 
+  void warnThreshold(uint64_t threshold) { 
+    _warnThreshold = threshold; 
+    _lastWarning = 0.0;
+  }
 
-}
+  static OpenFilesTracker* instance();
+
+ private:
+  void increase();
+  void decrease() noexcept;
+
+ private:
+  std::atomic<uint64_t> _numOpenFiles; 
+  uint64_t _warnThreshold; // configured threshold
+  double _lastWarning; // timestamp of last warning
+};
+
 }
 
 #endif

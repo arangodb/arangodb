@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -503,7 +504,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       TRI_UnlinkFile(fileName.c_str());
     }
 
-    fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                     S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
@@ -515,13 +516,13 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
     std::string const metaString = meta.slice().toJson();
     if (!TRI_WritePointer(fd, metaString.c_str(), metaString.size())) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
       errorMsg = "cannot write to file '" + fileName + "'";
 
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
 
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
   } catch (...) {
     errorMsg = "out of memory";
 
@@ -603,7 +604,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(),
+      fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
                       O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR);
 
@@ -617,13 +618,13 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
       if (!TRI_WritePointer(fd, collectionInfo.c_str(),
                             collectionInfo.size())) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
 
     if (_dumpData) {
@@ -639,7 +640,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(),
+      fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
                       O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR);
 
@@ -653,7 +654,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       int res =
           dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
 
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (errorMsg.empty()) {
@@ -878,7 +879,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_CREATE(fileName.c_str(),
+      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
                           O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                           S_IRUSR | S_IWUSR);
 
@@ -892,13 +893,13 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
       if (!TRI_WritePointer(fd, collectionInfo.c_str(),
                             collectionInfo.size())) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
 
     if (_dumpData) {
@@ -914,7 +915,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_CREATE(fileName.c_str(),
+      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
                           O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                           S_IRUSR | S_IWUSR);
 
@@ -935,7 +936,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
         if (!it.value.isArray() || it.value.length() == 0 ||
             !it.value[0].isString()) {
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
           errorMsg = "unexpected value for 'shards' attribute";
 
           return TRI_ERROR_BAD_PARAMETER;
@@ -949,18 +950,18 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         }
         res = startBatch(DBserver, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
           return res;
         }
         res = dumpShard(fd, DBserver, shardName, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
           return res;
         }
         endBatch(DBserver);
       }
 
-      res = TRI_CLOSE(fd);
+      res = TRI_TRACKED_CLOSE_FILE(fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (errorMsg.empty()) {

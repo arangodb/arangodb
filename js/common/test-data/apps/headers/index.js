@@ -7,6 +7,10 @@ router.get('/header-echo', function (req, res) {
   res.json(req.headers);
 });
 
+router.all('/header-empty', function (req, res) {
+  // do nothing
+});
+
 router.all('/header-automatic', function (req, res) {
   res.set('x-foobar', 'baz');
   res.set('x-nofoobar', 'baz');

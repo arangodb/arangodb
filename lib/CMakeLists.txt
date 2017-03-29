@@ -136,7 +136,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Mutex.cpp
   Basics/MutexLocker.cpp
   Basics/Nonce.cpp
-  Basics/ReadWriteLock.cpp
+  Basics/OpenFilesTracker.cpp
   Basics/ReadWriteLockCPP11.cpp
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp

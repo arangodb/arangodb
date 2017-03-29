@@ -902,7 +902,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabaseCoordinator(TRI_voc_tick_t id) {
     TRI_vocbase_t* vocbase = p.second;
 
     if (vocbase->id() == id) {
-      bool result TRI_UNUSED = vocbase->use();
+      bool result = vocbase->use();
 
       // if we got here, no one else can have deleted the database
       TRI_ASSERT(result == true);
