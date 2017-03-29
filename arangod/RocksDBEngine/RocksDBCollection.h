@@ -36,10 +36,12 @@ class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
 class RocksDBPrimaryIndex;
+class RocksDBVPackIndex;
 struct RocksDBToken;
 
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
+  friend class RocksDBVPackIndex;
 
  public:
   static inline RocksDBCollection* toRocksDBCollection(
@@ -206,7 +208,7 @@ class RocksDBCollection final : public PhysicalCollection {
                      bool& waitForSync);
 
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
-                           arangodb::ManagedDocumentResult&);
+                                       arangodb::ManagedDocumentResult&);
 
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection

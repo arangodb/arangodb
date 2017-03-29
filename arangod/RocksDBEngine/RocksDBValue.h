@@ -76,9 +76,9 @@ class RocksDBValue {
   ///
   /// May be called only on UniqueIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static std::string primaryKey(RocksDBValue const&);
-  static std::string primaryKey(rocksdb::Slice const&);
-  static std::string primaryKey(std::string const&);
+  static StringRef primaryKey(RocksDBValue const&);
+  static StringRef primaryKey(rocksdb::Slice const&);
+  static StringRef primaryKey(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the VelocyPack data from a value
@@ -106,7 +106,7 @@ class RocksDBValue {
  private:
   static RocksDBEntryType type(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(char const* data, size_t size);
-  static std::string primaryKey(char const* data, size_t size);
+  static StringRef primaryKey(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
 
  private:

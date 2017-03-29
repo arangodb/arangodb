@@ -62,7 +62,7 @@ RocksDBPathBasedIndex::RocksDBPathBasedIndex(
   }
 
   //_allocator.reset(new FixedSizeAllocator(baseSize +
-  //sizeof(MMFilesIndexElementValue) * numPaths()));
+  // sizeof(MMFilesIndexElementValue) * numPaths()));
 }
 
 /// @brief destroy the index
@@ -140,6 +140,7 @@ int RocksDBPathBasedIndex::fillElement(
     if (_unique) {
       // Unique VPack index values are stored as follows:
       // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
+      // + separator (NUL) byte
       // - Value: primary key
       elements.emplace_back(
           RocksDBKey::UniqueIndexValue(_objectId, indexVals->slice()),
@@ -147,7 +148,7 @@ int RocksDBPathBasedIndex::fillElement(
     } else {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
-      // + primary key
+      // + separator (NUL) byte + primary key
       // - Value: empty
       elements.emplace_back(
           RocksDBKey::IndexValue(_objectId, key, indexVals->slice()),
@@ -176,8 +177,8 @@ void RocksDBPathBasedIndex::addIndexValue(
     b.add(s);
   }
   b.close();
-  
-  StringRef key (document.get(StaticStrings::KeyString));
+
+  StringRef key(document.get(StaticStrings::KeyString));
   if (_unique) {
     // Unique VPack index values are stored as follows:
     // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
@@ -190,8 +191,8 @@ void RocksDBPathBasedIndex::addIndexValue(
     // + primary key
     // - Value: empty
     elements.emplace_back(
-                          RocksDBKey::IndexValue(_objectId, StringRef(key), b.slice()),
-                          RocksDBValue::IndexValue());
+        RocksDBKey::IndexValue(_objectId, StringRef(key), b.slice()),
+        RocksDBValue::IndexValue());
   }
 }
 

@@ -167,8 +167,8 @@ class RocksDBKey {
   /// May be called only on the following key types: PrimaryIndexValue,
   /// EdgeIndexValue, and IndexValue. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static std::string primaryKey(RocksDBKey const&);
-  static std::string primaryKey(rocksdb::Slice const&);
+  static StringRef primaryKey(RocksDBKey const&);
+  static StringRef primaryKey(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the vertex ID from a key
@@ -213,7 +213,7 @@ class RocksDBKey {
   static TRI_idx_iid_t indexId(char const* data, size_t size);
   static TRI_voc_cid_t viewId(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(char const* data, size_t size);
-  static std::string primaryKey(char const* data, size_t size);
+  static StringRef primaryKey(char const* data, size_t size);
   static std::string vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
 

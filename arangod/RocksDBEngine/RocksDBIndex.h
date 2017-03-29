@@ -38,8 +38,9 @@ class RocksDBIndex : public Index {
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
                    attributes,
                bool unique, bool sparse, uint64_t objectId = 0);
-  
-  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
+
+  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
+               arangodb::velocypack::Slice const&);
 
  public:
   uint64_t objectId() const { return _objectId; }

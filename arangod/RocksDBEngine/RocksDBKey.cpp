@@ -65,7 +65,8 @@ RocksDBKey RocksDBKey::EdgeIndexValue(uint64_t indexId,
                     primaryKey);
 }
 
-RocksDBKey RocksDBKey::IndexValue(uint64_t indexId, StringRef const& primaryKey,
+RocksDBKey RocksDBKey::IndexValue(uint64_t indexId,
+                                  arangodb::StringRef const& primaryKey,
                                   VPackSlice const& indexValues) {
   return RocksDBKey(RocksDBEntryType::IndexValue, indexId, primaryKey,
                     indexValues);
@@ -128,11 +129,11 @@ TRI_voc_rid_t RocksDBKey::revisionId(rocksdb::Slice const& slice) {
   return revisionId(slice.data(), slice.size());
 }
 
-std::string RocksDBKey::primaryKey(RocksDBKey const& key) {
+arangodb::StringRef RocksDBKey::primaryKey(RocksDBKey const& key) {
   return primaryKey(key._buffer.data(), key._buffer.size());
 }
 
-std::string RocksDBKey::primaryKey(rocksdb::Slice const& slice) {
+arangodb::StringRef RocksDBKey::primaryKey(rocksdb::Slice const& slice) {
   return primaryKey(slice.data(), slice.size());
 }
 
@@ -176,12 +177,13 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   switch (_type) {
     case RocksDBEntryType::UniqueIndexValue: {
       size_t length = sizeof(char) + sizeof(uint64_t) +
-                      static_cast<size_t>(slice.byteSize());
+                      static_cast<size_t>(slice.byteSize()) + sizeof(char);
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
       _buffer.append(reinterpret_cast<char const*>(slice.begin()),
                      static_cast<size_t>(slice.byteSize()));
+      _buffer.push_back(_stringSeparator);
       break;
     }
 
@@ -239,16 +241,17 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
     case RocksDBEntryType::IndexValue: {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
-      // + primary key
+      // + separator byte + primary key
       // - Value: empty
       size_t length = sizeof(char) + sizeof(uint64_t) +
-                      static_cast<size_t>(indexData.byteSize()) +
+                      static_cast<size_t>(indexData.byteSize()) + sizeof(char) +
                       docKey.length();
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
       _buffer.append(reinterpret_cast<char const*>(indexData.begin()),
                      static_cast<size_t>(indexData.byteSize()));
+      _buffer.push_back(_stringSeparator);
       _buffer.append(docKey.data(), docKey.length());
       break;
     }
@@ -396,7 +399,7 @@ TRI_voc_rid_t RocksDBKey::revisionId(char const* data, size_t size) {
   }
 }
 
-std::string RocksDBKey::primaryKey(char const* data, size_t size) {
+arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
@@ -404,19 +407,22 @@ std::string RocksDBKey::primaryKey(char const* data, size_t size) {
     case RocksDBEntryType::PrimaryIndexValue: {
       TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t) + sizeof(uint8_t)));
       size_t keySize = size - (sizeof(char) + sizeof(uint64_t));
-      return std::string(data + sizeof(char) + sizeof(uint64_t), keySize);
+      return arangodb::StringRef(data + sizeof(char) + sizeof(uint64_t),
+                                 keySize);
     }
     case RocksDBEntryType::EdgeIndexValue: {
       TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t) + sizeof(uint8_t)));
       size_t keySize = static_cast<size_t>(data[size - 1]);
-      return std::string(data + (size - (keySize + sizeof(uint8_t))), keySize);
+      return arangodb::StringRef(data + (size - (keySize + sizeof(uint8_t))),
+                                 keySize);
     }
     case RocksDBEntryType::IndexValue: {
       TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t)));
       VPackSlice slice(data + sizeof(char) + sizeof(uint64_t));
       size_t sliceSize = static_cast<size_t>(slice.byteSize());
-      size_t keySize = size - (sizeof(char) + sizeof(uint64_t) + sliceSize);
-      return std::string(data + (size - keySize), keySize);
+      size_t keySize =
+          size - (sizeof(char) + sizeof(uint64_t) + sliceSize + sizeof(char));
+      return arangodb::StringRef(data + (size - keySize), keySize);
     }
 
     default:

@@ -81,15 +81,15 @@ TRI_voc_rid_t RocksDBValue::revisionId(std::string const& s) {
   return revisionId(s.data(), s.size());
 }
 
-std::string RocksDBValue::primaryKey(RocksDBValue const& value) {
+StringRef RocksDBValue::primaryKey(RocksDBValue const& value) {
   return primaryKey(value._buffer.data(), value._buffer.size());
 }
 
-std::string RocksDBValue::primaryKey(rocksdb::Slice const& slice) {
+StringRef RocksDBValue::primaryKey(rocksdb::Slice const& slice) {
   return primaryKey(slice.data(), slice.size());
 }
 
-std::string RocksDBValue::primaryKey(std::string const& s) {
+StringRef RocksDBValue::primaryKey(std::string const& s) {
   return primaryKey(s.data(), s.size());
 }
 
@@ -123,7 +123,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, arangodb::StringRef const& data)
+RocksDBValue::RocksDBValue(RocksDBEntryType type,
+                           arangodb::StringRef const& data)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueIndexValue: {
@@ -162,10 +163,10 @@ TRI_voc_rid_t RocksDBValue::revisionId(char const* data, size_t size) {
   return uint64FromPersistent(data);
 }
 
-std::string RocksDBValue::primaryKey(char const* data, size_t size) {
+StringRef RocksDBValue::primaryKey(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
-  return std::string(data, size);
+  return StringRef(data, size);
 }
 
 VPackSlice RocksDBValue::data(char const* data, size_t size) {

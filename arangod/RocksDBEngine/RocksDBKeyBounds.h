@@ -89,6 +89,21 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds UniqueIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all documents within a value range belonging to a
+  /// specified non-unique index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds IndexRange(uint64_t indexId, VPackSlice const& left,
+                                     VPackSlice const& right);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all documents within a value range belonging to a
+  /// specified unique index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds UniqueIndexRange(uint64_t indexId,
+                                           VPackSlice const& left,
+                                           VPackSlice const& right);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all views belonging to a specified database
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds DatabaseViews(TRI_voc_tick_t databaseId);
@@ -116,8 +131,10 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, uint64_t second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    std::string const& second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
+                   VPackSlice const& second, VPackSlice const& third);
 
-  void generateEndFromStart();
+  void nextPrefix(std::string& s);
 
  private:
   static const char _stringSeparator;
