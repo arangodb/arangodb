@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -96,12 +97,13 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     VPackSlice fromTo = _iterator.value();
     TRI_ASSERT(fromTo.isString());
 
-    RocksDBKey prefix =
-        RocksDBKey::EdgeIndexPrefix(_index->_objectId, fromTo.copyString());
+    RocksDBKeyBounds prefix = RocksDBKeyBounds::EdgeIndexVertex(
+        _index->_objectId, fromTo.copyString());
 
-    std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(state->readOptions()));
+    std::unique_ptr<rocksdb::Iterator> iter(
+        rtrx->GetIterator(state->readOptions()));
 
-    rocksdb::Slice rSlice(prefix.string());
+    rocksdb::Slice rSlice(prefix.start());
     iter->Seek(rSlice);
     while (iter->Valid() && iter->key().starts_with(rSlice)) {
       TRI_ASSERT(iter->key().size() > rSlice.size());
@@ -148,10 +150,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                    {arangodb::basics::AttributeName(StaticStrings::ToString,
                                                     false)}})*/
   TRI_ASSERT(iid != 0);
-#warning fix object ID
-  TRI_voc_tick_t databaseId = collection->vocbase()->id();
-  RocksDBKey entry = RocksDBKey::Index(databaseId, collection->cid(), iid);
-  _objectId = 3413415 + iid;  // entry.key;
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}

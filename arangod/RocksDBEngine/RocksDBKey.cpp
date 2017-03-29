@@ -65,13 +65,7 @@ RocksDBKey RocksDBKey::EdgeIndexValue(uint64_t indexId,
                     primaryKey);
 }
 
-RocksDBKey RocksDBKey::EdgeIndexPrefix(uint64_t indexId,
-                                       std::string const& vertexId) {
-  return RocksDBKey(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
-}
-
-RocksDBKey RocksDBKey::IndexValue(uint64_t indexId,
-                                  std::string const& primaryKey,
+RocksDBKey RocksDBKey::IndexValue(uint64_t indexId, StringRef const& primaryKey,
                                   VPackSlice const& indexValues) {
   return RocksDBKey(RocksDBEntryType::IndexValue, indexId, primaryKey,
                     indexValues);
@@ -238,18 +232,24 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second,
 }
 
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
-                       std::string const& second, VPackSlice const& slice)
+                       arangodb::StringRef const& docKey,
+                       VPackSlice const& indexData)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::IndexValue: {
+      // Non-unique VPack index values are stored as follows:
+      // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
+      // + primary key
+      // - Value: empty
       size_t length = sizeof(char) + sizeof(uint64_t) +
-                      static_cast<size_t>(slice.byteSize()) + second.size();
+                      static_cast<size_t>(indexData.byteSize()) +
+                      docKey.length();
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
-      _buffer.append(reinterpret_cast<char const*>(slice.begin()),
-                     static_cast<size_t>(slice.byteSize()));
-      _buffer.append(second);
+      _buffer.append(reinterpret_cast<char const*>(indexData.begin()),
+                     static_cast<size_t>(indexData.byteSize()));
+      _buffer.append(docKey.data(), docKey.length());
       break;
     }
 
@@ -268,17 +268,6 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
       _buffer.append(second);
-      break;
-    }
-    
-    case RocksDBEntryType::EdgeIndexValue: {// actually just a prefix
-      size_t length = sizeof(char) + sizeof(uint64_t) + second.size()
-                      + sizeof(char);
-      _buffer.reserve(length);
-      _buffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_buffer, first);
-      _buffer.append(second);
-      _buffer.push_back(_stringSeparator);
       break;
     }
 
@@ -304,7 +293,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.push_back(static_cast<char>(third.size() & 0xff));
       break;
     }
-      
+
     case RocksDBEntryType::EdgeIndexValue: {
       size_t length = sizeof(char) + sizeof(uint64_t) + second.size() +
                       sizeof(char) + third.size();

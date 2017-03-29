@@ -147,7 +147,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                      arangodb::aql::AstNode const* valNode) const;
 
   std::string _directionAttr;
-  uint64_t _objectId;
 };
 }
 

@@ -21,27 +21,31 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesPathBasedIndex.h"
+#include "RocksDBPathBasedIndex.h"
 #include "Aql/AstNode.h"
 #include "Basics/FixedSizeAllocator.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesIndexElement.h"
+#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBValue.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
-/// @brief the _key attribute, which, when used in an index, will implictly make it unique
-static std::vector<arangodb::basics::AttributeName> const KeyAttribute
-     {arangodb::basics::AttributeName("_key", false)};
+/// @brief the _key attribute, which, when used in an index, will implictly make
+/// it unique
+static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
+    arangodb::basics::AttributeName("_key", false)};
 
 /// @brief create the index
-MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
-                               arangodb::LogicalCollection* collection,
-                               VPackSlice const& info, size_t baseSize, bool allowPartialIndex)
-    : Index(iid, collection, info),
+RocksDBPathBasedIndex::RocksDBPathBasedIndex(
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
+    VPackSlice const& info, size_t baseSize, bool allowPartialIndex)
+    : RocksDBIndex(iid, collection, info),
       _useExpansion(false),
       _allowPartialIndex(allowPartialIndex) {
   TRI_ASSERT(!_fields.empty());
@@ -56,19 +60,20 @@ MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
       break;
     }
   }
-  
-  _allocator.reset(new FixedSizeAllocator(baseSize + sizeof(MMFilesIndexElementValue) * numPaths()));
+
+  //_allocator.reset(new FixedSizeAllocator(baseSize +
+  //sizeof(MMFilesIndexElementValue) * numPaths()));
 }
 
 /// @brief destroy the index
-MMFilesPathBasedIndex::~MMFilesPathBasedIndex() {
-  _allocator->deallocateAll();
+RocksDBPathBasedIndex::~RocksDBPathBasedIndex() {
+  //_allocator->deallocateAll();
 }
 
 /// @brief whether or not the index is implicitly unique
-/// this can be the case if the index is not declared as unique, but contains a 
+/// this can be the case if the index is not declared as unique, but contains a
 /// unique attribute such as _key
-bool MMFilesPathBasedIndex::implicitlyUnique() const {
+bool RocksDBPathBasedIndex::implicitlyUnique() const {
   if (_unique) {
     // a unique index is always unique
     return true;
@@ -92,143 +97,127 @@ bool MMFilesPathBasedIndex::implicitlyUnique() const {
 }
 
 /// @brief helper function to insert a document into any index type
-template<typename T>
-int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
-                                TRI_voc_rid_t revisionId,
-                                VPackSlice const& doc) {
+/// Should result in a
+int RocksDBPathBasedIndex::fillElement(
+    transaction::Methods* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc,
+    std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements) {
   if (doc.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "encountered invalid marker with slice of type None";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }
 
   TRI_IF_FAILURE("FillElementIllegalSlice") { return TRI_ERROR_INTERNAL; }
 
-  size_t const n = _paths.size();
-
   if (!_useExpansion) {
     // fast path for inserts... no array elements used
-    auto slices = buildIndexValue(doc);
 
-    if (slices.size() == n) {
-      // if slices.size() != n, then the value is not inserted into the index
-      // because of index sparsity!
-      T* element = static_cast<T*>(_allocator->allocate());
-      TRI_ASSERT(element != nullptr);
-      element = T::initialize(element, revisionId, slices);
+    transaction::BuilderLeaser indexVals(trx);
+    indexVals->openArray();
 
-      if (element == nullptr) {
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-      TRI_IF_FAILURE("FillElementOOM") {
-        // clean up manually
-        _allocator->deallocate(element);
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
+    size_t const n = _paths.size();
+    for (size_t i = 0; i < n; ++i) {
+      TRI_ASSERT(!_paths[i].empty());
 
-      try {
-        TRI_IF_FAILURE("FillElementOOM2") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      VPackSlice slice = doc.get(_paths[i]);
+      if (slice.isNone() || slice.isNull()) {
+        // attribute not found
+        if (_sparse) {
+          // if sparse we do not have to index, this is indicated by result
+          // being shorter than n
+          return TRI_ERROR_NO_ERROR;
         }
-
-        elements.emplace_back(element);
-      } catch (...) {
-        _allocator->deallocate(element);
-        return TRI_ERROR_OUT_OF_MEMORY;
+        // null, note that this will be copied later!
+        indexVals->add(VPackSlice::nullSlice());
+      } else {
+        indexVals->add(slice);
       }
+    }
+    indexVals->close();
+
+    StringRef key(doc.get(StaticStrings::KeyString));
+    if (_unique) {
+      // Unique VPack index values are stored as follows:
+      // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
+      // - Value: primary key
+      elements.emplace_back(
+          RocksDBKey::UniqueIndexValue(_objectId, indexVals->slice()),
+          RocksDBValue::UniqueIndexValue(key));
+    } else {
+      // Non-unique VPack index values are stored as follows:
+      // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
+      // + primary key
+      // - Value: empty
+      elements.emplace_back(
+          RocksDBKey::IndexValue(_objectId, key, indexVals->slice()),
+          RocksDBValue::IndexValue());
     }
   } else {
     // other path for handling array elements, too
-    std::vector<std::vector<std::pair<VPackSlice, uint32_t>>> toInsert;
-    std::vector<std::pair<VPackSlice, uint32_t>> sliceStack;
+    std::vector<VPackSlice> sliceStack;
 
-    buildIndexValues(doc, 0, toInsert, sliceStack);
+    transaction::BuilderLeaser indexVals(trx);
 
-    if (!toInsert.empty()) {
-      elements.reserve(toInsert.size());
-
-      for (auto& info : toInsert) {
-        TRI_ASSERT(info.size() == n);
-        T* element = static_cast<T*>(_allocator->allocate());
-        TRI_ASSERT(element != nullptr);
-        element = T::initialize(element, revisionId, info);
-
-        if (element == nullptr) {
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
-        TRI_IF_FAILURE("FillElementOOM") {
-          // clean up manually
-          _allocator->deallocate(element);
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
-
-        try {
-          TRI_IF_FAILURE("FillElementOOM2") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
-
-          elements.emplace_back(element);
-        } catch (...) {
-          _allocator->deallocate(element);
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
-      }
-    }
+    buildIndexValues(doc, 0, elements, sliceStack);
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief helper function to create the sole index value insert
-std::vector<std::pair<VPackSlice, uint32_t>> MMFilesPathBasedIndex::buildIndexValue(
-    VPackSlice const documentSlice) {
-  size_t const n = _paths.size();
-
-  std::vector<std::pair<VPackSlice, uint32_t>> result;
-  for (size_t i = 0; i < n; ++i) {
-    TRI_ASSERT(!_paths[i].empty());
-
-    VPackSlice slice = documentSlice.get(_paths[i]);
-    if (slice.isNone() || slice.isNull()) {
-      // attribute not found
-      if (_sparse) {
-        // if sparse we do not have to index, this is indicated by result
-        // being shorter than n
-        result.clear();
-        break;
-      }
-      // null, note that this will be copied later!
-      result.emplace_back(arangodb::basics::VelocyPackHelper::NullValue(), 0); // fake offset 0
-    } else {
-      result.emplace_back(slice, static_cast<uint32_t>(slice.start() - documentSlice.start()));
-    }
+void RocksDBPathBasedIndex::addIndexValue(
+    VPackSlice const& document,
+    std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
+    std::vector<VPackSlice>& sliceStack) {
+  // TODO maybe use leaded Builder from transaction.
+  VPackBuilder b;
+  b.openArray();
+  for (VPackSlice const& s : sliceStack) {
+    b.add(s);
   }
-  return result;
+  b.close();
+  
+  StringRef key (document.get(StaticStrings::KeyString));
+  if (_unique) {
+    // Unique VPack index values are stored as follows:
+    // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
+    // - Value: primary key
+    elements.emplace_back(RocksDBKey::UniqueIndexValue(_objectId, b.slice()),
+                          RocksDBValue::UniqueIndexValue(key));
+  } else {
+    // Non-unique VPack index values are stored as follows:
+    // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
+    // + primary key
+    // - Value: empty
+    elements.emplace_back(
+                          RocksDBKey::IndexValue(_objectId, StringRef(key), b.slice()),
+                          RocksDBValue::IndexValue());
+  }
 }
 
 /// @brief helper function to create a set of index combinations to insert
-void MMFilesPathBasedIndex::buildIndexValues(
+void RocksDBPathBasedIndex::buildIndexValues(
     VPackSlice const document, size_t level,
-    std::vector<std::vector<std::pair<VPackSlice, uint32_t>>>& toInsert,
-    std::vector<std::pair<VPackSlice, uint32_t>>& sliceStack) {
+    std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
+    std::vector<VPackSlice>& sliceStack) {
   // Invariant: level == sliceStack.size()
 
   // Stop the recursion:
   if (level == _paths.size()) {
-    toInsert.push_back(sliceStack);
+    addIndexValue(document, elements, sliceStack);
     return;
   }
 
-  if (_expanding[level] == -1) {   // the trivial, non-expanding case
+  if (_expanding[level] == -1) {  // the trivial, non-expanding case
     VPackSlice slice = document.get(_paths[level]);
     if (slice.isNone() || slice.isNull()) {
       if (_sparse) {
         return;
       }
-      sliceStack.emplace_back(arangodb::basics::VelocyPackHelper::NullValue(), 0);
+      sliceStack.emplace_back(arangodb::basics::VelocyPackHelper::NullValue());
     } else {
-      sliceStack.emplace_back(slice, static_cast<uint32_t>(slice.start() - document.start()));
+      sliceStack.emplace_back(slice);
     }
-    buildIndexValues(document, level + 1, toInsert, sliceStack);
+    buildIndexValues(document, level + 1, elements, sliceStack);
     sliceStack.pop_back();
     return;
   }
@@ -247,9 +236,9 @@ void MMFilesPathBasedIndex::buildIndexValues(
       return;
     }
     for (size_t i = level; i < _paths.size(); i++) {
-      sliceStack.emplace_back(illegalSlice, 0);
+      sliceStack.emplace_back(illegalSlice);
     }
-    toInsert.push_back(sliceStack);
+    addIndexValue(document.get(StaticStrings::KeyString), elements, sliceStack);
     for (size_t i = level; i < _paths.size(); i++) {
       sliceStack.pop_back();
     }
@@ -274,18 +263,17 @@ void MMFilesPathBasedIndex::buildIndexValues(
     return;
   }
 
-  std::unordered_set<VPackSlice,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       seen(2, arangodb::basics::VelocyPackHelper::VPackHash(),
-              arangodb::basics::VelocyPackHelper::VPackEqual());
+           arangodb::basics::VelocyPackHelper::VPackEqual());
 
   auto moveOn = [&](VPackSlice something) -> void {
     auto it = seen.find(something);
     if (it == seen.end()) {
       seen.insert(something);
-      sliceStack.emplace_back(something, static_cast<uint32_t>(something.start() - document.start()));
-      buildIndexValues(document, level + 1, toInsert, sliceStack);
+      sliceStack.emplace_back(something);
+      buildIndexValues(document, level + 1, elements, sliceStack);
       sliceStack.pop_back();
     }
   };
@@ -322,8 +310,8 @@ void MMFilesPathBasedIndex::buildIndexValues(
 }
 
 /// @brief helper function to transform AttributeNames into strings.
-void MMFilesPathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
-                               std::vector<int>& expanding) {
+void RocksDBPathBasedIndex::fillPaths(
+    std::vector<std::vector<std::string>>& paths, std::vector<int>& expanding) {
   paths.clear();
   expanding.clear();
   for (std::vector<arangodb::basics::AttributeName> const& list : _fields) {
@@ -341,10 +329,3 @@ void MMFilesPathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& pat
     expanding.emplace_back(expands);
   }
 }
-
-// template instanciations for fillElement
-template
-int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesHashIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);
-
-template
-int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesSkiplistIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);

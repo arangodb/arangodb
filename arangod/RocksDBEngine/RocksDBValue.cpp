@@ -28,7 +28,6 @@
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
-using namespace arangodb::velocypack;
 
 RocksDBValue RocksDBValue::Database(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::Database, data);
@@ -58,7 +57,7 @@ RocksDBValue RocksDBValue::IndexValue() {
   return RocksDBValue(RocksDBEntryType::IndexValue);
 }
 
-RocksDBValue RocksDBValue::UniqueIndexValue(std::string const& primaryKey) {
+RocksDBValue RocksDBValue::UniqueIndexValue(StringRef const& primaryKey) {
   return RocksDBValue(RocksDBEntryType::UniqueIndexValue, primaryKey);
 }
 
@@ -124,12 +123,12 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, std::string const& data)
+RocksDBValue::RocksDBValue(RocksDBEntryType type, arangodb::StringRef const& data)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueIndexValue: {
-      _buffer.reserve(data.size());
-      _buffer.append(data);  // primary key
+      _buffer.reserve(data.length());
+      _buffer.append(data.data(), data.length());  // primary key
       break;
     }
 
