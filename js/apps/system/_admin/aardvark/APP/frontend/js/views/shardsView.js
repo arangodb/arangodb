@@ -186,7 +186,6 @@
         async: true,
         success: function (data) {
           if (data.id) {
-            console.log(toServer);
             arangoHelper.arangoNotification('Shard ' + shardName + ' will be moved to ' + arangoHelper.getDatabaseShortName(toServer) + '.');
             window.setTimeout(function () {
               window.App.shardsView.render();

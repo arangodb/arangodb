@@ -1,6 +1,8 @@
 v3.1.17 (2017-XX-XX)
 --------------------
 
+* fixed issue #2397
+
 * ui - fixed smart graph option not appearing
 
 * fixed issue #2389
