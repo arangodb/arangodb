@@ -246,6 +246,8 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   auto key =
       RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
+  
+  LOG_TOPIC(ERR, Logger::FIXME) << "PRIMARYINDEX::INSERT. COLLECTION '" << _collection->name() << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId << ", KEY: " << slice.get("_key").copyString();
 
   // aquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);

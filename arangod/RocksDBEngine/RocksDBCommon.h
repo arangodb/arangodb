@@ -33,7 +33,7 @@
 namespace arangodb {
 class TransactionState;
 class RocksDBTransactionState;
-namespace transaction { class Methods;}
+namespace transaction { class Methods; }
 namespace rocksutils {
 
 enum StatusHint { none, document, collection, view, index, database };
