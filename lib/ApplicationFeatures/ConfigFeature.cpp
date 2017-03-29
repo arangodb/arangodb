@@ -24,6 +24,7 @@
 
 #include <iostream>
 
+#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -86,6 +87,15 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   if (StringUtils::tolower(_file) == "none") {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "using no config file at all";
     return;
+  }
+
+  bool fatal = true;
+
+  auto version = dynamic_cast<VersionFeature*>(
+      application_features::ApplicationServer::lookupFeature("Version"));
+
+  if (version != nullptr && version->printVersion()) {
+    fatal = false;
   }
 
   // always prefer an explicitly given config file
@@ -189,8 +199,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
 
-  if (!parser.parse(filename)) {
-    if (filename.empty()) {
+  if (filename.empty()) {
+    if (fatal) {
       size_t i = 0;
       std::string locationMsg = "(tried locations: ";
       for (auto const& it : locations) {
@@ -200,8 +210,14 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
         locationMsg += "'" + FileUtils::buildFilename(it, basename) + "'";
       }
       locationMsg += ")";
-      options->failNotice(locationMsg);
+      options->failNotice("cannot find configuration file\n\n" + locationMsg);
+      exit(EXIT_FAILURE);
+    } else {
+      return;
     }
+  }
+
+  if (!parser.parse(filename)) {
     exit(EXIT_FAILURE);
   }
 }
