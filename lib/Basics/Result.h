@@ -44,8 +44,12 @@ class Result {
 
  public:
   bool ok() const { return _errorNumber == TRI_ERROR_NO_ERROR; }
+
   int errorNumber() const { return _errorNumber; }
-  void reset(int errorNumber) {
+  bool is(int errorNumber) const { return _errorNumber == errorNumber; }
+  bool isNot(int errorNumber) const { return _errorNumber != errorNumber; }
+
+  void reset(int errorNumber = TRI_ERROR_NO_ERROR) {
     _errorNumber = errorNumber;
     _errorMessage = TRI_errno_string(errorNumber);
   }
@@ -63,7 +67,8 @@ class Result {
   // the default implementations is const, but sub-classes might
   // really do more work to compute.
 
-  virtual std::string errorMessage() { return _errorMessage; }
+  virtual std::string  errorMessage() const& { return _errorMessage; }
+  virtual std::string errorMessage() && { return std::move(_errorMessage); }
 
  protected:
   int _errorNumber;

@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
+#include "Basics/Result.h"
 #include "Utils/OperationResult.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Status.h"
@@ -147,7 +148,7 @@ class Methods {
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
   
-  int resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength); 
+  Result resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength); 
   
   /// @brief return a pointer to the transaction context
   std::shared_ptr<transaction::Context> transactionContext() const {
@@ -168,16 +169,17 @@ class Methods {
   Status status() const;
 
   /// @brief begin the transaction
-  int begin();
+  Result begin();
 
   /// @brief commit / finish the transaction
-  int commit();
+  Result commit();
 
   /// @brief abort the transaction
-  int abort();
+  Result abort();
 
   /// @brief finish a transaction (commit or abort), based on the previous state
-  int finish(int errorNum);
+  Result finish(int errorNum);
+  Result finish(Result const& res) { return finish(res.errorNumber()); };
 
   /// @brief return a collection name
   std::string name(TRI_voc_cid_t cid) const;
@@ -228,7 +230,7 @@ class Methods {
   ///        Does not care for revision handling!
   ///        shouldLock indicates if the transaction should lock the collection
   ///        if set to false it will not lock it (make sure it is already locked!)
-  int documentFastPath(std::string const& collectionName,
+  Result documentFastPath(std::string const& collectionName,
                        ManagedDocumentResult* mmdr,
                        arangodb::velocypack::Slice const value,
                        arangodb::velocypack::Builder& result,
@@ -240,7 +242,7 @@ class Methods {
   ///        If there was an error the code is returned
   ///        Does not care for revision handling!
   ///        Must only be called on a local server, not in cluster case!
-  int documentFastPathLocal(std::string const& collectionName,
+  Result documentFastPathLocal(std::string const& collectionName,
                             std::string const& key,
                             ManagedDocumentResult& result);
  
@@ -256,8 +258,7 @@ class Methods {
                          VPackSlice const value,
                          OperationOptions const& options);
   
-  /// @brief update/patch one or multiple documents in a collection
-  /// the single-document variant of this operation will either succeed or,
+  /// @brief update/patch one or multiple documents in a collecti  Result/// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   OperationResult update(std::string const& collectionName,
                          VPackSlice const updateValue,
@@ -453,22 +454,22 @@ class Methods {
       TransactionCollection const*) const;
   
   /// @brief add a collection by id, with the name supplied
-  int addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
+  Result addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
 
   /// @brief add a collection by id, with the name supplied
-  int addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
+  Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
 
   /// @brief add a collection by id
-  int addCollection(TRI_voc_cid_t, AccessMode::Type);
+  Result addCollection(TRI_voc_cid_t, AccessMode::Type);
   
   /// @brief add a collection by name
-  int addCollection(std::string const&, AccessMode::Type);
+  Result addCollection(std::string const&, AccessMode::Type);
 
   /// @brief read- or write-lock a collection
-  int lock(TransactionCollection*, AccessMode::Type);
+  Result lock(TransactionCollection*, AccessMode::Type);
 
   /// @brief read- or write-unlock a collection
-  int unlock(TransactionCollection*, AccessMode::Type);
+  Result unlock(TransactionCollection*, AccessMode::Type);
 
  private:
 
@@ -530,10 +531,10 @@ class Methods {
       std::string const&) const;
 
   /// @brief add a collection to an embedded transaction
-  int addCollectionEmbedded(TRI_voc_cid_t, char const* name, AccessMode::Type);
+  Result addCollectionEmbedded(TRI_voc_cid_t, char const* name, AccessMode::Type);
 
   /// @brief add a collection to a top-level transaction
-  int addCollectionToplevel(TRI_voc_cid_t, char const* name, AccessMode::Type);
+  Result addCollectionToplevel(TRI_voc_cid_t, char const* name, AccessMode::Type);
 
   /// @brief set up an embedded transaction
   void setupEmbedded(TRI_vocbase_t*);

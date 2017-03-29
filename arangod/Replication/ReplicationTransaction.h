@@ -46,17 +46,19 @@ class ReplicationTransaction : public transaction::Methods {
   /// this will automatically add the collection to the transaction
   inline TransactionCollection* trxCollection(TRI_voc_cid_t cid) {
     TRI_ASSERT(cid > 0);
+    Result result;
 
     TransactionCollection* trxCollection = _state->collection(cid, AccessMode::Type::WRITE);
 
     if (trxCollection == nullptr) {
       int res = _state->addCollection(cid, AccessMode::Type::WRITE, 0, true);
+      result.reset(res);
 
-      if (res == TRI_ERROR_NO_ERROR) {
-        res = _state->ensureCollections();
+      if (result.ok()) {
+        result = _state->ensureCollections();
       }
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (!result.ok()) {
         return nullptr;
       }
 

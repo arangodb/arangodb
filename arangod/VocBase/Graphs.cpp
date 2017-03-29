@@ -29,7 +29,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
-
+#include <sstream>
 using namespace arangodb;
 
 #ifndef USE_ENTERPRISE
@@ -43,11 +43,13 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<transaction::C
                                                   std::string const& name) {
   SingleCollectionTransaction trx(transactionContext, GRAPHS, AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
-                                  name.c_str());
+  if (!res.ok()) {
+    std::stringstream ss;
+    ss <<  "while looking up graph '" << name << "': " << res.errorMessage();
+    res.reset(res.errorNumber(), ss.str());
+    THROW_ARANGO_EXCEPTION(res);
   }
   VPackBuilder b;
   {
@@ -67,10 +69,13 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<transaction::C
     THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'",
                                   name.c_str());
   }
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
-                                  name.c_str());
+  if (!res.ok()) {
+    std::stringstream ss;
+    ss <<  "while looking up graph '" << name << "': " << res.errorMessage();
+    res.reset(res.errorNumber(), ss.str());
+    THROW_ARANGO_EXCEPTION(res);
   }
+
   VPackSlice info = result.slice();
   if (info.isExternal()) {
     info = info.resolveExternal();

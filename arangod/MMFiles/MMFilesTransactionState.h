@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_TRANSACTION_STATE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -54,13 +55,13 @@ class MMFilesTransactionState final : public TransactionState {
   ~MMFilesTransactionState();
 
   /// @brief begin a transaction
-  int beginTransaction(transaction::Hints hints) override;
+  Result beginTransaction(transaction::Hints hints) override;
 
   /// @brief commit a transaction
-  int commitTransaction(transaction::Methods* trx) override;
+  Result commitTransaction(transaction::Methods* trx) override;
 
   /// @brief abort a transaction
-  int abortTransaction(transaction::Methods* trx) override;
+  Result abortTransaction(transaction::Methods* trx) override;
 
   bool hasFailedOperations() const override {
     return (_hasOperations && _status == transaction::Status::ABORTED);

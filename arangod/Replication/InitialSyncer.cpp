@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO fix error handling
+
 #include "InitialSyncer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -747,7 +749,7 @@ int InitialSyncer::handleCollectionDump(
       bytesReceived += response->getContentLength();
     }
 
-    int res = TRI_ERROR_NO_ERROR;  // Just to please the compiler
+    Result res;
     bool checkMore = false;
     bool found;
     TRI_voc_tick_t tick;
@@ -778,35 +780,35 @@ int InitialSyncer::handleCollectionDump(
       errorMsg = "got invalid response from master at " +
                  _masterInfo._endpoint +
                  ": required header is missing";
-      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      res.reset(TRI_ERROR_REPLICATION_INVALID_RESPONSE, errorMsg);
     }
 
-    if (res == TRI_ERROR_NO_ERROR) {
+    if (res.ok()) {
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
-      
+
       res = trx.begin();
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to start transaction: " + std::string(TRI_errno_string(res));
-
-        return res;
+      if (!res.ok()) {
+        errorMsg = "unable to start transaction: " + res.errorMessage();
+        res.reset(res.errorNumber(),errorMsg);
+        return res.errorNumber();
       }
      
       trx.pinData(col->cid()); // will throw when it fails
 
-      if (res == TRI_ERROR_NO_ERROR) {
+      if (res.ok()) {
         res = applyCollectionDump(trx, collectionName, response.get(), markersProcessed, errorMsg);
-        res = trx.finish(res);
+        res = trx.finish(res.errorNumber());
       }
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (!res.ok()) {
+      return res.errorNumber();
     }
 
     if (!checkMore || fromTick == 0) {
       // done
-      return res;
+      return res.errorNumber();
     }
 
     // increase chunk size for next fetch
@@ -988,12 +990,12 @@ int InitialSyncer::handleCollectionSync(
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
 
-    int res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
-
-      return res;
+    if (!res.ok()) {
+      errorMsg = std::string("unable to start transaction: ") + res.errorMessage();
+      res.reset(res.errorNumber(),errorMsg);
+      return res.errorNumber();
     }
 
     OperationOptions options;      
@@ -1007,7 +1009,7 @@ int InitialSyncer::handleCollectionSync(
 
     res = trx.finish(opRes.code);
     
-    return res;
+    return res.errorNumber();
   }
 
   // now we can fetch the complete chunk information from the master
@@ -1048,11 +1050,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   {    
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
   
-    int res = trx.begin();
+    Result res = trx.begin();
   
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
-      return res;
+    if (!res.ok()) {
+      errorMsg = std::string("unable to start transaction: ") + res.errorMessage();
+      res.reset(res.errorNumber(),errorMsg);
+      return res.errorNumber();
     }
 
     ditch = arangodb::MMFilesCollection::toMMFilesCollection(col)
@@ -1073,11 +1076,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   {
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
   
-    int res = trx.begin();
+    Result res = trx.begin();
   
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
-      return res;
+    if (!res.ok()) {
+      errorMsg = std::string("unable to start transaction: ") + res.errorMessage();
+      res.reset(res.errorNumber(),errorMsg);
+      return res.errorNumber();
     }
     
     // We do not take responsibility for the index.
@@ -1213,11 +1217,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     // first chunk
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
   
-    int res = trx.begin();
+    Result res = trx.begin();
   
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
-      return res;
+    if (!res.ok()) {
+      errorMsg = std::string("unable to start transaction: ") + res.errorMessage();
+      res.reset(res.errorNumber(),errorMsg);
+      return res.errorNumber();
     }
     
     VPackSlice chunk = slice.at(0);
@@ -1284,11 +1289,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
   
-    int res = trx.begin();
+    Result res = trx.begin();
   
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
-      return res;
+    if (!res.ok()) {
+      errorMsg = std::string("unable to start transaction: ") + res.errorMessage();
+      res.reset(res.errorNumber(),res.errorMessage());
+      return res.errorNumber();
     }
     
     trx.pinData(col->cid()); // will throw when it fails
@@ -1633,12 +1639,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
     res = trx.commit();
     
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (!res.ok()) {
+      return res.errorNumber();
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1664,9 +1670,9 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
   SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     return -1;
   }
   
@@ -1752,15 +1758,14 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
           SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
 
-          int res = trx.begin();
+          Result res = trx.begin();
 
-          if (res != TRI_ERROR_NO_ERROR) {
-            errorMsg = "unable to truncate " + collectionMsg + ": " +
-                       TRI_errno_string(res);
-
-            return res;
+          if (!res.ok()) {
+            errorMsg = "unable to truncate " + collectionMsg + ": " + res.errorMessage();
+            res.reset(res.errorNumber(),errorMsg);
+            return res.errorNumber();
           }
-    
+
           OperationOptions options;
           OperationResult opRes = trx.truncate(col->name(), options);
 
@@ -1773,11 +1778,9 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
           res = trx.finish(opRes.code);
 
-          if (res != TRI_ERROR_NO_ERROR) {
-            errorMsg = "unable to truncate " + collectionMsg + ": " +
-                       TRI_errno_string(res);
-
-            return res;
+          if (!res.ok()) {
+            errorMsg = "unable to truncate " + collectionMsg + ": " + res.errorMessage();
+            return res.errorNumber();
           }
         } else {
           // regular collection
@@ -1839,7 +1842,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    int res = TRI_ERROR_INTERNAL;
+    Result res;
 
     {
       READ_LOCKER(readLocker, _vocbase->_inventoryLock);
@@ -1851,7 +1854,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
         res = handleCollectionDump(col, StringUtils::itoa(cid), masterName, _masterInfo._lastLogTick, errorMsg);
       }
 
-      if (res == TRI_ERROR_NO_ERROR) {
+      if (res.ok()) {
         // now create indexes
         TRI_ASSERT(indexes.isArray());
         VPackValueLength const n = indexes.length();
@@ -1869,9 +1872,10 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
       
             res = trx.begin();
 
-            if (res != TRI_ERROR_NO_ERROR) {
-              errorMsg = "unable to start transaction: " + std::string(TRI_errno_string(res));
-              return res;
+            if (!res.ok()) {
+              errorMsg = "unable to start transaction: " + res.errorMessage();
+              res.reset(res.errorNumber(),errorMsg);
+              return res.errorNumber();
             }
 
             trx.pinData(col->cid()); // will throw when it fails
@@ -1896,9 +1900,9 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
               res = physical->restoreIndex(&trx, idxDef, idx);
 
-              if (res != TRI_ERROR_NO_ERROR) {
-                errorMsg = "could not create index: " +
-                            std::string(TRI_errno_string(res));
+              if (!res.ok()) {
+                errorMsg = "could not create index: " + res.errorMessage();
+                res.reset(res.errorNumber(),errorMsg);
                 break;
               }
             }
@@ -1913,7 +1917,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
       }
     }
 
-    return res;
+    return res.errorNumber();
   }
 
   // we won't get here

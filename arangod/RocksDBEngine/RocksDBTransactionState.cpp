@@ -76,8 +76,9 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
 RocksDBTransactionState::~RocksDBTransactionState() {}
 
 /// @brief start a transaction
-int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
+Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
+  Result result;  
 
   if (_nestingLevel == 0) {
     TRI_ASSERT(_status == transaction::Status::CREATED);
@@ -98,10 +99,10 @@ int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
-  
-  int res = useCollections(_nestingLevel);
+ 
+  result = useCollections(_nestingLevel);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (result.ok()) {
     // all valid
     if (_nestingLevel == 0) {
       updateStatus(transaction::Status::RUNNING);
@@ -115,12 +116,12 @@ int RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     // free what we have got so far
     unuseCollections(_nestingLevel);
   }
-    
-  return res;
+
+  return result;
 }
 
 /// @brief commit a transaction
-int RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) {
+Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) {
   LOG_TRX(this, _nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
@@ -138,7 +139,7 @@ int RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) 
       if (!result.ok()) {
         // TODO: translate status
         abortTransaction(activeTrx);
-        return result.errorNumber();
+        return result;
       }
       _rocksTransaction.reset();
     }
@@ -155,20 +156,19 @@ int RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) 
 
   unuseCollections(_nestingLevel);
 
-  return result.errorNumber();
+  return result;
 }
 
 /// @brief abort and rollback a transaction
-int RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx) {
+Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx) {
   LOG_TRX(this, _nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
-
   TRI_ASSERT(_status == transaction::Status::RUNNING);
-
-  int res = TRI_ERROR_NO_ERROR;
+  Result result;
 
   if (_nestingLevel == 0) {
     if (_rocksTransaction != nullptr) {
-      _rocksTransaction->Rollback();
+      rocksdb::Status status = _rocksTransaction->Rollback();
+      result = rocksutils::convertStatus(status);
       _rocksTransaction.reset();
     }
 
@@ -183,7 +183,7 @@ int RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx) {
 
   unuseCollections(_nestingLevel);
 
-  return res;
+  return result;
 }
 
 /// @brief add a WAL operation for a transaction collection

@@ -231,8 +231,8 @@ bool RestEdgesHandler::readEdges() {
   // inside read transaction
   // .............................................................................
 
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx.begin();
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -270,7 +270,7 @@ bool RestEdgesHandler::readEdges() {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     if (ServerState::instance()->isDBServer()) {
       // If we are a DBserver, we want to use the cluster-wide collection
       // name for error reporting:
@@ -375,8 +375,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   // inside read transaction
   // .............................................................................
 
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx.begin();
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -416,7 +416,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.close();
 
   res = trx.finish(res);
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     if (ServerState::instance()->isDBServer()) {
       // If we are a DBserver, we want to use the cluster-wide collection
       // name for error reporting:

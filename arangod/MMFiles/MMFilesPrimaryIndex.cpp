@@ -534,9 +534,9 @@ void MMFilesPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_voc_cid_t cid;
     char const* key;
     size_t outLength;
-    int res = trx->resolveId(valNode->getStringValue(), valNode->getStringLength(), cid, key, outLength);
+    Result res = trx->resolveId(valNode->getStringValue(), valNode->getStringLength(), cid, key, outLength);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       return;
     }
 

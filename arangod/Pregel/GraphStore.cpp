@@ -132,7 +132,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
     _edges = new VectorTypedBuffer<Edge<E>>(count);
   }
 
-  if (countTrx->commit() != TRI_ERROR_NO_ERROR) {
+  if (!countTrx->commit().ok()) {
     LOG_TOPIC(WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
@@ -285,7 +285,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
       break;
     }
   }
-  if (trx->commit() != TRI_ERROR_NO_ERROR) {
+  if (!trx->commit().ok()) {
     LOG_TOPIC(WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
@@ -330,8 +330,8 @@ std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
   auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase());
   std::unique_ptr<transaction::Methods> trx(
       new UserTransaction(ctx, {}, {}, {}, lockTimeout, false, true));
-  int res = trx->begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx->begin();
+  if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   return trx;
@@ -400,7 +400,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   // Add all new vertices
   _localVerticeCount += (vertexOffset - originalVertexOffset);
 
-  if (trx->commit() != TRI_ERROR_NO_ERROR) {
+  if (!trx->commit().ok()) {
     LOG_TOPIC(WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
@@ -489,7 +489,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
   // transaction on one shard
   std::unique_ptr<UserTransaction> trx;
   PregelShard currentShard = (PregelShard)-1;
-  int res = TRI_ERROR_NO_ERROR;
+  Result res = TRI_ERROR_NO_ERROR;
 
   V* vData = _vertexData->data();
 
@@ -498,7 +498,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     if (it->shard() != currentShard) {
       if (trx) {
         res = trx->finish(res);
-        if (res != TRI_ERROR_NO_ERROR) {
+        if (!res.ok()) {
           THROW_ARANGO_EXCEPTION(res);
         }
       }
@@ -509,7 +509,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
           transaction::StandaloneContext::Create(_vocbaseGuard.vocbase()), {},
           {shard}, {}, timeout, false, false));
       res = trx->begin();
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
@@ -550,7 +550,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 
   if (trx) {
     res = trx->finish(res);
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }

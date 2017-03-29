@@ -364,9 +364,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   // inside write transaction
   // .............................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -459,13 +459,13 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       res = handleSingleDocument(trx, result, babies, builder->slice(),
                                  isEdgeCollection, i);
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res.ok()) {
         if (complete) {
           // only perform a full import: abort
           break;
         }
 
-        res = TRI_ERROR_NO_ERROR;
+        res.reset();
       }
     }
   }
@@ -499,7 +499,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
                                  static_cast<size_t>(i + 1));
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (!res.ok()) {
         if (complete) {
           // only perform a full import: abort
           break;
@@ -512,7 +512,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   babies.close();
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     // no error so far. go on and perform the actual insert
     res =
         performImport(trx, result, collectionName, babies, complete, opOptions);
@@ -520,7 +520,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   res = trx.finish(res);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
   } else {
     generateDocumentsCreated(result);
@@ -570,8 +570,8 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   // inside write transaction
   // .............................................................................
 
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx.begin();
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -604,7 +604,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
     res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
                                static_cast<size_t>(i + 1));
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       if (complete) {
         // only perform a full import: abort
         break;
@@ -616,7 +616,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   babies.close();
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     // no error so far. go on and perform the actual insert
     res =
         performImport(trx, result, collectionName, babies, complete, opOptions);
@@ -624,7 +624,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   res = trx.finish(res);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
   } else {
     generateDocumentsCreated(result);
@@ -744,9 +744,9 @@ bool RestImportHandler::createFromKeyValueList() {
   // inside write transaction
   // .............................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -827,7 +827,7 @@ bool RestImportHandler::createFromKeyValueList() {
       }
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       if (complete) {
         // only perform a full import: abort
         break;
@@ -839,7 +839,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   babies.close();
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     // no error so far. go on and perform the actual insert
     res =
         performImport(trx, result, collectionName, babies, complete, opOptions);
@@ -847,7 +847,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   res = trx.finish(res);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
   } else {
     generateDocumentsCreated(result);
@@ -881,7 +881,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
     registerError(result, errorMsg);
   };
 
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
   OperationResult opResult =
       trx.insert(collectionName, babies.slice(), opOptions);
 
@@ -940,7 +940,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
 
     updateReplace.close();
 
-    if (res == TRI_ERROR_NO_ERROR && updateReplace.slice().length() > 0) {
+    if (res.ok() && updateReplace.slice().length() > 0) {
       if (_onDuplicateAction == DUPLICATE_UPDATE) {
         opResult = trx.update(collectionName, updateReplace.slice(), opOptions);
       } else {
@@ -948,7 +948,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
             trx.replace(collectionName, updateReplace.slice(), opOptions);
       }
 
-      if (opResult.failed() && res == TRI_ERROR_NO_ERROR) {
+      if (opResult.failed() && res.ok()) {
         res = opResult.code;
       }
 
@@ -980,11 +980,11 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
     }
   }
   
-  if (opResult.failed() && res == TRI_ERROR_NO_ERROR) {
+  if (opResult.failed() && res.ok()) {
     res = opResult.code;
   }
 
-  return res;
+  return res.errorNumber();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

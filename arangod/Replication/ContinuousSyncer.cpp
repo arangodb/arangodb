@@ -576,24 +576,23 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
                                             cid, AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-    int res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "unable to create replication transaction: " +
-                 std::string(TRI_errno_string(res));
-    }
-    else {
+    // fix error handling here when function returns result //////////////////////
+    if (!res.ok()) {
+      errorMsg = "unable to create replication transaction: " + res.errorMessage();
+      res.reset(res.errorNumber(),errorMsg);
+    } else {
       res = applyCollectionDumpMarker(trx, trx.name(), type, old, doc, errorMsg); 
-
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+      if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
         // ignore unique constraint violations for system collections
-        res = TRI_ERROR_NO_ERROR;
+        res.reset();
       }
     }
+    // fix error handling here when function returns result //////////////////////
 
     res = trx.finish(res);
-
-    return res;
+    return res.errorNumber();
   }
 }
 
@@ -634,17 +633,14 @@ int ContinuousSyncer::startTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
   auto trx = std::make_unique<ReplicationTransaction>(_vocbase);
+  Result res = trx->begin();
 
-  int res = trx->begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (res.ok()) {
+    _ongoingTransactions[tid] = trx.get();
+    trx.release();
   }
 
-  _ongoingTransactions[tid] = trx.get();
-  trx.release();
-
-  return TRI_ERROR_NO_ERROR;
+  return res.errorNumber();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -679,10 +675,10 @@ int ContinuousSyncer::abortTransaction(VPackSlice const& slice) {
   _ongoingTransactions.erase(tid);
 
   if (trx != nullptr) {
-    int res = trx->abort();
+    Result res = trx->abort();
     delete trx;
 
-    return res;
+    return res.errorNumber();
   }
 
   return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
@@ -720,10 +716,10 @@ int ContinuousSyncer::commitTransaction(VPackSlice const& slice) {
   _ongoingTransactions.erase(tid);
 
   if (trx != nullptr) {
-    int res = trx->commit();
+    Result res = trx->commit();
     delete trx;
 
-    return res;
+    return res.errorNumber();
   }
 
   return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
