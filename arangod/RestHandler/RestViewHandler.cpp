@@ -52,6 +52,11 @@ RestStatus RestViewHandler::execute() {
     return RestStatus::DONE;
   }
 
+  if (type == rest::RequestType::PATCH) {
+    modifyView();
+    return RestStatus::DONE;
+  }
+
   if (type == rest::RequestType::DELETE_REQ) {
     deleteView();
     return RestStatus::DONE;
@@ -140,7 +145,7 @@ void RestViewHandler::modifyView() {
 
   if ((suffixes.size() != 2) || (suffixes[1] != "properties")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "expecting PUT /_api/view/<view-name>/properties");
+                  "expecting [PUT, PATCH] /_api/view/<view-name>/properties");
     return;
   }
 
