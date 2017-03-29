@@ -273,13 +273,9 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 
   auto status = rtrx->Delete(key.string());
-  if (!status.ok()) {
-    auto converted =
-        rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-    return converted.errorNumber();
-  }
+  auto converted = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
 
-  return TRI_ERROR_NO_ERROR;
+  return converted.errorNumber();
 }
 
 /// @brief unload the index data from memory

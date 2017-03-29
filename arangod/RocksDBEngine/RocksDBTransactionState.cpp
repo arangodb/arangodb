@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -124,7 +125,7 @@ int RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) 
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
-  int res = TRI_ERROR_NO_ERROR;
+  arangodb::Result result;
 
   if (_nestingLevel == 0) {
     if (_rocksTransaction != nullptr) {
@@ -133,13 +134,11 @@ int RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) 
         _rocksWriteOptions.sync = true;
       }
 
-      auto status = _rocksTransaction->Commit();
-
-      if (!status.ok()) {
+      result = rocksutils::convertStatus(_rocksTransaction->Commit());
+      if (!result.ok()) {
         // TODO: translate status
-        res = TRI_ERROR_INTERNAL;
         abortTransaction(activeTrx);
-        return res;
+        return result.errorNumber();
       }
       _rocksTransaction.reset();
     }
@@ -156,7 +155,7 @@ int RocksDBTransactionState::commitTransaction(transaction::Methods* activeTrx) 
 
   unuseCollections(_nestingLevel);
 
-  return res;
+  return result.errorNumber();
 }
 
 /// @brief abort and rollback a transaction

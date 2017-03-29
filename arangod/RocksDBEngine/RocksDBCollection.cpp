@@ -360,7 +360,7 @@ bool RocksDBCollection::readDocumentConditional(
 
 int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                               arangodb::velocypack::Slice const slice,
-                              arangodb::ManagedDocumentResult& result,
+                              arangodb::ManagedDocumentResult& mdr,
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool /*lock*/) {
   // store the tick that was used for writing the document
@@ -419,11 +419,12 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       transaction::helpers::extractRevFromDocument(newSlice);
 
   res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
+  arangodb::Result result(res);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    lookupRevisionVPack(revisionId, trx, result);
+  if (result.ok()) {
+    result = lookupRevisionVPack(revisionId, trx, mdr);
   }
-  return res;
+  return result.errorNumber();
 }
 
 int RocksDBCollection::update(arangodb::transaction::Methods* trx,
@@ -441,13 +442,14 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
 int RocksDBCollection::replace(
     transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
-    ManagedDocumentResult& result, OperationOptions& options,
+    ManagedDocumentResult& mdr, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool /*lock*/, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous, TRI_voc_rid_t const revisionId,
     arangodb::velocypack::Slice const fromSlice,
     arangodb::velocypack::Slice const toSlice) {
   resultMarkerTick = 0;
-
+  
+  arangodb::Result result;
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
@@ -498,10 +500,14 @@ int RocksDBCollection::replace(
     }
   }
 
+
   res = updateDocument(trx, oldRevisionId, oldDoc, revisionId,
                        VPackSlice(builder->slice()), options.waitForSync);
-  lookupRevisionVPack(revisionId, trx, result);
-  return res;
+  result = Result(res);
+  if(result.ok()){
+    result = lookupRevisionVPack(revisionId, trx, mdr);
+  }
+  return result.errorNumber();
 }
 
 int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
@@ -762,17 +768,18 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 /// @brief looks up a document by key, low level worker
 /// the key must be a string slice, no revision check is performed
 int RocksDBCollection::lookupDocument(transaction::Methods* trx, VPackSlice key,
-                                      ManagedDocumentResult& result) {
+                                      ManagedDocumentResult& mdr) {
+  arangodb::Result result;
   if (!key.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
-  RocksDBToken token = primaryIndex()->lookupKey(trx, key, result);
+  RocksDBToken token = primaryIndex()->lookupKey(trx, key, mdr);
   TRI_voc_rid_t revisionId = token.revisionId();
 
   if (revisionId > 0) {
-    lookupRevisionVPack(revisionId, trx, result);
-    return TRI_ERROR_NO_ERROR;
+    result = lookupRevisionVPack(revisionId, trx, mdr);
+    return result.errorNumber();
   }
 
   return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -798,9 +805,9 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
              : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
-void RocksDBCollection::lookupRevisionVPack(
+arangodb::Result RocksDBCollection::lookupRevisionVPack(
     TRI_voc_rid_t revisionId, transaction::Methods* trx,
-    arangodb::ManagedDocumentResult& result) {
+    arangodb::ManagedDocumentResult& mdr) {
   LOG_TOPIC(ERR, Logger::FIXME) << "LOOKING UP DOCUMENT: " << _objectId
                                 << ", REV: " << revisionId;
 
@@ -810,9 +817,10 @@ void RocksDBCollection::lookupRevisionVPack(
   auto* state = toRocksTransactionState(trx);
   rocksdb::Status status = state->rocksTransaction()->Get(state->readOptions(),
                                                           key.string(), &value);
-
-  if (status.ok()) {
+  auto result = convertStatus(status);
+  if (result.ok()) {
     LOG_TOPIC(ERR, Logger::FIXME) << "FOUND";
-    result.setManaged(std::move(value), revisionId);
+    mdr.setManaged(std::move(value), revisionId);
   }
+  return result;
 }

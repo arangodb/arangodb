@@ -205,7 +205,7 @@ class RocksDBCollection final : public PhysicalCollection {
                      arangodb::velocypack::Slice const& newDoc,
                      bool& waitForSync);
 
-  void lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
+  arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
                            arangodb::ManagedDocumentResult&);
 
  private:

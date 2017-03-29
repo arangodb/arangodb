@@ -232,12 +232,8 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
 
   rocksdb::Status status =
       rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
-  if (status.ok()) {
-    return TRI_ERROR_NO_ERROR;
-  } else {
-    Result res = rocksutils::convertStatus(status);
-    return res.errorNumber();
-  }
+  Result res = rocksutils::convertStatus(status);
+  return res.errorNumber();
 }
 
 int RocksDBEdgeIndex::remove(transaction::Methods* trx,
@@ -253,13 +249,8 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
-  if (status.ok()) {
-    return TRI_ERROR_NO_ERROR;
-  } else {
-    Result res =
-        rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-    return res.errorNumber();
-  }
+  Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
+  return res.errorNumber();
 }
 
 void RocksDBEdgeIndex::batchInsert(
