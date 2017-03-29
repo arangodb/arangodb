@@ -28,15 +28,6 @@
 #error use <Basics/Common.h>
 #endif
 
-/// @brief mark a value as unused
-#if defined(__GNUC__) || defined(__GNUG__)
-#define TRI_UNUSED __attribute__((unused))
-#elif defined(__clang__) 
-#define TRI_UNUSED __attribute__((unused))
-#else
-#define TRI_UNUSED /* unused */
-#endif
-
 /// @brief warn if return value is unused
 #if defined(__GNUC__) || defined(__GNUG__)
 #define TRI_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
