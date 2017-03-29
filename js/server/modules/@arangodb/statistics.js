@@ -65,7 +65,9 @@ function createStatisticsCollection (name) {
   }
 
   if (collection !== null) {
-    collection.ensureIndex({ type: 'skiplist', fields: [ 'time' ] });
+    if (db._engine().name != "rocksdb") {
+      collection.ensureIndex({ type: 'skiplist', fields: [ 'time' ] });
+    }
   }
 
   return true;
