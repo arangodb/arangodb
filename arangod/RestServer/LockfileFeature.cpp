@@ -48,27 +48,32 @@ void LockfileFeature::start() {
   int res = TRI_VerifyLockFile(_lockFilename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "database is locked, please check the lock file '" << _lockFilename << "'";
+    std::string otherPID;
+    try {
+      otherPID = FileUtils::slurp(_lockFilename.c_str());
+    }
+    catch (...) {}
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "database is locked by process " <<
+      otherPID << "; please stop it and remove the lock file '" << _lockFilename << "'";
     FATAL_ERROR_EXIT();
   }
   
   if (TRI_ExistsFile(_lockFilename.c_str())) {
-    TRI_UnlinkFile(_lockFilename.c_str());
-  }
+    res = TRI_UnlinkFile(_lockFilename.c_str());
   
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "cannot lock the database directory, please check the lock file '"
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "failed to remove an abandoned lock file in the database directory, please check the file permissions on the lock file '"
         << _lockFilename << "': " << TRI_errno_string(res);
-    FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT();
+    }
   }
-  
   res = TRI_CreateLockFile(_lockFilename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "cannot lock the database directory, please check the lock file '"
-        << _lockFilename << "': " << TRI_errno_string(res);
+      << "failed to lock the database directory using "
+      << _lockFilename << "': " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
   }
 }
