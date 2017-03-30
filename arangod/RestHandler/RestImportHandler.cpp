@@ -366,7 +366,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   Result res = trx.begin();
 
-  if (!res.ok()) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -459,7 +459,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       res = handleSingleDocument(trx, result, babies, builder->slice(),
                                  isEdgeCollection, i);
 
-      if (res.ok()) {
+      if (res.fail()) {
         if (complete) {
           // only perform a full import: abort
           break;
@@ -499,7 +499,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
                                  static_cast<size_t>(i + 1));
 
-      if (!res.ok()) {
+      if (res.fail()) {
         if (complete) {
           // only perform a full import: abort
           break;
@@ -520,7 +520,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   res = trx.finish(res);
 
-  if (!res.ok()) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
   } else {
     generateDocumentsCreated(result);
@@ -571,7 +571,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   // .............................................................................
 
   Result res = trx.begin();
-  if (!res.ok()) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -604,7 +604,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
     res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
                                static_cast<size_t>(i + 1));
 
-    if (!res.ok()) {
+    if (res.fail()) {
       if (complete) {
         // only perform a full import: abort
         break;
@@ -624,7 +624,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   res = trx.finish(res);
 
-  if (!res.ok()) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
   } else {
     generateDocumentsCreated(result);
@@ -746,7 +746,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   Result res = trx.begin();
 
-  if (!res.ok()) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -827,7 +827,7 @@ bool RestImportHandler::createFromKeyValueList() {
       }
     }
 
-    if (!res.ok()) {
+    if (res.fail()) {
       if (complete) {
         // only perform a full import: abort
         break;
@@ -847,7 +847,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   res = trx.finish(res);
 
-  if (!res.ok()) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
   } else {
     generateDocumentsCreated(result);
