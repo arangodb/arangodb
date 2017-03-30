@@ -165,7 +165,7 @@ Result TransactionState::useCollections(int nestingLevel) {
   // process collections in forward order
   for (auto& trxCollection : _collections) {
     res = trxCollection->use(nestingLevel);
-    if (res.ok()) {
+    if (!res.ok()) {
       break;
     }
   }
