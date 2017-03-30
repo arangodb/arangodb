@@ -108,7 +108,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(engine)->db();
     _rocksTransaction.reset(db->BeginTransaction(
         _rocksWriteOptions, rocksdb::TransactionOptions()));
-    // _rocksTransaction->SetSnapshot()
+    _rocksTransaction->SetSnapshot();
+    _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
