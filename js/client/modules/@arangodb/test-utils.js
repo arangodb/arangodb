@@ -268,16 +268,21 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 // //////////////////////////////////////////////////////////////////////////////
 
 function filterTestcaseByOptions (testname, options, whichFilter) {
-  if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
-    whichFilter.filter = 'testcase';
-    return testname.search(options.test) >= 0;
-  }
-
+  // These filters require a proper setup, Even if we filter by testcase:
   if (options.replication) {
     whichFilter.filter = 'replication';
     return testname.indexOf('replication') !== -1;
   } else if (testname.indexOf('replication') !== -1) {
     whichFilter.filter = 'replication';
+    return false;
+  }
+
+  if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === 'rocksdb') {
+    whichFilter.filter = 'skip when running as rocksdb';
+    return false;
+  }
+  if ((testname.indexOf('-rocksdb') !== -1) && options.storageEngine === 'mmfiles') {
+    whichFilter.filter = 'skip when running as mmfiles';
     return false;
   }
 
@@ -290,6 +295,13 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = 'cluster';
     return false;
   }
+
+  // if we filter, we don't care about the other filters below:
+  if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
+    whichFilter.filter = 'testcase';
+    return testname.search(options.test) >= 0;
+  }
+
 
   if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
     whichFilter.filter = 'timecritical';
@@ -336,14 +348,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === 'rocksdb') {
-    whichFilter.filter = 'skip when running as rocksdb';
-    return false;
-  }
-  if ((testname.indexOf('-rocksdb') !== -1) && options.storageEngine === 'mmfiles') {
-    whichFilter.filter = 'skip when running as mmfiles';
-    return false;
-  }
   return true;
 }
 
