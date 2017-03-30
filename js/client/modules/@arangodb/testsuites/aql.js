@@ -113,7 +113,7 @@ function shellServerAql (options) {
     testCases = tu.scanTestPath('js/server/tests/aql');
     if (options.skipRanges) {
       testCases = _.filter(testCases,
-                           function (p) { return p.indexOf('ranges-combined') !== -1; });
+                           function (p) { return p.indexOf('ranges-combined') === -1; });
       name = 'shell_server_aql_skipranges';
     }
 
