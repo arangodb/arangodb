@@ -236,10 +236,32 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
 }
 
 void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
-                                      arangodb::velocypack::Builder& result,
+                                      arangodb::velocypack::Builder& builder,
                                       bool includeIndexes,
                                       TRI_voc_tick_t maxTick) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  builder.openObject();
+  
+  // read collection info from database
+  auto key = RocksDBKey::Collection(vocbase->id(), cid);
+  auto value = RocksDBValue::Empty(RocksDBEntryType::Collection);
+  rocksdb::ReadOptions options;
+  rocksdb::Status res = _db->Get(options, key.string(), value.string());
+  auto result = rocksutils::convertStatus(res);
+  
+  if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(result.errorNumber());
+  }
+
+  builder.add("parameters", VPackSlice(value.string()->data()));
+
+  if (includeIndexes) {
+    // dump index information
+    builder.add("indexes", VPackValue(VPackValueType::Array));
+    // TODO
+    builder.close();
+  }
+
+  builder.close();
 }
 
 int RocksDBEngine::getCollectionsAndIndexes(
@@ -443,9 +465,12 @@ arangodb::Result RocksDBEngine::persistCollection(
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t* vocbase,
-                                               arangodb::LogicalCollection*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return arangodb::Result{};
+                                               arangodb::LogicalCollection* collection) {
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
+  auto key = RocksDBKey::Collection(vocbase->id(), collection->cid());
+
+  rocksdb::Status res = _db->Delete(options, key.string());
+  return rocksutils::convertStatus(res);
 }
 
 void RocksDBEngine::destroyCollection(TRI_vocbase_t* vocbase,
@@ -470,9 +495,9 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
                                 TRI_voc_cid_t collectionId,
                                 TRI_idx_iid_t indexId,
                                 arangodb::velocypack::Slice const& data) {
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
   auto key = RocksDBKey::Index(vocbase->id(), collectionId, indexId);
   auto value = RocksDBValue::Index(data);
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   rocksdb::Status res = _db->Put(options, key.string(), *value.string());
   auto result = rocksutils::convertStatus(res);

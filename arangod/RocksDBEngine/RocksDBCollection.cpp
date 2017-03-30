@@ -636,8 +636,8 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
 }
 
 void RocksDBCollection::deferDropCollection(
-    std::function<bool(LogicalCollection*)> callback) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+    std::function<bool(LogicalCollection*)> /*callback*/) {
+  // nothing to do here
 }
 
 /// @brief return engine-specific figures
