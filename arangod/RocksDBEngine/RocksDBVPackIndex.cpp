@@ -47,6 +47,11 @@
 
 using namespace arangodb;
 
+/// @brief the _key attribute, which, when used in an index, will implictly make
+/// it unique
+static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
+    arangodb::basics::AttributeName("_key", false)};
+
 static size_t sortWeight(arangodb::aql::AstNode const* node) {
   switch (node->type) {
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
@@ -161,7 +166,24 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
 RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
                                      arangodb::LogicalCollection* collection,
                                      arangodb::velocypack::Slice const& info)
-    : RocksDBPathBasedIndex(iid, collection, info, 0, true) {}
+    : RocksDBIndex(iid, collection, info),
+      _useExpansion(false),
+      _allowPartialIndex(true) {
+  {
+    TRI_ASSERT(!_fields.empty());
+
+    TRI_ASSERT(iid != 0);
+
+    fillPaths(_paths, _expanding);
+
+    for (auto const& it : _fields) {
+      if (TRI_AttributeNamesHaveExpansion(it)) {
+        _useExpansion = true;
+        break;
+      }
+    }
+  }
+}
 
 /// @brief destroy the index
 RocksDBVPackIndex::~RocksDBVPackIndex() {}
@@ -182,6 +204,273 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
 void RocksDBVPackIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("memory", VPackValue(memory()));
+}
+
+/// @brief whether or not the index is implicitly unique
+/// this can be the case if the index is not declared as unique, but contains
+/// a
+/// unique attribute such as _key
+bool RocksDBVPackIndex::implicitlyUnique() const {
+  if (_unique) {
+    // a unique index is always unique
+    return true;
+  }
+  if (_useExpansion) {
+    // when an expansion such as a[*] is used, the index may not be unique,
+    // even
+    // if it contains attributes that are guaranteed to be unique
+    return false;
+  }
+
+  for (auto const& it : _fields) {
+    // if _key is contained in the index fields definition, then the index is
+    // implicitly unique
+    if (it == KeyAttribute) {
+      return true;
+    }
+  }
+
+  // _key not contained
+  return false;
+}
+
+/// @brief helper function to insert a document into any index type
+/// Should result in an elements vector filled with the new index entries
+/// uses the _unique field to determine the kind of key structure
+int RocksDBVPackIndex::fillElement(
+    transaction::Methods* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc,
+    std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements) {
+  if (doc.isNone()) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "encountered invalid marker with slice of type None";
+    return TRI_ERROR_INTERNAL;
+  }
+
+  TRI_IF_FAILURE("FillElementIllegalSlice") { return TRI_ERROR_INTERNAL; }
+
+  if (!_useExpansion) {
+    // fast path for inserts... no array elements used
+
+    transaction::BuilderLeaser indexVals(trx);
+    indexVals->openArray();
+
+    size_t const n = _paths.size();
+    for (size_t i = 0; i < n; ++i) {
+      TRI_ASSERT(!_paths[i].empty());
+
+      VPackSlice slice = doc.get(_paths[i]);
+      if (slice.isNone() || slice.isNull()) {
+        // attribute not found
+        if (_sparse) {
+          // if sparse we do not have to index, this is indicated by result
+          // being shorter than n
+          return TRI_ERROR_NO_ERROR;
+        }
+        // null, note that this will be copied later!
+        indexVals->add(VPackSlice::nullSlice());
+      } else {
+        indexVals->add(slice);
+      }
+    }
+    indexVals->close();
+
+    StringRef key(doc.get(StaticStrings::KeyString));
+    if (_unique) {
+      // Unique VPack index values are stored as follows:
+      // - Key: 7 + 8-byte object ID of index + VPack array with index
+      // value(s)
+      // + separator (NUL) byte
+      // - Value: primary key
+      elements.emplace_back(
+          RocksDBKey::UniqueIndexValue(_objectId, indexVals->slice()),
+          RocksDBValue::UniqueIndexValue(key));
+    } else {
+      // Non-unique VPack index values are stored as follows:
+      // - Key: 6 + 8-byte object ID of index + VPack array with index
+      // value(s)
+      // + separator (NUL) byte + primary key
+      // - Value: empty
+      elements.emplace_back(
+          RocksDBKey::IndexValue(_objectId, key, indexVals->slice()),
+          RocksDBValue::IndexValue());
+    }
+  } else {
+    // other path for handling array elements, too
+    std::vector<VPackSlice> sliceStack;
+
+    transaction::BuilderLeaser indexVals(trx);
+
+    buildIndexValues(doc, 0, elements, sliceStack);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+void RocksDBVPackIndex::addIndexValue(
+    VPackSlice const& document,
+    std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
+    std::vector<VPackSlice>& sliceStack) {
+  // TODO maybe use leaded Builder from transaction.
+  VPackBuilder b;
+  b.openArray();
+  for (VPackSlice const& s : sliceStack) {
+    b.add(s);
+  }
+  b.close();
+
+  StringRef key(document.get(StaticStrings::KeyString));
+  if (_unique) {
+    // Unique VPack index values are stored as follows:
+    // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
+    // - Value: primary key
+    elements.emplace_back(RocksDBKey::UniqueIndexValue(_objectId, b.slice()),
+                          RocksDBValue::UniqueIndexValue(key));
+  } else {
+    // Non-unique VPack index values are stored as follows:
+    // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
+    // + primary key
+    // - Value: empty
+    elements.emplace_back(
+        RocksDBKey::IndexValue(_objectId, StringRef(key), b.slice()),
+        RocksDBValue::IndexValue());
+  }
+}
+
+/// @brief helper function to create a set of index combinations to insert
+void RocksDBVPackIndex::buildIndexValues(
+    VPackSlice const document, size_t level,
+    std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
+    std::vector<VPackSlice>& sliceStack) {
+  // Invariant: level == sliceStack.size()
+
+  // Stop the recursion:
+  if (level == _paths.size()) {
+    addIndexValue(document, elements, sliceStack);
+    return;
+  }
+
+  if (_expanding[level] == -1) {  // the trivial, non-expanding case
+    VPackSlice slice = document.get(_paths[level]);
+    if (slice.isNone() || slice.isNull()) {
+      if (_sparse) {
+        return;
+      }
+      sliceStack.emplace_back(arangodb::basics::VelocyPackHelper::NullValue());
+    } else {
+      sliceStack.emplace_back(slice);
+    }
+    buildIndexValues(document, level + 1, elements, sliceStack);
+    sliceStack.pop_back();
+    return;
+  }
+
+  // Finally, the complex case, where we have to expand one entry.
+  // Note again that at most one step in the attribute path can be
+  // an array step. Furthermore, if _allowPartialIndex is true and
+  // anything goes wrong with this attribute path, we have to bottom out
+  // with None values to be able to use the index for a prefix match.
+
+  // Trivial case to bottom out with Illegal types.
+  VPackSlice illegalSlice = arangodb::basics::VelocyPackHelper::IllegalValue();
+
+  auto finishWithNones = [&]() -> void {
+    if (!_allowPartialIndex || level == 0) {
+      return;
+    }
+    for (size_t i = level; i < _paths.size(); i++) {
+      sliceStack.emplace_back(illegalSlice);
+    }
+    addIndexValue(document.get(StaticStrings::KeyString), elements, sliceStack);
+    for (size_t i = level; i < _paths.size(); i++) {
+      sliceStack.pop_back();
+    }
+  };
+  size_t const n = _paths[level].size();
+  // We have 0 <= _expanding[level] < n.
+  VPackSlice current(document);
+  for (size_t i = 0; i <= static_cast<size_t>(_expanding[level]); i++) {
+    if (!current.isObject()) {
+      finishWithNones();
+      return;
+    }
+    current = current.get(_paths[level][i]);
+    if (current.isNone()) {
+      finishWithNones();
+      return;
+    }
+  }
+  // Now the expansion:
+  if (!current.isArray() || current.length() == 0) {
+    finishWithNones();
+    return;
+  }
+
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      seen(2, arangodb::basics::VelocyPackHelper::VPackHash(),
+           arangodb::basics::VelocyPackHelper::VPackEqual());
+
+  auto moveOn = [&](VPackSlice something) -> void {
+    auto it = seen.find(something);
+    if (it == seen.end()) {
+      seen.insert(something);
+      sliceStack.emplace_back(something);
+      buildIndexValues(document, level + 1, elements, sliceStack);
+      sliceStack.pop_back();
+    }
+  };
+  for (auto const& member : VPackArrayIterator(current)) {
+    VPackSlice current2(member);
+    bool doneNull = false;
+    for (size_t i = _expanding[level] + 1; i < n; i++) {
+      if (!current2.isObject()) {
+        if (!_sparse) {
+          moveOn(arangodb::basics::VelocyPackHelper::NullValue());
+        }
+        doneNull = true;
+        break;
+      }
+      current2 = current2.get(_paths[level][i]);
+      if (current2.isNone()) {
+        if (!_sparse) {
+          moveOn(arangodb::basics::VelocyPackHelper::NullValue());
+        }
+        doneNull = true;
+        break;
+      }
+    }
+    if (!doneNull) {
+      moveOn(current2);
+    }
+    // Finally, if, because of sparsity, we have not inserted anything by now,
+    // we need to play the above trick with None because of the above
+    // mentioned
+    // reasons:
+    if (seen.empty()) {
+      finishWithNones();
+    }
+  }
+}
+
+/// @brief helper function to transform AttributeNames into strings.
+void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
+                                  std::vector<int>& expanding) {
+  paths.clear();
+  expanding.clear();
+  for (std::vector<arangodb::basics::AttributeName> const& list : _fields) {
+    paths.emplace_back();
+    std::vector<std::string>& interior(paths.back());
+    int expands = -1;
+    int count = 0;
+    for (auto const& att : list) {
+      interior.emplace_back(att.name);
+      if (att.shouldExpand) {
+        expands = count;
+      }
+      ++count;
+    }
+    expanding.emplace_back(expands);
+  }
 }
 
 /// @brief inserts a document into the index
@@ -208,8 +497,8 @@ int RocksDBVPackIndex::unload() {
 /// @brief called when the index is dropped
 int RocksDBVPackIndex::drop() {
   if (_unique) {
-    return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                        RocksDBKeyBounds::UniqueIndex(_objectId));
+    return rocksutils::removeLargeRange(
+        rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId));
   } else {
     return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
                                         RocksDBKeyBounds::Index(_objectId));
@@ -546,7 +835,8 @@ bool RocksDBVPackIndex::supportsFilterCondition(
 
   if (attributesCovered > 0 &&
       (!_sparse || attributesCovered == _fields.size())) {
-    // if the condition contains at least one index attribute and is not sparse,
+    // if the condition contains at least one index attribute and is not
+    // sparse,
     // or the index is sparse and all attributes are covered by the condition,
     // then it can be used (note: additional checks for condition parts in
     // sparse indexes are contained in Index::canUseConditionPart)

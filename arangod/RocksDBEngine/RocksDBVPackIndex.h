@@ -28,8 +28,10 @@
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBPathBasedIndex.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -44,8 +46,9 @@ namespace arangodb {
 namespace aql {
 class SortCondition;
 struct Variable;
+enum AstNodeType : uint32_t;
 }
-
+class FixedSizeAllocator;
 class LogicalCollection;
 class RocksDBComparator;
 class RocksDBPrimaryIndex;
@@ -93,7 +96,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBKeyBounds _bounds;
 };
 
-class RocksDBVPackIndex : public RocksDBPathBasedIndex {
+class RocksDBVPackIndex : public RocksDBIndex {
   friend class RocksDBVPackIndexIterator;
 
  public:
@@ -105,7 +108,6 @@ class RocksDBVPackIndex : public RocksDBPathBasedIndex {
   virtual ~RocksDBVPackIndex();
 
  public:
-  
   bool hasSelectivityEstimate() const override { return _unique && true; }
 
   double selectivityEstimate(
@@ -118,43 +120,20 @@ class RocksDBVPackIndex : public RocksDBPathBasedIndex {
   void toVelocyPack(VPackBuilder&, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
+  bool allowExpansion() const override { return true; }
+
+  bool canBeDropped() const override { return true; }
+
+  /// @brief return the attribute paths
+  std::vector<std::vector<std::string>> const& paths() const { return _paths; }
+
+  /// @brief return the attribute paths, a -1 entry means none is expanding,
+  /// otherwise the non-negative number is the index of the expanding one.
+  std::vector<int> const& expanding() const { return _expanding; }
+
+  bool implicitlyUnique() const override;
+
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
-
-  static constexpr size_t keyPrefixSize() {
-    return sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) +
-           sizeof(TRI_idx_iid_t);
-  }
-
-  static std::string buildPrefix(TRI_voc_tick_t databaseId) {
-    std::string value;
-    value.append(reinterpret_cast<char const*>(&databaseId),
-                 sizeof(TRI_voc_tick_t));
-    return value;
-  }
-
-  static std::string buildPrefix(TRI_voc_tick_t databaseId,
-                                 TRI_voc_cid_t collectionId) {
-    std::string value;
-    value.append(reinterpret_cast<char const*>(&databaseId),
-                 sizeof(TRI_voc_tick_t));
-    value.append(reinterpret_cast<char const*>(&collectionId),
-                 sizeof(TRI_voc_cid_t));
-    return value;
-  }
-
-  static std::string buildPrefix(TRI_voc_tick_t databaseId,
-                                 TRI_voc_cid_t collectionId,
-                                 TRI_idx_iid_t indexId) {
-    std::string value;
-    value.reserve(keyPrefixSize());
-    value.append(reinterpret_cast<char const*>(&databaseId),
-                 sizeof(TRI_voc_tick_t));
-    value.append(reinterpret_cast<char const*>(&collectionId),
-                 sizeof(TRI_voc_cid_t));
-    value.append(reinterpret_cast<char const*>(&indexId),
-                 sizeof(TRI_idx_iid_t));
-    return value;
-  }
 
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
@@ -207,6 +186,49 @@ class RocksDBVPackIndex : public RocksDBPathBasedIndex {
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
       size_t& values, std::unordered_set<std::string>& nonNullAttributes,
       bool) const;
+
+ protected:
+  /// @brief helper function to insert a document into any index type
+  int fillElement(transaction::Methods* trx, TRI_voc_rid_t revisionId,
+                  VPackSlice const& doc,
+                  std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements);
+
+  /// @brief return the number of paths
+  inline size_t numPaths() const { return _paths.size(); }
+
+ private:
+  /// @brief helper function to transform AttributeNames into string lists
+  void fillPaths(std::vector<std::vector<std::string>>& paths,
+                 std::vector<int>& expanding);
+
+  /// @brief helper function to create a set of index combinations to insert
+  std::vector<std::pair<VPackSlice, uint32_t>> buildIndexValue(
+      VPackSlice const documentSlice);
+
+  void addIndexValue(VPackSlice const& document,
+                     std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
+                     std::vector<VPackSlice>& sliceStack);
+
+  /// @brief helper function to create a set of index combinations to insert
+  void buildIndexValues(
+      VPackSlice const document, size_t level,
+      std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
+      std::vector<VPackSlice>& sliceStack);
+
+ private:
+  std::unique_ptr<FixedSizeAllocator> _allocator;
+
+  /// @brief the attribute paths
+  std::vector<std::vector<std::string>> _paths;
+
+  /// @brief ... and which of them expands
+  std::vector<int> _expanding;
+
+  /// @brief whether or not at least one attribute is expanded
+  bool _useExpansion;
+
+  /// @brief whether or not partial indexing is allowed
+  bool _allowPartialIndex;
 };
 }
 
