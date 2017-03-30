@@ -47,7 +47,8 @@ class ViewImplementation {
 
   /// @brief called when a view's properties are updated
   virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) = 0;
+      arangodb::velocypack::Slice const& slice, bool partialUpdate,
+      bool doSync) = 0;
 
   /// @brief callend when a view's properties are materialized into
   /// the VelocyPack Builder passed into the method. the implementation
@@ -68,7 +69,7 @@ class ViewImplementation {
 };
 
 /// @brief typedef for a ViewImplementation creator function
-/// this typedef is used when registering the creator function for 
+/// this typedef is used when registering the creator function for
 /// any view type. the creator function is called when a view is first
 /// created or re-opened after a server restart.
 /// the VelocyPack Slice will contain all information about the
@@ -76,8 +77,7 @@ class ViewImplementation {
 /// flag will be true if the view is first created, and false if a
 /// view is re-opened on a server restart.
 typedef std::function<std::unique_ptr<ViewImplementation>(
-    LogicalView*, arangodb::velocypack::Slice const&,
-    bool isNew)>
+    LogicalView*, arangodb::velocypack::Slice const&, bool isNew)>
     ViewCreator;
 
 }  // namespace arangodb
