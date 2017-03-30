@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -118,6 +119,19 @@ class ManagedDocumentResult {
 
     _lastRevisionId = 0;
     _vpack = nullptr;
+  }
+
+  bool canUseInExternal() const {
+    return (!_managed && !_useString);
+  }
+  
+  void addToBuilder(velocypack::Builder& builder, bool allowExternals) const {
+    TRI_ASSERT(!empty());
+    if (allowExternals && canUseInExternal()) {
+      builder.addExternal(_vpack);
+    } else {
+      builder.add(velocypack::Slice(_vpack));
+    }
   }
 
   bool empty() const { return _vpack == nullptr; }

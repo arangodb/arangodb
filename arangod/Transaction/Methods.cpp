@@ -1000,7 +1000,7 @@ int transaction::Methods::documentFastPath(std::string const& collectionName,
 
   uint8_t const* vpack = mmdr->vpack();
   TRI_ASSERT(vpack != nullptr);
-  result.addExternal(vpack);
+  mmdr->addToBuilder(result, true);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1226,7 +1226,7 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
     }
   
     if (!options.silent) {
-      resultBuilder.addExternal(vpack);
+      result.addToBuilder(resultBuilder, true);
     } else if (isMultiple) {
       resultBuilder.add(VPackSlice::nullSlice());
     }
