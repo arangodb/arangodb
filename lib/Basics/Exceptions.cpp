@@ -42,6 +42,25 @@ Exception::Exception(int code, char const* file, int line)
   appendLocation();
 }
 
+Exception::Exception(Result const& result, char const* file, int line)
+    : _errorMessage(result.errorMessage()),
+      _file(file),
+      _line(line),
+      _code(result.errorNumber()) {
+
+  appendLocation();
+}
+
+Exception::Exception(Result&& result, char const* file, int line)
+    : _errorMessage(std::move(result).errorMessage()), //cast to rvalueref so the error stirng gets moved out
+      _file(file),
+      _line(line),
+      _code(result.errorNumber()) {
+
+  appendLocation();
+}
+
+
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
 Exception::Exception(int code, std::string const& errorMessage,

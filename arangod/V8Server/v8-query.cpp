@@ -218,9 +218,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SingleCollectionTransaction trx(transactionContext, collection->cid(),
                                   AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -264,7 +264,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   resultBuilder.close();
   
   res = trx.finish(countResult.code);
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -311,9 +311,9 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SingleCollectionTransaction trx(transactionContext, col->cid(),
                                   AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   
@@ -325,7 +325,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(cursor.code);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -375,9 +375,9 @@ static void JS_ChecksumCollection(
   SingleCollectionTransaction trx(transaction::V8Context::Create(col->vocbase(), true),
                                           col->cid(), AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 

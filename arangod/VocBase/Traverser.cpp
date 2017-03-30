@@ -68,9 +68,9 @@ void arangodb::traverser::ShortestPath::vertexToVelocyPack(transaction::Methods*
   searchBuilder->add(VPackValue(collection.substr(p + 1)));
   collection = collection.substr(0, p);
 
-  int res =
+  Result res =
       trx->documentFastPath(collection, mmdr, searchBuilder->slice(), builder, true);
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     builder.clear(); // Just in case...
     builder.add(basics::VelocyPackHelper::NullValue());
   }

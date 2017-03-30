@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_AQL_TRANSACTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Aql/Collection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
@@ -50,7 +51,7 @@ class AqlTransaction final : public transaction::Methods {
     }
 
     for (auto it : *collections) {
-      if (processCollection(it.second) != TRI_ERROR_NO_ERROR) {
+      if (!processCollection(it.second).ok()) {
         break;
       }
     }
@@ -60,26 +61,27 @@ class AqlTransaction final : public transaction::Methods {
   ~AqlTransaction() {}
   
   /// @brief add a list of collections to the transaction
-  int addCollections(
+  Result addCollections(
       std::map<std::string, aql::Collection*> const& collections) {
+    Result res;
     for (auto const& it : collections) {
-      int res = processCollection(it.second);
+      res = processCollection(it.second);
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (!res.ok()) {
         return res;
       }
     }
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   /// @brief add a collection to the transaction
-  int processCollection(aql::Collection*); 
+  Result processCollection(aql::Collection*); 
 
   /// @brief add a coordinator collection to the transaction
-  int processCollectionCoordinator(aql::Collection*);
+  Result processCollectionCoordinator(aql::Collection*);
 
   /// @brief add a regular collection to the transaction
-  int processCollectionNormal(aql::Collection* collection);
+  Result processCollectionNormal(aql::Collection* collection);
 
   /// @brief documentCollection
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);

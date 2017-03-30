@@ -26,6 +26,7 @@
 #define ARANGODB_BASICS_EXCEPTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 
 #include <errno.h>
 
@@ -73,10 +74,12 @@ class Exception : public virtual std::exception {
 
  public:
   Exception(int code, char const* file, int line);
+  Exception(Result const&, char const* file, int line);
+  Exception(Result&&, char const* file, int line);
 
   Exception(int code, std::string const& errorMessage, char const* file,
             int line);
-  
+
   Exception(int code, std::string&& errorMessage, char const* file,
             int line);
 

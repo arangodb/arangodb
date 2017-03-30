@@ -347,9 +347,9 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   UserTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
                           lockTimeout, waitForSync, allowImplicitCollections);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -382,7 +382,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   res = trx.commit();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 

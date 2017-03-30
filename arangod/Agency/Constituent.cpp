@@ -125,17 +125,16 @@ void Constituent::termNoLock(term_t t) {
         std::make_shared<transaction::StandaloneContext>(_vocbase);
       SingleCollectionTransaction trx(transactionContext, "election",
                                       AccessMode::Type::WRITE);
-      
-      int res = trx.begin();
-      
-      if (res != TRI_ERROR_NO_ERROR) {
+      Result res = trx.begin();
+
+      if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
-      
+
       OperationOptions options;
       options.waitForSync = _agent->config().waitForSync();
       options.silent = true;
-      
+
       OperationResult result = trx.insert("election", body.slice(), options);
       trx.finish(result.code);
     }

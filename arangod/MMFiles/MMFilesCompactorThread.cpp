@@ -478,10 +478,10 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   context->_compactor = compactor;
   context->_trx = &trx;
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "error during compaction: " << TRI_errno_string(res);
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "error during compaction: " << res.errorMessage();
     return;
   }
 
@@ -989,9 +989,9 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
   trx.addHint(transaction::Hints::Hint::TRY_LOCK); 
   trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     return 16384; // assume some positive value 
   }
    

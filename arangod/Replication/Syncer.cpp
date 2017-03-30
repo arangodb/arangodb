@@ -557,10 +557,10 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), guard.collection()->cid(), AccessMode::Type::WRITE);
 
-    int res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (!res.ok()) {
+      return res.errorNumber();
     }
 
     auto physical = collection->getPhysical();
@@ -569,7 +569,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
     res = physical->restoreIndex(&trx, indexSlice, idx);
     res = trx.finish(res);
 
-    return res;
+    return res.errorNumber();
   } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
