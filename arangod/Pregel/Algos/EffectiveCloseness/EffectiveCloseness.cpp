@@ -66,7 +66,7 @@ struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
     // because the number of reachable vertices stays the same
     // when the compute method is not invoked
     if (value->shortestPaths.size() < globalSuperstep()) {
-      uint32_t i = value->shortestPaths.size();
+      size_t i = value->shortestPaths.size();
       int32_t numReachable = value->shortestPaths.back();
       for (; i < globalSuperstep(); i++) {
         value->shortestPaths.push_back(numReachable);

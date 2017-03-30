@@ -106,7 +106,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index, bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
-      _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
+      _cmp(index->_cmp),
       _reverse(reverse),
       _total(0),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
@@ -246,8 +246,11 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   auto key =
       RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
-  
-  LOG_TOPIC(ERR, Logger::FIXME) << "PRIMARYINDEX::INSERT. COLLECTION '" << _collection->name() << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId << ", KEY: " << slice.get("_key").copyString();
+
+  LOG_TOPIC(ERR, Logger::FIXME)
+      << "PRIMARYINDEX::INSERT. COLLECTION '" << _collection->name()
+      << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
+      << ", KEY: " << slice.get("_key").copyString();
 
   // aquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
@@ -275,7 +278,8 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 
   auto status = rtrx->Delete(key.string());
-  auto converted = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
+  auto converted =
+      rocksutils::convertStatus(status, rocksutils::StatusHint::index);
 
   return converted.errorNumber();
 }
@@ -284,6 +288,12 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
 int RocksDBPrimaryIndex::unload() {
   // nothing to do
   return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief called when the index is dropped
+int RocksDBPrimaryIndex::drop() {
+  return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
+                                      RocksDBKeyBounds::PrimaryIndex(_objectId));
 }
 
 /// @brief checks whether the index supports the condition

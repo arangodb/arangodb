@@ -24,6 +24,7 @@
 
 #include "ReadWriteLock.h"
 
+#if 0
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,3 +128,5 @@ void ReadWriteLock::unlockRead() {
 void ReadWriteLock::unlockWrite() {
   TRI_WriteUnlockReadWriteLock(&_rwlock);
 }
+
+#endif

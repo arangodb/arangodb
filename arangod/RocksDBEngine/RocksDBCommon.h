@@ -30,9 +30,12 @@
 
 #include <rocksdb/status.h>
 
+namespace rocksdb {class DB;}
+
 namespace arangodb {
 class TransactionState;
 class RocksDBTransactionState;
+class RocksDBKeyBounds;
 namespace transaction { class Methods; }
 namespace rocksutils {
 
@@ -45,6 +48,12 @@ uint64_t uint64FromPersistent(char const* p);
 void uint64ToPersistent(char* p, uint64_t value);
 void uint64ToPersistent(std::string& out, uint64_t value);  
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
+rocksdb::DB* globalRocksDB();
+  
+  
+/// @brief helper method to remove large ranges of data
+/// Should mainly be used to implement the drop() call
+int removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds);
 
 }  // namespace rocksutils
 }  // namespace arangodb

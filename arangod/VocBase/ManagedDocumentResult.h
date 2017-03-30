@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -46,8 +47,9 @@ class ManagedDocumentResult {
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other){
     if (other._useString){
       setManaged(std::move(other._string), other._lastRevisionId);
-    }
-    else if (other._managed){
+      other._managed = false;
+      other.reset();
+    } else if (other._managed){
       reset();
       _vpack = other._vpack;
       _length = other._length;
@@ -96,7 +98,7 @@ class ManagedDocumentResult {
   inline void setManaged(std::string&& str, TRI_voc_rid_t revisionId) {
     reset();
     _string = std::move(str);
-    _vpack = reinterpret_cast<uint8_t*>(const_cast<char *>(_string.data()));
+    _vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(_string.data()));
     _lastRevisionId = revisionId;
     _useString = true;
   }
@@ -117,6 +119,19 @@ class ManagedDocumentResult {
 
     _lastRevisionId = 0;
     _vpack = nullptr;
+  }
+
+  bool canUseInExternal() const {
+    return (!_managed && !_useString);
+  }
+  
+  void addToBuilder(velocypack::Builder& builder, bool allowExternals) const {
+    TRI_ASSERT(!empty());
+    if (allowExternals && canUseInExternal()) {
+      builder.addExternal(_vpack);
+    } else {
+      builder.add(velocypack::Slice(_vpack));
+    }
   }
 
   bool empty() const { return _vpack == nullptr; }

@@ -1,38 +1,10 @@
 #!/bin/bash
-NRAGENTS=$1
-if [ "$NRAGENTS" == "" ] ; then
-    NRAGENTS=1
-fi
-if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
-    echo Number of agents must be odd.
-    exit 1
-fi
+
+. `dirname $0`/cluster-run-common.sh
+
 echo Number of Agents: $NRAGENTS
-NRDBSERVERS=$2
-if [ "$NRDBSERVERS" == "" ] ; then
-    NRDBSERVERS=2
-fi
 echo Number of DBServers: $NRDBSERVERS
-NRCOORDINATORS=$3
-if [ "$NRCOORDINATORS" == "" ] ; then
-    NRCOORDINATORS=1
-fi
 echo Number of Coordinators: $NRCOORDINATORS
-
-if [ ! -z "$4" ] ; then
-    if [ "$4" == "C" ] ; then
-        COORDINATORCONSOLE=1
-        echo Starting one coordinator in terminal with --console
-    elif [ "$4" == "D" ] ; then
-        CLUSTERDEBUGGER=1
-        echo Running cluster in debugger.
-    elif [ "$4" == "R" ] ; then
-        RRDEBUGGER=1
-        echo Running cluster in rr with --console.
-    fi
-fi
-
-SECONDARIES="$5"
 
 shutdown() {
     PORT=$1
@@ -41,7 +13,7 @@ shutdown() {
     echo
 }
 
-if [ -n "$SECONDARIES" ]; then
+if [ "$SECONDARIES" == "1" ]; then
   echo "Shutting down secondaries..."
   PORTTOPSE=`expr 8729 + $NRDBSERVERS - 1` 
   for PORT in `seq 8729 $PORTTOPSE` ; do

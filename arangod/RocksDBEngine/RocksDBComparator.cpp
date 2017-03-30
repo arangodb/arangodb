@@ -45,11 +45,9 @@ int RocksDBComparator::Compare(rocksdb::Slice const& lhs,
 
   RocksDBEntryType type = RocksDBKey::type(lhs);
   switch (type) {
-    case RocksDBEntryType::IndexValue: {
-      return compareIndexValues(lhs, rhs);
-    }
+    case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::UniqueIndexValue: {
-      return compareUniqueIndexValues(lhs, rhs);
+      return compareIndexValues(lhs, rhs);
     }
     default: { return compareLexicographic(lhs, rhs); }
   }
@@ -98,9 +96,11 @@ int RocksDBComparator::compareIndexValues(rocksdb::Slice const& lhs,
   size_t rSize = rhs.size() - rOffset;
   size_t minSize = ((lSize <= rSize) ? lSize : rSize);
 
-  result = memcmp(lBase, rBase, minSize);
-  if (result != 0) {
-    return result;
+  if (minSize > 0) {
+    result = memcmp(lBase, rBase, minSize);
+    if (result != 0) {
+      return result;
+    }
   }
 
   if (lSize == rSize) {
@@ -108,21 +108,6 @@ int RocksDBComparator::compareIndexValues(rocksdb::Slice const& lhs,
   }
 
   return ((lSize < rSize) ? -1 : 1);
-}
-
-int RocksDBComparator::compareUniqueIndexValues(
-    rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
-  size_t offset = sizeof(char);
-  int result =
-      memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
-  if (result != 0) {
-    return result;
-  }
-
-  VPackSlice const lSlice = RocksDBKey::indexedVPack(lhs);
-  VPackSlice const rSlice = RocksDBKey::indexedVPack(rhs);
-
-  return compareIndexedValues(lSlice, rSlice);
 }
 
 int RocksDBComparator::compareIndexedValues(VPackSlice const& lhs,

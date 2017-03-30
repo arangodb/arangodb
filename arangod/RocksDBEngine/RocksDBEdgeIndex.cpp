@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -78,8 +79,6 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 }
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-
   if (limit == 0 || !_iterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -94,24 +93,26 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   while (limit > 0) {
     VPackSlice fromTo = _iterator.value();
+    if (fromTo.isObject()) {
+      fromTo = fromTo.get(StaticStrings::IndexEq);
+    }
     TRI_ASSERT(fromTo.isString());
 
-    RocksDBKey prefix =
-        RocksDBKey::EdgeIndexPrefix(_index->_objectId, fromTo.copyString());
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndexVertex(
+        _index->_objectId, fromTo.copyString());
 
-    std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(state->readOptions()));
+    std::unique_ptr<rocksdb::Iterator> iter(
+        rtrx->GetIterator(state->readOptions()));
 
-    rocksdb::Slice rSlice(prefix.string());
-    iter->Seek(rSlice);
-    while (iter->Valid() && iter->key().starts_with(rSlice)) {
-      TRI_ASSERT(iter->key().size() > rSlice.size());
-      size_t edgeKeySize = iter->key().size() - rSlice.size();
-      const char* edgeKey = iter->key().data() + rSlice.size();
+    rocksdb::Slice prefix = bounds.start();
+    iter->Seek(prefix);
+    while (iter->Valid() && iter->key().starts_with(prefix)) {
+      TRI_ASSERT(iter->key().size() > prefix.size());
+      StringRef edgeKey = RocksDBKey::primaryKey(iter->key());
 
       // aquire the document token through the primary index
       RocksDBToken token;
-      Result res = rocksColl->lookupDocumentToken(
-          _trx, StringRef(edgeKey, edgeKeySize), token);
+      Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
       if (res.ok()) {
         cb(token);
         if (--limit == 0) {
@@ -148,10 +149,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                    {arangodb::basics::AttributeName(StaticStrings::ToString,
                                                     false)}})*/
   TRI_ASSERT(iid != 0);
-#warning fix object ID
-  TRI_voc_tick_t databaseId = collection->vocbase()->id();
-  RocksDBKey entry = RocksDBKey::Index(databaseId, collection->cid(), iid);
-  _objectId = 3413415 + iid;  // entry.key;
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
@@ -232,8 +229,11 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
 
   rocksdb::Status status =
       rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
-  Result res = rocksutils::convertStatus(status);
-  return res.errorNumber();
+  if (status.ok()) {
+    return TRI_ERROR_NO_ERROR;
+  } else {
+    return rocksutils::convertStatus(status).errorNumber();
+  }
 }
 
 int RocksDBEdgeIndex::remove(transaction::Methods* trx,
@@ -249,8 +249,11 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
-  Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-  return res.errorNumber();
+  if (status.ok()) {
+    return TRI_ERROR_NO_ERROR;
+  } else {
+    return rocksutils::convertStatus(status).errorNumber();
+  }
 }
 
 void RocksDBEdgeIndex::batchInsert(
@@ -283,6 +286,12 @@ void RocksDBEdgeIndex::batchInsert(
 int RocksDBEdgeIndex::unload() {
   // nothing to do here
   return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief called when the index is dropped
+int RocksDBEdgeIndex::drop() {
+  return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
+                                      RocksDBKeyBounds::EdgeIndex(_objectId));
 }
 
 /// @brief provides a size hint for the edge index

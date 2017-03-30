@@ -26,6 +26,7 @@
 #define ARANGO_ROCKSDB_ROCKSDB_VALUE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
 
@@ -51,7 +52,7 @@ class RocksDBValue {
   static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue EdgeIndexValue();
   static RocksDBValue IndexValue();
-  static RocksDBValue UniqueIndexValue(std::string const& primaryKey);
+  static RocksDBValue UniqueIndexValue(arangodb::StringRef const& primaryKey);
   static RocksDBValue View(VPackSlice const& data);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -75,9 +76,9 @@ class RocksDBValue {
   ///
   /// May be called only on UniqueIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static std::string primaryKey(RocksDBValue const&);
-  static std::string primaryKey(rocksdb::Slice const&);
-  static std::string primaryKey(std::string const&);
+  static StringRef primaryKey(RocksDBValue const&);
+  static StringRef primaryKey(rocksdb::Slice const&);
+  static StringRef primaryKey(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the VelocyPack data from a value
@@ -99,13 +100,13 @@ class RocksDBValue {
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, uint64_t data);
-  RocksDBValue(RocksDBEntryType type, std::string const& data);
+  RocksDBValue(RocksDBEntryType type, StringRef const& data);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(char const* data, size_t size);
-  static std::string primaryKey(char const* data, size_t size);
+  static StringRef primaryKey(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
 
  private:

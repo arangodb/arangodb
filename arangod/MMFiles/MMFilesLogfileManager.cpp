@@ -452,6 +452,10 @@ void MMFilesLogfileManager::beginShutdown() {
 }
 
 void MMFilesLogfileManager::unprepare() {
+  if (!isEnabled()) {
+    return;
+  }
+
   // deactivate write-throttling (again) on shutdown in case it was set again
   // after beginShutdown
   throttleWhenPending(0); 

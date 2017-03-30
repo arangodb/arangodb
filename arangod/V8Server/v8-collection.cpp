@@ -772,7 +772,6 @@ static void JS_DocumentVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-
 #ifndef USE_ENTERPRISE
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection, case of a coordinator in a cluster

@@ -27,6 +27,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -39,12 +40,15 @@ class RocksDBIndex : public Index {
                    attributes,
                bool unique, bool sparse, uint64_t objectId = 0);
 
+  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
+               arangodb::velocypack::Slice const&);
+
  public:
   uint64_t objectId() const { return _objectId; }
 
   bool isPersistent() const override final { return true; }
-
- protected:
+  
+protected:
   uint64_t _objectId;
   RocksDBComparator* _cmp;
 };

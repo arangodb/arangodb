@@ -61,7 +61,8 @@ static uint64_t TRI_totalSystemMemory() {
 #else
   long pages = sysconf(_SC_PHYS_PAGES);
   long page_size = sysconf(_SC_PAGE_SIZE);
-  return pages * page_size;
+  long mem = pages * page_size;
+  return mem > 0 ? (uint64_t)mem : 0;
 #endif
 }
 

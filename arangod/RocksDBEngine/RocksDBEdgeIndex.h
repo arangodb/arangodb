@@ -109,6 +109,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   int unload() override;
 
+  int drop() override;
+
   int sizeHint(transaction::Methods*, size_t) override;
 
   bool hasBatchInsert() const override { return false; }
@@ -147,7 +149,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                      arangodb::aql::AstNode const* valNode) const;
 
   std::string _directionAttr;
-  uint64_t _objectId;
 };
 }
 

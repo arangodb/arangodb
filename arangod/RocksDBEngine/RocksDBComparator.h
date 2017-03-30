@@ -72,17 +72,11 @@ class RocksDBComparator final : public rocksdb::Comparator {
                            rocksdb::Slice const& rhs) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Compares two IndexValue keys (containing VelocyPack data and more).
+  /// @brief Compares two IndexValue keys or two UniqueIndexValue keys
+  /// (containing VelocyPack data and more).
   //////////////////////////////////////////////////////////////////////////////
   int compareIndexValues(rocksdb::Slice const& lhs,
                          rocksdb::Slice const& rhs) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Compares two UniqueIndexValue keys (containing VelocyPack data and
-  /// more).
-  //////////////////////////////////////////////////////////////////////////////
-  int compareUniqueIndexValues(rocksdb::Slice const& lhs,
-                               rocksdb::Slice const& rhs) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief A helper function for the actual VelocyPack comparison

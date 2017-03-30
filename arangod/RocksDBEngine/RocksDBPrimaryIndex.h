@@ -97,6 +97,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexIterator;
+  friend class RocksDBAllIndexIterator;
 
  public:
   RocksDBPrimaryIndex() = delete;
@@ -143,6 +144,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int unload() override;
+  
+  int drop() override;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,

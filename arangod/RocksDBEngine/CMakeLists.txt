@@ -17,5 +17,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBTypes.cpp
   RocksDBEngine/RocksDBValue.cpp
   RocksDBEngine/RocksDBView.cpp
+  RocksDBEngine/RocksDBVPackIndex.cpp
 )
 set(ROCKSDB_SOURCES ${ROCKSDB_SOURCES} PARENT_SCOPE)

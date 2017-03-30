@@ -76,7 +76,7 @@ int EnumerateCollectionBlock::initialize() {
         if (endTime - now < waitInterval) {
           waitInterval = static_cast<unsigned long>(endTime - now);
         }
-        usleep(waitInterval);
+        usleep((TRI_usleep_t)waitInterval);
       }
       now = TRI_microtime();
       if (now > endTime) {
