@@ -19,6 +19,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Daniel H. Larkin
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBVPackIndex.h"
@@ -477,16 +479,92 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 int RocksDBVPackIndex::insert(transaction::Methods* trx,
                               TRI_voc_rid_t revisionId, VPackSlice const& doc,
                               bool isRollback) {
-  // TODO: implement this
-  return TRI_ERROR_NOT_YET_IMPLEMENTED;
+  std::vector<std::pair<RocksDBKey, RocksDBValue>> elements;
+
+  int res;
+  try {
+    res = fillElement(trx, revisionId, doc, elements);
+  } catch (...) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  auto options = state->readOptions();
+
+  size_t const count = elements.size();
+  for (size_t i = 0; i < count; ++i) {
+    RocksDBKey& key = elements[i].first;
+    RocksDBValue& value = elements[i].second;
+    if (_unique) {
+      RocksDBValue existing =
+          RocksDBValue::Empty(RocksDBEntryType::UniqueIndexValue);
+      auto status = rtrx->Get(options, key.string(), existing.string());
+      if (!status.IsNotFound()) {
+        res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+      }
+    }
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      auto s = rtrx->Put(key.string(), *value.string());
+
+      auto status = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+      if (!status.ok()) {
+        res = status.errorNumber();
+      }
+    }
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      for (size_t j = 0; j < i; ++j) {
+        rtrx->Delete(elements[j].first.string());
+      }
+
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
+        // We ignore unique_constraint violated if we are not unique
+        res = TRI_ERROR_NO_ERROR;
+      }
+      break;
+    }
+  }
+
+  return res;
 }
 
 /// @brief removes a document from the index
 int RocksDBVPackIndex::remove(transaction::Methods* trx,
                               TRI_voc_rid_t revisionId, VPackSlice const& doc,
                               bool isRollback) {
-  // TODO: implement this
-  return TRI_ERROR_NOT_YET_IMPLEMENTED;
+  std::vector<std::pair<RocksDBKey, RocksDBValue>> elements;
+
+  int res;
+  try {
+    res = fillElement(trx, revisionId, doc, elements);
+  } catch (...) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+
+  size_t const count = elements.size();
+  for (size_t i = 0; i < count; ++i) {
+    auto s = rtrx->Delete(elements[i].first.string());
+
+    auto status = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+    if (!status.ok()) {
+      res = status.errorNumber();
+    }
+  }
+
+  return res;
 }
 
 int RocksDBVPackIndex::unload() {
