@@ -49,11 +49,6 @@ class RocksDBIndex : public Index {
   bool isPersistent() const override final { return true; }
   
 protected:
-  
-  /// @brief helper method to remove large ranges of data
-  /// Should mainly be used to implement the drop() call
-  int removeLargeRange(RocksDBKeyBounds bounds);
-
   uint64_t _objectId;
   RocksDBComparator* _cmp;
 };

@@ -41,6 +41,7 @@
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -293,7 +294,8 @@ int RocksDBEdgeIndex::unload() {
 
 /// @brief called when the index is dropped
 int RocksDBEdgeIndex::drop() {
-  return this->removeLargeRange(RocksDBKeyBounds::EdgeIndex(_objectId));
+  return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
+                                      RocksDBKeyBounds::EdgeIndex(_objectId));
 }
 
 /// @brief provides a size hint for the edge index

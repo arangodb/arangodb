@@ -207,11 +207,12 @@ int RocksDBVPackIndex::unload() {
 
 /// @brief called when the index is dropped
 int RocksDBVPackIndex::drop() {
-  // TODO: implement this
   if (_unique) {
-    return this->removeLargeRange(RocksDBKeyBounds::UniqueIndex(_objectId));
+    return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
+                                        RocksDBKeyBounds::UniqueIndex(_objectId));
   } else {
-    return this->removeLargeRange(RocksDBKeyBounds::Index(_objectId));
+    return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
+                                        RocksDBKeyBounds::Index(_objectId));
   }
 }
 
