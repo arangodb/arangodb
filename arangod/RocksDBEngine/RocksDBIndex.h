@@ -30,6 +30,10 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 
 namespace arangodb {
+namespace cache {
+class Cache;
+class Manager;
+}
 class LogicalCollection;
 class RocksDBComparator;
 
@@ -47,10 +51,17 @@ class RocksDBIndex : public Index {
   uint64_t objectId() const { return _objectId; }
 
   bool isPersistent() const override final { return true; }
-  
-protected:
+
+ protected:
+  void createCache();
+
+ protected:
   uint64_t _objectId;
   RocksDBComparator* _cmp;
+
+  cache::Manager* _cacheManager;
+  std::shared_ptr<cache::Cache> _cache;
+  bool _useCache;
 };
 }
 

@@ -26,6 +26,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cache/CachedValue.h"
+#include "Cache/TransactionalCache.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -172,7 +174,10 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(
                            StaticStrings::KeyString, false)}}),
-                   true, false) {}
+                   true, false) {
+  _useCache = true;
+  createCache();
+}
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
 
@@ -207,6 +212,17 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef.toString());
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
+  if (_useCache) {
+    // check cache first for fast path
+    auto f = _cache->find(key.string().data(),
+                          static_cast<uint32_t>(key.string().size()));
+    if (f.found()) {
+      value.string()->append(reinterpret_cast<char const*>(f.value()->value()),
+                             static_cast<size_t>(f.value()->valueSize));
+      return RocksDBToken(RocksDBValue::revisionId(value));
+    }
+  }
+
   // aquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
@@ -215,6 +231,17 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   auto status = rtrx->Get(options, key.string(), value.string());
   if (!status.ok()) {
     return RocksDBToken();
+  }
+
+  if (_useCache) {
+    // write entry back to cache
+    auto entry = cache::CachedValue::construct(
+        key.string().data(), static_cast<uint32_t>(key.string().size()),
+        value.string()->data(), static_cast<uint64_t>(value.string()->size()));
+    bool cached = _cache->insert(entry);
+    if (!cached) {
+      delete entry;
+    }
   }
 
   return RocksDBToken(RocksDBValue::revisionId(value));
@@ -256,6 +283,15 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 
+  if (_useCache) {
+    // blacklist from cache
+    bool blacklisted = false;
+    while (!blacklisted) {
+      blacklisted = _cache->blacklist(
+          key.string().data(), static_cast<uint32_t>(key.string().size()));
+    }
+  }
+
   auto status = rtrx->Put(key.string(), *value.string());
   if (!status.ok()) {
     auto converted =
@@ -272,6 +308,15 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   // TODO: deal with matching revisions?
   auto key =
       RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
+
+  if (_useCache) {
+    // blacklist from cache
+    bool blacklisted = false;
+    while (!blacklisted) {
+      blacklisted = _cache->blacklist(
+          key.string().data(), static_cast<uint32_t>(key.string().size()));
+    }
+  }
 
   // aquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
@@ -292,8 +337,8 @@ int RocksDBPrimaryIndex::unload() {
 
 /// @brief called when the index is dropped
 int RocksDBPrimaryIndex::drop() {
-  return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::PrimaryIndex(_objectId));
+  return rocksutils::removeLargeRange(
+      rocksutils::globalRocksDB(), RocksDBKeyBounds::PrimaryIndex(_objectId));
 }
 
 /// @brief checks whether the index supports the condition

@@ -32,11 +32,11 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
-#include <rocksdb/status.h>
 #include <rocksdb/options.h>
+#include <rocksdb/status.h>
 
 struct TRI_vocbase_t;
- 
+
 namespace rocksdb {
 class Transaction;
 class Slice;
@@ -44,6 +44,9 @@ class Iterator;
 }
 
 namespace arangodb {
+namespace cache {
+struct Transaction;
+}
 class LogicalCollection;
 struct RocksDBDocumentOperation;
 class RocksDBWalMarker;
@@ -51,9 +54,9 @@ namespace transaction {
 class Methods;
 }
 class TransactionCollection;
-  
+
 class RocksDBSavePoint {
-public:
+ public:
   explicit RocksDBSavePoint(rocksdb::Transaction* trx);
   ~RocksDBSavePoint();
 
@@ -85,23 +88,22 @@ class RocksDBTransactionState final : public TransactionState {
   }
 
   /// @brief add a WAL operation for a transaction collection
-  int addOperation(TRI_voc_rid_t, RocksDBDocumentOperation&, RocksDBWalMarker const* marker, bool&);
-  
+  int addOperation(TRI_voc_rid_t, RocksDBDocumentOperation&,
+                   RocksDBWalMarker const* marker, bool&);
+
   rocksdb::Transaction* rocksTransaction() {
     TRI_ASSERT(_rocksTransaction != nullptr);
     return _rocksTransaction.get();
   }
-  
-  rocksdb::ReadOptions const& readOptions(){
-    return _rocksReadOptions;
-  }
-  
+
+  rocksdb::ReadOptions const& readOptions() { return _rocksReadOptions; }
+
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   rocksdb::WriteOptions _rocksWriteOptions;
   rocksdb::ReadOptions _rocksReadOptions;
   bool _hasOperations;
-  
+  cache::Transaction* _cacheTx;
 };
 }
 
