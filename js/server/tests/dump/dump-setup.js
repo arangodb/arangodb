@@ -191,6 +191,13 @@
   }
   catch (err) {
   }
+  
+  c = db._create("UnitTestsDumpPersistent");
+  c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
+
+  for (i = 0; i < 10000; ++i) {
+    c.save({ _key: "test" + i, value: i });
+  }
 
 })();
 

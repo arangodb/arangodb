@@ -186,7 +186,7 @@ ArangoView.prototype.properties = function (properties) {
     arangosh.checkRequestResult(requestResult);
   } else {
     var body = properties;
-    requestResult = this._database._connection.PUT(this._baseurl('properties'),
+    requestResult = this._database._connection.PATCH(this._baseurl('properties'),
       JSON.stringify(body));
 
     arangosh.checkRequestResult(requestResult);

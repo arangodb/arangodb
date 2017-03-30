@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -41,43 +41,45 @@ const tu = require('@arangodb/test-utils');
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationOngoing (options) {
-  let master = pu.startInstance('tcp', options, {}, 'master_ongoing');
-  const mr = tu.makeResults('replication', master);
+  let testCases = tu.scanTestPath('js/server/tests/replication/');
 
-  if (master === false) {
-    return mr(false, 'failed to start master!');
-  }
+  let localOptions = options;
+  localOptions.replication = true;
+  localOptions.test = 'replication-ongoing';
+  let startStopHandlers = {
+    postStart: function (options,
+                         serverOptions,
+                         instanceInfo,
+                         customInstanceInfos,
+                         startStopHandlers) {
+      let message;
+      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let state = (typeof slave === 'object');
 
-  let slave = pu.startInstance('tcp', options, {}, 'slave_ongoing');
+      if (state) {
+        message = 'failed to start slave instance!';
+      }
 
-  if (slave === false) {
-    pu.shutdownInstance(master, options);
-    return mr(false, 'failed to start slave!');
-  }
+      return {
+        instanceInfo: slave,
+        message: message,
+        state: state,
+        env: {
+          'flatCommands': slave.endpoint
+        }
+      };
+    },
 
-  let results = {};
-  let reply = tu.runInArangosh(
-    options,
-    master,
-    './js/server/tests/replication/replication-ongoing.js',
-    {'flatCommands': slave.endpoint}
-  );
+    preShutdown: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+      pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
+    }
+  };
 
-  if (reply.hasOwnProperty('status')) {
-    results['replication_ongoing'] = reply;
-  } else {
-    results['replication_ongoing'] = {
-      status: false,
-      message: 'replication-ongoing.js failed: ' + JSON.stringify(reply)
-    };
-  }
-
-  print('Shutting down...');
-  pu.shutdownInstance(slave, options);
-  pu.shutdownInstance(master, options);
-  print('done.');
-
-  return results;
+  return tu.performTests(localOptions, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -85,59 +87,70 @@ function replicationOngoing (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationStatic (options) {
-  let master = pu.startInstance('tcp', options, {
-    'server.authentication': 'true'
-  }, 'master_static');
+  let testCases = tu.scanTestPath('js/server/tests/replication/');
 
-  const mr = tu.makeResults('replication', master);
+  let localOptions = options;
+  localOptions.replication = true;
+  localOptions.test = 'replication-static';
+  let startStopHandlers = {
+    postStart: function (options,
+                         serverOptions,
+                         instanceInfo,
+                         customInstanceInfos,
+                         startStopHandlers) {
+      let message;
+      let res = true;
+      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let state = (typeof slave === 'object');
 
-  if (master === false) {
-    return mr(false, 'failed to start master!');
-  }
+      if (state) {
+        res = pu.run.arangoshCmd(options, instanceInfo, {}, [
+          '--javascript.execute-string',
+          `
+          var users = require("@arangodb/users");
+          users.save("replicator-user", "replicator-password", true);
+          users.grantDatabase("replicator-user", "_system");
+          users.reload();
+          `
+        ]);
 
-  let slave = pu.startInstance('tcp', options, {}, 'slave_static');
+        state = res.status;
+        if (!state) {
+          message = 'failed to setup slave connection' + res.message;
+          pu.shutdownInstance(slave, options);
+        }
+      } else {
+        message = 'failed to start slave instance!';
+      }
 
-  if (slave === false) {
-    pu.shutdownInstance(master, options);
-    return mr(false, 'failed to start slave!');
-  }
-
-  let res = pu.run.arangoshCmd(options, master, {}, [
-    '--javascript.execute-string',
-    'var users = require("@arangodb/users"); ' +
-    'users.save("replicator-user", "replicator-password", true); ' +
-    'users.grantDatabase("replicator-user", "_system"); ' +
-    'users.reload();'
-  ]);
-
-  let results = {};
-
-  if (res.status) {
-    let reply = tu.runInArangosh(
-      options,
-      master,
-      './js/server/tests/replication/replication-static.js',
-      {'flatCommands': slave.endpoint}
-    );
-
-    if (reply.hasOwnProperty('status')) {
-          results['replication_static'] = reply;
-    } else {
-      results['replication_static'] = {
-        status: false,
-        message: 'replication-static.js failed: ' + JSON.stringify(reply)
+      return {
+        instanceInfo: slave,
+        message: message,
+        state: state,
+        env: {
+          'flatCommands': slave.endpoint
+        }
       };
+    },
+
+    preShutdown: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+      pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
     }
-  } else {
-    results = mr(false, 'cannot create users');
-  }
+  };
 
-  print('Shutting down...');
-  pu.shutdownInstance(slave, options);
-  pu.shutdownInstance(master, options);
-  print('done.');
-
-  return results;
+  return tu.performTests(
+    localOptions,
+    testCases,
+    'master_static',
+    tu.runInArangosh,
+    {
+      'server.authentication': 'true'
+    },
+    startStopHandlers);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -145,55 +158,61 @@ function replicationStatic (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationSync (options) {
-  let master = pu.startInstance('tcp', options, {}, 'master_sync');
+  let testCases = tu.scanTestPath('js/server/tests/replication/');
 
-  const mr = tu.makeResults('replication', master);
-  if (master === false) {
-    return mr(false, 'failed to start master!');
-  }
+  let localOptions = options;
+  localOptions.replication = true;
+  localOptions.test = 'replication-sync';
+  let startStopHandlers = {
+    postStart: function (options,
+                         serverOptions,
+                         instanceInfo,
+                         customInstanceInfos,
+                         startStopHandlers) {
+      let message;
+      let res = true;
+      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let state = (typeof slave === 'object');
 
-  let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      if (state) {
+        res = pu.run.arangoshCmd(options, instanceInfo, {}, [
+          '--javascript.execute-string',
+          `
+          var users = require("@arangodb/users");
+          users.save("replicator-user", "replicator-password", true);
+          users.reload();
+          `
+        ]);
 
-  if (slave === false) {
-    pu.shutdownInstance(master, options);
-    return mr(false, 'failed to start slave!');
-  }
+        state = res.status;
+        if (!state) {
+          message = 'failed to setup slave connection' + res.message;
+          pu.shutdownInstance(slave, options);
+        }
+      } else {
+        message = 'failed to start slave instance!';
+      }
 
-  let res = pu.run.arangoshCmd(options, master, {}, [
-    '--javascript.execute-string',
-    'var users = require("@arangodb/users"); ' +
-    'users.save("replicator-user", "replicator-password", true); ' +
-    'users.reload();'
-  ]);
-
-  let results = {};
-
-  if (res.status) {
-    let reply = tu.runInArangosh(
-      options,
-      master,
-      './js/server/tests/replication/replication-sync.js',
-      {'flatCommands': slave.endpoint}
-    );
-
-    if (reply.hasOwnProperty('status')) {
-          results['replication_sync'] = reply;
-    } else {
-      results['replication_sync'] = {
-        status: false,
-        message: 'replication-sync.js failed: ' + JSON.stringify(reply)
+      return {
+        instanceInfo: slave,
+        message: message,
+        state: state,
+        env: {
+          'flatCommands': slave.endpoint
+        }
       };
+    },
+
+    preShutdown: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+      pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
     }
-  } else {
-    results = mr(false, 'cannot create users');
-  }
+  };
 
-  print('Shutting down...');
-  pu.shutdownInstance(slave, options);
-  pu.shutdownInstance(master, options);
-  print('done.');
-
-  return results;
+  return tu.performTests(localOptions, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
 }
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
