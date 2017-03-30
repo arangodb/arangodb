@@ -64,21 +64,7 @@ function makePathGeneric (path) {
 // / @brief runs a list of tests
 // //////////////////////////////////////////////////////////////////////////////
 
-function performTests (options, testList, testname, runFn, serverOptions) {
-  if (serverOptions === undefined) {
-    serverOptions = {};
-  }
-  let instanceInfo = pu.startInstance('tcp', options, serverOptions, testname);
-
-  if (instanceInfo === false) {
-    return {
-      setup: {
-        status: false,
-        message: 'failed to start server!'
-      }
-    };
-  }
-
+function performTests (options, testList, testname, runFn, serverOptions, startStopHandlers) {
   if (testList.length === 0) {
     print('Testsuite is empty!');
 
@@ -88,6 +74,64 @@ function performTests (options, testList, testname, runFn, serverOptions) {
         message: 'no testsuites found!'
       }
     };
+  }
+
+  if (serverOptions === undefined) {
+    serverOptions = {};
+  }
+
+  let env = {};
+  let customInstanceInfos = {};
+
+  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStart')) {
+    customInstanceInfos['preStart'] = startStopHandlers.preStart(options,
+                                                                 serverOptions,
+                                                                 customInstanceInfos,
+                                                                 startStopHandlers);
+    if (customInstanceInfos.preStart.state === false) {
+      return {
+        setup: {
+          status: false,
+          message: 'custom preStart failed!' + customInstanceInfos.preStart.message
+        }
+      };
+    }
+    _.defaults(env, customInstanceInfos.preStart.env);
+  }
+
+  let instanceInfo = pu.startInstance('tcp', options, serverOptions, testname);
+
+  if (instanceInfo === false) {
+    if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('startFailed')) {
+      customInstanceInfos['startFailed'] = startStopHandlers.startFailed(options,
+                                                                         serverOptions,
+                                                                         customInstanceInfos,
+                                                                         startStopHandlers);
+    }
+    return {
+      setup: {
+        status: false,
+        message: 'failed to start server!'
+      }
+    };
+  }
+
+  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStart')) {
+    customInstanceInfos['postStart'] = startStopHandlers.postStart(options,
+                                                                   serverOptions,
+                                                                   instanceInfo,
+                                                                   customInstanceInfos,
+                                                                   startStopHandlers);
+    if (customInstanceInfos.postStart.state === false) {
+      pu.shutdownInstance(instanceInfo, options);
+      return {
+        setup: {
+          status: false,
+          message: 'custom postStart failed: ' + customInstanceInfos.postStart.message
+        }
+      };
+    }
+    _.defaults(env, customInstanceInfos.postStart.env);
   }
 
   let results = {};
@@ -119,7 +163,7 @@ function performTests (options, testList, testname, runFn, serverOptions) {
         }
 
         print('\n' + Date() + ' ' + runFn.info + ': Trying', te, '...');
-        let reply = runFn(options, instanceInfo, te);
+        let reply = runFn(options, instanceInfo, te, env);
 
         if (reply.hasOwnProperty('status')) {
           results[te] = reply;
@@ -143,6 +187,17 @@ function performTests (options, testList, testname, runFn, serverOptions) {
         }
 
         continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
+        if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {
+          customInstanceInfos['alive'] = startStopHandlers.alive(options,
+                                                                 serverOptions,
+                                                                 instanceInfo,
+                                                                 customInstanceInfos,
+                                                                 startStopHandlers);
+          if (customInstanceInfos.alive.state === false) {
+            continueTesting = false;
+            results.setup.message = 'custom preStop failed!';
+          }
+        }
 
         first = false;
 
@@ -173,7 +228,30 @@ function performTests (options, testList, testname, runFn, serverOptions) {
   }
 
   print('Shutting down...');
+  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
+    customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
+                                                               serverOptions,
+                                                               instanceInfo,
+                                                               customInstanceInfos,
+                                                               startStopHandlers);
+    if (customInstanceInfos.preStop.state === false) {
+      results.setup.status = false;
+      results.setup.message = 'custom preStop failed!';
+    }
+  }
   pu.shutdownInstance(instanceInfo, options);
+
+  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {
+    customInstanceInfos['postStop'] = startStopHandlers.postStop(options,
+                                                                 serverOptions,
+                                                                 instanceInfo,
+                                                                 customInstanceInfos,
+                                                                 startStopHandlers);
+    if (customInstanceInfos.postStop.state === false) {
+      results.setup.status = false;
+      results.setup.message = 'custom postStop failed!';
+    }
+  }
   print('done.');
 
   return results;
