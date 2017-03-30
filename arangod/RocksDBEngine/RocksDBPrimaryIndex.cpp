@@ -290,6 +290,11 @@ int RocksDBPrimaryIndex::unload() {
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief called when the index is dropped
+int RocksDBPrimaryIndex::drop() {
+  return this->removeLargeRange(RocksDBKeyBounds::PrimaryIndex(_objectId));
+}
+
 /// @brief checks whether the index supports the condition
 bool RocksDBPrimaryIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
