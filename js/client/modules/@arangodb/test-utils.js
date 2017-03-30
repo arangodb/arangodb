@@ -64,8 +64,11 @@ function makePathGeneric (path) {
 // / @brief runs a list of tests
 // //////////////////////////////////////////////////////////////////////////////
 
-function performTests (options, testList, testname, runFn) {
-  let instanceInfo = pu.startInstance('tcp', options, {}, testname);
+function performTests (options, testList, testname, runFn, serverOptions) {
+  if (serverOptions === undefined) {
+    serverOptions = {};
+  }
+  let instanceInfo = pu.startInstance('tcp', options, serverOptions, testname);
 
   if (instanceInfo === false) {
     return {
