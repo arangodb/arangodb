@@ -93,7 +93,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBKeyBounds _bounds;
 };
 
-class RocksDBVPackIndex final : public RocksDBPathBasedIndex {
+class RocksDBVPackIndex : public RocksDBPathBasedIndex {
   friend class RocksDBVPackIndexIterator;
 
  public:
@@ -102,21 +102,10 @@ class RocksDBVPackIndex final : public RocksDBPathBasedIndex {
   RocksDBVPackIndex(TRI_idx_iid_t, LogicalCollection*,
                     arangodb::velocypack::Slice const&);
 
-  ~RocksDBVPackIndex();
+  virtual ~RocksDBVPackIndex();
 
  public:
-  IndexType type() const override {
-    return Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
-  }
-
-  char const* typeName() const override { return "rocksdb-unique-index"; }
-
-  bool allowExpansion() const override { return true; }
-
-  bool canBeDropped() const override { return true; }
-
-  bool isSorted() const override { return true; }
-
+  
   bool hasSelectivityEstimate() const override { return _unique && true; }
 
   double selectivityEstimate(
