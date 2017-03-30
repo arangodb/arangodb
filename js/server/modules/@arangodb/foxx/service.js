@@ -384,9 +384,6 @@ module.exports =
                 if (!res.headers['access-control-expose-headers']) {
                   res.headers['access-control-expose-headers'] = Object.keys(res.headers).concat('server', 'content-length').sort().join(', ');
                 }
-                if (!res.headers['access-control-allow-credentials']) {
-                  res.headers['access-control-allow-credentials'] = 'true';
-                }
               }
             } else {
               next();
