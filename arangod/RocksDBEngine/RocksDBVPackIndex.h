@@ -20,6 +20,7 @@
 ///
 /// @author Jan Steemann
 /// @author Daniel H. Larkin
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H
