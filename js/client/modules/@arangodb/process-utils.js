@@ -309,7 +309,6 @@ function makeArgsArangod (options, appDir, role) {
   return args;
 }
 
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
@@ -682,7 +681,10 @@ function executeArangod (cmd, args, options) {
 // / @brief commands a server to shut down via webcall
 // //////////////////////////////////////////////////////////////////////////////
 
-function shutdownArangod (arangod, options) {
+function shutdownArangod (arangod, options, forceTerminate) {
+  if (forceTerminate === undefined) {
+    forceTerminate = false;
+  }
   if (options.hasOwnProperty('server')) {
     print('running with external server');
     return;
@@ -691,15 +693,20 @@ function shutdownArangod (arangod, options) {
   if (options.valgrind) {
     waitOnServerForGC(arangod, options, 60);
   }
-  if (arangod.exitStatus === undefined ||
-    arangod.exitStatus.status === 'RUNNING') {
-    const requestOptions = makeAuthorizationHeaders(options);
-    requestOptions.method = 'DELETE';
-
-    print(arangod.url + '/_admin/shutdown');
-    if (options.useKillExternal) {
+  if ((arangod.exitStatus === undefined) ||
+      (arangod.exitStatus.status === 'RUNNING')) {
+    if (forceTerminate) {
+      killExternal(arangod.pid, 11);
+      arangod.exitStatus = {
+        SIGNAL: '11'
+      };
+      analyzeServerCrash(arangod, options, 'instance forcefully KILLED because of fatal  timeout in testrun');
+    } else if (options.useKillExternal) {
       killExternal(arangod.pid);
     } else {
+      const requestOptions = makeAuthorizationHeaders(options);
+      requestOptions.method = 'DELETE';
+      print(arangod.url + '/_admin/shutdown');
       download(arangod.url + '/_admin/shutdown', '', requestOptions);
     }
   } else {
@@ -711,7 +718,11 @@ function shutdownArangod (arangod, options) {
 // / @brief shuts down an instance
 // //////////////////////////////////////////////////////////////////////////////
 
-function shutdownInstance (instanceInfo, options) {
+function shutdownInstance (instanceInfo, options, forceTerminate) {
+  if (forceTerminate === undefined) {
+    forceTerminate = false;
+  }
+
   if (!checkInstanceAlive(instanceInfo, options)) {
     print('Server already dead, doing nothing. This shouldn\'t happen?');
   }
@@ -721,7 +732,7 @@ function shutdownInstance (instanceInfo, options) {
 
   let nonagencies = instanceInfo.arangods
     .filter(arangod => arangod.role !== 'agent');
-  nonagencies.forEach(arangod => shutdownArangod(arangod, options));
+  nonagencies.forEach(arangod => shutdownArangod(arangod, options, forceTerminate));
 
   let agentsKilled = false;
   let nrAgents = n - nonagencies.length;
