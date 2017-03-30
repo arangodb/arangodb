@@ -100,23 +100,21 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
     TRI_ASSERT(fromTo.isString());
 
-    RocksDBKeyBounds prefix = RocksDBKeyBounds::EdgeIndexVertex(
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndexVertex(
         _index->_objectId, fromTo.copyString());
 
     std::unique_ptr<rocksdb::Iterator> iter(
         rtrx->GetIterator(state->readOptions()));
 
-    rocksdb::Slice rSlice(prefix.start());
-    iter->Seek(rSlice);
-    while (iter->Valid() && iter->key().starts_with(rSlice)) {
-      TRI_ASSERT(iter->key().size() > rSlice.size());
-      size_t edgeKeySize = iter->key().size() - rSlice.size();
-      const char* edgeKey = iter->key().data() + rSlice.size();
+    rocksdb::Slice prefix = bounds.start();
+    iter->Seek(prefix);
+    while (iter->Valid() && iter->key().starts_with(prefix)) {
+      TRI_ASSERT(iter->key().size() > prefix.size());
+      StringRef edgeKey = RocksDBKey::primaryKey(iter->key());
 
       // aquire the document token through the primary index
       RocksDBToken token;
-      Result res = rocksColl->lookupDocumentToken(
-          _trx, StringRef(edgeKey, edgeKeySize), token);
+      Result res = rocksColl->lookupDocumentToken( _trx, edgeKey, token);
       if (res.ok()) {
         cb(token);
         if (--limit == 0) {
