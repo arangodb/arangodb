@@ -46,8 +46,9 @@ class ManagedDocumentResult {
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other){
     if (other._useString){
       setManaged(std::move(other._string), other._lastRevisionId);
-    }
-    else if (other._managed){
+      other._managed = false;
+      other.reset();
+    } else if (other._managed){
       reset();
       _vpack = other._vpack;
       _length = other._length;
@@ -96,7 +97,7 @@ class ManagedDocumentResult {
   inline void setManaged(std::string&& str, TRI_voc_rid_t revisionId) {
     reset();
     _string = std::move(str);
-    _vpack = reinterpret_cast<uint8_t*>(const_cast<char *>(_string.data()));
+    _vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(_string.data()));
     _lastRevisionId = revisionId;
     _useString = true;
   }
