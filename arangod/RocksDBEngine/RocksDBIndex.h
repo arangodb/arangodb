@@ -27,6 +27,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -46,8 +47,13 @@ class RocksDBIndex : public Index {
   uint64_t objectId() const { return _objectId; }
 
   bool isPersistent() const override final { return true; }
+  
+protected:
+  
+  /// @brief helper method to remove large ranges of data
+  /// Should mainly be used to implement the drop() call
+  int removeLargeRange(RocksDBKeyBounds bounds);
 
- protected:
   uint64_t _objectId;
   RocksDBComparator* _cmp;
 };

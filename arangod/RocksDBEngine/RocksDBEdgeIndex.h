@@ -108,6 +108,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
       arangodb::basics::LocalTaskQueue* queue = nullptr) override;
 
   int unload() override;
+  
+  int drop() override;
 
   int sizeHint(transaction::Methods*, size_t) override;
 

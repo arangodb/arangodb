@@ -291,6 +291,11 @@ int RocksDBEdgeIndex::unload() {
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief called when the index is dropped
+int RocksDBEdgeIndex::drop() {
+  return this->removeLargeRange(RocksDBKeyBounds::EdgeIndex(_objectId));
+}
+
 /// @brief provides a size hint for the edge index
 int RocksDBEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
   // nothing to do here

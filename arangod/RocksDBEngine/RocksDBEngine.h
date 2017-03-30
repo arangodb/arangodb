@@ -239,7 +239,7 @@ class RocksDBEngine final : public StorageEngine {
   rocksdb::TransactionDB* db() const { return _db; }
 
   RocksDBComparator* cmp() const { return _cmp.get(); }
-
+  
  private:
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();

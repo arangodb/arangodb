@@ -208,7 +208,11 @@ int RocksDBVPackIndex::unload() {
 /// @brief called when the index is dropped
 int RocksDBVPackIndex::drop() {
   // TODO: implement this
-  return TRI_ERROR_NOT_YET_IMPLEMENTED;
+  if (_unique) {
+    return this->removeLargeRange(RocksDBKeyBounds::UniqueIndex(_objectId));
+  } else {
+    return this->removeLargeRange(RocksDBKeyBounds::Index(_objectId));
+  }
 }
 
 /// @brief attempts to locate an entry in the index
