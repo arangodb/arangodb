@@ -29,6 +29,9 @@
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBPersistentIndex.h"
+#include "RocksDBEngine/RocksDBHashIndex.h"
+#include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -357,13 +360,19 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
           new arangodb::RocksDBEdgeIndex(iid, col, StaticStrings::FromString));
       break;
     }
+    //case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
+    //case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-       LOG_TOPIC(WARN, Logger::FIXME) << "Hash Index not implemented";
-    //  // TODO: fix this wrong index type. only used temporarily because we
-    //  don't have other indexes
-    //  newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col,
-    //  StaticStrings::FromString));
-    //  break;
+      newIdx.reset(new arangodb::RocksDBHashIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
+      newIdx.reset(new arangodb::RocksDBSkiplistIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
+      newIdx.reset(new arangodb::RocksDBPersistentIndex(iid, col, info));
+      break;
     }
 
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:

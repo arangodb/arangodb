@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_MMFILES_PATH_BASED_INDEX_H
@@ -47,9 +47,14 @@ class RocksDBPathBasedIndex : public RocksDBIndex {
                         arangodb::velocypack::Slice const&, size_t baseSize,
                         bool allowPartialIndex);
 
-  ~RocksDBPathBasedIndex();
+  virtual ~RocksDBPathBasedIndex();
 
  public:
+  
+  bool allowExpansion() const override { return true; }
+  
+  bool canBeDropped() const override { return true; }
+  
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }
 

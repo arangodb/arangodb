@@ -41,7 +41,6 @@
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "RocksDBEngine/RocksDBCommon.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -80,7 +79,6 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 }
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
-
   if (limit == 0 || !_iterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -114,7 +112,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
       // aquire the document token through the primary index
       RocksDBToken token;
-      Result res = rocksColl->lookupDocumentToken( _trx, edgeKey, token);
+      Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
       if (res.ok()) {
         cb(token);
         if (--limit == 0) {
