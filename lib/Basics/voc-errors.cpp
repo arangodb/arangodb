@@ -215,6 +215,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_LDAP_CANNOT_BIND, "cannot bind to a LDAP server");
   REG_ERROR(ERROR_LDAP_CANNOT_UNBIND, "cannot unbind from a LDAP server");
   REG_ERROR(ERROR_LDAP_CANNOT_SEARCH, "cannot issue a LDAP search");
+  REG_ERROR(ERROR_LDAP_CANNOT_START_TLS, "cannot start a TLS LDAP session");
   REG_ERROR(ERROR_LDAP_FOUND_NO_OBJECTS, "LDAP didn't found any objects");
   REG_ERROR(ERROR_LDAP_NOT_ONE_USER_FOUND, "LDAP found zero ore more than one user");
   REG_ERROR(ERROR_LDAP_USER_NOT_IDENTIFIED, "LDAP found a user, but its not the desired one");
