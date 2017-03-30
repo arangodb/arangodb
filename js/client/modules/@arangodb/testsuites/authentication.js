@@ -74,36 +74,12 @@ function authentication (options) {
   }
 
   print(CYAN + 'Authentication tests...' + RESET);
+  let testCases = tu.scanTestPath('js/client/tests/authentication');
 
-  let instanceInfo = pu.startInstance('tcp', options, {
+  return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann'
-  }, 'authentication');
-
-  if (instanceInfo === false) {
-    return {
-      authentication: {
-        status: false,
-        message: 'failed to start server!'
-      }
-    };
-  }
-
-  let results = {};
-
-  results.authentication = tu.runInArangosh(options, instanceInfo,
-    fs.join('js', 'client', 'tests', 'authentication', 'auth.js'));
-
-  results.foxxArangoAuth = tu.runInArangosh(options, instanceInfo,
-    fs.join('js', 'client', 'tests', 'authentication', 'foxx-arango-auth-spec.js'));
-
-  print(CYAN + 'Shutting down...' + RESET);
-  pu.shutdownInstance(instanceInfo, options);
-  print(CYAN + 'done.' + RESET);
-
-  print();
-
-  return results;
+  });
 }
 
 // //////////////////////////////////////////////////////////////////////////////
