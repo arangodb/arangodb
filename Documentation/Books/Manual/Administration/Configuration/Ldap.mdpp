@@ -62,5 +62,26 @@ Restrict the search to specific object classes. The default is `objectClass=*`.
 
 ### ldap url
 
-
 --ldap.url <string>                                   ldap url, eg. TBD (default: "")
+
+### TLS options
+
+A encrypted connection can be established with `--ldap.tls true`.
+
+    --ldap.tls-version
+
+The default is `1.2`. Available versions are `1.0`, `1.1` and `1.2`.
+
+    --ldap.tls-cert-check-strategy
+
+The default is `hard`. Available strategies are `never`, `hard`, `demand`, `allow` and `try`.
+
+    --ldap.tls-cacert-file
+
+A file path to one or more (concatenated) certificate authority certificates in pem format.
+As default no file path is configured.
+
+    --ldap.tls-cacert-dir
+
+A directory path to certificate authority certificates in [c_rehash](https://www.openssl.org/docs/man1.0.2/apps/c_rehash.html) format.
+As default no directory path is configured.
