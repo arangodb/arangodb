@@ -155,23 +155,20 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 }
 
 /// @brief make sure all declared collections are used & locked
-int TransactionState::ensureCollections(int nestingLevel) {
+Result TransactionState::ensureCollections(int nestingLevel) {
   return useCollections(nestingLevel);
 }
 
 /// @brief use all participating collections of a transaction
-int TransactionState::useCollections(int nestingLevel) {
-  int res = TRI_ERROR_NO_ERROR;
-
+Result TransactionState::useCollections(int nestingLevel) {
+  Result res;
   // process collections in forward order
   for (auto& trxCollection : _collections) {
     res = trxCollection->use(nestingLevel);
-
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       break;
     }
   }
-
   return res;
 }
 

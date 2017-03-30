@@ -105,8 +105,8 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
   SingleCollectionTransaction trx(
     transactionContext, "log", AccessMode::Type::WRITE);
   
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx.begin();
+  if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   
@@ -120,7 +120,7 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
   
   res = trx.finish(result.code);
 
-  return (res == TRI_ERROR_NO_ERROR);
+  return res.ok();
 }
 
 
@@ -615,10 +615,9 @@ bool State::loadOrPersistConfiguration() {
     SingleCollectionTransaction trx(transactionContext, "configuration",
                                     AccessMode::Type::WRITE);
 
-    int res = trx.begin();
-    OperationResult result;
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -627,6 +626,8 @@ bool State::loadOrPersistConfiguration() {
     doc.add("_key", VPackValue("0"));
     doc.add("cfg", _agent->config().toBuilder()->slice());
     doc.close();
+
+    OperationResult result;
     try {
       result = trx.insert("configuration", doc.slice(), _options);
     } catch (std::exception const& e) {
@@ -636,8 +637,7 @@ bool State::loadOrPersistConfiguration() {
     }
 
     res = trx.finish(result.code);
-
-    return (res == TRI_ERROR_NO_ERROR);
+    return res.ok();
   }
 
   return true;
@@ -814,16 +814,16 @@ bool State::persistReadDB(arangodb::consensus::index_t cind) {
     SingleCollectionTransaction trx(transactionContext, "compact",
                                     AccessMode::Type::WRITE);
 
-    int res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
     auto result = trx.insert("compact", store.slice(), _options);
     res = trx.finish(result.code);
 
-    return (res == TRI_ERROR_NO_ERROR);
+    return res.ok();
   }
 
   LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist read DB for compaction!";

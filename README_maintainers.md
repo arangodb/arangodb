@@ -175,6 +175,30 @@ There are several major places where unittests live:
  - *js/apps/system/aardvark/test*
 
 
+Debugging Tests (quick intro)
+-----------------------------
+
+runnuing single rspec test
+
+   ./scripts/unittest http_server --test api-import-spec.rb
+
+debugging rspec with gdb
+
+    server> ./scripts/unittest http_server --test api-import-spec.rb --server tcp://127.0.0.1:7777
+    - or -
+    server> ARANGO_SERVER="127.0.0.1:6666" rspec -IUnitTests/HttpInterface --format d --color UnitTests/HttpInterface/api-import-spec.rb
+
+    client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 --server.authentication false --log.level communication=trace ../arangodb-data-test-mmfiles
+
+debugging a storage engine
+
+    host> rm -fr ../arangodb-data-rocksdb/; gdb --args ./build/bin/arangod --console --server.storage-engine rocksdb --foxx.queues false --server.statistics false --server.endpoint http+tcp://0.0.0.0:7777 ../arangodb-data-rocksdb
+    (gdb) catch throw
+    (gdb) r
+    arangod> require("jsunity").runTest("js/client/tests/shell/shell-client.js");
+
+
+
 HttpInterface - RSpec Client Tests
 ----------------------------------
 These tests work on the plain RESTfull interface of arangodb, and thus also test invalid HTTP-requests and so forth, plus check error handling in the server.

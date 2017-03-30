@@ -1473,9 +1473,9 @@ int RestReplicationHandler::processRestoreCollection(
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      int res = _vocbase->dropCollection(col, true);
+      Result res = _vocbase->dropCollection(col, true);
 
-      if (res == TRI_ERROR_FORBIDDEN) {
+      if (res.errorNumber() == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
 
         // instead, truncate them
@@ -1485,8 +1485,8 @@ int RestReplicationHandler::processRestoreCollection(
         trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
         res = trx.begin();
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
+        if (!res.ok()) {
+          return res.errorNumber();
         }
 
         OperationOptions options;
@@ -1494,22 +1494,22 @@ int RestReplicationHandler::processRestoreCollection(
 
         res = trx.finish(opRes.code);
 
-        return res;
+        return res.errorNumber();
       }
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to drop collection '" + name + "': " +
-                   std::string(TRI_errno_string(res));
-
-        return res;
+      if (!res.ok()) {
+        errorMsg = "unable to drop collection '" + name + "': " + res.errorMessage();
+        res.reset(res.errorNumber(),errorMsg);
+        return res.errorNumber();
       }
     } else {
-      int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
+      Result res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
 
       errorMsg = "unable to create collection '" + name + "': " +
-                 std::string(TRI_errno_string(res));
+                 res.errorMessage();
+      res.reset(res.errorNumber(),errorMsg);
 
-      return res;
+      return res.errorNumber();
     }
   }
 
@@ -1739,11 +1739,11 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
         transaction::StandaloneContext::Create(_vocbase), collection->cid(),
         AccessMode::Type::WRITE);
 
-    res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg =
-          "unable to start transaction: " + std::string(TRI_errno_string(res));
+    if (!res.ok()) {
+      errorMsg = "unable to start transaction: " + res.errorMessage(); 
+      res.reset(res.errorNumber(),errorMsg);
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -1756,24 +1756,26 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
       res = physical->restoreIndex(&trx, idxDef, idx);
 
-      if (res == TRI_ERROR_NOT_IMPLEMENTED) {
+      if (res.errorNumber() == TRI_ERROR_NOT_IMPLEMENTED) {
         continue;
       }
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res.fail()) {
         errorMsg =
-            "could not create index: " + std::string(TRI_errno_string(res));
+            "could not create index: " + res.errorMessage();
+        res.reset(res.errorNumber(),errorMsg);
         break;
       }
       TRI_ASSERT(idx != nullptr);
     }
         
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (res.fail()) {
+      return res.errorNumber();
     }
     res = trx.commit();
       
   } catch (arangodb::basics::Exception const& ex) {
+    // fix error handling
     errorMsg =
         "could not create index: " + std::string(TRI_errno_string(ex.code()));
   } catch (...) {
@@ -2245,21 +2247,18 @@ int RestReplicationHandler::processRestoreData(
       AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg =
-        "unable to start transaction: " + std::string(TRI_errno_string(res));
-
-    return res;
+  if (!res.ok()) {
+    errorMsg = "unable to start transaction: " + res.errorMessage();
+    res.reset(res.errorNumber(),errorMsg);
+    return res.errorNumber();
   }
 
-  res = processRestoreDataBatch(trx, colName, useRevision, force,
-                                errorMsg);
-
+  res = processRestoreDataBatch(trx, colName, useRevision, force, errorMsg);
   res = trx.finish(res);
 
-  return res;
+  return res.errorNumber();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3432,8 +3431,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   auto trxContext = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(trxContext, col->cid(), AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx.begin();
+  if (!res.ok()) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_TRANSACTION_INTERNAL,
                   "cannot begin read transaction");

@@ -199,13 +199,13 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder
     }
     builder.add(v);
     for (std::string const& shard : shards->second) {
-      int res = _trx->documentFastPath(shard, nullptr, v, builder, false);
-      if (res == TRI_ERROR_NO_ERROR) {
+      Result res = _trx->documentFastPath(shard, nullptr, v, builder, false);
+      if (res.ok()) {
         found = true;
         // FOUND short circuit.
         break;
       }
-      if (res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -250,14 +250,14 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     }
     builder.add(v);
     for (std::string const& shard : shards->second) {
-      int res = _trx->documentFastPath(shard, nullptr, v, builder, false);
-      if (res == TRI_ERROR_NO_ERROR) {
+      Result res = _trx->documentFastPath(shard, nullptr, v, builder, false);
+      if (res.ok()) {
         read++;
         found = true;
         // FOUND short circuit.
         break;
       }
-      if (res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -293,10 +293,10 @@ bool BaseTraverserEngine::lockCollection(std::string const& shard) {
     return false;
   }
   _trx->pinData(cid); // will throw when it fails 
-  int res = _trx->lock(_trx->trxCollection(cid), AccessMode::Type::READ);
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = _trx->lock(_trx->trxCollection(cid), AccessMode::Type::READ);
+  if (!res.ok()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Logging Shard " << shard << " lead to exception '"
-             << TRI_errno_string(res) << "' (" << res << ") ";
+             << res.errorNumber() << "' (" << res.errorMessage() << ") ";
     return false;
   }
   return true;

@@ -70,9 +70,9 @@ static void JS_RotateVocbaseCol(
       transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
   
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -80,8 +80,9 @@ static void JS_RotateVocbaseCol(
 
   trx.finish(res);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "could not rotate journal");
+  if (!res.ok()) {
+    res.reset(res.errorNumber(), std::string("could not rotate journal: ") + res.errorMessage());
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_UNDEFINED();

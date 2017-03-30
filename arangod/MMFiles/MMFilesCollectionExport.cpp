@@ -96,9 +96,9 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
     // already locked by guard above
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-    int res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
     
@@ -123,7 +123,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       return true;
     });
 
-    trx.finish(res);
+    trx.finish(res.errorNumber());
   }
 
   // delete guard right now as we're about to return

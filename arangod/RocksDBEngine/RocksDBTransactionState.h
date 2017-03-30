@@ -75,13 +75,13 @@ class RocksDBTransactionState final : public TransactionState {
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
-  int beginTransaction(transaction::Hints hints) override;
+  Result beginTransaction(transaction::Hints hints) override;
 
   /// @brief commit a transaction
-  int commitTransaction(transaction::Methods* trx) override;
+  Result commitTransaction(transaction::Methods* trx) override;
 
   /// @brief abort a transaction
-  int abortTransaction(transaction::Methods* trx) override;
+  Result abortTransaction(transaction::Methods* trx) override;
 
   bool hasFailedOperations() const override {
     return (_hasOperations && _status == transaction::Status::ABORTED);

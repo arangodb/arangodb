@@ -301,7 +301,7 @@ static void ExistsVocbaseVPack(
   VPackBuilder builder;
   std::string collectionName;
 
-  int res;
+  Result res;
   { 
     VPackObjectBuilder guard(&builder);
     res = ParseDocumentOrDocumentHandle(
@@ -312,7 +312,7 @@ static void ExistsVocbaseVPack(
   LocalCollectionGuard g(
       useCollection ? nullptr : const_cast<LogicalCollection*>(col));
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -327,7 +327,7 @@ static void ExistsVocbaseVPack(
 
   res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -345,7 +345,7 @@ static void ExistsVocbaseVPack(
     TRI_V8_THROW_EXCEPTION(opResult.code);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -422,8 +422,8 @@ static void DocumentVocbaseCol(
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
   
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx.begin();
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   
@@ -435,7 +435,7 @@ static void DocumentVocbaseCol(
     TRI_V8_THROW_EXCEPTION(opResult.code);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   
@@ -497,9 +497,9 @@ static void DocumentVocbase(
                                   AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -511,7 +511,7 @@ static void DocumentVocbase(
     TRI_V8_THROW_EXCEPTION(opResult.code);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -590,8 +590,8 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx.begin();
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -633,7 +633,7 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(result.code);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -732,9 +732,9 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -746,7 +746,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(result.code);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -902,9 +902,9 @@ static void JS_FiguresVocbaseCol(
     
   SingleCollectionTransaction trx(transaction::V8Context::Create(collection->vocbase(), true), collection->cid(), 
                                   AccessMode::Type::READ);
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -1131,15 +1131,15 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     transaction::V8Context::Create(collection->vocbase(), true),
     collection->cid(), AccessMode::Type::READ);
   
-  int res = trx.begin();
+  Result res = trx.begin();
   
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   
   res = trx.finish(res);
   
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   
@@ -1292,9 +1292,9 @@ static void JS_PropertiesVocbaseCol(
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
   }
   
-  int res = trx.begin();
+  Result res = trx.begin();
   
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -1664,9 +1664,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -1682,7 +1682,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     TRI_V8_THROW_EXCEPTION(opResult.code);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -1790,8 +1790,8 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx.begin();
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -1810,7 +1810,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     TRI_V8_THROW_EXCEPTION(opResult.code);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -2079,10 +2079,10 @@ static int GetRevision(arangodb::LogicalCollection* collection, TRI_voc_rid_t& r
       transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (!res.ok()) {
+    return res.errorNumber();
   }
 
   // READ-LOCK start
@@ -2200,9 +2200,9 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<doc> must be a document");
   }
 
-  int res = TRI_V8ToVPack(isolate, builder, doc, false);
+  Result res = TRI_V8ToVPack(isolate, builder, doc, false);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -2214,7 +2214,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -2222,7 +2222,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   res = trx.finish(result.code);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -2367,9 +2367,9 @@ static void JS_InsertVocbaseCol(
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -2377,7 +2377,7 @@ static void JS_InsertVocbaseCol(
 
   res = trx.finish(result.code);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -2454,9 +2454,9 @@ static void JS_TruncateVocbaseCol(
       transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::WRITE);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -2468,7 +2468,7 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION(result.code);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -2879,16 +2879,16 @@ static void JS_CountVocbaseCol(
 
   SingleCollectionTransaction trx(transaction::V8Context::Create(vocbase, true), collectionName, AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
   OperationResult opResult = trx.count(collectionName, !details);
   res = trx.finish(opResult.code);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 

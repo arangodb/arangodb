@@ -270,10 +270,10 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   clone->_trx = _trx->clone();  // A daughter transaction which does not
                                 // actually lock the collections
 
-  int res = clone->_trx->begin();
+  Result res = clone->_trx->begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, "could not begin transaction");
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   return clone.release();
@@ -511,10 +511,10 @@ ExecutionPlan* Query::prepare() {
     
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
   
-    int res = _trx->begin();
+    Result res = _trx->begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
@@ -544,14 +544,14 @@ ExecutionPlan* Query::prepare() {
     
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
     
-    int res = trx->addCollections(*_collections.collections());
+    Result res = trx->addCollections(*_collections.collections());
 
-    if (res == TRI_ERROR_NO_ERROR) {
+    if (res.ok()) {
       res = _trx->begin();
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
     
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
@@ -989,10 +989,10 @@ QueryResult Query::explain() {
                               _collections.collections(), true);
 
     // we have an AST
-    int res = _trx->begin();
+    Result res = _trx->begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);

@@ -25,6 +25,7 @@
 #define ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Hints.h"
@@ -101,10 +102,10 @@ class TransactionState {
   int addCollection(TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel, bool force);
 
   /// @brief make sure all declared collections are used & locked
-  int ensureCollections(int nestingLevel = 0);
+  Result ensureCollections(int nestingLevel = 0);
 
   /// @brief use all participating collections of a transaction
-  int useCollections(int nestingLevel);
+  Result useCollections(int nestingLevel);
   
   /// @brief release collection locks for a transaction
   int unuseCollections(int nestingLevel);
@@ -126,13 +127,13 @@ class TransactionState {
   void setHint(transaction::Hints::Hint hint) { _hints.set(hint); }
 
   /// @brief begin a transaction
-  virtual int beginTransaction(transaction::Hints hints) = 0;
+  virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual int commitTransaction(transaction::Methods* trx) = 0;
+  virtual arangodb::Result commitTransaction(transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
-  virtual int abortTransaction(transaction::Methods* trx) = 0;
+  virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
   virtual bool hasFailedOperations() const = 0;
 
