@@ -1580,7 +1580,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     created = true;
     return idx;
   }
-
+  
   TRI_ASSERT(idx.get()->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   int res = fillIndex(trx, idx.get(), false);
 
@@ -1634,9 +1634,18 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
 
   TRI_UpdateTickServer(newIdx->id());
 
+  auto const id = newIdx->id();      
+  for (auto& it : _indexes) {
+    if (it->id() == id) {
+      // index already exists
+      idx = it;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
   TRI_ASSERT(newIdx.get()->type() !=
              Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  int res = fillIndex(trx, newIdx.get());
+  int res = fillIndex(trx, newIdx.get(), false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -2887,7 +2896,7 @@ int LogicalCollection::fillIndex(arangodb::Transaction* trx,
   if (!useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
   }
-
+  
   if (idx->isPersistent() && skipPersistent) {
     return TRI_ERROR_NO_ERROR;
   }
