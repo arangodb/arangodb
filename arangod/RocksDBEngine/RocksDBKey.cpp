@@ -241,11 +241,11 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
     case RocksDBEntryType::IndexValue: {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
-      // + separator byte + primary key
+      // + separator byte + primary key + primary key length
       // - Value: empty
       size_t length = sizeof(char) + sizeof(uint64_t) +
                       static_cast<size_t>(indexData.byteSize()) + sizeof(char) +
-                      docKey.length();
+                      docKey.length() + sizeof(char);
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
@@ -253,6 +253,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
                      static_cast<size_t>(indexData.byteSize()));
       _buffer.push_back(_stringSeparator);
       _buffer.append(docKey.data(), docKey.length());
+      _buffer.push_back(static_cast<char>(docKey.length() & 0xff));
       break;
     }
 
@@ -283,7 +284,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
                        std::string const& second, std::string const& third)
     : _type(type), _buffer() {
   switch (_type) {
-    case RocksDBEntryType::PrimaryIndexValue: {
+    case RocksDBEntryType::EdgeIndexValue: {
       size_t length = sizeof(char) + sizeof(uint64_t) + second.size() +
                       sizeof(char) + third.size() + sizeof(uint8_t);
       _buffer.reserve(length);
@@ -294,18 +295,6 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.append(third);
       TRI_ASSERT(third.size() <= 254);
       _buffer.push_back(static_cast<char>(third.size() & 0xff));
-      break;
-    }
-
-    case RocksDBEntryType::EdgeIndexValue: {
-      size_t length = sizeof(char) + sizeof(uint64_t) + second.size() +
-                      sizeof(char) + third.size();
-      _buffer.reserve(length);
-      _buffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_buffer, first);
-      _buffer.append(second);
-      _buffer.push_back(_stringSeparator);
-      _buffer.append(third);
       break;
     }
 
@@ -410,19 +399,12 @@ arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
       return arangodb::StringRef(data + sizeof(char) + sizeof(uint64_t),
                                  keySize);
     }
-    case RocksDBEntryType::EdgeIndexValue: {
+    case RocksDBEntryType::EdgeIndexValue:
+    case RocksDBEntryType::IndexValue: {
       TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t) + sizeof(uint8_t)));
       size_t keySize = static_cast<size_t>(data[size - 1]);
       return arangodb::StringRef(data + (size - (keySize + sizeof(uint8_t))),
                                  keySize);
-    }
-    case RocksDBEntryType::IndexValue: {
-      TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t)));
-      VPackSlice slice(data + sizeof(char) + sizeof(uint64_t));
-      size_t sliceSize = static_cast<size_t>(slice.byteSize());
-      size_t keySize =
-          size - (sizeof(char) + sizeof(uint64_t) + sliceSize + sizeof(char));
-      return arangodb::StringRef(data + (size - keySize), keySize);
     }
 
     default:
