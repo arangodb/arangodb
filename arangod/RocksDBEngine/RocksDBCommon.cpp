@@ -128,6 +128,26 @@ rocksdb::DB* globalRocksDB() {
   TRI_ASSERT(rocks->db() != nullptr);
   return rocks->db();
 }
+  
+std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
+                          RocksDBKeyBounds const& bounds) {
+  const rocksdb::Comparator *cmp = db->GetOptions().comparator;
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts));
+  std::size_t count = 0;
+  
+  rocksdb::Slice lower(bounds.start());
+  rocksdb::Slice upper(bounds.end());
+  it->Seek(lower);
+  while (it->Valid()) {
+    if (cmp->Compare(it->key(), upper) == -1) {
+      count++;
+    } else {
+      break;
+    }
+    it->Next();
+  }
+  return count;
+}
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
@@ -150,11 +170,9 @@ int removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds) {
     
     // go on and delete the remaining keys (delete files in range does not necessarily
     // find them all, just complete files)
-    
-    
+    const rocksdb::Comparator *cmp = db->GetOptions().comparator;
     rocksdb::WriteBatch batch;
     std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(rocksdb::ReadOptions()));
-    const rocksdb::Comparator *cmp = db->GetOptions().comparator;
     
     it->Seek(lower);
     while (it->Valid()) {
