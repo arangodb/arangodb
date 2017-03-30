@@ -79,7 +79,6 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 }
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 
   if (limit == 0 || !_iterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
@@ -95,6 +94,9 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   while (limit > 0) {
     VPackSlice fromTo = _iterator.value();
+    if (fromTo.isObject()) {
+      fromTo = fromTo.get(StaticStrings::IndexEq);
+    }
     TRI_ASSERT(fromTo.isString());
 
     RocksDBKeyBounds prefix = RocksDBKeyBounds::EdgeIndexVertex(
@@ -230,8 +232,11 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
 
   rocksdb::Status status =
       rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
-  Result res = rocksutils::convertStatus(status);
-  return res.errorNumber();
+  if (status.ok()) {
+    return TRI_ERROR_NO_ERROR;
+  } else {
+    return rocksutils::convertStatus(status).errorNumber();
+  }
 }
 
 int RocksDBEdgeIndex::remove(transaction::Methods* trx,
@@ -247,8 +252,11 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
-  Result res = rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-  return res.errorNumber();
+  if (status.ok()) {
+    return TRI_ERROR_NO_ERROR;
+  } else {
+    return rocksutils::convertStatus(status).errorNumber();
+  }
 }
 
 void RocksDBEdgeIndex::batchInsert(

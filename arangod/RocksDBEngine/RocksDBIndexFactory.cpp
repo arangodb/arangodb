@@ -357,13 +357,14 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
           new arangodb::RocksDBEdgeIndex(iid, col, StaticStrings::FromString));
       break;
     }
-    // case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
+       LOG_TOPIC(WARN, Logger::FIXME) << "Hash Index not implemented";
     //  // TODO: fix this wrong index type. only used temporarily because we
     //  don't have other indexes
     //  newIdx.reset(new arangodb::RocksDBEdgeIndex(db, iid, col,
     //  StaticStrings::FromString));
     //  break;
-    //}
+    }
 
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     default: {
