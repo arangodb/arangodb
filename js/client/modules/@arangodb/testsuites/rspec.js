@@ -139,7 +139,8 @@ function rubyTests (options, ssl) {
     const te = files[i];
 
     if (te.substr(0, 4) === 'api-' && te.substr(-3) === '.rb') {
-      if (tu.filterTestcaseByOptions(te, options, filtered)) {
+      let tfn = fs.join('UnitTests', 'HttpInterface', te);
+      if (tu.filterTestcaseByOptions(tfn, options, filtered)) {
         count += 1;
         if (!continueTesting) {
           print('Skipping ' + te + ' server is gone.');
@@ -159,14 +160,14 @@ function rubyTests (options, ssl) {
                 '--format', 'j',
                 '--out', fs.join('out', 'UnitTests', te + '.json'),
                 '--require', tmpname,
-                fs.join('UnitTests', 'HttpInterface', te)
+                tfn
                ];
 
         if (rspec !== undefined) {
           args = [rspec].concat(args);
         }
 
-        print('\n' + Date() + ' rspec trying', te, '...');
+        print('\n' + Date() + ' rspec trying', tfn, '...');
         const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir);
 
         result[te] = {

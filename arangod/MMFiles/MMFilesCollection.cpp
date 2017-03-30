@@ -2098,6 +2098,15 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
 
   TRI_UpdateTickServer(newIdx->id());
 
+  auto const id = newIdx->id();      
+  for (auto& it : _indexes) {
+    if (it->id() == id) {
+      // index already exists
+      idx = it;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
   TRI_ASSERT(newIdx.get()->type() !=
              Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
