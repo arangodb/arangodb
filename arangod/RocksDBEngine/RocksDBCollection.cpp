@@ -757,6 +757,7 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                       bool& waitForSync) {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  TRI_ASSERT(trx->state()->isRunning());
 
   RocksDBKey key(RocksDBKey::Document(_objectId, revisionId));
   RocksDBValue value(RocksDBValue::Document(doc));
@@ -817,6 +818,7 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                       bool& waitForSync) {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  TRI_ASSERT(trx->state()->isRunning());
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
 
@@ -882,6 +884,7 @@ int RocksDBCollection::updateDocument(transaction::Methods* trx,
                                       VPackSlice const& newDoc,
                                       bool& waitForSync) {
   // Coordinator doesn't know index internals
+  TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
@@ -920,6 +923,8 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
 arangodb::Result RocksDBCollection::lookupRevisionVPack(
     TRI_voc_rid_t revisionId, transaction::Methods* trx,
     arangodb::ManagedDocumentResult& mdr) {
+  TRI_ASSERT(trx->state()->isRunning());
+
   auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;
   TRI_ASSERT(value.data());

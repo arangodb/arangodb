@@ -88,6 +88,7 @@ class RocksDBTransactionState final : public TransactionState {
   int addOperation(TRI_voc_rid_t, RocksDBDocumentOperation&, RocksDBWalMarker const* marker, bool&);
   
   rocksdb::Transaction* rocksTransaction() {
+    TRI_ASSERT(_rocksTransaction != nullptr);
     return _rocksTransaction.get();
   }
   

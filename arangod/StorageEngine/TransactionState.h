@@ -68,6 +68,7 @@ class TransactionState {
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_voc_tid_t id() const { return _id; }
   transaction::Status status() const { return _status; }
+  bool isRunning() const { return _status == transaction::Status::RUNNING; }
 
   int increaseNesting() { return ++_nestingLevel; }
   int decreaseNesting() { 

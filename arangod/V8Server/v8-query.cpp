@@ -234,14 +234,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationResult countResult = trx.count(collectionName, true);
-  res = trx.finish(countResult.code);
 
   if (countResult.failed()) {
     TRI_V8_THROW_EXCEPTION(countResult.code);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
   }
 
   VPackSlice count = countResult.slice();
@@ -259,15 +254,19 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ManagedDocumentResult mmdr;
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
-  auto cb = [&resultBuilder, &mmdr, &trx, &collection](DocumentIdentifierToken const& tkn) {
+  
+  opCursor->getAll([&resultBuilder, &mmdr, &trx, &collection](DocumentIdentifierToken const& tkn) {
    if (collection->readDocument(&trx, tkn, mmdr)) {
       resultBuilder.add(VPackSlice(mmdr.vpack()));
     }
-  };
-  while (opCursor->getMore(cb, 1000)) {
-    // Noop all done in cb
-  }
+  });
+
   resultBuilder.close();
+  
+  res = trx.finish(countResult.code);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
   VPackSlice docs = resultBuilder.slice();
   TRI_ASSERT(docs.isArray());
