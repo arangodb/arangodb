@@ -1744,6 +1744,8 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     return TRI_ERROR_NO_ERROR;
   }
 
+  int res = TRI_ERROR_NO_ERROR;
+
   READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
   // look up the collection
@@ -1756,7 +1758,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
         StandaloneTransactionContext::Create(_vocbase), collection->cid(),
         TRI_TRANSACTION_WRITE);
 
-    int res = trx.begin();
+    res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg =
@@ -1791,6 +1793,12 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
         }
       }
     }
+        
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    res = trx.commit();
+      
   } catch (arangodb::basics::Exception const& ex) {
     errorMsg =
         "could not create index: " + std::string(TRI_errno_string(ex.code()));
@@ -1798,7 +1806,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     errorMsg = "could not create index: unknown error";
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
