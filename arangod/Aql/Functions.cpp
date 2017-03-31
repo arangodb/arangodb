@@ -3348,8 +3348,7 @@ AqlValue Functions::CollectionCount(
   }
 
   transaction::BuilderLeaser builder(trx);
-  // TODO Temporary until move to LogicalCollection is complete
-  builder->add(VPackValue(collection->numberDocuments()));
+  builder->add(VPackValue(collection->numberDocuments(trx)));
   return AqlValue(builder.get());
 }
 

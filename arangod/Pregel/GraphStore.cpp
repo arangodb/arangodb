@@ -361,7 +361,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
 
   // tell the formatter the number of docs we are about to load
   LogicalCollection* collection = cursor->collection();
-  uint64_t number = collection->numberDocuments();
+  uint64_t number = collection->numberDocuments(trx.get());
   _graphFormat->willLoadVertices(number);
 
   auto cb = [&](DocumentIdentifierToken const& token) {

@@ -995,7 +995,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
     return 16384; // assume some positive value 
   }
    
-  return collection->numberDocuments();
+  return collection->numberDocuments(&trx);
 }
 
 /// @brief write a copy of the marker into the datafile

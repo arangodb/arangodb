@@ -2268,14 +2268,15 @@ OperationResult transaction::Methods::countCoordinator(std::string const& collec
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(std::string const& collectionName) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  
-  auto res = lock(trxCollection(cid), AccessMode::Type::READ);
-
- 
-  // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
+  
+  Result res = lock(trxCollection(cid), AccessMode::Type::READ);
 
-  uint64_t num = collection->numberDocuments();
+  if (!res.ok()) {
+    return OperationResult(res);
+  }
+
+  uint64_t num = collection->numberDocuments(this);
 
   res = unlock(trxCollection(cid), AccessMode::Type::READ);
   

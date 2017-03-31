@@ -57,14 +57,6 @@ namespace {
 
 static std::string const Empty;
 
-#if 0
-// currently unused. remove?
-static rocksdb::TransactionDB* db() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  return static_cast<RocksDBEngine*>(engine)->db();
-}
-#endif
-
 static inline rocksdb::Transaction* rocksTransaction(
     arangodb::transaction::Methods* trx) {
   return static_cast<RocksDBTransactionState*>(trx->state())
@@ -75,14 +67,16 @@ static inline rocksdb::Transaction* rocksTransaction(
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      VPackSlice const& info)
     : PhysicalCollection(collection, info),
-      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
+      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
+      _numberDocuments(0) {
   TRI_ASSERT(_objectId != 0);
 }
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      PhysicalCollection* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBCollection*>(physical)->_objectId) {
+      _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
+      _numberDocuments(0) {
   TRI_ASSERT(_objectId != 0);
 }
 
@@ -117,15 +111,6 @@ TRI_voc_rid_t RocksDBCollection::revision() const {
   return 0;
 }
 
-int64_t RocksDBCollection::initialCount() const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
-}
-
-void RocksDBCollection::updateCount(int64_t) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add("objectId", VPackValue(std::to_string(_objectId)));
@@ -142,9 +127,13 @@ int RocksDBCollection::close() {
   return TRI_ERROR_NO_ERROR;
 }
 
-uint64_t RocksDBCollection::numberDocuments() const {
-  // TODO
-  return 0;
+uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
+  RocksDBTransactionState* state = static_cast<RocksDBTransactionState*>(trx->state());
+
+  auto trxCollection = state->findCollection(_logicalCollection->cid());
+  TRI_ASSERT(trxCollection != nullptr);
+
+  return _numberDocuments + state->numInserts() - state->numRemoves();
 }
 
 /// @brief report extra memory used by indexes etc.

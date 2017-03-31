@@ -73,8 +73,11 @@ void RocksDBSavePoint::rollback() {
 RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
     : TransactionState(vocbase),
       _rocksReadOptions(),
-      _hasOperations(false),
-      _cacheTx(nullptr) {}
+      _cacheTx(nullptr),
+      _operationSize(0),
+      _numInserts(0),
+      _numUpdates(0),
+      _numRemoves(0) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {}
@@ -200,7 +203,7 @@ Result RocksDBTransactionState::abortTransaction(
 
     updateStatus(transaction::Status::ABORTED);
 
-    if (_hasOperations) {
+    if (hasOperations()) {
       // must clean up the query cache because the transaction
       // may have queried something via AQL that is now rolled back
       clearQueryCache();
@@ -212,12 +215,23 @@ Result RocksDBTransactionState::abortTransaction(
   return result;
 }
 
-/// @brief add a WAL operation for a transaction collection
-int RocksDBTransactionState::addOperation(TRI_voc_rid_t revisionId,
-                                          RocksDBDocumentOperation& operation,
-                                          RocksDBWalMarker const* marker,
-                                          bool& waitForSync) {
-  _hasOperations = true;
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+/// @brief add an operation for a transaction collection
+void RocksDBTransactionState::addOperation(TRI_voc_document_operation_e operationType,
+                                           uint64_t operationSize) {
+  switch (operationType) {
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      ++_numInserts;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+      ++_numUpdates;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+      ++_numRemoves;
+      break;
+  }
+
+  _operationSize += operationSize;
 }

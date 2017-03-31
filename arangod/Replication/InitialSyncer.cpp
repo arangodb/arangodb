@@ -1088,7 +1088,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
 
-    markers.reserve(trx.documentCollection()->numberDocuments());
+    markers.reserve(trx.documentCollection()->numberDocuments(&trx));
 
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;
@@ -1677,7 +1677,7 @@ int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
   }
   
   auto document = trx.documentCollection();
-  return static_cast<int64_t>(document->numberDocuments());
+  return static_cast<int64_t>(document->numberDocuments(&trx));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
