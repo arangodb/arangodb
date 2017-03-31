@@ -30,7 +30,7 @@
 
 #include <rocksdb/status.h>
 
-namespace rocksdb {class DB; class ReadOptions;}
+namespace rocksdb {class DB; struct ReadOptions;}
 
 namespace arangodb {
 class TransactionState;
