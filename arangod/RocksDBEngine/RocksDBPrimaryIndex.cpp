@@ -137,7 +137,7 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
     cb(token);
-    
+
     --limit;
 
     if (_reverse) {
@@ -251,9 +251,9 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   return RocksDBToken(RocksDBValue::revisionId(value));
 }
 
-RocksDBToken RocksDBPrimaryIndex::lookupKey(
-    transaction::Methods* trx, VPackSlice slice,
-    ManagedDocumentResult& result) {
+RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
+                                            VPackSlice slice,
+                                            ManagedDocumentResult& result) {
   auto key = RocksDBKey::PrimaryIndexValue(_objectId, slice.copyString());
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
@@ -278,15 +278,22 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
       RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
-/*
-  LOG_TOPIC(ERR, Logger::FIXME)
-      << "PRIMARYINDEX::INSERT. COLLECTION '" << _collection->name()
-      << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
-      << ", KEY: " << slice.get("_key").copyString();
-*/
+  /*
+    LOG_TOPIC(ERR, Logger::FIXME)
+        << "PRIMARYINDEX::INSERT. COLLECTION '" << _collection->name()
+        << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
+        << ", KEY: " << slice.get("_key").copyString();
+  */
   // aquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
+  auto options = state->readOptions();
+
+  std::string empty;
+  auto existing = rtrx->Get(options, key.string(), &empty);
+  if (!existing.IsNotFound()) {
+    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+  }
 
   if (_useCache) {
     // blacklist from cache
@@ -480,9 +487,10 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_voc_cid_t cid;
     char const* key;
     size_t outLength;
-    Result res = trx->resolveId(valNode->getStringValue(),
+    Result res =
+        trx->resolveId(valNode->getStringValue(),
 
-                             valNode->getStringLength(), cid, key, outLength);
+                       valNode->getStringLength(), cid, key, outLength);
 
     if (!res.ok()) {
       return;

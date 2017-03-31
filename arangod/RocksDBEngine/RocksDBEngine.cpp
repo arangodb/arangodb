@@ -333,7 +333,8 @@ std::string RocksDBEngine::collectionPath(TRI_vocbase_t const* vocbase,
 }
 
 void RocksDBEngine::waitForSync(TRI_voc_tick_t tick) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO: does anything need to be done here?
+  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 std::shared_ptr<arangodb::velocypack::Builder>
