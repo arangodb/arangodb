@@ -150,6 +150,8 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
     RocksDBToken token(_primaryIndex->lookupKey(_trx, primaryKey));
     cb(token);
 
+    --limit;
+
     if (_reverse) {
       _iterator->Prev();
     } else {
