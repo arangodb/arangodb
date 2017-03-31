@@ -131,8 +131,8 @@ aql::AqlValue TraverserCache::fetchAqlResult(StringRef idString) {
   auto finding = lookup(idString);
   if (finding.found()) {
     auto val = finding.value();
-    // finding makes sure that slice contant stays valid.
-    return aql::AqlValue(val->value());
+    // finding makes sure that slice content stays valid.
+    return aql::AqlValue(VPackSlice(val->value()));
   }
   // Not in cache. Fetch and insert.
   return aql::AqlValue(lookupInCollection(idString));
