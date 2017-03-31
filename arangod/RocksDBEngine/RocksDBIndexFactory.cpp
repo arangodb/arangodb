@@ -148,6 +148,20 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a persistent index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexPersistent(VPackSlice const definition,
+                                    VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(definition, builder, 0, create);
+  if (res == TRI_ERROR_NO_ERROR) {
+    ProcessIndexSparseFlag(definition, builder, create);
+    ProcessIndexUniqueFlag(definition, builder);
+  }
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief process the geojson flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -279,6 +293,10 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
 
       case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
         res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
+        break;
+        
+      case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
+        res = EnhanceJsonIndexPersistent(definition, enhanced, create);
         break;
 
       case Index::TRI_IDX_TYPE_UNKNOWN:

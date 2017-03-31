@@ -138,7 +138,8 @@ void RocksDBCollection::getPropertiesVPackCoordinator(
 
 /// @brief closes an open collection
 int RocksDBCollection::close() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO
+  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return TRI_ERROR_NO_ERROR;
 }
 
