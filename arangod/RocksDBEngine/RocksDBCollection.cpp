@@ -123,9 +123,12 @@ void RocksDBCollection::getPropertiesVPackCoordinator(
 
 /// @brief closes an open collection
 int RocksDBCollection::close() {
-  // TODO
-  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // nothing to do
   return TRI_ERROR_NO_ERROR;
+}
+
+uint64_t RocksDBCollection::numberDocuments() const {
+  return _numberDocuments;
 }
 
 uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
@@ -139,12 +142,14 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
 
 /// @brief report extra memory used by indexes etc.
 size_t RocksDBCollection::memory() const {
-  // TODO
   return 0;
 }
 
 void RocksDBCollection::open(bool ignoreErrors) {
-  // doesn't need to be opened
+  // set the initial number of documents
+  rocksdb::ReadOptions readOptions;
+  rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
+  _numberDocuments = countKeyRange(db, readOptions, RocksDBKeyBounds::CollectionDocuments(_objectId));
 }
 
 /// @brief iterate all markers of a collection on load

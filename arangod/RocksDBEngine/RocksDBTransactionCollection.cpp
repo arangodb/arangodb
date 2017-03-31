@@ -25,7 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
-#include "RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
@@ -39,6 +39,8 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            AccessMode::Type accessType) 
     : TransactionCollection(trx, cid),
       _accessType(accessType), 
+      _initialNumberDocuments(0),
+      _initialRevision(0),
       _operationSize(0),
       _numInserts(0),
       _numUpdates(0),
@@ -139,6 +141,8 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
         !LogicalCollection::IsSystemName(_collection->name())) {
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
+
+    _initialNumberDocuments = static_cast<RocksDBCollection*>(_collection->getPhysical())->numberDocuments();
   }
 
   return TRI_ERROR_NO_ERROR;

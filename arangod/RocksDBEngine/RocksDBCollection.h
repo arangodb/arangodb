@@ -83,6 +83,7 @@ class RocksDBCollection final : public PhysicalCollection {
   /// @brief closes an open collection
   int close() override;
 
+  uint64_t numberDocuments() const;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
   /// @brief report extra memory used by indexes etc.

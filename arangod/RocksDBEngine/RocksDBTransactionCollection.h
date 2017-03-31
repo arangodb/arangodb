@@ -69,6 +69,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void unuse(int nestingLevel) override;
   void release() override;
   
+  uint64_t initialNumberDocuments() const { return _initialNumberDocuments; }
+  TRI_voc_rid_t revision() const { return _initialRevision; }
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
@@ -78,6 +80,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
  private:
   AccessMode::Type _accessType;  // access type (read|write)
+  uint64_t _initialNumberDocuments;
+  TRI_voc_rid_t _initialRevision;
   uint64_t _operationSize;
   uint64_t _numInserts;
   uint64_t _numUpdates;

@@ -89,8 +89,6 @@ RocksDBTransactionState::~RocksDBTransactionState() {}
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type)
                                << " transaction";
-  Result result;
-
   if (_nestingLevel == 0) {
     TRI_ASSERT(_status == transaction::Status::CREATED);
 
@@ -104,10 +102,10 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
                                                             std::move(data));
 
     TRI_ASSERT(_rocksTransaction == nullptr);
+    TRI_ASSERT(_cacheTx == nullptr);
 
     // start cache transaction
-    _cacheTx = CacheManagerFeature::MANAGER->beginTransaction(false);
-    // TODO: determine if transaction can be made read only
+    _cacheTx = CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
 
     // start rocks transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -120,7 +118,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
-  result = useCollections(_nestingLevel);
+  Result result = useCollections(_nestingLevel);
 
   if (result.ok()) {
     // all valid
