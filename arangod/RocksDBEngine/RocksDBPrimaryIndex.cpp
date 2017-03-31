@@ -91,9 +91,11 @@ bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   ManagedDocumentResult result;
   while (limit > 0) {
+    // TODO: prevent copying of the value into result, as we don't need it here!
     RocksDBToken token = _index->lookupKey(_trx, *_iterator, result);
     cb(token);
 
+    --limit;
     _iterator.next();
     if (!_iterator.valid()) {
       return false;
@@ -135,6 +137,8 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
     cb(token);
+    
+    --limit;
 
     if (_reverse) {
       _iterator->Prev();
