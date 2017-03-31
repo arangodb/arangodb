@@ -189,13 +189,14 @@ void LogicalView::drop() {
   }
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  //StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  //engine->destroyView(_vocbase, this);
+  // StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  // engine->destroyView(_vocbase, this);
 
   _physical->drop();
 }
 
-VPackBuilder LogicalView::toVelocyPack(bool includeProperties, bool includeSystem) const {
+VPackBuilder LogicalView::toVelocyPack(bool includeProperties,
+                                       bool includeSystem) const {
   VPackBuilder builder;
   builder.openObject();
   toVelocyPack(builder, includeProperties, includeSystem);
@@ -232,6 +233,7 @@ void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
 }
 
 arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
+                                               bool partialUpdate,
                                                bool doSync) {
   WRITE_LOCKER(writeLocker, _infoLock);
 
@@ -239,7 +241,7 @@ arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
 
   // the implementation may filter/change/react to the changes
   arangodb::Result implResult =
-      getImplementation()->updateProperties(slice, doSync);
+      getImplementation()->updateProperties(slice, partialUpdate, doSync);
 
   if (implResult.ok()) {
     // after this call the properties are stored
@@ -266,6 +268,7 @@ void LogicalView::persistPhysicalView() {
 }
 
 void LogicalView::spawnImplementation(
-    ViewCreator creator, arangodb::velocypack::Slice const& parameters, bool isNew) {
+    ViewCreator creator, arangodb::velocypack::Slice const& parameters,
+    bool isNew) {
   _implementation = creator(this, parameters, isNew);
 }
