@@ -364,6 +364,32 @@ function dumpTestSuite () {
       assertEqual(1, c.count());
   
       assertTrue(c.exists("foo"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test persistent
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPersistent : function () {
+      var c = db._collection("UnitTestsDumpPersistent");
+      var p = c.properties();
+
+      assertEqual(2, c.getIndexes().length); 
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual("persistent", c.getIndexes()[1].type);
+      assertEqual(10000, c.count());
+
+      var res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 0 RETURN doc").toArray();
+      assertEqual(10000, res.length);
+      
+      res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 5000 RETURN doc").toArray();
+      assertEqual(5000, res.length);
+      
+      res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 9000 RETURN doc").toArray();
+      assertEqual(1000, res.length);
+      
+      res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 10000 RETURN doc").toArray();
+      assertEqual(0, res.length);
     }
 
   };
