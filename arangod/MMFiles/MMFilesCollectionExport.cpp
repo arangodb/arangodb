@@ -102,7 +102,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       THROW_ARANGO_EXCEPTION(res);
     }
     
-    size_t maxDocuments = _collection->numberDocuments();
+    size_t maxDocuments = _collection->numberDocuments(&trx);
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {

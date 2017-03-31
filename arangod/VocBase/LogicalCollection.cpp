@@ -545,10 +545,9 @@ bool LogicalCollection::IsAllowedName(bool allowSystem,
 }
 
 // @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments() const {
-  return getPhysical()->numberDocuments();
+uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx) const {
+  return getPhysical()->numberDocuments(trx);
 }
-
 
 uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }
 

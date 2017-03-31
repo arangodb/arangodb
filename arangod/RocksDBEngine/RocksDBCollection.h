@@ -77,16 +77,14 @@ class RocksDBCollection final : public PhysicalCollection {
 
   TRI_voc_rid_t revision() const override;
 
-  int64_t initialCount() const override;
-  void updateCount(int64_t) override;
-
   void getPropertiesVPack(velocypack::Builder&) const override;
   void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
   int close() override;
 
-  uint64_t numberDocuments() const override;
+  uint64_t numberDocuments() const;
+  uint64_t numberDocuments(transaction::Methods* trx) const override;
 
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;
@@ -173,6 +171,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;
 
+  void adjustNumberDocuments(int64_t adjustment);
   uint64_t objectId() const { return _objectId; }
 
   Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
@@ -212,6 +211,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection
+  std::atomic<uint64_t> _numberDocuments;
 };
 }
 

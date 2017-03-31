@@ -44,7 +44,7 @@ class ManagedDocumentResult {
   ManagedDocumentResult(ManagedDocumentResult const& other) = delete;
   ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = delete;
 
-  ManagedDocumentResult& operator=(ManagedDocumentResult&& other){
+  ManagedDocumentResult& operator=(ManagedDocumentResult&& other) {
     if (other._useString){
       setManaged(std::move(other._string), other._lastRevisionId);
       other._managed = false;
@@ -64,6 +64,19 @@ class ManagedDocumentResult {
   }
 
   ManagedDocumentResult(ManagedDocumentResult&& other) = delete;
+
+  void clone(ManagedDocumentResult& cloned) const {
+    cloned.reset();
+    if (_useString) {
+      cloned._useString = true;
+      cloned._string = _string;
+      cloned._lastRevisionId = _lastRevisionId;
+    } else if (_managed) {
+      cloned.setManaged(_vpack, _lastRevisionId);
+    } else {
+      cloned.setUnmanaged(_vpack, _lastRevisionId);
+    }
+  }
 
   inline uint8_t const* vpack() const {
     TRI_ASSERT(_vpack != nullptr);

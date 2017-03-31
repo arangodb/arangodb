@@ -49,7 +49,6 @@ struct Transaction;
 }
 class LogicalCollection;
 struct RocksDBDocumentOperation;
-class RocksDBWalMarker;
 namespace transaction {
 class Methods;
 }
@@ -83,13 +82,20 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
-  bool hasFailedOperations() const override {
-    return (_hasOperations && _status == transaction::Status::ABORTED);
+  uint64_t numInserts() const { return _numInserts; }
+  uint64_t numUpdates() const { return _numUpdates; }
+  uint64_t numRemoves() const { return _numRemoves; }
+  
+  inline bool hasOperations() const {
+    return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }
 
-  /// @brief add a WAL operation for a transaction collection
-  int addOperation(TRI_voc_rid_t, RocksDBDocumentOperation&,
-                   RocksDBWalMarker const* marker, bool&);
+  bool hasFailedOperations() const override {
+    return (_status == transaction::Status::ABORTED) && hasOperations();
+  }
+
+  /// @brief add an operation for a transaction collection
+  void addOperation(TRI_voc_cid_t collectionId, TRI_voc_document_operation_e operationType, uint64_t operationSize);
 
   rocksdb::Transaction* rocksTransaction() {
     TRI_ASSERT(_rocksTransaction != nullptr);
@@ -102,8 +108,11 @@ class RocksDBTransactionState final : public TransactionState {
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   rocksdb::WriteOptions _rocksWriteOptions;
   rocksdb::ReadOptions _rocksReadOptions;
-  bool _hasOperations;
   cache::Transaction* _cacheTx;
+  uint64_t _operationSize;
+  uint64_t _numInserts;
+  uint64_t _numUpdates;
+  uint64_t _numRemoves;
 };
 }
 

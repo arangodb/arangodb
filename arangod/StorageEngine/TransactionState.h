@@ -136,6 +136,8 @@ class TransactionState {
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
   virtual bool hasFailedOperations() const = 0;
+  
+  TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
  protected:
   /// @brief find a collection in the transaction's list of collections

@@ -63,10 +63,6 @@ class PhysicalCollection {
 
   virtual TRI_voc_rid_t revision() const = 0;
 
-  virtual int64_t initialCount() const = 0;
-
-  virtual void updateCount(int64_t) = 0;
-
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
   virtual void getPropertiesVPackCoordinator(velocypack::Builder&) const = 0;
@@ -79,7 +75,7 @@ class PhysicalCollection {
   virtual int close() = 0;
   
   // @brief Return the number of documents in this collection
-  virtual uint64_t numberDocuments() const = 0;
+  virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
 
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;

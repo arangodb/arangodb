@@ -32,6 +32,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -52,7 +53,9 @@ using namespace arangodb;
 struct RocksDBTransactionData final : public TransactionData {};
 
 RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx)
-    : _trx(trx), _committed(false) {}
+    : _trx(trx), _committed(false) {
+  _trx->SetSavePoint();
+}
 
 RocksDBSavePoint::~RocksDBSavePoint() {
   if (!_committed) {
@@ -73,8 +76,11 @@ void RocksDBSavePoint::rollback() {
 RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
     : TransactionState(vocbase),
       _rocksReadOptions(),
-      _hasOperations(false),
-      _cacheTx(nullptr) {}
+      _cacheTx(nullptr),
+      _operationSize(0),
+      _numInserts(0),
+      _numUpdates(0),
+      _numRemoves(0) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {}
@@ -83,8 +89,6 @@ RocksDBTransactionState::~RocksDBTransactionState() {}
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type)
                                << " transaction";
-  Result result;
-
   if (_nestingLevel == 0) {
     TRI_ASSERT(_status == transaction::Status::CREATED);
 
@@ -98,10 +102,10 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
                                                             std::move(data));
 
     TRI_ASSERT(_rocksTransaction == nullptr);
+    TRI_ASSERT(_cacheTx == nullptr);
 
     // start cache transaction
-    _cacheTx = CacheManagerFeature::MANAGER->beginTransaction(false);
-    // TODO: determine if transaction can be made read only
+    _cacheTx = CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
 
     // start rocks transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -114,7 +118,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
-  result = useCollections(_nestingLevel);
+  Result result = useCollections(_nestingLevel);
 
   if (result.ok()) {
     // all valid
@@ -157,6 +161,13 @@ Result RocksDBTransactionState::commitTransaction(
         abortTransaction(activeTrx);
         return result;
       }
+      
+      for (auto& trxCollection : _collections) {
+        RocksDBTransactionCollection* collection = static_cast<RocksDBTransactionCollection*>(trxCollection);
+        int64_t adjustment = collection->numInserts() - collection->numRemoves();
+        static_cast<RocksDBCollection*>(trxCollection->collection()->getPhysical())->adjustNumberDocuments(adjustment);
+      }
+  
       _rocksTransaction.reset();
       if (_cacheTx != nullptr) {
         CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
@@ -200,7 +211,7 @@ Result RocksDBTransactionState::abortTransaction(
 
     updateStatus(transaction::Status::ABORTED);
 
-    if (_hasOperations) {
+    if (hasOperations()) {
       // must clean up the query cache because the transaction
       // may have queried something via AQL that is now rolled back
       clearQueryCache();
@@ -212,12 +223,32 @@ Result RocksDBTransactionState::abortTransaction(
   return result;
 }
 
-/// @brief add a WAL operation for a transaction collection
-int RocksDBTransactionState::addOperation(TRI_voc_rid_t revisionId,
-                                          RocksDBDocumentOperation& operation,
-                                          RocksDBWalMarker const* marker,
-                                          bool& waitForSync) {
-  _hasOperations = true;
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+/// @brief add an operation for a transaction collection
+void RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, 
+                                           TRI_voc_document_operation_e operationType,
+                                           uint64_t operationSize) {
+  auto collection = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
+  
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found in transaction state");
+  }
+
+  collection->addOperation(operationType, operationSize);
+
+  switch (operationType) {
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      ++_numInserts;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+      ++_numUpdates;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+      ++_numRemoves;
+      break;
+  }
+
+  _operationSize += operationSize;
 }

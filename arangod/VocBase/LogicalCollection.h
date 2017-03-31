@@ -148,7 +148,7 @@ class LogicalCollection {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString() const;
 
-  uint64_t numberDocuments() const;
+  uint64_t numberDocuments(transaction::Methods*) const;
 
   // SECTION: Properties
   TRI_voc_rid_t revision() const;

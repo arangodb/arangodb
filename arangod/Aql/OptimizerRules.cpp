@@ -1789,7 +1789,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       auto resultPair = trx->getIndexForSortCondition(
           enumerateCollectionNode->collection()->getName(),
           &sortCondition, outVariable,
-          enumerateCollectionNode->collection()->count(),
+          enumerateCollectionNode->collection()->count(trx),
           usedIndexes, coveredAttributes);
       if (resultPair.second) {
         // If this bit is set, then usedIndexes has length exactly one
@@ -1839,7 +1839,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(outVariable != nullptr);
 
     auto index = indexes[0];
-    transaction::Methods* trx = indexNode->trx();
+    transaction::Methods* trx = _plan->getAst()->query()->trx();
     bool isSorted = false;
     bool isSparse = false;
     std::vector<std::vector<arangodb::basics::AttributeName>> fields =

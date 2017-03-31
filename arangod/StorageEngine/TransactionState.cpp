@@ -194,6 +194,12 @@ int TransactionState::lockCollections() {
 }
 
 /// @brief find a collection in the transaction's list of collections
+TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid) const {
+  size_t unused = 0;
+  return findCollection(cid, unused);
+}
+
+/// @brief find a collection in the transaction's list of collections
 TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid, size_t& position) const {
   size_t const n = _collections.size();
   size_t i;

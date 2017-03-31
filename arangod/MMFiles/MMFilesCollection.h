@@ -145,8 +145,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   void setRevisionError() { _revisionError = true; }
 
-  int64_t initialCount() const override;
-  void updateCount(int64_t) override;
   size_t journalSize() const;
   bool isVolatile() const;
  
@@ -193,7 +191,7 @@ class MMFilesCollection final : public PhysicalCollection {
     _datafileStatistics.update(fid, values);
   }
    
-  uint64_t numberDocuments() const override;
+  uint64_t numberDocuments(transaction::Methods* trx) const override;
 
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;

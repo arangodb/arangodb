@@ -104,10 +104,11 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
     bool success = _cache->insert(value.get());
     if (!success) {
       LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert failed";
+    } else {
+      // Cache is responsible.
+      // If this failed, well we do not store it and read it again next time.
+      value.release();
     }
-    // Cache is responsible.
-    // If this failed, well we do not store it and read it again next time.
-    value.release();
   }
   ++_insertedDocuments;
   return result;
@@ -131,8 +132,8 @@ aql::AqlValue TraverserCache::fetchAqlResult(StringRef idString) {
   auto finding = lookup(idString);
   if (finding.found()) {
     auto val = finding.value();
-    // finding makes sure that slice contant stays valid.
-    return aql::AqlValue(val->value());
+    // finding makes sure that slice content stays valid.
+    return aql::AqlValue(VPackSlice(val->value()));
   }
   // Not in cache. Fetch and insert.
   return aql::AqlValue(lookupInCollection(idString));
@@ -153,10 +154,11 @@ void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Sl
       bool success = _cache->insert(value.get());
       if (!success) {
         LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert document into cache failed";
+      } else {
+        // Cache is responsible.
+        // If this failed, well we do not store it and read it again next time.
+        value.release();
       }
-      // Cache is responsible.
-      // If this failed, well we do not store it and read it again next time.
-      value.release();
     }
     ++_insertedDocuments;
   }

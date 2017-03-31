@@ -145,7 +145,7 @@ arangodb::Result globalRocksDBPut(rocksdb::Slice const& key,
 
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
                           RocksDBKeyBounds const& bounds) {
-  const rocksdb::Comparator *cmp = db->GetOptions().comparator;
+  const rocksdb::Comparator* cmp = db->GetOptions().comparator;
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts));
   std::size_t count = 0;
   
@@ -153,11 +153,10 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
   rocksdb::Slice upper(bounds.end());
   it->Seek(lower);
   while (it->Valid()) {
-    if (cmp->Compare(it->key(), upper) == -1) {
-      count++;
-    } else {
+    if (cmp->Compare(it->key(), upper) != -1) {
       break;
     }
+    ++count;
     it->Next();
   }
   return count;

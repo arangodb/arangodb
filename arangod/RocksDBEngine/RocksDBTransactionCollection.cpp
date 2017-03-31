@@ -25,7 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
-#include "RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
@@ -39,7 +39,12 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            AccessMode::Type accessType) 
     : TransactionCollection(trx, cid),
       _accessType(accessType), 
-      _numOperations(0) {} 
+      _initialNumberDocuments(0),
+      _initialRevision(0),
+      _operationSize(0),
+      _numInserts(0),
+      _numUpdates(0),
+      _numRemoves(0) {}
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
 
@@ -86,9 +91,9 @@ bool RocksDBTransactionCollection::isLocked() const {
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
-  return (_numOperations > 0);
+  return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
 }
-
+  
 void RocksDBTransactionCollection::freeOperations(transaction::Methods* /*activeTrx*/, bool /*mustRollback*/) {}
 
 bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const {
@@ -136,6 +141,8 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
         !LogicalCollection::IsSystemName(_collection->name())) {
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
+
+    _initialNumberDocuments = static_cast<RocksDBCollection*>(_collection->getPhysical())->numberDocuments();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -152,4 +159,25 @@ void RocksDBTransactionCollection::release() {
     _transaction->vocbase()->releaseCollection(_collection);
     _collection = nullptr;
   }
+}
+  
+/// @brief add an operation for a transaction collection
+void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e operationType,
+                                                uint64_t operationSize) {
+  switch (operationType) {
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      ++_numInserts;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+      ++_numUpdates;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+      ++_numRemoves;
+      break;
+  }
+
+  _operationSize += operationSize;
 }

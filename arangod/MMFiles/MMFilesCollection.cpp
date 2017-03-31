@@ -166,9 +166,9 @@ arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
   _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
 
   int64_t count = arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
-      slice, "count", initialCount());
-  if (count != initialCount()) {
-    updateCount(count);
+      slice, "count", _initialCount);
+  if (count != _initialCount) {
+    _initialCount = count;
   }
  
   return {};
@@ -533,14 +533,6 @@ void MMFilesCollection::setRevision(TRI_voc_rid_t revision, bool force) {
   }
 }
 
-int64_t MMFilesCollection::initialCount() const { 
-  return _initialCount;
-}
-
-void MMFilesCollection::updateCount(int64_t count) {
-  _initialCount = count;
-}
-
 size_t MMFilesCollection::journalSize() const { return _journalSize; };
 
 bool MMFilesCollection::isVolatile() const { return _isVolatile; }
@@ -551,8 +543,8 @@ int MMFilesCollection::close() {
     auto primIdx = primaryIndex();
     auto idxSize = primIdx->size();
 
-    if (initialCount() != static_cast<int64_t>(idxSize)) {
-      updateCount(idxSize);
+    if (_initialCount != static_cast<int64_t>(idxSize)) {
+      _initialCount = idxSize;
 
       // save new "count" value
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1109,7 +1101,7 @@ bool MMFilesCollection::closeDatafiles(std::vector<MMFilesDatafile*> const& file
 
 void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
-  result.add("count", VPackValue(initialCount()));
+  result.add("count", VPackValue(_initialCount));
   result.add("doCompact", VPackValue(_doCompact));
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add("isVolatile", VPackValue(_isVolatile));
@@ -1361,7 +1353,7 @@ bool MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t
 }
   
 // @brief Return the number of documents in this collection
-uint64_t MMFilesCollection::numberDocuments() const {
+uint64_t MMFilesCollection::numberDocuments(transaction::Methods* trx) const {
   return primaryIndex()->size();
 }
 
@@ -1654,7 +1646,6 @@ int MMFilesCollection::openWorker(bool ignoreErrors) {
   }
 }
 
-
 void MMFilesCollection::open(bool ignoreErrors) {
   VPackBuilder builder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1667,7 +1658,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
   if (initialCount.isNumber()) {
     int64_t count = initialCount.getNumber<int64_t>();
     if (count > 0) {
-      updateCount(count);
+      _initialCount = count;
     }
   }
 

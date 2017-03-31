@@ -68,10 +68,24 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
   void release() override;
+  
+  uint64_t initialNumberDocuments() const { return _initialNumberDocuments; }
+  TRI_voc_rid_t revision() const { return _initialRevision; }
+  uint64_t numInserts() const { return _numInserts; }
+  uint64_t numUpdates() const { return _numUpdates; }
+  uint64_t numRemoves() const { return _numRemoves; }
+  
+  /// @brief add an operation for a transaction collection
+  void addOperation(TRI_voc_document_operation_e operationType, uint64_t operationSize);
 
  private:
   AccessMode::Type _accessType;  // access type (read|write)
-  uint64_t _numOperations;
+  uint64_t _initialNumberDocuments;
+  TRI_voc_rid_t _initialRevision;
+  uint64_t _operationSize;
+  uint64_t _numInserts;
+  uint64_t _numUpdates;
+  uint64_t _numRemoves;
 };
 
 }
