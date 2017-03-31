@@ -360,11 +360,12 @@ int RocksDBCollection::read(transaction::Methods* trx,
                             ManagedDocumentResult& result, bool) {
   TRI_ASSERT(key.isString());
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
+/*
   LOG_TOPIC(ERR, Logger::FIXME)
       << "READ IN COLLECTION '" << _logicalCollection->name()
       << "', KEY: " << key.copyString()
       << ", FOUND REVISION ID: " << token.revisionId();
-
+*/
   if (token.revisionId()) {
     if (readDocument(trx, token, result)) {
       // found
@@ -806,11 +807,14 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
-  LOG_TOPIC(ERR, Logger::FIXME)
+/*
+  LOG_TOPIC(ERR, Logger::ENGINE)
       << "INSERT DOCUMENT. COLLECTION '" << _logicalCollection->name()
       << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId;
 
+*/
   rocksdb::Status status = rtrx->Put(key.string(), value.string());
+
   if (!status.ok()) {
     auto converted =
         rocksutils::convertStatus(status, rocksutils::StatusHint::document);
@@ -925,11 +929,12 @@ int RocksDBCollection::updateDocument(transaction::Methods* trx,
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
+/*
   LOG_TOPIC(ERR, Logger::FIXME)
       << "UPDATE DOCUMENT. COLLECTION '" << _logicalCollection->name()
       << "', OBJECTID: " << _objectId << ", OLDREVISIONID: " << oldRevisionId
       << ", NEWREVISIONID: " << newRevisionId;
-
+*/
   int res = removeDocument(trx, oldRevisionId, oldDoc, waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -969,16 +974,20 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   TRI_ASSERT(value.data());
   auto result = convertStatus(status);
   if (result.ok()) {
+    /*
     LOG_TOPIC(ERR, Logger::FIXME)
         << "LOOKUPREVISIONVPACK. COLLECTION '" << _logicalCollection->name()
         << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
         << " -> FOUND";
+    */
     mdr.setManaged(std::move(value), revisionId);
   } else {
+    /*
     LOG_TOPIC(ERR, Logger::FIXME)
         << "LOOKUPREVISIONVPACK. COLLECTION '" << _logicalCollection->name()
         << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
         << " -> NOT FOUND";
+    */
   }
   return result;
 }
