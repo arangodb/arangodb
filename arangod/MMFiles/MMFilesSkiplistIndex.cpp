@@ -1214,7 +1214,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
     transaction::Methods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) const {
+    arangodb::aql::Variable const* reference, bool reverse) {
   std::vector<std::vector<arangodb::aql::AstNode const*>> mapping;
   bool usesIn = false;
   if (node != nullptr) {

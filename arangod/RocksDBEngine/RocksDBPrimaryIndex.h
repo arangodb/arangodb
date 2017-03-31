@@ -53,7 +53,7 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
   RocksDBPrimaryIndexIterator(LogicalCollection* collection,
                               transaction::Methods* trx,
                               ManagedDocumentResult* mmdr,
-                              RocksDBPrimaryIndex const* index,
+                              RocksDBPrimaryIndex* index,
                               std::unique_ptr<VPackBuilder>& keys);
 
   ~RocksDBPrimaryIndexIterator();
@@ -65,7 +65,7 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  RocksDBPrimaryIndex const* _index;
+  RocksDBPrimaryIndex* _index;
   std::unique_ptr<VPackBuilder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
 };
@@ -134,7 +134,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   RocksDBToken lookupKey(transaction::Methods* trx, arangodb::StringRef key);
   RocksDBToken lookupKey(transaction::Methods* trx,
                          arangodb::velocypack::Slice key,
-                         ManagedDocumentResult& result) const;
+                         ManagedDocumentResult& result);
 
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
@@ -154,7 +154,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) const override;
+                                      bool) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
@@ -168,12 +168,12 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
                                   arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
+                                  arangodb::aql::AstNode const*);
 
   /// @brief create the iterator, for a single attribute, EQ operator
   IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
                                   arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
+                                  arangodb::aql::AstNode const*);
 
   /// @brief add a single value node to the iterator's keys
   void handleValNode(transaction::Methods* trx, VPackBuilder* keys,

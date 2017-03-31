@@ -979,7 +979,7 @@ bool RocksDBVPackIndex::supportsSortCondition(
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) const {
+    arangodb::aql::Variable const* reference, bool reverse) {
   VPackBuilder searchValues;
   searchValues.openArray();
   bool needNormalize = false;

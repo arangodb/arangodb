@@ -277,7 +277,7 @@ class Index {
                                               ManagedDocumentResult*,
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
-                                              bool) const;
+                                              bool);
 
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
