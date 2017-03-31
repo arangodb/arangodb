@@ -104,10 +104,11 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
     bool success = _cache->insert(value.get());
     if (!success) {
       LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert failed";
+    } else {
+      // Cache is responsible.
+      // If this failed, well we do not store it and read it again next time.
+      value.release();
     }
-    // Cache is responsible.
-    // If this failed, well we do not store it and read it again next time.
-    value.release();
   }
   ++_insertedDocuments;
   return result;
@@ -153,10 +154,11 @@ void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Sl
       bool success = _cache->insert(value.get());
       if (!success) {
         LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert document into cache failed";
+      } else {
+        // Cache is responsible.
+        // If this failed, well we do not store it and read it again next time.
+        value.release();
       }
-      // Cache is responsible.
-      // If this failed, well we do not store it and read it again next time.
-      value.release();
     }
     ++_insertedDocuments;
   }
