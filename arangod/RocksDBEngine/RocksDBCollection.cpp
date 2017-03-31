@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan-Christoph Uhde
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBCollection.h"
@@ -46,6 +46,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -103,8 +104,27 @@ arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
 }
 
 arangodb::Result RocksDBCollection::persistProperties() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return arangodb::Result{};
+  Result res;
+  try {
+    VPackBuilder infoBuilder =
+        _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
+
+  RocksDBKey key(RocksDBKey::Collection(_logicalCollection->vocbase()->id(), _objectId));
+  RocksDBValue value(RocksDBValue::Document(infoBuilder.slice()));
+  res = globalRocksDBPut(key.string(), *value.string());
+
+  } catch (arangodb::basics::Exception const& ex) {
+    res.reset(ex.code());
+  } catch (...) {
+    res.reset(TRI_ERROR_INTERNAL);
+  }
+
+  if (res.fail()) {
+    // TODO: what to do here
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "could not save collection change marker in log: "
+                                              << res.errorMessage();
+  }
+  return res;
 }
 
 PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical,
@@ -802,7 +822,7 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   if (result != TRI_ERROR_NO_ERROR) {
     if (_logicalCollection->waitForSync()) {
-      waitForSync = true;
+      waitForSync = true; // output parameter (by ref)
     }
 
     if (waitForSync) {
@@ -914,6 +934,7 @@ int RocksDBCollection::updateDocument(transaction::Methods* trx,
 Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
                                               arangodb::StringRef key,
                                               RocksDBToken& outToken) {
+
   // TODO fix as soon as we got a real primary index
   outToken = primaryIndex()->lookupKey(trx, key);
   return outToken.revisionId() > 0
@@ -928,10 +949,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;
-  TRI_ASSERT(value.data());
   auto* state = toRocksTransactionState(trx);
   rocksdb::Status status = state->rocksTransaction()->Get(state->readOptions(),
                                                           key.string(), &value);
+  TRI_ASSERT(value.data());
   auto result = convertStatus(status);
   if (result.ok()) {
     LOG_TOPIC(ERR, Logger::FIXME)

@@ -20,6 +20,7 @@
 ///
 /// @author Daniel H. Larkin
 /// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -128,7 +129,20 @@ rocksdb::DB* globalRocksDB() {
   TRI_ASSERT(rocks->db() != nullptr);
   return rocks->db();
 }
-  
+
+RocksDBEngine* globalRocksEngine() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  return static_cast<RocksDBEngine*>(engine);
+
+}
+arangodb::Result globalRocksDBPut(rocksdb::Slice const& key,
+                                  rocksdb::Slice const& val,
+                                  rocksdb::WriteOptions const&) {
+  auto status = globalRocksDB()->Put(rocksdb::WriteOptions{}, key, val);
+  return convertStatus(status);
+};
+
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
                           RocksDBKeyBounds const& bounds) {
   const rocksdb::Comparator *cmp = db->GetOptions().comparator;

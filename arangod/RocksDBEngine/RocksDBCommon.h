@@ -20,6 +20,7 @@
 ///
 /// @author Daniel H. Larkin
 /// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_COMMON_H
@@ -29,6 +30,7 @@
 #include "Basics/Result.h"
 
 #include <rocksdb/status.h>
+#include <rocksdb/options.h>
 
 namespace rocksdb {class DB; struct ReadOptions;}
 
@@ -36,6 +38,7 @@ namespace arangodb {
 class TransactionState;
 class RocksDBTransactionState;
 class RocksDBKeyBounds;
+class RocksDBEngine;
 namespace transaction { class Methods; }
 namespace rocksutils {
 
@@ -46,10 +49,12 @@ arangodb::Result convertStatus(rocksdb::Status const&,
 
 uint64_t uint64FromPersistent(char const* p);
 void uint64ToPersistent(char* p, uint64_t value);
-void uint64ToPersistent(std::string& out, uint64_t value);  
+void uint64ToPersistent(std::string& out, uint64_t value);
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
 rocksdb::DB* globalRocksDB();
-  
+RocksDBEngine* globalRocksEngine();
+arangodb::Result globalRocksDBPut(rocksdb::Slice const &, rocksdb::Slice const &, rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
+
 /// Iterator over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
                           RocksDBKeyBounds const&);
