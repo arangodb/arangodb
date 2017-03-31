@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,8 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
   IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
 
   char const* typeName() const override { return "rocksdb-hash"; }
+
+  bool matchesDefinition(VPackSlice const& info) const override;
 
   bool isSorted() const override { return false; }
 };
