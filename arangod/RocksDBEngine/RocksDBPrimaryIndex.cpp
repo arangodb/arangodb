@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -110,7 +110,6 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     : IndexIterator(collection, trx, mmdr, index),
       _cmp(index->_cmp),
       _reverse(reverse),
-      _total(0),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
   // aquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);

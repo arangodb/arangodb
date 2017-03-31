@@ -138,7 +138,8 @@ void RocksDBCollection::getPropertiesVPackCoordinator(
 
 /// @brief closes an open collection
 int RocksDBCollection::close() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO
+  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -310,7 +311,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods*,
 /// @brief Drop an index with the given iid.
 bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return false;
+  return true;
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
@@ -733,7 +734,7 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
 // or it's indexes are freed the pointer returned will get invalidated.
 arangodb::RocksDBPrimaryIndex* RocksDBCollection::primaryIndex() const {
   // The primary index always has iid 0
-  auto primary = _logicalCollection->lookupIndex(0);
+  auto primary = PhysicalCollection::lookupIndex(0);
   TRI_ASSERT(primary != nullptr);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
