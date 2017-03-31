@@ -520,7 +520,8 @@ void RocksDBEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase,
 
 void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
                                      arangodb::LogicalCollection* collection) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO: does anything have to happen
+  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
