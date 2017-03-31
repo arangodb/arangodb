@@ -80,7 +80,8 @@ class LogicalView {
   void drop();
 
   // SECTION: Serialization
-  VPackBuilder toVelocyPack(bool includeProperties = false, bool includeSystem = false) const;
+  VPackBuilder toVelocyPack(bool includeProperties = false,
+                            bool includeSystem = false) const;
 
   void toVelocyPack(velocypack::Builder&, bool includeProperties = false,
                     bool includeSystem = false) const;
@@ -88,7 +89,7 @@ class LogicalView {
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   // Update this view.
-  arangodb::Result updateProperties(velocypack::Slice const&, bool);
+  arangodb::Result updateProperties(velocypack::Slice const&, bool, bool);
 
   /// @brief Persist the connected physical view.
   ///        This should be called AFTER the view is successfully

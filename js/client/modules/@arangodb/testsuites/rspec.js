@@ -100,7 +100,7 @@ function rubyTests (options, ssl) {
     fs.makeDirectory(pu.LOGS_DIR);
   } catch (err) {}
 
-  const files = fs.list(fs.join('UnitTests', 'HttpInterface'));
+  let files = fs.list(fs.join('UnitTests', 'HttpInterface'));
 
   let continueTesting = true;
   let filtered = {};
@@ -140,6 +140,8 @@ function rubyTests (options, ssl) {
   };
 
   let count = 0;
+  files = tu.splitBuckets(options, files);
+
   for (let i = 0; i < files.length; i++) {
     const te = files[i];
 
