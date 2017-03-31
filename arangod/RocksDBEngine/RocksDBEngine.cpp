@@ -34,8 +34,8 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -176,10 +176,9 @@ PhysicalCollection* RocksDBEngine::createPhysicalCollection(
 }
 
 // create storage-engine specific view
-PhysicalView* RocksDBEngine::createPhysicalView(LogicalView*,
-                                                VPackSlice const&) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return nullptr;
+PhysicalView* RocksDBEngine::createPhysicalView(LogicalView* view,
+                                                VPackSlice const& info) {
+  return new RocksDBView(view, info);
 }
 
 // inventory functionality
@@ -189,7 +188,7 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "getting existing databases";
 
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter (_db->NewIterator(readOptions));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions));
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
@@ -240,14 +239,14 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
                                       bool includeIndexes,
                                       TRI_voc_tick_t maxTick) {
   builder.openObject();
-  
+
   // read collection info from database
   auto key = RocksDBKey::Collection(vocbase->id(), cid);
   auto value = RocksDBValue::Empty(RocksDBEntryType::Collection);
   rocksdb::ReadOptions options;
   rocksdb::Status res = _db->Get(options, key.string(), value.buffer());
   auto result = rocksutils::convertStatus(res);
-  
+
   if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
@@ -268,7 +267,7 @@ int RocksDBEngine::getCollectionsAndIndexes(
     TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
     bool wasCleanShutdown, bool isUpgrade) {
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter (_db->NewIterator(readOptions));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions));
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
@@ -298,7 +297,7 @@ int RocksDBEngine::getCollectionsAndIndexes(
 int RocksDBEngine::getViews(TRI_vocbase_t* vocbase,
                             arangodb::velocypack::Builder& result) {
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter (_db->NewIterator(readOptions));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions));
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::View);
@@ -465,8 +464,8 @@ arangodb::Result RocksDBEngine::persistCollection(
   return result;
 }
 
-arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t* vocbase,
-                                               arangodb::LogicalCollection* collection) {
+arangodb::Result RocksDBEngine::dropCollection(
+    TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
   // TODO: drop indexes of collection
   // TODO: drop documents and index values of collection
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
@@ -524,40 +523,40 @@ void RocksDBEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase,
 void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
                                      arangodb::LogicalCollection* collection) {
   // TODO: does anything have to happen
-  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  auto key = RocksDBKey::View(vocbase->id(), id);
+  auto value = RocksDBValue::View(VPackSlice::emptyObjectSlice());
+
+  auto status = rocksutils::globalRocksDBPut(key.string(), value.string());
+  if (!status.ok()) {
+    THROW_ARANGO_EXCEPTION(status.errorNumber());
+  }
 }
 
-arangodb::Result RocksDBEngine::persistView(TRI_vocbase_t* vocbase,
-                                            arangodb::LogicalView const*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return arangodb::Result{};
+arangodb::Result RocksDBEngine::persistView(
+    TRI_vocbase_t* vocbase, arangodb::LogicalView const* logical) {
+  auto physical = static_cast<RocksDBView*>(logical->getPhysical());
+  return physical->persistProperties();
 }
 
 arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t* vocbase,
                                          arangodb::LogicalView*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return arangodb::Result{};
+  // nothing to do here
+  return {TRI_ERROR_NO_ERROR};
 }
 
 void RocksDBEngine::destroyView(TRI_vocbase_t* vocbase,
                                 arangodb::LogicalView*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // nothing to do here
 }
 
 void RocksDBEngine::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const*, bool doSync) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
-std::string RocksDBEngine::createViewDirectoryName(std::string const& basePath,
-                                                   TRI_voc_cid_t id) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return "not implemented";
+  // nothing to do here
 }
 
 void RocksDBEngine::signalCleanup(TRI_vocbase_t*) {
