@@ -245,14 +245,14 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
   auto key = RocksDBKey::Collection(vocbase->id(), cid);
   auto value = RocksDBValue::Empty(RocksDBEntryType::Collection);
   rocksdb::ReadOptions options;
-  rocksdb::Status res = _db->Get(options, key.string(), value.string());
+  rocksdb::Status res = _db->Get(options, key.string(), value.buffer());
   auto result = rocksutils::convertStatus(res);
   
   if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
 
-  builder.add("parameters", VPackSlice(value.string()->data()));
+  builder.add("parameters", VPackSlice(value.buffer()->data()));
 
   if (includeIndexes) {
     // dump index information
@@ -386,7 +386,7 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   auto value = RocksDBValue::Database(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
-  rocksdb::Status res = _db->Put(options, key.string(), *value.string());
+  rocksdb::Status res = _db->Put(options, key.string(), value.string());
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
 }
@@ -398,7 +398,7 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   auto value = RocksDBValue::Collection(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
-  rocksdb::Status res = _db->Put(options, key.string(), *value.string());
+  rocksdb::Status res = _db->Put(options, key.string(), value.string());
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
 }
@@ -499,7 +499,7 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
   auto key = RocksDBKey::Index(vocbase->id(), collectionId, indexId);
   auto value = RocksDBValue::Index(data);
 
-  rocksdb::Status res = _db->Put(options, key.string(), *value.string());
+  rocksdb::Status res = _db->Put(options, key.string(), value.string());
   auto result = rocksutils::convertStatus(res);
   if (!result.ok()) {
     THROW_ARANGO_EXCEPTION(result.errorNumber());

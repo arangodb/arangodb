@@ -216,7 +216,8 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     auto f = _cache->find(key.string().data(),
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
-      value.string()->append(reinterpret_cast<char const*>(f.value()->value()),
+      f.value();
+      value.buffer()->append(reinterpret_cast<char const*>(f.value()->value()),
                              static_cast<size_t>(f.value()->valueSize));
       return RocksDBToken(RocksDBValue::revisionId(value));
     }
@@ -227,7 +228,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   auto options = state->readOptions();
 
-  auto status = rtrx->Get(options, key.string(), value.string());
+  auto status = rtrx->Get(options, key.string(), value.buffer());
   if (!status.ok()) {
     return RocksDBToken();
   }
@@ -236,7 +237,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     // write entry back to cache
     auto entry = cache::CachedValue::construct(
         key.string().data(), static_cast<uint32_t>(key.string().size()),
-        value.string()->data(), static_cast<uint64_t>(value.string()->size()));
+        value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
     bool cached = _cache->insert(entry);
     if (!cached) {
       delete entry;
@@ -257,7 +258,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   auto options = state->readOptions();
 
-  auto status = rtrx->Get(options, key.string(), value.string());
+  auto status = rtrx->Get(options, key.string(), value.buffer());
   if (!status.ok()) {
     return RocksDBToken();
   }
@@ -291,7 +292,7 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
     }
   }
 
-  auto status = rtrx->Put(key.string(), *value.string());
+  auto status = rtrx->Put(key.string(), value.string());
   if (!status.ok()) {
     auto converted =
         rocksutils::convertStatus(status, rocksutils::StatusHint::index);

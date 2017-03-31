@@ -503,14 +503,14 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
     if (_unique) {
       RocksDBValue existing =
           RocksDBValue::Empty(RocksDBEntryType::UniqueIndexValue);
-      auto status = rtrx->Get(options, key.string(), existing.string());
+      auto status = rtrx->Get(options, key.string(), existing.buffer());
       if (!status.IsNotFound()) {
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
       }
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      auto s = rtrx->Put(key.string(), *value.string());
+      auto s = rtrx->Put(key.string(), value.string());
 
       auto status = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
       if (!status.ok()) {

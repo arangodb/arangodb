@@ -105,7 +105,7 @@ arangodb::Result RocksDBCollection::persistProperties() {
 
   RocksDBKey key(RocksDBKey::Collection(_logicalCollection->vocbase()->id(), _objectId));
   RocksDBValue value(RocksDBValue::Document(infoBuilder.slice()));
-  res = globalRocksDBPut(key.string(), *value.string());
+  res = globalRocksDBPut(key.string(), value.string());
 
   } catch (arangodb::basics::Exception const& ex) {
     res.reset(ex.code());
@@ -810,7 +810,7 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
       << "INSERT DOCUMENT. COLLECTION '" << _logicalCollection->name()
       << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId;
 
-  rocksdb::Status status = rtrx->Put(key.string(), *value.string());
+  rocksdb::Status status = rtrx->Put(key.string(), value.string());
   if (!status.ok()) {
     auto converted =
         rocksutils::convertStatus(status, rocksutils::StatusHint::document);

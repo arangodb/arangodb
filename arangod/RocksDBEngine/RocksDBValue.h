@@ -94,7 +94,8 @@ class RocksDBValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.
   //////////////////////////////////////////////////////////////////////////////
-  std::string* string();
+  std::string const& string() { return _buffer; } // to be used with put
+  std::string* buffer() { return &_buffer; }      // to be used with get
 
  private:
   RocksDBValue();

@@ -105,8 +105,6 @@ VPackSlice RocksDBValue::data(std::string const& s) {
   return data(s.data(), s.size());
 }
 
-std::string* RocksDBValue::string() { return &_buffer; }
-
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
