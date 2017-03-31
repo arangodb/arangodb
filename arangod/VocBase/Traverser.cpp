@@ -192,11 +192,14 @@ bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
 bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, uint64_t depth) {
   TRI_ASSERT(v.isString());
   if (_opts->vertexHasFilter(depth)) {
+    // We always need to destroy this vertex
     aql::AqlValue vertex = fetchVertexData(StringRef(v));
     if (!_opts->evaluateVertexExpression(vertex.slice(), depth)) {
       ++_filteredPaths;
+      vertex.destroy();
       return false;
     }
+    vertex.destroy();
   }
   return true;
 }
