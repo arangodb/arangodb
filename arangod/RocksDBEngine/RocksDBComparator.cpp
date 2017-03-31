@@ -55,7 +55,12 @@ int RocksDBComparator::Compare(rocksdb::Slice const& lhs,
 
 int RocksDBComparator::compareType(rocksdb::Slice const& lhs,
                                    rocksdb::Slice const& rhs) const {
-  return lhs[0] - rhs[0];  // type is first byte of every key
+  // type is first byte of every key
+  if (lhs[0] == rhs[0]) {
+    return 0;
+  }
+
+  return ((lhs[0] < rhs[0]) ? -1 : 1);
 }
 
 int RocksDBComparator::compareLexicographic(rocksdb::Slice const& lhs,
