@@ -170,6 +170,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;
 
+  void adjustNumberDocuments(int64_t adjustment);
   uint64_t objectId() const { return _objectId; }
 
   Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,

@@ -95,7 +95,7 @@ class RocksDBTransactionState final : public TransactionState {
   }
 
   /// @brief add an operation for a transaction collection
-  void addOperation(TRI_voc_document_operation_e operationType, uint64_t operationSize);
+  void addOperation(TRI_voc_cid_t collectionId, TRI_voc_document_operation_e operationType, uint64_t operationSize);
 
   rocksdb::Transaction* rocksTransaction() {
     TRI_ASSERT(_rocksTransaction != nullptr);

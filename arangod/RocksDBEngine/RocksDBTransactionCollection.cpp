@@ -39,7 +39,10 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            AccessMode::Type accessType) 
     : TransactionCollection(trx, cid),
       _accessType(accessType), 
-      _numOperations(0) {} 
+      _operationSize(0),
+      _numInserts(0),
+      _numUpdates(0),
+      _numRemoves(0) {}
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
 
@@ -86,9 +89,9 @@ bool RocksDBTransactionCollection::isLocked() const {
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
-  return (_numOperations > 0);
+  return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
 }
-
+  
 void RocksDBTransactionCollection::freeOperations(transaction::Methods* /*activeTrx*/, bool /*mustRollback*/) {}
 
 bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const {
@@ -152,4 +155,25 @@ void RocksDBTransactionCollection::release() {
     _transaction->vocbase()->releaseCollection(_collection);
     _collection = nullptr;
   }
+}
+  
+/// @brief add an operation for a transaction collection
+void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e operationType,
+                                                uint64_t operationSize) {
+  switch (operationType) {
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      ++_numInserts;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+      ++_numUpdates;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+      ++_numRemoves;
+      break;
+  }
+
+  _operationSize += operationSize;
 }

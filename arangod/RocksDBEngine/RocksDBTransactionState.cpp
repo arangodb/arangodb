@@ -32,6 +32,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -52,7 +53,9 @@ using namespace arangodb;
 struct RocksDBTransactionData final : public TransactionData {};
 
 RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx)
-    : _trx(trx), _committed(false) {}
+    : _trx(trx), _committed(false) {
+  _trx->SetSavePoint();
+}
 
 RocksDBSavePoint::~RocksDBSavePoint() {
   if (!_committed) {
@@ -160,6 +163,13 @@ Result RocksDBTransactionState::commitTransaction(
         abortTransaction(activeTrx);
         return result;
       }
+      
+      for (auto& trxCollection : _collections) {
+        RocksDBTransactionCollection* collection = static_cast<RocksDBTransactionCollection*>(trxCollection);
+        int64_t adjustment = collection->numInserts() - collection->numRemoves();
+        static_cast<RocksDBCollection*>(trxCollection->collection()->getPhysical())->adjustNumberDocuments(adjustment);
+      }
+  
       _rocksTransaction.reset();
       if (_cacheTx != nullptr) {
         CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
@@ -216,8 +226,17 @@ Result RocksDBTransactionState::abortTransaction(
 }
 
 /// @brief add an operation for a transaction collection
-void RocksDBTransactionState::addOperation(TRI_voc_document_operation_e operationType,
+void RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, 
+                                           TRI_voc_document_operation_e operationType,
                                            uint64_t operationSize) {
+  auto collection = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
+  
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found in transaction state");
+  }
+
+  collection->addOperation(operationType, operationSize);
+
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
