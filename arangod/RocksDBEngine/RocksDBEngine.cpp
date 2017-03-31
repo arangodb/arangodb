@@ -668,7 +668,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // TODO: remove documents and index entries of database
 
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
-  auto key = RocksDBKey::Database(vocbase->id());
+  auto key = RocksDBKey::Database(id);
 
   rocksdb::Status res = _db->Delete(options, key.string());
   return rocksutils::convertStatus(res);
