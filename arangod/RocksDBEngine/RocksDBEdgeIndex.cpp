@@ -314,7 +314,7 @@ bool RocksDBEdgeIndex::supportsFilterCondition(
 IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) const {
+    arangodb::aql::Variable const* reference, bool reverse) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   TRI_ASSERT(node->numMembers() == 1);

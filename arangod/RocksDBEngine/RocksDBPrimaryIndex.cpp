@@ -64,7 +64,7 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 
 RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index,
+    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex* index,
     std::unique_ptr<VPackBuilder>& keys)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
@@ -249,7 +249,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
 RocksDBToken RocksDBPrimaryIndex::lookupKey(
     transaction::Methods* trx, VPackSlice slice,
-    ManagedDocumentResult& result) const {
+    ManagedDocumentResult& result) {
   auto key = RocksDBKey::PrimaryIndexValue(_objectId, slice.copyString());
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
@@ -355,7 +355,7 @@ bool RocksDBPrimaryIndex::supportsFilterCondition(
 IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) const {
+    arangodb::aql::Variable const* reference, bool reverse) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   TRI_ASSERT(node->numMembers() == 1);
@@ -409,7 +409,7 @@ IndexIterator* RocksDBPrimaryIndex::allIterator(transaction::Methods* trx,
 IndexIterator* RocksDBPrimaryIndex::createInIterator(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
-    arangodb::aql::AstNode const* valNode) const {
+    arangodb::aql::AstNode const* valNode) {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
@@ -441,7 +441,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
 IndexIterator* RocksDBPrimaryIndex::createEqIterator(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
-    arangodb::aql::AstNode const* valNode) const {
+    arangodb::aql::AstNode const* valNode) {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
