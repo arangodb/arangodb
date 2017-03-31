@@ -476,9 +476,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     VPackSlice documents;
     try {
       documents = _request->payload();
-    } catch (VPackException const&) {
+    } catch (VPackException const& ex) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expecting a JSON array in the request");
+                    std::string("expecting a valid JSON array in the request. got: ") + ex.what());
       return false;
     }
 
