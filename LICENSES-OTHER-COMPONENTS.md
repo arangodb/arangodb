@@ -2,65 +2,84 @@
 
 ## C/C++ Libraries
 
-### Boost 1.61.0
+### Boost 1.62
 
 * Project Home: http://www.boost.org/
-* License: Boost [boost software license](http://www.boost.org/LICENSE_1_0.txt)
-* License: argument_value_usage.hpp [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/boost/1.61.0/boost/test/utils/runtime/cla/detail/argument_value_usage.hpp)
+* License: [boost software license](http://www.boost.org/LICENSE_1_0.txt)
 
-### fpconv_dtoa
+### Catch 1.8.1
 
-* GitHub: https://github.com/night-shift/fpconv/
-* License: [MIT License](https://github.com/night-shift/fpconv/blob/master/license)
+* Project Home: https://github.com/philsquared/Catch
+* License: [boost software license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/catch/catch.hpp)
+
+### Curl 7.50.3
+
+* Project Home: https://curl.haxx.se/
+* License: [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/curl/curl-7.50.3/COPYING)
 
 ### fasthash
 
 * Project Home: https://code.google.com/p/fast-hash/
 * License: [MIT License](https://code.google.com/p/fast-hash/)
 
-### xxHash
+### fakeit
 
-* GitHub: https://github.com/Cyan4973/xxHash/
-* License: [BSD License](https://github.com/Cyan4973/xxHash/blob/master/LICENSE)
+* Project Home: https://github.com/eranpeer/FakeIt
+* License: [MIT License](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/fakeit/fakeit.hpp)
 
-### short_alloc
+### fpconv_dtoa
 
-* Project Home: https://howardhinnant.github.io/stack_alloc.html
-* License: [MIT License](https://howardhinnant.github.io/short_alloc.h/)
+* GitHub: https://github.com/night-shift/fpconv/
+* License: [MIT License](https://github.com/night-shift/fpconv/blob/master/license)
 
-### Google V8 5.0.71.39
+### Google V8 5.7.0.0
 
 * GitHub: https://github.com/v8/v8
-* License: V8 [BSD-style 3-Clause License](https://github.com/v8/v8/blob/5.0.71.39/LICENSE.v8)
-* License: strongtalk [BSD-style 3-Clause License](https://github.com/v8/v8/blob/5.0.71.39/LICENSE.strongtalk)
-* License: valgrind [BSD-style 4-Clause license](https://github.com/v8/v8/blob/5.0.71.39/LICENSE.valgrind)
-* License: vtune, Dual-License [BSD 3-Clause License](https://github.com/v8/v8/blob/5.0.71.39/src/third_party/vtune/v8-vtune.h)
-* License: gmock [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-5.0.71.39/testing/gmock/LICENSE)
-* License: gtest [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-5.0.71.39/testing/gtest/LICENSE)
-* License: fdlibm [free as-is license](https://github.com/v8/v8/blob/5.0.71.39/src/third_party/fdlibm/LICENSE)
-* License: PCRE [BSD 3-Clause license](https://github.com/v8/v8/blob/5.0.71.39/test/mjsunit/third_party/regexp-pcre.js)
-* License: object-keys [BSD-style 3-Clause license](https://github.com/v8/v8/blob/5.0.71.39/test/mjsunit/third_party/object-keys.js) 
+* License: V8 [BSD-style 3-Clause License](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v5.7.0.0/LICENSE.v8)
+* License: strongtalk [BSD-style 3-Clause License](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v5.7.0.0/LICENSE.strongtalk)
+* License: valgrind [BSD-style 4-Clause license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v5.7.0.0/LICENSE.valgrind)
+* License: fdlibm [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v5.7.0.0/LICENSE.fdlibm)
+* License: PCRE [BSD 3-Clause license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.0.0/test/mjsunit/third_party/regexp-pcre/LICENSE)
+* License: object-keys [BSD-style 3-Clause license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.0.0/test/mjsunit/third_party/object-keys/LICENSE)
+* License: vtune, Dual-License [BSD 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.0.0/src/third_party/vtune/LICENSE)
+* License: gtest [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.0.0/testing/gtest/include/gtest/gtest_prod.h)
+* License: gyp [BSD-style 3-Clause license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.0.0/tools/gyp/LICENSE)
 
-### RocksDB 4.8.0
-
-* GitHub: https://github.com/facebook/rocksdb
-* License: [BSD License](https://github.com/facebook/rocksdb/blob/master/LICENSE)
-
-### ICU 54.1
+### ICU 58.1
 
 * Project Home: http://site.icu-project.org/
-* License: [ICU License](http://source.icu-project.org/repos/icu/icu/trunk/license.html)
+* License: [ICU License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.0.0/third_party/icu/LICENSE)
 
 ### linenoise-ng
 
 * GitHub: https://github.com/arangodb/linenoise-ng
 * License: [BSD-style 2-Clause License](https://github.com/antirez/linenoise/blob/master/LICENSE)
 
+### RocksDB 5.1.4
+
+* GitHub: https://github.com/facebook/rocksdb
+* License: [BSD License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/rocksdb/v5.1.4/LICENSE)
+
+### short_alloc
+
+* Project Home: https://howardhinnant.github.io/stack_alloc.html
+* License: [MIT License](https://howardhinnant.github.io/short_alloc.h/)
+
+### snappy d53de18
+
+* Project Home: http://google.github.io/snappy/
+* License: [BSD-style 3-Clause license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/snappy/google-snappy-d53de18/COPYING)
+
 ### Valgrind
 
 * Project Home: http://valgrind.org/
 * uses valgrind.h header file only, none of the other files
 * License: [BSD-style 4-Clause license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
+
+### xxHash
+
+* GitHub: https://github.com/Cyan4973/xxHash/
+* License: [BSD License](https://github.com/Cyan4973/xxHash/blob/master/LICENSE)
 
 ### zlib 1.2.7
 
@@ -92,192 +111,1084 @@
 
 * Project Home: http://nodejs.org
 * GitHub: https://github.com/nodejs/node
-* License: [MIT-style License](https://github.com/nodejs/node/blob/master/LICENSE) for the files _stream_duplex.js, _stream_passthrough.js, _stream_readable.js, _stream_transform.js, _stream_writable.js, event.js, querystring.js, stream.js, string_decoder.js, url.js
+* License: [MIT-style License](https://github.com/nodejs/node/blob/master/LICENSE) for all files except punycode.js
 * License: punycode.js [MIT License](https://github.com/bestiejs/punycode.js/blob/master/LICENSE-MIT.txt)
 
 ### Bundled NPM modules
 
 #### accepts
 
-* GitHub: https://github.com/jshttp/accepts
-* License: [MIT License](https://github.com/jshttp/accepts/blob/master/LICENSE)
-
-#### Ace
-
-* GitHub: https://github.com/ajaxorg/ace
-* License: [BSD-style 3-Clause License](https://github.com/ajaxorg/ace/blob/master/LICENSE)
+* Project Home: https://github.com/jshttp/accepts#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/accepts/package.json)
 
 #### ansi-html
 
-* GitHub: https://github.com/Tjatse/ansi-html
-* License: [Apache 2 License](https://github.com/Tjatse/ansi-html/blob/master/LICENSE)
+* Project Home: https://github.com/Tjatse/ansi-html
+* License: [Apache 2 License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/ansi-html/package.json)
 
-#### ArangoDB Query Builder
+#### aqb
 
-* GitHub: https://github.com/arangodb/aqbjs
-* License: [Apache 2 License](https://github.com/arangodb/aqbjs/blob/master/LICENSE)
+* Project Home: https://github.com/arangodb/aqbjs
+* License: [Apache 2 License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/aqb/package.json)
 
 #### babel-code-frame
 
-* GitHub: https://github.com/babel/babel/tree/master/packages/babel-code-frame
-* License: [MIT License](https://github.com/babel/babel/blob/master/LICENSE)
+* Project Home: https://babeljs.io/
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/babel-code-frame/package.json)
 
-#### Chai
+#### chai
 
 * Project Home: http://chaijs.com
-* GitHub: https://github.com/chaijs/chai
-* License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chai/package.json)
 
 #### chalk
 
-* GitHub: https://github.com/chalk/chalk
-* License: [MIT License](https://github.com/chalk/chalk/blob/master/license)
+* Project Home: https://github.com/chalk/chalk#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chalk/package.json)
 
 #### content-disposition
 
-* GitHub: https://github.com/jshttp/content-disposition
-* License: [MIT License](https://github.com/jshttp/content-disposition/blob/master/LICENSE)
+* Project Home: https://github.com/jshttp/content-disposition
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/content-disposition/package.json)
 
 #### dedent
 
-* GitHub: https://github.com/dmnd/dedent
-* License: [MIT License](https://github.com/dmnd/dedent/blob/master/LICENSE)
+* Project Home: https://github.com/dmnd/dedent
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/dedent/package.json)
+
+#### error-stack-parser
+
+* Project Home: https://www.stacktracejs.com
+* License: [Unlicense](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/error-stack-parser/package.json)
+
+#### eslint
+
+* Project Home: http://eslint.org
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/package.json)
+
+#### eslint-config-semistandard
+
+* Project Home: https://github.com/Flet/eslint-config-semistandard
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint-config-semistandard/package.json)
+
+#### eslint-config-standard
+
+* Project Home: https://github.com/feross/eslint-config-standard
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint-config-standard/package.json)
+
+#### eslint-plugin-promise
+
+* Project Home: https://github.com/xjamundx/eslint-plugin-promise#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint-plugin-promise/package.json)
+
+#### eslint-plugin-standard
+
+* Project Home: https://github.com/xjamundx/eslint-plugin-standard#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint-plugin-standard/package.json)
 
 #### expect.js
 
-* GitHub: https://github.com/Automattic/expect.js
+* Project Home: https://github.com/LearnBoost/expect.js
 * License: [MIT License](https://github.com/Automattic/expect.js/blob/master/README.md)
 
 #### extendible
 
-* GitHub: https://github.com/3rd-Eden/extendible
-* License: [MIT License](https://github.com/bigpipe/extendible/blob/master/README.md)
+* Project Home: https://github.com/bigpipe/extendible
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/extendible/package.json)
 
 #### graphql-sync
 
-* GitHub: https://github.com/arangodb/graphql-sync
-* License: [BSD-style 3-Clause License](https://github.com/arangodb/graphql-sync/blob/master/LICENSE)
+* Project Home: https://github.com/arangodb/graphql-sync#readme
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/graphql-sync/package.json)
 
 #### highlight.js
 
-* Project Home: https://highlightjs.org
-* GitHub: https://github.com/isagalaev/highlight.js
-* License: [BSD-style 3-Clause License](https://github.com/isagalaev/highlight.js/blob/master/LICENSE)
+* Project Home: https://highlightjs.org/
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/highlight.js/package.json)
 
 #### http-errors
 
-* GitHub: https://github.com/jshttp/http-errors
-* License: [MIT License](https://github.com/jshttp/http-errors/blob/master/LICENSE)
+* Project Home: https://github.com/jshttp/http-errors#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/http-errors/package.json)
+
+#### i
+
+* Project Home: http://pksunkara.github.com/inflect
+* License: [MIT License](https://github.com/pksunkara/inflect/raw/master/LICENSE)
 
 #### iconv-lite
 
-* GitHub: https://github.com/ashtuchkin/iconv-lite
-* License: [MIT-style License](https://github.com/ashtuchkin/iconv-lite/blob/master/LICENSE)
+* Project Home: https://github.com/ashtuchkin/iconv-lite
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/iconv-lite/package.json)
 
-#### i (inflect)
+#### joi
 
-* GitHub: https://github.com/pksunkara/inflect
-* License: [MIT-style License](https://github.com/pksunkara/inflect/blob/master/LICENSE)
+* Project Home: https://github.com/hapijs/joi
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi/package.json)
 
-#### Joi
+#### joi-to-json-schema
 
-* GitHub: https://github.com/hapijs/joi
-* License: [BSD-style 3-Clause License](https://github.com/hapijs/joi/blob/master/LICENSE)
+* Project Home: https://github.com/lightsofapollo/joi-to-json-schema
+* License: [Apache 2 License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi-to-json-schema/package.json)
 
-### joi-to-json-schema
+#### js-yaml
 
-* GitHub: https://github.com/lightsofapollo/joi-to-json-schema
-* License: [Apache 2 License](https://github.com/lightsofapollo/joi-to-json-schema/blob/master/README.md#license)
-
-#### JS-YAML
-
-* GitHub: https://github.com/nodeca/js-yaml
-* License: [MIT License](https://github.com/nodeca/js-yaml/blob/master/LICENSE)
-
-#### JSUnity
-
-* GitHub: https://github.com/atesgoral/jsunity
-* License: [MIT License](https://github.com/atesgoral/jsunity/blob/master/LICENSE.txt)
+* Project Home: https://github.com/nodeca/js-yaml
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/js-yaml/package.json)
 
 #### lodash
 
-* Project Home: https://lodash.com
-* GitHub: https://github.com/lodash/lodash
-* License: [MIT License](https://github.com/lodash/lodash/blob/master/LICENSE)
+* Project Home: https://lodash.com/
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/lodash/package.json)
+
+#### marked
+
+* Project Home: https://github.com/chjj/marked
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/marked/package.json)
 
 #### media-typer
 
-* GitHub: https://github.com/jshttp/media-typer
-* License: [MIT License](https://github.com/jshttp/media-typer/blob/master/LICENSE)
+* Project Home: https://github.com/jshttp/media-typer
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/media-typer/package.json)
 
 #### mime-types
 
-* GitHub: https://github.com/jshttp/mime-types
-* License: [MIT License](https://github.com/jshttp/mime-types/blob/master/LICENSE)
+* Project Home: https://github.com/jshttp/mime-types#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mime-types/package.json)
 
 #### minimatch
 
-* GitHub: https://github.com/isaacs/minimatch
-* License: [ISC License](https://github.com/isaacs/minimatch/blob/master/LICENSE)
+* Project Home: https://github.com/isaacs/minimatch#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/minimatch/package.json)
 
 #### mocha
 
-* Project Home: http://mochajs.org
-* GitHub: https://github.com/mochajs/mocha
-* License: [MIT License](https://github.com/mochajs/mocha/blob/master/LICENSE)
+* Project Home: https://github.com/mochajs/mocha#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/package.json)
+
+#### netmask
+
+* Project Home: https://github.com/rs/node-netmask
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/netmask/package.json)
 
 #### qs
 
-* GitHub: https://github.com/hapijs/qs
-* License: [BSD-style 3-Clause License](https://github.com/hapijs/qs/blob/master/LICENSE)
+* Project Home: https://github.com/ljharb/qs
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/qs/package.json)
 
 #### range-parser
 
-* GitHub: https://github.com/jshttp/range-parser
-* License: [MIT License](https://github.com/jshttp/range-parser/blob/master/LICENSE)
+* Project Home: https://github.com/jshttp/range-parser
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/range-parser/package.json)
 
-#### Sinon.JS
+#### semver
 
-* Project Home: http://sinonjs.org
-* GitHub: https://github.com/sinonjs/sinon
-* License: [BSD 3-Clause License](https://github.com/sinonjs/sinon/blob/master/LICENSE)
+* Project Home: https://github.com/npm/node-semver#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/semver/package.json)
 
-#### stacktrace.js
+#### sinon
 
-* Project Home: https://www.stacktracejs.com
-* GitHub: https://github.com/stacktracejs/stacktrace.js
-* License: [The Unlicense](https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE), see http://unlicense.org
+* Project Home: http://sinonjs.org/
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/sinon/package.json)
 
 #### statuses
 
-* GitHub: https://github.com/jshttp/statuses
-* License: [MIT License](https://github.com/jshttp/statuses/blob/master/LICENSE)
+* Project Home: https://github.com/jshttp/statuses
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/statuses/package.json)
 
 #### timezone
 
-* GitHub: https://github.com/bigeasy/timezone
-* License: [MIT License](https://github.com/bigeasy/timezone/blob/master/LICENSE)
+* Project Home: http://bigeasy.github.io/timezone
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/timezone/package.json)
 
 #### type-is
 
-* GitHub: https://github.com/jshttp/type-is
-* License: [MIT License](https://github.com/jshttp/type-is/blob/master/LICENSE)
+* Project Home: https://github.com/jshttp/type-is#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/type-is/package.json)
 
 #### underscore
 
 * Project Home: http://underscorejs.org
-* GitHub: https://github.com/jashkenas/underscore
-* License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/underscore/package.json)
 
 #### vary
 
-* GitHub: https://github.com/jshttp/vary
-* License: [MIT License](https://github.com/jshttp/vary/blob/master/LICENSE)
+* Project Home: https://github.com/jshttp/vary
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/vary/package.json)
 
 #### xmldom
 
-* GitHub: https://github.com/jindw/xmldom
+* Project Home: https://github.com/jindw/xmldom
 * License: [MIT License](https://github.com/jindw/xmldom/blob/master/LICENSE)
+
+#### negotiator
+
+* Project Home: https://github.com/jshttp/negotiator#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/accepts/node_modules/negotiator/package.json)
+
+#### esutils
+
+* Project Home: https://github.com/estools/esutils
+* License: [free-as-is License](https://github.com/estools/esutils/blob/master/README.md)
+
+#### js-tokens
+
+* Project Home: https://github.com/lydell/js-tokens#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/babel-code-frame/node_modules/js-tokens/package.json)
+
+#### assertion-error
+
+* Project Home: https://github.com/chaijs/assertion-error#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chai/node_modules/assertion-error/package.json)
+
+#### deep-eql
+
+* Project Home: https://github.com/chaijs/deep-eql#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chai/node_modules/deep-eql/package.json)
+
+#### type-detect
+
+* Project Home: https://github.com/chaijs/type-detect
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chai/node_modules/type-detect/package.json)
+
+#### type-detect
+
+* Project Home: https://github.com/chaijs/type-detect#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chai/node_modules/deep-eql/node_modules/type-detect/package.json)
+
+#### ansi-regex
+
+* Project Home: https://github.com/chalk/ansi-regex#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chalk/node_modules/ansi-regex/package.json)
+
+#### ansi-styles
+
+* Project Home: https://github.com/chalk/ansi-styles#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chalk/node_modules/ansi-styles/package.json)
+
+#### escape-string-regexp
+
+* Project Home: https://github.com/sindresorhus/escape-string-regexp
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chalk/node_modules/escape-string-regexp/package.json)
+
+#### has-ansi
+
+* Project Home: https://github.com/sindresorhus/has-ansi
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chalk/node_modules/has-ansi/package.json)
+
+#### strip-ansi
+
+* Project Home: https://github.com/chalk/strip-ansi
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chalk/node_modules/strip-ansi/package.json)
+
+#### supports-color
+
+* Project Home: https://github.com/chalk/supports-color
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chalk/node_modules/supports-color/package.json)
+
+#### stackframe
+
+* Project Home: http://www.stacktracejs.com
+* License: [free-as-is License](https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE)
+
+#### acorn
+
+* Project Home: https://github.com/ternjs/acorn
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/acorn/package.json)
+
+#### acorn-jsx
+
+* Project Home: https://github.com/RReverser/acorn-jsx
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/acorn-jsx/package.json)
+
+#### ansi-escapes
+
+* Project Home: https://github.com/sindresorhus/ansi-escapes#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/ansi-escapes/package.json)
+
+#### ansi-regex
+
+* Project Home: https://github.com/sindresorhus/ansi-regex
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/ansi-regex/package.json)
+
+#### ansi-styles
+
+* Project Home: https://github.com/chalk/ansi-styles#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/ansi-styles/package.json)
+
+#### array-union
+
+* Project Home: https://github.com/sindresorhus/array-union#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/array-union/package.json)
+
+#### array-uniq
+
+* Project Home: https://github.com/sindresorhus/array-uniq#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/array-uniq/package.json)
+
+#### arrify
+
+* Project Home: https://github.com/sindresorhus/arrify#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/arrify/package.json)
+
+#### balanced-match
+
+* Project Home: https://github.com/juliangruber/balanced-match
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/balanced-match/package.json)
+
+#### bluebird
+
+* Project Home: https://github.com/petkaantonov/bluebird
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/bluebird/package.json)
+
+#### brace-expansion
+
+* Project Home: https://github.com/juliangruber/brace-expansion
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/brace-expansion/package.json)
+
+#### caller-path
+
+* Project Home: https://github.com/sindresorhus/caller-path
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/caller-path/package.json)
+
+#### callsites
+
+* Project Home: https://github.com/sindresorhus/callsites
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/callsites/package.json)
+
+#### chalk
+
+* Project Home: https://github.com/chalk/chalk#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/chalk/package.json)
+
+#### cli-cursor
+
+* Project Home: https://github.com/sindresorhus/cli-cursor#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/cli-cursor/package.json)
+
+#### cli-width
+
+* Project Home: https://github.com/knownasilya/cli-width
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/cli-width/package.json)
+
+#### code-point-at
+
+* Project Home: https://github.com/sindresorhus/code-point-at
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/code-point-at/package.json)
+
+#### concat-map
+
+* Project Home: https://github.com/substack/node-concat-map
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/concat-map/package.json)
+
+#### concat-stream
+
+* Project Home: https://github.com/maxogden/concat-stream#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/concat-stream/package.json)
+
+#### core-util-is
+
+* Project Home: https://github.com/isaacs/core-util-is#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/core-util-is/package.json)
+
+#### d
+
+* Project Home: https://github.com/medikoo/d
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/d/package.json)
+
+#### debug
+
+* Project Home: https://github.com/visionmedia/debug
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/debug/package.json)
+
+#### deep-is
+
+* Project Home: https://github.com/thlorenz/deep-is
+* License: [MIT License](https://github.com/thlorenz/deep-is/blob/master/LICENSE)
+
+#### del
+
+* Project Home: https://github.com/sindresorhus/del#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/del/package.json)
+
+#### doctrine
+
+* Project Home: https://github.com/eslint/doctrine
+* License: [free-as-is License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/doctrine/LICENSE.BSD)
+* License: [free-as-is License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/doctrine/LICENSE.esprima)
+* License: [Apache 2 License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/doctrine/LICENSE.closure-compiler)
+
+#### es5-ext
+
+* Project Home: https://github.com/medikoo/es5-ext#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/es5-ext/package.json)
+
+#### es6-iterator
+
+* Project Home: https://github.com/medikoo/es6-iterator#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/es6-iterator/package.json)
+
+#### es6-map
+
+* Project Home: https://github.com/medikoo/es6-map#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/es6-map/package.json)
+
+#### es6-set
+
+* Project Home: https://github.com/medikoo/es6-set#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/es6-set/package.json)
+
+#### es6-symbol
+
+* Project Home: https://github.com/medikoo/es6-symbol#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/es6-symbol/package.json)
+
+#### es6-weak-map
+
+* Project Home: https://github.com/medikoo/es6-weak-map#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/es6-weak-map/package.json)
+
+#### escape-string-regexp
+
+* Project Home: https://github.com/sindresorhus/escape-string-regexp
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/escape-string-regexp/package.json)
+
+#### escope
+
+* Project Home: http://github.com/estools/escope
+* License: [BSD-style 2-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/escope/package.json)
+
+#### espree
+
+* Project Home: https://github.com/eslint/espree
+* License: [BSD-style 2-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/espree/package.json)
+
+#### esrecurse
+
+* Project Home: https://github.com/estools/esrecurse
+* License: [BSD-style 2-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/esrecurse/package.json)
+
+#### estraverse
+
+* Project Home: https://github.com/estools/estraverse
+* License: [BSD-style 2-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/estraverse/package.json)
+
+#### esutils
+
+* Project Home: https://github.com/estools/esutils
+* License: [free-as-is License](https://github.com/estools/esutils/blob/master/README.md)
+
+#### event-emitter
+
+* Project Home: https://github.com/medikoo/event-emitter#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/event-emitter/package.json)
+
+#### exit-hook
+
+* Project Home: https://github.com/sindresorhus/exit-hook
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/exit-hook/package.json)
+
+#### fast-levenshtein
+
+* Project Home: https://github.com/hiddentao/fast-levenshtein#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/fast-levenshtein/package.json)
+
+#### figures
+
+* Project Home: https://github.com/sindresorhus/figures#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/figures/package.json)
+
+#### file-entry-cache
+
+* Project Home: https://github.com/royriojas/file-entry-cache#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/file-entry-cache/package.json)
+
+#### flat-cache
+
+* Project Home: https://github.com/royriojas/flat-cache#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/flat-cache/package.json)
+
+#### fs.realpath
+
+* Project Home: https://github.com/isaacs/fs.realpath#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/fs.realpath/package.json)
+
+#### generate-function
+
+* Project Home: https://github.com/mafintosh/generate-function
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/generate-function/package.json)
+
+#### generate-object-property
+
+* Project Home: https://github.com/mafintosh/generate-object-property
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/generate-object-property/package.json)
+
+#### glob
+
+* Project Home: https://github.com/isaacs/node-glob#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/glob/package.json)
+
+#### globals
+
+* Project Home: https://github.com/sindresorhus/globals#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/globals/package.json)
+
+#### globby
+
+* Project Home: https://github.com/sindresorhus/globby#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/globby/package.json)
+
+#### graceful-fs
+
+* Project Home: https://github.com/isaacs/node-graceful-fs#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/graceful-fs/package.json)
+
+#### has-ansi
+
+* Project Home: https://github.com/sindresorhus/has-ansi
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/has-ansi/package.json)
+
+#### ignore
+
+* Project Home: https://github.com/kaelzhang/node-ignore#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/ignore/package.json)
+
+#### imurmurhash
+
+* Project Home: https://github.com/jensyt/imurmurhash-js
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/imurmurhash/package.json)
+
+#### inflight
+
+* Project Home: https://github.com/isaacs/inflight
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/inflight/package.json)
+
+#### inherits
+
+* Project Home: https://github.com/isaacs/inherits#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/inherits/package.json)
+
+#### inquirer
+
+* Project Home: https://github.com/sboudrias/Inquirer.js#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/inquirer/package.json)
+
+#### is-fullwidth-code-point
+
+* Project Home: https://github.com/sindresorhus/is-fullwidth-code-point
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/is-fullwidth-code-point/package.json)
+
+#### is-my-json-valid
+
+* Project Home: https://github.com/mafintosh/is-my-json-valid
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/is-my-json-valid/package.json)
+
+#### is-path-cwd
+
+* Project Home: https://github.com/sindresorhus/is-path-cwd
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/is-path-cwd/package.json)
+
+#### is-path-in-cwd
+
+* Project Home: https://github.com/sindresorhus/is-path-in-cwd
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/is-path-in-cwd/package.json)
+
+#### is-path-inside
+
+* Project Home: https://github.com/sindresorhus/is-path-inside
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/is-path-inside/package.json)
+
+#### is-property
+
+* Project Home: https://github.com/mikolalysenko/is-property
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/is-property/package.json)
+
+#### is-resolvable
+
+* Project Home: https://github.com/shinnn/is-resolvable#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/is-resolvable/package.json)
+
+#### isarray
+
+* Project Home: https://github.com/juliangruber/isarray
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/isarray/package.json)
+
+#### json-stable-stringify
+
+* Project Home: https://github.com/substack/json-stable-stringify
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/json-stable-stringify/package.json)
+
+#### jsonify
+
+* Project Home: https://github.com/substack/jsonify#readme
+* License: [free-as-is License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/jsonify/package.json)
+
+#### jsonpointer
+
+* Project Home: https://github.com/janl/node-jsonpointer#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/jsonpointer/package.json)
+
+#### levn
+
+* Project Home: https://github.com/gkz/levn
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/levn/package.json)
+
+#### minimatch
+
+* Project Home: https://github.com/isaacs/minimatch#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/minimatch/package.json)
+
+#### minimist
+
+* Project Home: https://github.com/substack/minimist
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/minimist/package.json)
+
+#### mkdirp
+
+* Project Home: https://github.com/substack/node-mkdirp#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/mkdirp/package.json)
+
+#### ms
+
+* Project Home: https://github.com/guille/ms.js
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/ms/package.json)
+
+#### mute-stream
+
+* Project Home: https://github.com/isaacs/mute-stream#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/mute-stream/package.json)
+
+#### number-is-nan
+
+* Project Home: https://github.com/sindresorhus/number-is-nan#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/number-is-nan/package.json)
+
+#### object-assign
+
+* Project Home: https://github.com/sindresorhus/object-assign#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/object-assign/package.json)
+
+#### once
+
+* Project Home: https://github.com/isaacs/once#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/once/package.json)
+
+#### onetime
+
+* Project Home: https://github.com/sindresorhus/onetime
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/onetime/package.json)
+
+#### optionator
+
+* Project Home: https://github.com/gkz/optionator
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/optionator/package.json)
+
+#### os-homedir
+
+* Project Home: https://github.com/sindresorhus/os-homedir
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/os-homedir/package.json)
+
+#### path-is-absolute
+
+* Project Home: https://github.com/sindresorhus/path-is-absolute
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/path-is-absolute/package.json)
+
+#### path-is-inside
+
+* Project Home: https://github.com/domenic/path-is-inside
+* License: [WTFPL](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/path-is-inside/package.json)
+
+#### pify
+
+* Project Home: https://github.com/sindresorhus/pify
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/pify/package.json)
+
+#### pinkie
+
+* Project Home: https://github.com/floatdrop/pinkie
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/pinkie/package.json)
+
+#### pinkie-promise
+
+* Project Home: https://github.com/floatdrop/pinkie-promise
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/pinkie-promise/package.json)
+
+#### pluralize
+
+* Project Home: https://github.com/blakeembrey/pluralize
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/pluralize/package.json)
+
+#### prelude-ls
+
+* Project Home: http://preludels.com
+* License: [free-as-is License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/prelude-ls/package.json)
+
+#### process-nextick-args
+
+* Project Home: https://github.com/calvinmetcalf/process-nextick-args
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/process-nextick-args/package.json)
+
+#### progress
+
+* Project Home: https://github.com/visionmedia/node-progress
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/progress/package.json)
+
+#### read-json-sync
+
+* Project Home: https://github.com/shinnn/read-json-sync#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/read-json-sync/package.json)
+
+#### readable-stream
+
+* Project Home: https://github.com/nodejs/readable-stream#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/readable-stream/package.json)
+
+#### readline2
+
+* Project Home: https://github.com/sboudrias/readline2#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/readline2/package.json)
+
+#### require-uncached
+
+* Project Home: https://github.com/sindresorhus/require-uncached
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/require-uncached/package.json)
+
+#### resolve-from
+
+* Project Home: https://github.com/sindresorhus/resolve-from
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/resolve-from/package.json)
+
+#### restore-cursor
+
+* Project Home: https://github.com/sindresorhus/restore-cursor#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/restore-cursor/package.json)
+
+#### rimraf
+
+* Project Home: https://github.com/isaacs/rimraf#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/rimraf/package.json)
+
+#### run-async
+
+* Project Home: https://github.com/SBoudrias/run-async
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/run-async/package.json)
+
+#### rx-lite
+
+* Project Home: https://github.com/Reactive-Extensions/RxJS
+* License: [Apache 2 License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/rx-lite/package.json)
+
+#### shelljs
+
+* Project Home: http://github.com/shelljs/shelljs
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/shelljs/package.json)
+
+#### slice-ansi
+
+* Project Home: https://github.com/chalk/slice-ansi#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/slice-ansi/package.json)
+
+#### string-width
+
+* Project Home: https://github.com/sindresorhus/string-width
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/string-width/package.json)
+
+#### string_decoder
+
+* Project Home: https://github.com/rvagg/string_decoder
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/string_decoder/package.json)
+
+#### strip-ansi
+
+* Project Home: https://github.com/chalk/strip-ansi
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/strip-ansi/package.json)
+
+#### strip-json-comments
+
+* Project Home: https://github.com/sindresorhus/strip-json-comments
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/strip-json-comments/package.json)
+
+#### supports-color
+
+* Project Home: https://github.com/chalk/supports-color
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/supports-color/package.json)
+
+#### table
+
+* Project Home: https://github.com/gajus/table#readme
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/table/package.json)
+
+#### text-table
+
+* Project Home: https://github.com/substack/text-table
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/text-table/package.json)
+
+#### through
+
+* Project Home: https://github.com/dominictarr/through
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/through/package.json)
+
+#### tryit
+
+* Project Home: https://github.com/HenrikJoreteg/tryit#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/tryit/package.json)
+
+#### tv4
+
+* Project Home: https://github.com/geraintluff/tv4#readme
+* License: [free-as-is License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/tv4/package.json)
+
+#### type-check
+
+* Project Home: https://github.com/gkz/type-check
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/type-check/package.json)
+
+#### user-home
+
+* Project Home: https://github.com/sindresorhus/user-home
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/user-home/package.json)
+
+#### util-deprecate
+
+* Project Home: https://github.com/TooTallNate/util-deprecate
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/util-deprecate/package.json)
+
+#### wordwrap
+
+* Project Home: https://github.com/substack/node-wordwrap#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/wordwrap/package.json)
+
+#### wrappy
+
+* Project Home: https://github.com/npm/wrappy
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/wrappy/package.json)
+
+#### write
+
+* Project Home: https://github.com/jonschlinkert/write
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/write/package.json)
+
+#### xregexp
+
+* Project Home: http://xregexp.com/
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/xregexp/package.json)
+
+#### xtend
+
+* Project Home: https://github.com/Raynos/xtend
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/xtend/package.json)
+
+#### esutils
+
+* Project Home: https://github.com/Constellation/esutils
+* License: [free-as-is License](https://github.com/estools/esutils/blob/master/README.md)
+
+#### estraverse
+
+* Project Home: https://github.com/estools/estraverse
+* License: [BSD-style 2-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/esrecurse/node_modules/estraverse/package.json)
+
+#### graphql
+
+* Project Home: https://github.com/graphql/graphql-js
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/graphql-sync/node_modules/graphql/package.json)
+
+#### iterall
+
+* Project Home: https://github.com/leebyron/iterall#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/graphql-sync/node_modules/iterall/package.json)
+
+#### inherits
+
+* Project Home: https://github.com/isaacs/inherits
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/http-errors/node_modules/inherits/package.json)
+
+#### setprototypeof
+
+* Project Home: https://github.com/wesleytodd/setprototypeof
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/http-errors/node_modules/setprototypeof/package.json)
+
+#### hoek
+
+* Project Home: https://github.com/hapijs/hoek#readme
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi/node_modules/hoek/package.json)
+
+#### isemail
+
+* Project Home: https://github.com/hapijs/isemail#readme
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi/node_modules/isemail/package.json)
+
+#### items
+
+* Project Home: https://github.com/hapijs/items#readme
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi/node_modules/items/package.json)
+
+#### moment
+
+* Project Home: http://momentjs.com
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi/node_modules/moment/package.json)
+
+#### topo
+
+* Project Home: https://github.com/hapijs/topo#readme
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi/node_modules/topo/package.json)
+
+#### hoek
+
+* Project Home: https://github.com/hapijs/hoek#readme
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi-to-json-schema/node_modules/hoek/package.json)
+
+#### isemail
+
+* Project Home: https://github.com/hapijs/isemail
+* License: [BSD-style 2-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi-to-json-schema/node_modules/isemail/package.json)
+
+#### joi
+
+* Project Home: https://github.com/hapijs/joi#readme
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi-to-json-schema/node_modules/joi/package.json)
+
+#### lodash
+
+* Project Home: https://lodash.com/
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi-to-json-schema/node_modules/lodash/package.json)
+
+#### moment
+
+* Project Home: http://momentjs.com
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi-to-json-schema/node_modules/moment/package.json)
+
+#### topo
+
+* Project Home: https://github.com/hapijs/topo
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/joi-to-json-schema/node_modules/topo/package.json)
+
+#### argparse
+
+* Project Home: https://github.com/nodeca/argparse
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/js-yaml/node_modules/argparse/package.json)
+
+#### esprima
+
+* Project Home: http://esprima.org
+* License: [BSD-style 2-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/js-yaml/node_modules/esprima/package.json)
+
+#### sprintf-js
+
+* Project Home: https://github.com/alexei/sprintf.js#readme
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/js-yaml/node_modules/sprintf-js/package.json)
+
+#### mime-db
+
+* Project Home: https://github.com/jshttp/mime-db#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mime-types/node_modules/mime-db/package.json)
+
+#### balanced-match
+
+* Project Home: https://github.com/juliangruber/balanced-match
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/minimatch/node_modules/balanced-match/package.json)
+
+#### brace-expansion
+
+* Project Home: https://github.com/juliangruber/brace-expansion
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/minimatch/node_modules/brace-expansion/package.json)
+
+#### concat-map
+
+* Project Home: https://github.com/substack/node-concat-map
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/minimatch/node_modules/concat-map/package.json)
+
+#### commander
+
+* Project Home: https://github.com/visionmedia/commander.js
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/commander/package.json)
+
+#### debug
+
+* Project Home: https://github.com/visionmedia/debug
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/debug/package.json)
+
+#### diff
+
+* Project Home: https://github.com/kpdecker/jsdiff
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/diff/package.json)
+
+#### escape-string-regexp
+
+* Project Home: https://github.com/sindresorhus/escape-string-regexp
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/escape-string-regexp/package.json)
+
+#### growl
+
+* Project Home: https://github.com/tj/node-growl
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/growl/package.json)
+
+#### jade
+
+* Project Home: git://github.com/visionmedia/jade
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/jade/package.json)
+
+#### minimist
+
+* Project Home: https://github.com/substack/minimist
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/minimist/package.json)
+
+#### mkdirp
+
+* Project Home: https://github.com/substack/node-mkdirp#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/mkdirp/package.json)
+
+#### ms
+
+* Project Home: https://github.com/guille/ms.js
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/ms/package.json)
+
+#### supports-color
+
+* Project Home: https://github.com/sindresorhus/supports-color
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/supports-color/package.json)
+
+#### to-iso-string
+
+* Project Home: https://github.com/segmentio/to-iso-string#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/to-iso-string/package.json)
+
+#### commander
+
+* Project Home: https://github.com/visionmedia/commander.js#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/jade/node_modules/commander/package.json)
+
+#### mkdirp
+
+* Project Home: https://github.com/substack/node-mkdirp#readme
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/mocha/node_modules/jade/node_modules/mkdirp/package.json)
+
+#### formatio
+
+* Project Home: http://busterjs.org/docs/formatio/
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/sinon/node_modules/formatio/package.json)
+
+#### inherits
+
+* Project Home: https://github.com/isaacs/inherits#readme
+* License: [ISC](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/sinon/node_modules/inherits/package.json)
+
+#### lolex
+
+* Project Home: http://github.com/sinonjs/lolex
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/sinon/node_modules/lolex/package.json)
+
+#### samsam
+
+* Project Home: http://busterjs.org/docs/buster-assertions
+* License: [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/sinon/node_modules/samsam/package.json)
+
+#### util
+
+* Project Home: https://github.com/defunctzombie/node-util
+* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/sinon/node_modules/util/package.json)
+
+
 
 ### Frontend libraries
 
