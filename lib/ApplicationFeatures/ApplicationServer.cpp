@@ -155,13 +155,6 @@ bool ApplicationServer::isRequired(std::string const& name) const {
 void ApplicationServer::run(int argc, char* argv[]) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::run";
   
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-
   // collect options from all features
   // in this phase, all features are order-independent
   _state = ServerState::IN_COLLECT_OPTIONS;
