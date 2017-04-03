@@ -253,31 +253,7 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 
 #endif
 
-#include "Basics/LdapUrlParser.h"
-
-static void parseUrl(std::string const& url) {
-    auto result = LdapUrlParser::parse(url);
-      std::cout << "URL: " << url << "\n";
-        std::cout << "VALID: " << result.valid << "\n";
-          std::cout << "STRING: " << result.toString() << "\n";
-            std::cout << "HOST: " << result.host.value << "\n";
-              std::cout << "PORT: " << result.port.value << "\n";
-                std::cout << "BASEDN: " << result.basedn.value << "\n";
-                  std::cout << "SEARCHATTR: " << result.searchAttribute.value << "\n";
-                    std::cout << "DEEP: " << result.deep.value << "\n\n";
-}
-
 int main(int argc, char* argv[]) {
-  parseUrl("ldap://arangodb.com:389/o=einstein?uid?sub");
-  parseUrl("arangodb.com:389/o=einstein?uid?sub");
-  parseUrl("arangodb.com/o=einstein?uid?sub");
-  parseUrl("/o=einstein?uid?sub");
-  parseUrl("/o=einstein?uid");
-  parseUrl("/o=einstein");
-  parseUrl("o=einstein");
-  parseUrl("/o=einstein?cn=example,cn=com?name?date?one");
-  parseUrl("/o=einstein/cn=example,cn=com?name?one");
-  parseUrl("host:name:389");
 #if _WIN32
   if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
     ARGC = argc;
