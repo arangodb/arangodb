@@ -578,10 +578,10 @@ int RocksDBVPackIndex::unload() {
 int RocksDBVPackIndex::drop() {
   if (_unique) {
     return rocksutils::removeLargeRange(
-        rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId));
+        rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId)).errorNumber();
   } else {
     return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                        RocksDBKeyBounds::Index(_objectId));
+                                        RocksDBKeyBounds::Index(_objectId)).errorNumber();
   }
 }
 

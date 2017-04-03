@@ -291,7 +291,7 @@ int RocksDBEdgeIndex::unload() {
 /// @brief called when the index is dropped
 int RocksDBEdgeIndex::drop() {
   return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::EdgeIndex(_objectId));
+                                      RocksDBKeyBounds::EdgeIndex(_objectId)).errorNumber();
 }
 
 /// @brief provides a size hint for the edge index

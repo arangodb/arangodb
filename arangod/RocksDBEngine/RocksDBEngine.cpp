@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -467,13 +468,30 @@ arangodb::Result RocksDBEngine::persistCollection(
 
 arangodb::Result RocksDBEngine::dropCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
-  // TODO: drop indexes of collection
-  // TODO: drop documents and index values of collection
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
-  auto key = RocksDBKey::Collection(vocbase->id(), collection->cid());
 
-  rocksdb::Status res = _db->Delete(options, key.string());
-  return rocksutils::convertStatus(res);
+  // drop indexes of collection
+  std::vector<std::shared_ptr<Index>> vecShardIndex = collection->getPhysical()->getIndexes();
+  for(auto& index : vecShardIndex){
+    uint64_t indexId = dynamic_cast<RocksDBIndex*>(index.get())->objectId();
+    bool rv = collection->dropIndex(indexId);
+    if(!rv){
+      //unable to drop index
+    }
+  }
+
+  // delete documents
+  RocksDBCollection *coll = RocksDBCollection::toRocksDBCollection(collection->getPhysical());
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(coll->objectId());
+  Result res = rocksutils::removeLargeRange(_db, bounds);
+
+  if(res.fail()){
+    return res; //let collection exist so the remaining elements can still be accessed
+  }
+
+  // delete collection
+  auto key = RocksDBKey::Collection(vocbase->id(), collection->cid());
+  return rocksutils::globalRocksDBRemove(key.string(),options);
 }
 
 void RocksDBEngine::destroyCollection(TRI_vocbase_t* vocbase,
