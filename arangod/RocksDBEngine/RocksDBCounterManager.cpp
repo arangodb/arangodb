@@ -42,12 +42,17 @@ using namespace arangodb;
 /// will load counts from the db and scan the WAL
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db, double interval)
     : Thread("RocksDBCounters"), _db(db), _interval(interval) {
-  WRITE_LOCKER(guard, _rwLock);
-  readCounterValues();
-  if (_counters.size() > 0) {
-    if (parseRocksWAL()) {
-      sync();
+  
+  bool needsSync = false;
+  {
+    WRITE_LOCKER(guard, _rwLock);
+    readCounterValues();
+    if (_counters.size() > 0) {
+      needsSync = parseRocksWAL();
     }
+  }
+  if (needsSync) {
+    sync();
   }
 }
 
