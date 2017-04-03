@@ -3,6 +3,12 @@ v3.1.17 (2017-XX-XX)
 
 * fixed issue #2404
 
+* fixed issue #2403
+
+  this restores the default read-cache size value for RAM sizes of less than 
+  4 GB to the default size the read cache had in 3.1.15 and before. 3.1.16
+  decreased the default value too much for small RAM sizes.
+
 * fixed issue #2397
 
 * ui - fixed smart graph option not appearing
