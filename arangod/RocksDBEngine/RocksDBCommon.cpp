@@ -225,5 +225,34 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds) {
     return TRI_ERROR_INTERNAL;
   }
 }
+
+std::vector<RocksDBValue> collectionValues(TRI_voc_tick_t databaseId){
+  std::vector<RocksDBValue> rv;
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(databaseId);
+  rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
+  for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
+    rv.emplace_back(RocksDBValue(RocksDBEntryType::Collection, it->value()));
+  }
+  return rv;
+}
+std::vector<RocksDBValue> indexValues(TRI_voc_tick_t databaseId){
+  std::vector<RocksDBValue> rv;
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId);
+  rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
+  for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
+    rv.emplace_back(RocksDBValue(RocksDBEntryType::Index, it->value()));
+  }
+  return rv;
+}
+std::vector<RocksDBValue> viewValues(TRI_voc_tick_t databaseId){
+  std::vector<RocksDBValue> rv;
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViews(databaseId);
+  rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
+  for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
+    rv.emplace_back(RocksDBValue(RocksDBEntryType::View, it->value()));
+  }
+  return rv;
+}
+
 }  // namespace rocksutils
 }  // namespace arangodb

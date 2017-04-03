@@ -409,9 +409,8 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
-void RocksDBEngine::dropDatabase(Database* database, int& status) {
-  // nothing to do here
-  status = TRI_ERROR_NO_ERROR;
+Result RocksDBEngine::dropDatabase(Database* database) {
+  return dropDatabase(database->id());
 }
 
 void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
@@ -690,16 +689,23 @@ void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
+  Result res;
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
+
+  auto collections = collectionValues(id);
+  auto indexes = indexValues(id);
+  auto views = viewValues(id);
+
+
   // TODO: remove collections of database
   // TODO: remove indexes of database
   // TODO: remove views of database
   // TODO: remove documents and index entries of database
 
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
   auto key = RocksDBKey::Database(id);
-
-  rocksdb::Status res = _db->Delete(options, key.string());
-  return rocksutils::convertStatus(res);
+  rocksdb::Status status = _db->Delete(options, key.string());
+  res = rocksutils::convertStatus(status);
+  return res;
 }
 
 bool RocksDBEngine::systemDatabaseExists() {

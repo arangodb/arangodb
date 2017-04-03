@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "RocksDBEngine/RocksDBValue.h"
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
@@ -73,6 +74,10 @@ std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds);
+
+std::vector<RocksDBValue> collectionValues(TRI_voc_tick_t databaseId);
+std::vector<RocksDBValue> indexValues(TRI_voc_tick_t databaseId);
+std::vector<RocksDBValue> viewValues(TRI_voc_tick_t databaseId);
 
 }  // namespace rocksutils
 }  // namespace arangodb

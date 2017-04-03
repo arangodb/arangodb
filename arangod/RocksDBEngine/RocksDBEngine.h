@@ -126,7 +126,7 @@ class RocksDBEngine final : public StorageEngine {
                                 VPackSlice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker,
                            int& status) override;
-  void dropDatabase(Database* database, int& status) override;
+  Result dropDatabase(Database* database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery
