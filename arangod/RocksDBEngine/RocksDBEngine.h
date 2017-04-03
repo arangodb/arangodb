@@ -38,6 +38,7 @@
 
 namespace arangodb {
 class RocksDBComparator;
+class RocksDBCounterManager;
 class PhysicalCollection;
 class PhysicalView;
 class TransactionCollection;
@@ -252,12 +253,15 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+  RocksDBCounterManager* counterManager();
 
  private:
   rocksdb::TransactionDB* _db;
   rocksdb::Options _options;
   std::unique_ptr<RocksDBComparator> _cmp;
   std::string _path;
+
+  std::unique_ptr<RocksDBCounterManager> _counterManager;
 };
 }
 #endif

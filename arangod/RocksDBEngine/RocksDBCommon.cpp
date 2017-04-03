@@ -30,10 +30,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
-#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/convenience.h>
 #include <rocksdb/comparator.h>
-#include <rocksdb/utilities/transaction_db.h>
 #include "Logger/Logger.h"
 
 namespace arangodb {
@@ -119,10 +119,10 @@ RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
   TRI_ASSERT(trx != nullptr);
   TransactionState* state = trx->state();
   TRI_ASSERT(state != nullptr);
-  return static_cast<RocksDBTransactionState*>(trx->state());
+  return static_cast<RocksDBTransactionState*>(state);
 }
 
-rocksdb::DB* globalRocksDB() {
+rocksdb::TransactionDB* globalRocksDB() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   RocksDBEngine *rocks = static_cast<RocksDBEngine*>(engine);

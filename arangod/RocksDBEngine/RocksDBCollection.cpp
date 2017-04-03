@@ -31,6 +31,8 @@
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -167,9 +169,11 @@ size_t RocksDBCollection::memory() const {
 
 void RocksDBCollection::open(bool ignoreErrors) {
   // set the initial number of documents
-  rocksdb::ReadOptions readOptions;
-  rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
-  _numberDocuments = countKeyRange(db, readOptions, RocksDBKeyBounds::CollectionDocuments(_objectId));
+  //rocksdb::ReadOptions readOptions;
+  //rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  _numberDocuments = engine->counterManager()->loadCounter(this->objectId());
+  //_numberDocuments = countKeyRange(db, readOptions, RocksDBKeyBounds::CollectionDocuments(_objectId));
 }
 
 /// @brief iterate all markers of a collection on load
@@ -360,6 +364,24 @@ void RocksDBCollection::invokeOnAllElements(
 void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  
+  rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
+  
+  RocksDBTransactionState *state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(this->objectId());
+  
+  std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(state->readOptions()));
+  iter->Seek(bounds.start());
+  
+  while (iter->Valid() && -1 == cmp->Compare(iter->key(), bounds.end())) {
+    rocksdb::Status s = rtrx->Delete(iter->key());
+    if (!s.ok()) {
+      rtrx->Rollback();
+      trx->abort();
+      break;
+    }
+  }
 }
 
 int RocksDBCollection::read(transaction::Methods* trx,

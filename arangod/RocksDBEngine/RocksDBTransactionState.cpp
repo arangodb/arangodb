@@ -31,6 +31,7 @@
 #include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -162,10 +163,17 @@ Result RocksDBTransactionState::commitTransaction(
         return result;
       }
       
+      rocksdb::Snapshot const* snap = this->_rocksReadOptions.snapshot;
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection = static_cast<RocksDBTransactionCollection*>(trxCollection);
         int64_t adjustment = collection->numInserts() - collection->numRemoves();
-        static_cast<RocksDBCollection*>(trxCollection->collection()->getPhysical())->adjustNumberDocuments(adjustment);
+        RocksDBCollection *coll = static_cast<RocksDBCollection*>(trxCollection->collection()->getPhysical());
+        coll->adjustNumberDocuments(adjustment);
+        
+        if (collection->numInserts() != 0 || collection->numRemoves() != 0) {
+          RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+          engine->counterManager()->updateCounter(coll->objectId(), snap, coll->numberDocuments());
+        }
       }
   
       _rocksTransaction.reset();
