@@ -298,6 +298,8 @@ int RocksDBEdgeIndex::unload() {
 
 /// @brief called when the index is dropped
 int RocksDBEdgeIndex::drop() {
+  // First drop the cache all indexes can work without it.
+  RocksDBIndex::drop();
   return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
                                       RocksDBKeyBounds::EdgeIndex(_objectId)).errorNumber();
 }

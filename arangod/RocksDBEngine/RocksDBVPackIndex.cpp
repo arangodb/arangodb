@@ -577,6 +577,8 @@ int RocksDBVPackIndex::unload() {
 
 /// @brief called when the index is dropped
 int RocksDBVPackIndex::drop() {
+  // First drop the cache all indexes can work without it.
+  RocksDBIndex::drop();
   if (_unique) {
     return rocksutils::removeLargeRange(
         rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId)).errorNumber();
