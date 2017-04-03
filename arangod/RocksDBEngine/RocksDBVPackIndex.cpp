@@ -43,6 +43,7 @@
 
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/transaction_db.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -576,12 +577,14 @@ int RocksDBVPackIndex::unload() {
 
 /// @brief called when the index is dropped
 int RocksDBVPackIndex::drop() {
+  // First drop the cache all indexes can work without it.
+  RocksDBIndex::drop();
   if (_unique) {
     return rocksutils::removeLargeRange(
-        rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId));
+        rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId)).errorNumber();
   } else {
     return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                        RocksDBKeyBounds::Index(_objectId));
+                                        RocksDBKeyBounds::Index(_objectId)).errorNumber();
   }
 }
 

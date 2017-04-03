@@ -96,7 +96,12 @@ class RocksDBValue {
   //////////////////////////////////////////////////////////////////////////////
   std::string const& string() { return _buffer; } // to be used with put
   std::string* buffer() { return &_buffer; }      // to be used with get
+  VPackSlice slice() { return VPackSlice(
+      reinterpret_cast<uint8_t const*>(_buffer.data())
+  ); }      // return a slice
 
+  RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
+    : _type(type), _buffer(slice.data(),slice.size()) {}
  private:
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);

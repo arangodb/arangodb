@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -81,12 +82,23 @@ RocksDBKey RocksDBKey::View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) {
   return RocksDBKey(RocksDBEntryType::View, databaseId, viewId);
 }
 
+RocksDBKey RocksDBKey::CounterValue(uint64_t objectId) {
+  return RocksDBKey(RocksDBEntryType::CounterValue, objectId);
+}
+
+
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
   return type(key._buffer.data(), key._buffer.size());
 }
 
 RocksDBEntryType RocksDBKey::type(rocksdb::Slice const& slice) {
   return type(slice.data(), slice.size());
+}
+
+uint64_t RocksDBKey::extractObjectId(rocksdb::Slice const& s) {
+  
+  TRI_ASSERT(s.size() >= (sizeof(char) + sizeof(uint64_t)));
+  return uint64FromPersistent(s.data() + sizeof(char));
 }
 
 TRI_voc_tick_t RocksDBKey::databaseId(RocksDBKey const& key) {
@@ -158,7 +170,8 @@ std::string const& RocksDBKey::string() const { return _buffer; }
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first)
     : _type(type), _buffer() {
   switch (_type) {
-    case RocksDBEntryType::Database: {
+    case RocksDBEntryType::Database:
+    case RocksDBEntryType::CounterValue: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
@@ -184,6 +197,8 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.append(reinterpret_cast<char const*>(slice.begin()),
                      static_cast<size_t>(slice.byteSize()));
       _buffer.push_back(_stringSeparator);
+
+      TRI_ASSERT(_buffer.size() == length);
       break;
     }
 
@@ -254,6 +269,8 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.push_back(_stringSeparator);
       _buffer.append(docKey.data(), docKey.length());
       _buffer.push_back(static_cast<char>(docKey.length() & 0xff));
+
+      TRI_ASSERT(_buffer.size() == length);
       break;
     }
 

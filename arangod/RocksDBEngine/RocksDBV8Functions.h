@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,33 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
-/// @author Jan Christoph Uhde
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_TYPES_H
-#define ARANGO_ROCKSDB_ROCKSDB_TYPES_H 1
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_V8_FUNCTIONS_H
+#define ARANGOD_ROCKSDB_ROCKSDB_V8_FUNCTIONS_H 1
 
-#include "Basics/Common.h"
-
-#include <rocksdb/slice.h>
+#include "Aql/Functions.h"
 
 namespace arangodb {
 
-enum class RocksDBEntryType : char {
-  Database = '0',
-  Collection = '1',
-  Index = '2',
-  Document = '3',
-  PrimaryIndexValue = '4',
-  EdgeIndexValue = '5',
-  IndexValue = '6',
-  UniqueIndexValue = '7',
-  View = '8',
-  CounterValue = '9'
+struct RocksDBV8Functions {
+  static void registerResources();
 };
 
-rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
-}
+} // namespace arangodb
 
 #endif

@@ -36,6 +36,8 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBCounterManager.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -43,6 +45,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBView.h"
 #include "VocBase/ticks.h"
 
@@ -107,9 +110,11 @@ void RocksDBEngine::start() {
 
   rocksdb::TransactionDBOptions transactionOptions;
 
+  double counter_sync_seconds = 2.5;
   _options.create_if_missing = true;
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
+  _options.WAL_ttl_seconds = counter_sync_seconds*2;
 
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);
@@ -121,6 +126,11 @@ void RocksDBEngine::start() {
   }
 
   TRI_ASSERT(_db != nullptr);
+  _counterManager.reset(new RocksDBCounterManager(_db, counter_sync_seconds));
+  if (!_counterManager->start()) {
+    LOG_TOPIC(ERR, Logger::ENGINES) << "Could not start rocksdb counter manager";
+    TRI_ASSERT(false);
+  }
 
   if (!systemDatabaseExists()) {
     addSystemDatabase();
@@ -135,6 +145,13 @@ void RocksDBEngine::unprepare() {
   }
 
   if (_db) {
+    if (_counterManager && _counterManager->isRunning()) {
+      // stop the press
+      _counterManager->beginShutdown();
+      _counterManager->sync();
+      _counterManager.reset();
+    }
+    
     delete _db;
     _db = nullptr;
   }
@@ -408,9 +425,8 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
-void RocksDBEngine::dropDatabase(Database* database, int& status) {
-  // nothing to do here
-  status = TRI_ERROR_NO_ERROR;
+Result RocksDBEngine::dropDatabase(Database* database) {
+  return dropDatabase(database->id());
 }
 
 void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
@@ -467,18 +483,50 @@ arangodb::Result RocksDBEngine::persistCollection(
 
 arangodb::Result RocksDBEngine::dropCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
-  // TODO: drop indexes of collection
-  // TODO: drop documents and index values of collection
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
-  auto key = RocksDBKey::Collection(vocbase->id(), collection->cid());
+  Result res;
 
-  rocksdb::Status res = _db->Delete(options, key.string());
-  return rocksutils::convertStatus(res);
+  // drop indexes of collection
+  std::vector<std::shared_ptr<Index>> vecShardIndex =
+      collection->getPhysical()->getIndexes();
+  bool dropFailed = false;
+  for (auto& index : vecShardIndex) {
+    uint64_t indexId = dynamic_cast<RocksDBIndex*>(index.get())->objectId();
+    bool dropped = collection->dropIndex(indexId);
+    if (!dropped) {
+      LOG_TOPIC(ERR, Logger::ENGINES)
+          << "Failed to drop Index with IndexId: " << indexId
+          << " for collection: " << collection->name();
+      dropFailed = true;
+    }
+  }
+
+  if (dropFailed) {
+    res.reset(TRI_ERROR_INTERNAL,
+              "Failed to droop at least one Index for collection: " +
+                  collection->name());
+  }
+
+  // delete documents
+  RocksDBCollection* coll =
+      RocksDBCollection::toRocksDBCollection(collection->getPhysical());
+  RocksDBKeyBounds bounds =
+      RocksDBKeyBounds::CollectionDocuments(coll->objectId());
+  res = rocksutils::removeLargeRange(_db, bounds);
+
+  if (res.fail()) {
+    return res;  // let collection exist so the remaining elements can still be
+                 // accessed
+  }
+
+  // delete collection
+  auto key = RocksDBKey::Collection(vocbase->id(), collection->cid());
+  return rocksutils::globalRocksDBRemove(key.string(), options);
 }
 
 void RocksDBEngine::destroyCollection(TRI_vocbase_t* vocbase,
                                       arangodb::LogicalCollection*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // not required
 }
 
 void RocksDBEngine::changeCollection(
@@ -510,7 +558,8 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
 }
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,
-                              TRI_voc_cid_t collectionId, TRI_idx_iid_t id) {
+                              TRI_voc_cid_t collectionId, TRI_idx_iid_t iid) {
+  // probably not required
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
@@ -518,6 +567,7 @@ void RocksDBEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase,
                                        TRI_voc_cid_t collectionId,
                                        arangodb::velocypack::Slice const& data,
                                        bool writeMarker, int&) {
+  // probably not required
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
@@ -653,7 +703,7 @@ void RocksDBEngine::addOptimizerRules() {
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
-  // TODO: add WAL management functions here once they exist in the engine
+  RocksDBV8Functions::registerResources();
 }
 
 /// @brief Add engine-specific REST handlers
@@ -662,16 +712,23 @@ void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
+  using namespace rocksutils;
+  Result res;
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
+
   // TODO: remove collections of database
+  auto collections = collectionValues(id);
   // TODO: remove indexes of database
+  auto indexes = indexValues(id);
   // TODO: remove views of database
+  auto views = viewValues(id);
+
   // TODO: remove documents and index entries of database
 
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
   auto key = RocksDBKey::Database(id);
-
-  rocksdb::Status res = _db->Delete(options, key.string());
-  return rocksutils::convertStatus(res);
+  rocksdb::Status status = _db->Delete(options, key.string());
+  res = rocksutils::convertStatus(status);
+  return res;
 }
 
 bool RocksDBEngine::systemDatabaseExists() {
@@ -801,6 +858,10 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
         << "error while opening database: unknown exception";
     throw;
   }
+}
+  
+RocksDBCounterManager* RocksDBEngine::counterManager() {
+  return _counterManager.get();
 }
 
 }  // namespace

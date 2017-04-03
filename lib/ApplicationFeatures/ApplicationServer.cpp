@@ -154,7 +154,7 @@ bool ApplicationServer::isRequired(std::string const& name) const {
 // signal. after that, it will shutdown all features
 void ApplicationServer::run(int argc, char* argv[]) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::run";
-
+  
   // collect options from all features
   // in this phase, all features are order-independent
   _state = ServerState::IN_COLLECT_OPTIONS;

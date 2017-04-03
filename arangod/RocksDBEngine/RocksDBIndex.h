@@ -48,9 +48,14 @@ class RocksDBIndex : public Index {
                arangodb::velocypack::Slice const&);
 
  public:
+
+  ~RocksDBIndex();
+
   uint64_t objectId() const { return _objectId; }
 
   bool isPersistent() const override final { return true; }
+
+  int drop() override;
 
  protected:
   void createCache();

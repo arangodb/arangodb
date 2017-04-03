@@ -66,9 +66,30 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     std::unique_ptr<VPackBuilder>& keys)
     : IndexIterator(collection, trx, mmdr, index),
       _keys(keys.get()),
-      _iterator(_keys->slice()),
-      _index(index) {
+      _keysIterator(_keys->slice()),
+      _index(index),
+      _bounds(RocksDBKeyBounds::EdgeIndex(0)) {
   keys.release();  // now we have ownership for _keys
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  _iterator.reset(rtrx->GetIterator(state->readOptions()));
+  updateBounds();
+}
+
+bool RocksDBEdgeIndexIterator::updateBounds() {
+  if (_keysIterator.valid()) {
+    VPackSlice fromTo = _keysIterator.value();
+    if (fromTo.isObject()) {
+      fromTo = fromTo.get(StaticStrings::IndexEq);
+    }
+    TRI_ASSERT(fromTo.isString());
+    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId,
+                                                fromTo.copyString());
+    
+    _iterator->Seek(_bounds.start());
+    return true;
+  }
+  return false;
 }
 
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
@@ -79,36 +100,20 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 }
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  if (limit == 0 || !_iterator.valid()) {
+  if (limit == 0 || !_keysIterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
 
-  // aquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  // aquire rocksdb collection
   auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
-
   while (limit > 0) {
-    VPackSlice fromTo = _iterator.value();
-    if (fromTo.isObject()) {
-      fromTo = fromTo.get(StaticStrings::IndexEq);
-    }
-    TRI_ASSERT(fromTo.isString());
-
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndexVertex(
-        _index->_objectId, fromTo.copyString());
-
-    std::unique_ptr<rocksdb::Iterator> iter(
-        rtrx->GetIterator(state->readOptions()));
-
-    rocksdb::Slice prefix = bounds.start();
-    iter->Seek(prefix);
-    while (iter->Valid() && iter->key().starts_with(prefix)) {
-      TRI_ASSERT(iter->key().size() > prefix.size());
-      StringRef edgeKey = RocksDBKey::primaryKey(iter->key());
+    
+    while (_iterator->Valid() && _iterator->key().starts_with(_bounds.start())) {
+      TRI_ASSERT(_iterator->key().size() > _bounds.start().size());
+      StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
 
       // aquire the document token through the primary index
       RocksDBToken token;
@@ -120,11 +125,11 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         }
       }  // TODO do we need to handle failed lookups here?
 
-      iter->Next();
+      _iterator->Next();
     }
     if (limit > 0) {
-      _iterator.next();
-      if (!_iterator.valid()) {
+      _keysIterator.next();
+      if (!updateBounds()) {
         return false;
       }
     }
@@ -132,7 +137,10 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
-void RocksDBEdgeIndexIterator::reset() { _iterator.reset(); }
+void RocksDBEdgeIndexIterator::reset() {
+  _keysIterator.reset();
+  updateBounds();
+}
 
 // ============================= Index ====================================
 
@@ -290,8 +298,10 @@ int RocksDBEdgeIndex::unload() {
 
 /// @brief called when the index is dropped
 int RocksDBEdgeIndex::drop() {
+  // First drop the cache all indexes can work without it.
+  RocksDBIndex::drop();
   return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::EdgeIndex(_objectId));
+                                      RocksDBKeyBounds::EdgeIndex(_objectId)).errorNumber();
 }
 
 /// @brief provides a size hint for the edge index

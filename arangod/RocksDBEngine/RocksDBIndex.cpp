@@ -48,7 +48,20 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
                            VPackSlice const& info)
     : Index(id, collection, info),
       _objectId(TRI_NewTickServer()),  // TODO!
-      _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()) {}
+      _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
+      _cacheManager(CacheManagerFeature::MANAGER),
+      _cache(nullptr),
+      _useCache(false) {}
+
+RocksDBIndex::~RocksDBIndex() {
+  if (_useCache && _cache != nullptr) {
+    try {
+      TRI_ASSERT(_cacheManager != nullptr);
+      _cacheManager->destroyCache(_cache);
+    } catch (...) {
+    }
+  }
+}
 
 void RocksDBIndex::createCache() {
   TRI_ASSERT(_cacheManager != nullptr);
@@ -58,4 +71,18 @@ void RocksDBIndex::createCache() {
   if (_cache.get() == nullptr) {
     _useCache = false;
   }
+}
+
+int RocksDBIndex::drop() {
+  // Try to drop the cache as well.
+  if (_useCache && _cache != nullptr) {
+    try {
+      _cacheManager->destroyCache(_cache);
+      // Reset flag
+      _cache = nullptr;
+      _useCache = false;
+    } catch (...) {
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
 }

@@ -5,6 +5,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBCollection.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
+  RocksDBEngine/RocksDBCounterManager.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
   RocksDBEngine/RocksDBIndex.cpp
@@ -16,6 +17,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBTypes.cpp
+  RocksDBEngine/RocksDBV8Functions.cpp
   RocksDBEngine/RocksDBValue.cpp
   RocksDBEngine/RocksDBView.cpp
   RocksDBEngine/RocksDBVPackIndex.cpp

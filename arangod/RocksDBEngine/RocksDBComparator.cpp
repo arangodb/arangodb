@@ -77,6 +77,9 @@ int RocksDBComparator::compareLexicographic(rocksdb::Slice const& lhs,
 
 int RocksDBComparator::compareIndexValues(rocksdb::Slice const& lhs,
                                           rocksdb::Slice const& rhs) const {
+  TRI_ASSERT(lhs.size() > sizeof(char) + sizeof(uint64_t));
+  TRI_ASSERT(rhs.size() > sizeof(char) + sizeof(uint64_t));
+
   size_t offset = sizeof(char);
   int result =
       memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));

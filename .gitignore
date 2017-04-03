@@ -42,6 +42,7 @@ Release64/
 Release32/
 WindowsLibraries/
 cluster/
+p/
 
 core
 TAGS

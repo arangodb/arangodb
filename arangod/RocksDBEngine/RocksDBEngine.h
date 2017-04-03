@@ -38,6 +38,7 @@
 
 namespace arangodb {
 class RocksDBComparator;
+class RocksDBCounterManager;
 class PhysicalCollection;
 class PhysicalView;
 class TransactionCollection;
@@ -126,7 +127,7 @@ class RocksDBEngine final : public StorageEngine {
                                 VPackSlice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker,
                            int& status) override;
-  void dropDatabase(Database* database, int& status) override;
+  Result dropDatabase(Database* database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery
@@ -252,12 +253,15 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+  RocksDBCounterManager* counterManager();
 
  private:
   rocksdb::TransactionDB* _db;
   rocksdb::Options _options;
   std::unique_ptr<RocksDBComparator> _cmp;
   std::string _path;
+
+  std::unique_ptr<RocksDBCounterManager> _counterManager;
 };
 }
 #endif
