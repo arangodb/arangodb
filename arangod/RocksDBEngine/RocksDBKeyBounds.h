@@ -39,7 +39,7 @@ namespace arangodb {
 class RocksDBKeyBounds {
  public:
   RocksDBKeyBounds() = delete;
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for list of all databases
   //////////////////////////////////////////////////////////////////////////////
@@ -143,7 +143,7 @@ class RocksDBKeyBounds {
 
  private:
   static const char _stringSeparator;
-  RocksDBEntryType const _type;
+  RocksDBEntryType _type;
   std::string _startBuffer;
   std::string _endBuffer;
 };

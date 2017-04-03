@@ -170,8 +170,10 @@ Result RocksDBTransactionState::commitTransaction(
         RocksDBCollection *coll = static_cast<RocksDBCollection*>(trxCollection->collection()->getPhysical());
         coll->adjustNumberDocuments(adjustment);
         
-        RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-        engine->counterManager()->updateCounter(coll->objectId(), snap, coll->numberDocuments());
+        if (collection->numInserts() != 0 || collection->numRemoves() != 0) {
+          RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+          engine->counterManager()->updateCounter(coll->objectId(), snap, coll->numberDocuments());
+        }
       }
   
       _rocksTransaction.reset();

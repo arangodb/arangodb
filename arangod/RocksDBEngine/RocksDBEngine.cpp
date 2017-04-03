@@ -146,7 +146,9 @@ void RocksDBEngine::unprepare() {
   }
 
   if (_db) {
-    if (_counterManager) {
+    if (_counterManager && _counterManager->isRunning()) {
+      // stop the press
+      _counterManager->beginShutdown();
       _counterManager->sync();
       _counterManager.reset();
     }
