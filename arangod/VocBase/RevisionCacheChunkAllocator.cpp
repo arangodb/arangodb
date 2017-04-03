@@ -102,7 +102,7 @@ RevisionCacheChunk* RevisionCacheChunkAllocator::orderChunk(CollectionRevisionsC
   if (chunkSize == 0) {
     chunkSize = _defaultChunkSize;
   }
-
+                
   uint32_t const targetSize = RevisionCacheChunk::alignSize((std::max)(valueSize, chunkSize), blockSize());
   {
     // first check if there's a chunk ready on the freelist
@@ -122,7 +122,7 @@ RevisionCacheChunk* RevisionCacheChunkAllocator::orderChunk(CollectionRevisionsC
   // could not find a big enough chunk on the freelist
   // create a new chunk now
   auto c = std::make_unique<RevisionCacheChunk>(collectionCache, targetSize);
-
+  
   bool hasMemoryPressure;
   {
     WRITE_LOCKER(locker, _chunksLock);
@@ -295,7 +295,7 @@ bool RevisionCacheChunkAllocator::garbageCollect() {
       }
     } else if (hasMemoryPressure) {
       // LOG(ERR) << "gc: invalidating chunk " << chunk;
-      if (chunk->invalidate(revisions)) {
+      if (!chunk->isUsed() && chunk->invalidate(revisions)) {
         // LOG(ERR) << "gc: invalidating chunk " << chunk << " done";
         MUTEX_LOCKER(locker, _gcLock);
             
