@@ -68,7 +68,7 @@ Restrict the search to specific object classes. The default is `objectClass=*`.
 
     --ldap.url ldap://ldap.server.com:1234/dc=example,dc=com?uid?sub
 
-The ldap url consists of the ldap server and port, a *basedn*, a search attribute and a scope which can be one of *base*, *one* or *sub*.
+The ldap url consists of the ldap *server* and *port*, a *basedn*, a *search attribute* and a *scope* which can be one of *base*, *one* or *sub*.
 
 ### TLS options
 
