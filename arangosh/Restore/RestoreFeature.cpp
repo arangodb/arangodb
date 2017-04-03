@@ -588,8 +588,6 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                 length = found - buffer.begin();
               }
 
-              TRI_ASSERT(length > 0);
-
               _stats._totalBatches++;
 
               int res =
