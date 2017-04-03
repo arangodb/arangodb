@@ -81,6 +81,11 @@ RocksDBKey RocksDBKey::View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) {
   return RocksDBKey(RocksDBEntryType::View, databaseId, viewId);
 }
 
+RocksDBKey RocksDBKey::CounterValue(uint64_t objectId) {
+  return RocksDBKey(RocksDBEntryType::CounterValue, objectId);
+}
+
+
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
   return type(key._buffer.data(), key._buffer.size());
 }
@@ -158,7 +163,8 @@ std::string const& RocksDBKey::string() const { return _buffer; }
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first)
     : _type(type), _buffer() {
   switch (_type) {
-    case RocksDBEntryType::Database: {
+    case RocksDBEntryType::Database:
+    case RocksDBEntryType::CounterValue: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));

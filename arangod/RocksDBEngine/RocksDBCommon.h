@@ -32,7 +32,7 @@
 #include <rocksdb/status.h>
 #include <rocksdb/options.h>
 
-namespace rocksdb {class DB; struct ReadOptions;}
+namespace rocksdb {class TransactionDB; struct ReadOptions;}
 
 namespace arangodb {
 class TransactionState;
@@ -51,7 +51,7 @@ uint64_t uint64FromPersistent(char const* p);
 void uint64ToPersistent(char* p, uint64_t value);
 void uint64ToPersistent(std::string& out, uint64_t value);
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
-rocksdb::DB* globalRocksDB();
+rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(rocksdb::Slice const &, rocksdb::Slice const &, rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
