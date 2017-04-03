@@ -1035,6 +1035,19 @@ static void JS_isFoxxmaster(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_getFoxxmaster(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getFoxxmaster()");
+  }
+
+  std::string const id = ServerState::instance()->getFoxxmaster();
+  TRI_V8_RETURN_STD_STRING(id);
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_getFoxxmasterQueueupdate(
   v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2106,6 +2119,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IdServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isFoxxmaster"),
                        JS_isFoxxmaster);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getFoxxmaster"),
+                       JS_getFoxxmaster);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getFoxxmasterQueueupdate"),
                        JS_getFoxxmasterQueueupdate);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("idOfPrimary"),
