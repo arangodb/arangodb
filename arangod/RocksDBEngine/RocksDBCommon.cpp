@@ -119,7 +119,7 @@ RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
   TRI_ASSERT(trx != nullptr);
   TransactionState* state = trx->state();
   TRI_ASSERT(state != nullptr);
-  return static_cast<RocksDBTransactionState*>(trx->state());
+  return static_cast<RocksDBTransactionState*>(state);
 }
 
 rocksdb::TransactionDB* globalRocksDB() {

@@ -32,7 +32,11 @@
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 
-namespace rocksdb {class TransactionDB; class DB; struct ReadOptions;}
+namespace rocksdb {class TransactionDB;
+  class DB;
+  struct ReadOptions;
+  class Comparator;
+}
 
 namespace arangodb {
 class TransactionState;
