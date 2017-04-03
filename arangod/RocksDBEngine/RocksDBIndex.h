@@ -55,6 +55,8 @@ class RocksDBIndex : public Index {
 
   bool isPersistent() const override final { return true; }
 
+  int drop() override;
+
  protected:
   void createCache();
 

@@ -45,6 +45,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBView.h"
 #include "VocBase/ticks.h"
 
@@ -702,7 +703,7 @@ void RocksDBEngine::addOptimizerRules() {
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
-  // TODO: add WAL management functions here once they exist in the engine
+  RocksDBV8Functions::registerResources();
 }
 
 /// @brief Add engine-specific REST handlers
