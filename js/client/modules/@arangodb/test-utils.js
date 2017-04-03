@@ -271,7 +271,14 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
   // These filters require a proper setup, Even if we filter by testcase:
   if (options.replication) {
     whichFilter.filter = 'replication';
-    return testname.indexOf('replication') !== -1;
+
+    if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
+      whichFilter.filter = 'testcase';
+      return ((testname.search(options.test) >= 0) &&
+              (testname.indexOf('replication') !== -1));
+    } else {
+      return testname.indexOf('replication') !== -1;
+    }
   } else if (testname.indexOf('replication') !== -1) {
     whichFilter.filter = 'replication';
     return false;
@@ -301,7 +308,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = 'testcase';
     return testname.search(options.test) >= 0;
   }
-
 
   if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
     whichFilter.filter = 'timecritical';
