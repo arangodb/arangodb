@@ -716,26 +716,45 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   Result res;
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
  
-  // TODO: remove views of database
-  auto views = viewValues(id);
-
-  // TODO: remove indexes of database
-  auto indexes = indexValues(id);
-
-  // TODO: remove collections of database
-  for(auto& val : collectionValues(id)) {
-    uint64_t objectId = basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    //now drop documents then 
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
-    res = rocksutils::removeLargeRange(_db, bounds);
-    globalRocksDBRemove(val.first.string());
+  // remove views
+  for(auto& val : indexKVPairs(id)) {
+    // delete view documents
+    //uint64_t objectId = basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    //TODO FIXME get elements of views
+    //RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViewRange(); //really 
+    //res = rocksutils::removeLargeRange(_db, bounds);
+    // delete view
+    globalRocksDBRemove(val.first.string(),options);
   }
 
-  // TODO: remove documents and index entries of database
+
+  // remove indexes
+  for(auto& val : indexKVPairs(id)) {
+    // delete index documents
+    uint64_t objectId = basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    VPackSlice min, max; //TODO FIXME
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexRange(objectId, min, max);
+    res = rocksutils::removeLargeRange(_db, bounds);
+    // delete index
+    globalRocksDBRemove(val.first.string(),options);
+  }
+
+  // remove collections
+  for(auto& val : collectionKVPairs(id)) {
+    // delete documents
+    uint64_t objectId = basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
+    res = rocksutils::removeLargeRange(_db, bounds);
+    // delete Collection
+    globalRocksDBRemove(val.first.string(), options);
+  }
+
+  // TODO
+  // How to unregister Vocbase?
+  // Cleanup thread does it in MMFiles
 
   auto key = RocksDBKey::Database(id);
-  rocksdb::Status status = _db->Delete(options, key.string());
-  res = rocksutils::convertStatus(status);
+  res = rocksutils::globalRocksDBRemove(key.string(),options);
   return res;
 }
 

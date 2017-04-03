@@ -227,7 +227,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& boun
   }
 }
 
-std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionValues(TRI_voc_tick_t databaseId){
+std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionKVPairs(TRI_voc_tick_t databaseId){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(databaseId);
   rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
@@ -236,7 +236,7 @@ std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionValues(TRI_voc_tick_t 
   }
   return rv;
 }
-std::vector<std::pair<RocksDBKey,RocksDBValue>> indexValues(TRI_voc_tick_t databaseId){
+std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId);
   rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
@@ -245,7 +245,7 @@ std::vector<std::pair<RocksDBKey,RocksDBValue>> indexValues(TRI_voc_tick_t datab
   }
   return rv;
 }
-std::vector<std::pair<RocksDBKey,RocksDBValue>> viewValues(TRI_voc_tick_t databaseId){
+std::vector<std::pair<RocksDBKey,RocksDBValue>> viewKVPairs(TRI_voc_tick_t databaseId){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViews(databaseId);
   rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());

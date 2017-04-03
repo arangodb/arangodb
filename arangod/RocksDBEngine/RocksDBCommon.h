@@ -77,9 +77,9 @@ std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds);
 
-std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionValues(TRI_voc_tick_t databaseId);
-std::vector<std::pair<RocksDBKey,RocksDBValue>> indexValues(TRI_voc_tick_t databaseId);
-std::vector<std::pair<RocksDBKey,RocksDBValue>> viewValues(TRI_voc_tick_t databaseId);
+std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionKVPairs(TRI_voc_tick_t databaseId);
+std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId);
+std::vector<std::pair<RocksDBKey,RocksDBValue>> viewKVPairs(TRI_voc_tick_t databaseId);
 
 }  // namespace rocksutils
 }  // namespace arangodb
