@@ -1574,6 +1574,11 @@ static void Return_PrepareClusterCommResultForJS(
       arangodb::basics::StringBuffer& body = res.result->getBody();
       if (body.length() != 0) {
         r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
+        V8Buffer* buffer =
+            V8Buffer::New(isolate, body.c_str(), body.length());
+        v8::Local<v8::Object> bufferObject =
+            v8::Local<v8::Object>::New(isolate, buffer->_handle);
+        r->Set(TRI_V8_ASCII_STRING("rawBody"), bufferObject);
       }
     } else if (res.status == CL_COMM_TIMEOUT) {
       TRI_GET_GLOBAL_STRING(StatusKey);
@@ -1590,8 +1595,13 @@ static void Return_PrepareClusterCommResultForJS(
                      v8::Number::New(isolate, res.result->getHttpReturnCode()));
         details->Set(TRI_V8_ASCII_STRING("message"),
                      TRI_V8_STD_STRING(res.result->getHttpReturnMessage()));
-        details->Set(TRI_V8_ASCII_STRING("body"),
-                     TRI_V8_STD_STRING(res.result->getBody()));
+        arangodb::basics::StringBuffer& body = res.result->getBody();
+        details->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
+        V8Buffer* buffer =
+            V8Buffer::New(isolate, body.c_str(), body.length());
+        v8::Local<v8::Object> bufferObject =
+            v8::Local<v8::Object>::New(isolate, buffer->_handle);
+        details->Set(TRI_V8_ASCII_STRING("rawBody"), bufferObject);
 
         r->Set(TRI_V8_ASCII_STRING("details"), details);
         TRI_GET_GLOBAL_STRING(ErrorMessageKey);
@@ -1637,6 +1647,11 @@ static void Return_PrepareClusterCommResultForJS(
       std::string const& body = httpRequest->body();
       if (!body.empty()) {
         r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
+        V8Buffer* buffer =
+            V8Buffer::New(isolate, body.c_str(), body.length());
+        v8::Local<v8::Object> bufferObject =
+            v8::Local<v8::Object>::New(isolate, buffer->_handle);
+        r->Set(TRI_V8_ASCII_STRING("rawBody"), bufferObject);
       }
 
     } else {
