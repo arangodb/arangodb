@@ -29,17 +29,22 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 
-#include <rocksdb/status.h>
 #include <rocksdb/options.h>
+#include <rocksdb/status.h>
 
-namespace rocksdb {class DB; struct ReadOptions;}
+namespace rocksdb {
+class DB;
+struct ReadOptions;
+}
 
 namespace arangodb {
 class TransactionState;
 class RocksDBTransactionState;
 class RocksDBKeyBounds;
 class RocksDBEngine;
-namespace transaction { class Methods; }
+namespace transaction {
+class Methods;
+}
 namespace rocksutils {
 
 enum StatusHint { none, document, collection, view, index, database };
@@ -53,15 +58,21 @@ void uint64ToPersistent(std::string& out, uint64_t value);
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
 rocksdb::DB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
-arangodb::Result globalRocksDBPut(rocksdb::Slice const &, rocksdb::Slice const &, rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
+arangodb::Result globalRocksDBPut(
+    rocksdb::Slice const& key, rocksdb::Slice const& value,
+    rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
+
+arangodb::Result globalRocksDBRemove(
+    rocksdb::Slice const& key,
+    rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
 /// Iterator over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
                           RocksDBKeyBounds const&);
-  
+
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-int removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds);
+Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds);
 
 }  // namespace rocksutils
 }  // namespace arangodb

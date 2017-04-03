@@ -350,7 +350,7 @@ int RocksDBPrimaryIndex::unload() {
 /// @brief called when the index is dropped
 int RocksDBPrimaryIndex::drop() {
   return rocksutils::removeLargeRange(
-      rocksutils::globalRocksDB(), RocksDBKeyBounds::PrimaryIndex(_objectId));
+      rocksutils::globalRocksDB(), RocksDBKeyBounds::PrimaryIndex(_objectId)).errorNumber();
 }
 
 /// @brief checks whether the index supports the condition
