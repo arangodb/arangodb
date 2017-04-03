@@ -52,17 +52,23 @@ If the user is found a authentication is done with the users DN and password and
 #### additional options
 
 
-    --ldap.searchfilter "objectClass=*"
+    --ldap.search-filter "objectClass=*"
 
 Restrict the search to specific object classes. The default is `objectClass=*`.
 
-    --ldap.searchattribute "uid"
+    --ldap.search-attribute "uid"
 
-`--ldap.searchattribute` specifies which attribute to compare with the *username*.
+`--ldap.search-attribute` specifies which attribute to compare with the *username*. The default is `uid`.
+
+    --ldap.search-scope sub
+
+`--ldap.search-scope specifies in which scope to search for a user. Valid are one of *base*, *one* or *sub*. The default is *sub*.
 
 ### ldap url
 
---ldap.url <string>                                   ldap url, eg. TBD (default: "")
+    --ldap.url ldap://ldap.server.com:1234/dc=example,dc=com?uid?sub
+
+The ldap url consists of the ldap server and port, a *basedn*, a search attribute and a scope which can be one of *base*, *one* or *sub*.
 
 ### TLS options
 
