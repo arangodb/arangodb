@@ -327,8 +327,15 @@ int RocksDBCollection::restoreIndex(transaction::Methods*,
 
 /// @brief Drop an index with the given iid.
 bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
+  Result res;
+  for(auto index : getIndexes()){
+    RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
+    if(iid == cindex->objectId()){
+      int rv = cindex->drop();
+      return rv == TRI_ERROR_NO_ERROR;
+    }
+  }
+  return false;
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
