@@ -298,9 +298,15 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     uint64_t fixedSize, uint64_t maxSize) {
   TRI_ASSERT(_state.isLocked());
   Metadata metadata;
+  bool ok = true;
+
+  if ((_globalHighwaterMark / (_caches.size() + 1)) <
+      Manager::minCacheAllocation) {
+    ok = false;
+  }
 
   std::shared_ptr<Table> table = leaseTable(Table::minLogSize);
-  bool ok = (table.get() != nullptr);
+  ok = (table.get() != nullptr);
 
   if (ok) {
     metadata =
@@ -311,7 +317,7 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     }
   }
 
-  if (!ok) {
+  if (!ok && (table.get() != nullptr)) {
     reclaimTable(table, true);
     table.reset();
   }
@@ -531,7 +537,7 @@ bool Manager::rebalance(bool onlyCalculate) {
   for (auto pair : (*cacheList)) {
     std::tie(cache, weight) = pair;
     uint64_t newDeserved = static_cast<uint64_t>(
-        weight * static_cast<double>(_globalHighwaterMark));
+        std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
     TRI_ASSERT(newDeserved >= Manager::minCacheAllocation);
     Metadata* metadata = cache->metadata();
     metadata->lock();
@@ -727,6 +733,11 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   list->reserve(_caches.size());
   double minimumWeight = static_cast<double>(Manager::minCacheAllocation) /
                          static_cast<double>(_globalHighwaterMark);
+  while (static_cast<uint64_t>(std::ceil(
+             minimumWeight * static_cast<double>(_globalHighwaterMark))) <
+         Manager::minCacheAllocation) {
+    minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
+  }
   double uniformMarginalWeight = 0.5 / static_cast<double>(_caches.size());
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
   double remainingWeight =
@@ -755,7 +766,8 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     totalAccesses += s.second;
   }
 
-  double normalizer = remainingWeight / (std::max)(1.0, static_cast<double>(totalAccesses));
+  double normalizer =
+      remainingWeight / (std::max)(1.0, static_cast<double>(totalAccesses));
 
   // gather all accessed caches in order
   for (auto s : *stats) {

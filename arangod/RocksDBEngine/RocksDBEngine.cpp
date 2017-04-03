@@ -715,13 +715,21 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
   Result res;
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
-
-  // TODO: remove collections of database
-  auto collections = collectionValues(id);
-  // TODO: remove indexes of database
-  auto indexes = indexValues(id);
+ 
   // TODO: remove views of database
   auto views = viewValues(id);
+
+  // TODO: remove indexes of database
+  auto indexes = indexValues(id);
+
+  // TODO: remove collections of database
+  for(auto& val : collectionValues(id)) {
+    uint64_t objectId = basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    //now drop documents then 
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
+    res = rocksutils::removeLargeRange(_db, bounds);
+    globalRocksDBRemove(val.first.string());
+  }
 
   // TODO: remove documents and index entries of database
 

@@ -29,6 +29,7 @@
 #include "Transaction/Methods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBKey.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -226,30 +227,30 @@ Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& boun
   }
 }
 
-std::vector<RocksDBValue> collectionValues(TRI_voc_tick_t databaseId){
-  std::vector<RocksDBValue> rv;
+std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionValues(TRI_voc_tick_t databaseId){
+  std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(databaseId);
   rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
   for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
-    rv.emplace_back(RocksDBValue(RocksDBEntryType::Collection, it->value()));
+    rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Collection, it->value()));
   }
   return rv;
 }
-std::vector<RocksDBValue> indexValues(TRI_voc_tick_t databaseId){
-  std::vector<RocksDBValue> rv;
+std::vector<std::pair<RocksDBKey,RocksDBValue>> indexValues(TRI_voc_tick_t databaseId){
+  std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId);
   rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
   for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
-    rv.emplace_back(RocksDBValue(RocksDBEntryType::Index, it->value()));
+    rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Index, it->value()));
   }
   return rv;
 }
-std::vector<RocksDBValue> viewValues(TRI_voc_tick_t databaseId){
-  std::vector<RocksDBValue> rv;
+std::vector<std::pair<RocksDBKey,RocksDBValue>> viewValues(TRI_voc_tick_t databaseId){
+  std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViews(databaseId);
   rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
   for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
-    rv.emplace_back(RocksDBValue(RocksDBEntryType::View, it->value()));
+    rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::View, it->value()));
   }
   return rv;
 }
