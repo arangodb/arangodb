@@ -94,6 +94,12 @@ RocksDBEntryType RocksDBKey::type(rocksdb::Slice const& slice) {
   return type(slice.data(), slice.size());
 }
 
+uint64_t RocksDBKey::extractObjectId(rocksdb::Slice const& s) {
+  
+  TRI_ASSERT(s.size() >= (sizeof(char) + sizeof(uint64_t)));
+  return uint64FromPersistent(s.data() + sizeof(char));
+}
+
 TRI_voc_tick_t RocksDBKey::databaseId(RocksDBKey const& key) {
   return databaseId(key._buffer.data(), key._buffer.size());
 }

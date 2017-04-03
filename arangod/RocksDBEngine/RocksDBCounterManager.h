@@ -25,19 +25,23 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COUNTMANAGER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "Basics/Thread.h"
 #include "Basics/Result.h"
 #include <rocksdb/types.h>
 
-namespace rocksdb {class Transaction; class Snapshot;}
+namespace rocksdb {class DB; class Transaction; class Snapshot;}
 
 namespace arangodb {
 
 class RocksDBCounterManager : Thread {
-public:
+  friend class RocksDBEngine;
+  RocksDBCounterManager(rocksdb::DB* db, double interval);
   
+public:
+      
   struct Counter {
     rocksdb::SequenceNumber sequenceNumber;
     uint64_t count;
@@ -45,7 +49,6 @@ public:
   
   /// Constructor needs to be called synchrunously,
   /// will load counts from the db and scan the WAL
-  RocksDBCounterManager(uint64_t interval);
   
   /// Thread-Safe load a counter
   uint64_t loadCounter(uint64_t objectId);
@@ -55,18 +58,58 @@ public:
   /// the sequence number used
   void updateCounter(uint64_t objectId, rocksdb::Snapshot const* snapshot,
                      uint64_t counter);
+  
+  /// Thread-Safe remove a counter
+  void removeCounter(uint64_t objectId);
+  
   /// Thread-Safe force sync
   arangodb::Result sync();
   
+  void beginShutdown() override;
+  
+protected:
+  
+  void run() override;
+  
  private:
   
-  void loadCounterValues();
+  void readCounterValues();
+  bool parseRocksWAL();
   
-  basics::ReadWriteLock _rwLock;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief counter values
+  //////////////////////////////////////////////////////////////////////////////
   std::unordered_map<uint64_t, Counter> _counters;
   
-  bool _syncing;
-  uint64_t const _interval;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief counter values
+  //////////////////////////////////////////////////////////////////////////////
+  std::unordered_map<uint64_t, Counter> _syncedCounters;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief currently syncing
+  //////////////////////////////////////////////////////////////////////////////
+  bool _syncing = false;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief rocsdb instance
+  //////////////////////////////////////////////////////////////////////////////
+  rocksdb::DB* _db;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief interval i which we will sync
+  //////////////////////////////////////////////////////////////////////////////
+  double const _interval;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief condition variable for heartbeat
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::basics::ConditionVariable _condition;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief protect _syncing and _counters
+  //////////////////////////////////////////////////////////////////////////////
+  basics::ReadWriteLock _rwLock;
 };
 }
 

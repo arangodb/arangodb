@@ -89,6 +89,10 @@ RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
   return RocksDBKeyBounds(RocksDBEntryType::View, databaseId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::CounterValues() {
+  return RocksDBKeyBounds(RocksDBEntryType::CounterValue);
+}
+
 rocksdb::Slice const RocksDBKeyBounds::start() const {
   return rocksdb::Slice(_startBuffer);
 }
@@ -109,6 +113,17 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
       _endBuffer.append(_startBuffer);
       nextPrefix(_endBuffer);
 
+      break;
+    }
+    case RocksDBEntryType::CounterValue: {
+      size_t length = sizeof(char);
+      _startBuffer.reserve(length);
+      _startBuffer.push_back(static_cast<char>(_type));
+      
+      _endBuffer.clear();
+      _endBuffer.append(_startBuffer);
+      uint64ToPersistent(_startBuffer, UINT64_MAX);
+      //nextPrefix(_endBuffer);
       break;
     }
 

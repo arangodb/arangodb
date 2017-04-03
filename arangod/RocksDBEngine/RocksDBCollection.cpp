@@ -31,6 +31,7 @@
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -167,9 +168,11 @@ size_t RocksDBCollection::memory() const {
 
 void RocksDBCollection::open(bool ignoreErrors) {
   // set the initial number of documents
-  rocksdb::ReadOptions readOptions;
-  rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
-  _numberDocuments = countKeyRange(db, readOptions, RocksDBKeyBounds::CollectionDocuments(_objectId));
+  //rocksdb::ReadOptions readOptions;
+  //rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  _numberDocuments = engine->counterManager()->loadCounter(this->objectId());
+  //_numberDocuments = countKeyRange(db, readOptions, RocksDBKeyBounds::CollectionDocuments(_objectId));
 }
 
 /// @brief iterate all markers of a collection on load

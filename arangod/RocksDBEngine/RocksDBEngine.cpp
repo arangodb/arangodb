@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -106,10 +107,13 @@ void RocksDBEngine::start() {
                                               << _path;
 
   rocksdb::TransactionDBOptions transactionOptions;
+  
+  double counter_sync_seconds = 2.5;
 
   _options.create_if_missing = true;
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
+  _options.WAL_ttl_seconds = counter_sync_seconds*2;
 
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);
@@ -121,6 +125,11 @@ void RocksDBEngine::start() {
   }
 
   TRI_ASSERT(_db != nullptr);
+  _counterManager.reset(new RocksDBCounterManager(_db, counter_sync_seconds));
+  if (!_counterManager->start()) {
+    LOG_TOPIC(ERR, Logger::ENGINES) << "Could not start rocksdb counter manager";
+    TRI_ASSERT(false);
+  }
 
   if (!systemDatabaseExists()) {
     addSystemDatabase();
@@ -135,6 +144,11 @@ void RocksDBEngine::unprepare() {
   }
 
   if (_db) {
+    if (_counterManager) {
+      _counterManager->sync();
+      _counterManager.reset();
+    }
+    
     delete _db;
     _db = nullptr;
   }
@@ -801,6 +815,10 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
         << "error while opening database: unknown exception";
     throw;
   }
+}
+  
+RocksDBCounterManager* RocksDBEngine::counterManager()  {
+  return _counterManager.get();
 }
 
 }  // namespace
