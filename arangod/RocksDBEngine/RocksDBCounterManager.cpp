@@ -43,17 +43,12 @@ using namespace arangodb;
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db, double interval)
     : Thread("RocksDBCounters"), _db(db), _interval(interval) {
   
-  bool needsSync = false;
-  {
-    WRITE_LOCKER(guard, _rwLock);
-    readCounterValues();
-    if (_counters.size() > 0) {
-      needsSync = parseRocksWAL();
+  readCounterValues();
+  if (_counters.size() > 0) {
+    if (parseRocksWAL()) {
+      sync();
     }
-  }
-  if (needsSync) {
-    sync();
-  }
+  }  
 }
 
 void RocksDBCounterManager::beginShutdown() {
@@ -174,6 +169,8 @@ Result RocksDBCounterManager::sync() {
 }
 
 void RocksDBCounterManager::readCounterValues() {
+  WRITE_LOCKER(guard, _rwLock);
+  
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::Comparator const* cmp = db->GetOptions().comparator;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CounterValues();
@@ -234,6 +231,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   }
 };
 
+// No locking in this one
 bool RocksDBCounterManager::parseRocksWAL() {
   TRI_ASSERT(_counters.size() != 0);
 

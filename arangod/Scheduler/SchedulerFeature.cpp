@@ -52,7 +52,7 @@ SchedulerFeature::SchedulerFeature(
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("Database");
+  //startsAfter("Database");
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
