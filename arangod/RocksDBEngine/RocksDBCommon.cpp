@@ -136,10 +136,17 @@ RocksDBEngine* globalRocksEngine() {
   return static_cast<RocksDBEngine*>(engine);
 
 }
+
 arangodb::Result globalRocksDBPut(rocksdb::Slice const& key,
                                   rocksdb::Slice const& val,
-                                  rocksdb::WriteOptions const&) {
-  auto status = globalRocksDB()->Put(rocksdb::WriteOptions{}, key, val);
+                                  rocksdb::WriteOptions const& options) {
+  auto status = globalRocksDB()->Put(options, key, val);
+  return convertStatus(status);
+};
+
+arangodb::Result globalRocksDBRemove(rocksdb::Slice const& key,
+                                     rocksdb::WriteOptions const& options) {
+  auto status = globalRocksDB()->Delete(options, key);
   return convertStatus(status);
 };
 
@@ -164,7 +171,7 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-int removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds) {
+Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds) {
   
   try {
     
