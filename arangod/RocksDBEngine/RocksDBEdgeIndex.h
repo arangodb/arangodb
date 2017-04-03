@@ -29,15 +29,14 @@
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-namespace rocksdb {
-class TransactionDB;
-}
+namespace rocksdb {class TransactionDB; class Iterator;}
 
 namespace arangodb {
 class RocksDBEdgeIndex;
@@ -59,9 +58,13 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
+  bool updateBounds();
+  
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
-  arangodb::velocypack::ArrayIterator _iterator;
+  arangodb::velocypack::ArrayIterator _keysIterator;
   RocksDBEdgeIndex const* _index;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+  RocksDBKeyBounds _bounds;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {

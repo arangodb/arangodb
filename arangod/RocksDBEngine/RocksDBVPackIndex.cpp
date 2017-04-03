@@ -43,6 +43,7 @@
 
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/transaction_db.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

@@ -30,10 +30,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
-#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/convenience.h>
 #include <rocksdb/comparator.h>
-#include <rocksdb/utilities/transaction_db.h>
 #include "Logger/Logger.h"
 
 namespace arangodb {
@@ -119,10 +119,10 @@ RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
   TRI_ASSERT(trx != nullptr);
   TransactionState* state = trx->state();
   TRI_ASSERT(state != nullptr);
-  return static_cast<RocksDBTransactionState*>(trx->state());
+  return static_cast<RocksDBTransactionState*>(state);
 }
 
-rocksdb::DB* globalRocksDB() {
+rocksdb::TransactionDB* globalRocksDB() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   RocksDBEngine *rocks = static_cast<RocksDBEngine*>(engine);
@@ -171,7 +171,7 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds) {
+Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds) {
   
   try {
     
@@ -179,7 +179,7 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds) {
     rocksdb::Slice lower(bounds.start());
     rocksdb::Slice upper(bounds.end());
     {
-      rocksdb::Status status = rocksdb::DeleteFilesInRange(db, db->DefaultColumnFamily(),
+      rocksdb::Status status = rocksdb::DeleteFilesInRange(db->GetBaseDB(), db->GetBaseDB()->DefaultColumnFamily(),
                                                            &lower, &upper);
       if (!status.ok()) {
         // if file deletion failed, we will still iterate over the remaining keys, so we
@@ -190,7 +190,7 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds) {
     
     // go on and delete the remaining keys (delete files in range does not necessarily
     // find them all, just complete files)
-    const rocksdb::Comparator *cmp = db->GetOptions().comparator;
+    const rocksdb::Comparator* cmp = db->GetOptions().comparator;
     rocksdb::WriteBatch batch;
     std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(rocksdb::ReadOptions()));
     

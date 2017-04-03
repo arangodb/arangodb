@@ -33,9 +33,10 @@
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 
-namespace rocksdb {
-class DB;
-struct ReadOptions;
+namespace rocksdb {class TransactionDB;
+  class DB;
+  struct ReadOptions;
+  class Comparator;
 }
 
 namespace arangodb {
@@ -57,7 +58,7 @@ uint64_t uint64FromPersistent(char const* p);
 void uint64ToPersistent(char* p, uint64_t value);
 void uint64ToPersistent(std::string& out, uint64_t value);
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
-rocksdb::DB* globalRocksDB();
+rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(
     rocksdb::Slice const& key, rocksdb::Slice const& value,
@@ -73,7 +74,7 @@ std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds);
+Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds);
 
 std::vector<RocksDBValue> collectionValues(TRI_voc_tick_t databaseId);
 std::vector<RocksDBValue> indexValues(TRI_voc_tick_t databaseId);

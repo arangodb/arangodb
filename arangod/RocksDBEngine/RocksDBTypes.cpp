@@ -74,6 +74,10 @@ static rocksdb::Slice UniqueIndexValue(
 static RocksDBEntryType view = RocksDBEntryType::View;
 static rocksdb::Slice View(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&view), 1);
+
+static RocksDBEntryType counterVal = RocksDBEntryType::CounterValue;
+static rocksdb::Slice CounterValue(
+                           reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&counterVal), 1);
 }
 
 rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
@@ -96,6 +100,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return UniqueIndexValue;
     case RocksDBEntryType::View:
       return View;
+    case RocksDBEntryType::CounterValue:
+      return CounterValue;
   }
 
   return Document;  // avoids warning - errorslice instead ?!
