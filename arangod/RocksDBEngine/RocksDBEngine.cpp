@@ -711,17 +711,17 @@ void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
+  using namespace rocksutils;
   Result res;
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
+  // TODO: remove collections of database
   auto collections = collectionValues(id);
+  // TODO: remove indexes of database
   auto indexes = indexValues(id);
+  // TODO: remove views of database
   auto views = viewValues(id);
 
-
-  // TODO: remove collections of database
-  // TODO: remove indexes of database
-  // TODO: remove views of database
   // TODO: remove documents and index entries of database
 
   auto key = RocksDBKey::Database(id);
