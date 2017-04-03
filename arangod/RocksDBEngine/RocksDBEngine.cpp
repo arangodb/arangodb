@@ -45,6 +45,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBView.h"
 #include "VocBase/ticks.h"
 
@@ -424,9 +425,8 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
-void RocksDBEngine::dropDatabase(Database* database, int& status) {
-  // nothing to do here
-  status = TRI_ERROR_NO_ERROR;
+Result RocksDBEngine::dropDatabase(Database* database) {
+  return dropDatabase(database->id());
 }
 
 void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
@@ -703,7 +703,7 @@ void RocksDBEngine::addOptimizerRules() {
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
-  // TODO: add WAL management functions here once they exist in the engine
+  RocksDBV8Functions::registerResources();
 }
 
 /// @brief Add engine-specific REST handlers
@@ -712,16 +712,23 @@ void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
+  using namespace rocksutils;
+  Result res;
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
+
   // TODO: remove collections of database
+  auto collections = collectionValues(id);
   // TODO: remove indexes of database
+  auto indexes = indexValues(id);
   // TODO: remove views of database
+  auto views = viewValues(id);
+
   // TODO: remove documents and index entries of database
 
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
   auto key = RocksDBKey::Database(id);
-
-  rocksdb::Status res = _db->Delete(options, key.string());
-  return rocksutils::convertStatus(res);
+  rocksdb::Status status = _db->Delete(options, key.string());
+  res = rocksutils::convertStatus(status);
+  return res;
 }
 
 bool RocksDBEngine::systemDatabaseExists() {

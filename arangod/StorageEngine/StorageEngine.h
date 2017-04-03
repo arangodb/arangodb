@@ -198,12 +198,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   };
 
   // perform a physical deletion of the database
-  virtual void dropDatabase(Database*, int& status) = 0;
-  void dropDatabase(Database* db){
-    int status;
-    dropDatabase(db, status);
-    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
-  };
+  virtual Result dropDatabase(Database*) = 0;
 
   /// @brief wait until a database directory disappears - not under lock in databaseFreature
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) = 0;

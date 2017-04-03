@@ -44,6 +44,10 @@ RocksDBKeyBounds RocksDBKeyBounds::DatabaseCollections(
   return RocksDBKeyBounds(RocksDBEntryType::Collection, databaseId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::DatabaseIndexes(TRI_voc_tick_t databaseId){
+  return RocksDBKeyBounds(RocksDBEntryType::Index, databaseId);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::CollectionIndexes(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
   return RocksDBKeyBounds(RocksDBEntryType::Index, databaseId, collectionId);

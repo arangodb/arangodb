@@ -349,6 +349,8 @@ int RocksDBPrimaryIndex::unload() {
 
 /// @brief called when the index is dropped
 int RocksDBPrimaryIndex::drop() {
+  // First drop the cache all indexes can work without it.
+  RocksDBIndex::drop();
   return rocksutils::removeLargeRange(
       rocksutils::globalRocksDB(), RocksDBKeyBounds::PrimaryIndex(_objectId)).errorNumber();
 }

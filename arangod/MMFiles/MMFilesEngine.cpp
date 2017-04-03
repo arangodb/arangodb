@@ -152,7 +152,7 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
 MMFilesEngine::~MMFilesEngine() {}
 
 // perform a physical deletion of the database
-void MMFilesEngine::dropDatabase(Database* database, int& status) {
+Result MMFilesEngine::dropDatabase(Database* database) {
   // delete persistent indexes for this database
   MMFilesPersistentIndexFeature::dropDatabase(database->id());
 
@@ -180,7 +180,7 @@ void MMFilesEngine::dropDatabase(Database* database, int& status) {
     _collectionPaths.erase(database->id());
   }
 
-  status = dropDatabaseDirectory(databaseDirectory(database->id()));
+  return dropDatabaseDirectory(databaseDirectory(database->id()));
 }
 
 // add the storage engine's specifc options to the global list of options
