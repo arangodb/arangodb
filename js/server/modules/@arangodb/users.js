@@ -40,10 +40,6 @@ const ArangoError = arangodb.ArangoError;
 
 // converts a user document to the legacy format
 const convertToLegacyFormat = function (doc) {
-  // TODO remove this
-  if (!doc)
-    return {user:"root", active:true, extra:{},changePassword:null};
-  
   let ad = doc.authData || {}; 
   return {
     user: doc.user,
