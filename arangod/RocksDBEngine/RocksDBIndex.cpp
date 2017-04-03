@@ -56,6 +56,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
 RocksDBIndex::~RocksDBIndex() {
   if (_useCache && _cache != nullptr) {
     try {
+      TRI_ASSERT(_cacheManager != nullptr);
       _cacheManager->destroyCache(_cache);
     } catch (...) {
     }
