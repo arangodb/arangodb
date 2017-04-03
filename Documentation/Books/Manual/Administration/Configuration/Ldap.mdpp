@@ -30,7 +30,7 @@ with *prefix* + *ArangoDB username* + *suffix* against the ldap server and searc
 
 ### bind+search
 
-Example with anonymouse auth:
+Example with anonymous auth:
 
     --ldap.enabled true --ldap.server ldap.company.com \
     --ldap.basedn dc=company,dc=com \
