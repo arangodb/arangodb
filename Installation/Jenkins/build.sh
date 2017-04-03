@@ -638,6 +638,10 @@ if test -n "${TARGET_DIR}";  then
              arangosh/.keepme
         )
 
+        if test -n "${ENTERPRISE_GIT_URL}" ; then
+            (cd ${SOURCE_DIR}/enterprise; tar -u -f ${TARFILE_TMP} js)
+        fi
+
         if test "`uname -o||true`" == "Cygwin"; then
             SSLDIR=`grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt  |sed -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"`
             DLLS=`find ${SSLDIR} -name \*.dll |grep -i release`
