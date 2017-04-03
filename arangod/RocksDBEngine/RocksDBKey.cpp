@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -196,6 +197,9 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.append(reinterpret_cast<char const*>(slice.begin()),
                      static_cast<size_t>(slice.byteSize()));
       _buffer.push_back(_stringSeparator);
+
+      TRI_ASSERT(_buffer.size() == length);
+      LOG_TOPIC(ERR, Logger::FIXME) << "BUILT UNIQUE KEY OF LENGTH " << length;
       break;
     }
 
@@ -266,6 +270,9 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.push_back(_stringSeparator);
       _buffer.append(docKey.data(), docKey.length());
       _buffer.push_back(static_cast<char>(docKey.length() & 0xff));
+
+      TRI_ASSERT(_buffer.size() == length);
+      LOG_TOPIC(ERR, Logger::FIXME) << "BUILT NON-UNIQUE KEY OF LENGTH " << length;
       break;
     }
 
