@@ -23,8 +23,11 @@
 
 #include "RocksDBV8Functions.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/ClusterMethods.h"
+#include "Basics/Result.h"
 #include "Cluster/ServerState.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -37,6 +40,15 @@ using namespace arangodb;
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
+ 
+  rocksdb::Status status = db->GetBaseDB()->SyncWAL();
+
+  if (!status.ok()) {
+    Result res = rocksutils::convertStatus(status);
+    TRI_V8_THROW_EXCEPTION(res.errorNumber());
+  }
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

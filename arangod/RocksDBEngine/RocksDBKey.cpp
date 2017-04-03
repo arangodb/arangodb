@@ -199,7 +199,6 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.push_back(_stringSeparator);
 
       TRI_ASSERT(_buffer.size() == length);
-      LOG_TOPIC(ERR, Logger::FIXME) << "BUILT UNIQUE KEY OF LENGTH " << length;
       break;
     }
 
@@ -272,7 +271,6 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.push_back(static_cast<char>(docKey.length() & 0xff));
 
       TRI_ASSERT(_buffer.size() == length);
-      LOG_TOPIC(ERR, Logger::FIXME) << "BUILT NON-UNIQUE KEY OF LENGTH " << length;
       break;
     }
 
