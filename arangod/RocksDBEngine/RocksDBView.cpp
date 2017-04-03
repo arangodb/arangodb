@@ -28,7 +28,10 @@
 #include "Basics/Result.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBValue.h"
 //#include "RocksDB/RocksDBLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -57,34 +60,50 @@ RocksDBView::RocksDBView(LogicalView* view, VPackSlice const& info)
 }
 
 RocksDBView::RocksDBView(LogicalView* logical, PhysicalView* physical)
-    : PhysicalView(logical, VPackSlice::emptyObjectSlice()) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
+    : PhysicalView(logical, VPackSlice::emptyObjectSlice()) {}
 
 RocksDBView::~RocksDBView() {}
 
 void RocksDBView::getPropertiesVPack(velocypack::Builder& result,
                                      bool includeSystem) const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  TRI_ASSERT(result.isOpenObject());
+  if (includeSystem) {
+    result.add("path", VPackValue(_path));
+  }
+  TRI_ASSERT(result.isOpenObject());
 }
 
-void RocksDBView::open() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
+void RocksDBView::open() {}
 
 void RocksDBView::drop() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  auto db = rocksutils::globalRocksDB();
+  auto key =
+      RocksDBKey::View(_logicalView->vocbase()->id(), _logicalView->id());
+
+  auto status = rocksutils::convertStatus(
+      db->Delete(rocksdb::WriteOptions(), key.string()));
+  if (!status.ok()) {
+    THROW_ARANGO_EXCEPTION(status.errorNumber());
+  }
 }
 
 arangodb::Result RocksDBView::updateProperties(VPackSlice const& slice,
                                                bool doSync) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // nothing to do here
   return arangodb::Result{};
 }
 
 arangodb::Result RocksDBView::persistProperties() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return arangodb::Result{};
+  auto key =
+      RocksDBKey::View(_logicalView->vocbase()->id(), _logicalView->id());
+
+  VPackBuilder infoBuilder;
+  infoBuilder.openObject();
+  _logicalView->toVelocyPack(infoBuilder, true, true);
+  infoBuilder.close();
+  auto value = RocksDBValue::View(infoBuilder.slice());
+
+  return rocksutils::globalRocksDBPut(key.string(), value.string());
 }
 
 PhysicalView* RocksDBView::clone(LogicalView* logical, PhysicalView* physical) {

@@ -171,8 +171,6 @@ class RocksDBEngine final : public StorageEngine {
   void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
   void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   arangodb::LogicalView const*, bool doSync) override;
-  std::string createViewDirectoryName(std::string const& basePath,
-                                      TRI_voc_cid_t id);
   void signalCleanup(TRI_vocbase_t* vocbase) override;
 
   // document operations
@@ -239,7 +237,7 @@ class RocksDBEngine final : public StorageEngine {
   rocksdb::TransactionDB* db() const { return _db; }
 
   RocksDBComparator* cmp() const { return _cmp.get(); }
-  
+
  private:
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
