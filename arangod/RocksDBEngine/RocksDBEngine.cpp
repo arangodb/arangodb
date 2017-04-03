@@ -469,21 +469,29 @@ arangodb::Result RocksDBEngine::persistCollection(
 arangodb::Result RocksDBEngine::dropCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
+  Result res;
 
   // drop indexes of collection
   std::vector<std::shared_ptr<Index>> vecShardIndex = collection->getPhysical()->getIndexes();
+  bool dropFailed = false;
   for(auto& index : vecShardIndex){
     uint64_t indexId = dynamic_cast<RocksDBIndex*>(index.get())->objectId();
-    bool rv = collection->dropIndex(indexId);
-    if(!rv){
-      //unable to drop index
+    bool dropped = collection->dropIndex(indexId);
+    if(!dropped){
+      LOG_TOPIC(ERR, Logger::ENGINES) << "Failed to drop Index with IndexId: " << indexId
+                                      << " for collection: " << collection->name();
+      dropFailed=true;
     }
+  }
+
+  if(dropFailed){
+    res.reset(TRI_ERROR_INTERNAL, "Failed to droop at least one Index for collection: " + collection->name());
   }
 
   // delete documents
   RocksDBCollection *coll = RocksDBCollection::toRocksDBCollection(collection->getPhysical());
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(coll->objectId());
-  Result res = rocksutils::removeLargeRange(_db, bounds);
+  res = rocksutils::removeLargeRange(_db, bounds);
 
   if(res.fail()){
     return res; //let collection exist so the remaining elements can still be accessed
@@ -496,7 +504,7 @@ arangodb::Result RocksDBEngine::dropCollection(
 
 void RocksDBEngine::destroyCollection(TRI_vocbase_t* vocbase,
                                       arangodb::LogicalCollection*) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // not required
 }
 
 void RocksDBEngine::changeCollection(
@@ -529,6 +537,7 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,
                               TRI_voc_cid_t collectionId, TRI_idx_iid_t id) {
+  //probably not required
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
@@ -536,6 +545,7 @@ void RocksDBEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase,
                                        TRI_voc_cid_t collectionId,
                                        arangodb::velocypack::Slice const& data,
                                        bool writeMarker, int&) {
+  //probably not required
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
