@@ -60,7 +60,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
   result.valid = true;
 
   StringRef view(url);
-  if (view.compare("ldap://") == 0) {
+  if (view.substr(0, 7).compare("ldap://") == 0) {
     // skip over initial "ldap://"
     view = StringRef(view.begin() + 7);
   }
