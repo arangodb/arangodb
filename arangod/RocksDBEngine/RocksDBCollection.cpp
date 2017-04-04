@@ -379,7 +379,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
     rocksdb::Status s = rtrx->Delete(iter->key());
     if (!s.ok()) {
-      rtrx->Rollback();
       trx->abort();
       break;
     }
@@ -420,7 +419,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     while (iter->Valid() && -1 == cmp->Compare(iter->key(), bounds.end())) {
       rocksdb::Status s = rtrx->Delete(iter->key());
       if (!s.ok()) {
-        rtrx->Rollback();
         trx->abort();
         break;
       }

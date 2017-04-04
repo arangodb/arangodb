@@ -53,7 +53,8 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all collections belonging to a specified database
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds DatabaseIndexes(TRI_voc_tick_t databaseId);
+  static RocksDBKeyBounds DatabaseIndexes(TRI_voc_tick_t databaseId,
+                                          TRI_voc_cid_t cid);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all indexes belonging to a specified collection

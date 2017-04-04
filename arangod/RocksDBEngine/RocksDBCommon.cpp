@@ -228,9 +228,9 @@ std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionKVPairs(TRI_voc_tick_t
   });
   return rv;
 }
-std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId){
+std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId, TRI_voc_cid_t cid){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId);
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId, cid);
   iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
     rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Index, it->value()));
   });
