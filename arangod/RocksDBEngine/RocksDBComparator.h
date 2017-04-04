@@ -42,9 +42,9 @@ class RocksDBComparator final : public rocksdb::Comparator {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares any two RocksDB keys.
-  /// returns -1 if lhs < rhs
-  ///          1 if lhs > rhs
-  ///          0 if lhs == rhs
+  /// returns  < 0 if lhs < rhs
+  ///          > 0 if lhs > rhs
+  ///            0 if lhs == rhs
   //////////////////////////////////////////////////////////////////////////////
   int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;
 
