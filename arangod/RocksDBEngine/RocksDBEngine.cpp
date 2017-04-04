@@ -92,7 +92,15 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
 
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
-void RocksDBEngine::prepare() {}
+void RocksDBEngine::prepare() {
+  // get base path from DatabaseServerFeature
+  auto databasePathFeature =
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+          "DatabasePath");
+  _basePath = databasePathFeature->directory();
+  
+  TRI_ASSERT(!_basePath.empty());
+}
 
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
@@ -342,7 +350,7 @@ int RocksDBEngine::getViews(TRI_vocbase_t* vocbase,
 }
 
 std::string RocksDBEngine::databasePath(TRI_vocbase_t const* vocbase) const {
-  return std::string();  // no path to be returned here!
+  return _basePath;
 }
 
 std::string RocksDBEngine::collectionPath(TRI_vocbase_t const* vocbase,
