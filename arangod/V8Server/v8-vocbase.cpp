@@ -1750,6 +1750,22 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_VersionFilenameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+  TRI_V8_RETURN_STD_STRING(engine->versionFilename(vocbase->id()));
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock databaseId
 ////////////////////////////////////////////////////////////////////////////////
@@ -2620,6 +2636,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_NameDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_path"),
                        JS_PathDatabase);
+  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_versionFilename"),
+                       JS_VersionFilenameDatabase, true);
   TRI_AddMethodVocbase(isolate, ArangoNS,
                        TRI_V8_ASCII_STRING("_createDatabase"),
                        JS_CreateDatabase);

@@ -132,6 +132,8 @@ class MMFilesEngine final : public StorageEngine {
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
     return databaseDirectory(vocbase->id());
   }
+
+  std::string versionFilename(TRI_voc_tick_t id) const override;
   
   void waitForSync(TRI_voc_tick_t tick) override;
 

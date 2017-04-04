@@ -94,7 +94,7 @@
     constant2name[DATABASE_EXISTING] = 'existing';
 
     // path to version file
-    let versionFile = internal.db._path() + '/VERSION';
+    let versionFile = internal.db._versionFilename();
 
     // all defined tasks
     const allTasks = [];

@@ -353,6 +353,10 @@ std::string RocksDBEngine::databasePath(TRI_vocbase_t const* vocbase) const {
   return _basePath;
 }
 
+std::string RocksDBEngine::versionFilename(TRI_voc_tick_t id) const {
+  return _basePath + TRI_DIR_SEPARATOR_CHAR + "VERSION-" + std::to_string(id);
+}
+
 std::string RocksDBEngine::collectionPath(TRI_vocbase_t const* vocbase,
                                           TRI_voc_cid_t id) const {
   return std::string();  // no path to be returned here

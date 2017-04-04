@@ -127,6 +127,9 @@ class StorageEngine : public application_features::ApplicationFeature {
                                        bool wasCleanShutdown, bool isUpgrade) = 0;
   
   virtual int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) = 0;
+  
+  // return the absolute path for the VERSION file of a database
+  virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
 
   // return the path for a database
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;

@@ -1922,6 +1922,10 @@ VPackBuilder MMFilesEngine::databaseToVelocyPack(TRI_voc_tick_t id,
   return builder;
 }
 
+std::string MMFilesEngine::versionFilename(TRI_voc_tick_t id) const {
+  return databaseDirectory(id) + TRI_DIR_SEPARATOR_CHAR + "VERSION";
+}
+
 std::string MMFilesEngine::databaseDirectory(TRI_voc_tick_t id) const {
   return _databasePath + "database-" + std::to_string(id);
 }

@@ -100,6 +100,7 @@ class RocksDBEngine final : public StorageEngine {
   int getViews(TRI_vocbase_t* vocbase,
                arangodb::velocypack::Builder& result) override;
 
+  std::string versionFilename(TRI_voc_tick_t id) const override;
   std::string databasePath(TRI_vocbase_t const* vocbase) const override;
   std::string collectionPath(TRI_vocbase_t const* vocbase,
                              TRI_voc_cid_t id) const override;
