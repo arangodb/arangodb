@@ -133,7 +133,9 @@ function rubyTests (options, ssl) {
     if (!status) {
       const msg = yaml.safeDump(testCase)
             .replace(/.*rspec\/core.*\n/gm, '')
-            .replace(/.*rspec\\core.*\n/gm, '');
+            .replace(/.*rspec\\core.*\n/gm, '')
+            .replace(/.*- >-.*\n/gm, '')
+            .replace(/\n *`/gm, ' `');
       print('RSpec test case falied: \n' + msg);
       res[tName].message += '\n' + msg;
     }
