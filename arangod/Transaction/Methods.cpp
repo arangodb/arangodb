@@ -657,8 +657,8 @@ void transaction::Methods::buildDocumentIdentity(LogicalCollection* collection,
                                         StringRef const& key,
                                         TRI_voc_rid_t rid,
                                         TRI_voc_rid_t oldRid,
-                                        uint8_t const* oldVPack,
-                                        uint8_t const* newVPack) {
+                                        ManagedDocumentResult const* oldDoc,
+                                        ManagedDocumentResult const* newDoc) {
   std::string temp;
   temp.reserve(64);
 
@@ -695,11 +695,13 @@ void transaction::Methods::buildDocumentIdentity(LogicalCollection* collection,
   if (oldRid != 0) {
     builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));
   }
-  if (oldVPack != nullptr) {
-    builder.add("old", VPackValue(oldVPack, VPackValueType::External));
+  if (oldDoc != nullptr) {
+    builder.add(VPackValue("old"));
+    oldDoc->addToBuilder(builder, true);
   }
-  if (newVPack != nullptr) {
-    builder.add("new", VPackValue(newVPack, VPackValueType::External));
+  if (newDoc != nullptr) {
+    builder.add(VPackValue("new"));
+    newDoc->addToBuilder(builder, true);
   }
   builder.close();
 }
@@ -1358,14 +1360,11 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       return res;
     }
 
-    uint8_t const* vpack = result.vpack();
-    TRI_ASSERT(vpack != nullptr);
-    
-    StringRef keyString(transaction::helpers::extractKeyFromDocument(VPackSlice(vpack)));
+    StringRef keyString(transaction::helpers::extractKeyFromDocument(VPackSlice(result.vpack())));
 
     buildDocumentIdentity(collection, resultBuilder, cid, keyString, 
-        transaction::helpers::extractRevFromDocument(VPackSlice(vpack)), 0,
-        nullptr, options.returnNew ? vpack : nullptr);
+        transaction::helpers::extractRevFromDocument(VPackSlice(result.vpack())), 0,
+        nullptr, options.returnNew ? &result : nullptr);
 
     return TRI_ERROR_NO_ERROR;
   };
@@ -1661,21 +1660,18 @@ OperationResult transaction::Methods::modifyLocal(
       if (!isBabies) {
         StringRef key(newVal.get(StaticStrings::KeyString));
         buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0,
-                              options.returnOld ? previous.vpack() : nullptr, nullptr);
+                              options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
     } else if (!res.ok()) {
       return res;
     }
 
-    uint8_t const* vpack = result.vpack();
-    TRI_ASSERT(vpack != nullptr);
-
     StringRef key(newVal.get(StaticStrings::KeyString));
     buildDocumentIdentity(collection, resultBuilder, cid, key, 
-        TRI_ExtractRevisionId(VPackSlice(vpack)), actualRevision, 
-        options.returnOld ? previous.vpack() : nullptr , 
-        options.returnNew ? vpack : nullptr);
+        TRI_ExtractRevisionId(VPackSlice(result.vpack())), actualRevision, 
+        options.returnOld ? &previous : nullptr , 
+        options.returnNew ? &result : nullptr);
 
     return res; // must be ok!
   };
@@ -1916,13 +1912,13 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
       if (res == TRI_ERROR_ARANGO_CONFLICT && 
           !isBabies) {
         buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0, 
-                              options.returnOld ? previous.vpack() : nullptr, nullptr);
+                              options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
     }
 
     buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0,
-                          options.returnOld ? previous.vpack() : nullptr, nullptr);
+                          options.returnOld ? &previous : nullptr, nullptr);
 
     return TRI_ERROR_NO_ERROR;
   };
