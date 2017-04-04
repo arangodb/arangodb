@@ -105,7 +105,8 @@ arangodb::Result RocksDBCollection::persistProperties() {
     VPackBuilder infoBuilder =
         _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
 
-  RocksDBKey key(RocksDBKey::Collection(_logicalCollection->vocbase()->id(), _objectId));
+  RocksDBKey key(RocksDBKey::Collection(_logicalCollection->vocbase()->id(),
+                                        _logicalCollection->cid()));
   RocksDBValue value(RocksDBValue::Document(infoBuilder.slice()));
   res = globalRocksDBPut(key.string(), value.string());
 
@@ -379,6 +380,47 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       rtrx->Rollback();
       trx->abort();
       break;
+    }
+    iter->Next();
+  }
+  
+  // TODO maybe we could also reuse Index::drop, if we ensure the implementations
+  // don't do anything beyond deleting their contents
+  for (std::shared_ptr<Index> const& index : _indexes) {
+    
+    RocksDBIndex* rindex = static_cast<RocksDBIndex*> (index.get());
+    switch (rindex->type()) {
+      case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
+        bounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
+        break;
+      case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
+        bounds = RocksDBKeyBounds::EdgeIndex(rindex->objectId());
+        break;
+        
+      case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
+      case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
+      case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
+        if (rindex->unique()) {
+          bounds = RocksDBKeyBounds::UniqueIndex(rindex->objectId());
+        } else {
+          bounds = RocksDBKeyBounds::IndexEntries(rindex->objectId());
+        }
+        break;
+      // TODO add options for geoindex, fulltext etc
+        
+      default:
+        TRI_ERROR_NOT_IMPLEMENTED;
+    }
+    
+    iter->Seek(bounds.start());
+    while (iter->Valid() && -1 == cmp->Compare(iter->key(), bounds.end())) {
+      rocksdb::Status s = rtrx->Delete(iter->key());
+      if (!s.ok()) {
+        rtrx->Rollback();
+        trx->abort();
+        break;
+      }
+      iter->Next();
     }
   }
 }
