@@ -71,6 +71,7 @@ class ManagedDocumentResult {
       cloned._useString = true;
       cloned._string = _string;
       cloned._lastRevisionId = _lastRevisionId;
+      cloned._vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(cloned._string.data()));
     } else if (_managed) {
       cloned.setManaged(_vpack, _lastRevisionId);
     } else {

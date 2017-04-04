@@ -511,8 +511,9 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     return res;
   }
 
-  uint8_t const* vpack = previous.vpack();
-  VPackSlice oldDoc(vpack);
+  TRI_ASSERT(!previous.empty());
+
+  VPackSlice oldDoc(previous.vpack());
   TRI_voc_rid_t oldRevisionId =
       transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
@@ -532,6 +533,8 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
   if (newSlice.length() <= 1) {
     // shortcut. no need to do anything
     previous.clone(mdr);
+  
+    TRI_ASSERT(!mdr.empty());
 
     if (_logicalCollection->waitForSync()) {
       trx->state()->waitForSync(true);
@@ -569,6 +572,8 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     if (!result.ok()) {
       return result.errorNumber();
     }
+  
+    TRI_ASSERT(!mdr.empty());
     
     static_cast<RocksDBTransactionState*>(trx->state())->addOperation(_logicalCollection->cid(), TRI_VOC_DOCUMENT_OPERATION_UPDATE, newDoc.byteSize());
     guard.commit();
@@ -601,9 +606,10 @@ int RocksDBCollection::replace(
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+    
+  TRI_ASSERT(!previous.empty());
 
-  uint8_t const* vpack = previous.vpack();
-  VPackSlice oldDoc(vpack);
+  VPackSlice oldDoc(previous.vpack());
   TRI_voc_rid_t oldRevisionId =
       transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
@@ -647,6 +653,8 @@ int RocksDBCollection::replace(
     if (!result.ok()) {
       return result.errorNumber();
     }
+  
+    TRI_ASSERT(!mdr.empty());
 
     static_cast<RocksDBTransactionState*>(trx->state())->addOperation(_logicalCollection->cid(), TRI_VOC_DOCUMENT_OPERATION_REPLACE, VPackSlice(builder->slice()).byteSize());
     guard.commit();
@@ -684,9 +692,10 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+  
+  TRI_ASSERT(!previous.empty());
 
-  uint8_t const* vpack = previous.vpack();
-  VPackSlice oldDoc(vpack);
+  VPackSlice oldDoc(previous.vpack());
   TRI_voc_rid_t oldRevisionId =
       arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
@@ -1016,6 +1025,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
         << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
         << " -> NOT FOUND";
     */
+    mdr.reset();
   }
   return result;
 }
