@@ -115,6 +115,18 @@ LogTopic* LogTopic::lookup(std::string const& name) {
 
   return it->second;
 }
+  
+std::string LogTopic::lookup(size_t topicId) {
+  MUTEX_LOCKER(guard, _namesLock);
+
+  for (auto const& it : _names) {
+    if (it.second->_id == topicId) {
+      return it.second->_name;
+    }
+  }
+
+  return std::string("UNKNOWN");
+}
 
 LogTopic::LogTopic(std::string const& name)
     : LogTopic(name, LogLevel::DEFAULT) {}
