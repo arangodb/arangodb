@@ -374,7 +374,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(state->readOptions()));
   iter->Seek(bounds.start());
   
-  while (iter->Valid() && -1 == cmp->Compare(iter->key(), bounds.end())) {
+  while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
     rocksdb::Status s = rtrx->Delete(iter->key());
     if (!s.ok()) {
       rtrx->Rollback();
