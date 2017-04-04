@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,23 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBRestHandlers.h"
-#include "GeneralServer/RestHandlerFactory.h"
-#include "RestHandler/RestHandlerCreator.h"
-#include "RocksDBEngine/RocksDBRestExportHandler.h"
-#include "RocksDBEngine/RocksDBRestWalHandler.h"
+#ifndef ARANGOD_ROCKSDB_REST_WAL_HANDLER_H
+#define ARANGOD_MMFILES_MMFILES_REST_WAL_HANDLER_H 1
 
-using namespace arangodb;
+#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-void RocksDBRestHandlers::registerResources(
-    rest::RestHandlerFactory* handlerFactory) {
-  handlerFactory->addPrefixHandler(
-      "/_api/export",
-      RestHandlerCreator<RocksDBRestExportHandler>::createNoData);
+namespace arangodb {
 
-  handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
+class RocksDBRestWalHandler : public RestVocbaseBaseHandler {
+ public:
+  RocksDBRestWalHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  RestStatus execute() override final;
+  char const* name() const override final { return "RocksDBRestWalHandler"; }
+
+ private:
+  void flush();
+  void transactions();
+  void properties();
+};
 }
+
+#endif

@@ -18,6 +18,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBRestExportHandler.cpp
   RocksDBEngine/RocksDBRestHandlers.cpp
+  RocksDBEngine/RocksDBRestWalHandler.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBTypes.cpp

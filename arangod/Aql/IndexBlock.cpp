@@ -512,8 +512,9 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       }
       if (_cursor->collection()->readDocument(_trx, token, *_mmdr)) {
         uint8_t const* vpack = _mmdr->vpack(); //back();
+        // TODO use internal toAQL function
         res->setValue(_returned, static_cast<arangodb::aql::RegisterId>(curRegs),
-            AqlValue(vpack, AqlValueFromManagedDocument()));
+            AqlValue(VPackSlice(vpack)));
 
         if (_returned > 0) {
           // re-use already copied AqlValues
@@ -530,8 +531,9 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       TRI_ASSERT(res.get() != nullptr);
       if (_cursor->collection()->readDocument(_trx, token, *_mmdr)) {
         uint8_t const* vpack = _mmdr->vpack(); //back();
+        // TODO use internal toAQL function
         res->setValue(_returned, static_cast<arangodb::aql::RegisterId>(curRegs),
-            AqlValue(vpack, AqlValueFromManagedDocument()));
+            AqlValue(VPackSlice(vpack)));
 
         if (_returned > 0) {
           // re-use already copied AqlValues

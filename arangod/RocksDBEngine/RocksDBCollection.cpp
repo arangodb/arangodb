@@ -870,18 +870,15 @@ void RocksDBCollection::addIndexCoordinator(
 int RocksDBCollection::saveIndex(transaction::Methods* trx,
                                  std::shared_ptr<arangodb::Index> idx) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  // we cannot persist PrimaryMockIndex
+  // we cannot persist primary or edge indexes
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
-  indexListLocal.emplace_back(idx);
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
 
-  /* TODO
-    int res = fillIndexes(trx, indexListLocal, false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  */
+  Result res = fillIndexes(trx, idx);
+  if (!res.ok()) {
+    return res.errorNumber();
+  }
+  
   std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false);
   auto vocbase = _logicalCollection->vocbase();
   auto collectionId = _logicalCollection->cid();
@@ -891,6 +888,28 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   engine->createIndex(vocbase, collectionId, idx->id(), data);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+arangodb::Result RocksDBCollection::fillIndexes(transaction::Methods* trx,
+                                                std::shared_ptr<arangodb::Index> added) {
+  
+  ManagedDocumentResult mmr;
+  std::unique_ptr<IndexIterator> iter(primaryIndex()->allIterator(trx, &mmr, false));
+  int res = TRI_ERROR_NO_ERROR;
+  
+  std::vector<DocumentIdentifierToken> tokens;
+  auto cb = [&](DocumentIdentifierToken token) {
+    if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmr)) {
+        RocksDBIndex *ridx = static_cast<RocksDBIndex*>(added.get());
+        res = ridx->insert(trx, mmr.lastRevisionId(), VPackSlice(mmr.vpack()), false);
+    }
+  };
+  while (iter->next(cb, 1000) && res == TRI_ERROR_NO_ERROR) {
+    if (_logicalCollection->deleted()) {
+      return Result(TRI_ERROR_INTERNAL);
+    }
+  }
+  return Result(res);
 }
 
 // @brief return the primary index
