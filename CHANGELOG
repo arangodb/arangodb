@@ -172,6 +172,9 @@ v3.2.alpha1 (2017-02-05)
 v3.1.17 (2017-XX-XX)
 --------------------
 
+* (Enterprise only) fixed a bug where replicationFactor was not correctly
+  forwarded in SmartGraph creation.
+
 * fixed issue #2404
 
 * fixed issue #2397

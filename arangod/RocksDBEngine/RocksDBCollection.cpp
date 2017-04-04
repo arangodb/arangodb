@@ -722,7 +722,7 @@ void RocksDBCollection::deferDropCollection(
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(
     std::shared_ptr<arangodb::velocypack::Builder>&) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // no specific figures yet
 }
 
 /// @brief creates the initial indexes for the collection
