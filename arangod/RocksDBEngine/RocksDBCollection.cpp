@@ -403,7 +403,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
         if (rindex->unique()) {
           bounds = RocksDBKeyBounds::UniqueIndex(rindex->objectId());
         } else {
-          bounds = RocksDBKeyBounds::Index(rindex->objectId());
+          bounds = RocksDBKeyBounds::IndexEntries(rindex->objectId());
         }
         break;
       // TODO add options for geoindex, fulltext etc
