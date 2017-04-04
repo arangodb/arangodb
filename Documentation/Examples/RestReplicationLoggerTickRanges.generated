@@ -5,33 +5,33 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 [ 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_6Hiev8/tmp-16475-1843170670/data/journals/logfile-2.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_UCWsKp/tmp-12579-4102387411/data/journals/logfile-2.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
     <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"5"</span>, 
     <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"9347"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_6Hiev8/tmp-16475-1843170670/data/journals/logfile-20.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_UCWsKp/tmp-12579-4102387411/data/journals/logfile-10.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
     <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"9354"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"9414"</span> 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"9405"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_6Hiev8/tmp-16475-1843170670/data/journals/logfile-39.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_UCWsKp/tmp-12579-4102387411/data/journals/logfile-43.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"9422"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10412"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"9412"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10404"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_6Hiev8/tmp-16475-1843170670/data/journals/logfile-9350.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_UCWsKp/tmp-12579-4102387411/data/journals/logfile-9350.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"10419"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10440"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"10411"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10432"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_6Hiev8/tmp-16475-1843170670/data/journals/logfile-9417.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_UCWsKp/tmp-12579-4102387411/data/journals/logfile-9408.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"open"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"10444"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10497"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"10436"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10480"</span> 
   } 
 ]

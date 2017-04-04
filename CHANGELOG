@@ -1,4 +1,4 @@
-v3.1.17 (2017-XX-XX)
+v3.1.17 (2017-04-04)
 --------------------
 
 * (Enterprise only) fixed a bug where replicationFactor was not correctly
