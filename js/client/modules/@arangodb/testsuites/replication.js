@@ -70,12 +70,14 @@ function replicationOngoing (options) {
       };
     },
 
-    preShutdown: function (options,
+    preStop: function (options,
                            serverOptions,
                            instanceInfo,
                            customInstanceInfos,
                            startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
+      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+
+      return {};
     }
   };
 
@@ -133,12 +135,14 @@ function replicationStatic (options) {
       };
     },
 
-    preShutdown: function (options,
+    preStop: function (options,
                            serverOptions,
                            instanceInfo,
                            customInstanceInfos,
                            startStopHandlers) {
       pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
+      
+      return {};
     }
   };
 
@@ -203,12 +207,14 @@ function replicationSync (options) {
       };
     },
 
-    preShutdown: function (options,
+    preStop: function (options,
                            serverOptions,
                            instanceInfo,
                            customInstanceInfos,
                            startStopHandlers) {
       pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
+
+      return {};
     }
   };
 
