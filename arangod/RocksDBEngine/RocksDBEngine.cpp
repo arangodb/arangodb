@@ -739,9 +739,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     // delete index documents
     uint64_t objectId =
         basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexRange(
-        objectId, VPackSlice::minKeySlice(), VPackSlice::maxKeySlice()
-    );
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
     res = rocksutils::removeLargeRange(_db, bounds);
     if(res.fail()){
       return res;
