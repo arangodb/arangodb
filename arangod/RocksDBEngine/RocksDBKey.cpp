@@ -59,6 +59,11 @@ RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
   return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, primaryKey);
 }
 
+RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
+                                         char const* primaryKey) {
+  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, StringRef(primaryKey));
+}
+
 RocksDBKey RocksDBKey::EdgeIndexValue(uint64_t indexId,
                                       std::string const& vertexId,
                                       std::string const& primaryKey) {

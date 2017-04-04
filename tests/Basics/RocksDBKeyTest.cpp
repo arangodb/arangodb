@@ -179,25 +179,25 @@ SECTION("test_document") {
 
 /// @brief test primary index
 SECTION("test_primary_index") {
-  RocksDBKey key1 = RocksDBKey::PrimaryIndexValue(0, ""); 
+  RocksDBKey key1 = RocksDBKey::PrimaryIndexValue(0, StringRef("")); 
   auto const& s1 = key1.string();
   
   CHECK(s1.size() == sizeof(char) + sizeof(uint64_t) + strlen(""));
   CHECK(s1 == std::string("4\0\0\0\0\0\0\0\0", 9));
   
-  RocksDBKey key2 = RocksDBKey::PrimaryIndexValue(0, "abc"); 
+  RocksDBKey key2 = RocksDBKey::PrimaryIndexValue(0, StringRef("abc")); 
   auto const& s2 = key2.string();
   
   CHECK(s2.size() == sizeof(char) + sizeof(uint64_t) + strlen("abc"));
   CHECK(s2 == std::string("4\0\0\0\0\0\0\0\0abc", 12));
   
-  RocksDBKey key3 = RocksDBKey::PrimaryIndexValue(0, " "); 
+  RocksDBKey key3 = RocksDBKey::PrimaryIndexValue(0, StringRef(" ")); 
   auto const& s3 = key3.string();
   
   CHECK(s3.size() == sizeof(char) + sizeof(uint64_t) + strlen(" "));
   CHECK(s3 == std::string("4\0\0\0\0\0\0\0\0 ", 10));
   
-  RocksDBKey key4 = RocksDBKey::PrimaryIndexValue(0, "this is a key"); 
+  RocksDBKey key4 = RocksDBKey::PrimaryIndexValue(0, StringRef("this is a key")); 
   auto const& s4 = key4.string();
   
   CHECK(s4.size() == sizeof(char) + sizeof(uint64_t) + strlen("this is a key"));
@@ -205,18 +205,28 @@ SECTION("test_primary_index") {
 
   // 254 bytes
   char const* longKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; 
-  RocksDBKey key5 = RocksDBKey::PrimaryIndexValue(0, longKey); 
+  RocksDBKey key5 = RocksDBKey::PrimaryIndexValue(0, StringRef(longKey)); 
   auto const& s5 = key5.string();
   
   CHECK(s5.size() == sizeof(char) + sizeof(uint64_t) + strlen(longKey));
   CHECK(s5 == std::string("4\0\0\0\0\0\0\0\0", 9) + longKey);
   
-  RocksDBKey key6 = RocksDBKey::PrimaryIndexValue(123456789, "this is a key"); 
+  RocksDBKey key6 = RocksDBKey::PrimaryIndexValue(123456789, StringRef("this is a key")); 
   auto const& s6 = key6.string();
   
   CHECK(s6.size() == sizeof(char) + sizeof(uint64_t) + strlen("this is a key"));
   CHECK(s6 == std::string("4\x15\xcd\x5b\x07\0\0\0\0this is a key", 22));
-
 }
+
+/// @brief test edge index
+SECTION("test_edge_index") {
+  RocksDBKey key1 = RocksDBKey::EdgeIndexValue(0, "a/1", "foobar"); 
+  auto const& s1 = key1.string();
+  
+  CHECK(s1.size() == sizeof(char) + sizeof(uint64_t) + strlen("a/1") + sizeof(char) + strlen("foobar") + sizeof(char));
+  CHECK(s1 == std::string("5\0\0\0\0\0\0\0\0a/1\0foobar\x06", 20));
+  
+}
+
 
 }

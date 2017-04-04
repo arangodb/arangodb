@@ -75,6 +75,8 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey PrimaryIndexValue(uint64_t indexId,
                                       arangodb::StringRef const& primaryKey);
+  
+  static RocksDBKey PrimaryIndexValue(uint64_t indexId, char const* primaryKey);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in an edge index
