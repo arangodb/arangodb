@@ -423,7 +423,8 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
 
 void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
                                         bool useWriteMarker, int& status) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // probably not required
+  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 Result RocksDBEngine::dropDatabase(Database* database) {
