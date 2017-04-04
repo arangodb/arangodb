@@ -848,12 +848,11 @@ void RocksDBCollection::addIndexCoordinator(
 int RocksDBCollection::saveIndex(transaction::Methods* trx,
                                  std::shared_ptr<arangodb::Index> idx) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  // we cannot persist PrimaryMockIndex
+  // we cannot persist primary or edge indexes
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
-  indexListLocal.emplace_back(idx);
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
 
-  Result res = fillIndexes(trx, indexListLocal);
+  Result res = fillIndexes(trx, idx);
   if (!res.ok()) {
     return res.errorNumber();
   }
@@ -870,28 +869,25 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
 }
 
 arangodb::Result RocksDBCollection::fillIndexes(transaction::Methods* trx,
-                                                std::vector<std::shared_ptr<arangodb::Index>> added) {
+                                                std::shared_ptr<arangodb::Index> added) {
   
   ManagedDocumentResult mmr;
   std::unique_ptr<IndexIterator> iter(primaryIndex()->allIterator(trx, &mmr, false));
+  int res = TRI_ERROR_NO_ERROR;
   
   std::vector<DocumentIdentifierToken> tokens;
   auto cb = [&](DocumentIdentifierToken token) {
-    
-    bool ret = this->readDocument(trx, token, mmr);
-    if (ret) {
-      for (std::shared_ptr<arangodb::Index> index : added) {
-        RocksDBIndex *ridx = static_cast<RocksDBIndex*>(index.get());
-        ridx->insert(trx, mmr.lastRevisionId(), VPackSlice(mmr.vpack()), false);
-      }
+    if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmr)) {
+        RocksDBIndex *ridx = static_cast<RocksDBIndex*>(added.get());
+        res = ridx->insert(trx, mmr.lastRevisionId(), VPackSlice(mmr.vpack()), false);
     }
   };
-  while (iter->next(cb, 10000)) {
+  while (iter->next(cb, 1000) && res == TRI_ERROR_NO_ERROR) {
     if (_logicalCollection->deleted()) {
       return Result(TRI_ERROR_INTERNAL);
     }
   }
-  return Result();
+  return Result(res);
 }
 
 // @brief return the primary index

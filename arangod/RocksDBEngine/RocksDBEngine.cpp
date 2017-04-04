@@ -31,6 +31,8 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "GeneralServer/RestHandlerFactory.h"
+#include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -40,6 +42,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBRestWalHandler.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionContextData.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
@@ -720,8 +723,13 @@ void RocksDBEngine::addV8Functions() {
 }
 
 /// @brief Add engine-specific REST handlers
-void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
+void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory* handlerFactory) {
   // TODO: add /_api/export and /_admin/wal later
+  handlerFactory->addPrefixHandler("/_admin/wal",
+                                   RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
+  
+  //handlerFactory->addPrefixHandler(
+  //                                 "/_api/export", RestHandlerCreator<MMFilesRestExportHandler>::createNoData);
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {

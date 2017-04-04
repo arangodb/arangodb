@@ -189,7 +189,7 @@ class RocksDBCollection final : public PhysicalCollection {
                 std::shared_ptr<arangodb::Index> idx);
 
   arangodb::Result fillIndexes(transaction::Methods*,
-                               std::vector<std::shared_ptr<arangodb::Index>>);
+                               std::shared_ptr<arangodb::Index>);
 
   arangodb::RocksDBPrimaryIndex* primaryIndex() const;
 
