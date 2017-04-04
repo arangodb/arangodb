@@ -721,15 +721,11 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   // remove views
-  for (auto& val : indexKVPairs(id)) {
-    // delete view documents
-    // uint64_t objectId =
-    // basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    // TODO FIXME get elements of views
-    // RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViewRange(); //really
-    // res = rocksutils::removeLargeRange(_db, bounds);
-    // delete view
-    globalRocksDBRemove(val.first.string(), options);
+  for (auto& val : viewKVPairs(id)) {
+    res = globalRocksDBRemove(val.first.string(), options);
+    if(res.fail()){
+      return res;
+    }
   }
 
   // remove indexes
@@ -737,11 +733,18 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     // delete index documents
     uint64_t objectId =
         basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    VPackSlice min, max;  // TODO FIXME
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexRange(objectId, min, max);
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexRange(
+        objectId, VPackSlice::minKeySlice(), VPackSlice::maxKeySlice()
+    );
     res = rocksutils::removeLargeRange(_db, bounds);
+    if(res.fail()){
+      return res;
+    }
     // delete index
-    globalRocksDBRemove(val.first.string(), options);
+    res = globalRocksDBRemove(val.first.string(), options);
+    if(res.fail()){
+      return res;
+    }
   }
 
   // remove collections
@@ -751,8 +754,14 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
     res = rocksutils::removeLargeRange(_db, bounds);
+    if(res.fail()){
+      return res;
+    }
     // delete Collection
-    globalRocksDBRemove(val.first.string(), options);
+    res = globalRocksDBRemove(val.first.string(), options);
+    if(res.fail()){
+      return res;
+    }
   }
 
   // TODO
