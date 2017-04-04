@@ -74,7 +74,7 @@ class RocksDBKey {
   /// actual index ID.
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey PrimaryIndexValue(uint64_t indexId,
-                                      std::string const& primaryKey);
+                                      arangodb::StringRef const& primaryKey);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in an edge index
@@ -216,9 +216,9 @@ class RocksDBKey {
   RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second,
              uint64_t third);
   RocksDBKey(RocksDBEntryType type, uint64_t first, VPackSlice const& slice);
-  RocksDBKey(RocksDBEntryType type, uint64_t first, StringRef const& docKey,
+  RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& docKey,
              VPackSlice const& indexData);
-  RocksDBKey(RocksDBEntryType type, uint64_t first, std::string const& second);
+  RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second);
   RocksDBKey(RocksDBEntryType type, uint64_t first, std::string const& second,
              std::string const& third);
 

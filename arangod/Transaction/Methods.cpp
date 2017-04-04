@@ -1904,8 +1904,6 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
     }
-
-    TRI_ASSERT(!previous.empty());
     
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_CONFLICT && 
@@ -1915,7 +1913,8 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
       }
       return res;
     }
-
+    
+    TRI_ASSERT(!previous.empty());
     buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0,
                           options.returnOld ? &previous : nullptr, nullptr);
 

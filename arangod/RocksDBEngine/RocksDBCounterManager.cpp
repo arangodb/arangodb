@@ -193,7 +193,7 @@ void RocksDBCounterManager::readCounterValues() {
   std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(readOptions));
   iter->Seek(bounds.start());
 
-  while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) == -1) {
+  while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
     
     uint64_t objectId = RocksDBKey::extractObjectId(iter->key());
     _counters.emplace(objectId, Counter(VPackSlice(iter->value().data())));

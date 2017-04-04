@@ -161,10 +161,7 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
   it->Seek(lower);
-  while (it->Valid()) {
-    if (cmp->Compare(it->key(), upper) != -1) {
-      break;
-    }
+  while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
     ++count;
     it->Next();
   }
@@ -197,12 +194,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& boun
     std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(rocksdb::ReadOptions()));
     
     it->Seek(lower);
-    while (it->Valid()) {
-      int res = cmp->Compare(it->key(), upper);
-      
-      if (res >= 0) {
-        break;
-      }
+    while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
       batch.Delete(it->key());
       it->Next();
     }
@@ -236,9 +228,9 @@ std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionKVPairs(TRI_voc_tick_t
   });
   return rv;
 }
-std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId){
+std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId, TRI_voc_cid_t cid){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId);
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId, cid);
   iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
     rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Index, it->value()));
   });

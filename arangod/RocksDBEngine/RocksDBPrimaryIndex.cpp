@@ -164,9 +164,9 @@ void RocksDBAllIndexIterator::reset() {
 
 bool RocksDBAllIndexIterator::outOfRange() const {
   if (_reverse) {
-    return (-1 == _cmp->Compare(_iterator->key(), _bounds.start()));
+    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
   } else {
-    return (1 == _cmp->Compare(_iterator->key(), _bounds.end()));
+    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
   }
 }
 
@@ -212,7 +212,7 @@ void RocksDBPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                             arangodb::StringRef keyRef) {
-  auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef.toString());
+  auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
   if (_useCache) {
@@ -251,31 +251,19 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   return RocksDBToken(RocksDBValue::revisionId(value));
 }
 
+// TODO: remove this method?
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                             VPackSlice slice,
                                             ManagedDocumentResult& result) {
-  auto key = RocksDBKey::PrimaryIndexValue(_objectId, slice.copyString());
-  auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
-
-  // aquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
-
-  auto status = rtrx->Get(options, key.string(), value.buffer());
-  if (!status.ok()) {
-    return RocksDBToken();
-  }
-
-  return RocksDBToken(RocksDBValue::revisionId(value));
+  return lookupKey(trx, StringRef(slice));
 }
 
 int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
                                 TRI_voc_rid_t revisionId,
                                 VPackSlice const& slice, bool) {
   // TODO: deal with uniqueness?
-  auto key =
-      RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
+  auto key = RocksDBKey::PrimaryIndexValue(
+      _objectId, StringRef(slice.get(StaticStrings::KeyString)));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
   /*
@@ -318,8 +306,8 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
                                 TRI_voc_rid_t revisionId,
                                 VPackSlice const& slice, bool) {
   // TODO: deal with matching revisions?
-  auto key =
-      RocksDBKey::PrimaryIndexValue(_objectId, slice.get("_key").copyString());
+  auto key = RocksDBKey::PrimaryIndexValue(
+      _objectId, StringRef(slice.get(StaticStrings::KeyString)));
 
   if (_useCache) {
     // blacklist from cache
@@ -351,8 +339,9 @@ int RocksDBPrimaryIndex::unload() {
 int RocksDBPrimaryIndex::drop() {
   // First drop the cache all indexes can work without it.
   RocksDBIndex::drop();
-  return rocksutils::removeLargeRange(
-      rocksutils::globalRocksDB(), RocksDBKeyBounds::PrimaryIndex(_objectId)).errorNumber();
+  return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
+                                      RocksDBKeyBounds::PrimaryIndex(_objectId))
+      .errorNumber();
 }
 
 /// @brief checks whether the index supports the condition

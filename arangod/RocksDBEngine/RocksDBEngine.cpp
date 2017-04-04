@@ -736,28 +736,32 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     }
   }
 
-  // remove indexes
-  for (auto& val : indexKVPairs(id)) {
-    // delete index documents
-    uint64_t objectId =
-        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
-    res = rocksutils::removeLargeRange(_db, bounds);
-    if(res.fail()){
-      return res;
-    }
-    // delete index
-    res = globalRocksDBRemove(val.first.string(), options);
-    if(res.fail()){
-      return res;
-    }
-  }
 
   // remove collections
   for (auto& val : collectionKVPairs(id)) {
-    // delete documents
+    
+    TRI_voc_cid_t cid =
+        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "cid");
+    // remove indexes
+    for (auto& val : indexKVPairs(id, cid)) {
+      // delete index documents
+      uint64_t objectId =
+      basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+      RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
+      res = rocksutils::removeLargeRange(_db, bounds);
+      if(res.fail()){
+        return res;
+      }
+      // delete index
+      res = globalRocksDBRemove(val.first.string(), options);
+      if(res.fail()){
+        return res;
+      }
+    }
+    
     uint64_t objectId =
-        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
     res = rocksutils::removeLargeRange(_db, bounds);
     if(res.fail()){
