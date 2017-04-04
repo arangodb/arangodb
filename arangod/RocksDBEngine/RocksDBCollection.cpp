@@ -44,6 +44,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -329,14 +330,33 @@ int RocksDBCollection::restoreIndex(transaction::Methods*,
 
 /// @brief Drop an index with the given iid.
 bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
-  Result res;
-  for(auto index : getIndexes()){
-    RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
-    if(iid == cindex->objectId()){
-      int rv = cindex->drop();
-      return rv == TRI_ERROR_NO_ERROR;
-    }
+  if (iid == 0) {
+    // invalid index id or primary index
+    return true;
   }
+
+  size_t i = 0;
+  // TODO: need to protect _indexes with an RW-lock!!
+  for (auto index : getIndexes()) {
+    RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
+
+    if (iid == cindex->id()) {
+      int rv = cindex->drop();
+
+      if (rv == TRI_ERROR_NO_ERROR) {
+        _indexes.erase(_indexes.begin() + i);
+        events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
+        return true;
+      }
+
+      break;
+    }
+    ++i;
+  }
+
+  // We tried to remove an index that does not exist
+  events::DropIndex("", std::to_string(iid),
+                    TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   return false;
 }
 
