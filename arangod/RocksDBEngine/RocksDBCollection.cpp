@@ -363,7 +363,6 @@ void RocksDBCollection::invokeOnAllElements(
 
 void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
   
   rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
   

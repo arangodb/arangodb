@@ -295,7 +295,7 @@ class AqlItemBlock {
   /// @brief _nrItems, number of rows
   size_t _nrItems;
 
-  /// @brief _nrRegs, number of rows
+  /// @brief _nrRegs, number of columns
   RegisterId _nrRegs;
 
   /// @brief resources manager for this item block
