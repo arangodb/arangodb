@@ -374,6 +374,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(state->readOptions()));
   iter->Seek(bounds.start());
   
+  TRI_voc_cid_t cid =  _logicalCollection->cid();
+  
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
     rocksdb::Status s = rtrx->Delete(iter->key());
     if (!s.ok()) {
@@ -381,6 +383,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       trx->abort();
       break;
     }
+    // TODO 
+    state->addOperation(cid, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0);
     iter->Next();
   }
   
