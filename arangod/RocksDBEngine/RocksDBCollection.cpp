@@ -409,7 +409,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       // TODO add options for geoindex, fulltext etc
         
       default:
-        TRI_ERROR_NOT_IMPLEMENTED;
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
     
     iter->Seek(bounds.start());

@@ -209,7 +209,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   rocksdb::SequenceNumber seqNum = UINT64_MAX;
   bool recovered = false;
 
-  WBReader(std::unordered_map<uint64_t, RocksDBCounterManager::Counter>& cnts)
+  explicit WBReader(std::unordered_map<uint64_t, RocksDBCounterManager::Counter>& cnts)
       : counters(cnts) {}
 
   void Put(const rocksdb::Slice& key,

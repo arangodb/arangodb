@@ -55,7 +55,7 @@ class RocksDBCounterManager : Thread {
     
     Counter(rocksdb::SequenceNumber seq, uint64_t cnt)
       : sequenceNumber(seq), count(cnt) {}
-    Counter(VPackSlice const&);
+    explicit Counter(VPackSlice const&);
     void serialize(VPackBuilder&) const;
   };
 
