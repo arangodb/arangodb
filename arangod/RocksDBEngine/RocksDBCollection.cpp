@@ -105,7 +105,8 @@ arangodb::Result RocksDBCollection::persistProperties() {
     VPackBuilder infoBuilder =
         _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
 
-  RocksDBKey key(RocksDBKey::Collection(_logicalCollection->vocbase()->id(), _objectId));
+  RocksDBKey key(RocksDBKey::Collection(_logicalCollection->vocbase()->id(),
+                                        _logicalCollection->cid()));
   RocksDBValue value(RocksDBValue::Document(infoBuilder.slice()));
   res = globalRocksDBPut(key.string(), value.string());
 

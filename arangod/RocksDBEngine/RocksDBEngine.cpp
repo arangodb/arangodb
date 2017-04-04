@@ -410,9 +410,9 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 }
 
 int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
-                                               TRI_voc_cid_t id,
+                                               TRI_voc_cid_t cid,
                                                VPackSlice const& slice) {
-  auto key = RocksDBKey::Collection(databaseId, id);
+  auto key = RocksDBKey::Collection(databaseId, cid);
   auto value = RocksDBValue::Collection(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
@@ -538,10 +538,12 @@ void RocksDBEngine::changeCollection(
 }
 
 arangodb::Result RocksDBEngine::renameCollection(
-    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*,
+    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
     std::string const& oldName) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return arangodb::Result{};
+  
+  VPackBuilder builder = collection->toVelocyPackIgnore({"path", "statusString"}, true);
+  int res = writeCreateCollectionMarker(vocbase->id(), collection->cid(), builder.slice());
+  return arangodb::Result(res);
 }
 
 void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
