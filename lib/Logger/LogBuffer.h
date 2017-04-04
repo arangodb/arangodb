@@ -44,6 +44,7 @@ struct LogBuffer {
   LogLevel _level;
   time_t _timestamp;
   char _message[256];
+  size_t _topicId;
 };
 }
 
