@@ -161,10 +161,7 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
   it->Seek(lower);
-  while (it->Valid()) {
-    if (cmp->Compare(it->key(), upper) != -1) {
-      break;
-    }
+  while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
     ++count;
     it->Next();
   }
@@ -197,12 +194,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& boun
     std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(rocksdb::ReadOptions()));
     
     it->Seek(lower);
-    while (it->Valid()) {
-      int res = cmp->Compare(it->key(), upper);
-      
-      if (res >= 0) {
-        break;
-      }
+    while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
       batch.Delete(it->key());
       it->Next();
     }
