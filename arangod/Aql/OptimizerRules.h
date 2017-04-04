@@ -56,9 +56,6 @@ void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const*);
 
-/// @brief remove SORT RAND() if appropriate
-void removeSortRandRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
-
 /// @brief move calculations up in the plan
 /// this rule modifies the plan in place
 /// it aims to move up calculations as far up in the plan as possible, to

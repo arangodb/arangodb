@@ -41,8 +41,9 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  rocksdb::TransactionDB* db = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
- 
+  rocksdb::TransactionDB* db =
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
+
   rocksdb::Status status = db->GetBaseDB()->SyncWAL();
 
   if (!status.ok()) {
@@ -69,6 +70,35 @@ static void JS_WaitCollectorWal(
   TRI_V8_TRY_CATCH_END
 }
 
+/// this is just a stub
+static void JS_TransactionsWal(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  // this is just a stub
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+/// this is just a stub
+static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  // this is just a stub
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
 void RocksDBV8Functions::registerResources() {
   ISOLATE;
   v8::HandleScope scope(isolate);
@@ -76,13 +106,18 @@ void RocksDBV8Functions::registerResources() {
   TRI_GET_GLOBALS();
 
   // patch ArangoCollection object
-  v8::Handle<v8::ObjectTemplate> rt = v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
+  v8::Handle<v8::ObjectTemplate> rt =
+      v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
-  
+
   // add global WAL handling functions
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("WAL_FLUSH"), JS_FlushWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, 
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_FLUSH"),
+                               JS_FlushWal, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("WAL_WAITCOLLECTOR"),
                                JS_WaitCollectorWal, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_PROPERTIES"),
+                               JS_PropertiesWal, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"),
+                               JS_TransactionsWal, true);
 }

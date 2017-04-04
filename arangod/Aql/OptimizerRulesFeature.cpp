@@ -170,10 +170,6 @@ void OptimizerRulesFeature::addRules() {
   registerRule("remove-redundant-sorts-2", removeRedundantSortsRule,
                OptimizerRule::removeRedundantSortsRule_pass5, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
-  // SORT RAND() if appropriate
-  registerRule("remove-sort-rand", removeSortRandRule, OptimizerRule::removeSortRandRule_pass5,
-               DoesNotCreateAdditionalPlans, CanBeDisabled);
-
   // remove unused INTO variable from COLLECT, or unused aggregates
   registerRule("remove-collect-variables", removeCollectVariablesRule,
                OptimizerRule::removeCollectVariablesRule_pass5, DoesNotCreateAdditionalPlans, CanBeDisabled);

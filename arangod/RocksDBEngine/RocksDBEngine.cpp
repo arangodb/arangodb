@@ -44,8 +44,8 @@
 #include "RocksDBEngine/RocksDBTransactionContextData.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBV8Functions.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBView.h"
 #include "VocBase/ticks.h"
 
@@ -114,7 +114,7 @@ void RocksDBEngine::start() {
   _options.create_if_missing = true;
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
-  _options.WAL_ttl_seconds = counter_sync_seconds*2;
+  _options.WAL_ttl_seconds = counter_sync_seconds * 2;
 
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);
@@ -128,7 +128,8 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _counterManager.reset(new RocksDBCounterManager(_db, counter_sync_seconds));
   if (!_counterManager->start()) {
-    LOG_TOPIC(ERR, Logger::ENGINES) << "Could not start rocksdb counter manager";
+    LOG_TOPIC(ERR, Logger::ENGINES)
+        << "Could not start rocksdb counter manager";
     TRI_ASSERT(false);
   }
 
@@ -151,7 +152,7 @@ void RocksDBEngine::unprepare() {
       _counterManager->sync();
       _counterManager.reset();
     }
-    
+
     delete _db;
     _db = nullptr;
   }
@@ -573,8 +574,8 @@ void RocksDBEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase,
 
 void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
                                      arangodb::LogicalCollection* collection) {
-  // TODO: does anything have to happen
-  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // TODO: does anything else have to happen?
+  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 }
 
 void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
@@ -715,34 +716,36 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
   Result res;
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
- 
+
   // remove views
-  for(auto& val : indexKVPairs(id)) {
+  for (auto& val : indexKVPairs(id)) {
     // delete view documents
-    //uint64_t objectId = basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    //TODO FIXME get elements of views
-    //RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViewRange(); //really 
-    //res = rocksutils::removeLargeRange(_db, bounds);
+    // uint64_t objectId =
+    // basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    // TODO FIXME get elements of views
+    // RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViewRange(); //really
+    // res = rocksutils::removeLargeRange(_db, bounds);
     // delete view
-    globalRocksDBRemove(val.first.string(),options);
+    globalRocksDBRemove(val.first.string(), options);
   }
 
-
   // remove indexes
-  for(auto& val : indexKVPairs(id)) {
+  for (auto& val : indexKVPairs(id)) {
     // delete index documents
-    uint64_t objectId = basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    VPackSlice min, max; //TODO FIXME
+    uint64_t objectId =
+        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    VPackSlice min, max;  // TODO FIXME
     RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexRange(objectId, min, max);
     res = rocksutils::removeLargeRange(_db, bounds);
     // delete index
-    globalRocksDBRemove(val.first.string(),options);
+    globalRocksDBRemove(val.first.string(), options);
   }
 
   // remove collections
-  for(auto& val : collectionKVPairs(id)) {
+  for (auto& val : collectionKVPairs(id)) {
     // delete documents
-    uint64_t objectId = basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    uint64_t objectId =
+        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
     res = rocksutils::removeLargeRange(_db, bounds);
     // delete Collection
@@ -754,7 +757,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // Cleanup thread does it in MMFiles
 
   auto key = RocksDBKey::Database(id);
-  res = rocksutils::globalRocksDBRemove(key.string(),options);
+  res = rocksutils::globalRocksDBRemove(key.string(), options);
   return res;
 }
 
@@ -886,7 +889,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
     throw;
   }
 }
-  
+
 RocksDBCounterManager* RocksDBEngine::counterManager() {
   return _counterManager.get();
 }
