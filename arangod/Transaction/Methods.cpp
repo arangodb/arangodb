@@ -826,15 +826,11 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
                 limit, 1000, false);
 
   LogicalCollection* collection = cursor->collection();
-  auto cb = [&] (DocumentIdentifierToken const& token) {
+  cursor->getAll([&] (DocumentIdentifierToken const& token) {
     if (collection->readDocument(this, token, mmdr)) {
-      uint8_t const* vpack = mmdr.vpack();
-      resultBuilder.add(VPackSlice(vpack));
+      mmdr.addToBuilder(resultBuilder, false);
     }
-  };
-
-  while (cursor->getMore(cb, 1000)) {
-  }
+  });
 
   resultBuilder.close();
 
@@ -1001,8 +997,6 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   
   TRI_ASSERT(isPinned(cid));
 
-  uint8_t const* vpack = mmdr->vpack();
-  TRI_ASSERT(vpack != nullptr);
   mmdr->addToBuilder(result, true);
   return TRI_ERROR_NO_ERROR;
 }
@@ -1214,10 +1208,8 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
   
     TRI_ASSERT(isPinned(cid));
 
-    uint8_t const* vpack = result.vpack();
-  
     if (expectedRevision != 0) {
-      TRI_voc_rid_t foundRevision = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
+      TRI_voc_rid_t foundRevision = transaction::helpers::extractRevFromDocument(VPackSlice(result.vpack()));
       if (expectedRevision != foundRevision) {
         if (!isMultiple) {
           // still return
@@ -1359,6 +1351,8 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       // in the single document case no body needs to be created at all.
       return res;
     }
+    
+    TRI_ASSERT(!result.empty());
 
     StringRef keyString(transaction::helpers::extractKeyFromDocument(VPackSlice(result.vpack())));
 
@@ -1650,6 +1644,9 @@ OperationResult transaction::Methods::modifyLocal(
           !isLocked(collection, AccessMode::Type::WRITE), actualRevision,
           previous);
     }
+    
+    TRI_ASSERT(!result.empty());
+    TRI_ASSERT(!previous.empty());
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -1907,6 +1904,8 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
     }
+
+    TRI_ASSERT(!previous.empty());
     
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_CONFLICT && 

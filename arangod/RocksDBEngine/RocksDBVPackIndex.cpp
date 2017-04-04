@@ -584,7 +584,7 @@ int RocksDBVPackIndex::drop() {
         rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId)).errorNumber();
   } else {
     return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                        RocksDBKeyBounds::Index(_objectId)).errorNumber();
+                                        RocksDBKeyBounds::IndexEntries(_objectId)).errorNumber();
   }
 }
 

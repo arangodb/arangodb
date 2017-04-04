@@ -70,7 +70,7 @@ RocksDBKeyBounds RocksDBKeyBounds::EdgeIndexVertex(
   return RocksDBKeyBounds(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::Index(uint64_t indexId) {
+RocksDBKeyBounds RocksDBKeyBounds::IndexEntries(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::IndexValue, indexId);
 }
 
