@@ -719,14 +719,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   // remove views
-  for (auto& val : indexKVPairs(id)) {
-    // delete view documents
-    // uint64_t objectId =
-    // basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    // TODO FIXME get elements of views
-    // RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViewRange(); //really
-    // res = rocksutils::removeLargeRange(_db, bounds);
-    // delete view
+  for (auto& val : viewKVPairs(id)) {
     globalRocksDBRemove(val.first.string(), options);
   }
 
@@ -735,8 +728,9 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     // delete index documents
     uint64_t objectId =
         basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    VPackSlice min, max;  // TODO FIXME
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexRange(objectId, min, max);
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexRange(
+        objectId, VPackSlice::minKeySlice(), VPackSlice::maxKeySlice()
+    );
     res = rocksutils::removeLargeRange(_db, bounds);
     // delete index
     globalRocksDBRemove(val.first.string(), options);
