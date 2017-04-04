@@ -98,8 +98,11 @@ class IndexBlock final : public ExecutionBlock {
   /// @brief execute the bounds expressions
   void executeExpressions();
 
+  /// @brief continue skipping of documents
+  bool skipIndex(size_t atMost);
+
   /// @brief continue fetching of documents
-  bool readIndex(size_t atMost);
+  bool readIndex(size_t atMost, std::function<void(DocumentIdentifierToken const&)>&);
 
   /// @brief frees the memory for all non-constant expressions
   void cleanupNonConstExpressions();
@@ -110,15 +113,6 @@ class IndexBlock final : public ExecutionBlock {
  private:
   /// @brief collection
   Collection const* _collection;
-
-  /// @brief document result
-  std::vector<DocumentIdentifierToken> _result;
-  
-  /// @brief document buffer
-  std::vector<arangodb::velocypack::Slice> _documents;
-
-  /// @brief current position in _allDocs
-  size_t _posInDocs;
 
   /// @brief current position in _indexes
   size_t _currentIndex;
@@ -156,8 +150,21 @@ class IndexBlock final : public ExecutionBlock {
   /// @brief whether or not at least one expression uses v8
   bool _hasV8Expression;
   
+  /// @brief A managed document result to temporary hold one document
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
+  /// @brief Flag if all indexes are exhausted to be maintained accross several getSome() calls
+  bool _indexesExhausted;
+
+  /// @brief Flag if the current index pointer is the last of the list.
+  ///        Used in uniqueness checks.
+  bool _isLastIndex;
+
+  /// @brief Counter how many documents have been returned/skipped
+  ///        during one call.
+  size_t _returned;
+
+  /// @brief Collect several AQLItemsBlocks
   BlockCollector _collector;
 };
 

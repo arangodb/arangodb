@@ -1645,9 +1645,6 @@ OperationResult transaction::Methods::modifyLocal(
           previous);
     }
     
-    TRI_ASSERT(!result.empty());
-    TRI_ASSERT(!previous.empty());
-
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
     }
@@ -1663,6 +1660,9 @@ OperationResult transaction::Methods::modifyLocal(
     } else if (!res.ok()) {
       return res;
     }
+      
+    TRI_ASSERT(!result.empty());
+    TRI_ASSERT(!previous.empty());
 
     StringRef key(newVal.get(StaticStrings::KeyString));
     buildDocumentIdentity(collection, resultBuilder, cid, key, 

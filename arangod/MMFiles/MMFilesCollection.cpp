@@ -2195,8 +2195,6 @@ bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
   return false;
 }
 
-
-
 /// @brief garbage-collect a collection's indexes
 int MMFilesCollection::cleanupIndexes() {
   int res = TRI_ERROR_NO_ERROR;

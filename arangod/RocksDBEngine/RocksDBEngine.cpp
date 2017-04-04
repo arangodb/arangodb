@@ -496,6 +496,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
   Result res;
 
+/*
   // drop indexes of collection
   std::vector<std::shared_ptr<Index>> vecShardIndex =
       collection->getPhysical()->getIndexes();
@@ -505,7 +506,7 @@ arangodb::Result RocksDBEngine::dropCollection(
     bool dropped = collection->dropIndex(indexId);
     if (!dropped) {
       LOG_TOPIC(ERR, Logger::ENGINES)
-          << "Failed to drop Index with IndexId: " << indexId
+          << "Failed to drop index with IndexId: " << indexId
           << " for collection: " << collection->name();
       dropFailed = true;
     }
@@ -516,7 +517,7 @@ arangodb::Result RocksDBEngine::dropCollection(
               "Failed to droop at least one Index for collection: " +
                   collection->name());
   }
-
+*/
   // delete documents
   RocksDBCollection* coll =
       RocksDBCollection::toRocksDBCollection(collection->getPhysical());
