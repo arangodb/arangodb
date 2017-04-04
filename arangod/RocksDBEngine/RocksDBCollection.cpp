@@ -833,13 +833,11 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
   indexListLocal.emplace_back(idx);
 
-  /* TODO
-    int res = fillIndexes(trx, indexListLocal, false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  */
+  Result res = fillIndexes(trx, indexListLocal);
+  if (!res.ok()) {
+    return res.errorNumber();
+  }
+  
   std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false);
   auto vocbase = _logicalCollection->vocbase();
   auto collectionId = _logicalCollection->cid();
@@ -849,6 +847,31 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   engine->createIndex(vocbase, collectionId, idx->id(), data);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+arangodb::Result RocksDBCollection::fillIndexes(transaction::Methods* trx,
+                                                std::vector<std::shared_ptr<arangodb::Index>> added) {
+  
+  ManagedDocumentResult mmr;
+  std::unique_ptr<IndexIterator> iter(primaryIndex()->allIterator(trx, &mmr, false));
+  
+  std::vector<DocumentIdentifierToken> tokens;
+  auto cb = [&](DocumentIdentifierToken token) {
+    
+    bool ret = this->readDocument(trx, token, mmr);
+    if (ret) {
+      for (std::shared_ptr<arangodb::Index> index : added) {
+        RocksDBIndex *ridx = static_cast<RocksDBIndex*>(index.get());
+        ridx->insert(trx, mmr.lastRevisionId(), VPackSlice(mmr.vpack()), false);
+      }
+    }
+  };
+  while (iter->next(cb, 10000)) {
+    if (_logicalCollection->deleted()) {
+      return Result(TRI_ERROR_INTERNAL);
+    }
+  }
+  return Result();
 }
 
 // @brief return the primary index

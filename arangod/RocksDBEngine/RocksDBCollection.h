@@ -187,6 +187,10 @@ class RocksDBCollection final : public PhysicalCollection {
   void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
   int saveIndex(transaction::Methods* trx,
                 std::shared_ptr<arangodb::Index> idx);
+
+  arangodb::Result fillIndexes(transaction::Methods*,
+                               std::vector<std::shared_ptr<arangodb::Index>>);
+
   arangodb::RocksDBPrimaryIndex* primaryIndex() const;
 
   int insertDocument(arangodb::transaction::Methods* trx,
