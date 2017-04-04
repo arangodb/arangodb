@@ -53,7 +53,8 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all collections belonging to a specified database
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds DatabaseIndexes(TRI_voc_tick_t databaseId);
+  static RocksDBKeyBounds DatabaseIndexes(TRI_voc_tick_t databaseId,
+                                          TRI_voc_cid_t cid);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all indexes belonging to a specified collection
@@ -67,34 +68,34 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds CollectionDocuments(uint64_t collectionId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries belonging to a specified primary index
+  /// @brief Bounds for all index-entries- belonging to a specified primary index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds PrimaryIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries belonging to a specified edge index
+  /// @brief Bounds for all index-entries belonging to a specified edge index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds EdgeIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries belonging to a specified edge index related
+  /// @brief Bounds for all index-entries belonging to a specified edge index related
   /// to the specified vertex
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds EdgeIndexVertex(uint64_t indexId,
                                           std::string const& vertexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries belonging to a specified non-unique index
+  /// @brief Bounds for all index-entries belonging to a specified non-unique index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds Index(uint64_t indexId);
+  static RocksDBKeyBounds IndexEntries(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all documents belonging to a specified unique index
+  /// @brief Bounds for all entries belonging to a specified unique index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds UniqueIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all documents within a value range belonging to a
+  /// @brief Bounds for all index-entries within a value range belonging to a
   /// specified non-unique index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds IndexRange(uint64_t indexId, VPackSlice const& left,

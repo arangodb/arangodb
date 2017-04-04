@@ -28,9 +28,13 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "RocksDBEngine/RocksDBValue.h"
+#include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBValue.h"
 
+#include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 
@@ -78,8 +82,19 @@ std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
 Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds);
 
 std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionKVPairs(TRI_voc_tick_t databaseId);
-std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId);
+std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId, TRI_voc_cid_t cid);
 std::vector<std::pair<RocksDBKey,RocksDBValue>> viewKVPairs(TRI_voc_tick_t databaseId);
+
+// optional switch to std::function to reduce amount of includes and to avoid template
+// this helper is not meant for transactional usage!
+template<typename T> //T is a invokeable that takes a rocksdb::Iterator*
+void iterateBounds(RocksDBKeyBounds const& bounds, T callback, rocksdb::ReadOptions const& options = rocksdb::ReadOptions{}){
+  auto cmp = globalRocksEngine()->cmp();
+  std::unique_ptr<rocksdb::Iterator> it(globalRocksDB()->NewIterator(options));
+  for (it->Seek(bounds.start()); it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0; it->Next()) {
+    callback(it.get());
+  }
+}
 
 }  // namespace rocksutils
 }  // namespace arangodb

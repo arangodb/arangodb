@@ -32,6 +32,10 @@
 #include "Basics/Thread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace rocksdb {
 class DB;
 class Transaction;
@@ -48,6 +52,11 @@ class RocksDBCounterManager : Thread {
   struct Counter {
     rocksdb::SequenceNumber sequenceNumber;
     uint64_t count;
+    
+    Counter(rocksdb::SequenceNumber seq, uint64_t cnt)
+      : sequenceNumber(seq), count(cnt) {}
+    explicit Counter(VPackSlice const&);
+    void serialize(VPackBuilder&) const;
   };
 
   /// Constructor needs to be called synchrunously,

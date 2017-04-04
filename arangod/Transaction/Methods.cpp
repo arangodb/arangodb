@@ -657,8 +657,8 @@ void transaction::Methods::buildDocumentIdentity(LogicalCollection* collection,
                                         StringRef const& key,
                                         TRI_voc_rid_t rid,
                                         TRI_voc_rid_t oldRid,
-                                        uint8_t const* oldVPack,
-                                        uint8_t const* newVPack) {
+                                        ManagedDocumentResult const* oldDoc,
+                                        ManagedDocumentResult const* newDoc) {
   std::string temp;
   temp.reserve(64);
 
@@ -695,11 +695,13 @@ void transaction::Methods::buildDocumentIdentity(LogicalCollection* collection,
   if (oldRid != 0) {
     builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));
   }
-  if (oldVPack != nullptr) {
-    builder.add("old", VPackValue(oldVPack, VPackValueType::External));
+  if (oldDoc != nullptr) {
+    builder.add(VPackValue("old"));
+    oldDoc->addToBuilder(builder, true);
   }
-  if (newVPack != nullptr) {
-    builder.add("new", VPackValue(newVPack, VPackValueType::External));
+  if (newDoc != nullptr) {
+    builder.add(VPackValue("new"));
+    newDoc->addToBuilder(builder, true);
   }
   builder.close();
 }
@@ -824,15 +826,11 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
                 limit, 1000, false);
 
   LogicalCollection* collection = cursor->collection();
-  auto cb = [&] (DocumentIdentifierToken const& token) {
+  cursor->getAll([&] (DocumentIdentifierToken const& token) {
     if (collection->readDocument(this, token, mmdr)) {
-      uint8_t const* vpack = mmdr.vpack();
-      resultBuilder.add(VPackSlice(vpack));
+      mmdr.addToBuilder(resultBuilder, false);
     }
-  };
-
-  while (cursor->getMore(cb, 1000)) {
-  }
+  });
 
   resultBuilder.close();
 
@@ -999,8 +997,6 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   
   TRI_ASSERT(isPinned(cid));
 
-  uint8_t const* vpack = mmdr->vpack();
-  TRI_ASSERT(vpack != nullptr);
   mmdr->addToBuilder(result, true);
   return TRI_ERROR_NO_ERROR;
 }
@@ -1212,10 +1208,8 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
   
     TRI_ASSERT(isPinned(cid));
 
-    uint8_t const* vpack = result.vpack();
-  
     if (expectedRevision != 0) {
-      TRI_voc_rid_t foundRevision = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
+      TRI_voc_rid_t foundRevision = transaction::helpers::extractRevFromDocument(VPackSlice(result.vpack()));
       if (expectedRevision != foundRevision) {
         if (!isMultiple) {
           // still return
@@ -1357,15 +1351,14 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       // in the single document case no body needs to be created at all.
       return res;
     }
-
-    uint8_t const* vpack = result.vpack();
-    TRI_ASSERT(vpack != nullptr);
     
-    StringRef keyString(transaction::helpers::extractKeyFromDocument(VPackSlice(vpack)));
+    TRI_ASSERT(!result.empty());
+
+    StringRef keyString(transaction::helpers::extractKeyFromDocument(VPackSlice(result.vpack())));
 
     buildDocumentIdentity(collection, resultBuilder, cid, keyString, 
-        transaction::helpers::extractRevFromDocument(VPackSlice(vpack)), 0,
-        nullptr, options.returnNew ? vpack : nullptr);
+        transaction::helpers::extractRevFromDocument(VPackSlice(result.vpack())), 0,
+        nullptr, options.returnNew ? &result : nullptr);
 
     return TRI_ERROR_NO_ERROR;
   };
@@ -1651,7 +1644,7 @@ OperationResult transaction::Methods::modifyLocal(
           !isLocked(collection, AccessMode::Type::WRITE), actualRevision,
           previous);
     }
-
+    
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
     }
@@ -1661,21 +1654,21 @@ OperationResult transaction::Methods::modifyLocal(
       if (!isBabies) {
         StringRef key(newVal.get(StaticStrings::KeyString));
         buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0,
-                              options.returnOld ? previous.vpack() : nullptr, nullptr);
+                              options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
     } else if (!res.ok()) {
       return res;
     }
-
-    uint8_t const* vpack = result.vpack();
-    TRI_ASSERT(vpack != nullptr);
+      
+    TRI_ASSERT(!result.empty());
+    TRI_ASSERT(!previous.empty());
 
     StringRef key(newVal.get(StaticStrings::KeyString));
     buildDocumentIdentity(collection, resultBuilder, cid, key, 
-        TRI_ExtractRevisionId(VPackSlice(vpack)), actualRevision, 
-        options.returnOld ? previous.vpack() : nullptr , 
-        options.returnNew ? vpack : nullptr);
+        TRI_ExtractRevisionId(VPackSlice(result.vpack())), actualRevision, 
+        options.returnOld ? &previous : nullptr , 
+        options.returnNew ? &result : nullptr);
 
     return res; // must be ok!
   };
@@ -1916,13 +1909,14 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
       if (res == TRI_ERROR_ARANGO_CONFLICT && 
           !isBabies) {
         buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0, 
-                              options.returnOld ? previous.vpack() : nullptr, nullptr);
+                              options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
     }
-
+    
+    TRI_ASSERT(!previous.empty());
     buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0,
-                          options.returnOld ? previous.vpack() : nullptr, nullptr);
+                          options.returnOld ? &previous : nullptr, nullptr);
 
     return TRI_ERROR_NO_ERROR;
   };

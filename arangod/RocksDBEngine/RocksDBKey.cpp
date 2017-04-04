@@ -55,8 +55,13 @@ RocksDBKey RocksDBKey::Document(uint64_t collectionId,
 }
 
 RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
-                                         std::string const& primaryKey) {
+                                         StringRef const& primaryKey) {
   return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, primaryKey);
+}
+
+RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
+                                         char const* primaryKey) {
+  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, StringRef(primaryKey));
 }
 
 RocksDBKey RocksDBKey::EdgeIndexValue(uint64_t indexId,
@@ -96,7 +101,6 @@ RocksDBEntryType RocksDBKey::type(rocksdb::Slice const& slice) {
 }
 
 uint64_t RocksDBKey::extractObjectId(rocksdb::Slice const& s) {
-  
   TRI_ASSERT(s.size() >= (sizeof(char) + sizeof(uint64_t)));
   return uint64FromPersistent(s.data() + sizeof(char));
 }
@@ -279,8 +283,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   }
 }
 
-RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
-                       std::string const& second)
+RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, StringRef const& second)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::PrimaryIndexValue: {
@@ -288,7 +291,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
-      _buffer.append(second);
+      _buffer.append(second.data(), second.size());
       break;
     }
 

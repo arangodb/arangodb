@@ -92,7 +92,15 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
 
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
-void RocksDBEngine::prepare() {}
+void RocksDBEngine::prepare() {
+  // get base path from DatabaseServerFeature
+  auto databasePathFeature =
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+          "DatabasePath");
+  _basePath = databasePathFeature->directory();
+  
+  TRI_ASSERT(!_basePath.empty());
+}
 
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
@@ -342,7 +350,7 @@ int RocksDBEngine::getViews(TRI_vocbase_t* vocbase,
 }
 
 std::string RocksDBEngine::databasePath(TRI_vocbase_t const* vocbase) const {
-  return std::string();  // no path to be returned here!
+  return _basePath;
 }
 
 std::string RocksDBEngine::collectionPath(TRI_vocbase_t const* vocbase,
@@ -410,9 +418,9 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 }
 
 int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
-                                               TRI_voc_cid_t id,
+                                               TRI_voc_cid_t cid,
                                                VPackSlice const& slice) {
-  auto key = RocksDBKey::Collection(databaseId, id);
+  auto key = RocksDBKey::Collection(databaseId, cid);
   auto value = RocksDBValue::Collection(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
@@ -423,7 +431,8 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
 
 void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
                                         bool useWriteMarker, int& status) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // probably not required
+  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 Result RocksDBEngine::dropDatabase(Database* database) {
@@ -487,6 +496,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
   Result res;
 
+/*
   // drop indexes of collection
   std::vector<std::shared_ptr<Index>> vecShardIndex =
       collection->getPhysical()->getIndexes();
@@ -496,7 +506,7 @@ arangodb::Result RocksDBEngine::dropCollection(
     bool dropped = collection->dropIndex(indexId);
     if (!dropped) {
       LOG_TOPIC(ERR, Logger::ENGINES)
-          << "Failed to drop Index with IndexId: " << indexId
+          << "Failed to drop index with IndexId: " << indexId
           << " for collection: " << collection->name();
       dropFailed = true;
     }
@@ -507,7 +517,7 @@ arangodb::Result RocksDBEngine::dropCollection(
               "Failed to droop at least one Index for collection: " +
                   collection->name());
   }
-
+*/
   // delete documents
   RocksDBCollection* coll =
       RocksDBCollection::toRocksDBCollection(collection->getPhysical());
@@ -537,10 +547,12 @@ void RocksDBEngine::changeCollection(
 }
 
 arangodb::Result RocksDBEngine::renameCollection(
-    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*,
+    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
     std::string const& oldName) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return arangodb::Result{};
+  
+  VPackBuilder builder = collection->toVelocyPackIgnore({"path", "statusString"}, true);
+  int res = writeCreateCollectionMarker(vocbase->id(), collection->cid(), builder.slice());
+  return arangodb::Result(res);
 }
 
 void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
@@ -718,38 +730,49 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   // remove views
-  for (auto& val : indexKVPairs(id)) {
-    // delete view documents
-    // uint64_t objectId =
-    // basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    // TODO FIXME get elements of views
-    // RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViewRange(); //really
-    // res = rocksutils::removeLargeRange(_db, bounds);
-    // delete view
-    globalRocksDBRemove(val.first.string(), options);
+  for (auto& val : viewKVPairs(id)) {
+    res = globalRocksDBRemove(val.first.string(), options);
+    if(res.fail()){
+      return res;
+    }
   }
 
-  // remove indexes
-  for (auto& val : indexKVPairs(id)) {
-    // delete index documents
-    uint64_t objectId =
-        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
-    VPackSlice min, max;  // TODO FIXME
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexRange(objectId, min, max);
-    res = rocksutils::removeLargeRange(_db, bounds);
-    // delete index
-    globalRocksDBRemove(val.first.string(), options);
-  }
 
   // remove collections
   for (auto& val : collectionKVPairs(id)) {
-    // delete documents
+    
+    TRI_voc_cid_t cid =
+        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "cid");
+    // remove indexes
+    for (auto& val : indexKVPairs(id, cid)) {
+      // delete index documents
+      uint64_t objectId =
+      basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+      RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
+      res = rocksutils::removeLargeRange(_db, bounds);
+      if(res.fail()){
+        return res;
+      }
+      // delete index
+      res = globalRocksDBRemove(val.first.string(), options);
+      if(res.fail()){
+        return res;
+      }
+    }
+    
     uint64_t objectId =
-        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+    // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
     res = rocksutils::removeLargeRange(_db, bounds);
+    if(res.fail()){
+      return res;
+    }
     // delete Collection
-    globalRocksDBRemove(val.first.string(), options);
+    res = globalRocksDBRemove(val.first.string(), options);
+    if(res.fail()){
+      return res;
+    }
   }
 
   // TODO

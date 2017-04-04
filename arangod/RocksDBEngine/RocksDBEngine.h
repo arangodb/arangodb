@@ -260,6 +260,7 @@ class RocksDBEngine final : public StorageEngine {
   rocksdb::Options _options;
   std::unique_ptr<RocksDBComparator> _cmp;
   std::string _path;
+  std::string _basePath;
 
   std::unique_ptr<RocksDBCounterManager> _counterManager;
 };

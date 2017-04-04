@@ -1035,6 +1035,19 @@ static void JS_isFoxxmaster(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_getFoxxmaster(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getFoxxmaster()");
+  }
+
+  std::string const id = ServerState::instance()->getFoxxmaster();
+  TRI_V8_RETURN_STD_STRING(id);
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_getFoxxmasterQueueupdate(
   v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1561,6 +1574,11 @@ static void Return_PrepareClusterCommResultForJS(
       arangodb::basics::StringBuffer& body = res.result->getBody();
       if (body.length() != 0) {
         r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
+        V8Buffer* buffer =
+            V8Buffer::New(isolate, body.c_str(), body.length());
+        v8::Local<v8::Object> bufferObject =
+            v8::Local<v8::Object>::New(isolate, buffer->_handle);
+        r->Set(TRI_V8_ASCII_STRING("rawBody"), bufferObject);
       }
     } else if (res.status == CL_COMM_TIMEOUT) {
       TRI_GET_GLOBAL_STRING(StatusKey);
@@ -1577,8 +1595,13 @@ static void Return_PrepareClusterCommResultForJS(
                      v8::Number::New(isolate, res.result->getHttpReturnCode()));
         details->Set(TRI_V8_ASCII_STRING("message"),
                      TRI_V8_STD_STRING(res.result->getHttpReturnMessage()));
-        details->Set(TRI_V8_ASCII_STRING("body"),
-                     TRI_V8_STD_STRING(res.result->getBody()));
+        arangodb::basics::StringBuffer& body = res.result->getBody();
+        details->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
+        V8Buffer* buffer =
+            V8Buffer::New(isolate, body.c_str(), body.length());
+        v8::Local<v8::Object> bufferObject =
+            v8::Local<v8::Object>::New(isolate, buffer->_handle);
+        details->Set(TRI_V8_ASCII_STRING("rawBody"), bufferObject);
 
         r->Set(TRI_V8_ASCII_STRING("details"), details);
         TRI_GET_GLOBAL_STRING(ErrorMessageKey);
@@ -1624,6 +1647,11 @@ static void Return_PrepareClusterCommResultForJS(
       std::string const& body = httpRequest->body();
       if (!body.empty()) {
         r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
+        V8Buffer* buffer =
+            V8Buffer::New(isolate, body.c_str(), body.length());
+        v8::Local<v8::Object> bufferObject =
+            v8::Local<v8::Object>::New(isolate, buffer->_handle);
+        r->Set(TRI_V8_ASCII_STRING("rawBody"), bufferObject);
       }
 
     } else {
@@ -2106,6 +2134,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IdServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isFoxxmaster"),
                        JS_isFoxxmaster);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getFoxxmaster"),
+                       JS_getFoxxmaster);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getFoxxmasterQueueupdate"),
                        JS_getFoxxmasterQueueupdate);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("idOfPrimary"),

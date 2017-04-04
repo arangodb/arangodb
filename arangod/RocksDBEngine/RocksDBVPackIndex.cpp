@@ -130,9 +130,9 @@ void RocksDBVPackIndexIterator::reset() {
 
 bool RocksDBVPackIndexIterator::outOfRange() const {
   if (_reverse) {
-    return (-1 == _cmp->Compare(_iterator->key(), _bounds.start()));
+    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
   } else {
-    return (1 == _cmp->Compare(_iterator->key(), _bounds.end()));
+    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
   }
 }
 
@@ -584,7 +584,7 @@ int RocksDBVPackIndex::drop() {
         rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId)).errorNumber();
   } else {
     return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                        RocksDBKeyBounds::Index(_objectId)).errorNumber();
+                                        RocksDBKeyBounds::IndexEntries(_objectId)).errorNumber();
   }
 }
 

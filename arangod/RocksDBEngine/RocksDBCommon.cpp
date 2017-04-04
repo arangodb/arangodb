@@ -30,6 +30,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBComparator.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -160,10 +161,7 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
   it->Seek(lower);
-  while (it->Valid()) {
-    if (cmp->Compare(it->key(), upper) != -1) {
-      break;
-    }
+  while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
     ++count;
     it->Next();
   }
@@ -196,12 +194,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& boun
     std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(rocksdb::ReadOptions()));
     
     it->Seek(lower);
-    while (it->Valid()) {
-      int res = cmp->Compare(it->key(), upper);
-      
-      if (res >= 0) {
-        break;
-      }
+    while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
       batch.Delete(it->key());
       it->Next();
     }
@@ -230,28 +223,25 @@ Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& boun
 std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionKVPairs(TRI_voc_tick_t databaseId){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(databaseId);
-  rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
-  for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
+  iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
     rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Collection, it->value()));
-  }
+  });
   return rv;
 }
-std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId){
+std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId, TRI_voc_cid_t cid){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId);
-  rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
-  for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId, cid);
+  iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
     rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Index, it->value()));
-  }
+  });
   return rv;
 }
 std::vector<std::pair<RocksDBKey,RocksDBValue>> viewKVPairs(TRI_voc_tick_t databaseId){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViews(databaseId);
-  rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
-  for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
+  iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
     rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::View, it->value()));
-  }
+  });
   return rv;
 }
 

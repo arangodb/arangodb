@@ -53,6 +53,8 @@ The result is a JSON object with the following attributes:
 
 - *text* a list of the texts of all log entries
 
+- *topic* a list of the topics of all log entries
+
 - *totalAmount*: the total amount of log entries before pagination.
 
 @RESTRETURNCODES
