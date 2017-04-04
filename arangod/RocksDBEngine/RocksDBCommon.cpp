@@ -30,6 +30,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBComparator.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -230,28 +231,25 @@ Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& boun
 std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionKVPairs(TRI_voc_tick_t databaseId){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(databaseId);
-  rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
-  for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
+  iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
     rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Collection, it->value()));
-  }
+  });
   return rv;
 }
 std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId);
-  rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
-  for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
+  iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
     rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Index, it->value()));
-  }
+  });
   return rv;
 }
 std::vector<std::pair<RocksDBKey,RocksDBValue>> viewKVPairs(TRI_voc_tick_t databaseId){
   std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViews(databaseId);
-  rocksdb::Iterator* it = globalRocksDB()->NewIterator(rocksdb::ReadOptions());
-  for (it->Seek(bounds.start()); it->Valid() && it->key() != bounds.end(); it->Next()) {
+  iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
     rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::View, it->value()));
-  }
+  });
   return rv;
 }
 
