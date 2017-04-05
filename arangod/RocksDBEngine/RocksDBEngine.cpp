@@ -738,7 +738,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   // remove views
-  for (auto& val : viewKVPairs(id)) {
+  for (auto const& val : viewKVPairs(id)) {
     res = globalRocksDBRemove(val.first.string(), options);
     if (res.fail()) {
       return res;
@@ -746,7 +746,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   }
 
   // remove collections
-  for (auto& val : collectionKVPairs(id)) {
+  for (auto const& val : collectionKVPairs(id)) {
     TRI_voc_cid_t cid =
         basics::VelocyPackHelper::stringUInt64(val.second.slice(), "cid");
     // remove indexes
@@ -787,6 +787,11 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
   auto key = RocksDBKey::Database(id);
   res = rocksutils::globalRocksDBRemove(key.string(), options);
+
+  // remove VERSION file for database. it's not a problem when this fails
+  // because it will simply remain there and be ignored on subsequent starts
+  TRI_UnlinkFile(versionFilename(id).c_str());
+
   return res;
 }
 

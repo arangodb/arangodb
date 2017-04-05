@@ -96,7 +96,7 @@ class RocksDBValue {
   //////////////////////////////////////////////////////////////////////////////
   std::string const& string() { return _buffer; } // to be used with put
   std::string* buffer() { return &_buffer; }      // to be used with get
-  VPackSlice slice() { return VPackSlice(
+  VPackSlice slice() const { return VPackSlice(
       reinterpret_cast<uint8_t const*>(_buffer.data())
   ); }      // return a slice
 

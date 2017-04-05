@@ -545,7 +545,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice slice,
   return sub.copyString();
 }
 
-uint64_t VelocyPackHelper::stringUInt64(VPackSlice slice) {
+uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
   if (slice.isString()) {
     return arangodb::basics::StringUtils::uint64(slice.copyString());
   }
