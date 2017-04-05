@@ -650,6 +650,7 @@ if test -n "${TARGET_DIR}";  then
             SSLDIR=`grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt | sed 's/\r//' |sed -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"`
             DLLS=`find ${SSLDIR} -name \*.dll |grep -i release`
             cp ${DLLS} bin/${BUILD_CONFIG}
+            cp bin/${BUILD_CONFIG}/* bin/
         fi
         tar -u -f ${TARFILE_TMP} \
             bin etc tests

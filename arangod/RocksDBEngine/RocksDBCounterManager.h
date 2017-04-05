@@ -55,7 +55,7 @@ class RocksDBCounterManager : Thread {
     uint64_t value2; // used for revision id
     
     Counter(rocksdb::SequenceNumber seq, uint64_t value1, uint64_t value2)
-      : sequenceNumber(seq), value1(value1) {}
+      : sequenceNumber(seq), value1(value1), value2(value2) {}
     explicit Counter(VPackSlice const&);
     void serialize(VPackBuilder&) const;
   };
