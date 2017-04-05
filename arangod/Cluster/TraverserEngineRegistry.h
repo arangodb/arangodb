@@ -24,6 +24,7 @@
 #ifndef ARANGOD_CLUSTER_TRAVERSER_ENGINE_REGISTRY_H
 #define ARANGOD_CLUSTER_TRAVERSER_ENGINE_REGISTRY_H 1
 
+#include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
@@ -94,6 +95,9 @@ class TraverserEngineRegistry {
 
   /// @brief _lock, the read/write lock for access
   basics::ReadWriteLock _lock;
+
+  /// @brief variable for traverser engines already in use
+  basics::ConditionVariable _cv;
 };
 
 } // namespace traverser
