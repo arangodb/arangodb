@@ -34,8 +34,9 @@ TransactionManager::TransactionManager()
     : _state(), _openReads(0), _openSensitive(0), _openWrites(0), _term(0) {}
 
 Transaction* TransactionManager::begin(bool readOnly) {
-  _state.lock();
   Transaction* tx = new Transaction(readOnly);
+
+  _state.lock();
 
   if (readOnly) {
     _openReads++;
