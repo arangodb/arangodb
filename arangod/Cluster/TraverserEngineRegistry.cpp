@@ -23,6 +23,7 @@
 
 #include "TraverserEngineRegistry.h"
 
+#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -41,7 +42,8 @@ TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
       _toBeDeleted(false),
       _engine(new TraverserEngine(vocbase, info)),
       _timeToLive(0),
-      _expires(0) {}
+      _expires(0),
+      _cv() {}
 
 TraverserEngineRegistry::EngineInfo::~EngineInfo() {
 }
@@ -78,20 +80,29 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id) {
 
 /// @brief Get the engine with the given id
 BaseTraverserEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
-  WRITE_LOCKER(writeLocker, _lock);
-  auto e = _engines.find(id);
-  if (e == _engines.end()) {
-    // Nothing to hand out
-    // TODO: Should we throw an error instead?
-    return nullptr;
+  while (true) {
+    {
+      WRITE_LOCKER(writeLocker, _lock);
+      auto e = _engines.find(id);
+      if (e == _engines.end()) {
+        // Nothing to hand out
+        // TODO: Should we throw an error instead?
+        return nullptr;
+      }
+      if (!e->second->_isInUse) {
+        // We capture the engine
+        e->second->_isInUse = true; 
+        return e->second->_engine.get();
+      }
+    // Free write lock
+    }
+
+    CONDITION_LOCKER(condLocker, _cv);
+    condLocker.wait(1000);
   }
-  if (e->second->_isInUse) {
-    // Someone is still working with this engine.
-    // TODO can we just delete it? Or throw an error?
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEADLOCK);
-  }
-  e->second->_isInUse = true; 
-  return e->second->_engine.get();
+  // Unreachable the above loop can only be left by error or return;
+  TRI_ASSERT(false);
+  return nullptr;
 }
 
 /// @brief Returns the engine to the registry. Someone else can now use it.
@@ -114,6 +125,9 @@ void TraverserEngineRegistry::returnEngine(TraverserEngineID id, double ttl) {
       }
       e->second->_expires = TRI_microtime() + e->second->_timeToLive;
     }
+    // Lockgard send signal auf conditionvar
+    CONDITION_LOCKER(condLocker, _cv);
+    condLocker.broadcast();
   }
 }
 
