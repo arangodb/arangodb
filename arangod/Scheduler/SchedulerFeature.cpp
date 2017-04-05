@@ -182,12 +182,11 @@ void SchedulerFeature::stop() {
     LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
     usleep(100000);
   }
+  
+  _scheduler->shutdown();
 }
 
 void SchedulerFeature::unprepare() {
-  if (_scheduler != nullptr) {
-    _scheduler->shutdown();
-  }
   SCHEDULER = nullptr;
 }
 
