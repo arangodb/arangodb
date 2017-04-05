@@ -256,7 +256,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
 
   if (AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {
     // store original revision at transaction start
-    _originalRevision = _collection->revision();
+    _originalRevision = physical->revision();
   }
 
   bool shouldLock = _transaction->hasHint(transaction::Hints::Hint::LOCK_ENTIRELY);

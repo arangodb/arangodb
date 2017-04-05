@@ -75,7 +75,7 @@ class RocksDBCollection final : public PhysicalCollection {
   virtual PhysicalCollection* clone(LogicalCollection*,
                                     PhysicalCollection*) override;
 
-  TRI_voc_rid_t revision() const override;
+  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
 
   void getPropertiesVPack(velocypack::Builder&) const override;
   void getPropertiesVPackCoordinator(velocypack::Builder&) const override;

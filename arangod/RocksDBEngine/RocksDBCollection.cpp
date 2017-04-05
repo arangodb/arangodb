@@ -132,8 +132,8 @@ PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical,
   return new RocksDBCollection(logical, physical);
 }
 
-TRI_voc_rid_t RocksDBCollection::revision() const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+TRI_voc_rid_t RocksDBCollection::revision(arangodb::transaction::Methods* trx) const {
+  // TODO!
   return 0;
 }
 

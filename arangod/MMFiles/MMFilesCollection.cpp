@@ -522,6 +522,10 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
 MMFilesCollection::~MMFilesCollection() { 
 }
 
+TRI_voc_rid_t MMFilesCollection::revision(arangodb::transaction::Methods*) const { 
+  return _lastRevision; 
+}
+
 TRI_voc_rid_t MMFilesCollection::revision() const { 
   return _lastRevision; 
 }

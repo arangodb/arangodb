@@ -2087,7 +2087,7 @@ static int GetRevision(arangodb::LogicalCollection* collection, TRI_voc_rid_t& r
 
   // READ-LOCK start
   trx.lockRead();
-  rid = collection->revision();
+  rid = collection->revision(&trx);
   trx.finish(res);
   // READ-LOCK end
 
