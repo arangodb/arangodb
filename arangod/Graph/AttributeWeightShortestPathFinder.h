@@ -21,400 +21,24 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SHORTEST_PATH_FINDER_H
-#define ARANGODB_BASICS_SHORTEST_PATH_FINDER_H 1
+#ifndef ARANGODB_GRAPH_ATTRIBUTE_WEIGHT_SHORTEST_PATH_FINDER_H
+#define ARANGODB_GRAPH_ATTRIBUTE_WEIGHT_SHORTEST_PATH_FINDER_H 1
 
-#include "Basics/Common.h"
-#include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 
-#include <deque>
-#include <stack>
+#include "Graph/ShortestPathFinder.h"
+#include "Graph/ShortestPathPriorityQueue.h"
+
 #include <thread>
 
 namespace arangodb {
-namespace basics {
+namespace graph {
 
-template <typename Key, typename Value, typename Weight>
-class PriorityQueue {
-  // This class implements a data structure that is a key/value
-  // store with the additional property that every Value has a
-  // positive Weight (provided by the weight() and setWeight(w)
-  // methods), which is a numerical type, and for which operator<
-  // is defined. With respect to this weight the data structure
-  // is at the same time a priority queue in that it is possible
-  // to ask for (one of) the value(s) with the smallest weight and
-  // remove this efficiently.
-  // All methods only work with pointers to Values for efficiency
-  // reasons. This class deletes all Value* that are stored on
-  // destruction.
-  // The Value type must have a method getKey that returns a Key
-  // const&.
-  // This data structure makes the following complexity promises
-  // (amortized), where n is the number of key/value pairs stored
-  // in the queue:
-  //   insert:                  O(log(n))   (but see below)
-  //   lookup value by key:     O(1)
-  //   get smallest:            O(1)
-  //   get and erase smallest:  O(log(n))   (but see below)
-  //   lower weight by key      O(log(n))   (but see below)
-  // Additionally, if we only ever insert pairs whose value is not
-  // smaller than any other value that is already in the structure,
-  // and if we do not use lower weight by key, then we even get:
-  //   insert:                  O(1)
-  //   get and erase smallest:  O(1)
-  // With the "get and erase smallest" operation one has the option
-  // of retaining the erased value in the key/value store. It can then
-  // still be looked up but will no longer be considered for the
-  // priority queue.
-
- public:
-  PriorityQueue() : _popped(0), _isHeap(false), _maxWeight(0) {}
-
-  ~PriorityQueue() {
-    for (Value* v : _heap) {
-      delete v;
-    }
-    for (Value* v : _history) {
-      delete v;
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief empty
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool empty() { return _heap.empty(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief size
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t size() { return _heap.size(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief insert, data will be copied, returns true, if the key did not
-  /// yet exist, and false, in which case nothing else is changed.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool insert(Key const& k, Value* v) {
-    auto it = _lookup.find(k);
-    if (it != _lookup.end()) {
-      return false;
-    }
-
-    // Are we still in the simple case of a deque?
-    if (!_isHeap) {
-      Weight w = v->weight();
-      if (w < _maxWeight) {
-        // Oh dear, we have to upgrade to heap:
-        _isHeap = true;
-        // fall through intentionally
-      } else {
-        if (w > _maxWeight) {
-          _maxWeight = w;
-        }
-        _heap.push_back(v);
-        try {
-          _lookup.insert(std::make_pair(
-              k, static_cast<ssize_t>(_heap.size() - 1 + _popped)));
-        } catch (...) {
-          _heap.pop_back();
-          throw;
-        }
-        return true;
-      }
-    }
-    // If we get here, we have to insert into a proper binary heap:
-    _heap.push_back(v);
-    try {
-      size_t newpos = _heap.size() - 1;
-      _lookup.insert(std::make_pair(k, static_cast<ssize_t>(newpos + _popped)));
-      repairUp(newpos);
-    } catch (...) {
-      _heap.pop_back();
-      throw;
-    }
-    return true;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief find, note that the resulting pointer is only valid until the
-  /// the next modification of the data structure happens (insert or lowerWeight
-  /// or popMinimal). The weight in the Value type must not be modified other
-  /// than via lowerWeight, otherwise the queue order could be violated.
-  //////////////////////////////////////////////////////////////////////////////
-
-  Value* find(Key const& k) {
-    auto it = _lookup.find(k);
-
-    if (it == _lookup.end()) {
-      return nullptr;
-    }
-
-    if (it->second >= 0) {  // still in the queue
-      return _heap.at(static_cast<size_t>(it->second) - _popped);
-    } else {  // already in the history
-      return _history.at(static_cast<size_t>(-it->second) - 1);
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief erase, returns whether the key was found
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool lowerWeight(Key const& k, Weight newWeight) {
-    if (!_isHeap) {
-      _isHeap = true;
-    }
-    auto it = _lookup.find(k);
-    if (it == _lookup.end()) {
-      return false;
-    }
-    if (it->second >= 0) {  // still in the queue
-      size_t pos = static_cast<size_t>(it->second) - _popped;
-      _heap[pos]->setWeight(newWeight);
-      repairUp(pos);
-    } else {  // already in the history
-      size_t pos = static_cast<size_t>(-it->second) - 1;
-      _history[pos]->setWeight(newWeight);
-    }
-    return true;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief getMinimal, note that the resulting pointer is only valid until the
-  /// the next modification of the data structure happens (insert or lowerWeight
-  /// or popMinimal). The weight in the Value type must not be modified other
-  /// than via lowerWeight, otherwise the queue order could be violated.
-  //////////////////////////////////////////////////////////////////////////////
-
-  Value* getMinimal() {
-    if (_heap.empty()) {
-      return nullptr;
-    }
-    return _heap[0];
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief popMinimal, returns true if something was returned and false
-  /// if the structure is empty. Key and Value are stored in k and v.
-  /// If keepForLookup is true then the Value is kept for lookup in the
-  /// hash table but removed from the priority queue.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool popMinimal(Key& k, Value*& v, bool keepForLookup = false) {
-    if (_heap.empty()) {
-      return false;
-    }
-    k = _heap[0]->getKey();
-    v = _heap[0];
-    if (!_isHeap) {
-      auto it = _lookup.find(k);
-      TRI_ASSERT(it != _lookup.end());
-      if (keepForLookup) {
-        _history.push_back(_heap[0]);
-        it->second = -static_cast<ssize_t>(_history.size());
-        // Note: This is intentionally one too large to shift by 1
-      } else {
-        _lookup.erase(it);
-      }
-      _heap.pop_front();
-      _popped++;
-    } else {
-      removeFromHeap(keepForLookup);
-    }
-    return true;
-  }
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief swap, two positions in the heap, adjusts the _lookup table
-  //////////////////////////////////////////////////////////////////////////////
-
-  void swap(size_t p, size_t q) {
-    Value* v = _heap[p];
-    _heap[p] = _heap[q];
-    _heap[q] = v;
-
-    // Now fix the lookup:
-    Key const& keyp(_heap[p]->getKey());
-    auto it = _lookup.find(keyp);
-    TRI_ASSERT(it != _lookup.end());
-    TRI_ASSERT(it->second - _popped == q);
-    it->second = static_cast<ssize_t>(p) + static_cast<ssize_t>(_popped);
-
-    Key const& keyq(_heap[q]->getKey());
-    it = _lookup.find(keyq);
-    TRI_ASSERT(it != _lookup.end());
-    TRI_ASSERT(it->second - _popped == p);
-    it->second = static_cast<ssize_t>(q) + static_cast<ssize_t>(_popped);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief parent, find the parent node in heap
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t parent(size_t pos) { return ((pos + 1) >> 1) - 1; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief lchild, find the node of the left child in the heap
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t lchild(size_t pos) { return 2 * (pos + 1) - 1; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief rchild, find the node of the right child in the heap
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t rchild(size_t pos) { return 2 * (pos + 1); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief repairUp, fix the heap property between position pos and its parent
-  //////////////////////////////////////////////////////////////////////////////
-
-  void repairUp(size_t pos) {
-    while (pos > 0) {
-      size_t par = parent(pos);
-      Weight wpos = _heap[pos]->weight();
-      Weight wpar = _heap[par]->weight();
-      if (wpos < wpar) {
-        swap(pos, par);
-        pos = par;
-      } else {
-        return;
-      }
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief repairDown, fix the heap property between position pos and its
-  /// children.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void repairDown() {
-    size_t pos = 0;
-    while (pos < _heap.size()) {
-      size_t lchi = lchild(pos);
-      if (lchi >= _heap.size()) {
-        return;
-      }
-      Weight wpos = _heap[pos]->weight();
-      Weight wlchi = _heap[lchi]->weight();
-      size_t rchi = rchild(pos);
-      if (rchi >= _heap.size()) {
-        if (wpos > wlchi) {
-          swap(pos, lchi);
-        }
-        return;
-      }
-      Weight wrchi = _heap[rchi]->weight();
-      if (wlchi <= wrchi) {
-        if (wpos <= wlchi) {
-          return;
-        }
-        swap(pos, lchi);
-        pos = lchi;
-      } else {
-        if (wpos <= wrchi) {
-          return;
-        }
-        swap(pos, rchi);
-        pos = rchi;
-      }
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief removeFromHeap, remove first position in the heap
-  //////////////////////////////////////////////////////////////////////////////
-
-  void removeFromHeap(bool keepForLookup) {
-    auto it = _lookup.find(_heap[0]->getKey());
-    TRI_ASSERT(it != _lookup.end());
-    if (keepForLookup) {
-      _history.push_back(_heap[0]);
-      it->second = -static_cast<ssize_t>(_history.size());
-      // Note: This is intentionally one too large to shift by 1
-    } else {
-      _lookup.erase(it);
-    }
-    if (_heap.size() == 1) {
-      _heap.clear();
-      _popped = 0;
-      _isHeap = false;
-      _maxWeight = 0;
-      return;
-    }
-    // Move one in front:
-    _heap[0] = _heap.back();
-    _heap.pop_back();
-    it = _lookup.find(_heap[0]->getKey());
-    TRI_ASSERT(it != _lookup.end());
-    it->second = static_cast<ssize_t>(_popped);
-    repairDown();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _popped, number of elements that have been popped from the
-  /// beginning
-  /// of the deque, this is necessary to interpret positions stored in the
-  /// unordered_map _lookup
-  //////////////////////////////////////////////////////////////////////////////
-
- private:
-  size_t _popped;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _lookup, this provides O(1) lookup by Key
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_map<Key, ssize_t> _lookup;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _isHeap, starts as false, in which case we only use a deque,
-  /// if true, then _heap is an actual binary heap and we do no longer modify
-  /// _popped.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _isHeap;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _heap, the actual data
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::deque<Value*> _heap;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _maxWeight, the current maximal weight ever seen
-  //////////////////////////////////////////////////////////////////////////////
-
-  Weight _maxWeight;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _history, the actual data that is only in the key/value store
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<Value*> _history;
-};
-
-template <typename VertexId, typename Path>
-class PathFinder {
- protected:
-  PathFinder() {}
-
- public:
-  virtual ~PathFinder() {}
-
-  virtual bool shortestPath(VertexId const& start, VertexId const& target, Path& result,
-                            std::function<void()> const& callback) = 0;
-};
-
-template <typename VertexId, typename EdgeId, typename EdgeWeight, typename Path>
+template <typename VertexId, typename EdgeId, typename EdgeWeight,
+          typename Path>
 class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
  public:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Step, one position with a predecessor and the edge
   //////////////////////////////////////////////////////////////////////////////
@@ -431,7 +55,8 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
 
     Step() : _done(false) {}
 
-    Step(VertexId const& vert, VertexId const& pred, EdgeWeight weig, EdgeId const& edge)
+    Step(VertexId const& vert, VertexId const& pred, EdgeWeight weig,
+         EdgeId const& edge)
         : _weight(weig),
           _vertex(vert),
           _predecessor(pred),
@@ -440,7 +65,7 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
 
     EdgeWeight weight() const { return _weight; }
 
-    void setWeight(EdgeWeight w) { _weight = w;}
+    void setWeight(EdgeWeight w) { _weight = w; }
 
     VertexId const& getKey() const { return _vertex; }
   };
@@ -462,7 +87,7 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::basics::PriorityQueue<VertexId, Step, EdgeWeight> PQueue;
+  typedef arangodb::graph::PriorityQueue<VertexId, Step, EdgeWeight> PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief information for each thread
@@ -656,8 +281,9 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
     std::string _id;
 
    public:
-    Searcher(DynamicDistanceFinder* pathFinder, ThreadInfo& myInfo, ThreadInfo& peerInfo,
-             VertexId const& start, ExpanderFunction expander, std::string const& id)
+    Searcher(DynamicDistanceFinder* pathFinder, ThreadInfo& myInfo,
+             ThreadInfo& peerInfo, VertexId const& start,
+             ExpanderFunction expander, std::string const& id)
         : _pathFinder(pathFinder),
           _myInfo(myInfo),
           _peerInfo(peerInfo),
@@ -784,7 +410,8 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
   //////////////////////////////////////////////////////////////////////////////
 
   DynamicDistanceFinder(ExpanderFunction&& forwardExpander,
-             ExpanderFunction&& backwardExpander, bool bidirectional = true)
+                        ExpanderFunction&& backwardExpander,
+                        bool bidirectional = true)
       : _highscoreSet(false),
         _highscore(0),
         _bingo(false),
@@ -806,8 +433,8 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
   // Caller has to free the result
   // If this returns true there is a path, if this returns false there is no
   // path
-  bool shortestPath(VertexId const& start, VertexId const& target, 
-                    Path& result, std::function<void()> const& callback) override {
+  bool shortestPath(VertexId const& start, VertexId const& target, Path& result,
+                    std::function<void()> const& callback) override {
     // For the result:
     result.clear();
     _highscoreSet = false;
@@ -1094,172 +721,7 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
   bool _bidirectional;
 };
 
-template <typename VertexId, typename EdgeId, typename HashFuncType, typename EqualFuncType, typename Path>
-class ConstDistanceFinder : public PathFinder<VertexId, Path> {
- public:
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief callback to find neighbors
-  //////////////////////////////////////////////////////////////////////////////
-
-  typedef std::function<void(VertexId& V, std::vector<EdgeId>& edges,
-                             std::vector<VertexId>& neighbors)>
-      ExpanderFunction;
-
- private:
-  struct PathSnippet {
-    VertexId const _pred;
-    EdgeId const _path;
-
-    PathSnippet(VertexId& pred, EdgeId& path) : _pred(pred), _path(path) {}
-  };
-
-  std::unordered_map<VertexId, PathSnippet*, HashFuncType, EqualFuncType> _leftFound;
-  std::deque<VertexId> _leftClosure;
-
-  std::unordered_map<VertexId, PathSnippet*, HashFuncType, EqualFuncType> _rightFound;
-  std::deque<VertexId> _rightClosure;
-
-  ExpanderFunction _leftNeighborExpander;
-  ExpanderFunction _rightNeighborExpander;
-
- public:
-  ConstDistanceFinder(ExpanderFunction left, ExpanderFunction right)
-      : _leftNeighborExpander(left), _rightNeighborExpander(right) {}
-
-  ~ConstDistanceFinder() {
-    clearVisited();
-  }
-
-  bool shortestPath(VertexId const& start, VertexId const& end, 
-                    Path& result, std::function<void()> const& callback) override {
-    result.clear();
-    // Init
-    if (start == end) {
-      result._vertices.emplace_back(start);
-      return true;
-    }
-    _leftClosure.clear();
-    _rightClosure.clear();
-    clearVisited();
-
-    _leftFound.emplace(start, nullptr);
-    _rightFound.emplace(end, nullptr);
-    _leftClosure.emplace_back(start);
-    _rightClosure.emplace_back(end);
-
-    TRI_IF_FAILURE("TraversalOOMInitialize") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    std::vector<EdgeId> edges;
-    std::vector<VertexId> neighbors;
-    std::deque<VertexId> nextClosure;
-    while (!_leftClosure.empty() && !_rightClosure.empty()) {
-      callback();
-
-      edges.clear();
-      neighbors.clear();
-      nextClosure.clear();
-      if (_leftClosure.size() < _rightClosure.size()) {
-        for (VertexId& v : _leftClosure) {
-          _leftNeighborExpander(v, edges, neighbors);
-          size_t const neighborsSize = neighbors.size();
-          TRI_ASSERT(edges.size() == neighborsSize);
-          for (size_t i = 0; i < neighborsSize; ++i) {
-            VertexId const& n = neighbors[i];
-            if (_leftFound.find(n) == _leftFound.end()) {
-              auto leftFoundIt = _leftFound.emplace(n, new PathSnippet(v, edges[i])).first;
-              auto rightFoundIt = _rightFound.find(n);
-              if (rightFoundIt != _rightFound.end()) {
-                result._vertices.emplace_back(n);
-                auto it = leftFoundIt;
-                VertexId next;
-                while (it != _leftFound.end() && it->second != nullptr) {
-                  next = it->second->_pred;
-                  result._vertices.push_front(next);
-                  result._edges.push_front(it->second->_path);
-                  it = _leftFound.find(next);
-                }
-                it = rightFoundIt;
-                while (it != _rightFound.end() && it->second != nullptr) {
-                  next = it->second->_pred;
-                  result._vertices.emplace_back(next);
-                  result._edges.emplace_back(it->second->_path);
-                  it = _rightFound.find(next);
-                }
-
-                TRI_IF_FAILURE("TraversalOOMPath") {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                }
-                return true;
-              }
-              nextClosure.emplace_back(n);
-            }
-          }
-        }
-        _leftClosure = std::move(nextClosure);
-        nextClosure.clear();
-      } else {
-        for (VertexId& v : _rightClosure) {
-          _rightNeighborExpander(v, edges, neighbors);
-          size_t const neighborsSize = neighbors.size();
-          TRI_ASSERT(edges.size() == neighborsSize);
-          for (size_t i = 0; i < neighborsSize; ++i) {
-            VertexId const& n = neighbors[i];
-            if (_rightFound.find(n) == _rightFound.end()) {
-              auto rightFoundIt = _rightFound.emplace(n, new PathSnippet(v, edges[i])).first;
-              auto leftFoundIt = _leftFound.find(n);
-              if (leftFoundIt != _leftFound.end()) {
-                result._vertices.emplace_back(n);
-                auto it = leftFoundIt;
-                VertexId next;
-                while (it != _leftFound.end() && it->second != nullptr) {
-                  next = it->second->_pred;
-                  result._vertices.push_front(next);
-                  result._edges.push_front(it->second->_path);
-                  it = _leftFound.find(next);
-                }
-                it = rightFoundIt;
-                while (it != _rightFound.end() && it->second != nullptr) {
-                  next = it->second->_pred;
-                  result._vertices.emplace_back(next);
-                  result._edges.emplace_back(it->second->_path);
-                  it = _rightFound.find(next);
-                }
-
-                TRI_IF_FAILURE("TraversalOOMPath") {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                }
-                return true;
-              }
-              nextClosure.emplace_back(n);
-            }
-          }
-        }
-        _rightClosure = std::move(nextClosure);
-        nextClosure.clear();
-      }
-    }
-    return false;
-  }
-
- private:
-  void clearVisited() {  
-    for (auto& it : _leftFound) {
-      delete it.second;
-    }
-    _leftFound.clear();
-
-    for (auto& it : _rightFound) {
-      delete it.second;
-    }
-    _rightFound.clear();
-  }
-
-};
-
-} // namespace basics
-} // namespace arangodb
+}  // namespace graph
+}  // namespace arangodb
 
 #endif

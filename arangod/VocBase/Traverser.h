@@ -26,11 +26,13 @@
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
-#include "Basics/ShortestPathFinder.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
+#include "Graph/AttributeWeightShortestPathFinder.h"
+#include "Graph/ConstantWeightShortestPathFinder.h"
+#include "Graph/ShortestPathFinder.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/PathEnumerator.h"
 #include "VocBase/voc-types.h"
@@ -66,10 +68,10 @@ struct TraverserOptions;
 class TraverserCache;
 
 class ShortestPath {
-  friend class arangodb::basics::DynamicDistanceFinder<
+  friend class arangodb::graph::DynamicDistanceFinder<
       arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
       ShortestPath>;
-  friend class arangodb::basics::ConstDistanceFinder<
+  friend class arangodb::graph::ConstDistanceFinder<
       arangodb::velocypack::Slice, arangodb::velocypack::Slice,
       arangodb::basics::VelocyPackHelper::VPackStringHash,
       arangodb::basics::VelocyPackHelper::VPackStringEqual, ShortestPath>;
