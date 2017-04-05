@@ -29,9 +29,12 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+namespace traverser {
+class ShortestPath;
+}
+
 namespace graph {
 
-template <typename Path>
 class ShortestPathFinder {
  protected:
   ShortestPathFinder() {}
@@ -41,7 +44,7 @@ class ShortestPathFinder {
 
   virtual bool shortestPath(arangodb::velocypack::Slice const& start,
                             arangodb::velocypack::Slice const& target,
-                            Path& result,
+                            arangodb::traverser::ShortestPath& result,
                             std::function<void()> const& callback) = 0;
 
 };

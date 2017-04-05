@@ -36,10 +36,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 /// @brief typedef the template instantiation of the PathFinder
-typedef arangodb::graph::AttributeWeightShortestPathFinder<
-    arangodb::velocypack::Slice, double,
-    arangodb::traverser::ShortestPath>
-    ArangoDBPathFinder;
+typedef arangodb::graph::AttributeWeightShortestPathFinder ArangoDBPathFinder;
 
 using namespace arangodb::aql;
 
@@ -353,33 +350,21 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     if (_opts.useWeight) {
-      _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder<
-                    arangodb::velocypack::Slice,
-                    double, arangodb::traverser::ShortestPath>(
+      _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(
           EdgeWeightExpanderCluster(this, false),
           EdgeWeightExpanderCluster(this, true), _opts.bidirectional));
     } else {
-      _finder.reset(new arangodb::graph::ConstantWeightShortestPathFinder<
-                    arangodb::velocypack::Slice,
-                    arangodb::basics::VelocyPackHelper::VPackStringHash,
-                    arangodb::basics::VelocyPackHelper::VPackStringEqual,
-                    arangodb::traverser::ShortestPath>(
+      _finder.reset(new arangodb::graph::ConstantWeightShortestPathFinder(
           ConstDistanceExpanderCluster(this, false),
           ConstDistanceExpanderCluster(this, true)));
     }
   } else {
     if (_opts.useWeight) {
-      _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder<
-                    arangodb::velocypack::Slice,
-                    double, arangodb::traverser::ShortestPath>(
+      _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(
           EdgeWeightExpanderLocal(this, false),
           EdgeWeightExpanderLocal(this, true), _opts.bidirectional));
     } else {
-      _finder.reset(new arangodb::graph::ConstantWeightShortestPathFinder<
-                    arangodb::velocypack::Slice,
-                    arangodb::basics::VelocyPackHelper::VPackStringHash,
-                    arangodb::basics::VelocyPackHelper::VPackStringEqual,
-                    arangodb::traverser::ShortestPath>(
+      _finder.reset(new arangodb::graph::ConstantWeightShortestPathFinder(
           ConstDistanceExpanderLocal(this, false),
           ConstDistanceExpanderLocal(this, true)));
     }
