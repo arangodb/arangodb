@@ -223,7 +223,7 @@ function replicationSync (options) {
       };
     },
 
-    preStopfixx: function (options,
+    preStop: function (options,
                            serverOptions,
                            instanceInfo,
                            customInstanceInfos,
