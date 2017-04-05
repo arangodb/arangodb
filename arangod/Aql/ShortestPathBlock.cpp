@@ -36,7 +36,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 /// @brief typedef the template instantiation of the PathFinder
-typedef arangodb::graph::DynamicDistanceFinder<
+typedef arangodb::graph::AttributeWeightShortestPathFinder<
     arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
     arangodb::traverser::ShortestPath>
     ArangoDBPathFinder;
@@ -360,7 +360,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     if (_opts.useWeight) {
-      _finder.reset(new arangodb::graph::DynamicDistanceFinder<
+      _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder<
                     arangodb::velocypack::Slice, arangodb::velocypack::Slice,
                     double, arangodb::traverser::ShortestPath>(
           EdgeWeightExpanderCluster(this, false),
@@ -376,7 +376,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
     }
   } else {
     if (_opts.useWeight) {
-      _finder.reset(new arangodb::graph::DynamicDistanceFinder<
+      _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder<
                     arangodb::velocypack::Slice, arangodb::velocypack::Slice,
                     double, arangodb::traverser::ShortestPath>(
           EdgeWeightExpanderLocal(this, false),

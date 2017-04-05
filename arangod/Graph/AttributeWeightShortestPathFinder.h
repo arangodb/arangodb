@@ -37,7 +37,8 @@ namespace graph {
 
 template <typename VertexId, typename EdgeId, typename EdgeWeight,
           typename Path>
-class DynamicDistanceFinder : public ShortestPathFinder<VertexId, Path> {
+class AttributeWeightShortestPathFinder
+    : public ShortestPathFinder<VertexId, Path> {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Step, one position with a predecessor and the edge
@@ -87,7 +88,8 @@ class DynamicDistanceFinder : public ShortestPathFinder<VertexId, Path> {
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::graph::ShortestPathPriorityQueue<VertexId, Step, EdgeWeight> PQueue;
+  typedef arangodb::graph::ShortestPathPriorityQueue<VertexId, Step, EdgeWeight>
+      PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief information for each thread
@@ -103,7 +105,7 @@ class DynamicDistanceFinder : public ShortestPathFinder<VertexId, Path> {
   //////////////////////////////////////////////////////////////////////////////
 
   class SearcherTwoThreads {
-    DynamicDistanceFinder* _pathFinder;
+    AttributeWeightShortestPathFinder* _pathFinder;
     ThreadInfo& _myInfo;
     ThreadInfo& _peerInfo;
     VertexId _start;
@@ -111,9 +113,10 @@ class DynamicDistanceFinder : public ShortestPathFinder<VertexId, Path> {
     std::string _id;
 
    public:
-    SearcherTwoThreads(DynamicDistanceFinder* pathFinder, ThreadInfo& myInfo,
-                       ThreadInfo& peerInfo, VertexId const& start,
-                       ExpanderFunction expander, std::string const& id)
+    SearcherTwoThreads(AttributeWeightShortestPathFinder* pathFinder,
+                       ThreadInfo& myInfo, ThreadInfo& peerInfo,
+                       VertexId const& start, ExpanderFunction expander,
+                       std::string const& id)
         : _pathFinder(pathFinder),
           _myInfo(myInfo),
           _peerInfo(peerInfo),
@@ -273,7 +276,7 @@ class DynamicDistanceFinder : public ShortestPathFinder<VertexId, Path> {
   //////////////////////////////////////////////////////////////////////////////
 
   class Searcher {
-    DynamicDistanceFinder* _pathFinder;
+    AttributeWeightShortestPathFinder* _pathFinder;
     ThreadInfo& _myInfo;
     ThreadInfo& _peerInfo;
     VertexId _start;
@@ -281,7 +284,7 @@ class DynamicDistanceFinder : public ShortestPathFinder<VertexId, Path> {
     std::string _id;
 
    public:
-    Searcher(DynamicDistanceFinder* pathFinder, ThreadInfo& myInfo,
+    Searcher(AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
              ThreadInfo& peerInfo, VertexId const& start,
              ExpanderFunction expander, std::string const& id)
         : _pathFinder(pathFinder),
@@ -401,17 +404,19 @@ class DynamicDistanceFinder : public ShortestPathFinder<VertexId, Path> {
 
   // -----------------------------------------------------------------------------
 
-  DynamicDistanceFinder(DynamicDistanceFinder const&) = delete;
-  DynamicDistanceFinder& operator=(DynamicDistanceFinder const&) = delete;
-  DynamicDistanceFinder() = delete;
+  AttributeWeightShortestPathFinder(AttributeWeightShortestPathFinder const&) =
+      delete;
+  AttributeWeightShortestPathFinder& operator=(
+      AttributeWeightShortestPathFinder const&) = delete;
+  AttributeWeightShortestPathFinder() = delete;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the PathFinder
   //////////////////////////////////////////////////////////////////////////////
 
-  DynamicDistanceFinder(ExpanderFunction&& forwardExpander,
-                        ExpanderFunction&& backwardExpander,
-                        bool bidirectional = true)
+  AttributeWeightShortestPathFinder(ExpanderFunction&& forwardExpander,
+                                    ExpanderFunction&& backwardExpander,
+                                    bool bidirectional = true)
       : _highscoreSet(false),
         _highscore(0),
         _bingo(false),
@@ -422,7 +427,7 @@ class DynamicDistanceFinder : public ShortestPathFinder<VertexId, Path> {
         _backwardExpander(backwardExpander),
         _bidirectional(bidirectional){};
 
-  ~DynamicDistanceFinder(){};
+  ~AttributeWeightShortestPathFinder(){};
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Find the shortest path between start and target.
