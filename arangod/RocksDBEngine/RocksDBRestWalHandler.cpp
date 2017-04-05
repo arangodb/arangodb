@@ -25,9 +25,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/TransactionManager.h"
+
 
 #include <rocksdb/utilities/transaction_db.h>
 
@@ -79,67 +82,7 @@ RestStatus RocksDBRestWalHandler::execute() {
 }
 
 void RocksDBRestWalHandler::properties() {
-  /*auto l = MMFilesLogfileManager::instance();
-
-  if (_request->requestType() == rest::RequestType::PUT) {
-    std::shared_ptr<VPackBuilder> parsedRequest;
-    VPackSlice slice;
-    try {
-      slice = _request->payload();
-    } catch (...) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid body value. expecting object");
-      return;
-    }
-    if (!slice.isObject()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid body value. expecting object");
-    }
-
-    if (slice.hasKey("allowOversizeEntries")) {
-      bool value = slice.get("allowOversizeEntries").getBoolean();
-      l->allowOversizeEntries(value);
-    }
-
-    if (slice.hasKey("logfileSize")) {
-      uint32_t value = slice.get("logfileSize").getNumericValue<uint32_t>();
-      l->filesize(value);
-    }
-
-    if (slice.hasKey("historicLogfiles")) {
-      uint32_t value =
-  slice.get("historicLogfiles").getNumericValue<uint32_t>();
-      l->historicLogfiles(value);
-    }
-
-    if (slice.hasKey("reserveLogfiles")) {
-      uint32_t value = slice.get("reserveLogfiles").getNumericValue<uint32_t>();
-      l->reserveLogfiles(value);
-    }
-
-    if (slice.hasKey("throttleWait")) {
-      uint64_t value = slice.get("throttleWait").getNumericValue<uint64_t>();
-      l->maxThrottleWait(value);
-    }
-
-    if (slice.hasKey("throttleWhenPending")) {
-      uint64_t value =
-  slice.get("throttleWhenPending").getNumericValue<uint64_t>();
-      l->throttleWhenPending(value);
-    }
-  }
-
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("allowOversizeEntries", VPackValue(l->allowOversizeEntries()));
-  builder.add("logfileSize", VPackValue(l->filesize()));
-  builder.add("historicLogfiles", VPackValue(l->historicLogfiles()));
-  builder.add("reserveLogfiles", VPackValue(l->reserveLogfiles()));
-  builder.add("syncInterval", VPackValue(l->syncInterval()));
-  builder.add("throttleWait", VPackValue(l->maxThrottleWait()));
-  builder.add("throttleWhenPending", VPackValue(l->throttleWhenPending()));
-
-  builder.close();*/
+  // not supported on rocksdb
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED,
                  basics::VelocyPackHelper::EmptyObjectValue());
 }
@@ -201,12 +144,18 @@ void RocksDBRestWalHandler::flush() {
     rocksdb::TransactionDB* db =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
 
-    rocksdb::Status status = db->GetBaseDB()->SyncWAL();
-    if (!status.ok()) {
-      res = rocksutils::convertStatus(status).errorNumber();
+    if (waitForSync) {
+      rocksdb::Status status = db->GetBaseDB()->SyncWAL();
+      if (!status.ok()) {
+        res = rocksutils::convertStatus(status).errorNumber();
+      }
     }
-    // res = MMFilesLogfileManager::instance()->flush(
-    //    waitForSync, waitForCollector, false);
+    if (waitForCollector) {
+      // does not make sense in rocksdb
+      /*rocksdb::FlushOptions flushOptions;
+      flushOptions.wait = true;
+      db->Flush(flushOptions);*/
+    }
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -217,17 +166,15 @@ void RocksDBRestWalHandler::flush() {
 }
 
 void RocksDBRestWalHandler::transactions() {
+  
+  TransactionManager* mngr = TransactionManagerFeature::MANAGER;
   VPackBuilder builder;
-
-  /*auto const& info =
-      MMFilesLogfileManager::instance()->runningTransactions();
-
   builder.openObject();
   builder.add("runningTransactions",
-  VPackValue(static_cast<double>(std::get<0>(info))));
+              VPackValue(mngr->getActiveTransactionCount()));
 
   // lastCollectedId
-  {
+  /*{
     auto value = std::get<1>(info);
     if (value == UINT64_MAX) {
       builder.add("minLastCollected", VPackValue(VPackValueType::Null));
@@ -244,9 +191,8 @@ void RocksDBRestWalHandler::transactions() {
     } else {
       builder.add("minLastSealed", VPackValue(value));
     }
-  }
+  }*/
 
-  builder.close();*/
-
+  builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

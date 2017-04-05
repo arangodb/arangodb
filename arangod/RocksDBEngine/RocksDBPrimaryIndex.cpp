@@ -197,7 +197,7 @@ _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
     _iterator->Next();
   }
   if (!_iterator->Valid()) {
-    OFFSET = OFFSET / 4;
+    OFFSET = 0;
     _iterator->Seek(_bounds.start());
   }
 }
