@@ -84,7 +84,13 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
       _numRemoves(0) {}
 
 /// @brief free a transaction container
-RocksDBTransactionState::~RocksDBTransactionState() {}
+RocksDBTransactionState::~RocksDBTransactionState() {
+  if (_cacheTx != nullptr) {
+    // note: endTransaction() will delete _cacheTrx!
+    CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
+    _cacheTx = nullptr;
+  }
+}
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
@@ -150,6 +156,12 @@ Result RocksDBTransactionState::commitTransaction(
   arangodb::Result result;
 
   if (_nestingLevel == 0) {
+    if (_cacheTx != nullptr) {
+      // note: endTransaction() will delete _cacheTrx!
+      CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
+      _cacheTx = nullptr;
+    }
+
     if (_rocksTransaction != nullptr) {
       // set wait for sync flag if required
       if (waitForSync()) {
@@ -177,10 +189,6 @@ Result RocksDBTransactionState::commitTransaction(
       }
   
       _rocksTransaction.reset();
-      if (_cacheTx != nullptr) {
-        CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
-        _cacheTx = nullptr;
-      }
     }
 
     updateStatus(transaction::Status::COMMITTED);
@@ -206,15 +214,16 @@ Result RocksDBTransactionState::abortTransaction(
   Result result;
 
   if (_nestingLevel == 0) {
+    if (_cacheTx != nullptr) {
+      // note: endTransaction() will delete _cacheTrx!
+      CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
+      _cacheTx = nullptr;
+    }
+
     if (_rocksTransaction != nullptr) {
       rocksdb::Status status = _rocksTransaction->Rollback();
       result = rocksutils::convertStatus(status);
       _rocksTransaction.reset();
-    }
-
-    if (_cacheTx != nullptr) {
-      CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
-      _cacheTx = nullptr;
     }
 
     updateStatus(transaction::Status::ABORTED);
