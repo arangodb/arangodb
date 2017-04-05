@@ -178,19 +178,20 @@ bool RocksDBAllIndexIterator::outOfRange() const {
 
 uint64_t RocksDBAnyIndexIterator::OFFSET = 0;
 
-RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                                                 ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
-: IndexIterator(collection, trx, mmdr, index),
-_cmp(index->_cmp),
-_bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
+RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
+    : IndexIterator(collection, trx, mmdr, index),
+      _cmp(index->_cmp),
+      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
   // aquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   auto options = state->readOptions();
-  
+
   _iterator.reset(rtrx->GetIterator(options));
   _iterator->Seek(_bounds.start());
-  
+
   // not thread safe by design
   uint64_t off = OFFSET++;
   while (_iterator->Valid() && --off > 0) {
@@ -209,24 +210,22 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
-  
+
   while (limit > 0) {
     RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
     cb(token);
-    
+
     --limit;
     _iterator->Next();
     if (!_iterator->Valid() || outOfRange()) {
       return false;
     }
   }
-  
+
   return true;
 }
 
-void RocksDBAnyIndexIterator::reset() {
-  _iterator->Seek(_bounds.start());
-}
+void RocksDBAnyIndexIterator::reset() { _iterator->Seek(_bounds.start()); }
 
 bool RocksDBAnyIndexIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
@@ -350,9 +349,18 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   if (_useCache) {
     // blacklist from cache
     bool blacklisted = false;
+    uint64_t attempts = 0;
     while (!blacklisted) {
       blacklisted = _cache->blacklist(
           key.string().data(), static_cast<uint32_t>(key.string().size()));
+      attempts++;
+      if (attempts > 10) {
+        if (_cache->isShutdown()) {
+          disableCache();
+          break;
+        }
+        attempts = 0;
+      }
     }
   }
 
@@ -376,9 +384,18 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   if (_useCache) {
     // blacklist from cache
     bool blacklisted = false;
+    uint64_t attempts = 0;
     while (!blacklisted) {
       blacklisted = _cache->blacklist(
           key.string().data(), static_cast<uint32_t>(key.string().size()));
+      attempts++;
+      if (attempts > 10) {
+        if (_cache->isShutdown()) {
+          disableCache();
+          break;
+        }
+        attempts = 0;
+      }
     }
   }
 
@@ -468,15 +485,16 @@ IndexIterator* RocksDBPrimaryIndex::allIterator(transaction::Methods* trx,
 
 /// @brief request an iterator over all elements in the index in
 ///        a sequential order.
-IndexIterator* RocksDBPrimaryIndex::anyIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mmdr) const {
+IndexIterator* RocksDBPrimaryIndex::anyIterator(
+    transaction::Methods* trx, ManagedDocumentResult* mmdr) const {
   return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
 }
 
-void RocksDBPrimaryIndex::invokeOnAllElements(transaction::Methods* trx,
-                                              std::function<bool(DocumentIdentifierToken const&)> callback) {
+void RocksDBPrimaryIndex::invokeOnAllElements(
+    transaction::Methods* trx,
+    std::function<bool(DocumentIdentifierToken const&)> callback) {
   ManagedDocumentResult mmdr;
-  std::unique_ptr<IndexIterator> cursor (allIterator(trx, &mmdr, false));
+  std::unique_ptr<IndexIterator> cursor(allIterator(trx, &mmdr, false));
   bool cnt = true;
   auto cb = [&](DocumentIdentifierToken token) {
     if (cnt) {
@@ -484,10 +502,8 @@ void RocksDBPrimaryIndex::invokeOnAllElements(transaction::Methods* trx,
     }
   };
   while (cursor->next(cb, 1000) && cnt) {
-    
   }
 }
-
 
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* RocksDBPrimaryIndex::createInIterator(
