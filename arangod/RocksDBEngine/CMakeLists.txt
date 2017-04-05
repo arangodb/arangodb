@@ -3,17 +3,22 @@
 # add sources for rocksdb engine
 set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBCollection.cpp
+  RocksDBEngine/RocksDBCollectionExport.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBCounterManager.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
+  RocksDBEngine/RocksDBExportCursor.cpp
   RocksDBEngine/RocksDBIndex.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
   RocksDBEngine/RocksDBHashIndex.cpp
   RocksDBEngine/RocksDBKey.cpp
   RocksDBEngine/RocksDBKeyBounds.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
+  RocksDBEngine/RocksDBRestExportHandler.cpp
+  RocksDBEngine/RocksDBRestHandlers.cpp
+  RocksDBEngine/RocksDBRestWalHandler.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBTypes.cpp

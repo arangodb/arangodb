@@ -28,9 +28,11 @@
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -40,6 +42,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionContextData.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
@@ -98,7 +101,7 @@ void RocksDBEngine::prepare() {
       application_features::ApplicationServer::getFeature<DatabasePathFeature>(
           "DatabasePath");
   _basePath = databasePathFeature->directory();
-  
+
   TRI_ASSERT(!_basePath.empty());
 }
 
@@ -500,28 +503,28 @@ arangodb::Result RocksDBEngine::dropCollection(
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
   Result res;
 
-/*
-  // drop indexes of collection
-  std::vector<std::shared_ptr<Index>> vecShardIndex =
-      collection->getPhysical()->getIndexes();
-  bool dropFailed = false;
-  for (auto& index : vecShardIndex) {
-    uint64_t indexId = dynamic_cast<RocksDBIndex*>(index.get())->objectId();
-    bool dropped = collection->dropIndex(indexId);
-    if (!dropped) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
-          << "Failed to drop index with IndexId: " << indexId
-          << " for collection: " << collection->name();
-      dropFailed = true;
+  /*
+    // drop indexes of collection
+    std::vector<std::shared_ptr<Index>> vecShardIndex =
+        collection->getPhysical()->getIndexes();
+    bool dropFailed = false;
+    for (auto& index : vecShardIndex) {
+      uint64_t indexId = dynamic_cast<RocksDBIndex*>(index.get())->objectId();
+      bool dropped = collection->dropIndex(indexId);
+      if (!dropped) {
+        LOG_TOPIC(ERR, Logger::ENGINES)
+            << "Failed to drop index with IndexId: " << indexId
+            << " for collection: " << collection->name();
+        dropFailed = true;
+      }
     }
-  }
 
-  if (dropFailed) {
-    res.reset(TRI_ERROR_INTERNAL,
-              "Failed to droop at least one Index for collection: " +
-                  collection->name());
-  }
-*/
+    if (dropFailed) {
+      res.reset(TRI_ERROR_INTERNAL,
+                "Failed to droop at least one Index for collection: " +
+                    collection->name());
+    }
+  */
   // delete documents
   RocksDBCollection* coll =
       RocksDBCollection::toRocksDBCollection(collection->getPhysical());
@@ -553,9 +556,10 @@ void RocksDBEngine::changeCollection(
 arangodb::Result RocksDBEngine::renameCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
     std::string const& oldName) {
-  
-  VPackBuilder builder = collection->toVelocyPackIgnore({"path", "statusString"}, true);
-  int res = writeCreateCollectionMarker(vocbase->id(), collection->cid(), builder.slice());
+  VPackBuilder builder =
+      collection->toVelocyPackIgnore({"path", "statusString"}, true);
+  int res = writeCreateCollectionMarker(vocbase->id(), collection->cid(),
+                                        builder.slice());
   return arangodb::Result(res);
 }
 
@@ -724,8 +728,8 @@ void RocksDBEngine::addV8Functions() {
 }
 
 /// @brief Add engine-specific REST handlers
-void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
-  // TODO: add /_api/export and /_admin/wal later
+void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory* handlerFactory) {
+  RocksDBRestHandlers::registerResources(handlerFactory);
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
@@ -736,45 +740,43 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // remove views
   for (auto& val : viewKVPairs(id)) {
     res = globalRocksDBRemove(val.first.string(), options);
-    if(res.fail()){
+    if (res.fail()) {
       return res;
     }
   }
 
-
   // remove collections
   for (auto& val : collectionKVPairs(id)) {
-    
     TRI_voc_cid_t cid =
         basics::VelocyPackHelper::stringUInt64(val.second.slice(), "cid");
     // remove indexes
     for (auto& val : indexKVPairs(id, cid)) {
       // delete index documents
-      uint64_t objectId =
-      basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+      uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
+          val.second.slice(), "objectId");
       RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
       res = rocksutils::removeLargeRange(_db, bounds);
-      if(res.fail()){
+      if (res.fail()) {
         return res;
       }
       // delete index
       res = globalRocksDBRemove(val.first.string(), options);
-      if(res.fail()){
+      if (res.fail()) {
         return res;
       }
     }
-    
+
     uint64_t objectId =
-    basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
     res = rocksutils::removeLargeRange(_db, bounds);
-    if(res.fail()){
+    if (res.fail()) {
       return res;
     }
     // delete Collection
     res = globalRocksDBRemove(val.first.string(), options);
-    if(res.fail()){
+    if (res.fail()) {
       return res;
     }
   }

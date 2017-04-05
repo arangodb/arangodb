@@ -24,18 +24,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "Transaction/Methods.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 
-#include <rocksdb/utilities/transaction_db.h>
-#include <rocksdb/utilities/transaction_db.h>
-#include <rocksdb/convenience.h>
 #include <rocksdb/comparator.h>
+#include <rocksdb/convenience.h>
+#include <rocksdb/utilities/transaction_db.h>
 #include "Logger/Logger.h"
 
 namespace arangodb {
@@ -71,7 +70,7 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kMergeInProgress:
       return {TRI_ERROR_ARANGO_MERGE_IN_PROGRESS, status.ToString()};
     case rocksdb::Status::Code::kIncomplete:
-      return {TRI_ERROR_NO_ERROR, status.ToString()};
+      return {TRI_ERROR_INTERNAL, "'incomplete' error in storage engine"};
     case rocksdb::Status::Code::kShutdownInProgress:
       return {TRI_ERROR_SHUTTING_DOWN, status.ToString()};
     case rocksdb::Status::Code::kTimedOut:
@@ -116,7 +115,7 @@ void uint64ToPersistent(std::string& p, uint64_t value) {
     value >>= 8;
   } while (++len < sizeof(uint64_t));
 }
-  
+
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
   TRI_ASSERT(trx != nullptr);
   TransactionState* state = trx->state();
@@ -127,7 +126,7 @@ RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
 rocksdb::TransactionDB* globalRocksDB() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-  RocksDBEngine *rocks = static_cast<RocksDBEngine*>(engine);
+  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
   TRI_ASSERT(rocks->db() != nullptr);
   return rocks->db();
 }
@@ -136,7 +135,6 @@ RocksDBEngine* globalRocksEngine() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   return static_cast<RocksDBEngine*>(engine);
-
 }
 
 arangodb::Result globalRocksDBPut(rocksdb::Slice const& key,
@@ -157,7 +155,7 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
   const rocksdb::Comparator* cmp = db->GetOptions().comparator;
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts));
   std::size_t count = 0;
-  
+
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
   it->Seek(lower);
@@ -170,77 +168,91 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds) {
-  
+Result removeLargeRange(rocksdb::TransactionDB* db,
+                        RocksDBKeyBounds const& bounds) {
   try {
-    
     // delete files in range lower..upper
     rocksdb::Slice lower(bounds.start());
     rocksdb::Slice upper(bounds.end());
     {
-      rocksdb::Status status = rocksdb::DeleteFilesInRange(db->GetBaseDB(), db->GetBaseDB()->DefaultColumnFamily(),
-                                                           &lower, &upper);
+      rocksdb::Status status = rocksdb::DeleteFilesInRange(
+          db->GetBaseDB(), db->GetBaseDB()->DefaultColumnFamily(), &lower,
+          &upper);
       if (!status.ok()) {
-        // if file deletion failed, we will still iterate over the remaining keys, so we
+        // if file deletion failed, we will still iterate over the remaining
+        // keys, so we
         // don't need to abort and raise an error here
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "RocksDB file deletion failed";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            << "RocksDB file deletion failed";
       }
     }
-    
-    // go on and delete the remaining keys (delete files in range does not necessarily
+
+    // go on and delete the remaining keys (delete files in range does not
+    // necessarily
     // find them all, just complete files)
     const rocksdb::Comparator* cmp = db->GetOptions().comparator;
     rocksdb::WriteBatch batch;
-    std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(rocksdb::ReadOptions()));
-    
+    std::unique_ptr<rocksdb::Iterator> it(
+        db->NewIterator(rocksdb::ReadOptions()));
+
     it->Seek(lower);
     while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
       batch.Delete(it->key());
       it->Next();
     }
-    
+
     // now apply deletion batch
     rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
-    
+
     if (!status.ok()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "RocksDB key deletion failed: " << status.ToString();
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "RocksDB key deletion failed: " << status.ToString();
       return TRI_ERROR_INTERNAL;
     }
-    
+
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception during RocksDB key prefix deletion: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught exception during RocksDB key prefix deletion: " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception during RocksDB key prefix deletion: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught exception during RocksDB key prefix deletion: " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception during RocksDB key prefix deletion";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught unknown exception during RocksDB key prefix deletion";
     return TRI_ERROR_INTERNAL;
   }
 }
 
-std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionKVPairs(TRI_voc_tick_t databaseId){
-  std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
+std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
+    TRI_voc_tick_t databaseId) {
+  std::vector<std::pair<RocksDBKey, RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(databaseId);
-  iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
-    rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Collection, it->value()));
+  iterateBounds(bounds, [&rv](rocksdb::Iterator* it) {
+    rv.emplace_back(RocksDBKey(it->key()),
+                    RocksDBValue(RocksDBEntryType::Collection, it->value()));
   });
   return rv;
 }
-std::vector<std::pair<RocksDBKey,RocksDBValue>> indexKVPairs(TRI_voc_tick_t databaseId, TRI_voc_cid_t cid){
-  std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
+std::vector<std::pair<RocksDBKey, RocksDBValue>> indexKVPairs(
+    TRI_voc_tick_t databaseId, TRI_voc_cid_t cid) {
+  std::vector<std::pair<RocksDBKey, RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId, cid);
-  iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
-    rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::Index, it->value()));
+  iterateBounds(bounds, [&rv](rocksdb::Iterator* it) {
+    rv.emplace_back(RocksDBKey(it->key()),
+                    RocksDBValue(RocksDBEntryType::Index, it->value()));
   });
   return rv;
 }
-std::vector<std::pair<RocksDBKey,RocksDBValue>> viewKVPairs(TRI_voc_tick_t databaseId){
-  std::vector<std::pair<RocksDBKey,RocksDBValue>> rv;
+std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
+    TRI_voc_tick_t databaseId) {
+  std::vector<std::pair<RocksDBKey, RocksDBValue>> rv;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViews(databaseId);
-  iterateBounds(bounds, [&rv](rocksdb::Iterator* it){
-    rv.emplace_back(RocksDBKey(it->key()),RocksDBValue(RocksDBEntryType::View, it->value()));
+  iterateBounds(bounds, [&rv](rocksdb::Iterator* it) {
+    rv.emplace_back(RocksDBKey(it->key()),
+                    RocksDBValue(RocksDBEntryType::View, it->value()));
   });
   return rv;
 }
