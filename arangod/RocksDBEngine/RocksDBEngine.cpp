@@ -126,7 +126,8 @@ void RocksDBEngine::start() {
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
   _options.WAL_ttl_seconds = counter_sync_seconds * 2;
-
+  // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
+  
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);
 
