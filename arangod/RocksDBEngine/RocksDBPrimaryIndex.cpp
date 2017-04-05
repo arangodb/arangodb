@@ -55,6 +55,8 @@
 
 using namespace arangodb;
 
+// ================ Primary Index Iterator ================
+
 /// @brief hard-coded vector of the index attributes
 /// note that the attribute names must be hard-coded here to avoid an init-order
 /// fiasco with StaticStrings::FromString etc.
@@ -105,6 +107,8 @@ bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
 }
 
 void RocksDBPrimaryIndexIterator::reset() { _iterator.reset(); }
+
+// ================ All Iterator ==================
 
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
@@ -169,6 +173,66 @@ bool RocksDBAllIndexIterator::outOfRange() const {
     return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
   }
 }
+
+// ================ Any Iterator ================
+
+uint64_t RocksDBAnyIndexIterator::OFFSET = 0;
+
+RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                                                 ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
+: IndexIterator(collection, trx, mmdr, index),
+_cmp(index->_cmp),
+_bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
+  // aquire rocksdb transaction
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  auto options = state->readOptions();
+  
+  _iterator.reset(rtrx->GetIterator(options));
+  _iterator->Seek(_bounds.start());
+  
+  // not thread safe by design
+  uint64_t off = OFFSET++;
+  while (_iterator->Valid() && --off > 0) {
+    _iterator->Next();
+  }
+  if (!_iterator->Valid()) {
+    OFFSET = OFFSET / 4;
+    _iterator->Seek(_bounds.start());
+  }
+}
+
+bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  while (limit > 0) {
+    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
+    cb(token);
+    
+    --limit;
+    _iterator->Next();
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+void RocksDBAnyIndexIterator::reset() {
+  _iterator->Seek(_bounds.start());
+}
+
+bool RocksDBAnyIndexIterator::outOfRange() const {
+  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+}
+
+// ================ PrimaryIndex ================
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(
     arangodb::LogicalCollection* collection, VPackSlice const& info)
@@ -406,6 +470,13 @@ IndexIterator* RocksDBPrimaryIndex::allIterator(transaction::Methods* trx,
                                                 ManagedDocumentResult* mmdr,
                                                 bool reverse) const {
   return new RocksDBAllIndexIterator(_collection, trx, mmdr, this, reverse);
+}
+
+/// @brief request an iterator over all elements in the index in
+///        a sequential order.
+IndexIterator* RocksDBPrimaryIndex::anyIterator(transaction::Methods* trx,
+                                                ManagedDocumentResult* mmdr) const {
+  return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
 }
 
 /// @brief create the iterator, for a single attribute, IN operator

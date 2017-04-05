@@ -380,9 +380,8 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
     transaction::Methods* trx, ManagedDocumentResult* mdr) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      "this engine does not provide an any iterator");
+  return std::unique_ptr<IndexIterator>(
+                                        primaryIndex()->anyIterator(trx, mdr));
 }
 
 void RocksDBCollection::invokeOnAllElements(

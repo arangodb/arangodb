@@ -94,9 +94,34 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   RocksDBKeyBounds _bounds;
 };
 
+class RocksDBAnyIndexIterator final : public IndexIterator {
+  public:
+    RocksDBAnyIndexIterator(LogicalCollection* collection,
+                            transaction::Methods* trx,
+                            ManagedDocumentResult* mmdr,
+                            RocksDBPrimaryIndex const* index);
+    
+    ~RocksDBAnyIndexIterator() {}
+    
+    char const* typeName() const override { return "any-index-iterator"; }
+    
+    bool next(TokenCallback const& cb, size_t limit) override;
+    
+    void reset() override;
+    
+private:
+  bool outOfRange() const;
+  
+  RocksDBComparator const* _cmp;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+  RocksDBKeyBounds _bounds;
+  static uint64_t OFFSET;
+};
+
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexIterator;
   friend class RocksDBAllIndexIterator;
+  friend class RocksDBAnyIndexIterator;
 
  public:
   RocksDBPrimaryIndex() = delete;
@@ -164,6 +189,9 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*,
                              bool reverse) const;
 
+  IndexIterator* anyIterator(transaction::Methods* trx,
+                             ManagedDocumentResult* mmdr) const;
+  
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
