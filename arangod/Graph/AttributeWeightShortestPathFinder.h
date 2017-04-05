@@ -37,7 +37,7 @@ namespace graph {
 
 template <typename VertexId, typename EdgeId, typename EdgeWeight,
           typename Path>
-class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
+class DynamicDistanceFinder : public ShortestPathFinder<VertexId, Path> {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Step, one position with a predecessor and the edge

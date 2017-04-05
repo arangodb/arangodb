@@ -30,12 +30,12 @@ namespace arangodb {
 namespace graph {
 
 template <typename VertexId, typename Path>
-class PathFinder {
+class ShortestPathFinder {
  protected:
-  PathFinder() {}
+  ShortestPathFinder() {}
 
  public:
-  virtual ~PathFinder() {}
+  virtual ~ShortestPathFinder() {}
 
   virtual bool shortestPath(VertexId const& start, VertexId const& target,
                             Path& result,
