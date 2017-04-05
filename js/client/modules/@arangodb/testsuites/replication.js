@@ -157,8 +157,7 @@ function replicationStatic (options) {
                            instanceInfo,
                            customInstanceInfos,
                            startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
-
+      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
       return {};
     }
   };
@@ -229,7 +228,7 @@ function replicationSync (options) {
                            instanceInfo,
                            customInstanceInfos,
                            startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
+      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
 
       return {};
     }
