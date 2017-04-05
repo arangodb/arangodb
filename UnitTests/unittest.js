@@ -183,7 +183,7 @@ function main(argv) {
     }
   }
 
-  if (argv.hasOwnProperty('testOutput')} {
+  if (argv.hasOwnProperty('testOutput')) {
     testOutputDirectory = argv.testOutput;
   } else {
     testOutputDirectory = 'out';    
