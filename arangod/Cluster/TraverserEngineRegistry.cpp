@@ -42,8 +42,7 @@ TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
       _toBeDeleted(false),
       _engine(new TraverserEngine(vocbase, info)),
       _timeToLive(0),
-      _expires(0),
-      _cv() {}
+      _expires(0) {}
 
 TraverserEngineRegistry::EngineInfo::~EngineInfo() {
 }
