@@ -1983,7 +1983,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   c->start();
   c.release();
   
-  TRI_V8_RETURN(v8::Number::New(isolate, en));
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(en)));
   TRI_V8_TRY_CATCH_END
 }
 

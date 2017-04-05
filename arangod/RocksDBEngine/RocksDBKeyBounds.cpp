@@ -270,6 +270,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _startBuffer.append(reinterpret_cast<char const*>(second.begin()),
                           static_cast<size_t>(second.byteSize()));
       _startBuffer.push_back(_stringSeparator);
+      TRI_ASSERT(_startBuffer.length() == startLength);
 
       size_t endLength = sizeof(char) + sizeof(uint64_t) +
                          static_cast<size_t>(third.byteSize()) + sizeof(char);
@@ -280,7 +281,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                         static_cast<size_t>(third.byteSize()));
       _endBuffer.push_back(_stringSeparator);
       nextPrefix(_endBuffer);
-
       break;
     }
 

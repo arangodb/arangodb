@@ -402,6 +402,8 @@ have edges in other directions and they will be traversed.
 if it walks from **E** to **F**, it will continue to walk from **F** to **E**
 using the same edge once again. Due to this we will see duplicate nodes in the result.
 
+Please also consider [to use `WITH`](../Operations/With.md) to specify the collections you expect to be involved.
+
 Please note that the direction can't be passed in by a bind parameter.
 
 Use the AQL explainer for optimizations

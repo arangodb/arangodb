@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -170,10 +171,10 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
   RocksDBTransactionState* state =
       static_cast<RocksDBTransactionState*>(trx->state());
 
-  auto trxCollection = state->findCollection(_logicalCollection->cid());
+  auto trxCollection = static_cast<RocksDBTransactionCollection*>(state->findCollection(_logicalCollection->cid()));
   TRI_ASSERT(trxCollection != nullptr);
 
-  return _numberDocuments + state->numInserts() - state->numRemoves();
+  return _numberDocuments + trxCollection->numInserts() - trxCollection->numRemoves();
 }
 
 /// @brief report extra memory used by indexes etc.
