@@ -178,6 +178,19 @@ bool RocksDBAllIndexIterator::outOfRange() const {
 
 uint64_t RocksDBAnyIndexIterator::OFFSET = 0;
 
+uint64_t RocksDBAnyIndexIterator::newOffset(LogicalCollection* collection,
+                                            transaction::Methods* trx) {
+  auto count = collection->numberDocuments(trx);
+  /*auto adjustment = RandomGenerator::interval(count);
+  OFFSET = (OFFSET + adjustment) % count;
+  return OFFSET;*/
+  if (count == 0) {
+    return 0;
+  }
+
+  return RandomGenerator::interval(count);
+}
+
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
@@ -193,12 +206,14 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   _iterator->Seek(_bounds.start());
 
   // not thread safe by design
-  uint64_t off = OFFSET++;
-  while (_iterator->Valid() && --off > 0) {
-    _iterator->Next();
+  uint64_t off = newOffset(collection, trx);
+  if (off > 0) {
+    while (_iterator->Valid() && --off > 0) {
+      _iterator->Next();
+    }
   }
   if (!_iterator->Valid()) {
-    OFFSET = 0;
+    // OFFSET = 0;
     _iterator->Seek(_bounds.start());
   }
 }
