@@ -27,8 +27,6 @@
 // / @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var checkedFishBowl = false;
-
 const arangodb = require('@arangodb');
 const plainServerVersion = arangodb.plainServerVersion;
 const db = arangodb.db;
@@ -58,13 +56,6 @@ var getFishbowlStorage = function () {
   var c = db._collection('_fishbowl');
   if (c === null) {
     c = db._create('_fishbowl', { isSystem: true });
-  }
-
-  if (c !== null && !checkedFishBowl) {
-    // ensure indexes
-    c.ensureFulltextIndex('description');
-    c.ensureFulltextIndex('name');
-    checkedFishBowl = true;
   }
 
   return c;
@@ -202,7 +193,7 @@ var searchJson = function (name) {
     name = name.replace(/[^a-zA-Z0-9]/g, ' ');
 
     // get results by looking in "description" attribute
-    docs = fishbowl.fulltext('description', 'prefix:' + name).toArray();
+    docs = db._query("FOR doc IN @@collection FILTER CONTAINS(doc.description, @name) RETURN doc", { name, "@collection" : fishbowl.name() }).toArray();
 
     // build a hash of keys
     var i;
@@ -213,7 +204,7 @@ var searchJson = function (name) {
     }
 
     // get results by looking in "name" attribute
-    var docs2 = fishbowl.fulltext('name', 'prefix:' + name).toArray();
+    var docs2 = db._query("FOR doc IN @@collection FILTER CONTAINS(doc.name, @name) RETURN doc", { name, "@collection" : fishbowl.name() }).toArray();
 
     // merge the two result sets, avoiding duplicates
     for (i = 0; i < docs2.length; ++i) {
