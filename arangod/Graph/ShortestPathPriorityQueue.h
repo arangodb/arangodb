@@ -30,7 +30,7 @@ namespace arangodb {
 namespace graph {
 
 template <typename Key, typename Value, typename Weight>
-class PriorityQueue {
+class ShortestPathPriorityQueue {
   // This class implements a data structure that is a key/value
   // store with the additional property that every Value has a
   // positive Weight (provided by the weight() and setWeight(w)
@@ -63,9 +63,9 @@ class PriorityQueue {
   // priority queue.
 
  public:
-  PriorityQueue() : _popped(0), _isHeap(false), _maxWeight(0) {}
+  ShortestPathPriorityQueue() : _popped(0), _isHeap(false), _maxWeight(0) {}
 
-  ~PriorityQueue() {
+  ~ShortestPathPriorityQueue() {
     for (Value* v : _heap) {
       delete v;
     }

@@ -220,6 +220,8 @@ SET(ARANGOD_SOURCES
   GeneralServer/VppCommTask.cpp
   Graph/BreadthFirstEnumerator.cpp
   Graph/NeighborsEnumerator.cpp
+  Graph/AttributeWeightShortestPathFinder.cpp
+  Graph/ConstantWeightShortestPathFinder.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp

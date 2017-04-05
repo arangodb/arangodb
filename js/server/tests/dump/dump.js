@@ -200,34 +200,36 @@ function dumpTestSuite () {
       assertFalse(c.getIndexes()[2].unique);
       assertFalse(c.getIndexes()[2].sparse);
       assertEqual([ "a_s1", "a_s2" ], c.getIndexes()[2].fields);
-
+      
+      assertEqual("hash", c.getIndexes()[3].type);
       assertFalse(c.getIndexes()[3].unique);
-      assertEqual("fulltext", c.getIndexes()[3].type);
-      assertEqual([ "a_f" ], c.getIndexes()[3].fields);
-
-      assertEqual("geo2", c.getIndexes()[4].type);
-      assertEqual([ "a_la", "a_lo" ], c.getIndexes()[4].fields);
-      assertFalse(c.getIndexes()[4].unique);
-
+      assertFalse(c.getIndexes()[3].sparse);
+      assertEqual([ "a_h1", "a_h2" ], c.getIndexes()[3].fields);
+      
+      assertEqual("skiplist", c.getIndexes()[4].type);
+      assertTrue(c.getIndexes()[4].unique);
+      assertFalse(c.getIndexes()[4].sparse);
+      assertEqual([ "a_su" ], c.getIndexes()[4].fields);
+      
       assertEqual("hash", c.getIndexes()[5].type);
       assertFalse(c.getIndexes()[5].unique);
-      assertFalse(c.getIndexes()[5].sparse);
-      assertEqual([ "a_h1", "a_h2" ], c.getIndexes()[5].fields);
-
+      assertTrue(c.getIndexes()[5].sparse);
+      assertEqual([ "a_hs1", "a_hs2" ], c.getIndexes()[5].fields);
+      
       assertEqual("skiplist", c.getIndexes()[6].type);
-      assertTrue(c.getIndexes()[6].unique);
-      assertFalse(c.getIndexes()[6].sparse);
-      assertEqual([ "a_su" ], c.getIndexes()[6].fields);
-
-      assertEqual("hash", c.getIndexes()[7].type);
-      assertFalse(c.getIndexes()[7].unique);
-      assertTrue(c.getIndexes()[7].sparse);
-      assertEqual([ "a_hs1", "a_hs2" ], c.getIndexes()[7].fields);
-
-      assertEqual("skiplist", c.getIndexes()[8].type);
-      assertFalse(c.getIndexes()[8].unique);
-      assertTrue(c.getIndexes()[8].sparse);
-      assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[8].fields);
+      assertFalse(c.getIndexes()[6].unique);
+      assertTrue(c.getIndexes()[6].sparse);
+      assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[6].fields);
+      
+      if (db._engine().name !== "rocksdb") {
+        assertFalse(c.getIndexes()[7].unique);
+        assertEqual("fulltext", c.getIndexes()[7].type);
+        assertEqual([ "a_f" ], c.getIndexes()[7].fields);
+        
+        assertEqual("geo2", c.getIndexes()[8].type);
+        assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
+        assertFalse(c.getIndexes()[8].unique);
+      }
 
       assertEqual(0, c.count());
     },

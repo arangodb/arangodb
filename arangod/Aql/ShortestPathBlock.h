@@ -109,8 +109,7 @@ class ShortestPathBlock : public ExecutionBlock {
   std::unique_ptr<traverser::ShortestPath> _path;
 
   /// @brief the shortest path finder.
-  std::unique_ptr<arangodb::graph::PathFinder<
-      arangodb::velocypack::Slice, arangodb::traverser::ShortestPath>> _finder;
+  std::unique_ptr<arangodb::graph::ShortestPathFinder> _finder;
 
   /// @brief The information to get the starting point, when a register id is
   /// used

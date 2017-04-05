@@ -68,13 +68,8 @@ struct TraverserOptions;
 class TraverserCache;
 
 class ShortestPath {
-  friend class arangodb::graph::DynamicDistanceFinder<
-      arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
-      ShortestPath>;
-  friend class arangodb::graph::ConstDistanceFinder<
-      arangodb::velocypack::Slice, arangodb::velocypack::Slice,
-      arangodb::basics::VelocyPackHelper::VPackStringHash,
-      arangodb::basics::VelocyPackHelper::VPackStringEqual, ShortestPath>;
+  friend class arangodb::graph::AttributeWeightShortestPathFinder;
+  friend class arangodb::graph::ConstantWeightShortestPathFinder;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
