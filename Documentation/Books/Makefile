@@ -425,12 +425,11 @@ build-books:
 
 
 build-dist-books:
+	set -x ; set -e ; \
 	PIDFILE=/tmp/xvfb_20_0.pid; \
 	if test -z "$${DISPLAY}"; then \
 		make start_X11_display PIDFILE=$${PIDFILE} DISP=':20.0'; \
-	fi; \
-	set -x ; \
-	if test -z "$${DISPLAY}"; then \
+		trap 'make stop_X11_display PIDFILE="$${PIDFILE}"' 0; \
 		DISP=:20.0; \
 	else \
 		DISPL="$${DISPLAY}"; \
@@ -438,7 +437,7 @@ build-dist-books:
 	make build-books DISPLAY="$${DISP}"; \
 	mkdir -p ${OUTPUT_DIR} ; \
 	( \
-		mv books ArangoDB-${newVersionNumber} ; \
+		mv books ArangoDB-${newVersionNumber} ; pwd; \
 		if test -n "${COOKBOOK_DIR}" ; then \
 			cp -a ${COOKBOOK_DIR} ArangoDB-${newVersionNumber}/cookbook ; \
 		fi ; \
@@ -446,8 +445,6 @@ build-dist-books:
 		mv ArangoDB-${newVersionNumber} books ; \
 	) ; \
 	for book in $(ALLBOOKS); do \
-		make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
+	    make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
 	done; \
-	if test -z "$${DISPLAY}"; then \
-		make stop_X11_display PIDFILE="$${PIDFILE}"; \
-	fi
+	exit $$rc
