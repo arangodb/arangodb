@@ -26,9 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'server_http': 'http server tests in Mocha',
   'shell_client': 'shell client tests',
-  'shell_replication': 'shell replication tests',
   'shell_server': 'shell server tests',
   'shell_server_aql': 'AQL tests in the server',
   'shell_server_only': 'server specific tests'
@@ -40,22 +38,6 @@ const optionsDocumentation = [
 
 const _ = require('lodash');
 const tu = require('@arangodb/test-utils');
-const pu = require('@arangodb/process-utils');
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_replication
-// //////////////////////////////////////////////////////////////////////////////
-
-function shellReplication (options) {
-  let testCases = tu.scanTestPath('js/common/tests/replication');
-
-  var opts = {
-    'replication': true
-  };
-  _.defaults(opts, options);
-
-  return tu.performTests(opts, testCases, 'shell_replication', tu.runThere);
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client
@@ -66,16 +48,6 @@ function shellClient (options) {
   testCases = testCases.concat(tu.scanTestPath('js/client/tests/shell'));
 
   return tu.performTests(options, testCases, 'shell_client', tu.runInArangosh);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_http
-// //////////////////////////////////////////////////////////////////////////////
-
-function serverHttp (options) {
-  let testCases = tu.scanTestPath('js/common/tests/http');
-
-  return tu.performTests(options, testCases, 'server_http', tu.runThere);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -131,14 +103,11 @@ function shellServerAql (options) {
 }
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
-  testFns['shell_replication'] = shellReplication;
   testFns['shell_client'] = shellClient;
-  testFns['server_http'] = serverHttp;
   testFns['shell_server'] = shellServer;
   testFns['shell_server_aql'] = shellServerAql;
   testFns['shell_server_only'] = shellServerOnly;
 
-  defaultFns.push('server_http');
   defaultFns.push('shell_client');
   defaultFns.push('shell_server');
   defaultFns.push('shell_server_aql');
