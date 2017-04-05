@@ -393,12 +393,6 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   return converted.errorNumber();
 }
 
-/// @brief unload the index data from memory
-int RocksDBPrimaryIndex::unload() {
-  // nothing to do
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief called when the index is dropped
 int RocksDBPrimaryIndex::drop() {
   // First drop the cache all indexes can work without it.

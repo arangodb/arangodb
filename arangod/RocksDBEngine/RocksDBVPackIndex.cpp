@@ -570,11 +570,6 @@ int RocksDBVPackIndex::remove(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBVPackIndex::unload() {
-  // nothing to do
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief called when the index is dropped
 int RocksDBVPackIndex::drop() {
   // First drop the cache all indexes can work without it.

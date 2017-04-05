@@ -114,10 +114,6 @@ describe ArangoDB do
 
         r5 = doc.parsed_response['revision']
         r5.should_not eq("");
-        r5.should_not eq(r1);
-        r5.should_not eq(r2);
-        r5.should_not eq(r3);
-        r5.should_not eq(r4);
         c5 = doc.parsed_response['checksum']
         c5.should be_kind_of(String)
         c5.should eq("0");

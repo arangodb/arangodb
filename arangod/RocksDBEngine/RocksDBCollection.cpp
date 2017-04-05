@@ -73,7 +73,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      VPackSlice const& info)
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
-      _numberDocuments(0) {
+      _numberDocuments(0),
+      _revisionId(0) {
   TRI_ASSERT(_objectId != 0);
 }
 
@@ -81,7 +82,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      PhysicalCollection* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
-      _numberDocuments(0) {
+      _numberDocuments(0),
+      _revisionId(0) {
   TRI_ASSERT(_objectId != 0);
 }
 
@@ -132,11 +134,6 @@ PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical,
   return new RocksDBCollection(logical, physical);
 }
 
-TRI_voc_rid_t RocksDBCollection::revision(arangodb::transaction::Methods* trx) const {
-  // TODO!
-  return 0;
-}
-
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add("objectId", VPackValue(std::to_string(_objectId)));
@@ -165,6 +162,20 @@ int RocksDBCollection::close() {
   return TRI_ERROR_NO_ERROR;
 }
 
+TRI_voc_rid_t RocksDBCollection::revision() const { 
+  return _revisionId;
+}
+
+TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const { 
+  RocksDBTransactionState* state =
+      static_cast<RocksDBTransactionState*>(trx->state());
+
+  auto trxCollection = static_cast<RocksDBTransactionCollection*>(state->findCollection(_logicalCollection->cid()));
+  TRI_ASSERT(trxCollection != nullptr);
+
+  return trxCollection->revision();
+}
+
 uint64_t RocksDBCollection::numberDocuments() const { return _numberDocuments; }
 
 uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
@@ -174,7 +185,7 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(state->findCollection(_logicalCollection->cid()));
   TRI_ASSERT(trxCollection != nullptr);
 
-  return _numberDocuments + trxCollection->numInserts() - trxCollection->numRemoves();
+  return trxCollection->numberDocuments();
 }
 
 /// @brief report extra memory used by indexes etc.
@@ -187,7 +198,9 @@ void RocksDBCollection::open(bool ignoreErrors) {
   // static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  _numberDocuments = engine->counterManager()->loadCounter(this->objectId());
+  auto counterValue = engine->counterManager()->loadCounter(this->objectId());
+  _numberDocuments = counterValue.first;
+  _revisionId = counterValue.second;
   //_numberDocuments = countKeyRange(db, readOptions,
   // RocksDBKeyBounds::CollectionDocuments(_objectId));
 }
@@ -416,7 +429,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       break;
     }
     // TODO
-    state->addOperation(cid, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0);
+    state->addOperation(cid, 0, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0);
     iter->Next();
   }
 
@@ -563,7 +576,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     }
 
     static_cast<RocksDBTransactionState*>(trx->state())
-        ->addOperation(_logicalCollection->cid(),
+        ->addOperation(_logicalCollection->cid(), revisionId,
                        TRI_VOC_DOCUMENT_OPERATION_INSERT, newSlice.byteSize());
     guard.commit();
   }
@@ -655,7 +668,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     TRI_ASSERT(!mdr.empty());
 
     static_cast<RocksDBTransactionState*>(trx->state())
-        ->addOperation(_logicalCollection->cid(),
+        ->addOperation(_logicalCollection->cid(), revisionId,
                        TRI_VOC_DOCUMENT_OPERATION_UPDATE, newDoc.byteSize());
     guard.commit();
   }
@@ -738,7 +751,7 @@ int RocksDBCollection::replace(
     TRI_ASSERT(!mdr.empty());
 
     static_cast<RocksDBTransactionState*>(trx->state())
-        ->addOperation(_logicalCollection->cid(),
+        ->addOperation(_logicalCollection->cid(), revisionId,
                        TRI_VOC_DOCUMENT_OPERATION_REPLACE,
                        VPackSlice(builder->slice()).byteSize());
     guard.commit();
@@ -800,7 +813,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
 
   if (res == TRI_ERROR_NO_ERROR) {
     static_cast<RocksDBTransactionState*>(trx->state())
-        ->addOperation(_logicalCollection->cid(),
+        ->addOperation(_logicalCollection->cid(), revisionId,
                        TRI_VOC_DOCUMENT_OPERATION_REMOVE, oldDoc.byteSize());
     guard.commit();
   }
@@ -1131,6 +1144,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     mdr.reset();
   }
   return result;
+}
+
+void RocksDBCollection::setRevision(TRI_voc_rid_t revisionId) {
+  _revisionId = revisionId;
 }
 
 void RocksDBCollection::adjustNumberDocuments(int64_t adjustment) {

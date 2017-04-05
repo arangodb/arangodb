@@ -51,10 +51,11 @@ class RocksDBCounterManager : Thread {
  public:
   struct Counter {
     rocksdb::SequenceNumber sequenceNumber;
-    uint64_t count;
+    uint64_t value1; // used for number of documents
+    uint64_t value2; // used for revision id
     
-    Counter(rocksdb::SequenceNumber seq, uint64_t cnt)
-      : sequenceNumber(seq), count(cnt) {}
+    Counter(rocksdb::SequenceNumber seq, uint64_t value1, uint64_t value2)
+      : sequenceNumber(seq), value1(value1) {}
     explicit Counter(VPackSlice const&);
     void serialize(VPackBuilder&) const;
   };
@@ -63,13 +64,13 @@ class RocksDBCounterManager : Thread {
   /// will load counts from the db and scan the WAL
 
   /// Thread-Safe load a counter
-  uint64_t loadCounter(uint64_t objectId);
+  std::pair<uint64_t, uint64_t> loadCounter(uint64_t objectId);
 
   /// collections / views / indexes can call this method to update
   /// their total counts. Thread-Safe needs the snapshot so we know
   /// the sequence number used
   void updateCounter(uint64_t objectId, rocksdb::Snapshot const* snapshot,
-                     uint64_t counter);
+                     uint64_t value1, uint64_t value2);
 
   /// Thread-Safe remove a counter
   void removeCounter(uint64_t objectId);

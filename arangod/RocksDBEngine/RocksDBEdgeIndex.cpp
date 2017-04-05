@@ -290,24 +290,12 @@ void RocksDBEdgeIndex::batchInsert(
   }
 }
 
-/// @brief unload the index data from memory
-int RocksDBEdgeIndex::unload() {
-  // nothing to do here
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief called when the index is dropped
 int RocksDBEdgeIndex::drop() {
   // First drop the cache all indexes can work without it.
   RocksDBIndex::drop();
   return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
                                       RocksDBKeyBounds::EdgeIndex(_objectId)).errorNumber();
-}
-
-/// @brief provides a size hint for the edge index
-int RocksDBEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
-  // nothing to do here
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief checks whether the index supports the condition

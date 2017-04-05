@@ -40,7 +40,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
     : TransactionCollection(trx, cid),
       _accessType(accessType), 
       _initialNumberDocuments(0),
-      _initialRevision(0),
+      _revision(0),
       _operationSize(0),
       _numInserts(0),
       _numUpdates(0),
@@ -143,6 +143,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
     }
 
     _initialNumberDocuments = static_cast<RocksDBCollection*>(_collection->getPhysical())->numberDocuments();
+    _revision = static_cast<RocksDBCollection*>(_collection->getPhysical())->revision();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -162,7 +163,8 @@ void RocksDBTransactionCollection::release() {
 }
   
 /// @brief add an operation for a transaction collection
-void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e operationType,
+void RocksDBTransactionCollection::addOperation(TRI_voc_rid_t revisionId,     
+                                                TRI_voc_document_operation_e operationType,
                                                 uint64_t operationSize) {
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
@@ -180,4 +182,5 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
   }
 
   _operationSize += operationSize;
+  _revision = revisionId;
 }
