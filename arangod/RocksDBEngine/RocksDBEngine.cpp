@@ -676,15 +676,15 @@ bool RocksDBEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
 /// @brief insert a compaction blocker
 int RocksDBEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
                                            TRI_voc_tick_t& id) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
+  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief touch an existing compaction blocker
 int RocksDBEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id, double ttl) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
+  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief remove an existing compaction blocker
