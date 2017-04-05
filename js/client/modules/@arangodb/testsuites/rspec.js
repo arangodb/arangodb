@@ -26,6 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
+  'server_http': 'http server tests in Mocha',
   'http_replication': 'http replication tests',
   'http_server': 'http server tests in Ruby',
   'ssl_server': 'https server tests'
@@ -49,6 +50,17 @@ const yaml = require('js-yaml');
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_http
+// //////////////////////////////////////////////////////////////////////////////
+
+function serverHttp (options) {
+  // first starts to replace rspec:
+  let testCases = tu.scanTestPath('js/common/tests/http');
+
+  return tu.performTests(options, testCases, 'server_http', tu.runThere);
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs ruby tests using RSPEC
@@ -282,14 +294,16 @@ function sslServer (options) {
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['http_replication'] = httpReplication;
   testFns['http_server'] = httpServer;
+  testFns['server_http'] = serverHttp;
   testFns['ssl_server'] = sslServer;
 
+  defaultFns.push('server_http');
   defaultFns.push('http_server');
   defaultFns.push('ssl_server');
 
-  opts['skipSsl'] =  false;
+  opts['skipSsl'] = false;
   opts['rspec'] = 'rspec';
-  opts['ruby'] =  '';
+  opts['ruby'] = '';
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
