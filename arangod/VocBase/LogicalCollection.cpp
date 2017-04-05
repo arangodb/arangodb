@@ -460,8 +460,9 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Me
   return _physical->getAnyIterator(trx, mdr);
 }
 
-void LogicalCollection::invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback){
-  _physical->invokeOnAllElements(callback);
+void LogicalCollection::invokeOnAllElements(transaction::Methods* trx,
+                                            std::function<bool(DocumentIdentifierToken const&)> callback){
+  _physical->invokeOnAllElements(trx, callback);
 }
 
 

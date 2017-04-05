@@ -384,9 +384,9 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
                                         primaryIndex()->anyIterator(trx, mdr));
 }
 
-void RocksDBCollection::invokeOnAllElements(
+void RocksDBCollection::invokeOnAllElements(transaction::Methods* trx,
     std::function<bool(DocumentIdentifierToken const&)> callback) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  primaryIndex()->invokeOnAllElements(trx, callback);
 }
 
 ////////////////////////////////////

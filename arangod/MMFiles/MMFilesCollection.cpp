@@ -2224,7 +2224,8 @@ std::unique_ptr<IndexIterator> MMFilesCollection::getAnyIterator(transaction::Me
   return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
 }
 
-void MMFilesCollection::invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback){
+void MMFilesCollection::invokeOnAllElements(transaction::Methods* trx,
+                                            std::function<bool(DocumentIdentifierToken const&)> callback){
   primaryIndex()->invokeOnAllElements(callback);
 }
 

@@ -192,6 +192,9 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   IndexIterator* anyIterator(transaction::Methods* trx,
                              ManagedDocumentResult* mmdr) const;
   
+  void invokeOnAllElements(transaction::Methods* trx,
+                           std::function<bool(DocumentIdentifierToken const&)> callback);
+  
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
