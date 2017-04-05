@@ -56,6 +56,18 @@ class RocksDBIndex : public Index {
   bool isPersistent() const override final { return true; }
 
   int drop() override;
+  
+  int unload() override {
+    // nothing to do here yet
+    // TODO: free the cache the index uses
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  /// @brief provides a size hint for the index
+  int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final{
+    // nothing to do here
+    return TRI_ERROR_NO_ERROR;
+  }
 
  protected:
   void createCache();

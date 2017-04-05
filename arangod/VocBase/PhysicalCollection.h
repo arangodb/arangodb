@@ -61,7 +61,7 @@ class PhysicalCollection {
 
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) = 0;
 
-  virtual TRI_voc_rid_t revision() const = 0;
+  virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;

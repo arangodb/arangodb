@@ -139,7 +139,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) override;
 
-  TRI_voc_rid_t revision() const override;
+  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
+  TRI_voc_rid_t revision() const;
 
   void setRevision(TRI_voc_rid_t revision, bool force);
 

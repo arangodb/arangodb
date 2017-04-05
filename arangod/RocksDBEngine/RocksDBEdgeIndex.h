@@ -110,11 +110,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
       arangodb::basics::LocalTaskQueue* queue = nullptr) override;
 
-  int unload() override;
-
   int drop() override;
-
-  int sizeHint(transaction::Methods*, size_t) override;
 
   bool hasBatchInsert() const override { return false; }
 

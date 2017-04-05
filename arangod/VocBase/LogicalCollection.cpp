@@ -639,9 +639,9 @@ std::string LogicalCollection::statusString() const {
 }
 
 // SECTION: Properties
-TRI_voc_rid_t LogicalCollection::revision() const {
+TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   // TODO CoordinatorCase
-  return _physical->revision();
+  return _physical->revision(trx);
 }
 
 bool LogicalCollection::isLocal() const { return _isLocal; }

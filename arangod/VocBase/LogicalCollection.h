@@ -151,7 +151,7 @@ class LogicalCollection {
   uint64_t numberDocuments(transaction::Methods*) const;
 
   // SECTION: Properties
-  TRI_voc_rid_t revision() const;
+  TRI_voc_rid_t revision(transaction::Methods*) const;
   bool isLocal() const;
   bool deleted() const;
   bool isSystem() const;

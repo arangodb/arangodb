@@ -397,9 +397,6 @@ describe ArangoDB do
 
         r4 = doc.parsed_response['revision']
         r4.should_not eq("");
-        r4.should_not eq(r1);
-        r4.should_not eq(r2);
-        r4.should_not eq(r3);
       end
     end
 

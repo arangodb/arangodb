@@ -170,7 +170,6 @@ Result RocksDBTransactionState::commitTransaction(
 
       result = rocksutils::convertStatus(_rocksTransaction->Commit());
       if (!result.ok()) {
-        // TODO: translate status
         abortTransaction(activeTrx);
         return result;
       }
@@ -179,12 +178,13 @@ Result RocksDBTransactionState::commitTransaction(
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection = static_cast<RocksDBTransactionCollection*>(trxCollection);
         int64_t adjustment = collection->numInserts() - collection->numRemoves();
-        RocksDBCollection *coll = static_cast<RocksDBCollection*>(trxCollection->collection()->getPhysical());
-        coll->adjustNumberDocuments(adjustment);
         
-        if (collection->numInserts() != 0 || collection->numRemoves() != 0) {
+        if (collection->numInserts() != 0 || collection->numRemoves() != 0 || collection->revision() != 0) {
+          RocksDBCollection* coll = static_cast<RocksDBCollection*>(trxCollection->collection()->getPhysical());
+          coll->adjustNumberDocuments(adjustment);
+          coll->setRevision(collection->revision());
           RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-          engine->counterManager()->updateCounter(coll->objectId(), snap, coll->numberDocuments());
+          engine->counterManager()->updateCounter(coll->objectId(), snap, coll->numberDocuments(), collection->revision());
         }
       }
   
@@ -242,6 +242,7 @@ Result RocksDBTransactionState::abortTransaction(
 
 /// @brief add an operation for a transaction collection
 void RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, 
+                                           TRI_voc_rid_t revisionId,
                                            TRI_voc_document_operation_e operationType,
                                            uint64_t operationSize) {
   auto collection = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
@@ -250,7 +251,7 @@ void RocksDBTransactionState::addOperation(TRI_voc_cid_t cid,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found in transaction state");
   }
 
-  collection->addOperation(operationType, operationSize);
+  collection->addOperation(revisionId, operationType, operationSize);
 
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:

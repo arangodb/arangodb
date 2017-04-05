@@ -142,8 +142,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int unload() override;
-
   int drop() override;
 
   /// @brief attempts to locate an entry in the index
