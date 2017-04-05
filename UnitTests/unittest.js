@@ -12,6 +12,8 @@ const fs = require("fs");
 const internal = require("internal");
 const inspect = internal.inspect;
 
+let testOutputDirectory;
+
 function makePathGeneric(path) {
   return path.split(fs.pathSeparator);
 }
@@ -141,7 +143,7 @@ function resultsToXml(results, baseName, cluster) {
 
           const fn = makePathGeneric(baseName + xmlName + ".xml").join('_');
 
-          fs.write("out/" + fn, xml.join(""));
+          fs.write(testOutputDirectory + fn, xml.join(""));
         }
       }
     }
@@ -186,11 +188,17 @@ function main(argv) {
     }
   }
 
+  if (argv.hasOwnProperty('testOutput')} {
+    testOutputDirectory = argv.testOutput;
+  } else {
+    testOutputDirectory = 'out';    
+  }
+  
   // force json reply
   options.jsonReply = true;
 
   // create output directory
-  fs.makeDirectoryRecursive("out");
+  fs.makeDirectoryRecursive(testOutputDirectory);
 
   // run the test and store the result
   let r = {};
@@ -220,7 +228,7 @@ function main(argv) {
   });
 
   // whether or not there was an error 
-  fs.write("out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.status));
+  fs.write(testOutputDirectory + "/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.status));
 
   if (options.writeXmlReport) {
     let j;
@@ -231,8 +239,8 @@ function main(argv) {
       j = inspect(r);
     }
 
-    fs.write("out/UNITTEST_RESULT.json", j);
-    fs.write("out/UNITTEST_RESULT_CRASHED.json", String(r.crashed));
+    fs.write(testOutputDirectory + "/UNITTEST_RESULT.json", j);
+    fs.write(testOutputDirectory + "/UNITTEST_RESULT_CRASHED.json", String(r.crashed));
 
     try {
       resultsToXml(r,
