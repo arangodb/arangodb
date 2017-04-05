@@ -71,7 +71,7 @@ class ShortestPath {
   friend class arangodb::graph::AttributeWeightShortestPathFinder<
       arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
       ShortestPath>;
-  friend class arangodb::graph::ConstDistanceFinder<
+  friend class arangodb::graph::ConstantWeightShortestPathFinder<
       arangodb::velocypack::Slice, arangodb::velocypack::Slice,
       arangodb::basics::VelocyPackHelper::VPackStringHash,
       arangodb::basics::VelocyPackHelper::VPackStringEqual, ShortestPath>;

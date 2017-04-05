@@ -30,7 +30,7 @@ namespace arangodb {
 namespace graph {
 
 template <typename VertexId, typename EdgeId, typename HashFuncType, typename EqualFuncType, typename Path>
-class ConstDistanceFinder : public ShortestPathFinder<VertexId, Path> {
+class ConstantWeightShortestPathFinder : public ShortestPathFinder<VertexId, Path> {
  public:
 
   //////////////////////////////////////////////////////////////////////////////
@@ -59,10 +59,10 @@ class ConstDistanceFinder : public ShortestPathFinder<VertexId, Path> {
   ExpanderFunction _rightNeighborExpander;
 
  public:
-  ConstDistanceFinder(ExpanderFunction left, ExpanderFunction right)
+  ConstantWeightShortestPathFinder(ExpanderFunction left, ExpanderFunction right)
       : _leftNeighborExpander(left), _rightNeighborExpander(right) {}
 
-  ~ConstDistanceFinder() {
+  ~ConstantWeightShortestPathFinder() {
     clearVisited();
   }
 
