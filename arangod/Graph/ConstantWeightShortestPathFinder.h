@@ -26,34 +26,36 @@
 
 #include "Graph/ShortestPathFinder.h"
 
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 namespace graph {
 
-template <typename VertexId, typename EdgeId, typename HashFuncType, typename EqualFuncType, typename Path>
-class ConstantWeightShortestPathFinder : public ShortestPathFinder<VertexId, Path> {
+template <typename EdgeId, typename HashFuncType, typename EqualFuncType, typename Path>
+class ConstantWeightShortestPathFinder : public ShortestPathFinder<Path> {
  public:
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callback to find neighbors
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::function<void(VertexId& V, std::vector<EdgeId>& edges,
-                             std::vector<VertexId>& neighbors)>
+  typedef std::function<void(arangodb::velocypack::Slice& V, std::vector<EdgeId>& edges,
+                             std::vector<arangodb::velocypack::Slice>& neighbors)>
       ExpanderFunction;
 
  private:
   struct PathSnippet {
-    VertexId const _pred;
+    arangodb::velocypack::Slice const _pred;
     EdgeId const _path;
 
-    PathSnippet(VertexId& pred, EdgeId& path) : _pred(pred), _path(path) {}
+    PathSnippet(arangodb::velocypack::Slice& pred, EdgeId& path) : _pred(pred), _path(path) {}
   };
 
-  std::unordered_map<VertexId, PathSnippet*, HashFuncType, EqualFuncType> _leftFound;
-  std::deque<VertexId> _leftClosure;
+  std::unordered_map<arangodb::velocypack::Slice, PathSnippet*, HashFuncType, EqualFuncType> _leftFound;
+  std::deque<arangodb::velocypack::Slice> _leftClosure;
 
-  std::unordered_map<VertexId, PathSnippet*, HashFuncType, EqualFuncType> _rightFound;
-  std::deque<VertexId> _rightClosure;
+  std::unordered_map<arangodb::velocypack::Slice, PathSnippet*, HashFuncType, EqualFuncType> _rightFound;
+  std::deque<arangodb::velocypack::Slice> _rightClosure;
 
   ExpanderFunction _leftNeighborExpander;
   ExpanderFunction _rightNeighborExpander;
@@ -66,7 +68,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder<VertexId, Pat
     clearVisited();
   }
 
-  bool shortestPath(VertexId const& start, VertexId const& end, 
+  bool shortestPath(arangodb::velocypack::Slice const& start, arangodb::velocypack::Slice const& end, 
                     Path& result, std::function<void()> const& callback) override {
     result.clear();
     // Init
@@ -88,8 +90,8 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder<VertexId, Pat
     }
 
     std::vector<EdgeId> edges;
-    std::vector<VertexId> neighbors;
-    std::deque<VertexId> nextClosure;
+    std::vector<arangodb::velocypack::Slice> neighbors;
+    std::deque<arangodb::velocypack::Slice> nextClosure;
     while (!_leftClosure.empty() && !_rightClosure.empty()) {
       callback();
 
@@ -97,19 +99,19 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder<VertexId, Pat
       neighbors.clear();
       nextClosure.clear();
       if (_leftClosure.size() < _rightClosure.size()) {
-        for (VertexId& v : _leftClosure) {
+        for (arangodb::velocypack::Slice& v : _leftClosure) {
           _leftNeighborExpander(v, edges, neighbors);
           size_t const neighborsSize = neighbors.size();
           TRI_ASSERT(edges.size() == neighborsSize);
           for (size_t i = 0; i < neighborsSize; ++i) {
-            VertexId const& n = neighbors[i];
+            arangodb::velocypack::Slice const& n = neighbors[i];
             if (_leftFound.find(n) == _leftFound.end()) {
               auto leftFoundIt = _leftFound.emplace(n, new PathSnippet(v, edges[i])).first;
               auto rightFoundIt = _rightFound.find(n);
               if (rightFoundIt != _rightFound.end()) {
                 result._vertices.emplace_back(n);
                 auto it = leftFoundIt;
-                VertexId next;
+                arangodb::velocypack::Slice next;
                 while (it != _leftFound.end() && it->second != nullptr) {
                   next = it->second->_pred;
                   result._vertices.push_front(next);
@@ -136,19 +138,19 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder<VertexId, Pat
         _leftClosure = std::move(nextClosure);
         nextClosure.clear();
       } else {
-        for (VertexId& v : _rightClosure) {
+        for (arangodb::velocypack::Slice& v : _rightClosure) {
           _rightNeighborExpander(v, edges, neighbors);
           size_t const neighborsSize = neighbors.size();
           TRI_ASSERT(edges.size() == neighborsSize);
           for (size_t i = 0; i < neighborsSize; ++i) {
-            VertexId const& n = neighbors[i];
+            arangodb::velocypack::Slice const& n = neighbors[i];
             if (_rightFound.find(n) == _rightFound.end()) {
               auto rightFoundIt = _rightFound.emplace(n, new PathSnippet(v, edges[i])).first;
               auto leftFoundIt = _leftFound.find(n);
               if (leftFoundIt != _leftFound.end()) {
                 result._vertices.emplace_back(n);
                 auto it = leftFoundIt;
-                VertexId next;
+                arangodb::velocypack::Slice next;
                 while (it != _leftFound.end() && it->second != nullptr) {
                   next = it->second->_pred;
                   result._vertices.push_front(next);

@@ -26,10 +26,12 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 namespace graph {
 
-template <typename VertexId, typename Path>
+template <typename Path>
 class ShortestPathFinder {
  protected:
   ShortestPathFinder() {}
@@ -37,9 +39,11 @@ class ShortestPathFinder {
  public:
   virtual ~ShortestPathFinder() {}
 
-  virtual bool shortestPath(VertexId const& start, VertexId const& target,
+  virtual bool shortestPath(arangodb::velocypack::Slice const& start,
+                            arangodb::velocypack::Slice const& target,
                             Path& result,
                             std::function<void()> const& callback) = 0;
+
 };
 
 }  // namespace graph

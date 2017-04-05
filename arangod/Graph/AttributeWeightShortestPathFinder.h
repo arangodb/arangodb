@@ -32,13 +32,13 @@
 
 #include <thread>
 
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 namespace graph {
 
-template <typename VertexId, typename EdgeId, typename EdgeWeight,
-          typename Path>
-class AttributeWeightShortestPathFinder
-    : public ShortestPathFinder<VertexId, Path> {
+template <typename EdgeId, typename EdgeWeight, typename Path>
+class AttributeWeightShortestPathFinder : public ShortestPathFinder<Path> {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Step, one position with a predecessor and the edge
@@ -49,14 +49,15 @@ class AttributeWeightShortestPathFinder
     EdgeWeight _weight;
 
    public:
-    VertexId _vertex;
-    VertexId _predecessor;
+    arangodb::velocypack::Slice _vertex;
+    arangodb::velocypack::Slice _predecessor;
     EdgeId _edge;
     bool _done;
 
     Step() : _done(false) {}
 
-    Step(VertexId const& vert, VertexId const& pred, EdgeWeight weig,
+    Step(arangodb::velocypack::Slice const& vert,
+         arangodb::velocypack::Slice const& pred, EdgeWeight weig,
          EdgeId const& edge)
         : _weight(weig),
           _vertex(vert),
@@ -68,7 +69,7 @@ class AttributeWeightShortestPathFinder
 
     void setWeight(EdgeWeight w) { _weight = w; }
 
-    VertexId const& getKey() const { return _vertex; }
+    arangodb::velocypack::Slice const& getKey() const { return _vertex; }
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -81,14 +82,16 @@ class AttributeWeightShortestPathFinder
   /// @brief callback to find neighbors
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::function<void(VertexId const&, std::vector<Step*>&)>
+  typedef std::function<void(arangodb::velocypack::Slice const&,
+                             std::vector<Step*>&)>
       ExpanderFunction;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::graph::ShortestPathPriorityQueue<VertexId, Step, EdgeWeight>
+  typedef arangodb::graph::ShortestPathPriorityQueue<
+      arangodb::velocypack::Slice, Step, EdgeWeight>
       PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -108,15 +111,15 @@ class AttributeWeightShortestPathFinder
     AttributeWeightShortestPathFinder* _pathFinder;
     ThreadInfo& _myInfo;
     ThreadInfo& _peerInfo;
-    VertexId _start;
+    arangodb::velocypack::Slice _start;
     ExpanderFunction _expander;
     std::string _id;
 
    public:
     SearcherTwoThreads(AttributeWeightShortestPathFinder* pathFinder,
                        ThreadInfo& myInfo, ThreadInfo& peerInfo,
-                       VertexId const& start, ExpanderFunction expander,
-                       std::string const& id)
+                       arangodb::velocypack::Slice const& start,
+                       ExpanderFunction expander, std::string const& id)
         : _pathFinder(pathFinder),
           _myInfo(myInfo),
           _peerInfo(peerInfo),
@@ -157,7 +160,7 @@ class AttributeWeightShortestPathFinder
     /// @brief Lookup our current vertex in the data of our peer.
     ////////////////////////////////////////////////////////////////////////////////
 
-    void lookupPeer(VertexId& vertex, EdgeWeight weight) {
+    void lookupPeer(arangodb::velocypack::Slice& vertex, EdgeWeight weight) {
       MUTEX_LOCKER(locker, _peerInfo._mutex);
 
       Step* s = _peerInfo._pq.find(vertex);
@@ -214,7 +217,7 @@ class AttributeWeightShortestPathFinder
 
     void run() {
       try {
-        VertexId v;
+        arangodb::velocypack::Slice v;
         Step* s;
         bool b;
         {
@@ -279,13 +282,13 @@ class AttributeWeightShortestPathFinder
     AttributeWeightShortestPathFinder* _pathFinder;
     ThreadInfo& _myInfo;
     ThreadInfo& _peerInfo;
-    VertexId _start;
+    arangodb::velocypack::Slice _start;
     ExpanderFunction _expander;
     std::string _id;
 
    public:
     Searcher(AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-             ThreadInfo& peerInfo, VertexId const& start,
+             ThreadInfo& peerInfo, arangodb::velocypack::Slice const& start,
              ExpanderFunction expander, std::string const& id)
         : _pathFinder(pathFinder),
           _myInfo(myInfo),
@@ -320,7 +323,7 @@ class AttributeWeightShortestPathFinder
     /// @brief Lookup our current vertex in the data of our peer.
     ////////////////////////////////////////////////////////////////////////////////
 
-    void lookupPeer(VertexId& vertex, EdgeWeight weight) {
+    void lookupPeer(arangodb::velocypack::Slice& vertex, EdgeWeight weight) {
       Step* s = _peerInfo._pq.find(vertex);
 
       if (s == nullptr) {
@@ -373,7 +376,7 @@ class AttributeWeightShortestPathFinder
 
    public:
     bool oneStep() {
-      VertexId v;
+      arangodb::velocypack::Slice v;
       Step* s = nullptr;
       bool b = _myInfo._pq.popMinimal(v, s, true);
 
@@ -438,7 +441,8 @@ class AttributeWeightShortestPathFinder
   // Caller has to free the result
   // If this returns true there is a path, if this returns false there is no
   // path
-  bool shortestPath(VertexId const& start, VertexId const& target, Path& result,
+  bool shortestPath(arangodb::velocypack::Slice const& start,
+                    arangodb::velocypack::Slice const& target, Path& result,
                     std::function<void()> const& callback) override {
     // For the result:
     result.clear();
@@ -448,7 +452,7 @@ class AttributeWeightShortestPathFinder
     _intermediateSet = false;
 
     // Forward with initialization:
-    VertexId emptyVertex;
+    arangodb::velocypack::Slice emptyVertex;
     EdgeId emptyEdge;
     ThreadInfo forward;
     forward._pq.insert(start, new Step(start, emptyVertex, 0, emptyEdge));
@@ -529,7 +533,9 @@ class AttributeWeightShortestPathFinder
   // If this returns true there is a path, if this returns false there is no
   // path
 
-  bool shortestPathTwoThreads(VertexId& start, VertexId& target, Path& result) {
+  bool shortestPathTwoThreads(arangodb::velocypack::Slice& start,
+                              arangodb::velocypack::Slice& target,
+                              Path& result) {
     // For the result:
     result.clear();
     _highscoreSet = false;
@@ -537,7 +543,7 @@ class AttributeWeightShortestPathFinder
     _bingo = false;
 
     // Forward with initialization:
-    VertexId emptyVertex;
+    arangodb::velocypack::Slice emptyVertex;
     EdgeId emptyEdge;
     ThreadInfo forward;
     forward._pq.insert(start, new Step(start, emptyVertex, 0, emptyEdge));
@@ -718,7 +724,7 @@ class AttributeWeightShortestPathFinder
   //////////////////////////////////////////////////////////////////////////////
 
   bool _intermediateSet;
-  VertexId _intermediate;
+  arangodb::velocypack::Slice _intermediate;
 
  private:
   ExpanderFunction _forwardExpander;
