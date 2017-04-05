@@ -25,7 +25,6 @@
 #define ARANGODB_GRAPH_CONSTANT_WEIGHT_SHORTEST_PATH_FINDER_H 1
 
 #include "Graph/ShortestPathFinder.h"
-#include "Graph/ShortestPathPriorityQueue.h"
 
 namespace arangodb {
 namespace graph {

@@ -87,7 +87,7 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::graph::PriorityQueue<VertexId, Step, EdgeWeight> PQueue;
+  typedef arangodb::graph::ShortestPathPriorityQueue<VertexId, Step, EdgeWeight> PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief information for each thread
