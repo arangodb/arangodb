@@ -897,7 +897,6 @@ arangodb::Result RocksDBCollection::fillIndexes(transaction::Methods* trx,
   std::unique_ptr<IndexIterator> iter(primaryIndex()->allIterator(trx, &mmr, false));
   int res = TRI_ERROR_NO_ERROR;
   
-  std::vector<DocumentIdentifierToken> tokens;
   auto cb = [&](DocumentIdentifierToken token) {
     if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmr)) {
         RocksDBIndex *ridx = static_cast<RocksDBIndex*>(added.get());
