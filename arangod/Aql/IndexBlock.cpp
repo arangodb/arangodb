@@ -46,13 +46,15 @@ using namespace arangodb::aql;
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
       _collection(en->collection()),
-      _posInDocs(0),
       _currentIndex(0),
       _indexes(en->getIndexes()),
       _cursor(nullptr),
       _cursors(_indexes.size()),
       _condition(en->_condition->root()),
       _hasV8Expression(false),
+      _indexesExhausted(false),
+      _isLastIndex(false),
+      _returned(0),
       _collector(&_engine->_itemBlockManager) {
   _mmdr.reset(new ManagedDocumentResult);
  
@@ -338,10 +340,12 @@ bool IndexBlock::initIndexes() {
       }
     } else {
       _cursor = nullptr;
+      _indexesExhausted = true;
       // We were not able to initialize any index with this condition
       return false;
     }
   }
+  _indexesExhausted = false;
   return true;
 
   // cppcheck-suppress style
@@ -352,7 +356,6 @@ bool IndexBlock::initIndexes() {
 void IndexBlock::createCursor() {
   DEBUG_BEGIN_BLOCK();
   _cursor = orderCursor(_currentIndex);
-  _result.clear();
   DEBUG_END_BLOCK();
 }
 
@@ -363,8 +366,10 @@ void IndexBlock::startNextCursor() {
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   if (node->_reverse) {
     --_currentIndex;
+    _isLastIndex = (_currentIndex == 0);
   } else {
     ++_currentIndex;
+    _isLastIndex = (_currentIndex == _indexes.size() - 1);
   }
   if (_currentIndex < _indexes.size()) {
     // This check will work as long as _indexes.size() < MAX_SIZE_T
@@ -375,37 +380,15 @@ void IndexBlock::startNextCursor() {
   DEBUG_END_BLOCK();
 }
 
-// this is called every time everything in _documents has been passed on
 
-bool IndexBlock::readIndex(size_t atMost) {
+// this is called every time we just skip in the index
+bool IndexBlock::skipIndex(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  // this is called every time we want more in _documents.
-  // For the primary key index, this only reads the index once, and never
-  // again (although there might be multiple calls to this function).
-  // For the edge, hash or skiplists indexes, initIndexes creates an iterator
-  // and read*Index just reads from the iterator until it is done.
-  // Then initIndexes is read again and so on. This is to avoid reading the
-  // entire index when we only want a small number of documents.
 
-  if (_documents.empty()) {
-    TRI_IF_FAILURE("IndexBlock::readIndex") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    _documents.reserve(atMost);
-  } else {
-    _documents.clear();
-  }
-
-  if (_cursor == nullptr) {
+  if (_cursor == nullptr || _indexesExhausted) {
     // All indexes exhausted
     return false;
   }
-
-  size_t lastIndexNr = _indexes.size() - 1;
-  bool isReverse = (static_cast<IndexNode const*>(getPlanNode()))->_reverse;
-  bool isLastIndex = (_currentIndex == lastIndexNr && !isReverse) ||
-                     (_currentIndex == 0 && isReverse);
-  bool const hasMultipleIndexes = (_indexes.size() > 1); 
 
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
@@ -413,63 +396,65 @@ bool IndexBlock::readIndex(size_t atMost) {
       continue;
     }
 
-    LogicalCollection* collection = _cursor->collection();
-    _result.clear();
-    auto cb = [&] (DocumentIdentifierToken const& token) {
-      _result.emplace_back(token);
-    };
-    // TODO We can optimize this place by allowing the
-    // index to directly write into AQLItemBlock
-    // instead of the local _result cache.
-    _cursor->getMore(cb, atMost);
-
-    size_t length = _result.size();
-
-    if (length == 0) {
-      startNextCursor();
-      continue;
+    if (_returned == atMost) {
+      // We have skipped enough, do not check if we have more
+      return true;
     }
-
-    _engine->_stats.scannedIndex += length;
 
     TRI_IF_FAILURE("IndexBlock::readIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-     
 
-    if (hasMultipleIndexes) {
-      for (auto const& element : _result) {
-        if (collection->readDocument(_trx, element, *_mmdr)) {
-          uint8_t const* vpack = _mmdr->vpack(); //back();
-          // uniqueness checks
-          if (!isLastIndex) {
-            // insert & check for duplicates in one go
-            if (_alreadyReturned.emplace(element).second) {
-              _documents.emplace_back(vpack);
-            }
-          } else {
-            // only check for duplicates
-            if (_alreadyReturned.find(element) == _alreadyReturned.end()) {
-              _documents.emplace_back(vpack);
-            }
-          }
-        }
-      }
-    } else {
-      for (auto const& element : _result) {
-        if (collection->readDocument(_trx, element, *_mmdr)) {
-          uint8_t const* vpack = _mmdr->vpack(); //back();
-          _documents.emplace_back(vpack);
-        }
-      } 
-    }
-    // Leave the loop here, we can only exhaust one cursor at a time, otherwise slices are lost
-    if (!_documents.empty()) {
-      break;
+    if (_cursor->skip(atMost - _returned, _returned)) {
+      // We have skipped enough.
+      // And this index could return more.
+      // We are good.
+      return true;
     }
   }
-  _posInDocs = 0;
-  return (!_documents.empty());
+  return false;
+}
+
+// this is called every time we need to fetch data from the indexes
+bool IndexBlock::readIndex(size_t atMost, std::function<void(DocumentIdentifierToken const&)>& callback) {
+  DEBUG_BEGIN_BLOCK();
+  // this is called every time we want to read the index.
+  // For the primary key index, this only reads the index once, and never
+  // again (although there might be multiple calls to this function).
+  // For the edge, hash or skiplists indexes, initIndexes creates an iterator
+  // and read*Index just reads from the iterator until it is done.
+  // Then initIndexes is read again and so on. This is to avoid reading the
+  // entire index when we only want a small number of documents.
+
+  if (_cursor == nullptr || _indexesExhausted) {
+    // All indexes exhausted
+    return false;
+  }
+
+  while (_cursor != nullptr) {
+    if (!_cursor->hasMore()) {
+      startNextCursor();
+      continue;
+    }
+
+    if (_returned == atMost) {
+      // We have returned enough, do not check if we have more
+      return true;
+    }
+
+    TRI_IF_FAILURE("IndexBlock::readIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    if (_cursor->getMore(callback, atMost - _returned)) {
+      // We have returned enough.
+      // And this index could return more.
+      // We are good.
+      return true;
+    }
+  }
+  // if we get here the indexes are exhausted.
+  return false;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -485,8 +470,8 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   }
   
   _alreadyReturned.clear();
+  _returned = 0;
   _pos = 0;
-  _posInDocs = 0;
 
   return TRI_ERROR_NO_ERROR;
 
@@ -503,103 +488,140 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     return _collector.steal();
   }
  
+  TRI_ASSERT(atMost > 0);
+  size_t curRegs;
+
   std::unique_ptr<AqlItemBlock> res;
 
-  do {
-    // repeatedly try to get more stuff from upstream
-    // note that the value of the variable we have to loop over
-    // can contain zero entries, in which case we have to
-    // try again!
+  std::function<void(DocumentIdentifierToken const& token)> callback;
+  if (_indexes.size() > 1) {
+    // Activate uniqueness checks
+    callback = [&](DocumentIdentifierToken const& token) {
+      TRI_ASSERT(res.get() != nullptr);
+      if (!_isLastIndex) {
+        // insert & check for duplicates in one go
+        if (!_alreadyReturned.emplace(token).second) {
+          // Document already in list. Skip this
+          return;
+        }
+      } else {
+        // only check for duplicates
+        if (_alreadyReturned.find(token) != _alreadyReturned.end()) {
+          // Document found, skip
+          return;
+        }
+      }
+      if (_cursor->collection()->readDocument(_trx, token, *_mmdr)) {
+        res->setValue(_returned, static_cast<arangodb::aql::RegisterId>(curRegs),
+            _mmdr->createAqlValue());
 
+        if (_returned > 0) {
+          // re-use already copied AqlValues
+          res->copyValuesFromFirstRow(_returned, static_cast<RegisterId>(curRegs));
+        }
+        ++_returned;
+      }
+      // What happens in else case?
+      // Index has stored a document the primary store does not know
+    };
+  } else {
+    // No uniqueness checks
+    callback = [&](DocumentIdentifierToken const& token) {
+      TRI_ASSERT(res.get() != nullptr);
+      if (_cursor->collection()->readDocument(_trx, token, *_mmdr)) {
+        res->setValue(_returned, static_cast<arangodb::aql::RegisterId>(curRegs),
+            _mmdr->createAqlValue());
+
+        if (_returned > 0) {
+          // re-use already copied AqlValues
+          res->copyValuesFromFirstRow(_returned, static_cast<RegisterId>(curRegs));
+        }
+        ++_returned;
+      }
+      // What happens in else case?
+      // Index has stored a document the primary store does not know
+    };
+  }
+
+  size_t found = 0;
+  do {
+    _returned = 0;
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
-        traceGetSomeEnd(nullptr);
-        return _collector.steal();
+        break;
       }
-      _pos = 0;  // this is in the first block
-
-      // This is a new item, so let's read the index (it is already
-      // initialized).
-      readIndex(atMost);
-    } else if (_posInDocs >= _documents.size()) {
-      // we have exhausted our local documents buffer,
-
-      if (!readIndex(atMost)) {  // no more output from this version of the
-                                 // index
-        AqlItemBlock* cur = _buffer.front();
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          returnBlock(cur);
-          _pos = 0;
-        }
-        if (_buffer.empty()) {
-          if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
-            _done = true;
-            traceGetSomeEnd(nullptr);
-            return _collector.steal();
-          }
-          _pos = 0;  // this is in the first block
-        }
-
-        if (!initIndexes()) {
+      TRI_ASSERT(!_indexesExhausted);
+    }
+    if (_indexesExhausted) {
+      AqlItemBlock* cur = _buffer.front();
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();  // does not throw
+        returnBlock(cur);
+      }
+      if (_buffer.empty()) {
+        if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
           _done = true;
-          traceGetSomeEnd(nullptr);
-          return _collector.steal();
+          break;
         }
-        readIndex(atMost);
       }
+
+      if (!initIndexes()) {
+        _done = true;
+        break;
+      }
+      TRI_ASSERT(!_indexesExhausted);
     }
 
-    // If we get here, we do have _buffer.front() and _pos points into it
+    // We only get here with non-exhausted indexes.
+    // At least one of them is prepared and ready to read.
+    TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
-    size_t const curRegs = cur->getNrRegs();
+    curRegs = cur->getNrRegs();
 
-    size_t available = _documents.size() - _posInDocs;
-    size_t toSend = (std::min)(atMost, available);
+    res.reset(requestBlock(atMost - found, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
-    if (toSend > 0) {
-      // automatically freed should we throw
-      res.reset(requestBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+    TRI_ASSERT(curRegs <= res->getNrRegs());
 
-      TRI_ASSERT(curRegs <= res->getNrRegs());
 
-      // only copy 1st row of registers inherited from previous frame(s)
-      inheritRegisters(cur, res.get(), _pos);
-
-      for (size_t j = 0; j < toSend; j++) {
-        // The result is in the first variable of this depth,
-        // we do not need to do a lookup in
-        // getPlanNode()->_registerPlan->varInfo,
-        // but can just take cur->getNrRegs() as registerId:
-        auto doc = _documents[_posInDocs++];
-        TRI_ASSERT(!doc.isExternal());
-        // doc points directly into the data files
-        res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValue(doc.begin(), AqlValueFromManagedDocument()));
-        // No harm done, if the setValue throws!
-        
-        if (j > 0) {
-          // re-use already copied AqlValues
-          res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
-        }
+    // only copy 1st row of registers inherited from previous frame(s)
+    inheritRegisters(cur, res.get(), _pos);
+    
+    // Read the next (atMost - j) many elements from the indexes
+    _indexesExhausted = !readIndex(atMost - found, callback);
+    if (_returned > 0) {
+      if (_returned < atMost - found) {
+        // We have prepared too many entries, we could only fill less.
+        // Shrink the block
+        res->shrink(_returned, false);
       }
-
       _collector.add(std::move(res));
-      TRI_ASSERT(res.get() == nullptr);
-
-      if (_collector.totalSize() >= atMost) {
-        res.reset(_collector.steal());
-      }
+    } else {
+      // No results. Kill the registers
+      res.reset();
     }
+    TRI_ASSERT(res.get() == nullptr);
 
-  } while (res.get() == nullptr);
+    // Update statistics
+    _engine->_stats.scannedIndex += _returned;
+    found += _returned;
+  } while (found < atMost);
+
+  TRI_ASSERT(found == _collector.totalSize());
+
+  if (found == 0) {
+    // We have not found anything at all.
+    // Return a nullptr.
+    return _collector.steal();
+  }
+
+  res.reset(_collector.steal());
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   traceGetSomeEnd(res.get());
-  
+
   return res.release();
 
   // cppcheck-suppress style
@@ -613,56 +635,47 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
     return 0;
   }
 
-  size_t skipped = 0;
+  _returned = 0;
 
-  while (skipped < atLeast) {
+  while (_returned < atLeast) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
-        return skipped;
+        break;
       }
+      TRI_ASSERT(!_indexesExhausted);
       _pos = 0;  // this is in the first block
-
-      // This is a new item, so let's read the index if bounds are variable:
-      readIndex(atMost);
     }
-
-    size_t available = _documents.size() - _posInDocs;
-    size_t toSkip = (std::min)(atMost - skipped, available);
-
-    _posInDocs += toSkip;
-    skipped += toSkip;
-
-    // Advance read position:
-    if (_posInDocs >= _documents.size()) {
-      // we have exhausted our local documents buffer,
-      if (!readIndex(atMost)) {
-        // If we get here, we do have _buffer.front() and _pos points into it
-        AqlItemBlock* cur = _buffer.front();
-
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          returnBlock(cur);
-          _pos = 0;
+    if (_indexesExhausted) {
+      AqlItemBlock* cur = _buffer.front();
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();  // does not throw
+        returnBlock(cur);
+        _pos = 0;
+      }
+      if (_buffer.empty()) {
+        if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+          _done = true;
+          break;
         }
-
-        // let's read the index if bounds are variable:
-        if (!_buffer.empty()) {
-          if (!initIndexes()) {
-            _done = true;
-            return skipped;
-          }
-          readIndex(atMost);
-        }
+        _pos = 0;  // this is in the first block
       }
 
-      // If _buffer is empty, then we will fetch a new block in the next round
-      // and then read the index.
+      if (!initIndexes()) {
+        _done = true;
+        break;
+      }
+      TRI_ASSERT(!_indexesExhausted);
     }
+
+    // We only get here with non-exhausted indexes.
+    // At least one of them is prepared and ready to read.
+    TRI_ASSERT(!_indexesExhausted);
+    _indexesExhausted = !skipIndex(atMost);
   }
 
-  return skipped;
+  return _returned;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

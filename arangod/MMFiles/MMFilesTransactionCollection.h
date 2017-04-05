@@ -78,8 +78,6 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   /// @brief request an unlock for a collection
   int doUnlock(AccessMode::Type, int nestingLevel);
 
-  bool isWrite(AccessMode::Type type) const;
-
  private:
   std::vector<MMFilesDocumentOperation*>* _operations;
   TRI_voc_rid_t _originalRevision;   // collection revision at trx start

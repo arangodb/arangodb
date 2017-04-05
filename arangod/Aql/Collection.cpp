@@ -32,6 +32,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -61,7 +62,7 @@ TRI_voc_cid_t Collection::cid() const {
 }
   
 /// @brief count the number of documents in the collection
-size_t Collection::count() const {
+size_t Collection::count(transaction::Methods* trx) const {
   if (numDocuments == UNINITIALIZED) {
     if (arangodb::ServerState::instance()->isCoordinator()) {
       // cluster case
@@ -79,7 +80,7 @@ size_t Collection::count() const {
     } else {
       // local case
       // cache the result
-      numDocuments = static_cast<int64_t>(collection->numberDocuments());
+      numDocuments = static_cast<int64_t>(collection->numberDocuments(trx));
     }
   }
 

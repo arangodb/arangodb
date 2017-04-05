@@ -328,7 +328,10 @@ class VelocyPackHelper {
   /// @brief convert a Object sub value into a uint64
   //////////////////////////////////////////////////////////////////////////////
 
-  static uint64_t stringUInt64(VPackSlice const&);
+  static uint64_t stringUInt64(VPackSlice const& slice);
+  static uint64_t stringUInt64(VPackSlice const& slice, char const* name) {
+    return stringUInt64(slice.get(name));
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses a json file to VelocyPack

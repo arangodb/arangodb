@@ -52,7 +52,7 @@ SchedulerFeature::SchedulerFeature(
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("Database");
+  // startsAfter("Database");
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
@@ -182,12 +182,11 @@ void SchedulerFeature::stop() {
     LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
     usleep(100000);
   }
+  
+  _scheduler->shutdown();
 }
 
 void SchedulerFeature::unprepare() {
-  if (_scheduler != nullptr) {
-    _scheduler->shutdown();
-  }
   SCHEDULER = nullptr;
 }
 

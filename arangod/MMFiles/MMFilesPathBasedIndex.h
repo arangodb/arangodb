@@ -37,27 +37,6 @@ enum AstNodeType : uint32_t;
 class FixedSizeAllocator;
 
 class MMFilesPathBasedIndex : public Index {
- protected:
-  struct PermutationState {
-    PermutationState(arangodb::aql::AstNodeType type,
-                     arangodb::aql::AstNode const* value,
-                     size_t attributePosition, size_t n)
-        : type(type),
-          value(value),
-          attributePosition(attributePosition),
-          current(0),
-          n(n) {
-      TRI_ASSERT(n > 0);
-    }
-
-    arangodb::aql::AstNode const* getValue() const;
-
-    arangodb::aql::AstNodeType type;
-    arangodb::aql::AstNode const* value;
-    size_t const attributePosition;
-    size_t current;
-    size_t const n;
-  };
 
  public:
   MMFilesPathBasedIndex() = delete;

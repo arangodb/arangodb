@@ -48,6 +48,7 @@ LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");
 LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::DEVEL("development", LogLevel::FATAL);
+LogTopic Logger::ENGINES("engines", LogLevel::INFO);
 LogTopic Logger::FIXME("fixme", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);

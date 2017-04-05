@@ -29,6 +29,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CANNOT_CREATE_TEMP_FILE, "cannot create temporary file");
   REG_ERROR(ERROR_REQUEST_CANCELED, "canceled request");
   REG_ERROR(ERROR_DEBUG, "intentional debug error");
+  REG_ERROR(ERROR_NOT_YET_IMPLEMENTED, "not yet implemented");
   REG_ERROR(ERROR_IP_ADDRESS_INVALID, "IP address is invalid");
   REG_ERROR(ERROR_FILE_EXISTS, "file exists");
   REG_ERROR(ERROR_LOCKED, "locked");
@@ -105,6 +106,10 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_REV_BAD, "illegal document revision");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_ARANGO_EMPTY_DATADIR, "server database directory is empty");
+  REG_ERROR(ERROR_ARANGO_TRY_AGAIN, "operation should be tried again");
+  REG_ERROR(ERROR_ARANGO_BUSY, "engine is busy");
+  REG_ERROR(ERROR_ARANGO_MERGE_IN_PROGRESS, "merge in progress");
+  REG_ERROR(ERROR_ARANGO_IO_ERROR, "storage engine I/O error");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
   REG_ERROR(ERROR_REPLICATION_INVALID_RESPONSE, "invalid response");
   REG_ERROR(ERROR_REPLICATION_MASTER_ERROR, "master error");

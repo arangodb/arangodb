@@ -29,8 +29,6 @@
 
 #include <velocypack/Builder.h>
 
-struct MMFilesMarker;
-
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -63,11 +61,7 @@ class PhysicalCollection {
 
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) = 0;
 
-  virtual TRI_voc_rid_t revision() const = 0;
-
-  virtual int64_t initialCount() const = 0;
-
-  virtual void updateCount(int64_t) = 0;
+  virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
@@ -81,9 +75,7 @@ class PhysicalCollection {
   virtual int close() = 0;
   
   // @brief Return the number of documents in this collection
-  virtual uint64_t numberDocuments() const = 0;
-
-  virtual void sizeHint(transaction::Methods* trx, int64_t hint) = 0;
+  virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
 
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
@@ -94,9 +86,6 @@ class PhysicalCollection {
   /// @brief iterate all markers of a collection on load
   virtual int iterateMarkersOnLoad(transaction::Methods* trx) = 0;
   
-  virtual uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const = 0;
-  virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;
-
   virtual bool isFullyCollected() const = 0;
 
   void drop();
@@ -129,7 +118,8 @@ class PhysicalCollection {
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr) = 0;
-  virtual void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback) = 0;
+  virtual void invokeOnAllElements(transaction::Methods* trx,
+                                   std::function<bool(DocumentIdentifierToken const&)> callback) = 0;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --

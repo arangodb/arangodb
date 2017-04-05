@@ -53,6 +53,9 @@
 ///   Will be raised when a request is canceled by the user.
 /// - 22: @LIT{intentional debug error}
 ///   Will be raised intentionally during debugging.
+/// - 23: @LIT{not yet implemented}
+///   Will be raised when hitting an unimplemented feature that will be
+///   implemented soon.
 /// - 25: @LIT{IP address is invalid}
 ///   Will be raised when the structure of an IP address is invalid.
 /// - 27: @LIT{file exists}
@@ -234,6 +237,15 @@
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
 ///   Will be raised when encountering an empty server database directory.
+/// - 1302: @LIT{operation should be tried again}
+///   Will be raised when an operation should be retried.
+/// - 1303: @LIT{engine is busy}
+///   Will be raised when storage engine is busy.
+/// - 1304: @LIT{merge in progress}
+///   Will be raised when storage engine has a datafile merge in progress and
+///   cannot complete the operation.
+/// - 1305: @LIT{storage engine I/O error}
+///   Will be raised when storage engine encounters an I/O error.
 /// - 1400: @LIT{no response}
 ///   Will be raised when the replication applier does not receive any or an
 ///   incomplete response from the master.
@@ -905,6 +917,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_DEBUG                                                   (22)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 23: ERROR_NOT_YET_IMPLEMENTED
+///
+/// not yet implemented
+///
+/// Will be raised when hitting an unimplemented feature that will be
+/// implemented soon.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_NOT_YET_IMPLEMENTED                                     (23)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 25: ERROR_IP_ADDRESS_INVALID
@@ -1690,6 +1713,47 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_EMPTY_DATADIR                                    (1301)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1302: ERROR_ARANGO_TRY_AGAIN
+///
+/// operation should be tried again
+///
+/// Will be raised when an operation should be retried.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_TRY_AGAIN                                        (1302)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1303: ERROR_ARANGO_BUSY
+///
+/// engine is busy
+///
+/// Will be raised when storage engine is busy.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_BUSY                                             (1303)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1304: ERROR_ARANGO_MERGE_IN_PROGRESS
+///
+/// merge in progress
+///
+/// Will be raised when storage engine has a datafile merge in progress and
+/// cannot complete the operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_MERGE_IN_PROGRESS                                (1304)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1305: ERROR_ARANGO_IO_ERROR
+///
+/// storage engine I/O error
+///
+/// Will be raised when storage engine encounters an I/O error.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_IO_ERROR                                         (1305)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1400: ERROR_REPLICATION_NO_RESPONSE

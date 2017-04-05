@@ -148,10 +148,10 @@ class LogicalCollection {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString() const;
 
-  uint64_t numberDocuments() const;
+  uint64_t numberDocuments(transaction::Methods*) const;
 
   // SECTION: Properties
-  TRI_voc_rid_t revision() const;
+  TRI_voc_rid_t revision(transaction::Methods*) const;
   bool isLocal() const;
   bool deleted() const;
   bool isSystem() const;
@@ -169,7 +169,7 @@ class LogicalCollection {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr);
 
-  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback);
+  void invokeOnAllElements(transaction::Methods* trx, std::function<bool(DocumentIdentifierToken const&)> callback);
 
 
   // SECTION: Indexes
@@ -226,10 +226,6 @@ class LogicalCollection {
 
   /// @brief closes an open collection
   int close();
-
-  /// datafile management
-
-  void sizeHint(transaction::Methods* trx, int64_t hint);
 
   // SECTION: Indexes
 
@@ -296,6 +292,7 @@ class LogicalCollection {
   void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback);
 
  private:
+  void prepareIndexes(velocypack::Slice indexesSlice);
 
   // SECTION: Indexes (local only)
   // @brief create index with the given definition.

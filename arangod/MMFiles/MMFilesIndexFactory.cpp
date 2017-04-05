@@ -95,7 +95,6 @@ static int ProcessIndexFields(VPackSlice const definition,
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the unique flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +121,6 @@ static void ProcessIndexSparseFlag(VPackSlice const definition,
     builder.add("sparse", VPackValue(false));
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a hash index
@@ -293,11 +291,6 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
     enhanced.add("type", VPackValue(Index::oldtypeName(type)));
 
     switch (type) {
-      case Index::TRI_IDX_TYPE_UNKNOWN: {
-        res = TRI_ERROR_BAD_PARAMETER;
-        break;
-      }
-
       case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
       case Index::TRI_IDX_TYPE_EDGE_INDEX: {
         break;
@@ -326,6 +319,13 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
         res = EnhanceJsonIndexFulltext(definition, enhanced, create);
         break;
+      
+      case Index::TRI_IDX_TYPE_UNKNOWN: 
+      default: {
+        res = TRI_ERROR_BAD_PARAMETER;
+        break;
+      }
+
     }
 
   } catch (...) {
@@ -335,7 +335,6 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
 
   return res;
 }
-
 
 // Creates an index object.
 // It does not modify anything and does not insert things into
@@ -386,9 +385,6 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
   }
 
   switch (type) {
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
-    }
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (!isClusterConstructor) {
         // this indexes cannot be created directly
@@ -428,10 +424,14 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
       newIdx.reset(new arangodb::MMFilesFulltextIndex(iid, col, info));
       break;
     }
+    
+    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: 
+    default: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
+    }
   }
-  if (newIdx == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+
+  TRI_ASSERT(newIdx != nullptr);
   return newIdx;
 }
 

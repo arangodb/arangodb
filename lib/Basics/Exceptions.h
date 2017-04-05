@@ -26,6 +26,7 @@
 #define ARANGODB_BASICS_EXCEPTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 
 #include <errno.h>
 
@@ -57,6 +58,10 @@
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
   throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
+/// @brief throws an arango exception with an error code "not yet implemented"
+#define THROW_ARANGO_NOT_YET_IMPLEMENTED() \
+  throw arangodb::basics::Exception(TRI_ERROR_NOT_YET_IMPLEMENTED, std::string(TRI_errno_string(TRI_ERROR_NOT_YET_IMPLEMENTED)) + " - function " + __func__, __FILE__, __LINE__)
+
 namespace arangodb {
 namespace basics {
 
@@ -69,10 +74,12 @@ class Exception : public virtual std::exception {
 
  public:
   Exception(int code, char const* file, int line);
+  Exception(Result const&, char const* file, int line);
+  Exception(Result&&, char const* file, int line);
 
   Exception(int code, std::string const& errorMessage, char const* file,
             int line);
-  
+
   Exception(int code, std::string&& errorMessage, char const* file,
             int line);
 
@@ -81,12 +88,12 @@ class Exception : public virtual std::exception {
   ~Exception() throw();
 
  public:
-  char const* what() const throw() override;
+  char const* what() const noexcept override;
   std::string message() const;
-  int code() const throw();
+  int code() const noexcept;
   void addToMessage(std::string const&);
  private:
-  void appendLocation ();
+  void appendLocation();
 
  protected:
   std::string _errorMessage;

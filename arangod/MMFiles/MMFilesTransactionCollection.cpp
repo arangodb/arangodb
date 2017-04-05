@@ -256,7 +256,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
 
   if (AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {
     // store original revision at transaction start
-    _originalRevision = _collection->revision();
+    _originalRevision = physical->revision();
   }
 
   bool shouldLock = _transaction->hasHint(transaction::Hints::Hint::LOCK_ENTIRELY);
@@ -420,8 +420,4 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   _lockType = AccessMode::Type::NONE;
 
   return TRI_ERROR_NO_ERROR;
-}
-
-bool MMFilesTransactionCollection::isWrite(AccessMode::Type type) const {
-  return (type == AccessMode::Type::WRITE || type == AccessMode::Type::EXCLUSIVE);
 }

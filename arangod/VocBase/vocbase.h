@@ -289,12 +289,12 @@ struct TRI_vocbase_t {
                        std::string const& newName, bool doOverride);
 
   /// @brief creates a new collection from parameter set
-  /// collection id (cid) is normally passed with a value of 0
+  /// collection id ("cid") is normally passed with a value of 0
   /// this means that the system will assign a new collection id automatically
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
   arangodb::LogicalCollection* createCollection(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t cid);
+      arangodb::velocypack::Slice parameters);
 
   /// @brief drops a collection
   int dropCollection(arangodb::LogicalCollection* collection,
@@ -358,7 +358,7 @@ struct TRI_vocbase_t {
 
   /// @brief creates a new collection, worker function
   arangodb::LogicalCollection* createCollectionWorker(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& cid);
+      arangodb::velocypack::Slice parameters);
 
   /// @brief drops a collection, worker function
   int dropCollectionWorker(arangodb::LogicalCollection* collection,

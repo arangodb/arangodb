@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_MM_FILES_COMPACTOR_THREAD_H
-#define ARANGOD_STORAGE_ENGINE_MM_FILES_COMPACTOR_THREAD_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_COMPACTOR_THREAD_H
+#define ARANGOD_MMFILES_MMFILES_COMPACTOR_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -39,7 +39,6 @@ class LogicalCollection;
 namespace transaction {
 class Methods;
 }
-;
 
 class MMFilesCompactorThread final : public Thread {
  private:

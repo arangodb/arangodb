@@ -274,15 +274,16 @@ int MMFilesWalRecoverState::executeSingleOperation(
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
 
-  int res;
+  Result res;
+  int tmpres;
   arangodb::LogicalCollection* collection =
-      useCollection(vocbase, collectionId, res);
+      useCollection(vocbase, collectionId, tmpres);
+  res.reset(tmpres);
 
   if (collection == nullptr) {
-    if (res == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
-      return res;
+    if (res.errorNumber() == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
+      return res.errorNumber();
     }
-
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -311,7 +312,7 @@ int MMFilesWalRecoverState::executeSingleOperation(
 
     res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -320,7 +321,7 @@ int MMFilesWalRecoverState::executeSingleOperation(
     // execute the operation
     res = func(&trx, &envelope);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -343,7 +344,7 @@ int MMFilesWalRecoverState::executeSingleOperation(
     res = TRI_ERROR_INTERNAL;
   }
 
-  return res;
+  return res.errorNumber();
 }
 
 /// @brief callback to handle one marker during recovery
@@ -1018,11 +1019,13 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             // set the sync properties to false temporarily
             bool oldSync = state->databaseFeature->forceSyncProperties();
             state->databaseFeature->forceSyncProperties(false);
-            collection = vocbase->createCollection(b2.slice(), collectionId);
+            collection =
+                vocbase->createCollection(b2.slice());
             state->databaseFeature->forceSyncProperties(oldSync);
           } else {
             // collection will be kept
-            collection = vocbase->createCollection(b2.slice(), collectionId);
+            collection =
+                vocbase->createCollection(b2.slice());
           }
           TRI_ASSERT(collection != nullptr);
         } catch (basics::Exception const& ex) {

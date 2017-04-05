@@ -31,8 +31,11 @@ class Result {
   Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
   Result(int errorNumber)
-      : _errorNumber(errorNumber),
-        _errorMessage(TRI_errno_string(errorNumber)) {}
+      : _errorNumber(errorNumber){
+    if(errorNumber != TRI_ERROR_NO_ERROR) {
+      _errorMessage = TRI_errno_string(errorNumber);
+    }
+  }
 
   Result(int errorNumber, std::string const& errorMessage)
       : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
@@ -43,13 +46,38 @@ class Result {
   virtual ~Result() {}
 
  public:
-  bool ok() const { return _errorNumber == TRI_ERROR_NO_ERROR; }
+  bool ok()   const { return _errorNumber == TRI_ERROR_NO_ERROR; }
+  bool fail() const { return !ok(); }
+
   int errorNumber() const { return _errorNumber; }
+  bool is(int errorNumber) const { return _errorNumber == errorNumber; }
+  bool isNot(int errorNumber) const { return !is(errorNumber); }
+
+  void reset(int errorNumber = TRI_ERROR_NO_ERROR) {
+    _errorNumber = errorNumber;
+
+    if(errorNumber != TRI_ERROR_NO_ERROR) {
+      _errorMessage = TRI_errno_string(errorNumber);
+    } else {
+      _errorMessage.clear();
+    }
+  }
+
+  void reset(int errorNumber, std::string const& errorMessage) {
+    _errorNumber = errorNumber;
+    _errorMessage = errorMessage;
+  }
+
+  void reset(int errorNumber, std::string&& errorMessage) {
+    _errorNumber = errorNumber;
+    _errorMessage = std::move(errorMessage);
+  }
 
   // the default implementations is const, but sub-classes might
   // really do more work to compute.
 
-  virtual std::string errorMessage() { return _errorMessage; }
+  virtual std::string errorMessage() const& { return _errorMessage; }
+  virtual std::string errorMessage() && { return std::move(_errorMessage); }
 
  protected:
   int _errorNumber;

@@ -128,9 +128,9 @@ bool RestDocumentHandler::createDocument() {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -148,7 +148,7 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -236,9 +236,9 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   // inside read transaction
   // ...........................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collection, res, "");
     return false;
   }
@@ -259,7 +259,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collection, res, key);
     return false;
   }
@@ -425,9 +425,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   // inside write transaction
   // ...........................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -453,7 +453,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, key, 0);
     return false;
   }
@@ -546,9 +546,9 @@ bool RestDocumentHandler::deleteDocument() {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -562,7 +562,7 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, key);
     return false;
   }
@@ -601,9 +601,9 @@ bool RestDocumentHandler::readManyDocuments() {
   // inside read transaction
   // ...........................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -620,7 +620,7 @@ bool RestDocumentHandler::readManyDocuments() {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }

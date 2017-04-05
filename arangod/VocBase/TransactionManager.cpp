@@ -34,7 +34,7 @@ TransactionManager::~TransactionManager() {}
 // register a list of failed transactions
 void TransactionManager::registerFailedTransactions(
     std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
   for (auto const& it : failedTransactions) {
     size_t bucket = getBucket(it);
@@ -49,17 +49,19 @@ void TransactionManager::registerFailedTransactions(
 void TransactionManager::unregisterFailedTransactions(
     std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
     
-  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
+    WRITE_LOCKER(locker, _transactions[bucket]._lock);
 
     std::for_each(failedTransactions.begin(), failedTransactions.end(),
                 [&](TRI_voc_tid_t id) { _transactions[bucket]._failedTransactions.erase(id); });
   }
 }
 
-void TransactionManager::registerTransaction(TRI_voc_tid_t transactionId, std::unique_ptr<TransactionData> data) {    
+void TransactionManager::registerTransaction(TRI_voc_tid_t transactionId, std::unique_ptr<TransactionData> data) {
+  TRI_ASSERT(data != nullptr);
+
   size_t bucket = getBucket(transactionId);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
      
@@ -114,4 +116,16 @@ void TransactionManager::iterateActiveTransactions(std::function<void(TRI_voc_ti
       callback(it.first, it.second.get());
     }
   }
+}
+
+uint64_t TransactionManager::getActiveTransactionCount() {
+  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  
+  uint64_t count = 0;
+  // iterate over all active transactions
+  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+    READ_LOCKER(locker, _transactions[bucket]._lock);
+    count += _transactions[bucket]._activeTransactions.size();
+  }
+  return count;
 }

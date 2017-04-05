@@ -76,7 +76,7 @@ int EnumerateCollectionBlock::initialize() {
         if (endTime - now < waitInterval) {
           waitInterval = static_cast<unsigned long>(endTime - now);
         }
-        usleep(waitInterval);
+        usleep((TRI_usleep_t)waitInterval);
       }
       now = TRI_microtime();
       if (now > endTime) {
@@ -190,8 +190,13 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
           // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
           // but can just take cur->getNrRegs() as registerId:
           uint8_t const* vpack = _mmdr->vpack();
-          res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
-                        AqlValue(vpack, AqlValueFromManagedDocument()));
+          if (_mmdr->canUseInExternal()) {
+            res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
+                          AqlValue(vpack, AqlValueFromManagedDocument()));
+          } else {
+            res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
+                          AqlValue(VPackSlice(vpack)));
+          }
           // No harm done, if the setValue throws!
         }
 

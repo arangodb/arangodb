@@ -104,6 +104,15 @@ struct OperationCursor {
   bool getMore(
       std::function<void(DocumentIdentifierToken const& token)> const& callback,
       uint64_t batchSize);
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief convenience function to retrieve all results
+//////////////////////////////////////////////////////////////////////////////
+
+  void getAll(
+      std::function<void(DocumentIdentifierToken const& token)> const& callback) {
+    while (getMore(callback, 1000)) {}
+  }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.

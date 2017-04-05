@@ -109,15 +109,14 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "creating WAL logfile manager";
   TRI_ASSERT(!_allowWrites);
 
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("FeatureCache");
-
-  for (auto const& it : EngineSelectorFeature::availableEngines()) {
-    startsAfter(it.second);
-  }
+  startsAfter("MMFilesEngine");
+  
+  onlyEnabledWith("MMFilesEngine");
 }
 
 // destroy the logfile manager
@@ -453,6 +452,10 @@ void MMFilesLogfileManager::beginShutdown() {
 }
 
 void MMFilesLogfileManager::unprepare() {
+  if (!isEnabled()) {
+    return;
+  }
+
   // deactivate write-throttling (again) on shutdown in case it was set again
   // after beginShutdown
   throttleWhenPending(0); 
@@ -482,7 +485,9 @@ void MMFilesLogfileManager::unprepare() {
   }
 
   // do a final flush at shutdown
-  this->flush(true, true, false);
+  if (!_inRecovery) {
+    flush(true, true, false);
+  }
 
   // stop other threads
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "sending shutdown request to WAL threads";

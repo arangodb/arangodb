@@ -29,6 +29,9 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 namespace aql {
 struct Index;
 
@@ -66,7 +69,7 @@ struct Collection {
   }
 
   /// @brief count the LOCAL number of documents in the collection
-  size_t count() const;
+  size_t count(transaction::Methods* trx) const;
 
   /// @brief returns the collection's plan id
   TRI_voc_cid_t getPlanId() const;

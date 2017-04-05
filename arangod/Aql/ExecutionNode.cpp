@@ -1204,7 +1204,8 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   size_t incoming;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  size_t count = _collection->count();
+  transaction::Methods* trx = _plan->getAst()->query()->trx();
+  size_t count = _collection->count(trx);
   nrItems = incoming * count;
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration

@@ -169,9 +169,9 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
       transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), create ? AccessMode::Type::WRITE : AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -213,8 +213,8 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   res = trx.commit();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, TRI_errno_string(res));
+  if (!res.ok()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   if (ret->IsObject()) {
@@ -460,9 +460,9 @@ static void JS_DropIndexVocbaseCol(
       transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::WRITE);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -556,9 +556,9 @@ static void JS_GetIndexesVocbaseCol(
     
   trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -727,9 +727,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   try {
-    TRI_voc_cid_t cid = 0;
     arangodb::LogicalCollection const* collection =
-        vocbase->createCollection(infoSlice, cid);
+        vocbase->createCollection(infoSlice);
 
     TRI_ASSERT(collection != nullptr);
 

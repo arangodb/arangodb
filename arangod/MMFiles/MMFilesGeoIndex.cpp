@@ -227,8 +227,8 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
     transaction::Methods* trx,
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool) const {
-  TRI_IF_FAILURE("HashIndex::noIterator")  {
+    arangodb::aql::Variable const* reference, bool) {
+  TRI_IF_FAILURE("GeoIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   return new MMFilesGeoIndexIterator(_collection, trx, mmdr, this, node, reference);

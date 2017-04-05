@@ -433,7 +433,7 @@ MMFilesHashIndex::MultiArray::~MultiArray() {
 MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid, LogicalCollection* collection,
                      VPackSlice const& info)
     : MMFilesPathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t) + sizeof(uint32_t), false), _uniqueArray(nullptr) {
-  uint32_t indexBuckets = 1;
+  size_t indexBuckets = 1;
 
   if (collection != nullptr) {
     auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
@@ -979,7 +979,7 @@ IndexIterator* MMFilesHashIndex::iteratorForCondition(
     transaction::Methods* trx,
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool) const {
+    arangodb::aql::Variable const* reference, bool) {
   TRI_IF_FAILURE("HashIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

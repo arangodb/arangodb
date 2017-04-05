@@ -205,7 +205,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
   }
 
   // This has to be called AFTER _phyiscal and _logical are properly linked together.
-  _physical->prepareIndexes(info.get("indexes"));
+  prepareIndexes(info.get("indexes"));
 
   if (_version < minimumVersion()) {
     // collection is too "old"
@@ -353,6 +353,105 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
 LogicalCollection::~LogicalCollection() {}
 
+void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
+  TRI_ASSERT(_physical != nullptr);
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory();
+  TRI_ASSERT(idxFactory != nullptr);
+
+  if (!indexesSlice.isArray()) {
+    // always point to an array
+    indexesSlice = basics::VelocyPackHelper::EmptyArrayValue();
+  }
+  
+  bool foundPrimary = false;
+  bool foundEdge = false;
+  
+  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+    if (!v.isObject()) {
+      continue;
+    }
+
+    auto error = v.get("error");
+    if (error.isBoolean() && error.getBoolean()) {
+      // got an error
+      continue;
+    }
+    
+    auto type = v.get("type");
+    if (!type.isString()) {
+      // invalid type
+      continue;
+    }
+
+    std::string const typeString = type.copyString();
+    if (typeString == "primary") {
+      foundPrimary = true;
+    } else if (typeString == "edge") {
+      foundEdge = true;
+    }
+  }
+
+  VPackBuilder builder;
+  builder.openArray();
+  
+  if (!foundPrimary) {
+    builder.openObject();
+    builder.add("id", VPackValue(0));
+    builder.add("type", VPackValue("primary"));
+    builder.add("unique", VPackValue(true));
+    builder.add("sparse", VPackValue(false));
+    builder.add("fields", VPackValue(VPackValueType::Array));
+    builder.add(VPackValue("_key"));
+    builder.close();
+    builder.close();
+  }
+
+  if (!foundEdge && type() == TRI_COL_TYPE_EDGE) {
+    builder.openObject();
+    builder.add("id", VPackValue(1));
+    builder.add("type", VPackValue("edge"));
+    builder.add("unique", VPackValue(false));
+    builder.add("sparse", VPackValue(false));
+    builder.add("fields", VPackValue(VPackValueType::Array));
+    builder.add(VPackValue("_from"));
+    builder.add(VPackValue("_to"));
+    builder.close();
+    builder.close();
+  }
+  
+  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+    if (!v.isObject()) {
+      continue;
+    }
+
+    auto error = v.get("error");
+    if (error.isBoolean() && error.getBoolean()) {
+      // got an error
+      continue;
+    }
+    
+    auto type = v.get("type");
+    if (!type.isString()) {
+      // invalid type
+      continue;
+    }
+    std::string const typeString = type.copyString();
+    if (typeString == "primary" && !foundPrimary) {
+      continue;
+    }
+    if (typeString == "edge" && !foundEdge) {
+      continue;
+    }
+    builder.add(v);
+  }
+
+  builder.close();
+    
+  _physical->prepareIndexes(builder.slice());
+}
+
 std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse){
   return _physical->getAllIterator(trx, mdr, reverse);
 }
@@ -361,8 +460,9 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Me
   return _physical->getAnyIterator(trx, mdr);
 }
 
-void LogicalCollection::invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback){
-  _physical->invokeOnAllElements(callback);
+void LogicalCollection::invokeOnAllElements(transaction::Methods* trx,
+                                            std::function<bool(DocumentIdentifierToken const&)> callback){
+  _physical->invokeOnAllElements(trx, callback);
 }
 
 
@@ -446,10 +546,9 @@ bool LogicalCollection::IsAllowedName(bool allowSystem,
 }
 
 // @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments() const {
-  return getPhysical()->numberDocuments();
+uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx) const {
+  return getPhysical()->numberDocuments(trx);
 }
-
 
 uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }
 
@@ -540,9 +639,9 @@ std::string LogicalCollection::statusString() const {
 }
 
 // SECTION: Properties
-TRI_voc_rid_t LogicalCollection::revision() const {
+TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   // TODO CoordinatorCase
-  return _physical->revision();
+  return _physical->revision(trx);
 }
 
 bool LogicalCollection::isLocal() const { return _isLocal; }
@@ -1104,13 +1203,6 @@ int LogicalCollection::remove(transaction::Methods* trx,
 
   return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
                                lock, revisionId, prevRev);
-}
-
-void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
-  if (hint <= 0) {
-    return;
-  }
-  getPhysical()->sizeHint(trx, hint);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx, DocumentIdentifierToken const& token, ManagedDocumentResult& result) {

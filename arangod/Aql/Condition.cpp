@@ -372,7 +372,7 @@ std::pair<bool, bool> Condition::findIndexes(
  
   transaction::Methods* trx = _ast->query()->trx();
 
-  size_t const itemsInIndex = node->collection()->count();
+  size_t const itemsInIndex = node->collection()->count(trx);
   if (_root == nullptr) {
     size_t dummy;
     return trx->getIndexForSortCondition(collectionName, sortCondition,
