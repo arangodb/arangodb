@@ -479,6 +479,22 @@ IndexIterator* RocksDBPrimaryIndex::anyIterator(transaction::Methods* trx,
   return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
 }
 
+void RocksDBPrimaryIndex::invokeOnAllElements(transaction::Methods* trx,
+                                              std::function<bool(DocumentIdentifierToken const&)> callback) {
+  ManagedDocumentResult mmdr;
+  std::unique_ptr<IndexIterator> cursor (allIterator(trx, &mmdr, false));
+  bool cnt = true;
+  auto cb = [&](DocumentIdentifierToken token) {
+    if (cnt) {
+      cnt = callback(token);
+    }
+  };
+  while (cursor->next(cb, 1000) && cnt) {
+    
+  }
+}
+
+
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* RocksDBPrimaryIndex::createInIterator(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,

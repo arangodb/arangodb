@@ -931,7 +931,7 @@ void transaction::Methods::invokeOnAllElements(std::string const& collectionName
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  logical->invokeOnAllElements(callback);
+  logical->invokeOnAllElements(this, callback);
 
   res = unlock(trxCol, AccessMode::Type::READ);
 

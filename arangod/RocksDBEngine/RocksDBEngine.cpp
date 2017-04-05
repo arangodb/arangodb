@@ -640,6 +640,7 @@ void RocksDBEngine::signalCleanup(TRI_vocbase_t*) {
 void RocksDBEngine::iterateDocuments(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     std::function<void(arangodb::velocypack::Slice const&)> const& cb) {
+  
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 

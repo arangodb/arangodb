@@ -273,7 +273,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr)  override;
-  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback) override;
+  void invokeOnAllElements(transaction::Methods* trx,
+                           std::function<bool(DocumentIdentifierToken const&)> callback) override;
 
   std::shared_ptr<Index> createIndex(transaction::Methods* trx,
                                      arangodb::velocypack::Slice const& info,

@@ -86,7 +86,7 @@ static std::string const RESTART_COUNTER_AGG = "aggRestart";
 /** Maximum steps for the random walk, corresponds to t*. Default = 1000 */
 static uint64_t const RW_ITERATIONBOUND = 10;
 
-static const double PROFTIABILITY_DELTA = 0.3;
+static const float PROFTIABILITY_DELTA = 0.3;
 
 static const bool LOG_AGGS = false;
 
@@ -314,7 +314,8 @@ struct DMIDComputation
 
           float senderWeight = message->weight;
           
-          float myInfluence = senderWeight * vecLS->getAggregatedValue(this->shard(), this->key());
+          float myInfluence = (float)vecLS->getAggregatedValue(this->shard(), this->key());
+          myInfluence *= senderWeight;
           
           /**
            * hasEdgeToSender determines if sender has influence on this vertex
@@ -328,7 +329,9 @@ struct DMIDComputation
                * Has this vertex more influence on the sender than the
                * sender on this vertex?
                */
-              float senderInfluence = *(edge->data()) * vecLS->getAggregatedValue(senderID.shard, senderID.key);
+              float senderInfluence = (float)vecLS->getAggregatedValue(senderID.shard, senderID.key);
+              senderInfluence *= *(edge->data());
+              
               if (myInfluence > senderInfluence) {
                 /** send new message */
                 DMIDMessage message(pregelId(), myInfluence);
@@ -517,7 +520,8 @@ struct DMIDComputation
           // Map.Entry<Long, Double> entry : membershipCounter.entrySet()
           for (std::pair<PregelID, float> const& pair : membershipCounter) {
             
-            if ((pair.second / getEdges().size()) > *threshold) {
+            float const ttt = pair.second / getEdges().size();
+            if (ttt > *threshold) {
               /** its profitable to become a member, set value */
               vertexState->membershipDegree[pair.first] = 1.0 / std::pow(*iterationCounter / 3, 2);
               aggregate<bool>(NEW_MEMBER_AGG, true);
