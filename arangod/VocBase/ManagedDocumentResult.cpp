@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ManagedDocumentResult.h"
+#include "Aql/AqlValue.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::aql;
 
 void ManagedDocumentResult::clone(ManagedDocumentResult& cloned) const {
   cloned.reset();
@@ -99,4 +101,18 @@ void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder, bool allo
   } else {
     builder.add(velocypack::Slice(_vpack));
   }
+}
+
+// @brief Creates an AQLValue with the content of this ManagedDocumentResult
+// The caller is responsible to properly destroy() the
+// returned value
+AqlValue ManagedDocumentResult::createAqlValue() const {
+  TRI_ASSERT(!empty());
+  if (canUseInExternal()) {
+    // No need to copy. Underlying structure guarantees that Slices stay
+    // valid
+    return AqlValue(_vpack, AqlValueFromManagedDocument());
+  }
+  // Do copy. Otherwise the slice may go out of scope
+  return AqlValue(VPackSlice(_vpack));
 }
