@@ -276,20 +276,6 @@ describe ArangoDB do
           doc.parsed_response['status'].should eq(3)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(0)
-          doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['dead']['count'].should eq(0)
-          doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['alive']['count'].should eq(0)
-          doc.parsed_response['figures']['datafiles']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['datafiles']['fileSize'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['datafiles']['count'].should eq(0)
-          doc.parsed_response['figures']['journals']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['journals']['fileSize'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['journals']['count'].should eq(0)
-          doc.parsed_response['figures']['compactors']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['compactors']['fileSize'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['compactors']['count'].should eq(0)
-          doc.parsed_response['journalSize'].should be_kind_of(Integer)
                 
           # create a few documents, this should increase counts
           (0...10).each{|i|
@@ -308,12 +294,6 @@ describe ArangoDB do
           doc.parsed_response['code'].should eq(200)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(10)
-          doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['dead']['count'].should eq(0)
-          doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['alive']['count'].should eq(10)
-          doc.parsed_response['figures']['datafiles']['count'].should eq(0)
-          doc.parsed_response['figures']['journals']['count'].should eq(1)
 
           # create a few different documents, this should increase counts
           (0...10).each{|i|
@@ -332,12 +312,6 @@ describe ArangoDB do
           doc.parsed_response['code'].should eq(200)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(20)
-          doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['dead']['count'].should eq(0)
-          doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['alive']['count'].should eq(20)
-          doc.parsed_response['figures']['datafiles']['count'].should eq(0)
-          doc.parsed_response['figures']['journals']['count'].should eq(1)
           
           # delete a few documents, this should change counts
           body = "{ \"collection\" : \"" + @cn + "\", \"example\": { \"test\" : 5 } }"
@@ -356,12 +330,6 @@ describe ArangoDB do
           doc.parsed_response['code'].should eq(200)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(18)
-          doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['dead']['count'].should eq(2)
-          doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
-          doc.parsed_response['figures']['alive']['count'].should eq(18)
-          doc.parsed_response['figures']['datafiles']['count'].should eq(0)
-          doc.parsed_response['figures']['journals']['count'].should eq(1)
         end
       end
       
@@ -532,29 +500,6 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
       
-      it "create a collection, volatile" do
-        cmd = api
-        body = "{ \"name\" : \"#{@cn}\", \"isVolatile\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-create-collection-volatile", cmd, :body => body)
-
-        doc.code.should eq(200)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should be_kind_of(String)
-        doc.parsed_response['name'].should eq(@cn)
-        doc.parsed_response['waitForSync'].should eq(false)
-        doc.parsed_response['isVolatile'].should eq(true)
-        doc.parsed_response['isSystem'].should eq(false)
-
-        cmd = api + "/" + @cn + "/figures"
-        doc = ArangoDB.get(cmd)
-
-        doc.parsed_response['waitForSync'].should eq(false)
-
-        ArangoDB.drop_collection(@cn)
-      end
-            
       it "create a collection, invalid name" do
         cmd = api
         body = "{ \"name\" : \"_invalid\" }"
@@ -870,38 +815,12 @@ describe ArangoDB do
         doc.parsed_response['name'].should eq(cn)
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
-        doc.parsed_response['isVolatile'].should eq(false)
         doc.parsed_response['keyOptions']['type'].should eq("traditional")
         doc.parsed_response['keyOptions']['allowUserKeys'].should eq(true)
 
         ArangoDB.drop_collection(cn)
       end
 
-      it "create a collection with isVolatile property" do
-        cn = "UnitTestsCollectionBasics"
-        ArangoDB.drop_collection(cn)
-
-        cmd = "/_api/collection"
-        body = "{ \"name\" : \"#{cn}\", \"isVolatile\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-with-volatile", cmd, :body => body)
-
-        doc.code.should eq(200)
-        cid = doc.parsed_response['id']
-
-        cmd = api + "/" + cn + "/properties"
-        doc = ArangoDB.log_get("#{prefix}-with-volatile", cmd)
-
-        doc.code.should eq(200)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['waitForSync'].should eq(false)
-        doc.parsed_response['keyOptions']['type'].should eq("traditional")
-        doc.parsed_response['keyOptions']['allowUserKeys'].should eq(true)
-
-        ArangoDB.drop_collection(cn)
-      end
-      
       it "create collection with empty keyOptions property" do
         cn = "UnitTestsCollectionBasics"
         ArangoDB.drop_collection(cn)
