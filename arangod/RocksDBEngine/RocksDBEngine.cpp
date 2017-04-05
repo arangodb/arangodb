@@ -441,6 +441,16 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
                                         bool useWriteMarker, int& status) {
   // probably not required
   // THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  
+  //status = saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("id", VPackValue(std::to_string(vocbase->id())));
+  builder.add("name", VPackValue(vocbase->name()));
+  builder.add("deleted", VPackValue(true));
+  builder.close();
+  
+  status = writeCreateDatabaseMarker(vocbase->id(), builder.slice());
 }
 
 Result RocksDBEngine::dropDatabase(Database* database) {
