@@ -54,6 +54,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _hasV8Expression(false),
       _indexesExhausted(false),
       _isLastIndex(false),
+      _returned(0),
       _collector(&_engine->_itemBlockManager) {
   _mmdr.reset(new ManagedDocumentResult);
  
