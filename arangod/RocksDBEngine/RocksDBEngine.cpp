@@ -547,8 +547,9 @@ arangodb::Result RocksDBEngine::dropCollection(
     return res;  // let collection exist so the remaining elements can still be
                  // accessed
   }
-
+  
   // delete collection
+  _counterManager->removeCounter(coll->objectId());
   auto key = RocksDBKey::Collection(vocbase->id(), collection->cid());
   return rocksutils::globalRocksDBRemove(key.string(), options);
 }
@@ -787,6 +788,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
       return res;
     }
     // delete Collection
+    _counterManager->removeCounter(objectId);
     res = globalRocksDBRemove(val.first.string(), options);
     if (res.fail()) {
       return res;
