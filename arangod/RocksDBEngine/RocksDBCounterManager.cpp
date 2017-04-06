@@ -273,6 +273,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
 bool RocksDBCounterManager::parseRocksWAL() {
   TRI_ASSERT(_counters.size() != 0);
 
+  // Determine which counter values might be outdated
   rocksdb::SequenceNumber minSeq = UINT64_MAX;
   for (auto const& it : _syncedCounters) {
     if (it.second.sequenceNumber < minSeq) {
@@ -291,14 +292,12 @@ bool RocksDBCounterManager::parseRocksWAL() {
   }
   while (iterator->Valid()) {
     rocksdb::BatchResult result = iterator->GetBatch();
-    if (result.sequence <= minSeq) {
-      continue;
-    }
-
-    handler->seqNum = result.sequence;
-    s = result.writeBatchPtr->Iterate(handler.get());
-    if (!s.ok()) {
-      break;
+    if (result.sequence > minSeq) {
+      handler->seqNum = result.sequence;
+      s = result.writeBatchPtr->Iterate(handler.get());
+      if (!s.ok()) {
+        break;
+      }
     }
     iterator->Next();
   }
