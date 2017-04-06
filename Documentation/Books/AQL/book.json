@@ -4,7 +4,7 @@
   "author": "ArangoDB GmbH",
   "description": "Official AQL manual for ArangoDB - the multi-model NoSQL database",
   "language": "en",
-  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "piwik", "sitemap-general"],
+  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "sitemap-general", "ga"],
   "pdf": {
     "fontSize": 12,
     "toc": true,
@@ -23,15 +23,11 @@
       "js": ["styles/header.js"],
       "css": ["styles/header.css"]
     },
-    "add-header": {
-        "BASE_PATH": "https://docs.arangodb.com/devel"
-    },
-    "piwik": {
-        "URL": "www.arangodb.com/piwik/",
-        "siteId": 12
-    },
     "sitemap-general": {
       "prefix": "https://docs.arangodb.com/3.0/AQL/"
+    },
+    "ga": {
+      "token": "UA-81053435-2"
     }
   }
 }
