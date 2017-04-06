@@ -86,7 +86,7 @@ static std::string const RESTART_COUNTER_AGG = "aggRestart";
 /** Maximum steps for the random walk, corresponds to t*. Default = 1000 */
 static uint64_t const RW_ITERATIONBOUND = 10;
 
-static const float PROFTIABILITY_DELTA = 0.3;
+static const float PROFTIABILITY_DELTA = 0.3f;
 
 static const bool LOG_AGGS = false;
 
@@ -523,7 +523,7 @@ struct DMIDComputation
             float const ttt = pair.second / getEdges().size();
             if (ttt > *threshold) {
               /** its profitable to become a member, set value */
-              vertexState->membershipDegree[pair.first] = 1.0 / std::pow(*iterationCounter / 3, 2);
+              vertexState->membershipDegree[pair.first] = 1.0f / std::pow(*iterationCounter / 3, 2);
               aggregate<bool>(NEW_MEMBER_AGG, true);
             }
           }

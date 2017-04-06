@@ -47,8 +47,8 @@ struct LPValue {
 /// Value for Hyperlink-Induced Topic Search (HITS; also known as
 /// hubs and authorities)
 struct HITSValue {
-  float authorityScore;
-  float hubScore;
+  double authorityScore;
+  double hubScore;
 };
 
 struct DMIDValue {

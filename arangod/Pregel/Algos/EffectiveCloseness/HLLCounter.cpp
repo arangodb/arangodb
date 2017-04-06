@@ -34,7 +34,7 @@ using namespace arangodb::pregel;
 
 #else
 
-inline uint8_t _get_leading_zero_count(uint64_t x, uint8_t b) {
+inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
   
 #if defined (_MSC_VER)
   unsigned long leading_zero_len = 32;

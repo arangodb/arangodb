@@ -577,7 +577,7 @@ cd ${BUILD_DIR}
 DST=`pwd`
 SOURCE_DIR=`compute_relative ${DST}/ ${SRC}/`
 
-if [ ! -f Makefile -o ! -f CMakeCache.txt ! -f ALL_BUILD.vcxproj ];  then
+if [ ! -f Makefile -o ! -f CMakeCache.txt -o ! -f ALL_BUILD.vcxproj ];  then
     rm -rf CMakeFiles CMakeCache.txt CMakeCPackOptions.cmake cmake_install.cmake CPackConfig.cmake CPackSourceConfig.cmake
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
