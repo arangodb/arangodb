@@ -105,6 +105,7 @@ std::pair<uint64_t, uint64_t> RocksDBCounterManager::loadCounter(uint64_t object
 void RocksDBCounterManager::updateCounter(uint64_t objectId,
                                           rocksdb::Snapshot const* snapshot,
                                           uint64_t value1, uint64_t value2) {
+  bool needsSync = false;
   {
     WRITE_LOCKER(guard, _rwLock);
     auto const& it = _counters.find(objectId);
@@ -113,9 +114,13 @@ void RocksDBCounterManager::updateCounter(uint64_t objectId,
       it->second = Counter(snapshot->GetSequenceNumber(), value1, value2);
     } else {
       // insert new counter
-    _counters.emplace(std::make_pair(objectId, Counter(snapshot->GetSequenceNumber(),
+      _counters.emplace(std::make_pair(objectId, Counter(snapshot->GetSequenceNumber(),
                                value1, value2)));
+      needsSync = true;
+    }
   }
+  if (needsSync) {
+    sync();
   }
 }
 

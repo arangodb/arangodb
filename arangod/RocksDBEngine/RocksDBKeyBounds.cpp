@@ -126,11 +126,11 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
       size_t length = sizeof(char);
       _startBuffer.reserve(length);
       _startBuffer.push_back(static_cast<char>(_type));
-      
-      _endBuffer.clear();
-      _endBuffer.append(_startBuffer);
-      uint64ToPersistent(_startBuffer, UINT64_MAX);
-      //nextPrefix(_endBuffer);
+      uint64ToPersistent(_startBuffer, 0);
+
+      _endBuffer.reserve(length);
+      _endBuffer.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_endBuffer, UINT64_MAX);
       break;
     }
 
