@@ -51,13 +51,16 @@ class RocksDBCounterManager : Thread {
  public:
   struct Counter {
     rocksdb::SequenceNumber sequenceNumber;
-    uint64_t value1; // used for number of documents
-    uint64_t value2; // used for revision id
+    uint64_t count; // used for number of documents
+    uint64_t revisionId; // used for revision id
     
     Counter(rocksdb::SequenceNumber seq, uint64_t value1, uint64_t value2)
-      : sequenceNumber(seq), value1(value1), value2(value2) {}
+      : sequenceNumber(seq), count(value1), revisionId(value2) {}
     explicit Counter(VPackSlice const&);
+    Counter();
+    
     void serialize(VPackBuilder&) const;
+    void reset();
   };
 
   /// Constructor needs to be called synchrunously,
@@ -86,16 +89,16 @@ class RocksDBCounterManager : Thread {
  private:
   void readCounterValues();
   bool parseRocksWAL();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief counter values
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_map<uint64_t, Counter> _counters;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief counter values
+  /// @brief synced sequence numbers
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<uint64_t, Counter> _syncedCounters;
+  std::unordered_map<uint64_t, rocksdb::SequenceNumber> _syncedSeqNum;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently syncing

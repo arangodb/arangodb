@@ -134,7 +134,7 @@ class RocksDBKey {
   ///
   /// May be called on any valid key (in our keyspace)
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t extractObjectId(rocksdb::Slice const&);
+  static uint64_t counterObjectId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the databaseId from a key

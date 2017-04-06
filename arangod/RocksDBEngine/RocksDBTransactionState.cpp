@@ -184,7 +184,7 @@ Result RocksDBTransactionState::commitTransaction(
           coll->adjustNumberDocuments(adjustment);
           coll->setRevision(collection->revision());
           RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-          engine->counterManager()->updateCounter(coll->objectId(), snap, coll->numberDocuments(), collection->revision());
+          engine->counterManager()->updateCounter(coll->objectId(), snap, adjustment, collection->revision());
         }
       }
   
