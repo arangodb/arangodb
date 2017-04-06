@@ -176,21 +176,6 @@ bool RocksDBAllIndexIterator::outOfRange() const {
 
 // ================ Any Iterator ================
 
-uint64_t RocksDBAnyIndexIterator::OFFSET = 0;
-
-uint64_t RocksDBAnyIndexIterator::newOffset(LogicalCollection* collection,
-                                            transaction::Methods* trx) {
-  auto count = collection->numberDocuments(trx);
-  /*auto adjustment = RandomGenerator::interval(count);
-  OFFSET = (OFFSET + adjustment) % count;
-  return OFFSET;*/
-  if (count == 0) {
-    return 0;
-  }
-
-  return RandomGenerator::interval(count);
-}
-
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
@@ -203,18 +188,24 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   auto options = state->readOptions();
 
   _iterator.reset(rtrx->GetIterator(options));
-  _iterator->Seek(_bounds.start());
-
-  // not thread safe by design
-  uint64_t off = newOffset(collection, trx);
-  if (off > 0) {
-    while (_iterator->Valid() && --off > 0) {
-      _iterator->Next();
+  _total = collection->numberDocuments(trx);
+  if (_total > 0) {
+    uint64_t off = RandomGenerator::interval(_total);
+    if (off < _total/2) {
+      _iterator->Seek(_bounds.start());
+      while (_iterator->Valid() && --off > 0) {
+        _iterator->Next();
+      }
+    } else {
+      off /= 2;
+      _iterator->SeekForPrev(_bounds.end());
+      while (_iterator->Valid() && --off > 0) {
+        _iterator->Prev();
+      }
     }
-  }
-  if (!_iterator->Valid()) {
-    // OFFSET = 0;
-    _iterator->Seek(_bounds.start());
+    if (!_iterator->Valid()) {
+      _iterator->Seek(_bounds.start());
+    }
   }
 }
 
@@ -231,12 +222,16 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
     cb(token);
 
     --limit;
+    _returned++;
     _iterator->Next();
     if (!_iterator->Valid() || outOfRange()) {
+      if (_returned < _total) {
+        _iterator->Seek(_bounds.start());
+        continue;
+      }
       return false;
     }
   }
-
   return true;
 }
 
