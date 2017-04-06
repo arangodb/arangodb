@@ -42,7 +42,7 @@ Exception::Exception(int code, char const* file, int line)
   appendLocation();
 }
 
-Exception::Exception(Result const& result, char const* file, int line)
+Exception::Exception(arangodb::Result const& result, char const* file, int line)
     : _errorMessage(result.errorMessage()),
       _file(file),
       _line(line),
@@ -51,7 +51,7 @@ Exception::Exception(Result const& result, char const* file, int line)
   appendLocation();
 }
 
-Exception::Exception(Result&& result, char const* file, int line)
+Exception::Exception(arangodb::Result&& result, char const* file, int line)
     : _errorMessage(std::move(result).errorMessage()), //cast to rvalueref so the error stirng gets moved out
       _file(file),
       _line(line),
