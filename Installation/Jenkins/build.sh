@@ -584,7 +584,7 @@ set +e
 if test "${isCygwin}" == 0; then
     test ! -f Makefile -o ! -f CMakeCache.txt
 else
-    test ! -f ALL_BUILD.vcxproj ! -f CMakeCache.txt
+    test ! -f ALL_BUILD.vcxproj -o ! -f CMakeCache.txt
 fi
 PARTIAL_STATE=$?
 set -e
