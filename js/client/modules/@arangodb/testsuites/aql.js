@@ -58,7 +58,7 @@ function shellServer (options) {
   options.propagateInstanceInfo = true;
 
   let testCases = tu.scanTestPath('js/common/tests/shell');
-  testCases = testCases.concat(tu.scanTestPath('js/common/tests/shell'));
+  testCases = testCases.concat(tu.scanTestPath('js/server/tests/shell'));
 
   return tu.performTests(options, testCases, 'shell_server', tu.runThere);
 }
