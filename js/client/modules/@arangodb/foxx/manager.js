@@ -327,6 +327,7 @@ var replace = function (serviceInfo, mount, options) {
   };
 
   res = arango.POST('/_admin/foxx/replace', JSON.stringify(req));
+  arangodb.db._flushCache();
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
