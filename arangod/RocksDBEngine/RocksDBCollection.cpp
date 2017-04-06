@@ -415,8 +415,9 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       trx->abort();
       break;
     }
-    // TODO
-    state->addOperation(cid, 0, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0);
+
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0);
     iter->Next();
   }
 
@@ -1065,12 +1066,6 @@ int RocksDBCollection::updateDocument(transaction::Methods* trx,
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  /*
-    LOG_TOPIC(ERR, Logger::FIXME)
-        << "UPDATE DOCUMENT. COLLECTION '" << _logicalCollection->name()
-        << "', OBJECTID: " << _objectId << ", OLDREVISIONID: " << oldRevisionId
-        << ", NEWREVISIONID: " << newRevisionId;
-  */
   int res = removeDocument(trx, oldRevisionId, oldDoc, waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1109,20 +1104,8 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   TRI_ASSERT(value.data());
   auto result = convertStatus(status);
   if (result.ok()) {
-    /*
-    LOG_TOPIC(ERR, Logger::FIXME)
-        << "LOOKUPREVISIONVPACK. COLLECTION '" << _logicalCollection->name()
-        << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
-        << " -> FOUND";
-    */
     mdr.setManaged(std::move(value), revisionId);
   } else {
-    /*
-    LOG_TOPIC(ERR, Logger::FIXME)
-        << "LOOKUPREVISIONVPACK. COLLECTION '" << _logicalCollection->name()
-        << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
-        << " -> NOT FOUND";
-    */
     mdr.reset();
   }
   return result;
