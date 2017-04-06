@@ -198,7 +198,7 @@ function testCaseMessage (test) {
   }
 }
 
-function unitTestPrettyPrintResults (r) {
+function unitTestPrettyPrintResults (r, testOutputDirectory) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
   }
@@ -320,8 +320,8 @@ function unitTestPrettyPrintResults (r) {
     }
     print(SuccessMessages);
     print(failedMessages);
-    fs.write('out/testfailures.txt', failedMessages);
-    fs.write('out/testfailures.txt', GDB_OUTPUT);
+    fs.write(testOutputDirectory + 'testfailures.txt', failedMessages);
+    fs.write(testOutputDirectory + 'testfailures.txt', GDB_OUTPUT);
     /* jshint forin: true */
 
     let color = (!r.crashed && r.status === true) ? GREEN : RED;
@@ -486,7 +486,7 @@ function unitTest (cases, options) {
     // grrr...normalize structure
     delete result.status;
     delete result.failed;
-    
+
     let status = Object.values(result).every(testCase => testCase.status === true);
     let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
     if (!status) {
@@ -510,7 +510,7 @@ function unitTest (cases, options) {
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");
   }
-  
+
   try {
     yaml.safeDump(JSON.parse(JSON.stringify(results)));
   } catch (err) {
