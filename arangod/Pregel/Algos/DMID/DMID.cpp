@@ -523,7 +523,8 @@ struct DMIDComputation
             float const ttt = pair.second / getEdges().size();
             if (ttt > *threshold) {
               /** its profitable to become a member, set value */
-              vertexState->membershipDegree[pair.first] = 1.0f / std::pow(*iterationCounter / 3, 2);
+              float deg = 1.0f / std::pow(*iterationCounter / 3.0f, 2.0f);
+              vertexState->membershipDegree[pair.first] = deg;
               aggregate<bool>(NEW_MEMBER_AGG, true);
             }
           }
