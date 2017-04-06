@@ -37,7 +37,6 @@ class Methods;
 struct DocumentIdentifierToken;
 class Index;
 class IndexIterator;
-class KeyGenerator;
 class LogicalCollection;
 class ManagedDocumentResult;
 struct OperationOptions;
@@ -175,17 +174,8 @@ class PhysicalCollection {
   ///        it at that moment.
   virtual void deferDropCollection(std::function<bool(LogicalCollection*)> callback) = 0;
 
-  // Get a reference to this KeyGenerator.
-  // Caller is not allowed to free it.
-  inline KeyGenerator* keyGenerator() const {
-    return _keyGenerator.get();
-  }
-
-  // SECTION: Key Options
-  velocypack::Slice keyOptions() const;
 
  protected:
-
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
@@ -229,14 +219,8 @@ class PhysicalCollection {
  protected:
   LogicalCollection* _logicalCollection;
 
-  // SECTION: Key Options
-  // TODO Really VPack?
-  std::shared_ptr<velocypack::Buffer<uint8_t> const>
-      _keyOptions;  // options for key creation
-
   std::vector<std::shared_ptr<Index>> _indexes;
 
-  std::unique_ptr<KeyGenerator> _keyGenerator;
 
 };
 

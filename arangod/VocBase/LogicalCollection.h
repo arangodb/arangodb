@@ -52,6 +52,7 @@ struct OperationOptions;
 class PhysicalCollection;
 class Result;
 class StringRef;
+class KeyGenerator;
 namespace transaction {
 class Methods;
 }
@@ -291,6 +292,15 @@ class LogicalCollection {
   ///        it at that moment.
   void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback);
 
+  // SECTION: Key Options
+  velocypack::Slice keyOptions() const;
+  
+  // Get a reference to this KeyGenerator.
+  // Caller is not allowed to free it.
+  inline KeyGenerator* keyGenerator() const {
+    return _keyGenerator.get();
+  }
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -363,6 +373,11 @@ class LogicalCollection {
   std::shared_ptr<ShardMap> _shardIds;
 
   TRI_vocbase_t* _vocbase;
+  // SECTION: Key Options
+  // TODO Really VPack?
+  std::shared_ptr<velocypack::Buffer<uint8_t> const>
+      _keyOptions;  // options for key creation
+  std::unique_ptr<KeyGenerator> _keyGenerator;
 
   std::unique_ptr<PhysicalCollection> _physical;
 
@@ -371,6 +386,8 @@ class LogicalCollection {
 
   mutable basics::ReadWriteLock
       _infoLock;  // lock protecting the info
+  
+
 };
 
 }  // namespace arangodb

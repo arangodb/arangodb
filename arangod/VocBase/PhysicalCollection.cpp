@@ -45,17 +45,8 @@ using namespace arangodb;
 PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
                                        VPackSlice const& info)
     : _logicalCollection(collection),
-      _keyOptions(nullptr),
-      _indexes(),
-      _keyGenerator() {
-  TRI_ASSERT(info.isObject());
-  auto keyOpts = info.get("keyOptions");
-
-  _keyGenerator.reset(KeyGenerator::factory(keyOpts));
-  if (!keyOpts.isNone()) {
-    _keyOptions = VPackBuilder::clone(keyOpts).steal();
-  }
-}
+      _indexes()
+    {}
 
 void PhysicalCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder){
     this->figuresSpecific(builder);
@@ -228,7 +219,7 @@ int PhysicalCollection::newObjectForInsert(
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
     newRev = TRI_HybridLogicalClock();
-    std::string keyString = keyGenerator()->generate(TRI_NewTickServer());
+    std::string keyString = _logicalCollection->keyGenerator()->generate(TRI_NewTickServer());
     if (keyString.empty()) {
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
@@ -239,7 +230,7 @@ int PhysicalCollection::newObjectForInsert(
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   } else {
     std::string keyString = s.copyString();
-    int res = keyGenerator()->validate(keyString, isRestore);
+    int res = _logicalCollection->keyGenerator()->validate(keyString, isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -406,13 +397,4 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   figures(builder);
   builder->close();
   return builder;
-}
-
-
-// SECTION: Key Options
-VPackSlice PhysicalCollection::keyOptions() const {
-  if (_keyOptions == nullptr) {
-    return arangodb::basics::VelocyPackHelper::NullValue();
-  }
-  return VPackSlice(_keyOptions->data());
 }

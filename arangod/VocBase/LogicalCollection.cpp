@@ -85,6 +85,7 @@ static std::string translateStatus(TRI_vocbase_col_status_e status) {
   }
 }
 
+
 static TRI_voc_cid_t ReadCid(VPackSlice info) {
   if (!info.isObject()) {
     // ERROR CASE
@@ -161,6 +162,10 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _allowUserKeys(other.allowUserKeys()),
       _shardIds(new ShardMap()),  // Not needed
       _vocbase(other.vocbase()),
+      _keyOptions(other._keyOptions),
+      _keyGenerator(KeyGenerator::factory(
+            VPackSlice(keyOptions())
+      )),
       _physical(other.getPhysical()->clone(this, other.getPhysical())) {
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
@@ -197,8 +202,19 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
       _vocbase(vocbase),
+      _keyOptions(nullptr),
+      _keyGenerator(),
       _physical(
           EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)) {
+
+  //add keyoptions from slice
+  TRI_ASSERT(info.isObject());
+  VPackSlice keyOpts = info.get("keyOptions");
+  _keyGenerator.reset(KeyGenerator::factory(keyOpts));
+  if (!keyOpts.isNone()) {
+    _keyOptions = VPackBuilder::clone(keyOpts).steal();
+  }
+
   TRI_ASSERT(_physical != nullptr);
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -767,6 +783,16 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids) c
   // TODO is this still releveant or redundant in keyGenerator?
   result.add("allowUserKeys", VPackValue(_allowUserKeys));
 
+  // keyoptions
+  result.add(VPackValue("keyOptions"));
+  if (_keyGenerator != nullptr) {
+    result.openObject();
+    _keyGenerator->toVelocyPack(result);
+    result.close();
+  } else {
+    result.openArray();
+    result.close();
+  }
 
   // Physical Information
   getPhysical()->getPropertiesVPack(result);
@@ -1137,3 +1163,11 @@ bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document,
 #endif
 
 bool LogicalCollection::isSatellite() const { return _replicationFactor == 0; }
+
+// SECTION: Key Options
+VPackSlice LogicalCollection::keyOptions() const {
+  if (_keyOptions == nullptr) {
+    return arangodb::basics::VelocyPackHelper::NullValue();
+  }
+  return VPackSlice(_keyOptions->data());
+}
