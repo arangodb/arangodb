@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBToken.h"
@@ -95,23 +96,25 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
-  public:
-    RocksDBAnyIndexIterator(LogicalCollection* collection,
-                            transaction::Methods* trx,
-                            ManagedDocumentResult* mmdr,
-                            RocksDBPrimaryIndex const* index);
-    
-    ~RocksDBAnyIndexIterator() {}
-    
-    char const* typeName() const override { return "any-index-iterator"; }
-    
-    bool next(TokenCallback const& cb, size_t limit) override;
-    
-    void reset() override;
-    
-private:
+ public:
+  RocksDBAnyIndexIterator(LogicalCollection* collection,
+                          transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr,
+                          RocksDBPrimaryIndex const* index);
+
+  ~RocksDBAnyIndexIterator() {}
+
+  char const* typeName() const override { return "any-index-iterator"; }
+
+  bool next(TokenCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+ private:
   bool outOfRange() const;
-  
+  static uint64_t newOffset(LogicalCollection* collection,
+                            transaction::Methods* trx);
+
   RocksDBComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   RocksDBKeyBounds _bounds;
@@ -189,10 +192,11 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   IndexIterator* anyIterator(transaction::Methods* trx,
                              ManagedDocumentResult* mmdr) const;
-  
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(DocumentIdentifierToken const&)> callback);
-  
+
+  void invokeOnAllElements(
+      transaction::Methods* trx,
+      std::function<bool(DocumentIdentifierToken const&)> callback);
+
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,

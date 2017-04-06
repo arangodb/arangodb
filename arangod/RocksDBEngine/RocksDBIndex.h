@@ -48,7 +48,6 @@ class RocksDBIndex : public Index {
                arangodb::velocypack::Slice const&);
 
  public:
-
   ~RocksDBIndex();
 
   uint64_t objectId() const { return _objectId; }
@@ -56,7 +55,7 @@ class RocksDBIndex : public Index {
   bool isPersistent() const override final { return true; }
 
   int drop() override;
-  
+
   int unload() override {
     // nothing to do here yet
     // TODO: free the cache the index uses
@@ -64,13 +63,14 @@ class RocksDBIndex : public Index {
   }
 
   /// @brief provides a size hint for the index
-  int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final{
+  int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {
     // nothing to do here
     return TRI_ERROR_NO_ERROR;
   }
 
  protected:
   void createCache();
+  void disableCache();
 
  protected:
   uint64_t _objectId;

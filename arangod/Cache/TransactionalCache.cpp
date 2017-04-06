@@ -32,6 +32,7 @@
 #include "Cache/State.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
+#include "Logger/Logger.h"
 
 #include <stdint.h>
 #include <atomic>

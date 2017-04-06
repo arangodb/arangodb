@@ -73,6 +73,14 @@ void RocksDBIndex::createCache() {
   }
 }
 
+void RocksDBIndex::disableCache() {
+  TRI_ASSERT(_cacheManager != nullptr);
+  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cache.get() != nullptr);
+  _useCache = false;
+  _cacheManager->destroyCache(_cache);
+  _cache.reset();
+}
 int RocksDBIndex::drop() {
   // Try to drop the cache as well.
   if (_useCache && _cache != nullptr) {
