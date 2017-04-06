@@ -500,13 +500,17 @@ function unitTest (cases, options) {
   results.status = globalStatus;
   results.crashed = pu.serverCrashed;
 
-  if (globalStatus && !pu.serverCrashed) {
-    pu.cleanupDBDirectories(options);
+  if (options.server === undefined) {
+    if (globalStatus && !pu.serverCrashed) {
+      pu.cleanupDBDirectories(options);
+    } else {
+      print('not cleaning up as some tests weren\'t successful:\n' +
+            pu.getCleanupDBDirectories);
+    }
   } else {
-    print('not cleaning up as some tests weren\'t successful:\n' +
-      pu.getCleanupDBDirectories);
+    print("not cleaning up since we didn't start the server ourselves\n");
   }
-
+  
   try {
     yaml.safeDump(JSON.parse(JSON.stringify(results)));
   } catch (err) {
