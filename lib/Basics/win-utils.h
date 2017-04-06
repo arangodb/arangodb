@@ -136,9 +136,15 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
 void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
                              char const* fmt, ...);
 
-#define LOG_FATAL_WINDOWS(...)                                              \
+#define LOG_FATAL_WINDOWS(...)                                          \
   do {                                                                      \
     TRI_WindowsEmergencyLog(__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__); \
   } while (0)
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief detects whether an FD is connected to a (cygwin-)tty.
+////////////////////////////////////////////////////////////////////////////////
+int _cyg_isatty (int fd);
 
 #endif
