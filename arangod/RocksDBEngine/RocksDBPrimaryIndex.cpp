@@ -250,12 +250,12 @@ bool RocksDBAnyIndexIterator::outOfRange() const {
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(
     arangodb::LogicalCollection* collection, VPackSlice const& info)
-    : RocksDBIndex(basics::VelocyPackHelper::stringUInt64(info, "objectId"),
+    : RocksDBIndex(0,
                    collection,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(
                            StaticStrings::KeyString, false)}}),
-                   true, false) {
+                   true, false, basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
   _useCache = true;
   createCache();
 }
@@ -276,7 +276,7 @@ size_t RocksDBPrimaryIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
                                        bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
+  RocksDBIndex::toVelocyPack(builder, withFigures);
   // hard-coded
   builder.add("unique", VPackValue(true));
   builder.add("sparse", VPackValue(false));

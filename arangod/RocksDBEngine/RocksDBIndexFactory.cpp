@@ -353,7 +353,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
   }
 
   if (iid == 0 && !isClusterConstructor) {
-    // Restore is not allowed to generate in id
+    // Restore is not allowed to generate an id
     TRI_ASSERT(generateKey);
     iid = arangodb::Index::generateId();
   }
@@ -375,7 +375,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
                                        "cannot create edge index");
       }
       newIdx.reset(
-          new arangodb::RocksDBEdgeIndex(iid, col, StaticStrings::FromString));
+          new arangodb::RocksDBEdgeIndex(iid, col, info, StaticStrings::FromString));
       break;
     }
     //case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
@@ -398,7 +398,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
     }
   }
-
+    
   TRI_ASSERT(newIdx != nullptr);
   return newIdx;
 }
@@ -410,14 +410,14 @@ void RocksDBIndexFactory::fillSystemIndexes(
   VPackBuilder builder;
   builder.openObject();
   builder.close();
-
+    
   systemIndexes.emplace_back(
       std::make_shared<arangodb::RocksDBPrimaryIndex>(col, builder.slice()));
-  // create edges index
+  // create edges indexes
   if (col->type() == TRI_COL_TYPE_EDGE) {
     systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        1, col, StaticStrings::FromString));
+        1, col, builder.slice(), StaticStrings::FromString));
     systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        2, col, StaticStrings::ToString));
+        2, col, builder.slice(), StaticStrings::ToString));
   }
 }

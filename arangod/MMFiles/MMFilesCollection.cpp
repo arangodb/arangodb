@@ -1851,11 +1851,14 @@ bool MMFilesCollection::readDocumentConditional(
 }
 
 void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
+  TRI_ASSERT(indexesSlice.isArray());
+  if (indexesSlice.length() == 0) {
+    createInitialIndexes();
+  }
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
   TRI_ASSERT(idxFactory != nullptr);
-
-  TRI_ASSERT(_indexes.empty());
 
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
@@ -1884,13 +1887,32 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(!_indexes.empty());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+      (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
+       _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid indexes for collection '" << _logicalCollection->name() << "'";
     for (auto const& it : _indexes) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
     }
   }
 #endif
+}
+
+/// @brief creates the initial indexes for the collection
+void MMFilesCollection::createInitialIndexes() {
+  if (!_indexes.empty()) {
+    return;
+  }
+
+  std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory();
+  TRI_ASSERT(idxFactory != nullptr);
+
+  idxFactory->fillSystemIndexes(_logicalCollection, systemIndexes);
+  for (auto const& it : systemIndexes) {
+    addIndex(it);
+  }
 }
 
 std::shared_ptr<Index> MMFilesCollection::lookupIndex(

@@ -106,7 +106,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   RocksDBVPackIndex(TRI_idx_iid_t, LogicalCollection*,
                     arangodb::velocypack::Slice const&);
 
-  virtual ~RocksDBVPackIndex();
+  ~RocksDBVPackIndex();
 
  public:
   bool hasSelectivityEstimate() const override { return _unique && true; }

@@ -28,6 +28,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -52,13 +53,6 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-
-/// @brief hard-coded vector of the index attributes
-/// note that the attribute names must be hard-coded here to avoid an init-order
-/// fiasco with StaticStrings::FromString etc.
-/*static std::vector<std::vector<arangodb::basics::AttributeName>> const
-    IndexAttributes{{arangodb::basics::AttributeName("_from", false)},
-                    {arangodb::basics::AttributeName("_to", false)}};*/
 
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
@@ -146,16 +140,14 @@ void RocksDBEdgeIndexIterator::reset() {
 
 RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    arangodb::LogicalCollection* collection,
+                                   VPackSlice const& info,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
                                         {{AttributeName(attr, false)}}),
-                   false, false),
+                   false, false,
+                   basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _directionAttr(attr) {
-  /*std::vector<std::vector<arangodb::basics::AttributeName>>(
-                  {{arangodb::basics::AttributeName(StaticStrings::FromString,
-                                                    false)},
-                   {arangodb::basics::AttributeName(StaticStrings::ToString,
-                                                    false)}})*/
+  
   TRI_ASSERT(iid != 0);
 }
 
@@ -199,7 +191,7 @@ size_t RocksDBEdgeIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
                                     bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
+  RocksDBIndex::toVelocyPack(builder, withFigures);
 
   // hard-coded
   builder.add("unique", VPackValue(false));
@@ -216,15 +208,6 @@ void RocksDBEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 int RocksDBEdgeIndex::insert(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
-  // uint64_t collId = this->_collection->cid();
-  // RocksDBEntry entry = RocksDBEntry::IndexValue(_objectId, revisionId, doc);
-  /*VPackSlice key;
-  if (_directionAttr == StaticStrings::FromString) {
-    key = doc.get(StaticStrings::ToString);
-  } else {
-    key = doc.get(StaticStrings::FromString);
-  }*/
-
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());

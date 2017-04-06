@@ -74,6 +74,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   RocksDBEdgeIndex() = delete;
 
   RocksDBEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
+                   velocypack::Slice const& info,
                    std::string const&);
 
   ~RocksDBEdgeIndex();

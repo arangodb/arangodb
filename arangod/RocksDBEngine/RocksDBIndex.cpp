@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIndex.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -38,7 +39,7 @@ RocksDBIndex::RocksDBIndex(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse, uint64_t objectId)
     : Index(id, collection, attributes, unique, sparse),
-      _objectId(TRI_NewTickServer()),  // TODO!
+      _objectId(objectId ? objectId : TRI_NewTickServer()),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
       _cacheManager(CacheManagerFeature::MANAGER),
       _cache(nullptr),
@@ -47,7 +48,7 @@ RocksDBIndex::RocksDBIndex(
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
                            VPackSlice const& info)
     : Index(id, collection, info),
-      _objectId(TRI_NewTickServer()),  // TODO!
+      _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
       _cacheManager(CacheManagerFeature::MANAGER),
       _cache(nullptr),
@@ -61,6 +62,13 @@ RocksDBIndex::~RocksDBIndex() {
     } catch (...) {
     }
   }
+}
+
+/// @brief return a VelocyPack representation of the index
+void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
+                                bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
+  builder.add("objectId", VPackValue(std::to_string(_objectId)));
 }
 
 void RocksDBIndex::createCache() {
@@ -81,6 +89,7 @@ void RocksDBIndex::disableCache() {
   _cacheManager->destroyCache(_cache);
   _cache.reset();
 }
+
 int RocksDBIndex::drop() {
   // Try to drop the cache as well.
   if (_useCache && _cache != nullptr) {

@@ -356,100 +356,12 @@ LogicalCollection::~LogicalCollection() {}
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
   
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
-
   if (!indexesSlice.isArray()) {
     // always point to an array
     indexesSlice = basics::VelocyPackHelper::EmptyArrayValue();
   }
   
-  bool foundPrimary = false;
-  bool foundEdge = false;
-  
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
-    if (!v.isObject()) {
-      continue;
-    }
-
-    auto error = v.get("error");
-    if (error.isBoolean() && error.getBoolean()) {
-      // got an error
-      continue;
-    }
-    
-    auto type = v.get("type");
-    if (!type.isString()) {
-      // invalid type
-      continue;
-    }
-
-    std::string const typeString = type.copyString();
-    if (typeString == "primary") {
-      foundPrimary = true;
-    } else if (typeString == "edge") {
-      foundEdge = true;
-    }
-  }
-
-  VPackBuilder builder;
-  builder.openArray();
-  
-  if (!foundPrimary) {
-    builder.openObject();
-    builder.add("id", VPackValue(0));
-    builder.add("type", VPackValue("primary"));
-    builder.add("unique", VPackValue(true));
-    builder.add("sparse", VPackValue(false));
-    builder.add("fields", VPackValue(VPackValueType::Array));
-    builder.add(VPackValue("_key"));
-    builder.close();
-    builder.close();
-  }
-
-  if (!foundEdge && type() == TRI_COL_TYPE_EDGE) {
-    builder.openObject();
-    builder.add("id", VPackValue(1));
-    builder.add("type", VPackValue("edge"));
-    builder.add("unique", VPackValue(false));
-    builder.add("sparse", VPackValue(false));
-    builder.add("fields", VPackValue(VPackValueType::Array));
-    builder.add(VPackValue("_from"));
-    builder.add(VPackValue("_to"));
-    builder.close();
-    builder.close();
-  }
-  
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
-    if (!v.isObject()) {
-      continue;
-    }
-
-    auto error = v.get("error");
-    if (error.isBoolean() && error.getBoolean()) {
-      // got an error
-      continue;
-    }
-    
-    auto type = v.get("type");
-    if (!type.isString()) {
-      // invalid type
-      continue;
-    }
-    std::string const typeString = type.copyString();
-    if (typeString == "primary" && !foundPrimary) {
-      continue;
-    }
-    if (typeString == "edge" && !foundEdge) {
-      continue;
-    }
-    builder.add(v);
-  }
-
-  builder.close();
-    
-  _physical->prepareIndexes(builder.slice());
+  _physical->prepareIndexes(indexesSlice);
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse){
