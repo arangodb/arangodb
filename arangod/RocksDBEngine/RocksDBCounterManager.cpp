@@ -112,7 +112,7 @@ std::pair<uint64_t, uint64_t> RocksDBCounterManager::loadCounter(uint64_t object
 /// the sequence number used
 void RocksDBCounterManager::updateCounter(uint64_t objectId,
                                           rocksdb::Snapshot const* snapshot,
-                                          uint64_t delta, uint64_t revisionId) {
+                                          int64_t delta, uint64_t revisionId) {
   bool needsSync = false;
   {
     WRITE_LOCKER(guard, _rwLock);

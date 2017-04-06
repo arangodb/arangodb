@@ -73,7 +73,7 @@ class RocksDBCounterManager : Thread {
   /// their total counts. Thread-Safe needs the snapshot so we know
   /// the sequence number used
   void updateCounter(uint64_t objectId, rocksdb::Snapshot const* snapshot,
-                     uint64_t value1, uint64_t value2);
+                     int64_t delta, uint64_t revisionId);
 
   /// Thread-Safe remove a counter
   void removeCounter(uint64_t objectId);
