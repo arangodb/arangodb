@@ -377,6 +377,7 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
 
  private:
+  void createInitialIndexes();
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
   bool openIndex(VPackSlice const& description, transaction::Methods* trx);

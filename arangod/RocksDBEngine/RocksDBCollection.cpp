@@ -208,33 +208,31 @@ bool RocksDBCollection::isFullyCollected() const {
 
 void RocksDBCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
-  createInitialIndexes();
-  if (indexesSlice.isArray()) {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    IndexFactory const* idxFactory = engine->indexFactory();
-    TRI_ASSERT(idxFactory != nullptr);
-    for (auto const& v : VPackArrayIterator(indexesSlice)) {
-      if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
-                                                              false)) {
-        // We have an error here.
-        // Do not add index.
-        // TODO Handle Properly
-        continue;
-      }
 
-      auto idx =
-          idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+  TRI_ASSERT(indexesSlice.isArray());
+  if (indexesSlice.length() == 0) {
+    createInitialIndexes();
+  }
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory();
+  TRI_ASSERT(idxFactory != nullptr);
+  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
+                                                            false)) {
+      // We have an error here.
+      // Do not add index.
+      // TODO Handle Properly
+      continue;
+    }
 
-      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-          idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        continue;
-      }
-
-      if (ServerState::instance()->isRunningInCluster()) {
-        addIndexCoordinator(idx);
-      } else {
-        addIndex(idx);
-      }
+    auto idx =
+        idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+    
+    if (ServerState::instance()->isRunningInCluster()) {
+      addIndexCoordinator(idx);
+    } else {
+      addIndex(idx);
     }
   }
 
@@ -467,12 +465,7 @@ int RocksDBCollection::read(transaction::Methods* trx,
                             ManagedDocumentResult& result, bool) {
   TRI_ASSERT(key.isString());
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
-  /*
-    LOG_TOPIC(ERR, Logger::FIXME)
-        << "READ IN COLLECTION '" << _logicalCollection->name()
-        << "', KEY: " << key.copyString()
-        << ", FOUND REVISION ID: " << token.revisionId();
-  */
+  
   if (token.revisionId()) {
     if (readDocument(trx, token, result)) {
       // found

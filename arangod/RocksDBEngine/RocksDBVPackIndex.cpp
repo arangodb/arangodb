@@ -174,18 +174,16 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
     : RocksDBIndex(iid, collection, info),
       _useExpansion(false),
       _allowPartialIndex(true) {
-  {
-    TRI_ASSERT(!_fields.empty());
+  TRI_ASSERT(!_fields.empty());
 
-    TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid != 0);
 
-    fillPaths(_paths, _expanding);
+  fillPaths(_paths, _expanding);
 
-    for (auto const& it : _fields) {
-      if (TRI_AttributeNamesHaveExpansion(it)) {
-        _useExpansion = true;
-        break;
-      }
+  for (auto const& it : _fields) {
+    if (TRI_AttributeNamesHaveExpansion(it)) {
+      _useExpansion = true;
+      break;
     }
   }
 }
@@ -200,7 +198,7 @@ size_t RocksDBVPackIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
                                      bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
+  RocksDBIndex::toVelocyPack(builder, withFigures);
   builder.add("unique", VPackValue(_unique));
   builder.add("sparse", VPackValue(_sparse));
 }

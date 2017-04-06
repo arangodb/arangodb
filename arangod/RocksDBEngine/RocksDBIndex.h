@@ -54,6 +54,10 @@ class RocksDBIndex : public Index {
 
   bool isPersistent() const override final { return true; }
 
+  /// @brief return a VelocyPack representation of the index
+  void toVelocyPack(velocypack::Builder& builder,
+                    bool withFigures) const;
+
   int drop() override;
 
   int unload() override {

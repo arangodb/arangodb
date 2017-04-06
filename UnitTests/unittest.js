@@ -184,9 +184,9 @@ function main(argv) {
   }
 
   if (argv.hasOwnProperty('testOutput')) {
-    testOutputDirectory = argv.testOutput;
+    testOutputDirectory = argv.testOutput + '/';
   } else {
-    testOutputDirectory = 'out';    
+    testOutputDirectory = 'out/';    
   }
   
   // force json reply
