@@ -225,7 +225,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
   if (state->_trackKeys) {
     VPackValueLength length;
     char const* p = keySlice.getString(length);
-    physical->keyGenerator()->track(p, length);
+    collection->keyGenerator()->track(p, length);
   }
 
   ++state->_documents;
@@ -320,7 +320,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(MMFilesMarker const* mar
   if (state->_trackKeys) {
     VPackValueLength length;
     char const* p = keySlice.getString(length);
-    physical->keyGenerator()->track(p, length);
+    collection->keyGenerator()->track(p, length);
   }
 
   ++state->_deletions;
@@ -485,9 +485,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
     : PhysicalCollection(logical, VPackSlice::emptyObjectSlice()),
       _ditches(logical),
       _isVolatile(static_cast<MMFilesCollection*>(physical)->isVolatile()) {
-  _keyOptions = VPackBuilder::clone(physical->keyOptions()).steal();
   MMFilesCollection& mmfiles = *static_cast<MMFilesCollection*>(physical);
-  _keyGenerator.reset(KeyGenerator::factory(mmfiles.keyOptions()));
   _cleanupIndexes = mmfiles._cleanupIndexes;
   _persistentIndexes = mmfiles._persistentIndexes;
   _useSecondaryIndexes = mmfiles._useSecondaryIndexes;
@@ -1110,15 +1108,6 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("journalSize", VPackValue(_journalSize));
-  result.add(VPackValue("keyOptions"));
-  if (_keyGenerator != nullptr) {
-    result.openObject();
-    _keyGenerator->toVelocyPack(result);
-    result.close();
-  } else {
-    result.openArray();
-    result.close();
-  }
   result.add("path", VPackValue(_path));
 
   TRI_ASSERT(result.isOpenObject());

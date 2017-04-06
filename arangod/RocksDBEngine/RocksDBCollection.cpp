@@ -137,17 +137,6 @@ PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical,
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add("objectId", VPackValue(std::to_string(_objectId)));
-  // result.add("isVolatile", VPackValue(false)); // TODO: include?
-  result.add(VPackValue("keyOptions"));
-  if (_keyGenerator != nullptr) {
-    result.openObject();
-    _keyGenerator->toVelocyPack(result);
-    result.close();
-  } else {
-    result.openArray();
-    result.close();
-  }
-
   TRI_ASSERT(result.isOpenObject());
 }
 
