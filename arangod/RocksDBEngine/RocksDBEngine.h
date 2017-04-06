@@ -235,7 +235,7 @@ class RocksDBEngine final : public StorageEngine {
                                      arangodb::velocypack::Slice info) override;
   void addParametersForNewIndex(arangodb::velocypack::Builder& builder,
                                 arangodb::velocypack::Slice info) override;
-
+  
   rocksdb::TransactionDB* db() const { return _db; }
 
   RocksDBComparator* cmp() const { return _cmp.get(); }

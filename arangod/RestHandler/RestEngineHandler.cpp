@@ -24,6 +24,7 @@
 #include "RestEngineHandler.h"
 #include "Rest/HttpRequest.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -38,9 +39,9 @@ RestEngineHandler::RestEngineHandler(GeneralRequest* request,
 
 RestStatus RestEngineHandler::execute() {
   VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
-  result.add("name", VPackValue(EngineSelectorFeature::engineName()));
-  result.close();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->getCapabilities(result);
+  
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

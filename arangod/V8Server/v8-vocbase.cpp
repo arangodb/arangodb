@@ -1694,10 +1694,12 @@ static void JS_EngineServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  // return engine name
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_ASCII_STRING(EngineSelectorFeature::engineName()));
-  TRI_V8_RETURN(result);
+  // return engine data
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  VPackBuilder builder;
+  engine->getCapabilities(builder);
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
   TRI_V8_TRY_CATCH_END
 }
