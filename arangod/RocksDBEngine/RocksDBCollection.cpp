@@ -151,15 +151,14 @@ int RocksDBCollection::close() {
   return TRI_ERROR_NO_ERROR;
 }
 
-TRI_voc_rid_t RocksDBCollection::revision() const { 
-  return _revisionId;
-}
+TRI_voc_rid_t RocksDBCollection::revision() const { return _revisionId; }
 
-TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const { 
+TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
   RocksDBTransactionState* state =
       static_cast<RocksDBTransactionState*>(trx->state());
 
-  auto trxCollection = static_cast<RocksDBTransactionCollection*>(state->findCollection(_logicalCollection->cid()));
+  auto trxCollection = static_cast<RocksDBTransactionCollection*>(
+      state->findCollection(_logicalCollection->cid()));
   TRI_ASSERT(trxCollection != nullptr);
 
   return trxCollection->revision();
@@ -171,7 +170,8 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
   RocksDBTransactionState* state =
       static_cast<RocksDBTransactionState*>(trx->state());
 
-  auto trxCollection = static_cast<RocksDBTransactionCollection*>(state->findCollection(_logicalCollection->cid()));
+  auto trxCollection = static_cast<RocksDBTransactionCollection*>(
+      state->findCollection(_logicalCollection->cid()));
   TRI_ASSERT(trxCollection != nullptr);
 
   return trxCollection->numberDocuments();
@@ -208,12 +208,11 @@ bool RocksDBCollection::isFullyCollected() const {
 
 void RocksDBCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
-
   TRI_ASSERT(indexesSlice.isArray());
   if (indexesSlice.length() == 0) {
     createInitialIndexes();
   }
-  
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
   TRI_ASSERT(idxFactory != nullptr);
@@ -228,7 +227,7 @@ void RocksDBCollection::prepareIndexes(
 
     auto idx =
         idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
-    
+
     if (ServerState::instance()->isRunningInCluster()) {
       addIndexCoordinator(idx);
     } else {
@@ -381,11 +380,11 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
     transaction::Methods* trx, ManagedDocumentResult* mdr) {
-  return std::unique_ptr<IndexIterator>(
-                                        primaryIndex()->anyIterator(trx, mdr));
+  return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
 }
 
-void RocksDBCollection::invokeOnAllElements(transaction::Methods* trx,
+void RocksDBCollection::invokeOnAllElements(
+    transaction::Methods* trx,
     std::function<bool(DocumentIdentifierToken const&)> callback) {
   primaryIndex()->invokeOnAllElements(trx, callback);
 }
@@ -401,9 +400,9 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  
+
   RocksDBKeyBounds bounds =
-    RocksDBKeyBounds::CollectionDocuments(this->objectId());
+      RocksDBKeyBounds::CollectionDocuments(this->objectId());
   std::unique_ptr<rocksdb::Iterator> iter(
       rtrx->GetIterator(state->readOptions()));
   iter->Seek(bounds.start());
@@ -465,7 +464,7 @@ int RocksDBCollection::read(transaction::Methods* trx,
                             ManagedDocumentResult& result, bool) {
   TRI_ASSERT(key.isString());
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
-  
+
   if (token.revisionId()) {
     if (readDocument(trx, token, result)) {
       // found
@@ -873,7 +872,7 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   if (!res.ok()) {
     return res.errorNumber();
   }
-  
+
   std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false);
   auto vocbase = _logicalCollection->vocbase();
   auto collectionId = _logicalCollection->cid();
@@ -885,17 +884,18 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::Result RocksDBCollection::fillIndexes(transaction::Methods* trx,
-                                                std::shared_ptr<arangodb::Index> added) {
-  
+arangodb::Result RocksDBCollection::fillIndexes(
+    transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
   ManagedDocumentResult mmr;
-  std::unique_ptr<IndexIterator> iter(primaryIndex()->allIterator(trx, &mmr, false));
+  std::unique_ptr<IndexIterator> iter(
+      primaryIndex()->allIterator(trx, &mmr, false));
   int res = TRI_ERROR_NO_ERROR;
-  
+
   auto cb = [&](DocumentIdentifierToken token) {
     if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmr)) {
-        RocksDBIndex *ridx = static_cast<RocksDBIndex*>(added.get());
-        res = ridx->insert(trx, mmr.lastRevisionId(), VPackSlice(mmr.vpack()), false);
+      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
+      res = ridx->insert(trx, mmr.lastRevisionId(), VPackSlice(mmr.vpack()),
+                         false);
     }
   };
   while (iter->next(cb, 1000) && res == TRI_ERROR_NO_ERROR) {
@@ -971,6 +971,11 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     if (res == TRI_ERROR_OUT_OF_MEMORY) {
       return res;
     }
+    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+      LOG_TOPIC(ERR, Logger::FIXME)
+          << "#" << trx->state()->id()
+          << " UNIQUE CONSTRAINT VIOLATION IN INDEX: #" << i;
+    }
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
           result == TRI_ERROR_NO_ERROR) {
@@ -1013,13 +1018,18 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   int result = TRI_ERROR_NO_ERROR;
 
   for (size_t i = 0; i < n; ++i) {
-    auto idx = indexes[i];
+    auto& idx = indexes[i];
 
     int res = idx->remove(trx, revisionId, doc, false);
 
     // in case of no-memory, return immediately
     if (res == TRI_ERROR_OUT_OF_MEMORY) {
       return res;
+    }
+
+    // for other errors, set result
+    if (res != TRI_ERROR_NO_ERROR) {
+      result = res;
     }
   }
 

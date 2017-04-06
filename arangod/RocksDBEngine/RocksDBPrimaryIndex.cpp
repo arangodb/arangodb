@@ -117,10 +117,11 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _cmp(index->_cmp),
       _reverse(reverse),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
+  auto& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
 
   _iterator.reset(rtrx->GetIterator(options));
   if (reverse) {
@@ -182,10 +183,11 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     : IndexIterator(collection, trx, mmdr, index),
       _cmp(index->_cmp),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
+  auto& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
 
   _iterator.reset(rtrx->GetIterator(options));
   _total = collection->numberDocuments(trx);
@@ -253,8 +255,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
-  _useCache = true;
-  createCache();
+  _useCache = false;
+  // createCache();
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
@@ -302,10 +304,11 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     }
   }
 
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
+  auto& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
 
   auto status = rtrx->Get(options, key.string(), value.buffer());
   if (!status.ok()) {
@@ -336,21 +339,15 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
                                 TRI_voc_rid_t revisionId,
                                 VPackSlice const& slice, bool) {
-  // TODO: deal with uniqueness?
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
-  /*
-    LOG_TOPIC(ERR, Logger::FIXME)
-        << "PRIMARYINDEX::INSERT. COLLECTION '" << _collection->name()
-        << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
-        << ", KEY: " << slice.get("_key").copyString();
-  */
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
+  auto& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
 
   std::string empty;
   auto existing = rtrx->Get(options, key.string(), &empty);
@@ -411,7 +408,7 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
     }
   }
 
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 

@@ -112,7 +112,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     TRI_ASSERT(_cacheTx == nullptr);
 
     // start cache transaction
-    _cacheTx = CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
+    _cacheTx =
+        CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
 
     // start rocks transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -173,21 +174,27 @@ Result RocksDBTransactionState::commitTransaction(
         abortTransaction(activeTrx);
         return result;
       }
-      
+
       rocksdb::Snapshot const* snap = this->_rocksReadOptions.snapshot;
       for (auto& trxCollection : _collections) {
-        RocksDBTransactionCollection* collection = static_cast<RocksDBTransactionCollection*>(trxCollection);
-        int64_t adjustment = collection->numInserts() - collection->numRemoves();
-        
-        if (collection->numInserts() != 0 || collection->numRemoves() != 0 || collection->revision() != 0) {
-          RocksDBCollection* coll = static_cast<RocksDBCollection*>(trxCollection->collection()->getPhysical());
+        RocksDBTransactionCollection* collection =
+            static_cast<RocksDBTransactionCollection*>(trxCollection);
+        int64_t adjustment =
+            collection->numInserts() - collection->numRemoves();
+
+        if (collection->numInserts() != 0 || collection->numRemoves() != 0 ||
+            collection->revision() != 0) {
+          RocksDBCollection* coll = static_cast<RocksDBCollection*>(
+              trxCollection->collection()->getPhysical());
           coll->adjustNumberDocuments(adjustment);
           coll->setRevision(collection->revision());
-          RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-          engine->counterManager()->updateCounter(coll->objectId(), snap, adjustment, collection->revision());
+          RocksDBEngine* engine =
+              static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+          engine->counterManager()->updateCounter(
+              coll->objectId(), snap, adjustment, collection->revision());
         }
       }
-  
+
       _rocksTransaction.reset();
     }
 
@@ -241,14 +248,15 @@ Result RocksDBTransactionState::abortTransaction(
 }
 
 /// @brief add an operation for a transaction collection
-void RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, 
-                                           TRI_voc_rid_t revisionId,
-                                           TRI_voc_document_operation_e operationType,
-                                           uint64_t operationSize) {
-  auto collection = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
-  
+void RocksDBTransactionState::addOperation(
+    TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
+    TRI_voc_document_operation_e operationType, uint64_t operationSize) {
+  auto collection =
+      static_cast<RocksDBTransactionCollection*>(findCollection(cid));
+
   if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found in transaction state");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "collection not found in transaction state");
   }
 
   collection->addOperation(revisionId, operationType, operationSize);
