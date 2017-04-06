@@ -183,12 +183,12 @@ function main(argv) {
     }
   }
 
-  if (argv.hasOwnProperty('testOutput')) {
-    testOutputDirectory = argv.testOutput + '/';
+  if (options.hasOwnProperty('testOutput')) {
+    testOutputDirectory = options.testOutput + '/';
   } else {
     testOutputDirectory = 'out/';    
   }
-  
+
   // force json reply
   options.jsonReply = true;
 
