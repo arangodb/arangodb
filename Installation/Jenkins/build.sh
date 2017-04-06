@@ -569,7 +569,30 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
     if test ! -d enterprise; then
         git clone ${ENTERPRISE_GIT_URL} enterprise
     fi
-    (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; ${FINAL_PULL} )
+    (
+        cd enterprise;
+        EP_GITSHA=`git log -n1 --pretty='%h'`
+        if git describe --exact-match --tags ${EP_GITSHA}; then
+            EP_GITARGS=`git describe --exact-match --tags ${EP_GITSHA}`
+            echo "I'm on tag: ${GITARGS}"
+        else
+            EP_GITARGS=`git branch --no-color| grep '^\*' | sed "s;\* *;;"`
+            if echo $EP_GITARGS |grep -q ' '; then
+                EP_GITARGS=devel
+            fi
+            echo "I'm on Branch: ${GITARGS}"
+        fi
+                
+        if test "${EP_GITARGS}" != "${GITARGS}"; then
+            git checkout master;
+        fi
+        git fetch --tags;
+        git pull --all;
+        if test "${EP_GITARGS}" != "${GITARGS}"; then
+            git checkout ${GITARGS};
+        fi
+        ${FINAL_PULL}
+    )
 fi
 
 
