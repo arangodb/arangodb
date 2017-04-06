@@ -204,7 +204,7 @@ function main(argv) {
   let r = {};
 
   try {
-    r = UnitTest.unitTest(cases, options) || {};
+    r = UnitTest.unitTest(cases, options, testOutputDirectory) || {};
   } catch (x) {
     print("caught exception during test execution!");
 
@@ -253,7 +253,7 @@ function main(argv) {
     }
   }
 
-  UnitTest.unitTestPrettyPrintResults(r);
+  UnitTest.unitTestPrettyPrintResults(r, testOutputDirectory);
 
   return r.status;
 }
