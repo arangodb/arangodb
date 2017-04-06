@@ -27,18 +27,17 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 
 using namespace arangodb;
 
-RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx, 
-                                                           TRI_voc_cid_t cid, 
-                                                           AccessMode::Type accessType) 
+RocksDBTransactionCollection::RocksDBTransactionCollection(
+    TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType)
     : TransactionCollection(trx, cid),
-      _accessType(accessType), 
+      _accessType(accessType),
       _initialNumberDocuments(0),
       _revision(0),
       _operationSize(0),
@@ -52,7 +51,8 @@ RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
 int RocksDBTransactionCollection::lock() { return TRI_ERROR_NO_ERROR; }
 
 /// @brief request a lock for a collection
-int RocksDBTransactionCollection::lock(AccessMode::Type accessType, int /*nestingLevel*/) {
+int RocksDBTransactionCollection::lock(AccessMode::Type accessType,
+                                       int /*nestingLevel*/) {
   if (isWrite(accessType) && !isWrite(_accessType)) {
     // wrong lock type
     return TRI_ERROR_INTERNAL;
@@ -62,7 +62,8 @@ int RocksDBTransactionCollection::lock(AccessMode::Type accessType, int /*nestin
 }
 
 /// @brief request an unlock for a collection
-int RocksDBTransactionCollection::unlock(AccessMode::Type accessType, int /*nestingLevel*/) {
+int RocksDBTransactionCollection::unlock(AccessMode::Type accessType,
+                                         int /*nestingLevel*/) {
   if (isWrite(accessType) && !isWrite(_accessType)) {
     // wrong lock type: write-unlock requested but collection is read-only
     return TRI_ERROR_INTERNAL;
@@ -72,10 +73,12 @@ int RocksDBTransactionCollection::unlock(AccessMode::Type accessType, int /*nest
 }
 
 /// @brief check if a collection is locked in a specific mode in a transaction
-bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType, int /*nestingLevel*/) const {
+bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
+                                            int /*nestingLevel*/) const {
   if (isWrite(accessType) && !isWrite(_accessType)) {
     // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "logic error. checking wrong lock type";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "logic error. checking wrong lock type";
     return false;
   }
 
@@ -93,12 +96,14 @@ bool RocksDBTransactionCollection::isLocked() const {
 bool RocksDBTransactionCollection::hasOperations() const {
   return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
 }
-  
-void RocksDBTransactionCollection::freeOperations(transaction::Methods* /*activeTrx*/, bool /*mustRollback*/) {}
 
-bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const {
+void RocksDBTransactionCollection::freeOperations(
+    transaction::Methods* /*activeTrx*/, bool /*mustRollback*/) {}
+
+bool RocksDBTransactionCollection::canAccess(
+    AccessMode::Type accessType) const {
   // check if access type matches
-  if (AccessMode::isWriteOrExclusive(accessType) && 
+  if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
     // type doesn't match. probably also a mistake by the caller
     return false;
@@ -107,8 +112,9 @@ bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const 
   return true;
 }
 
-int RocksDBTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) && 
+int RocksDBTransactionCollection::updateUsage(AccessMode::Type accessType,
+                                              int nestingLevel) {
+  if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
     if (nestingLevel > 0) {
       // trying to write access a collection that is only marked with
@@ -131,19 +137,26 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
     TRI_vocbase_col_status_e status;
     LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
     _collection = _transaction->vocbase()->useCollection(_cid, status);
-      
+
     if (_collection == nullptr) {
+      int res = TRI_errno();
+      if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED) {
+        return res;
+      }
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
-    
+
     if (AccessMode::isWriteOrExclusive(_accessType) &&
         TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
         !LogicalCollection::IsSystemName(_collection->name())) {
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
 
-    _initialNumberDocuments = static_cast<RocksDBCollection*>(_collection->getPhysical())->numberDocuments();
-    _revision = static_cast<RocksDBCollection*>(_collection->getPhysical())->revision();
+    _initialNumberDocuments =
+        static_cast<RocksDBCollection*>(_collection->getPhysical())
+            ->numberDocuments();
+    _revision =
+        static_cast<RocksDBCollection*>(_collection->getPhysical())->revision();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -161,11 +174,11 @@ void RocksDBTransactionCollection::release() {
     _collection = nullptr;
   }
 }
-  
+
 /// @brief add an operation for a transaction collection
-void RocksDBTransactionCollection::addOperation(TRI_voc_rid_t revisionId,     
-                                                TRI_voc_document_operation_e operationType,
-                                                uint64_t operationSize) {
+void RocksDBTransactionCollection::addOperation(
+    TRI_voc_rid_t revisionId, TRI_voc_document_operation_e operationType,
+    uint64_t operationSize) {
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
