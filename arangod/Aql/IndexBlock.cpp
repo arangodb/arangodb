@@ -564,6 +564,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
         returnBlock(cur);
+        _pos = 0;
       }
       if (_buffer.empty()) {
         if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
