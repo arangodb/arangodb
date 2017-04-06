@@ -106,7 +106,7 @@ void AttributeWeightShortestPathFinder::SearcherTwoThreads::lookupPeer(
   // Did we find a solution on our own? This is for the
   // single thread case and for the case that the other
   // thread is too slow to even finish its own start vertex!
-  if (s->weight() == 0) {
+  if (s->weight() == 0.0) {
     // We have found the target, we have finished all
     // vertices with a smaller weight than this one (and did
     // not succeed), so this must be a best solution:

@@ -52,7 +52,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     arangodb::velocypack::Slice _edge;
     bool _done;
 
-    Step() : _done(false) {}
+    Step() : _weight(0.0), _done(false) {}
 
     Step(arangodb::velocypack::Slice const& vert,
          arangodb::velocypack::Slice const& pred, double weig,

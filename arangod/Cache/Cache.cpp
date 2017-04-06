@@ -164,9 +164,8 @@ bool Cache::isResizing() {
 }
 
 bool Cache::isShutdown() {
-  bool shutdown = false;
   _state.lock();
-  shutdown = !isOperational();
+  bool shutdown = !isOperational();
   _state.unlock();
 
   return shutdown;
