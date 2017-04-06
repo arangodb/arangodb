@@ -29,9 +29,10 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
@@ -41,6 +42,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
@@ -57,9 +59,9 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _returned(0),
       _collector(&_engine->_itemBlockManager) {
   _mmdr.reset(new ManagedDocumentResult);
- 
+
   if (_condition != nullptr) {
-    // fix const attribute accesses, e.g. { "a": 1 }.a 
+    // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
       auto andCond = _condition->getMemberUnchecked(i);
       for (size_t j = 0; j < andCond->numMembers(); ++j) {
@@ -86,15 +88,12 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
   }
 }
 
-IndexBlock::~IndexBlock() {
-  cleanupNonConstExpressions();
-}
+IndexBlock::~IndexBlock() { cleanupNonConstExpressions(); }
 
 /// @brief adds a UNIQUE() to a dynamic IN condition
 arangodb::aql::AstNode* IndexBlock::makeUnique(
     arangodb::aql::AstNode* node) const {
-  if (node->type != arangodb::aql::NODE_TYPE_ARRAY ||
-      node->numMembers() >= 2) {
+  if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
     auto en = static_cast<IndexNode const*>(getPlanNode());
     auto ast = en->_plan->getAst();
@@ -103,7 +102,8 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     auto trx = transaction();
     bool isSorted = false;
     bool isSparse = false;
-    auto unused = trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
+    auto unused =
+        trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
     if (isSparse) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
@@ -139,8 +139,8 @@ void IndexBlock::executeExpressions() {
     AqlValueGuard guard(a, mustDestroy);
 
     AstNode* evaluatedNode = nullptr;
-    
-    AqlValueMaterializer materializer(_trx); 
+
+    AqlValueMaterializer materializer(_trx);
     VPackSlice slice = materializer.slice(a, false);
     evaluatedNode = ast->nodeFromVPack(slice, true);
 
@@ -157,41 +157,41 @@ int IndexBlock::initialize() {
 
   auto en = static_cast<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
-  
+
   // instantiate expressions:
-  auto instantiateExpression =
-      [&](size_t i, size_t j, size_t k, AstNode* a) -> void {
-        // all new AstNodes are registered with the Ast in the Query
-        auto e = std::make_unique<Expression>(ast, a);
+  auto instantiateExpression = [&](size_t i, size_t j, size_t k,
+                                   AstNode* a) -> void {
+    // all new AstNodes are registered with the Ast in the Query
+    auto e = std::make_unique<Expression>(ast, a);
 
-        TRI_IF_FAILURE("IndexBlock::initialize") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
+    TRI_IF_FAILURE("IndexBlock::initialize") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
-        _hasV8Expression |= e->isV8();
+    _hasV8Expression |= e->isV8();
 
-        std::unordered_set<Variable const*> inVars;
-        e->variables(inVars);
+    std::unordered_set<Variable const*> inVars;
+    e->variables(inVars);
 
-        auto nce = std::make_unique<NonConstExpression>(i, j, k, e.get());
-        e.release();
-        _nonConstExpressions.push_back(nce.get());
-        nce.release();
+    auto nce = std::make_unique<NonConstExpression>(i, j, k, e.get());
+    e.release();
+    _nonConstExpressions.push_back(nce.get());
+    nce.release();
 
-        // Prepare _inVars and _inRegs:
-        _inVars.emplace_back();
-        std::vector<Variable const*>& inVarsCur = _inVars.back();
-        _inRegs.emplace_back();
-        std::vector<RegisterId>& inRegsCur = _inRegs.back();
+    // Prepare _inVars and _inRegs:
+    _inVars.emplace_back();
+    std::vector<Variable const*>& inVarsCur = _inVars.back();
+    _inRegs.emplace_back();
+    std::vector<RegisterId>& inRegsCur = _inRegs.back();
 
-        for (auto const& v : inVars) {
-          inVarsCur.emplace_back(v);
-          auto it = en->getRegisterPlan()->varInfo.find(v->id);
-          TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
-          TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-          inRegsCur.emplace_back(it->second.registerId);
-        }
-      };
+    for (auto const& v : inVars) {
+      inVarsCur.emplace_back(v);
+      auto it = en->getRegisterPlan()->varInfo.find(v->id);
+      TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
+      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+      inRegsCur.emplace_back(it->second.registerId);
+    }
+  };
 
   if (_condition == nullptr) {
     // This Node has no condition. Iterate over the complete index.
@@ -325,7 +325,7 @@ bool IndexBlock::initIndexes() {
   if (_cursor->failed()) {
     THROW_ARANGO_EXCEPTION(_cursor->code);
   }
-    
+
   while (!_cursor->hasMore()) {
     if (node->_reverse) {
       --_currentIndex;
@@ -380,7 +380,6 @@ void IndexBlock::startNextCursor() {
   DEBUG_END_BLOCK();
 }
 
-
 // this is called every time we just skip in the index
 bool IndexBlock::skipIndex(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
@@ -416,7 +415,9 @@ bool IndexBlock::skipIndex(size_t atMost) {
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexBlock::readIndex(size_t atMost, std::function<void(DocumentIdentifierToken const&)>& callback) {
+bool IndexBlock::readIndex(
+    size_t atMost,
+    std::function<void(DocumentIdentifierToken const&)>& callback) {
   DEBUG_BEGIN_BLOCK();
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
@@ -468,7 +469,7 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   _alreadyReturned.clear();
   _returned = 0;
   _pos = 0;
@@ -487,7 +488,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     traceGetSomeEnd(nullptr);
     return _collector.steal();
   }
- 
+
   TRI_ASSERT(atMost > 0);
   size_t curRegs;
 
@@ -512,12 +513,14 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         }
       }
       if (_cursor->collection()->readDocument(_trx, token, *_mmdr)) {
-        res->setValue(_returned, static_cast<arangodb::aql::RegisterId>(curRegs),
-            _mmdr->createAqlValue());
+        res->setValue(_returned,
+                      static_cast<arangodb::aql::RegisterId>(curRegs),
+                      _mmdr->createAqlValue());
 
         if (_returned > 0) {
           // re-use already copied AqlValues
-          res->copyValuesFromFirstRow(_returned, static_cast<RegisterId>(curRegs));
+          res->copyValuesFromFirstRow(_returned,
+                                      static_cast<RegisterId>(curRegs));
         }
         ++_returned;
       }
@@ -529,12 +532,14 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     callback = [&](DocumentIdentifierToken const& token) {
       TRI_ASSERT(res.get() != nullptr);
       if (_cursor->collection()->readDocument(_trx, token, *_mmdr)) {
-        res->setValue(_returned, static_cast<arangodb::aql::RegisterId>(curRegs),
-            _mmdr->createAqlValue());
+        res->setValue(_returned,
+                      static_cast<arangodb::aql::RegisterId>(curRegs),
+                      _mmdr->createAqlValue());
 
         if (_returned > 0) {
           // re-use already copied AqlValues
-          res->copyValuesFromFirstRow(_returned, static_cast<RegisterId>(curRegs));
+          res->copyValuesFromFirstRow(_returned,
+                                      static_cast<RegisterId>(curRegs));
         }
         ++_returned;
       }
@@ -580,14 +585,15 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     AqlItemBlock* cur = _buffer.front();
     curRegs = cur->getNrRegs();
 
-    res.reset(requestBlock(atMost - found, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+    res.reset(requestBlock(
+        atMost - found,
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
     TRI_ASSERT(curRegs <= res->getNrRegs());
 
-
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
-    
+
     // Read the next (atMost - j) many elements from the indexes
     _indexesExhausted = !readIndex(atMost - found, callback);
     if (_returned > 0) {
@@ -688,7 +694,7 @@ void IndexBlock::cleanupNonConstExpressions() {
   }
   _nonConstExpressions.clear();
 }
-  
+
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
   AstNode const* conditionNode = nullptr;
@@ -708,14 +714,8 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
     // yet no cursor for index, so create it
     IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(
-      _indexes[currentIndex], 
-      conditionNode,
-      node->outVariable(), 
-      _mmdr.get(),
-      UINT64_MAX, 
-      transaction::Methods::defaultBatchSize(),
-      node->_reverse
-    ));
+        _indexes[currentIndex], conditionNode, node->outVariable(), _mmdr.get(),
+        UINT64_MAX, transaction::Methods::defaultBatchSize(), node->_reverse));
   } else {
     // cursor for index already exists, reset and reuse it
     _cursors[currentIndex]->reset();

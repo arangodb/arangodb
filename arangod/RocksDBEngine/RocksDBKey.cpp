@@ -30,7 +30,6 @@
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
-using namespace arangodb::velocypack;
 
 const char RocksDBKey::_stringSeparator = '\0';
 
@@ -55,7 +54,7 @@ RocksDBKey RocksDBKey::Document(uint64_t collectionId,
 }
 
 RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
-                                         StringRef const& primaryKey) {
+                                         arangodb::StringRef const& primaryKey) {
   return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, primaryKey);
 }
 
@@ -283,7 +282,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   }
 }
 
-RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, StringRef const& second)
+RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::PrimaryIndexValue: {
