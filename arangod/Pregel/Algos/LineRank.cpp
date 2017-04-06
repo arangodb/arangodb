@@ -34,8 +34,8 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 static std::string const kMoreIterations = "more";
-static const double RESTART_PROB = 0.15;
-static const double EPS = 0.0000001;
+static const float RESTART_PROB = 0.15f;
+static const float EPS = 0.0000001f;
 
 LineRank::LineRank(arangodb::velocypack::Slice params)
     : SimpleAlgorithm("LineRank", params) {
@@ -81,7 +81,7 @@ struct LRComputation : public VertexComputation<float, float, float> {
         } else {
           newScore /= edges.size();
           newScore = ctx->startAtNodeProb * RESTART_PROB +
-                     newScore * (1.0 - RESTART_PROB);
+                     newScore * (1.0f - RESTART_PROB);
         }
 
         float diff = fabsf(newScore - *vertexValue);

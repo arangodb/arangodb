@@ -78,7 +78,7 @@ Table::Table(uint32_t logSize)
       _logSize(std::min(logSize, maxLogSize)),
       _size(static_cast<uint64_t>(1) << _logSize),
       _shift(32 - _logSize),
-      _mask((_size - 1) << _shift),
+      _mask((uint32_t)((_size - 1) << _shift)),
       _buffer(new uint8_t[(_size * BUCKET_SIZE) + Table::padding]),
       _buckets(reinterpret_cast<GenericBucket*>(
           reinterpret_cast<uint64_t>((_buffer.get() + 63)) &
