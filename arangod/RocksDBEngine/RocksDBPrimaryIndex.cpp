@@ -189,21 +189,23 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
 
   _iterator.reset(rtrx->GetIterator(options));
   _total = collection->numberDocuments(trx);
+  uint64_t off = RandomGenerator::interval(_total - 1);
+  uint64_t goal = off;
   if (_total > 0) {
-    uint64_t off = RandomGenerator::interval(_total);
-    if (off < _total/2) {
+    if (off <= _total / 2) {
       _iterator->Seek(_bounds.start());
-      while (_iterator->Valid() && --off > 0) {
+      while (_iterator->Valid() && off-- > 0) {
         _iterator->Next();
       }
     } else {
-      off /= 2;
+      off = _total - (off + 1);
       _iterator->SeekForPrev(_bounds.end());
-      while (_iterator->Valid() && --off > 0) {
+      while (_iterator->Valid() && off-- > 0) {
         _iterator->Prev();
       }
     }
     if (!_iterator->Valid()) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "invalid iterator!!! offset " << goal;
       _iterator->Seek(_bounds.start());
     }
   }
@@ -245,12 +247,12 @@ bool RocksDBAnyIndexIterator::outOfRange() const {
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(
     arangodb::LogicalCollection* collection, VPackSlice const& info)
-    : RocksDBIndex(0,
-                   collection,
+    : RocksDBIndex(0, collection,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(
                            StaticStrings::KeyString, false)}}),
-                   true, false, basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
+                   true, false,
+                   basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
   _useCache = true;
   createCache();
 }
