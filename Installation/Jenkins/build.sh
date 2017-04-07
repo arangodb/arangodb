@@ -693,7 +693,7 @@ if test -n "${TARGET_DIR}";  then
             DLLS=`find ${SSLDIR} -name \*.dll |grep -i release`
             cp ${DLLS} bin/${BUILD_CONFIG}
             cp bin/${BUILD_CONFIG}/* bin/
-            cp tests/${BUILD_CONFIG}/* tests/
+            cp tests/${BUILD_CONFIG}/* bin/
         fi
         tar -u -f ${TARFILE_TMP} \
             bin etc tests
