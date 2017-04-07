@@ -109,6 +109,8 @@ devel
 
 * Foxx: Fix arangoUser sometimes not being set correctly
 
+* fixed issue #1974
+
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
