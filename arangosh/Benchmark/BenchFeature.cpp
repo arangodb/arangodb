@@ -299,7 +299,7 @@ void BenchFeature::start() {
 
   report(client, results);
   if (!ok) {
-    std::cout << "At least one of the runs yielded some failures!" << std::endl;
+    std::cout << "At least one of the runs produced failures!" << std::endl;
   }
   benchmark->tearDown();
 
@@ -432,11 +432,10 @@ void BenchFeature::printResult(BenchRunResult const& result) {
             << std::endl;
 
   if (result.failures > 0) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "WARNING: " << result.failures
-              << " arangobench request(s) failed!";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << result.failures << " arangobench request(s) failed!";
   }
   if (result.incomplete > 0) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "WARNING: " << result.incomplete
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << result.incomplete
               << " arangobench requests with incomplete results!";
   }
 }

@@ -81,15 +81,17 @@ RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db, double interval)
 
 void RocksDBCounterManager::beginShutdown() {
   Thread::beginShutdown();
-  _condition.broadcast();
-  // CONDITION_LOCKER(locker, _condition);
-  // locker.signal();
+  
+  // wake up the thread that may be waiting in run()
+  CONDITION_LOCKER(guard, _condition);
+  guard.broadcast();
 }
 
 void RocksDBCounterManager::run() {
   while (!isStopping()) {
-    CONDITION_LOCKER(locker, _condition);
-    locker.wait(static_cast<uint64_t>(_interval * 1000000.0));
+    CONDITION_LOCKER(guard, _condition);
+    guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
+
     if (!isStopping()) {
       this->sync();
     }

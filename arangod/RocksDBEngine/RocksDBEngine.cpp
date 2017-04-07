@@ -589,6 +589,7 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
                                 TRI_voc_cid_t collectionId,
                                 TRI_idx_iid_t indexId,
                                 arangodb::velocypack::Slice const& data) {
+  /*
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
   auto key = RocksDBKey::Index(vocbase->id(), collectionId, indexId);
   auto value = RocksDBValue::Index(data);
@@ -598,6 +599,7 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
   if (!result.ok()) {
     THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
+  */
 }
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,
@@ -770,22 +772,23 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
   // remove collections
   for (auto const& val : collectionKVPairs(id)) {
-    TRI_voc_cid_t cid =
-        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "cid");
     // remove indexes
-    for (auto& val : indexKVPairs(id, cid)) {
-      // delete index documents
-      uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
-          val.second.slice(), "objectId");
-      RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
-      res = rocksutils::removeLargeRange(_db, bounds);
-      if (res.fail()) {
-        return res;
-      }
-      // delete index
-      res = globalRocksDBRemove(val.first.string(), options);
-      if (res.fail()) {
-        return res;
+    VPackSlice indexes = val.second.slice().get("indexes");
+    if (indexes.isArray()) {
+      for (auto const& it : VPackArrayIterator(indexes)) {
+        // delete index documents
+        uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
+            it, "objectId");
+        RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
+        res = rocksutils::removeLargeRange(_db, bounds);
+        if (res.fail()) {
+          return res;
+        }
+        // delete index
+        res = globalRocksDBRemove(val.first.string(), options);
+        if (res.fail()) {
+          return res;
+        }
       }
     }
 

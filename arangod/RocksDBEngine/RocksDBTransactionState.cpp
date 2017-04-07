@@ -176,6 +176,8 @@ Result RocksDBTransactionState::commitTransaction(
       }
 
       rocksdb::Snapshot const* snap = this->_rocksReadOptions.snapshot;
+      TRI_ASSERT(snap != nullptr);
+
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection =
             static_cast<RocksDBTransactionCollection*>(trxCollection);
@@ -190,6 +192,7 @@ Result RocksDBTransactionState::commitTransaction(
           coll->setRevision(collection->revision());
           RocksDBEngine* engine =
               static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+
           engine->counterManager()->updateCounter(
               coll->objectId(), snap, adjustment, collection->revision());
         }

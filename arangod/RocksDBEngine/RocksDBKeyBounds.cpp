@@ -44,16 +44,6 @@ RocksDBKeyBounds RocksDBKeyBounds::DatabaseCollections(
   return RocksDBKeyBounds(RocksDBEntryType::Collection, databaseId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::DatabaseIndexes(TRI_voc_tick_t databaseId,
-                                                   TRI_voc_cid_t cid) {
-  return RocksDBKeyBounds(RocksDBEntryType::Index, databaseId, cid);
-}
-
-RocksDBKeyBounds RocksDBKeyBounds::CollectionIndexes(
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
-  return RocksDBKeyBounds(RocksDBEntryType::Index, databaseId, collectionId);
-}
-
 RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionId) {
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionId);
 }
@@ -198,29 +188,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       _endBuffer.clear();
       _endBuffer.append(_startBuffer);
       nextPrefix(_endBuffer);
-      break;
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-}
-
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                                   uint64_t second)
-    : _type(type), _startBuffer(), _endBuffer() {
-  switch (_type) {
-    case RocksDBEntryType::Index: {
-      size_t length = sizeof(char) + (2 * sizeof(uint64_t));
-      _startBuffer.reserve(length);
-      _startBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_startBuffer, first);
-      uint64ToPersistent(_startBuffer, second);
-
-      _endBuffer.clear();
-      _endBuffer.append(_startBuffer);
-      nextPrefix(_endBuffer);
-
       break;
     }
 
