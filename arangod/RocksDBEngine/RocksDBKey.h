@@ -57,12 +57,6 @@ class RocksDBKey {
                                TRI_voc_cid_t collectionId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified index key
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKey Index(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                          TRI_idx_iid_t indexId);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified document key
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey Document(uint64_t collectionId, TRI_voc_rid_t revisionId);
@@ -140,7 +134,7 @@ class RocksDBKey {
   /// @brief Extracts the databaseId from a key
   ///
   /// May be called only on the following key types: Database, Collection,
-  /// Index, and View. Other types will throw.
+  /// View. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static TRI_voc_tick_t databaseId(RocksDBKey const&);
   static TRI_voc_tick_t databaseId(rocksdb::Slice const&);
@@ -148,20 +142,11 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the collectionId from a key
   ///
-  /// May be called only on the the following key types: Collection and Index.
+  /// May be called only on the the following key types: Collection.
   /// Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static TRI_voc_cid_t collectionId(RocksDBKey const&);
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the indexId from a key
-  ///
-  /// May be called only on Index keys (not index values). Other types will
-  /// throw.
-  //////////////////////////////////////////////////////////////////////////////
-  static TRI_idx_iid_t indexId(RocksDBKey const&);
-  static TRI_idx_iid_t indexId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the viewId from a key
@@ -215,8 +200,6 @@ class RocksDBKey {
  private:
   RocksDBKey(RocksDBEntryType type, uint64_t first);
   RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second);
-  RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second,
-             uint64_t third);
   RocksDBKey(RocksDBEntryType type, uint64_t first, VPackSlice const& slice);
   RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& docKey,
              VPackSlice const& indexData);
@@ -228,7 +211,6 @@ class RocksDBKey {
   static RocksDBEntryType type(char const* data, size_t size);
   static TRI_voc_tick_t databaseId(char const* data, size_t size);
   static TRI_voc_cid_t collectionId(char const* data, size_t size);
-  static TRI_idx_iid_t indexId(char const* data, size_t size);
   static TRI_voc_cid_t viewId(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(char const* data, size_t size);
   static StringRef primaryKey(char const* data, size_t size);

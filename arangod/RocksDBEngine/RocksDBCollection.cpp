@@ -161,7 +161,11 @@ TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
       state->findCollection(_logicalCollection->cid()));
   TRI_ASSERT(trxCollection != nullptr);
 
-  return trxCollection->revision();
+  TRI_voc_rid_t revisionId = trxCollection->revision();
+  if (!revisionId) {
+    revisionId = _revisionId;
+  }
+  return revisionId;
 }
 
 uint64_t RocksDBCollection::numberDocuments() const { return _numberDocuments; }
@@ -190,8 +194,6 @@ void RocksDBCollection::open(bool ignoreErrors) {
   auto counterValue = engine->counterManager()->loadCounter(this->objectId());
   _numberDocuments = counterValue.first;
   _revisionId = counterValue.second;
-  //_numberDocuments = countKeyRange(db, readOptions,
-  // RocksDBKeyBounds::CollectionDocuments(_objectId));
 }
 
 /// @brief iterate all markers of a collection on load
@@ -943,12 +945,6 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
-  /*
-    LOG_TOPIC(ERR, Logger::ENGINE)
-        << "INSERT DOCUMENT. COLLECTION '" << _logicalCollection->name()
-        << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId;
-
-  */
   rocksdb::Status status = rtrx->Put(key.string(), value.string());
 
   if (!status.ok()) {
@@ -970,11 +966,6 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     // in case of no-memory, return immediately
     if (res == TRI_ERROR_OUT_OF_MEMORY) {
       return res;
-    }
-    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-      LOG_TOPIC(ERR, Logger::FIXME)
-          << "#" << trx->state()->id()
-          << " UNIQUE CONSTRAINT VIOLATION IN INDEX: #" << i;
     }
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||

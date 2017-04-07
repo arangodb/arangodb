@@ -47,7 +47,6 @@ class RocksDBValue {
 
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
-  static RocksDBValue Index(VPackSlice const& data);
   static RocksDBValue Document(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue EdgeIndexValue();
@@ -84,7 +83,7 @@ class RocksDBValue {
   /// @brief Extracts the VelocyPack data from a value
   ///
   /// May be called only values of the following types: Database, Collection,
-  /// Index, Document, and View. Other types will throw.
+  /// Document, and View. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static VPackSlice data(RocksDBValue const&);
   static VPackSlice data(rocksdb::Slice const&);
