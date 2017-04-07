@@ -1,6 +1,8 @@
 devel
 -----
 
+* issue #2413: improve logging in case of lock timeout and deadlocks
+
 * added log topic attribute to /_admin/log api
 
 * removed internal build option `USE_DEV_TIMERS`
