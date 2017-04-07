@@ -56,7 +56,7 @@ class RocksDBIndex : public Index {
 
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder,
-                    bool withFigures) const;
+                    bool withFigures) const override;
 
   int drop() override;
 

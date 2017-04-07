@@ -144,7 +144,10 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
   if (it != _counters.end()) {
     RocksDBKey key = RocksDBKey::CounterValue(it->first);
     rocksdb::WriteOptions options;
-    _db->Delete(options, key.string());
+    rocksdb::Status s = _db->Delete(options, key.string());
+    if (!s.ok()) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "Delete counter failed";
+    }
     _counters.erase(it);
   }
 }
@@ -237,9 +240,14 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       auto const& it = prevCounters.find(objectId);
       if (it == prevCounters.end()) {
+        // We found a counter value, now we can track all writes from this
+        // point in the WAL
         prevCounters.emplace(objectId, seqNum);
         deltas.emplace(objectId, RocksDBCounterManager::Counter());
-      } else if (it->second > seqNum) {
+      } else if (it->second < seqNum) {
+        // we found our counter again at a later point in the WAL
+        // which means we can forget about every write we have seen
+        // up to this point
         TRI_ASSERT(deltas.find(objectId) != deltas.end());
         it->second = seqNum;
         deltas[objectId].reset();
@@ -304,7 +312,8 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
 
 /// parse the WAL with the above handler parser class
 bool RocksDBCounterManager::parseRocksWAL() {
-  TRI_ASSERT(_counters.size() != 0);
+  WRITE_LOCKER(guard, _rwLock);
+  TRI_ASSERT(_counters.size() > 0);
 
   // Determine which counter values might be outdated
   rocksdb::SequenceNumber minSeq = UINT64_MAX;
@@ -313,8 +322,6 @@ bool RocksDBCounterManager::parseRocksWAL() {
       minSeq = it.second;
     }
   }
-
-  WRITE_LOCKER(guard, _rwLock);
 
   std::unique_ptr<WBReader> handler(new WBReader());
 
@@ -337,7 +344,8 @@ bool RocksDBCounterManager::parseRocksWAL() {
   
   for (std::pair<uint64_t, RocksDBCounterManager::Counter> pair : handler->deltas) {
     auto const& it = _counters.find(pair.first);
-    if (it != _counters.end()) {
+    if (it != _counters.end()
+        && it->second.sequenceNumber < pair.second.sequenceNumber) {
       it->second.sequenceNumber = pair.second.sequenceNumber;
       it->second.count += pair.second.count;
       it->second.revisionId = pair.second.revisionId;
