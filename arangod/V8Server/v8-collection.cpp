@@ -869,6 +869,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   bool allowDropSystem = false;
+  double timeout = -1.0;   // wait forever
   if (args.Length() > 0) {
     // options
     if (args[0]->IsObject()) {
@@ -878,12 +879,16 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       if (optionsObject->Has(IsSystemKey)) {
         allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
       }
+      TRI_GET_GLOBAL_STRING(TimeoutKey);
+      if (optionsObject->Has(TimeoutKey)) {
+        timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
+      }
     } else {
       allowDropSystem = TRI_ObjectToBoolean(args[0]);
     }
   }
 
-  int res = collection->vocbase()->dropCollection(collection, allowDropSystem, true);
+  int res = collection->vocbase()->dropCollection(collection, allowDropSystem, true, timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");
