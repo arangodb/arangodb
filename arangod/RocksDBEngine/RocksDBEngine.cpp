@@ -125,7 +125,9 @@ void RocksDBEngine::start() {
   _options.create_if_missing = true;
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
-  _options.WAL_ttl_seconds = (uint64_t)(counter_sync_seconds * 2.0);
+  // WAL_ttl_seconds needs to be bigger than the sync interval of the count
+  // manager
+  _options.WAL_ttl_seconds = 15; //(uint64_t)(counter_sync_seconds * 2.0);
   // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
   
   rocksdb::Status status =
@@ -506,6 +508,14 @@ arangodb::Result RocksDBEngine::persistCollection(
 
   int res = writeCreateCollectionMarker(vocbase->id(), cid, slice);
   result.reset(res);
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (result.ok()) {
+    RocksDBCollection *rcoll =
+      RocksDBCollection::toRocksDBCollection(collection->getPhysical());
+    TRI_ASSERT(rcoll->numberDocuments() == 0);
+  }
+#endif
   return result;
 }
 

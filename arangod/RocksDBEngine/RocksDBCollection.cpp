@@ -192,6 +192,8 @@ void RocksDBCollection::open(bool ignoreErrors) {
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   auto counterValue = engine->counterManager()->loadCounter(this->objectId());
+  TRI_ASSERT(counterValue.first >= 0);
+  TRI_ASSERT(counterValue.second >= 0);
   _numberDocuments = counterValue.first;
   _revisionId = counterValue.second;
 }
