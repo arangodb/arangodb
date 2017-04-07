@@ -62,10 +62,13 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kCorruption:
       return {TRI_ERROR_ARANGO_CORRUPTED_DATAFILE, status.ToString()};
     case rocksdb::Status::Code::kNotSupported:
-      return {TRI_ERROR_ILLEGAL_OPTION, status.ToString()};
+      return {TRI_ERROR_NOT_IMPLEMENTED, status.ToString()};
     case rocksdb::Status::Code::kInvalidArgument:
       return {TRI_ERROR_BAD_PARAMETER, status.ToString()};
     case rocksdb::Status::Code::kIOError:
+      if (status.subcode() == rocksdb::Status::SubCode::kNoSpace) {
+        return {TRI_ERROR_ARANGO_FILESYSTEM_FULL, status.ToString()};
+      }
       return {TRI_ERROR_ARANGO_IO_ERROR, status.ToString()};
     case rocksdb::Status::Code::kMergeInProgress:
       return {TRI_ERROR_ARANGO_MERGE_IN_PROGRESS, status.ToString()};
@@ -74,10 +77,18 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kShutdownInProgress:
       return {TRI_ERROR_SHUTTING_DOWN, status.ToString()};
     case rocksdb::Status::Code::kTimedOut:
+      if (status.subcode() == rocksdb::Status::SubCode::kMutexTimeout ||
+          status.subcode() == rocksdb::Status::SubCode::kLockTimeout) {
+        // TODO: maybe add a separator error code/message here
+        return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
+      }
       return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
     case rocksdb::Status::Code::kAborted:
       return {TRI_ERROR_TRANSACTION_ABORTED, status.ToString()};
     case rocksdb::Status::Code::kBusy:
+      if (status.subcode() == rocksdb::Status::SubCode::kDeadlock) {
+        return {TRI_ERROR_DEADLOCK};
+      }
       return {TRI_ERROR_ARANGO_BUSY, status.ToString()};
     case rocksdb::Status::Code::kExpired:
       return {TRI_ERROR_INTERNAL, "key expired; TTL was set in error"};

@@ -419,8 +419,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
     rocksdb::Status s = rtrx->Delete(iter->key());
     if (!s.ok()) {
-      trx->abort();
-      break;
+      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s, rocksutils::StatusHint::document));
     }
 
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
@@ -460,8 +459,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     while (iter->Valid() && -1 == cmp->Compare(iter->key(), bounds.end())) {
       rocksdb::Status s = rtrx->Delete(iter->key());
       if (!s.ok()) {
-        trx->abort();
-        break;
+        THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s, rocksutils::StatusHint::document));
       }
       iter->Next();
     }
@@ -480,6 +478,7 @@ int RocksDBCollection::read(transaction::Methods* trx,
       return TRI_ERROR_NO_ERROR;
     }
   }
+
   // not found
   return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
 }
@@ -1008,7 +1007,12 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
-  rtrx->Delete(key.string());
+  rocksdb::Status status = rtrx->Delete(key.string());
+  if (!status.ok()) {
+    auto converted =
+        rocksutils::convertStatus(status, rocksutils::StatusHint::document);
+    return converted.errorNumber();
+  }
 
   auto indexes = _indexes;
   size_t const n = indexes.size();
@@ -1106,9 +1110,9 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;
   auto* state = toRocksTransactionState(trx);
-  rocksdb::Status status = state->rocksTransaction()->Get(state->readOptions(),
-                                                          key.string(), &value);
-  TRI_ASSERT(value.data());
+  auto& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
+  rocksdb::Status status = state->rocksTransaction()->Get(options, key.string(), &value);
   auto result = convertStatus(status);
   if (result.ok()) {
     mdr.setManaged(std::move(value), revisionId);
