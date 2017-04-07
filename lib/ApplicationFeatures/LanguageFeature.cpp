@@ -23,6 +23,9 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 
 #include "Basics/Utf8Helper.h"
+#include "Basics/files.h"
+#include "Basics/FileUtils.h"
+#include "Basics/directories.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -59,7 +62,15 @@ void LanguageFeature::prepare() {
     LOG(FATAL) << msg;
     FATAL_ERROR_EXIT();
   }
+  else {
+      std::string icu_path = path.substr(0, path.length() - fn.length());
+      FileUtils::makePathAbsolute(icu_path);
+      FileUtils::normalizePath(icu_path);
+      setenv("ICU_DATA", icu_path.c_str(), 1);
+    }
+  }
 
+  void* icuDataPtr = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), nullptr);
 }
 
 void LanguageFeature::start() {
