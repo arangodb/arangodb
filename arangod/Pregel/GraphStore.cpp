@@ -34,10 +34,10 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/UserTransaction.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/UserTransaction.h"
 #include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -330,7 +330,7 @@ std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
   double lockTimeout = transaction::Methods::DefaultLockTimeout;
   auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase());
   std::unique_ptr<transaction::Methods> trx(
-      new UserTransaction(ctx, {}, {}, {}, lockTimeout, false, true));
+      new transaction::UserTransaction(ctx, {}, {}, {}, lockTimeout, false, true));
   Result res = trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -488,7 +488,7 @@ template <typename V, typename E>
 void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
                                       RangeIterator<VertexEntry>& it) {
   // transaction on one shard
-  std::unique_ptr<UserTransaction> trx;
+  std::unique_ptr<transaction::UserTransaction> trx;
   PregelShard currentShard = (PregelShard)-1;
   Result res = TRI_ERROR_NO_ERROR;
 
@@ -506,7 +506,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       currentShard = it->shard();
       ShardID const& shard = globalShards[currentShard];
       double timeout = transaction::Methods::DefaultLockTimeout;
-      trx.reset(new UserTransaction(
+      trx.reset(new transaction::UserTransaction(
           transaction::StandaloneContext::Create(_vocbaseGuard.vocbase()), {},
           {shard}, {}, timeout, false, false));
       res = trx->begin();

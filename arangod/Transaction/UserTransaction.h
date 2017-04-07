@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_EXPLICIT_TRANSACTION_H
-#define ARANGOD_UTILS_EXPLICIT_TRANSACTION_H 1
+#ifndef ARANGOD_TRANSACTION_USER_TRANSACTION_H
+#define ARANGOD_TRANSACTION_USER_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 
@@ -31,6 +31,7 @@
 #include "Transaction/Context.h"
 
 namespace arangodb {
+namespace transaction {
 
 class UserTransaction final : public transaction::Methods {
  public:
@@ -62,6 +63,8 @@ class UserTransaction final : public transaction::Methods {
   }
 
 };
+
+}
 }
 
 #endif
