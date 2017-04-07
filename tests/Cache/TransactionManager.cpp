@@ -79,5 +79,26 @@ TEST_CASE("cache::TransactionManager", "[cache]") {
     REQUIRE(8ULL == transactions.term());
     transactions.end(tx3);
     REQUIRE(8ULL == transactions.term());
+
+    tx1 = transactions.begin(true);
+    REQUIRE(8ULL == transactions.term());
+    tx2 = transactions.begin(false);
+    REQUIRE(9ULL == transactions.term());
+    transactions.end(tx2);
+    REQUIRE(9ULL == transactions.term());
+    tx3 = transactions.begin(true);
+    REQUIRE(9ULL == transactions.term());
+    transactions.end(tx3);
+    REQUIRE(9ULL == transactions.term());
+    tx2 = transactions.begin(false);
+    REQUIRE(9ULL == transactions.term());
+    tx3 = transactions.begin(false);
+    REQUIRE(9ULL == transactions.term());
+    transactions.end(tx3);
+    REQUIRE(9ULL == transactions.term());
+    transactions.end(tx2);
+    REQUIRE(9ULL == transactions.term());
+    transactions.end(tx1);
+    REQUIRE(10ULL == transactions.term());
   }
 }

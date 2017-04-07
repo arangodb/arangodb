@@ -89,7 +89,7 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
       if (status.subcode() == rocksdb::Status::SubCode::kDeadlock) {
         return {TRI_ERROR_DEADLOCK};
       }
-      return {TRI_ERROR_ARANGO_BUSY, status.ToString()};
+      return {TRI_ERROR_ARANGO_CONFLICT};
     case rocksdb::Status::Code::kExpired:
       return {TRI_ERROR_INTERNAL, "key expired; TTL was set in error"};
     case rocksdb::Status::Code::kTryAgain:

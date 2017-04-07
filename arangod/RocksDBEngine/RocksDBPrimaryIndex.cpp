@@ -192,7 +192,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   _iterator.reset(rtrx->GetIterator(options));
   _total = collection->numberDocuments(trx);
   uint64_t off = RandomGenerator::interval(_total - 1);
-  uint64_t goal = off;
+  //uint64_t goal = off;
   if (_total > 0) {
     if (off <= _total / 2) {
       _iterator->Seek(_bounds.start());
@@ -207,7 +207,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
       }
     }
     if (!_iterator->Valid()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "invalid iterator!!! offset " << goal;
+      //LOG_TOPIC(ERR, Logger::FIXME) << "invalid iterator!!! offset " << goal;
       _iterator->Seek(_bounds.start());
     }
   }
@@ -255,9 +255,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
-  //_useCache = true;
-  //createCache();
-  _useCache = false;
+  _useCache = true;
+  createCache();
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
@@ -298,9 +297,11 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     auto f = _cache->find(key.string().data(),
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
-      f.value();
       value.buffer()->append(reinterpret_cast<char const*>(f.value()->value()),
                              static_cast<size_t>(f.value()->valueSize));
+      /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
+                                    << " found cache entry for "
+                                    << keyRef.toString();*/
       return RocksDBToken(RocksDBValue::revisionId(value));
     }
   }
@@ -313,6 +314,8 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   auto status = rtrx->Get(options, key.string(), value.buffer());
   if (!status.ok()) {
+    /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
+                                  << " no record for " << keyRef.toString();*/
     return RocksDBToken();
   }
 
@@ -322,6 +325,10 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
         key.string().data(), static_cast<uint32_t>(key.string().size()),
         value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
     bool cached = _cache->insert(entry);
+    /*if (cached) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id() << " cached "
+                                    << keyRef.toString();
+    }*/
     if (!cached) {
       delete entry;
     }
@@ -363,6 +370,11 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
     while (!blacklisted) {
       blacklisted = _cache->blacklist(
           key.string().data(), static_cast<uint32_t>(key.string().size()));
+      /*if (blacklisted) {
+        LOG_TOPIC(ERR, Logger::FIXME)
+            << "#" << trx->state()->id() << " blacklisted "
+            << StringRef(slice.get(StaticStrings::KeyString)).toString();
+      }*/
       attempts++;
       if (attempts > 10) {
         if (_cache->isShutdown()) {
@@ -376,6 +388,9 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
 
   auto status = rtrx->Put(key.string(), value.string());
   if (!status.ok()) {
+    /*LOG_TOPIC(ERR, Logger::FIXME)
+        << "#" << trx->state()->id() << " failed to insert "
+        << StringRef(slice.get(StaticStrings::KeyString)).toString();*/
     auto converted =
         rocksutils::convertStatus(status, rocksutils::StatusHint::index);
     return converted.errorNumber();
@@ -398,6 +413,11 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
     while (!blacklisted) {
       blacklisted = _cache->blacklist(
           key.string().data(), static_cast<uint32_t>(key.string().size()));
+      /*if (blacklisted) {
+        LOG_TOPIC(ERR, Logger::FIXME)
+            << "#" << trx->state()->id() << " blacklisted "
+            << StringRef(slice.get(StaticStrings::KeyString)).toString();
+      }*/
       attempts++;
       if (attempts > 10) {
         if (_cache->isShutdown()) {
@@ -416,6 +436,11 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   auto status = rtrx->Delete(key.string());
   auto converted =
       rocksutils::convertStatus(status, rocksutils::StatusHint::index);
+  /*if (!status.ok()) {
+    LOG_TOPIC(ERR, Logger::FIXME)
+        << "#" << trx->state()->id() << " failed to remove "
+        << StringRef(slice.get(StaticStrings::KeyString)).toString();
+  }*/
 
   return converted.errorNumber();
 }
