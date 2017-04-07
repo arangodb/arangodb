@@ -66,7 +66,11 @@ void LanguageFeature::prepare() {
       std::string icu_path = path.substr(0, path.length() - fn.length());
       FileUtils::makePathAbsolute(icu_path);
       FileUtils::normalizePath(icu_path);
+#ifndef _WIN32
       setenv("ICU_DATA", icu_path.c_str(), 1);
+#else
+      SetEnvironmentVariable("ICU_DATA", icu_path.c_str());
+#endif
     }
   }
 
