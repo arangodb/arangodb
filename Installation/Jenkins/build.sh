@@ -11,6 +11,13 @@ if test "`uname -o||true`" == "Cygwin"; then
     isCygwin=1
 fi
 
+SED=sed
+isMac=0
+if test "`uname`" == "Darwin"; then
+    isMac=1
+    SED=gsed
+fi
+
 #          debian          mac
 for f in /usr/bin/md5sum /sbin/md5; do
     if test -e ${f}; then
@@ -33,7 +40,7 @@ fi
 # remove local from LD_LIBRARY_PATH
 
 if [ "$LD_LIBRARY_PATH" != "" ]; then
-    LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -e 's/:$//'`;
+    LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | ${SED} -e 's/:$//'`;
 fi
 
 # find out if we are running on 32 or 64 bit
@@ -555,7 +562,7 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
         GITARGS=`git describe --exact-match --tags ${GITSHA}`
         echo "I'm on tag: ${GITARGS}"
     else
-        GITARGS=`git branch --no-color| grep '^\*' | sed "s;\* *;;"`
+        GITARGS=`git branch --no-color| grep '^\*' | ${SED} "s;\* *;;"`
         if echo $GITARGS |grep -q ' '; then
             GITARGS=devel
         fi
@@ -576,7 +583,7 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
             EP_GITARGS=`git describe --exact-match --tags ${EP_GITSHA}`
             echo "I'm on tag: ${GITARGS}"
         else
-            EP_GITARGS=`git branch --no-color| grep '^\*' | sed "s;\* *;;"`
+            EP_GITARGS=`git branch --no-color| grep '^\*' | ${SED} "s;\* *;;"`
             if echo $EP_GITARGS |grep -q ' '; then
                 EP_GITARGS=devel
             fi
@@ -652,7 +659,7 @@ if test -n "${TARGET_DIR}";  then
     else
         # we re-use a generic cpack tarball:
         ${PACKAGE_MAKE} TGZ_package
-        PKG_NAME=`grep CPACK_PACKAGE_FILE_NAME CPackConfig.cmake | sed 's/\r//' |sed -e 's;".$;;' -e 's;.*";;'`
+        PKG_NAME=`grep CPACK_PACKAGE_FILE_NAME CPackConfig.cmake | ${SED} 's/\r//' | ${SED} -e 's;".$;;' -e 's;.*";;'`
 
         
         TARFILE=arangodb-`uname`${TAR_SUFFIX}.tar.gz
@@ -682,10 +689,11 @@ if test -n "${TARGET_DIR}";  then
         fi
 
         if test "${isCygwin}" == 1; then
-            SSLDIR=`grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt | sed 's/\r//' |sed -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"`
+            SSLDIR=`grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt | ${SED} 's/\r//' | ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"`
             DLLS=`find ${SSLDIR} -name \*.dll |grep -i release`
             cp ${DLLS} bin/${BUILD_CONFIG}
             cp bin/${BUILD_CONFIG}/* bin/
+            cp tests/${BUILD_CONFIG}/* tests/
         fi
         tar -u -f ${TARFILE_TMP} \
             bin etc tests
@@ -711,6 +719,6 @@ if test -n "${TARGET_DIR}";  then
         fi
 
         gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-        ${MD5} < ${dir}/${TARFILE}  |sed "s; .*;;" > ${dir}/${TARFILE}.md5
+        ${MD5} < ${dir}/${TARFILE} | ${SED} "s; .*;;" > ${dir}/${TARFILE}.md5
     fi
 fi
