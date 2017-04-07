@@ -46,22 +46,24 @@ function runSetup () {
     db.UnitTestsRecovery1.save({ a: i });
   }
 
-  db.UnitTestsRecovery1.rename('UnitTestsRecovery2');
+  db.UnitTestsRecovery1.rename('UnitTestsRecovery2'); // 1000 documents in collection 2
 
   db._create('UnitTestsRecovery1');
 
   for (i = 0; i < 99; ++i) {
-    db.UnitTestsRecovery1.save({ a: i });
+    // new UnitTestsRecovery1
+    db.UnitTestsRecovery1.save({ a: i }); // 99 documents in collection 1
   }
 
   for (i = 0; i < 100000; ++i) {
-    c.save({ a: 'this-is-a-longer-string-to-fill-up-logfiles' });
+    //c is collection UnittestsRecovery2 (former 1)
+    c.save({ a: 'this-is-a-longer-string-to-fill-up-logfiles' }); // 101000 documents in collection 2
   }
 
   // flush the logfile but do not write shutdown info
   internal.wal.flush(true, true);
 
-  db.UnitTestsRecovery1.save({ _key: 'foo' }, true);
+  db.UnitTestsRecovery1.save({ _key: 'foo' }, true); // 100 documents in collection 1
 
   internal.debugSegfault('crashing server');
 }
