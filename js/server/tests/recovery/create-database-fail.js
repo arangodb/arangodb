@@ -31,30 +31,32 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
+var engine = db._engine()["name"]
 
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  internal.debugSetFailAt('CreateDatabase::tempDirectory');
-  try {
-    db._createDatabase('UnitTestsRecovery1');
-    fail();
-  } catch (err) {}
+  if (engine == "mmfiles") {
+    internal.debugSetFailAt('CreateDatabase::tempDirectory');
+    try {
+      db._createDatabase('UnitTestsRecovery1');
+      fail();
+    } catch (err) {}
 
-  internal.debugClearFailAt();
-  internal.debugSetFailAt('CreateDatabase::tempFile');
-  try {
-    db._createDatabase('UnitTestsRecovery2');
-    fail();
-  } catch (err) {}
+    internal.debugClearFailAt();
+    internal.debugSetFailAt('CreateDatabase::tempFile');
+    try {
+      db._createDatabase('UnitTestsRecovery2');
+      fail();
+    } catch (err) {}
 
-  internal.debugClearFailAt();
-  internal.debugSetFailAt('CreateDatabase::renameDirectory');
-  try {
-    db._createDatabase('UnitTestsRecovery3');
-    fail();
-  } catch (err) {}
-
+    internal.debugClearFailAt();
+    internal.debugSetFailAt('CreateDatabase::renameDirectory');
+    try {
+      db._createDatabase('UnitTestsRecovery3');
+      fail();
+    } catch (err) {}
+  }
   internal.debugClearFailAt();
   db._createDatabase('UnitTestsRecovery3'); // must work now
   db._createDatabase('UnitTestsRecovery4');
@@ -79,8 +81,10 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCreateDatabaseFail: function () {
-      assertEqual(-1, db._databases().indexOf('UnitTestsRecovery1'));
-      assertEqual(-1, db._databases().indexOf('UnitTestsRecovery2'));
+      if (engine == "mmfiles") {
+        assertEqual(-1, db._databases().indexOf('UnitTestsRecovery1'));
+        assertEqual(-1, db._databases().indexOf('UnitTestsRecovery2'));
+      }
       assertNotEqual(-1, db._databases().indexOf('UnitTestsRecovery3'));
       assertNotEqual(-1, db._databases().indexOf('UnitTestsRecovery4'));
     }

@@ -359,7 +359,16 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
       if (rv == TRI_ERROR_NO_ERROR) {
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
-        return true;
+
+        VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
+            {"path", "statusString"}, true);
+        StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+        int res =
+            static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
+                _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
+                builder.slice());
+        return res == TRI_ERROR_NO_ERROR;
       }
 
       break;
