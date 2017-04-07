@@ -365,10 +365,9 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
         VPackBuilder builder =
           _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
         StorageEngine* engine = EngineSelectorFeature::ENGINE;
-#warning handle error code here
-        int res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(_logicalCollection->vocbase()->id(), _logicalCollection->cid(), builder.slice());
 
-        return true;
+        int res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(_logicalCollection->vocbase()->id(), _logicalCollection->cid(), builder.slice());
+        return res == TRI_ERROR_NO_ERROR;
       }
 
       break;
