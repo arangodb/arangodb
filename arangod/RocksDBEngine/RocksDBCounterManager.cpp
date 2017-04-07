@@ -101,7 +101,7 @@ std::pair<uint64_t, uint64_t> RocksDBCounterManager::loadCounter(uint64_t object
     READ_LOCKER(guard, _rwLock);
     auto const& it = _counters.find(objectId);
     if (it != _counters.end()) {
-      return std::make_pair(it->second.count, it->second.sequenceNumber);
+      return std::make_pair(it->second.count, it->second.revisionId);
     }
   }
   return std::make_pair(0, 0);  // do not create
