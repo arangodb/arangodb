@@ -255,8 +255,9 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
-  _useCache = true;
-  createCache();
+  //_useCache = true;
+  //createCache();
+  _useCache = false;
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
