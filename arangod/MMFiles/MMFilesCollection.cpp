@@ -2325,8 +2325,7 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
       if (useDeadlockDetector) {
         _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(_logicalCollection);
       }
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out after " << timeout << " s waiting for read-lock on collection '" << _logicalCollection->name()
-                 << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out after " << timeout << " s waiting for read-lock on collection '" << _logicalCollection->name() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
 

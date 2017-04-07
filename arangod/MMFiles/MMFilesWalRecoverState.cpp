@@ -700,7 +700,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         if (other != nullptr) {
           TRI_voc_cid_t otherCid = other->cid();
           state->releaseCollection(otherCid);
-          vocbase->dropCollection(other, true);
+          vocbase->dropCollection(other, true, -1.0);
         }
 
         int res = vocbase->renameCollection(collection, name, true);
@@ -968,7 +968,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (collection != nullptr) {
           // drop an existing collection
-          vocbase->dropCollection(collection, true);
+          vocbase->dropCollection(collection, true, -1.0);
         }
 
         MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
@@ -987,7 +987,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             TRI_voc_cid_t otherCid = collection->cid();
 
             state->releaseCollection(otherCid);
-            vocbase->dropCollection(collection, true);
+            vocbase->dropCollection(collection, true, -1.0);
           }
         } else {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -1297,7 +1297,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         }
 
         if (collection != nullptr) {
-          vocbase->dropCollection(collection, true);
+          vocbase->dropCollection(collection, true, -1.0);
         }
         MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
         break;

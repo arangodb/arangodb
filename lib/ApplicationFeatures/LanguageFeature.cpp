@@ -25,6 +25,7 @@
 
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/directories.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -94,6 +95,16 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string con
 
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << msg;
       FATAL_ERROR_EXIT();
+    }
+    else {
+      std::string icu_path = path.substr(0, path.length() - fn.length());
+      FileUtils::makePathAbsolute(icu_path);
+      FileUtils::normalizePath(icu_path);
+#ifndef _WIN32
+      setenv("ICU_DATA", icu_path.c_str(), 1);
+#else
+      SetEnvironmentVariable("ICU_DATA", icu_path.c_str());
+#endif
     }
   }
 

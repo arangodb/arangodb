@@ -941,7 +941,16 @@ function executePlanForCollections(plannedCollections) {
               database,
               collections[collection].planId);
 
-            db._drop(collection);
+            try {
+              db._drop(collection, {timeout:1.0});
+            }
+            catch (err) {
+              console.debug("could not drop local shard '%s/%s' of '%s/%s within 1 second, trying again later",
+                database,
+                collection,
+                database,
+                collections[collection].planId);
+            }
           }
         }
       });
