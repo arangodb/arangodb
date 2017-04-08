@@ -239,6 +239,9 @@ class RocksDBEngine final : public StorageEngine {
   rocksdb::TransactionDB* db() const { return _db; }
 
   RocksDBComparator* cmp() const { return _cmp.get(); }
+  
+  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
+                                  VPackSlice const& slice);
 
  private:
   Result dropDatabase(TRI_voc_tick_t);
@@ -248,8 +251,6 @@ class RocksDBEngine final : public StorageEngine {
   TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id,
                                       std::string const& name,
                                       bool wasCleanShutdown, bool isUpgrade);
-  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                  VPackSlice const& slice);
 
  public:
   static std::string const EngineName;

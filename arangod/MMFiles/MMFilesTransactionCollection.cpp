@@ -358,6 +358,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   if (res == TRI_ERROR_NO_ERROR) {
     _lockType = type;
+  } else if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
+    LOG_TOPIC(WARN, Logger::QUERIES) << "timed out after " << timeout << " s waiting for " << AccessMode::typeString(type) << "-lock on collection '" << _collection->name() << "'";
+  } else if (res == TRI_ERROR_DEADLOCK) {
+    LOG_TOPIC(WARN, Logger::QUERIES) << "deadlock detected while trying to acquire " << AccessMode::typeString(type) << "-lock on collection '" << _collection->name() << "'";
   }
 
   return res;
