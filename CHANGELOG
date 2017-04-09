@@ -186,6 +186,9 @@ v3.1.18 (2017-XX-XX)
   more complicated queries, the maxDepth limit of 1 was not considered strictly
   enough, causing the traverser to do unlimited depth searches.
 
+* fixed issue #2415
+
+
 v3.1.17 (2017-04-04)
 --------------------
 
