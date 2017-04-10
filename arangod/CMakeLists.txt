@@ -217,10 +217,11 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VppCommTask.cpp
-  Graph/BreadthFirstEnumerator.cpp
-  Graph/NeighborsEnumerator.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
+  Graph/BaseOptions.cpp
+  Graph/BreadthFirstEnumerator.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/NeighborsEnumerator.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp

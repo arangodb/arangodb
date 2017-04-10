@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 
@@ -62,59 +63,19 @@ class EdgeCursor {
   virtual bool next(std::function<void(arangodb::StringRef const&, VPackSlice, size_t)> callback) = 0;
 
   virtual void readAll(std::function<void(arangodb::StringRef const&, arangodb::velocypack::Slice, size_t&)>) = 0;
-
 };
 
-
-struct TraverserOptions {
+struct TraverserOptions : public graph::BaseOptions {
   friend class arangodb::aql::TraversalNode;
 
  public:
   enum UniquenessLevel { NONE, PATH, GLOBAL };
 
  protected:
-
-  struct LookupInfo {
-    // This struct does only take responsibility for the expression
-    // NOTE: The expression can be nullptr!
-    std::vector<transaction::Methods::IndexHandle> idxHandles;
-    aql::Expression* expression;
-    aql::AstNode* indexCondition;
-    // Flag if we have to update _from / _to in the index search condition
-    bool conditionNeedUpdate;
-    // Position of _from / _to in the index search condition
-    size_t conditionMemberToUpdate;
-
-    LookupInfo();
-    ~LookupInfo();
-
-    LookupInfo(LookupInfo const&);
-
-    LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
-               arangodb::velocypack::Slice const&);
-
-    /// @brief Build a velocypack containing all relevant information
-    ///        for DBServer traverser engines.
-    void buildEngineInfo(arangodb::velocypack::Builder&) const;
-
-    double estimateCost(size_t& nrItems) const;
-    
-  };
-
- public:
-  transaction::Methods* _trx;
- protected:
-  std::vector<LookupInfo> _baseLookupInfos;
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
   std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
   aql::Expression* _baseVertexExpression;
-  aql::Variable const* _tmpVar;
-  aql::FixedVarExpressionContext* _ctx;
   arangodb::traverser::ClusterTraverser* _traverser;
-  bool const _isCoordinator;
-
-  /// @brief the traverser cache
-  std::unique_ptr<TraverserCache> _cache;
 
  public:
   uint64_t minDepth;
@@ -160,22 +121,11 @@ struct TraverserOptions {
 
   EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
 
-  void clearVariableValues();
-
-  void setVariableValue(aql::Variable const*, aql::AqlValue const);
-
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
-
-  void serializeVariables(arangodb::velocypack::Builder&) const;
 
   double estimateCost(size_t& nrItems) const;
 
-  TraverserCache* cache() const;
-
  private:
-
-  double costForLookupInfoList(std::vector<LookupInfo> const& list,
-                               size_t& createItems) const;
 
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*,
                               StringRef vid, uint64_t,
