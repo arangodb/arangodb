@@ -122,6 +122,10 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksWriteOptions, rocksdb::TransactionOptions()));
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
+
+    /*LOG_TOPIC(ERR, Logger::FIXME)
+        << "#" << _id << " BEGIN (read-only: " << isReadOnlyTransaction()
+        << ")";*/
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -157,12 +161,6 @@ Result RocksDBTransactionState::commitTransaction(
   arangodb::Result result;
 
   if (_nestingLevel == 0) {
-    if (_cacheTx != nullptr) {
-      // note: endTransaction() will delete _cacheTrx!
-      CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
-      _cacheTx = nullptr;
-    }
-
     if (_rocksTransaction != nullptr) {
       // set wait for sync flag if required
       if (waitForSync()) {
@@ -174,6 +172,14 @@ Result RocksDBTransactionState::commitTransaction(
         abortTransaction(activeTrx);
         return result;
       }
+
+      if (_cacheTx != nullptr) {
+        // note: endTransaction() will delete _cacheTx!
+        CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
+        _cacheTx = nullptr;
+      }
+
+      // LOG_TOPIC(ERR, Logger::FIXME) << "#" << _id << " COMMIT";
 
       rocksdb::Snapshot const* snap = this->_rocksReadOptions.snapshot;
       TRI_ASSERT(snap != nullptr);
@@ -224,17 +230,19 @@ Result RocksDBTransactionState::abortTransaction(
   Result result;
 
   if (_nestingLevel == 0) {
-    if (_cacheTx != nullptr) {
-      // note: endTransaction() will delete _cacheTrx!
-      CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
-      _cacheTx = nullptr;
-    }
-
     if (_rocksTransaction != nullptr) {
       rocksdb::Status status = _rocksTransaction->Rollback();
       result = rocksutils::convertStatus(status);
       _rocksTransaction.reset();
     }
+
+    if (_cacheTx != nullptr) {
+      // note: endTransaction() will delete _cacheTx!
+      CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
+      _cacheTx = nullptr;
+    }
+
+    // LOG_TOPIC(ERR, Logger::FIXME) << "#" << _id << " ABORT";
 
     updateStatus(transaction::Status::ABORTED);
 

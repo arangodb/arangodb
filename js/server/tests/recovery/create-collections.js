@@ -31,7 +31,6 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
-var engine = db._engine()["name"]
 
 function runSetup () {
   'use strict';
@@ -113,7 +112,7 @@ function recoverySuite () {
       prop = c.properties();
       assertTrue(prop.waitForSync);
       assertEqual(2, c.type());
-      if (engine == "mmfiles") {
+      if (db._engine().name == "mmfiles") {
         assertEqual(8 * 1024 * 1024, prop.journalSize);
         assertFalse(prop.doCompact);
         assertFalse(prop.isVolatile);
@@ -127,7 +126,7 @@ function recoverySuite () {
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(2, c.type());
-      if (engine == "mmfiles") {
+      if (db._engine().name  == "mmfiles") {
         assertEqual(16 * 1024 * 1024, prop.journalSize);
         assertTrue(prop.doCompact);
         assertTrue(prop.isVolatile);
@@ -143,7 +142,7 @@ function recoverySuite () {
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(3, c.type());
-      if (engine == "mmfiles") {
+      if (db._engine().name == "mmfiles") {
         assertEqual(32 * 1024 * 1024, prop.journalSize);
         assertTrue(prop.doCompact);
         assertFalse(prop.isVolatile);

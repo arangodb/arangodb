@@ -161,11 +161,7 @@ TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
       state->findCollection(_logicalCollection->cid()));
   TRI_ASSERT(trxCollection != nullptr);
 
-  TRI_voc_rid_t revisionId = trxCollection->revision();
-  if (!revisionId) {
-    revisionId = _revisionId;
-  }
-  return revisionId;
+  return trxCollection->revision();
 }
 
 uint64_t RocksDBCollection::numberDocuments() const { return _numberDocuments; }
@@ -197,6 +193,8 @@ void RocksDBCollection::open(bool ignoreErrors) {
   LOG_TOPIC(ERR, Logger::DEVEL) << " number of documents: " << counterValue.count();
   _numberDocuments = counterValue.count();
   _revisionId = counterValue.revisionId();
+  //_numberDocuments = countKeyRange(db, readOptions,
+  // RocksDBKeyBounds::CollectionDocuments(_objectId));
 }
 
 /// @brief iterate all markers of a collection on load
@@ -365,11 +363,14 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
 
-        VPackBuilder builder =
-          _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
+        VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
+            {"path", "statusString"}, true);
         StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-        int res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(_logicalCollection->vocbase()->id(), _logicalCollection->cid(), builder.slice());
+        int res =
+            static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
+                _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
+                builder.slice());
         return res == TRI_ERROR_NO_ERROR;
       }
 
@@ -421,7 +422,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
     rocksdb::Status s = rtrx->Delete(iter->key());
     if (!s.ok()) {
-      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s, rocksutils::StatusHint::document));
+      trx->abort();
+      break;
     }
 
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
@@ -461,7 +463,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     while (iter->Valid() && -1 == cmp->Compare(iter->key(), bounds.end())) {
       rocksdb::Status s = rtrx->Delete(iter->key());
       if (!s.ok()) {
-        THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s, rocksutils::StatusHint::document));
+        trx->abort();
+        break;
       }
       iter->Next();
     }
@@ -478,7 +481,15 @@ int RocksDBCollection::read(transaction::Methods* trx,
     if (readDocument(trx, token, result)) {
       // found
       return TRI_ERROR_NO_ERROR;
+    } else {
+      LOG_TOPIC(ERR, Logger::FIXME)
+          << "#" << trx->state()->id() << " failed to read revision "
+          << token.revisionId() << " for key " << key.copyString();
     }
+  } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
+                                  << " failed to find token for "
+                                  << key.copyString() << " in read";
   }
 
   // not found
@@ -954,9 +965,17 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
+  /*LOG_TOPIC(ERR, Logger::ENGINES)
+      << "#" << trx->state()->id() << " INSERT DOCUMENT. COLLECTION '"
+      << _logicalCollection->name() << "', OBJECTID: " << _objectId
+      << ", REVISIONID: " << revisionId;*/
+
   rocksdb::Status status = rtrx->Put(key.string(), value.string());
 
   if (!status.ok()) {
+    /*LOG_TOPIC(ERR, Logger::ENGINES)
+        << "#" << trx->state()->id()
+        << " INSERT DOCUMENT FAILED. REVISIONID: " << revisionId;*/
     auto converted =
         rocksutils::convertStatus(status, rocksutils::StatusHint::document);
     return converted.errorNumber();
@@ -976,6 +995,11 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     if (res == TRI_ERROR_OUT_OF_MEMORY) {
       return res;
     }
+    /*if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+      LOG_TOPIC(ERR, Logger::FIXME)
+          << "#" << trx->state()->id()
+          << " UNIQUE CONSTRAINT VIOLATION IN INDEX: #" << i;
+    }*/
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
           result == TRI_ERROR_NO_ERROR) {
@@ -1012,10 +1036,17 @@ int RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
-  rocksdb::Status status = rtrx->Delete(key.string());
+  /*LOG_TOPIC(ERR, Logger::ENGINES)
+      << "#" << trx->state()->id() << " REMOVE DOCUMENT. COLLECTION '"
+      << _logicalCollection->name() << "', OBJECTID: " << _objectId
+      << ", REVISIONID: " << revisionId;*/
+
+  auto status = rtrx->Delete(key.string());
   if (!status.ok()) {
-    auto converted =
-        rocksutils::convertStatus(status, rocksutils::StatusHint::document);
+    /*LOG_TOPIC(ERR, Logger::ENGINES)
+        << "#" << trx->state()->id()
+        << " REMOVE DOCUMENT FAILED. REVISIONID: " << revisionId;*/
+    auto converted = rocksutils::convertStatus(status);
     return converted.errorNumber();
   }
 
@@ -1066,8 +1097,17 @@ int RocksDBCollection::lookupDocument(transaction::Methods* trx, VPackSlice key,
 
   if (revisionId > 0) {
     Result result = lookupRevisionVPack(revisionId, trx, mdr);
+    /*if (!result.ok()) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
+                                    << " failed to find revision " << revisionId
+                                    << " for key " << key.copyString();
+    }*/
     return result.errorNumber();
   }
+
+  /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
+                                << " failed to find entry for key "
+                                << key.copyString();*/
 
   return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
 }
@@ -1102,6 +1142,11 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
                                               RocksDBToken& outToken) {
   // TODO fix as soon as we got a real primary index
   outToken = primaryIndex()->lookupKey(trx, key);
+  /*if (outToken.revisionId() == 0) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
+                                  << " failed to find token for key "
+                                  << key.toString();
+  }*/
   return outToken.revisionId() > 0
              ? Result()
              : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -1115,9 +1160,9 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;
   auto* state = toRocksTransactionState(trx);
-  auto& options = state->readOptions();
-  TRI_ASSERT(options.snapshot != nullptr);
-  rocksdb::Status status = state->rocksTransaction()->Get(options, key.string(), &value);
+  rocksdb::Status status = state->rocksTransaction()->Get(state->readOptions(),
+                                                          key.string(), &value);
+  TRI_ASSERT(value.data());
   auto result = convertStatus(status);
   if (result.ok()) {
     mdr.setManaged(std::move(value), revisionId);
