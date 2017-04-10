@@ -84,7 +84,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    TRI_vocbase_t* vocbase, uint64_t direction,
                                    AstNode const* start, AstNode const* target,
                                    AstNode const* graph,
-                                   ShortestPathOptions const& options)
+                                   std::unique_ptr<traverser::ShortestPathOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -92,12 +92,13 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
       _graphObj(nullptr),
-      _options(options) {
-
+      _options(nullptr) {
+  _options.swap(options);
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(target != nullptr);
   TRI_ASSERT(graph != nullptr);
+  TRI_ASSERT(_options != nullptr);
 
   TRI_edge_direction_e baseDirection = parseDirection(direction);
 
@@ -239,7 +240,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    std::string const& startVertexId,
                                    Variable const* inTargetVariable,
                                    std::string const& targetVertexId,
-                                   ShortestPathOptions const& options)
+                                   std::unique_ptr<traverser::ShortestPathOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -250,8 +251,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
       _targetVertexId(targetVertexId),
       _directions(directions),
       _graphObj(nullptr),
-      _options(options) {
-
+      _options(nullptr) {
+  _options.swap(options);
   _graphInfo.openArray();
   for (auto const& it : edgeColls) {
     _edgeColls.emplace_back(it);
@@ -260,11 +261,13 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
   _graphInfo.close();
 }
 
+ShortestPathNode::~ShortestPathNode() {}
+
 void ShortestPathNode::fillOptions(arangodb::traverser::ShortestPathOptions& opts) const {
-  if (!_options.weightAttribute.empty()) {
+  if (!_options->weightAttribute.empty()) {
     opts.useWeight = true;
-    opts.weightAttribute = _options.weightAttribute;
-    opts.defaultWeight = _options.defaultWeight;
+    opts.weightAttribute = _options->weightAttribute;
+    opts.defaultWeight = _options->defaultWeight;
   } else {
     opts.useWeight = false;
   }
@@ -392,7 +395,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
 
   // Flags
   if (base.hasKey("shortestPathFlags")) {
-    _options = ShortestPathOptions(base);
+    _options = std::make_unique<traverser::ShortestPathOptions>(
+        _plan->getAst()->query()->trx(), base);
   }
 }
 
@@ -441,7 +445,7 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
   }
 
   nodes.add(VPackValue("shortestPathFlags"));
-  _options.toVelocyPack(nodes);
+  _options->toVelocyPack(nodes);
 
   // And close it:
   nodes.close();
@@ -450,9 +454,12 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
                                        bool withDependencies,
                                        bool withProperties) const {
+
+  auto tmp =
+      std::make_unique<arangodb::traverser::ShortestPathOptions>(*_options.get());
   auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _directions,
                                 _inStartVariable, _startVertexId,
-                                _inTargetVariable, _targetVertexId, _options);
+                                _inTargetVariable, _targetVertexId, tmp);
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {

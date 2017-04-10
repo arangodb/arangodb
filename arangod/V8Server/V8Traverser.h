@@ -40,25 +40,18 @@ namespace traverser {
 // A collection of shared options used in several functions.
 // Should not be used directly, use specialization instead.
 struct BasicOptions {
-
   transaction::Methods* _trx;
 
  protected:
+  explicit BasicOptions(transaction::Methods* trx) : _trx(trx) {}
 
-  explicit BasicOptions(transaction::Methods* trx)
-      : _trx(trx) {}
-
-  virtual ~BasicOptions() {
-  }
+  virtual ~BasicOptions() {}
 
  public:
   std::string start;
 
-
  public:
-
   transaction::Methods* trx() { return _trx; }
-
 };
 
 struct ShortestPathOptions : BasicOptions {
@@ -75,14 +68,17 @@ struct ShortestPathOptions : BasicOptions {
 
   explicit ShortestPathOptions(transaction::Methods* trx);
 
+  ShortestPathOptions(transaction::Methods* trx,
+                      arangodb::velocypack::Slice const& info);
+
   void setStart(std::string const&);
   void setEnd(std::string const&);
 
   arangodb::velocypack::Slice getStart() const;
   arangodb::velocypack::Slice getEnd() const;
 
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
 };
-
 }
 }
 

@@ -123,7 +123,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(graph != nullptr);
-  _options.reset(options.release());
+  _options.swap(options);
 
   auto ast = _plan->getAst();
   // Let us build the conditions on _from and _to. Just in case we need them.
@@ -409,7 +409,7 @@ TraversalNode::TraversalNode(
       _toCondition(nullptr),
       _optionsBuild(false),
       _isSmart(false) {
-  _options.reset(options.release());
+  _options.swap(options);
   _graphInfo.openArray();
 
   for (auto& it : edgeColls) {
