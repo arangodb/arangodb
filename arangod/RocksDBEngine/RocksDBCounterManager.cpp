@@ -41,7 +41,7 @@ using namespace arangodb;
 
 RocksDBCounterManager::Counter::Counter(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
-  
+
   velocypack::ArrayIterator array(slice);
   if (array.valid()) {
     this->_sequenceNumber = (*array).getUInt();
@@ -70,18 +70,18 @@ void RocksDBCounterManager::Counter::reset() {
 /// will load counts from the db and scan the WAL
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db, double interval)
     : Thread("RocksDBCounters"), _db(db), _interval(interval) {
-  
+
   readCounterValues();
   if (_counters.size() > 0) {
     if (parseRocksWAL()) {
       sync();
     }
-  }  
+  }
 }
 
 void RocksDBCounterManager::beginShutdown() {
   Thread::beginShutdown();
-  
+
   // wake up the thread that may be waiting in run()
   CONDITION_LOCKER(guard, _condition);
   guard.broadcast();
@@ -216,7 +216,7 @@ Result RocksDBCounterManager::sync() {
 /// Parse counter values from rocksdb
 void RocksDBCounterManager::readCounterValues() {
   WRITE_LOCKER(guard, _rwLock);
-  
+
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::Comparator const* cmp = db->GetOptions().comparator;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CounterValues();
@@ -226,7 +226,7 @@ void RocksDBCounterManager::readCounterValues() {
   iter->Seek(bounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
-    
+
     uint64_t objectId = RocksDBKey::counterObjectId(iter->key());
     Counter counter(VPackSlice(iter->value().data()));
     _counters.emplace(objectId, counter);
@@ -243,9 +243,9 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   rocksdb::SequenceNumber seqNum = UINT64_MAX;
 
   explicit WBReader() {}
-  
+
   bool prepKey(const rocksdb::Slice& key) {
-    
+
     if (RocksDBKey::type(key) == RocksDBEntryType::CounterValue) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       auto const& it = prevCounters.find(objectId);
@@ -281,7 +281,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
     if (prepKey(key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
-      
+
       RocksDBCounterManager::Counter& cc = deltas[objectId];
       if (cc._sequenceNumber < seqNum) {
         cc._sequenceNumber = seqNum;
@@ -295,7 +295,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
     if (prepKey(key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
-      
+
       RocksDBCounterManager::Counter& cc = deltas[objectId];
       if (cc._sequenceNumber < seqNum) {
         cc._sequenceNumber = seqNum;
@@ -309,7 +309,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
     if (prepKey(key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
-      
+
       RocksDBCounterManager::Counter& cc = deltas[objectId];
       if (cc._sequenceNumber < seqNum) {
         cc._sequenceNumber = seqNum;
@@ -351,7 +351,7 @@ bool RocksDBCounterManager::parseRocksWAL() {
     }
     iterator->Next();
   }
-  
+
   for (std::pair<uint64_t, RocksDBCounterManager::Counter> pair : handler->deltas) {
     auto const& it = _counters.find(pair.first);
     if (it != _counters.end()

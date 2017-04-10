@@ -265,6 +265,7 @@ class RocksDBEngine final : public StorageEngine {
   std::string _basePath;
 
   std::unique_ptr<RocksDBCounterManager> _counterManager;
+  uint64_t _maxTransactionSize;
 };
 }
 #endif

@@ -74,14 +74,16 @@ void RocksDBSavePoint::rollback() {
 }
 
 /// @brief transaction type
-RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
+RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase, uint64_t maxTransSize)
     : TransactionState(vocbase),
       _rocksReadOptions(),
       _cacheTx(nullptr),
-      _operationSize(0),
+      _transactionSize(0),
+      _maxTransactionSize(maxTransSize),
       _numInserts(0),
       _numUpdates(0),
-      _numRemoves(0) {}
+      _numRemoves(0)
+      {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -259,9 +261,19 @@ Result RocksDBTransactionState::abortTransaction(
 }
 
 /// @brief add an operation for a transaction collection
-void RocksDBTransactionState::addOperation(
+Result RocksDBTransactionState::addOperation(
     TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
-    TRI_voc_document_operation_e operationType, uint64_t operationSize) {
+    TRI_voc_document_operation_e operationType,
+    uint64_t operationSize, uint64_t keySize) {
+  Result res;
+
+  uint64_t newSize = _transactionSize + operationSize + keySize;
+  if(_maxTransactionSize < newSize){
+    //we hit the transaction size limit
+    res.reset(TRI_ERROR_RESOURCE_LIMIT, "maximal transaction limit reached");
+    return res;
+  }
+
   auto collection =
       static_cast<RocksDBTransactionCollection*>(findCollection(cid));
 
@@ -270,6 +282,7 @@ void RocksDBTransactionState::addOperation(
                                    "collection not found in transaction state");
   }
 
+  //sould not fail or fail with exception
   collection->addOperation(revisionId, operationType, operationSize);
 
   switch (operationType) {
@@ -287,5 +300,6 @@ void RocksDBTransactionState::addOperation(
       break;
   }
 
-  _operationSize += operationSize;
+  _transactionSize = newSize;
+  return res;
 }

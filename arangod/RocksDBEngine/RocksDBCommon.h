@@ -38,6 +38,7 @@
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 
+
 namespace rocksdb {class TransactionDB;
   class DB;
   struct ReadOptions;
@@ -45,6 +46,25 @@ namespace rocksdb {class TransactionDB;
 }
 
 namespace arangodb {
+
+class RocksDBOperationResult : public Result {
+public:
+  RocksDBOperationResult() = default;
+
+  RocksDBOperationResult(Result const& other){
+    cloneData(other);
+  }
+
+  RocksDBOperationResult(Result&& other){
+    cloneData(std::move(other));
+  }
+
+  uint64_t keySize(){ return _keySize; }
+  uint64_t keySize(uint64_t s ) { _keySize = s; return _keySize; }
+protected:
+  uint64_t _keySize;
+};
+
 class TransactionState;
 class RocksDBTransactionState;
 class RocksDBKeyBounds;

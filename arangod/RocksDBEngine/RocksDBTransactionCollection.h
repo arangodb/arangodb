@@ -68,13 +68,13 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
   void release() override;
-  
+
   TRI_voc_rid_t revision() const { return _revision; }
   uint64_t numberDocuments() const { return _initialNumberDocuments + _numInserts - _numRemoves; }
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
-  
+
   /// @brief add an operation for a transaction collection
   void addOperation(TRI_voc_rid_t revisionId, TRI_voc_document_operation_e operationType, uint64_t operationSize);
 

@@ -70,7 +70,7 @@ class RocksDBSavePoint {
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
  public:
-  explicit RocksDBTransactionState(TRI_vocbase_t* vocbase);
+  explicit RocksDBTransactionState(TRI_vocbase_t* vocbase, uint64_t maxOperationSize);
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
@@ -95,8 +95,9 @@ class RocksDBTransactionState final : public TransactionState {
   }
 
   /// @brief add an operation for a transaction collection
-  void addOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-                    TRI_voc_document_operation_e operationType, uint64_t operationSize);
+  Result addOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+                    TRI_voc_document_operation_e operationType,
+                    uint64_t operationSize, uint64_t keySize);
 
   rocksdb::Transaction* rocksTransaction() {
     TRI_ASSERT(_rocksTransaction != nullptr);
@@ -110,7 +111,8 @@ class RocksDBTransactionState final : public TransactionState {
   rocksdb::WriteOptions _rocksWriteOptions;
   rocksdb::ReadOptions _rocksReadOptions;
   cache::Transaction* _cacheTx;
-  uint64_t _operationSize;
+  uint64_t _transactionSize; // current transaction size
+  uint64_t _maxTransactionSize; // a transaction may not become bigger than this value
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
