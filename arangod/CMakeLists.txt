@@ -263,6 +263,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestImportHandler.cpp
   RestHandler/RestJobHandler.cpp
   RestHandler/RestPleaseUpgradeHandler.cpp
+  RestHandler/RestPregelHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestReplicationHandler.cpp
@@ -273,7 +274,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
-  RestHandler/RestPregelHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
@@ -355,6 +355,7 @@ SET(ARANGOD_SOURCES
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalView.cpp
+  VocBase/ManagedDocumentResult.cpp
   VocBase/PathEnumerator.cpp
   VocBase/PhysicalCollection.cpp
   VocBase/SingleServerTraverser.cpp
@@ -394,68 +395,14 @@ SET(ARANGOD_SOURCES
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 
-# add sources for mmfiles engine
-set(ARANGOD_SOURCES
-  ${ARANGOD_SOURCES}
-  MMFiles/mmfiles-fulltext-handles.cpp
-  MMFiles/mmfiles-fulltext-index.cpp
-  MMFiles/mmfiles-fulltext-list.cpp
-  MMFiles/mmfiles-fulltext-query.cpp
-  MMFiles/mmfiles-fulltext-result.cpp
-  MMFiles/mmfiles-geo-index.cpp
-  MMFiles/MMFilesAllocatorThread.cpp
-  MMFiles/MMFilesAqlFunctions.cpp
-  MMFiles/MMFilesCleanupThread.cpp
-  MMFiles/MMFilesCollection.cpp
-  MMFiles/MMFilesCollectionExport.cpp
-  MMFiles/MMFilesCollectionKeys.cpp
-  MMFiles/MMFilesCollectorThread.cpp
-  MMFiles/MMFilesCompactorThread.cpp
-  MMFiles/MMFilesDatafile.cpp
-  MMFiles/MMFilesDatafileStatistics.cpp
-  MMFiles/MMFilesDatafileStatisticsContainer.cpp
-  MMFiles/MMFilesDitch.cpp
-  MMFiles/MMFilesDocumentOperation.cpp
-  MMFiles/MMFilesEdgeIndex.cpp
-  MMFiles/MMFilesEngine.cpp
-  MMFiles/MMFilesExportCursor.cpp
-  MMFiles/MMFilesIndexElement.cpp
-  MMFiles/MMFilesIndexFactory.cpp
-  MMFiles/MMFilesLogfileManager.cpp
-  MMFiles/MMFilesFulltextIndex.cpp
-  MMFiles/MMFilesGeoIndex.cpp
-  MMFiles/MMFilesHashIndex.cpp
-  MMFiles/MMFilesOptimizerRules.cpp
-  MMFiles/MMFilesPathBasedIndex.cpp
-  MMFiles/MMFilesPersistentIndexFeature.cpp
-  MMFiles/MMFilesPersistentIndex.cpp
-  MMFiles/MMFilesPersistentIndexKeyComparator.cpp
-  MMFiles/MMFilesPrimaryIndex.cpp
-  MMFiles/MMFilesRemoverThread.cpp
-  MMFiles/MMFilesRestExportHandler.cpp
-  MMFiles/MMFilesRestHandlers.cpp
-  MMFiles/MMFilesRestWalHandler.cpp
-  MMFiles/MMFilesRevisionsCache.cpp
-  MMFiles/MMFilesSkiplistIndex.cpp
-  MMFiles/MMFilesSynchronizerThread.cpp
-  MMFiles/MMFilesTransactionCollection.cpp
-  MMFiles/MMFilesTransactionContextData.cpp
-  MMFiles/MMFilesTransactionState.cpp
-  MMFiles/MMFilesV8Functions.cpp
-  MMFiles/MMFilesView.cpp
-  MMFiles/MMFilesWalLogfile.cpp
-  MMFiles/MMFilesWalRecoverState.cpp
-  MMFiles/MMFilesWalRecoveryFeature.cpp
-  MMFiles/MMFilesWalSlot.cpp
-  MMFiles/MMFilesWalSlots.cpp
-  MMFiles/mmfiles-replication-dump.cpp
-)
-
 if (NOT MSVC)
   set(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
 endif()
 
-add_library(arangoserver STATIC ${ARANGOD_SOURCES})
+include(RocksDBEngine/CMakeLists.txt)
+include(MMFiles/CMakeLists.txt)
+
+add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
 
 if (USE_SSL)
   target_compile_definitions(${BIN_ARANGOD} PUBLIC "ARANGODB_SSL_ENABLED=1")

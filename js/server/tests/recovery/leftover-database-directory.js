@@ -62,21 +62,6 @@ function runSetup () {
     try {
       fs.makeDirectory(paths[i]);
     } catch (err2) {}
-
-    fs.write(fs.join(paths[i], 'parameter.json'), '');
-    fs.write(fs.join(paths[i], 'parameter.json.tmp'), '');
-
-    // create some collection directory
-    fs.makeDirectory(fs.join(paths[i], 'collection-123'));
-    if (i < 2) {
-      // create a leftover parameter.json.tmp file
-      fs.write(fs.join(paths[i], 'collection-123', 'parameter.json.tmp'), '');
-    } else {
-      // create an empty parameter.json file
-      fs.write(fs.join(paths[i], 'collection-123', 'parameter.json'), '');
-      // create some other file
-      fs.write(fs.join(paths[i], 'collection-123', 'foobar'), 'foobar');
-    }
   }
 
   internal.debugSegfault('crashing server');

@@ -659,14 +659,14 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
   trx.addHint(transaction::Hints::Hint::TRY_LOCK);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     // this includes TRI_ERROR_LOCK_TIMEOUT!
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector couldn't acquire write lock for collection '"
-               << collection->name() << "': " << TRI_errno_string(res);
+               << collection->name() << "': " << res.errorMessage();
 
-    return res;
+    return res.errorNumber();
   }
 
   try {
@@ -703,9 +703,9 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   trx.finish(res);
 
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector processed operations for collection '"
-             << collection->name() << "' with status: " << TRI_errno_string(res);
+             << collection->name() << "' with status: " << res.errorMessage();
 
-  return res;
+  return res.errorNumber();
 }
 
 /// @brief collect one logfile

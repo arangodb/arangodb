@@ -74,47 +74,25 @@ static int ReadTick(VPackSlice const& slice, char const* attributeName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the filename of the replication applier configuration file
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string GetConfigurationFilename(TRI_vocbase_t* vocbase) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief load the replication application configuration from a file
 /// this function must be called under the statusLock
 ////////////////////////////////////////////////////////////////////////////////
 
 static int LoadConfiguration(TRI_vocbase_t* vocbase,
                              TRI_replication_applier_configuration_t* config) {
-  // Clear
-  std::string const filename = GetConfigurationFilename(vocbase);
+  int res;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::shared_ptr<VPackBuilder> builder = engine->getReplicationApplierConfiguration(vocbase, res);
 
-  if (!TRI_ExistsFile(filename.c_str())) {
+  if (res == TRI_ERROR_FILE_NOT_FOUND) {
+    // file not found
+    TRI_ASSERT(builder == nullptr);
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  std::shared_ptr<VPackBuilder> builder;
-  try {
-    builder = VelocyPackHelper::velocyPackFromFile(filename);
-  }
-  catch (...) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "unable to read replication applier configuration from file '"
-        << filename << "'";
-    return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
-  }
+  TRI_ASSERT(builder != nullptr);
 
   VPackSlice const slice = builder->slice();
-
-  if (!slice.isObject()) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "unable to read replication applier configuration from file '"
-        << filename << "'";
-    return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
-  }
 
   // read the database name
   VPackSlice value = slice.get("database");
@@ -830,24 +808,6 @@ void TRI_replication_applier_configuration_t::update(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove the replication application configuration file
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveConfigurationReplicationApplier(TRI_vocbase_t* vocbase) {
-  if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    return TRI_ERROR_CLUSTER_UNSUPPORTED;
-  }
-
-  std::string const filename = GetConfigurationFilename(vocbase);
-
-  if (TRI_ExistsFile(filename.c_str())) {
-    return TRI_UnlinkFile(filename.c_str());
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief save the replication application configuration to a file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -865,13 +825,8 @@ int TRI_SaveConfigurationReplicationApplier(
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  std::string const filename = GetConfigurationFilename(vocbase);
-
-  if (!VelocyPackHelper::velocyPackToFile(filename, builder->slice(), doSync)) {
-    return TRI_errno();
-  } 
-  
-  return TRI_ERROR_NO_ERROR;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  return engine->saveReplicationApplierConfiguration(vocbase, builder->slice(), doSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1114,7 +1069,10 @@ int TRI_replication_applier_t::forget() {
   TRI_DestroyStateReplicationApplier(&_state);
   TRI_InitStateReplicationApplier(&_state);
 
-  TRI_RemoveConfigurationReplicationApplier(_vocbase);
+  if (_vocbase->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    engine->removeReplicationApplierConfiguration(_vocbase);
+  }
   _configuration.reset();
 
   return TRI_ERROR_NO_ERROR;

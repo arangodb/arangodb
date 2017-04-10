@@ -83,7 +83,10 @@ add_custom_target(remove_packages
   COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.rpm
   COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_CLIENT_PACKAGE_FILE_NAME}.rpm
   COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_DBG_PACKAGE_FILE_NAME}.rpm
+  COMMAND ${CMAKE_COMMAND} -E remove ${PROJECT_BINARY_DIR}/bin/strip/*
   )
+
+
 
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)
 

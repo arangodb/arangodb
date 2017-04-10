@@ -53,8 +53,10 @@ TraverserCache::TraverserCache(transaction::Methods* trx)
 }
 
 TraverserCache::~TraverserCache() {
-  auto cacheManager = CacheManagerFeature::MANAGER;
-  cacheManager->destroyCache(_cache);
+  if (_cache != nullptr) {
+    auto cacheManager = CacheManagerFeature::MANAGER;
+    cacheManager->destroyCache(_cache);
+  }
 }
 
 // @brief Only for internal use, Cache::Finding prevents
@@ -62,6 +64,8 @@ TraverserCache::~TraverserCache() {
 // for a longer period of time.
 // DO NOT give it to a caller.
 cache::Finding TraverserCache::lookup(StringRef idString) {
+  // Caller should check before.
+  TRI_ASSERT(_cache != nullptr);
   VPackValueLength keySize = idString.length();
   void const* key = idString.data();
   //uint32_t keySize = static_cast<uint32_t>(idString.byteSize());
@@ -76,16 +80,16 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
     TRI_ASSERT(false);
     return basics::VelocyPackHelper::NullValue();
   }
-  int res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
+  Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
                                         id.substr(pos + 1).toString(), *_mmdr);
 
-  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+  if (!res.ok() && (res.errorNumber() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     // ok we are in a rather bad state. Better throw and abort.
     THROW_ARANGO_EXCEPTION(res);
   }
 
   VPackSlice result;
-  if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+  if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     // This is expected, we may have dangling edges. Interpret as NULL
     result = basics::VelocyPackHelper::NullValue();
   } else {
@@ -100,7 +104,7 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   std::unique_ptr<cache::CachedValue> value(
       cache::CachedValue::construct(key, (uint32_t)keySize, resVal, resValSize));
 
-  if (value) {
+  if (value && _cache != nullptr) {
     bool success = _cache->insert(value.get());
     if (!success) {
       LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert failed";
@@ -116,32 +120,36 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
 
 void TraverserCache::insertIntoResult(StringRef idString,
                                       VPackBuilder& builder) {
-  auto finding = lookup(idString);
-  if (finding.found()) {
-    auto val = finding.value();
-    VPackSlice slice(val->value());
-    // finding makes sure that slice contant stays valid.
-    builder.add(slice);
-  } else {
-    // Not in cache. Fetch and insert.
-    builder.add(lookupInCollection(idString));
+  if (_cache != nullptr) {
+    auto finding = lookup(idString);
+    if (finding.found()) {
+      auto val = finding.value();
+      VPackSlice slice(val->value());
+      // finding makes sure that slice contant stays valid.
+      builder.add(slice);
+      return;
+    }
   }
+  // Not in cache. Fetch and insert.
+  builder.add(lookupInCollection(idString));
 }
 
 aql::AqlValue TraverserCache::fetchAqlResult(StringRef idString) {
-  auto finding = lookup(idString);
-  if (finding.found()) {
-    auto val = finding.value();
-    // finding makes sure that slice content stays valid.
-    return aql::AqlValue(VPackSlice(val->value()));
+  if (_cache != nullptr) {
+    auto finding = lookup(idString);
+    if (finding.found()) {
+      auto val = finding.value();
+      // finding makes sure that slice content stays valid.
+      return aql::AqlValue(VPackSlice(val->value()));
+    }
   }
   // Not in cache. Fetch and insert.
   return aql::AqlValue(lookupInCollection(idString));
 }
 
 void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Slice const& document) {
-  auto finding = lookup(idString);
-  if (!finding.found()) {
+  if (_cache == nullptr || !lookup(idString).found()) {
+    // Really fetch document
     VPackValueLength keySize = idString.length();
     void const* key = idString.data();
     
@@ -150,7 +158,7 @@ void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Sl
     std::unique_ptr<cache::CachedValue> value(cache::CachedValue::construct(key, (uint32_t)keySize,
                                                                             resVal, resValSize));
     
-    if (value) {
+    if (value && _cache != nullptr) {
       bool success = _cache->insert(value.get());
       if (!success) {
         LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert document into cache failed";
@@ -167,12 +175,14 @@ void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Sl
 bool TraverserCache::validateFilter(
     StringRef idString,
     std::function<bool(VPackSlice const&)> filterFunc) {
-  auto finding = lookup(idString);
-  if (finding.found()) {
-    auto val = finding.value();
-    VPackSlice slice(val->value());
-    // finding makes sure that slice contant stays valid.
-    return filterFunc(slice);
+  if (_cache != nullptr) {
+    auto finding = lookup(idString);
+    if (finding.found()) {
+      auto val = finding.value();
+      VPackSlice slice(val->value());
+      // finding makes sure that slice contant stays valid.
+      return filterFunc(slice);
+    }
   }
   // Not in cache. Fetch and insert.
   VPackSlice slice = lookupInCollection(idString);

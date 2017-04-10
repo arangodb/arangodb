@@ -84,7 +84,13 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.password",
                              "password used for cluster-internal communication", 
                              true);
-
+  options->addObsoleteOption("--cluster.disable-dispatcher-kickstarter",
+                             "The dispatcher feature isn't available anymore; Use ArangoDBStarter for this now!",
+                             true);
+  options->addObsoleteOption("--cluster.disable-dispatcher-frontend",
+                             "The dispatcher feature isn't available anymore; Use ArangoDBStarter for this now!",
+                             true);
+                             
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
@@ -130,6 +136,14 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+
+  if (options->processingResult().touched("cluster.disable-dispatcher-kickstarter") ||
+      options->processingResult().touched("cluster.disable-dispatcher-frontend")) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "The dispatcher feature isn't available anymore. Use ArangoDBStarter for this now! See https://github.com/arangodb-helper/ArangoDBStarter/ for more details.";
+    FATAL_ERROR_EXIT();
+  }
+  
   // check if the cluster is enabled
   _enableCluster = !_agencyEndpoints.empty();
 
@@ -176,7 +190,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                     "SECONDARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
-  }
+  } 
 }
 
 void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {

@@ -47,8 +47,8 @@ struct LPValue {
 /// Value for Hyperlink-Induced Topic Search (HITS; also known as
 /// hubs and authorities)
 struct HITSValue {
-  float authorityScore;
-  float hubScore;
+  double authorityScore;
+  double hubScore;
 };
 
 struct DMIDValue {
@@ -90,7 +90,7 @@ struct HLLCounter {
 /// Effective closeness value
 struct ECValue {
   HLLCounter counter;
-  std::vector<int32_t> shortestPaths;
+  std::vector<uint32_t> shortestPaths;
 };
 
 struct SCCValue {

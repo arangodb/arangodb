@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_DOCUMENT_POSITION_H
-#define ARANGOD_STORAGE_ENGINE_MMFILES_DOCUMENT_POSITION_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_DOCUMENT_POSITION_H
+#define ARANGOD_MMFILES_MMFILES_DOCUMENT_POSITION_H 1
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesDatafileHelper.h"

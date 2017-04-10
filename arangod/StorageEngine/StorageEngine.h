@@ -26,6 +26,7 @@
 #define ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
 #include "VocBase/AccessMode.h"
@@ -86,6 +87,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 
+  // when a new collection is created, this method is called to augment the collection
+  // creation data with engine-specific information
+  virtual void addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {}
+  
+  // when a new index is created, this method is called to augment the index
+  // creation data with engine-specific information
+  virtual void addParametersForNewIndex(VPackBuilder& builder, VPackSlice info) {}
+
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
 
@@ -118,6 +127,9 @@ class StorageEngine : public application_features::ApplicationFeature {
                                        bool wasCleanShutdown, bool isUpgrade) = 0;
   
   virtual int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) = 0;
+  
+  // return the absolute path for the VERSION file of a database
+  virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
 
   // return the path for a database
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
@@ -170,7 +182,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   }
 
   // @brief wirte create marker for database
-  virtual int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
+  virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
@@ -189,12 +201,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   };
 
   // perform a physical deletion of the database
-  virtual void dropDatabase(Database*, int& status) = 0;
-  void dropDatabase(Database* db){
-    int status;
-    dropDatabase(db, status);
-    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
-  };
+  virtual Result dropDatabase(Database*) = 0;
 
   /// @brief wait until a database directory disappears - not under lock in databaseFreature
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) = 0;
@@ -384,16 +391,21 @@ class StorageEngine : public application_features::ApplicationFeature {
   // -------------
 
   /// @brief Add engine-specific AQL functions.
-  virtual void addAqlFunctions() = 0;
+  virtual void addAqlFunctions() {}
   
   /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules() = 0;
+  virtual void addOptimizerRules() {}
   
   /// @brief Add engine-specific V8 functions
-  virtual void addV8Functions() = 0;
+  virtual void addV8Functions() {}
   
   /// @brief Add engine-specific REST handlers
-  virtual void addRestHandlers(rest::RestHandlerFactory*) = 0;
+  virtual void addRestHandlers(rest::RestHandlerFactory*) {}
+
+  // replication
+  virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t*, int& status) = 0;
+  virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
+  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) = 0; 
 
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,

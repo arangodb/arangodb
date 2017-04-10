@@ -12,6 +12,8 @@ const fs = require("fs");
 const internal = require("internal");
 const inspect = internal.inspect;
 
+let testOutputDirectory;
+
 function makePathGeneric(path) {
   return path.split(fs.pathSeparator);
 }
@@ -136,7 +138,7 @@ function resultsToXml(results, baseName, cluster) {
 
           const fn = makePathGeneric(baseName + xmlName + ".xml").join('_');
 
-          fs.write("out/" + fn, xml.join(""));
+          fs.write(testOutputDirectory + fn, xml.join(""));
         }
       }
     }
@@ -181,17 +183,23 @@ function main(argv) {
     }
   }
 
+  if (options.hasOwnProperty('testOutput')) {
+    testOutputDirectory = options.testOutput + '/';
+  } else {
+    testOutputDirectory = 'out/';    
+  }
+
   // force json reply
   options.jsonReply = true;
 
   // create output directory
-  fs.makeDirectoryRecursive("out");
+  fs.makeDirectoryRecursive(testOutputDirectory);
 
   // run the test and store the result
   let r = {};
 
   try {
-    r = UnitTest.unitTest(cases, options) || {};
+    r = UnitTest.unitTest(cases, options, testOutputDirectory) || {};
   } catch (x) {
     print("caught exception during test execution!");
 
@@ -215,7 +223,7 @@ function main(argv) {
   });
 
   // whether or not there was an error 
-  fs.write("out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.status));
+  fs.write(testOutputDirectory + "/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.status));
 
   if (options.writeXmlReport) {
     let j;
@@ -226,8 +234,8 @@ function main(argv) {
       j = inspect(r);
     }
 
-    fs.write("out/UNITTEST_RESULT.json", j);
-    fs.write("out/UNITTEST_RESULT_CRASHED.json", String(r.crashed));
+    fs.write(testOutputDirectory + "/UNITTEST_RESULT.json", j);
+    fs.write(testOutputDirectory + "/UNITTEST_RESULT_CRASHED.json", String(r.crashed));
 
     try {
       resultsToXml(r,
@@ -240,7 +248,7 @@ function main(argv) {
     }
   }
 
-  UnitTest.unitTestPrettyPrintResults(r);
+  UnitTest.unitTestPrettyPrintResults(r, testOutputDirectory);
 
   return r.status;
 }

@@ -241,6 +241,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("InitDatabase");
   startsAfter("MMFilesEngine");
   startsAfter("MMFilesPersistentIndex");
+  startsAfter("RocksDBEngine");
 }
 
 DatabaseFeature::~DatabaseFeature() {
@@ -570,7 +571,6 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // createDatabase must return a valid database or throw
     vocbase.reset(engine->createDatabase(id, builder.slice()));
 
-
     TRI_ASSERT(vocbase != nullptr);
 
     try {
@@ -637,7 +637,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   int res = TRI_ERROR_NO_ERROR;
 
   if (!engine->inRecovery()) {
-    res = engine->writeCreateMarker(id, builder.slice());
+    res = engine->writeCreateDatabaseMarker(id, builder.slice());
   }
 
   result = vocbase.release();
@@ -1163,6 +1163,8 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   try {
     for (auto const& it : VPackArrayIterator(databases)) {
       TRI_ASSERT(it.isObject());
+
+      LOG_TOPIC(TRACE, Logger::FIXME) << "processing database: " << it.toJson();
 
       VPackSlice deleted = it.get("deleted");
       if (deleted.isBoolean() && deleted.getBoolean()) {

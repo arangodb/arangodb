@@ -97,9 +97,9 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
         transaction::StandaloneContext::Create(_collection->vocbase()), _name,
         AccessMode::Type::READ);
 
-    int res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 

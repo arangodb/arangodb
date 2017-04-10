@@ -25,6 +25,7 @@
 #define ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Hints.h"
@@ -68,6 +69,7 @@ class TransactionState {
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_voc_tid_t id() const { return _id; }
   transaction::Status status() const { return _status; }
+  bool isRunning() const { return _status == transaction::Status::RUNNING; }
 
   int increaseNesting() { return ++_nestingLevel; }
   int decreaseNesting() { 
@@ -100,10 +102,10 @@ class TransactionState {
   int addCollection(TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel, bool force);
 
   /// @brief make sure all declared collections are used & locked
-  int ensureCollections(int nestingLevel = 0);
+  Result ensureCollections(int nestingLevel = 0);
 
   /// @brief use all participating collections of a transaction
-  int useCollections(int nestingLevel);
+  Result useCollections(int nestingLevel);
   
   /// @brief release collection locks for a transaction
   int unuseCollections(int nestingLevel);
@@ -125,15 +127,17 @@ class TransactionState {
   void setHint(transaction::Hints::Hint hint) { _hints.set(hint); }
 
   /// @brief begin a transaction
-  virtual int beginTransaction(transaction::Hints hints) = 0;
+  virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual int commitTransaction(transaction::Methods* trx) = 0;
+  virtual arangodb::Result commitTransaction(transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
-  virtual int abortTransaction(transaction::Methods* trx) = 0;
+  virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
   virtual bool hasFailedOperations() const = 0;
+  
+  TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
  protected:
   /// @brief find a collection in the transaction's list of collections
@@ -143,9 +147,6 @@ class TransactionState {
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
   }
-
-  /// @brief free all operations for a transaction
-  void freeOperations(transaction::Methods* activeTrx);
 
   /// @brief release collection locks for a transaction
   int releaseCollections();

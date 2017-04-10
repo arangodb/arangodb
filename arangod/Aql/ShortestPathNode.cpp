@@ -495,7 +495,8 @@ double ShortestPathNode::estimateCost(size_t& nrItems) const {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unexpected pointer for collection");
     }
-    edgesCount += collection->count();
+    transaction::Methods* trx = _plan->getAst()->query()->trx();
+    edgesCount += collection->count(trx);
   }
   // Hard-Coded number of vertices edges / 10
   nrItems = edgesCount + static_cast<size_t>(std::log2(edgesCount / 10) * (edgesCount / 10));

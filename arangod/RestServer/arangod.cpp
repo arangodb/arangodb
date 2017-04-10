@@ -80,12 +80,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
-// TODO - move the following MMFiles includes to the storage engine
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "MMFiles/MMFilesWalRecoveryFeature.h"
-#include "MMFiles/MMFilesEngine.h"
-
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -97,6 +91,10 @@
 #include "Enterprise/RestServer/arangodEE.h"
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
+
+// storage engine
+#include "MMFiles/MMFilesEngine.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 
 using namespace arangodb;
 
@@ -195,9 +193,7 @@ static int runServer(int argc, char** argv) {
 
     // storage engines
     server.addFeature(new MMFilesEngine(&server));
-    server.addFeature(new MMFilesWalRecoveryFeature(&server));
-    server.addFeature(new MMFilesLogfileManager(&server));
-    server.addFeature(new MMFilesPersistentIndexFeature(&server));
+    server.addFeature(new RocksDBEngine(&server));
 
     try {
       server.run(argc, argv);
@@ -207,12 +203,12 @@ static int runServer(int argc, char** argv) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "arangod terminated because of an unhandled exception: "
+          << "arangod terminated because of an exception: "
           << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "arangod terminated because of an unhandled exception of "
+          << "arangod terminated because of an exception of "
              "unknown type";
       ret = EXIT_FAILURE;
     }
@@ -221,11 +217,11 @@ static int runServer(int argc, char** argv) {
     return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangod terminated because of an unhandled exception: "
+        << "arangod terminated because of an exception: "
         << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangod terminated because of an unhandled exception of "
+        << "arangod terminated because of an xception of "
            "unknown type";
   }
   exit(EXIT_FAILURE);
@@ -262,11 +258,11 @@ int main(int argc, char* argv[]) {
     ARGV = argv;
 
     SERVICE_TABLE_ENTRY ste[] = {
-        {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
+      {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
-                << GetLastError() << std::endl;
+        << GetLastError() << std::endl;
       exit(EXIT_FAILURE);
     }
   } else

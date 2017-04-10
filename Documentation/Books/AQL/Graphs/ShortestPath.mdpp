@@ -117,6 +117,8 @@ shortest path where all edges are of type *X*". If you want to do this, use a
 normal [Traversal](Traversals.md) instead with the option `{bfs: true}` in
 combination with `LIMIT 1`.
 
+Please also consider [to use `WITH`](../Operations/With.md) to specify the collections you expect to be involved.
+
 Examples
 --------
 We will create a simple symmetric traversal demonstration graph:

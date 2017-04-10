@@ -45,7 +45,10 @@ function locateCatchTest (name) {
   var file = fs.join(pu.UNITTESTS_DIR, name + pu.executableExt);
 
   if (!fs.exists(file)) {
-    return '';
+    file = fs.join(pu.BIN_DIR, name + pu.executableExt);
+    if (!fs.exists(file)) {
+      return '';
+    }
   }
   return file;
 }
@@ -76,7 +79,7 @@ function catchRunner (options) {
 
   if (!options.skipCache) {
     if (run !== '') {
-      let argv = ['[cache]',
+      let argv = ['[cache][exclude:longRunning]',
                   '-r',
                   'junit',
                   '-o',

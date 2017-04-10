@@ -28,13 +28,30 @@
 const functionsDocumentation = {
   'replication_ongoing': 'replication ongoing tests',
   'replication_static': 'replication static tests',
-  'replication_sync': 'replication sync tests'
+  'replication_sync': 'replication sync tests',
+  'shell_replication': 'shell replication tests'
 };
 const optionsDocumentation = [
 ];
 
+const _ = require('lodash');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_replication
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellReplication (options) {
+  let testCases = tu.scanTestPath('js/common/tests/replication');
+
+  var opts = {
+    'replication': true
+  };
+  _.defaults(opts, options);
+
+  return tu.performTests(opts, testCases, 'shell_replication', tu.runThere);
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: replication_ongoing
@@ -70,12 +87,14 @@ function replicationOngoing (options) {
       };
     },
 
-    preShutdown: function (options,
+    preStop: function (options,
                            serverOptions,
                            instanceInfo,
                            customInstanceInfos,
                            startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
+      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+
+      return {};
     }
   };
 
@@ -133,12 +152,13 @@ function replicationStatic (options) {
       };
     },
 
-    preShutdown: function (options,
+    preStop: function (options,
                            serverOptions,
                            instanceInfo,
                            customInstanceInfos,
                            startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
+      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+      return {};
     }
   };
 
@@ -203,12 +223,14 @@ function replicationSync (options) {
       };
     },
 
-    preShutdown: function (options,
+    preStop: function (options,
                            serverOptions,
                            instanceInfo,
                            customInstanceInfos,
                            startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.preStart.instanceInfo, options);
+      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+
+      return {};
     }
   };
 
@@ -216,6 +238,7 @@ function replicationSync (options) {
 }
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+  testFns['shell_replication'] = shellReplication;
   testFns['replication_ongoing'] = replicationOngoing;
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;

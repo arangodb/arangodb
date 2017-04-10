@@ -559,7 +559,7 @@ IndexIterator* Index::iteratorForCondition(transaction::Methods*,
                                            ManagedDocumentResult*,
                                            arangodb::aql::AstNode const*,
                                            arangodb::aql::Variable const*,
-                                           bool) const {
+                                           bool) {
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
   return nullptr;

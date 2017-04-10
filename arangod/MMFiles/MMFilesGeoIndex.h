@@ -119,7 +119,7 @@ friend class MMFilesGeoIndexIterator;
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) const override;
+                                      bool) override;
   
   bool allowExpansion() const override { return false; }
   

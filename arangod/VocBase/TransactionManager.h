@@ -59,6 +59,8 @@ class TransactionManager {
 
   // iterate all the active transactions
   void iterateActiveTransactions(std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback);
+  
+  uint64_t getActiveTransactionCount();
 
  private:
   // hashes the transaction id into a bucket

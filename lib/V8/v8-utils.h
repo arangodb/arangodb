@@ -28,6 +28,9 @@
 
 #include "V8/v8-globals.h"
 
+namespace arangodb{
+  class Result;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,11 +151,9 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
 void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an error in a javascript object, using supplied text
+/// @brief creates an error in a javascript object, based on arangodb::Result
 ////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                           std::string const& message);
+void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object

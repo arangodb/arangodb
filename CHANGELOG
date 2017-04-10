@@ -1,6 +1,10 @@
 devel
 -----
 
+* issue #2413: improve logging in case of lock timeout and deadlocks
+
+* added log topic attribute to /_admin/log api
+
 * removed internal build option `USE_DEV_TIMERS`
 
   Enabling this option activated some proprietary timers for only selected 
@@ -107,6 +111,8 @@ devel
 
 * Foxx: Fix arangoUser sometimes not being set correctly
 
+* fixed issue #1974
+
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
@@ -169,8 +175,25 @@ v3.2.alpha1 (2017-02-05)
 * generated Foxx services now use swagger tags
 
 
-v3.1.17 (2017-XX-XX)
+v3.1.18 (2017-XX-XX)
 --------------------
+
+* Fixed a dead-lock situation in cluster traversers, it could happen in
+  rare cases if the computation on one DBServer could be completed much earlier
+  than the other server. It could also be restricted to SmartGraphs only.
+
+* (Enterprise only) Fixed a bug in SmartGraph DepthFirstSearch. In some
+  more complicated queries, the maxDepth limit of 1 was not considered strictly
+  enough, causing the traverser to do unlimited depth searches.
+
+* fixed issue #2415
+
+
+v3.1.17 (2017-04-04)
+--------------------
+
+* (Enterprise only) fixed a bug where replicationFactor was not correctly
+  forwarded in SmartGraph creation.
 
 * fixed issue #2404
 

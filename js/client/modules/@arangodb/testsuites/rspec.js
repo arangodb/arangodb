@@ -26,6 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
+  'server_http': 'http server tests in Mocha',
   'http_replication': 'http replication tests',
   'http_server': 'http server tests in Ruby',
   'ssl_server': 'https server tests'
@@ -49,6 +50,17 @@ const yaml = require('js-yaml');
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_http
+// //////////////////////////////////////////////////////////////////////////////
+
+function serverHttp (options) {
+  // first starts to replace rspec:
+  let testCases = tu.scanTestPath('js/common/tests/http');
+
+  return tu.performTests(options, testCases, 'server_http', tu.runThere);
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs ruby tests using RSPEC
@@ -78,19 +90,24 @@ function rubyTests (options, ssl) {
 
   const tmpname = fs.getTempFile() + '.rb';
 
-  fs.write(tmpname, 'RSpec.configure do |c|\n' +
-           '  c.add_setting :ARANGO_SERVER\n' +
-           '  c.ARANGO_SERVER = "' +
-           instanceInfo.endpoint.substr(6) + '"\n' +
-           '  c.add_setting :ARANGO_SSL\n' +
-           '  c.ARANGO_SSL = "' + (ssl ? '1' : '0') + '"\n' +
-           '  c.add_setting :ARANGO_USER\n' +
-           '  c.ARANGO_USER = "' + options.username + '"\n' +
-           '  c.add_setting :ARANGO_PASSWORD\n' +
-           '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
-           '  c.add_setting :SKIP_TIMECRITICAL\n' +
-           '  c.SKIP_TIMECRITICAL = ' + JSON.stringify(options.skipTimeCritical) + '\n' +
-           'end\n');
+  let rspecConfig = 'RSpec.configure do |c|\n' +
+                    '  c.add_setting :ARANGO_SERVER\n' +
+                    '  c.ARANGO_SERVER = "' +
+                    instanceInfo.endpoint.substr(6) + '"\n' +
+                    '  c.add_setting :ARANGO_SSL\n' +
+                    '  c.ARANGO_SSL = "' + (ssl ? '1' : '0') + '"\n' +
+                    '  c.add_setting :ARANGO_USER\n' +
+                    '  c.ARANGO_USER = "' + options.username + '"\n' +
+                    '  c.add_setting :ARANGO_PASSWORD\n' +
+                    '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
+                    '  c.add_setting :SKIP_TIMECRITICAL\n' +
+                    '  c.SKIP_TIMECRITICAL = ' + JSON.stringify(options.skipTimeCritical) + '\n' +
+                    'end\n';
+
+  fs.write(tmpname, rspecConfig);
+  if (options.extremeVerbosity === true){
+      print("rspecConfig: \n" + rspecConfig);
+  }
   try {
     fs.makeDirectory(pu.LOGS_DIR);
   } catch (err) {}
@@ -128,7 +145,9 @@ function rubyTests (options, ssl) {
     if (!status) {
       const msg = yaml.safeDump(testCase)
             .replace(/.*rspec\/core.*\n/gm, '')
-            .replace(/.*rspec\\core.*\n/gm, '');
+            .replace(/.*rspec\\core.*\n/gm, '')
+            .replace(/.*- >-.*\n/gm, '')
+            .replace(/\n *`/gm, ' `');
       print('RSpec test case falied: \n' + msg);
       res[tName].message += '\n' + msg;
     }
@@ -280,14 +299,16 @@ function sslServer (options) {
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['http_replication'] = httpReplication;
   testFns['http_server'] = httpServer;
+  testFns['server_http'] = serverHttp;
   testFns['ssl_server'] = sslServer;
 
+  defaultFns.push('server_http');
   defaultFns.push('http_server');
   defaultFns.push('ssl_server');
 
-  opts['skipSsl'] =  false;
+  opts['skipSsl'] = false;
   opts['rspec'] = 'rspec';
-  opts['ruby'] =  '';
+  opts['ruby'] = '';
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

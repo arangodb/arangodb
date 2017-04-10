@@ -27,7 +27,7 @@
 
 #include "catch.hpp"
 
-#include "Basics/ShortestPathFinder.h"
+#include "Graph/ShortestPathPriorityQueue.h"
 #include "Basics/voc-errors.h"
 
 using namespace std;
@@ -63,7 +63,7 @@ TEST_CASE("CPriorityQueueTest", "[cpriorityqueue]") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_deque_case") {
-  arangodb::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::graph::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
   CHECK(0 == (int) pq.size());
   CHECK(true == pq.empty());
@@ -155,7 +155,7 @@ SECTION("tst_deque_case") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_heap_case") {
-  arangodb::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::graph::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
   CHECK(0 == (int) pq.size());
   CHECK(true == pq.empty());
@@ -247,7 +247,7 @@ SECTION("tst_heap_case") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_deque_case_with_lowering") {
-  arangodb::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::graph::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
   CHECK(0 == (int) pq.size());
   CHECK(true == pq.empty());
@@ -341,7 +341,7 @@ SECTION("tst_deque_case_with_lowering") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_heap_case_with_lowering") {
-  arangodb::basics::PriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::graph::PriorityQueue<std::string, MyValue, unsigned int> pq;
  
   CHECK(0 == (int) pq.size());
   CHECK(true == pq.empty());

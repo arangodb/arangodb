@@ -600,7 +600,7 @@ void HeartbeatThread::runCoordinator() {
           usleep(500000);
           remain -= 0.5;
         } else {
-          usleep((unsigned long)(remain * 1000.0 * 1000.0));
+          usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
           remain = 0.0;
         }
       }

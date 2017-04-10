@@ -150,6 +150,7 @@ add_custom_target(remove_packages
   COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb
   COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.deb
   COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb
+  COMMAND ${CMAKE_COMMAND} -E remove ${PROJECT_BINARY_DIR}/bin/strip/*
   COMMENT Removing local target packages
   )
 

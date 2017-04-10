@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_EDGE_INDEX_H
-#define ARANGOD_MMFILES_EDGE_INDEX_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_EDGE_INDEX_H
+#define ARANGOD_MMFILES_MMFILES_EDGE_INDEX_H 1
 
 #include "Basics/AssocMulti.h"
 #include "Basics/Common.h"
@@ -129,7 +129,7 @@ class MMFilesEdgeIndex final : public Index {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) const override;
+                                      bool) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

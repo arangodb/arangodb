@@ -585,26 +585,26 @@ static void GetDocumentByIdentifier(transaction::Methods* trx,
       searchBuilder->add(VPackValue(identifier.substr(pos + 1)));
     }
   }
-  
-  int res = TRI_ERROR_NO_ERROR;
+ 
+  Result res;
   try {
     res = trx->documentFastPath(collectionName, nullptr, searchBuilder->slice(), result,
                                 true);
   } catch (arangodb::basics::Exception const& ex) {
-    res = ex.code();
+    res.reset(ex.code());
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     if (ignoreError) {
-      if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND || 
-          res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND ||
-          res == TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST) {
+      if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND || 
+          res.errorNumber() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND ||
+          res.errorNumber() == TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST) {
         return;
       }
     }
-    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+    if (res.errorNumber() == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + AccessMode::typeString(AccessMode::Type::READ) + "]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage() + ": " + collectionName + " [" + AccessMode::typeString(AccessMode::Type::READ) + "]");
     }
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -3348,8 +3348,7 @@ AqlValue Functions::CollectionCount(
   }
 
   transaction::BuilderLeaser builder(trx);
-  // TODO Temporary until move to LogicalCollection is complete
-  builder->add(VPackValue(collection->numberDocuments()));
+  builder->add(VPackValue(collection->numberDocuments(trx)));
   return AqlValue(builder.get());
 }
 

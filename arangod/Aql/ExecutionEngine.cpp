@@ -1187,25 +1187,26 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   
 /// @brief shutdown, will be called exactly once for the whole query
 int ExecutionEngine::shutdown(int errorCode) {
+  int res = TRI_ERROR_NO_ERROR;
   if (_root != nullptr && !_wasShutdown) {
     // Take care of locking prevention measures in the cluster:
     if (_lockedShards != nullptr) {
       if (CollectionLockState::_noLockHeaders == _lockedShards) {
         CollectionLockState::_noLockHeaders = _previouslyLockedShards;
       }
+
       delete _lockedShards;
       _lockedShards = nullptr;
       _previouslyLockedShards = nullptr;
     }
 
+    res = _root->shutdown(errorCode);
+ 
     // prevent a duplicate shutdown
-    int res = _root->shutdown(errorCode);
     _wasShutdown = true;
-
-    return res;
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 /// @brief create an execution engine from a plan
