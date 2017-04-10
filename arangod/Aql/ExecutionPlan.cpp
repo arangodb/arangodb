@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionPlan.h"
-#include "Aql/CollectOptions.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/CollectNode.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
@@ -35,7 +35,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/ShortestPathNode.h"
-#include "Aql/ShortestPathOptions.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
@@ -44,6 +43,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "V8Server/V8Traverser.h"
 #include "VocBase/AccessMode.h"
 
 #include <velocypack/Iterator.h>
@@ -69,8 +69,8 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 }
 
 static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
-    transaction::Methods* trx, AstNode const* direction, AstNode const* optionsNode) {
-
+    transaction::Methods* trx, AstNode const* direction,
+    AstNode const* optionsNode) {
   auto options = std::make_unique<traverser::TraverserOptions>(trx);
 
   TRI_ASSERT(direction != nullptr);
@@ -145,8 +145,9 @@ static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
   return options;
 }
 
-static ShortestPathOptions CreateShortestPathOptions(AstNode const* node) {
-  ShortestPathOptions options;
+static std::unique_ptr<traverser::ShortestPathOptions> CreateShortestPathOptions(
+    arangodb::transaction::Methods* trx, AstNode const* node) {
+  auto options = std::make_unique<traverser::ShortestPathOptions>(trx);
 
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -161,10 +162,10 @@ static ShortestPathOptions CreateShortestPathOptions(AstNode const* node) {
         TRI_ASSERT(value->isConstant());
 
         if (name == "weightAttribute" && value->isStringValue()) {
-          options.weightAttribute =
+          options->weightAttribute =
               std::string(value->getStringValue(), value->getStringLength());
         } else if (name == "defaultWeight" && value->isNumericValue()) {
-          options.defaultWeight = value->getDoubleValue();
+          options->defaultWeight = value->getDoubleValue();
         }
       }
     }
@@ -181,8 +182,7 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
-      _subqueries() {
-}
+      _subqueries() {}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
@@ -296,9 +296,7 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
 }
 
 /// @brief clone an existing execution plan
-ExecutionPlan* ExecutionPlan::clone() {
-  return clone(_ast);
-}
+ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 
 /// @brief create an execution plan identical to this one
 ///   keep the memory of the plan on the query object specified.
@@ -314,7 +312,8 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
 }
 
 /// @brief export to VelocyPack
-std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
+std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast,
+                                                          bool verbose) const {
   auto builder = std::make_shared<VPackBuilder>();
 
   toVelocyPack(*builder, ast, verbose);
@@ -322,7 +321,8 @@ std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose
 }
 
 /// @brief export to VelocyPack
-void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) const {
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
+                                 bool verbose) const {
   // keeps top level of built object open
   _root->toVelocyPack(builder, verbose, true);
 
@@ -335,7 +335,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
     builder.add(VPackValue(r));
   }
   builder.close();
-  
+
   // set up collections
   builder.add(VPackValue("collections"));
   builder.openArray();
@@ -792,11 +792,11 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* direction = node->getMember(0);
   TRI_ASSERT(direction->isIntValue());
   AstNode const* start = parseTraversalVertexNode(previous, node->getMember(1));
-  AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
+  AstNode const* target =
+      parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  ShortestPathOptions options = CreateShortestPathOptions(node->getMember(4));
-
+  auto options = CreateShortestPathOptions(getAst()->query()->trx(), node->getMember(4));
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),
@@ -1652,9 +1652,9 @@ void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
   root()->walk(&finder);
 }
 
-
 /// @brief find nodes of a certain types
-void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
+void ExecutionPlan::findNodesOfType(
+    SmallVector<ExecutionNode*>& result,
     std::vector<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
   NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result,
                                                           enterSubqueries);
@@ -1663,7 +1663,7 @@ void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
 
 /// @brief find all end nodes in a plan
 void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
-    bool enterSubqueries) const {
+                                 bool enterSubqueries) const {
   EndNodeFinder finder(result, enterSubqueries);
   root()->walk(&finder);
 }
@@ -1891,20 +1891,23 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
 /// @brief create a plan from VPack
 ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   if (!slice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan slice is not an object");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "plan slice is not an object");
   }
 
   if (slice.hasKey("initialize")) {
-    // whether or not this plan (or fragment) is responsible for calling initialize
+    // whether or not this plan (or fragment) is responsible for calling
+    // initialize
     _isResponsibleForInitialize = slice.get("initialize").getBoolean();
   }
 
   VPackSlice nodes = slice.get("nodes");
 
   if (!nodes.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan \"nodes\" attribute is not an array");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "plan \"nodes\" attribute is not an array");
   }
-  
+
   ExecutionNode* ret = nullptr;
 
   // first, re-create all nodes from the Slice, using the node ids
