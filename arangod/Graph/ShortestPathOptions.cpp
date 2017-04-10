@@ -21,19 +21,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8Traverser.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/SingleServerTraverser.h"
+#include "ShortestPathOptions.h"
+
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::traverser;
+using namespace arangodb::graph;
+
 
 ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx)
-    : BasicOptions(trx),
+    : BaseOptions(trx),
       direction("outbound"),
       useWeight(false),
       weightAttribute(""),
@@ -43,7 +44,7 @@ ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx)
 
 ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx,
                                          VPackSlice const& info)
-    : BasicOptions(trx),
+    : BaseOptions(trx),
       direction("outbound"),
       useWeight(false),
       weightAttribute(""),
@@ -58,6 +59,13 @@ ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx,
     defaultWeight =
         VelocyPackHelper::getNumericValue<double>(obj, "defaultWeight", 1);
   }
+}
+
+ShortestPathOptions::~ShortestPathOptions() {}
+
+void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
+  // TODO Implement me!
+  BaseOptions::buildEngineInfo(result);
 }
 
 void ShortestPathOptions::setStart(std::string const& id) {
@@ -82,4 +90,13 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("weightAttribute", VPackValue(weightAttribute));
   builder.add("defaultWeight", VPackValue(defaultWeight));
+}
+
+void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
+  // TODO Implement me
+}
+
+double ShortestPathOptions::estimateCost(size_t& nrItems) const {
+  // TODO Implement me
+  return 0;
 }

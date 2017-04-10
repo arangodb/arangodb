@@ -24,8 +24,8 @@
 #ifndef ARANGOD_GRAPH_BASE_OPTIONS_H
 #define ARANGOD_GRAPH_BASE_OPTIONS_H 1
 
-#include "Basics/Common.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Basics/Common.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 
@@ -49,9 +49,7 @@ class Slice;
 namespace graph {
 
 struct BaseOptions {
-
  protected:
-
   struct LookupInfo {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
@@ -76,7 +74,6 @@ struct BaseOptions {
     void buildEngineInfo(arangodb::velocypack::Builder&) const;
 
     double estimateCost(size_t& nrItems) const;
-    
   };
 
  public:
@@ -87,7 +84,7 @@ struct BaseOptions {
   explicit BaseOptions(BaseOptions const&);
 
   BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
-                       arangodb::velocypack::Slice);
+              arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
 
@@ -121,7 +118,6 @@ struct BaseOptions {
   virtual double estimateCost(size_t& nrItems) const = 0;
 
  protected:
-
   double costForLookupInfoList(std::vector<LookupInfo> const& list,
                                size_t& createItems) const;
 
@@ -137,7 +133,8 @@ struct BaseOptions {
 
   aql::Expression* getEdgeExpression(size_t cursorId) const;
 
-  bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue) const;
+  bool evaluateExpression(aql::Expression*,
+                          arangodb::velocypack::Slice varValue) const;
 
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::Ast* ast,
                               std::string const& collectionName,
@@ -155,9 +152,8 @@ struct BaseOptions {
 
   /// @brief the traverser cache
   std::unique_ptr<traverser::TraverserCache> _cache;
-
 };
 
-} // namespace graph
-} // namespace arangodb
+}  // namespace graph
+}  // namespace arangodb
 #endif

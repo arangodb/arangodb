@@ -21,41 +21,27 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_TRAVERSER_H
-#define ARANGOD_V8_SERVER_V8_TRAVERSER_H 1
+#ifndef ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H
+#define ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H 1
 
-#include "Basics/VelocyPackHelper.h"
-#include "VocBase/Traverser.h"
+#include "Graph/BaseOptions.h"
 
 namespace arangodb {
+
+namespace transaction {
+class Methods;
+}
 
 namespace velocypack {
+class Builder;
 class Slice;
 }
-}
+namespace graph {
 
-namespace arangodb {
-namespace traverser {
-
-// A collection of shared options used in several functions.
-// Should not be used directly, use specialization instead.
-struct BasicOptions {
-  transaction::Methods* _trx;
-
- protected:
-  explicit BasicOptions(transaction::Methods* trx) : _trx(trx) {}
-
-  virtual ~BasicOptions() {}
+struct ShortestPathOptions : public BaseOptions {
 
  public:
   std::string start;
-
- public:
-  transaction::Methods* trx() { return _trx; }
-};
-
-struct ShortestPathOptions : BasicOptions {
- public:
   std::string direction;
   bool useWeight;
   std::string weightAttribute;
@@ -71,15 +57,31 @@ struct ShortestPathOptions : BasicOptions {
   ShortestPathOptions(transaction::Methods* trx,
                       arangodb::velocypack::Slice const& info);
 
+  ~ShortestPathOptions();
+
+  // Creates a complete Object containing all EngineInfo
+  // in the given builder.
+  void buildEngineInfo(arangodb::velocypack::Builder&) const override;
+
   void setStart(std::string const&);
   void setEnd(std::string const&);
 
   arangodb::velocypack::Slice getStart() const;
   arangodb::velocypack::Slice getEnd() const;
 
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  /// @brief Build a velocypack for cloning in the plan.
+  void toVelocyPack(arangodb::velocypack::Builder&) const override;
+
+  // Creates a complete Object containing all index information
+  // in the given builder.
+  void toVelocyPackIndexes(arangodb::velocypack::Builder&) const override;
+
+  /// @brief Estimate the total cost for this operation
+  double estimateCost(size_t& nrItems) const override;
+
 };
-}
-}
+
+} // namespace graph
+} // namespace arangodb
 
 #endif
