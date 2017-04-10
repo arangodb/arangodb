@@ -422,18 +422,17 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   iter->Seek(documentBounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
-    auto result  = state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0, iter->key().size());
-    if (result.fail()){
-      THROW_ARANGO_EXCEPTION(result);
-    }
-
     rocksdb::Status s = rtrx->Delete(iter->key());
     if (!s.ok()) {
       auto converted = convertStatus(s);
       THROW_ARANGO_EXCEPTION(converted);
     }
 
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    auto result  = state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0, iter->key().size());
+    if (result.fail()){
+      THROW_ARANGO_EXCEPTION(result);
+    }
     iter->Next();
   }
 
@@ -468,7 +467,13 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     }
 
     iter->Seek(indexBounds.start());
-    while (iter->Valid() && -1 == cmp->Compare(iter->key(), indexBounds.end())) {
+    while (iter->Valid() && cmp->Compare(iter->key(), indexBounds.end()) < 0) {
+
+      rocksdb::Status s = rtrx->Delete(iter->key());
+      if (!s.ok()) {
+        auto converted = convertStatus(s);
+        THROW_ARANGO_EXCEPTION(converted);
+      }
 
       //update size
       auto result  = state->addOperation(cid, /*ignored revisionId*/ 0,
@@ -477,12 +482,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
       if (result.fail()){
         THROW_ARANGO_EXCEPTION(result);
-      }
-
-      rocksdb::Status s = rtrx->Delete(iter->key());
-      if (!s.ok()) {
-        auto converted = convertStatus(s);
-        THROW_ARANGO_EXCEPTION(converted);
       }
       iter->Next();
     }
@@ -545,7 +544,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  RocksDBOperationResult rocksOpRes;
+  RocksDBOperationResult res;
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
@@ -553,36 +552,36 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     // _from:
     fromSlice = slice.get(StaticStrings::FromString);
     if (!fromSlice.isString()) {
-      rocksOpRes.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return rocksOpRes.errorNumber();
+      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return res.errorNumber();
     }
     VPackValueLength len;
     char const* docId = fromSlice.getString(len);
     size_t split;
     if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
                                             &split)) {
-      rocksOpRes.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return rocksOpRes.errorNumber();
+      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return res.errorNumber();
     }
     // _to:
     toSlice = slice.get(StaticStrings::ToString);
     if (!toSlice.isString()) {
-      rocksOpRes.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return rocksOpRes.errorNumber();
+      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return res.errorNumber();
     }
     docId = toSlice.getString(len);
     if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
                                             &split)) {
-      rocksOpRes.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return rocksOpRes.errorNumber();
+      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return res.errorNumber();
     }
   }
 
   transaction::BuilderLeaser builder(trx);
-  int res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
-                               *builder.get(), options.isRestore);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  res.reset(newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+                               *builder.get(), options.isRestore));
+  if (res.fail()) {
+    return res.errorNumber();
   }
   VPackSlice newSlice = builder->slice();
 
@@ -591,22 +590,21 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   RocksDBSavePoint guard(rocksTransaction(trx));
 
-  rocksOpRes = insertDocument(trx, revisionId, newSlice, options.waitForSync);
+  res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
+  if (res.ok()) {
+    Result lookupResult = lookupRevisionVPack(revisionId, trx, mdr);
 
-  if (rocksOpRes.ok()) {
-    rocksOpRes = lookupRevisionVPack(revisionId, trx, mdr);
-
-    if (rocksOpRes.fail()) {
-      return rocksOpRes.errorNumber();
+    if (lookupResult.fail()) {
+      return lookupResult.errorNumber();
     }
 
     static_cast<RocksDBTransactionState*>(trx->state())
         ->addOperation(_logicalCollection->cid(), revisionId,
-                       TRI_VOC_DOCUMENT_OPERATION_INSERT, newSlice.byteSize(), /*FIXME KEYSIZE*/ 0);
+                       TRI_VOC_DOCUMENT_OPERATION_INSERT, newSlice.byteSize(), res.keySize());
     guard.commit();
   }
 
-  return rocksOpRes.errorNumber();
+  return res.errorNumber();
 }
 
 int RocksDBCollection::update(arangodb::transaction::Methods* trx,
@@ -688,18 +686,19 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
   uint64_t keySize = res.keySize();
 
   if (res.ok()) {
-    res = lookupRevisionVPack(revisionId, trx, mdr);
-
-    if (!res.ok()) {
-      return res.errorNumber();
+    Result result = lookupRevisionVPack(revisionId, trx, mdr);
+    if (result.fail()) {
+      return result.errorNumber();
     }
 
     TRI_ASSERT(!mdr.empty());
 
     //update as combination of remove/insert?!
-    static_cast<RocksDBTransactionState*>(trx->state())
+    //check add operation result!!!!
+    result = static_cast<RocksDBTransactionState*>(trx->state())
         ->addOperation(_logicalCollection->cid(), revisionId,
                        TRI_VOC_DOCUMENT_OPERATION_UPDATE, newDoc.byteSize(), keySize);
+    //result.fail -> throw
     guard.commit();
   }
 
@@ -717,6 +716,7 @@ int RocksDBCollection::replace(
 
   //TODO FIXME -- limit transaction size
 
+  Result res;
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
@@ -727,11 +727,11 @@ int RocksDBCollection::replace(
   }
 
   // get the previous revision
-  int res = lookupDocument(trx, key, previous).errorNumber();
+  res.reset(lookupDocument(trx, key, previous).errorNumber());
 
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (res.fail()) {
+    return res.errorNumber();
   }
 
   TRI_ASSERT(!previous.empty());
@@ -845,7 +845,6 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   RocksDBSavePoint guard(rocksTransaction(trx));
 
   res = removeDocument(trx, oldRevisionId, oldDoc, options.waitForSync);
-
   if (res.ok()) {
     static_cast<RocksDBTransactionState*>(trx->state())
         ->addOperation(_logicalCollection->cid(), revisionId,
@@ -1013,6 +1012,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(arangodb::transaction::
         << " INSERT DOCUMENT FAILED. REVISIONID: " << revisionId;*/
     Result converted = rocksutils::convertStatus(status, rocksutils::StatusHint::document);
     res = converted;
+    res.keySize(key.string().size());
     return res;
   }
 
@@ -1023,22 +1023,16 @@ RocksDBOperationResult RocksDBCollection::insertDocument(arangodb::transaction::
   RocksDBOperationResult innerRes;
   for (size_t i = 0; i < n; ++i) {
     auto& idx = indexes[i];
-
     innerRes.reset(idx->insert(trx, revisionId, doc, false));
 
     // in case of no-memory, return immediately
     if (innerRes.is(TRI_ERROR_OUT_OF_MEMORY)) {
       return innerRes;
     }
-    /*if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-      LOG_TOPIC(ERR, Logger::FIXME)
-          << "#" << trx->state()->id()
-          << " UNIQUE CONSTRAINT VIOLATION IN INDEX: #" << i;
-    }*/
-    if (res.fail()) {
-      if (innerRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
-          res.ok()) {
-        // "prefer" unique constraint violated
+
+    if (innerRes.fail()) {
+      // "prefer" unique constraint violated over other errors
+      if (innerRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) || res.ok()) {
         res = innerRes;
       }
     }

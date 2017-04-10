@@ -89,7 +89,7 @@ RocksDBEngine::~RocksDBEngine() { delete _db; }
 
 // add the storage engine's specifc options to the global list of options
 void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-    _maxTransactionSize = 100000000; // set sensible default value here
+    _maxTransactionSize = std::numeric_limits<uint64_t>::max(); // set sensible default value here
     options->addOption("--rocksdb.max-transaction-size"
                       ,"transaction size limit"
                       ,new UInt64Parameter(&_maxTransactionSize)

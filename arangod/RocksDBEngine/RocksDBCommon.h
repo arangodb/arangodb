@@ -49,13 +49,20 @@ namespace arangodb {
 
 class RocksDBOperationResult : public Result {
 public:
-  RocksDBOperationResult() = default;
+  RocksDBOperationResult()
+    :Result()
+    ,_keySize(0)
+  {}
 
-  RocksDBOperationResult(Result const& other){
+  RocksDBOperationResult(Result const& other)
+    : _keySize(0)
+  {
     cloneData(other);
   }
 
-  RocksDBOperationResult(Result&& other){
+  RocksDBOperationResult(Result&& other)
+    : _keySize(0)
+  {
     cloneData(std::move(other));
   }
 
