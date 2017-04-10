@@ -210,7 +210,6 @@ Result RocksDBCounterManager::sync() {
   }
   _syncing = false;
   return rocksutils::convertStatus(s);
-  LOG_TOPIC(ERR, Logger::DEVEL) << "EXIT SYNC";
 }
 
 /// Parse counter values from rocksdb
