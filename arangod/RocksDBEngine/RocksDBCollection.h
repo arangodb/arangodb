@@ -30,6 +30,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
+#include "RocksDBCommon.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -194,22 +195,24 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBPrimaryIndex* primaryIndex() const;
 
-  int insertDocument(arangodb::transaction::Methods* trx,
-                     TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const& doc, bool& waitForSync);
+  arangodb::RocksDBOperationResult insertDocument(arangodb::transaction::Methods* trx,
+                                        TRI_voc_rid_t revisionId,
+                                        arangodb::velocypack::Slice const& doc,
+                                        bool& waitForSync);
 
-  int removeDocument(arangodb::transaction::Methods* trx,
-                     TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const& doc, bool& waitForSync);
+  arangodb::RocksDBOperationResult removeDocument(arangodb::transaction::Methods* trx,
+                                        TRI_voc_rid_t revisionId,
+                                        arangodb::velocypack::Slice const& doc,
+                                        bool& waitForSync);
 
-  int lookupDocument(transaction::Methods* trx, arangodb::velocypack::Slice key,
-                     ManagedDocumentResult& result);
+  arangodb::RocksDBOperationResult lookupDocument(transaction::Methods* trx,
+                                        arangodb::velocypack::Slice key,
+                                        ManagedDocumentResult& result);
 
-  int updateDocument(transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
-                     arangodb::velocypack::Slice const& oldDoc,
-                     TRI_voc_rid_t newRevisionId,
-                     arangodb::velocypack::Slice const& newDoc,
-                     bool& waitForSync);
+  arangodb::RocksDBOperationResult updateDocument(
+      transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
+      arangodb::velocypack::Slice const& oldDoc, TRI_voc_rid_t newRevisionId,
+      arangodb::velocypack::Slice const& newDoc, bool& waitForSync);
 
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
                                        arangodb::ManagedDocumentResult&);

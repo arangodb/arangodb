@@ -50,24 +50,27 @@ class RocksDBCounterManager : Thread {
 
  public:
   struct Counter {
-    rocksdb::SequenceNumber sequenceNumber;
-    uint64_t count; // used for number of documents
-    uint64_t revisionId; // used for revision id
-    
-    Counter(rocksdb::SequenceNumber seq, uint64_t value1, uint64_t value2)
-      : sequenceNumber(seq), count(value1), revisionId(value2) {}
-    explicit Counter(VPackSlice const&);
+    rocksdb::SequenceNumber _sequenceNumber;
+    uint64_t _count; // used for number of documents
+    uint64_t _revisionId; // used for revision id
+
     Counter();
-    
+    explicit Counter(VPackSlice const&);
+    Counter(rocksdb::SequenceNumber seq, uint64_t count, uint64_t revisionId)
+      : _sequenceNumber(seq), _count(count), _revisionId(revisionId) {}
+
     void serialize(VPackBuilder&) const;
     void reset();
+    uint64_t count() { return _count; }
+    uint64_t revisionId() { return _revisionId; }
   };
 
   /// Constructor needs to be called synchrunously,
   /// will load counts from the db and scan the WAL
 
   /// Thread-Safe load a counter
-  std::pair<uint64_t, uint64_t> loadCounter(uint64_t objectId);
+  /// FIXME: is it possible to return a const& to a counter?
+  Counter const loadCounter(uint64_t objectId);
 
   /// collections / views / indexes can call this method to update
   /// their total counts. Thread-Safe needs the snapshot so we know

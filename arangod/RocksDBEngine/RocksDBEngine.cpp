@@ -88,7 +88,13 @@ RocksDBEngine::~RocksDBEngine() { delete _db; }
 // ---------------------------------
 
 // add the storage engine's specifc options to the global list of options
-void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions>) {}
+void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+    _maxTransactionSize = 100000000; // set sensible default value here
+    options->addOption("--rocksdb.max-transaction-size"
+                      ,"transaction size limit"
+                      ,new UInt64Parameter(&_maxTransactionSize)
+                      );
+}
 
 // validate the storage engine's specific options
 void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
@@ -178,7 +184,7 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
 
 TransactionState* RocksDBEngine::createTransactionState(
     TRI_vocbase_t* vocbase) {
-  return new RocksDBTransactionState(vocbase);
+  return new RocksDBTransactionState(vocbase, _maxTransactionSize);
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
@@ -542,7 +548,7 @@ arangodb::Result RocksDBEngine::dropCollection(
 
     if (dropFailed) {
       res.reset(TRI_ERROR_INTERNAL,
-                "Failed to droop at least one Index for collection: " +
+                "Failed to drop at least one Index for collection: " +
                     collection->name());
     }
   */

@@ -39,7 +39,25 @@ ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx)
       weightAttribute(""),
       defaultWeight(1),
       bidirectional(true),
+      multiThreaded(true) {}
+
+ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx,
+                                         VPackSlice const& info)
+    : BasicOptions(trx),
+      direction("outbound"),
+      useWeight(false),
+      weightAttribute(""),
+      defaultWeight(1),
+      bidirectional(true),
       multiThreaded(true) {
+  VPackSlice obj = info.get("shortestPathFlags");
+
+  if (obj.isObject()) {
+    weightAttribute =
+        VelocyPackHelper::getStringValue(obj, "weightAttribute", "");
+    defaultWeight =
+        VelocyPackHelper::getNumericValue<double>(obj, "defaultWeight", 1);
+  }
 }
 
 void ShortestPathOptions::setStart(std::string const& id) {
@@ -58,6 +76,10 @@ VPackSlice ShortestPathOptions::getStart() const {
   return startBuilder.slice();
 }
 
-VPackSlice ShortestPathOptions::getEnd() const {
-  return endBuilder.slice();
+VPackSlice ShortestPathOptions::getEnd() const { return endBuilder.slice(); }
+
+void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
+  VPackObjectBuilder guard(&builder);
+  builder.add("weightAttribute", VPackValue(weightAttribute));
+  builder.add("defaultWeight", VPackValue(defaultWeight));
 }

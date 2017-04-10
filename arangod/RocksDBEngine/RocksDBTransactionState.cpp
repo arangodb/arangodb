@@ -74,14 +74,16 @@ void RocksDBSavePoint::rollback() {
 }
 
 /// @brief transaction type
-RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase)
+RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase, uint64_t maxTransSize)
     : TransactionState(vocbase),
       _rocksReadOptions(),
       _cacheTx(nullptr),
-      _operationSize(0),
+      _transactionSize(0),
+      _maxTransactionSize(maxTransSize),
       _numInserts(0),
       _numUpdates(0),
-      _numRemoves(0) {}
+      _numRemoves(0)
+      {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -122,6 +124,10 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksWriteOptions, rocksdb::TransactionOptions()));
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
+
+    /*LOG_TOPIC(ERR, Logger::FIXME)
+        << "#" << _id << " BEGIN (read-only: " << isReadOnlyTransaction()
+        << ")";*/
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -157,12 +163,6 @@ Result RocksDBTransactionState::commitTransaction(
   arangodb::Result result;
 
   if (_nestingLevel == 0) {
-    if (_cacheTx != nullptr) {
-      // note: endTransaction() will delete _cacheTrx!
-      CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
-      _cacheTx = nullptr;
-    }
-
     if (_rocksTransaction != nullptr) {
       // set wait for sync flag if required
       if (waitForSync()) {
@@ -174,6 +174,14 @@ Result RocksDBTransactionState::commitTransaction(
         abortTransaction(activeTrx);
         return result;
       }
+
+      if (_cacheTx != nullptr) {
+        // note: endTransaction() will delete _cacheTx!
+        CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
+        _cacheTx = nullptr;
+      }
+
+      // LOG_TOPIC(ERR, Logger::FIXME) << "#" << _id << " COMMIT";
 
       rocksdb::Snapshot const* snap = this->_rocksReadOptions.snapshot;
       TRI_ASSERT(snap != nullptr);
@@ -224,17 +232,19 @@ Result RocksDBTransactionState::abortTransaction(
   Result result;
 
   if (_nestingLevel == 0) {
-    if (_cacheTx != nullptr) {
-      // note: endTransaction() will delete _cacheTrx!
-      CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
-      _cacheTx = nullptr;
-    }
-
     if (_rocksTransaction != nullptr) {
       rocksdb::Status status = _rocksTransaction->Rollback();
       result = rocksutils::convertStatus(status);
       _rocksTransaction.reset();
     }
+
+    if (_cacheTx != nullptr) {
+      // note: endTransaction() will delete _cacheTx!
+      CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
+      _cacheTx = nullptr;
+    }
+
+    // LOG_TOPIC(ERR, Logger::FIXME) << "#" << _id << " ABORT";
 
     updateStatus(transaction::Status::ABORTED);
 
@@ -251,9 +261,19 @@ Result RocksDBTransactionState::abortTransaction(
 }
 
 /// @brief add an operation for a transaction collection
-void RocksDBTransactionState::addOperation(
+Result RocksDBTransactionState::addOperation(
     TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
-    TRI_voc_document_operation_e operationType, uint64_t operationSize) {
+    TRI_voc_document_operation_e operationType,
+    uint64_t operationSize, uint64_t keySize) {
+  Result res;
+
+  uint64_t newSize = _transactionSize + operationSize + keySize;
+  if(_maxTransactionSize < newSize){
+    //we hit the transaction size limit
+    res.reset(TRI_ERROR_RESOURCE_LIMIT, "maximal transaction limit reached");
+    return res;
+  }
+
   auto collection =
       static_cast<RocksDBTransactionCollection*>(findCollection(cid));
 
@@ -262,6 +282,7 @@ void RocksDBTransactionState::addOperation(
                                    "collection not found in transaction state");
   }
 
+  //sould not fail or fail with exception
   collection->addOperation(revisionId, operationType, operationSize);
 
   switch (operationType) {
@@ -279,5 +300,6 @@ void RocksDBTransactionState::addOperation(
       break;
   }
 
-  _operationSize += operationSize;
+  _transactionSize = newSize;
+  return res;
 }
