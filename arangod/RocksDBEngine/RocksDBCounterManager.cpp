@@ -40,13 +40,13 @@
 using namespace arangodb;
 
 RocksDBCounterManager::Counter::Counter(VPackSlice const& slice) {
-  TRI_ASSERT(slice.isArray());
-  
-  velocypack::ArrayIterator array(slice);
-  if (array.valid()) {
-    this->sequenceNumber = (*array).getUInt();
-    this->count = (*(++array)).getUInt();
-    this->revisionId = (*(++array)).getUInt();
+  if (slice.isArray()) {
+    velocypack::ArrayIterator array(slice);
+    if (array.valid()) {
+      this->sequenceNumber = (*array).getUInt();
+      this->count = (*(++array)).getUInt();
+      this->revisionId = (*(++array)).getUInt();
+    }
   }
 }
 
