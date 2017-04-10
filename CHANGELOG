@@ -111,6 +111,8 @@ devel
 
 * Foxx: Fix arangoUser sometimes not being set correctly
 
+* fixed issue #1974
+
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
@@ -183,6 +185,9 @@ v3.1.18 (2017-XX-XX)
 * (Enterprise only) Fixed a bug in SmartGraph DepthFirstSearch. In some
   more complicated queries, the maxDepth limit of 1 was not considered strictly
   enough, causing the traverser to do unlimited depth searches.
+
+* fixed issue #2415
+
 
 v3.1.17 (2017-04-04)
 --------------------

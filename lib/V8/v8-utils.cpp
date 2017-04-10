@@ -818,14 +818,25 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
       endpoint = "srv://" + endpoint;
     } else if (!url.empty() && url[0] == '/') {
+      size_t found;
       // relative URL. prefix it with last endpoint
       relative = url;
       url = lastEndpoint + url;
       endpoint = lastEndpoint;
       if (endpoint.substr(0, 5) == "http:") {
-        endpoint = "tcp:" + endpoint.substr(5);
+        endpoint = endpoint.substr(5);
+        found = endpoint.find(":");
+        if (found == std::string::npos) {
+          endpoint = endpoint + ":80";
+        }
+        endpoint = "tcp:" + endpoint;
       } else if (endpoint.substr(0, 6) == "https:") {
-        endpoint = "ssl:" + endpoint.substr(6);
+        endpoint = endpoint.substr(6);
+        found = endpoint.find(":");
+        if (found == std::string::npos) {
+          endpoint = endpoint + ":443";
+        }
+        endpoint = "ssl:" + endpoint;
       }
     } else {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");

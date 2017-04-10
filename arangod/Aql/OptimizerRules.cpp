@@ -3801,6 +3801,10 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           RedundantCalculationsReplacer finder(replacements);
           plan->root()->walk(&finder);
 
+          plan->clearVarUsageComputed();
+          plan->invalidateCost();
+          plan->findVarUsage();
+
           // abort optimization
           current = nullptr;
         }
