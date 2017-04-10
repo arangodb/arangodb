@@ -94,8 +94,11 @@ static char const* translateSignal(int signal) {
 }
 
 static void StopHandler(int) {
-  LOG_TOPIC(INFO, Logger::STARTUP) << "received SIGINT for supervisor";
-  kill(CLIENT_PID, SIGTERM);
+  LOG_TOPIC(INFO, Logger::STARTUP) << "received SIGINT for supervisor; commanding client [" << CLIENT_PID << "] to shut down.";
+  int rc = kill(CLIENT_PID, SIGTERM);
+  if (rc < 0) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "commanding client [" << CLIENT_PID << "] to shut down failed: [" << errno << "] " << strerror(errno);
+  }
   DONE = true;
 }
 
@@ -187,7 +190,7 @@ void SupervisorFeature::daemonize() {
       signal(SIGINT, StopHandler);
       signal(SIGTERM, StopHandler);
 
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor has forked a child process with pid " << _clientPid;
+      LOG_TOPIC(INFO, Logger::STARTUP) << "supervisor has forked a child process with pid " << _clientPid;
 
       TRI_SetProcessTitle("arangodb [supervisor]");
 
@@ -200,9 +203,9 @@ void SupervisorFeature::daemonize() {
       int res = waitpid(_clientPid, &status, 0);
       bool horrible = true;
 
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "waitpid woke up with return value "
-					<< res << " and status " << status
-					<< " and DONE = " << (DONE ? "true" : "false");
+      LOG_TOPIC(INFO, Logger::STARTUP) << "waitpid woke up with return value "
+                                       << res << " and status " << status
+                                       << " and DONE = " << (DONE ? "true" : "false");
 
       if (DONE) {
         // signal handler for SIGINT or SIGTERM was invoked
