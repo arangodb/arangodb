@@ -542,7 +542,7 @@ arangodb::Result RocksDBEngine::dropCollection(
 
     if (dropFailed) {
       res.reset(TRI_ERROR_INTERNAL,
-                "Failed to droop at least one Index for collection: " +
+                "Failed to drop at least one Index for collection: " +
                     collection->name());
     }
   */

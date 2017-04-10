@@ -181,6 +181,8 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
 size_t RocksDBCollection::memory() const { return 0; }
 
 void RocksDBCollection::open(bool ignoreErrors) {
+  LOG_TOPIC(ERR, Logger::DEVEL) << "OPEN ROCKS COLLECTION: " <<  _logicalCollection->name() 
+                                << " (" << this->objectId() << ")";
   // set the initial number of documents
   // rocksdb::ReadOptions readOptions;
   // rocksdb::TransactionDB* db =
@@ -188,8 +190,9 @@ void RocksDBCollection::open(bool ignoreErrors) {
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   auto counterValue = engine->counterManager()->loadCounter(this->objectId());
-  _numberDocuments = counterValue.first;
-  _revisionId = counterValue.second;
+  LOG_TOPIC(ERR, Logger::DEVEL) << " number of documents: " << counterValue.count();
+  _numberDocuments = counterValue.count();
+  _revisionId = counterValue.revisionId();
   //_numberDocuments = countKeyRange(db, readOptions,
   // RocksDBKeyBounds::CollectionDocuments(_objectId));
 }
@@ -953,6 +956,7 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                       VPackSlice const& doc,
                                       bool& waitForSync) {
   // Coordinator doesn't know index internals
+  LOG_TOPIC(ERR, Logger::DEVEL) << std::boolalpha << "insert enter waitForSync during insert: " << waitForSync;
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
 
@@ -1009,6 +1013,8 @@ int RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     if (_logicalCollection->waitForSync()) {
       waitForSync = true;  // output parameter (by ref)
     }
+    
+    LOG_TOPIC(ERR, Logger::DEVEL) << std::boolalpha << "waitForSync during insert: " << waitForSync;
 
     if (waitForSync) {
       trx->state()->waitForSync(true);
