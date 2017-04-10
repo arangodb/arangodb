@@ -408,52 +408,57 @@ void RocksDBCollection::invokeOnAllElements(
 void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
 
-  //TODO FIXME -- limit transaction size
-
   rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
   TRI_voc_cid_t cid = _logicalCollection->cid();
 
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 
-  RocksDBKeyBounds bounds =
+  // delete documents
+  RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
   std::unique_ptr<rocksdb::Iterator> iter(
       rtrx->GetIterator(state->readOptions()));
-  iter->Seek(bounds.start());
+  iter->Seek(documentBounds.start());
 
-  while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
-    rocksdb::Status s = rtrx->Delete(iter->key());
-    if (!s.ok()) {
-      trx->abort();
-      break;
+  while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    auto result  = state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0, iter->key().size());
+    if (result.fail()){
+      THROW_ARANGO_EXCEPTION(result);
     }
 
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
-    state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0, iter->key().size());
+    rocksdb::Status s = rtrx->Delete(iter->key());
+    if (!s.ok()) {
+      auto converted = convertStatus(s);
+      THROW_ARANGO_EXCEPTION(converted);
+    }
+
     iter->Next();
   }
 
-  // TODO maybe we could also reuse Index::drop, if we ensure the
-  // implementations
+  // delete index items
+
+  // TODO maybe we could also reuse Index::drop, if we ensure the implementations
   // don't do anything beyond deleting their contents
+  RocksDBKeyBounds indexBounds = RocksDBKeyBounds::PrimaryIndex(42); //default constructor?
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
     switch (rindex->type()) {
       case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
-        bounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
+        indexBounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
         break;
       case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
-        bounds = RocksDBKeyBounds::EdgeIndex(rindex->objectId());
+        indexBounds = RocksDBKeyBounds::EdgeIndex(rindex->objectId());
         break;
 
       case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
       case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
       case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
         if (rindex->unique()) {
-          bounds = RocksDBKeyBounds::UniqueIndex(rindex->objectId());
+          indexBounds = RocksDBKeyBounds::UniqueIndex(rindex->objectId());
         } else {
-          bounds = RocksDBKeyBounds::IndexEntries(rindex->objectId());
+          indexBounds = RocksDBKeyBounds::IndexEntries(rindex->objectId());
         }
         break;
       // TODO add options for geoindex, fulltext etc
@@ -462,14 +467,23 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
 
-    iter->Seek(bounds.start());
-    while (iter->Valid() && -1 == cmp->Compare(iter->key(), bounds.end())) {
+    iter->Seek(indexBounds.start());
+    while (iter->Valid() && -1 == cmp->Compare(iter->key(), indexBounds.end())) {
+
+      //update size
+      auto result  = state->addOperation(cid, /*ignored revisionId*/ 0,
+        TRI_VOC_NOOP_OPERATION_UPDATE_SIZE, 0, iter->key().size()
+      );
+
+      if (result.fail()){
+        THROW_ARANGO_EXCEPTION(result);
+      }
+
       rocksdb::Status s = rtrx->Delete(iter->key());
       if (!s.ok()) {
-        trx->abort();
-        break;
+        auto converted = convertStatus(s);
+        THROW_ARANGO_EXCEPTION(converted);
       }
-      //TODO add: addOperation
       iter->Next();
     }
   }
@@ -682,6 +696,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
     TRI_ASSERT(!mdr.empty());
 
+    //update as combination of remove/insert?!
     static_cast<RocksDBTransactionState*>(trx->state())
         ->addOperation(_logicalCollection->cid(), revisionId,
                        TRI_VOC_DOCUMENT_OPERATION_UPDATE, newDoc.byteSize(), keySize);
@@ -1141,8 +1156,6 @@ RocksDBOperationResult RocksDBCollection::updateDocument(transaction::Methods* t
                                       TRI_voc_rid_t newRevisionId,
                                       VPackSlice const& newDoc,
                                       bool& waitForSync) {
-
-  //TODO FIXME -- limit transaction size
 
   // Coordinator doesn't know index internals
   TRI_ASSERT(trx->state()->isRunning());

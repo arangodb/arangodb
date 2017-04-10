@@ -283,9 +283,10 @@ Result RocksDBTransactionState::addOperation(
   }
 
   //sould not fail or fail with exception
-  collection->addOperation(revisionId, operationType, operationSize);
+  collection->addOperation(operationType, operationSize, revisionId);
 
   switch (operationType) {
+    case TRI_VOC_NOOP_OPERATION_UPDATE_SIZE:
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:

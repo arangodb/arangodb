@@ -176,24 +176,27 @@ void RocksDBTransactionCollection::release() {
 }
 
 /// @brief add an operation for a transaction collection
-void RocksDBTransactionCollection::addOperation(
-    TRI_voc_rid_t revisionId, TRI_voc_document_operation_e operationType,
-    uint64_t operationSize) {
+void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e operationType
+                                               ,uint64_t operationSize
+                                               ,TRI_voc_rid_t revisionId
+                                               ) {
   switch (operationType) {
+    case TRI_VOC_NOOP_OPERATION_UPDATE_SIZE:
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       ++_numInserts;
+      _revision = revisionId;
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
       ++_numUpdates;
+      _revision = revisionId;
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
       ++_numRemoves;
+      _revision = revisionId;
       break;
   }
-
   _operationSize += operationSize;
-  _revision = revisionId;
 }
