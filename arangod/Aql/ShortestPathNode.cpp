@@ -30,10 +30,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterComm.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "V8Server/V8Traverser.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -84,7 +84,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    TRI_vocbase_t* vocbase, uint64_t direction,
                                    AstNode const* start, AstNode const* target,
                                    AstNode const* graph,
-                                   std::unique_ptr<traverser::ShortestPathOptions>& options)
+                                   std::unique_ptr<graph::ShortestPathOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -240,7 +240,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    std::string const& startVertexId,
                                    Variable const* inTargetVariable,
                                    std::string const& targetVertexId,
-                                   std::unique_ptr<traverser::ShortestPathOptions>& options)
+                                   std::unique_ptr<graph::ShortestPathOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -263,7 +263,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
 
 ShortestPathNode::~ShortestPathNode() {}
 
-void ShortestPathNode::fillOptions(arangodb::traverser::ShortestPathOptions& opts) const {
+void ShortestPathNode::fillOptions(arangodb::graph::ShortestPathOptions& opts) const {
   if (!_options->weightAttribute.empty()) {
     opts.useWeight = true;
     opts.weightAttribute = _options->weightAttribute;
@@ -395,7 +395,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
 
   // Flags
   if (base.hasKey("shortestPathFlags")) {
-    _options = std::make_unique<traverser::ShortestPathOptions>(
+    _options = std::make_unique<graph::ShortestPathOptions>(
         _plan->getAst()->query()->trx(), base);
   }
 }
@@ -456,7 +456,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
                                        bool withProperties) const {
 
   auto tmp =
-      std::make_unique<arangodb::traverser::ShortestPathOptions>(*_options.get());
+      std::make_unique<arangodb::graph::ShortestPathOptions>(*_options.get());
   auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _directions,
                                 _inStartVariable, _startVertexId,
                                 _inTargetVariable, _targetVertexId, tmp);

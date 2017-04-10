@@ -26,13 +26,18 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ShortestPathNode.h"
-#include "V8Server/V8Traverser.h"
+#include "Graph/ShortestPathOptions.h"
 
 namespace arangodb {
 class ManagedDocumentResult;
 
+namespace graph {
+class ShortestPathFinder;
+}
+
 namespace traverser {
 class EdgeCollectionInfo;
+class ShortestPath;
 }
 
 namespace aql {
@@ -94,7 +99,7 @@ class ShortestPathBlock : public ExecutionBlock {
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief options to compute the shortest path
-  traverser::ShortestPathOptions _opts;
+  graph::ShortestPathOptions _opts;
 
   /// @brief list of edge collection infos used to compute the path
   std::vector<arangodb::traverser::EdgeCollectionInfo*> _collectionInfos;

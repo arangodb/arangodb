@@ -47,7 +47,7 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(ManagedDocumentResult* mmdr,
     TraverserOptions* opts,
     size_t nrCursors, std::vector<size_t> const* mapping)
     : _opts(opts),
-      _trx(opts->_trx),
+      _trx(opts->trx()),
       _mmdr(mmdr), 
       _cursors(),
       _currentCursor(0),

@@ -31,7 +31,7 @@
 
 namespace arangodb {
 
-namespace traverser {
+namespace graph {
 struct ShortestPathOptions;
 }
 namespace aql {
@@ -46,7 +46,7 @@ class ShortestPathNode : public ExecutionNode {
  public:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 uint64_t direction, AstNode const* start, AstNode const* target,
-                AstNode const* graph, std::unique_ptr<traverser::ShortestPathOptions>& options);
+                AstNode const* graph, std::unique_ptr<graph::ShortestPathOptions>& options);
 
   ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -61,7 +61,7 @@ class ShortestPathNode : public ExecutionNode {
                    std::string const& startVertexId,
                    Variable const* inTargetVariable,
                    std::string const& targetVertexId,
-                   std::unique_ptr<traverser::ShortestPathOptions>& options);
+                   std::unique_ptr<graph::ShortestPathOptions>& options);
 
  public:
   /// @brief return the type of the node
@@ -151,7 +151,7 @@ class ShortestPathNode : public ExecutionNode {
     }
   }
 
-  void fillOptions(arangodb::traverser::ShortestPathOptions&) const;
+  void fillOptions(arangodb::graph::ShortestPathOptions&) const;
 
  private:
 
@@ -189,7 +189,7 @@ class ShortestPathNode : public ExecutionNode {
   Graph const* _graphObj;
 
   /// @brief Options for traversals
-  std::unique_ptr<traverser::ShortestPathOptions> _options;
+  std::unique_ptr<graph::ShortestPathOptions> _options;
 };
 
 } // namespace arangodb::aql
