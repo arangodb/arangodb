@@ -960,6 +960,9 @@ function updateCurrentForCollections(localErrors, currentCollections) {
       Object.assign(agencyIndex, index);
       // Fix up the IDs of the indexes:
       let pos = index.id.indexOf("/");
+      if (agencyIndex.hasOwnProperty("selectivityEstimate")) {
+        delete agencyIndex.selectivityEstimate;
+      }
       if (pos >= 0) {
         agencyIndex.id = index.id.slice(pos+1);
       } else {
