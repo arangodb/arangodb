@@ -41,6 +41,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
+using namespace arangodb::graph;
 
 static void parseNodeInput(AstNode const* node, std::string& id,
                            Variable const*& variable) {
@@ -84,7 +85,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    TRI_vocbase_t* vocbase, uint64_t direction,
                                    AstNode const* start, AstNode const* target,
                                    AstNode const* graph,
-                                   std::unique_ptr<graph::ShortestPathOptions>& options)
+                                   std::unique_ptr<ShortestPathOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -240,7 +241,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    std::string const& startVertexId,
                                    Variable const* inTargetVariable,
                                    std::string const& targetVertexId,
-                                   std::unique_ptr<graph::ShortestPathOptions>& options)
+                                   std::unique_ptr<ShortestPathOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -262,16 +263,6 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
 }
 
 ShortestPathNode::~ShortestPathNode() {}
-
-void ShortestPathNode::fillOptions(arangodb::graph::ShortestPathOptions& opts) const {
-  if (!_options->weightAttribute.empty()) {
-    opts.useWeight = true;
-    opts.weightAttribute = _options->weightAttribute;
-    opts.defaultWeight = _options->defaultWeight;
-  } else {
-    opts.useWeight = false;
-  }
-}
 
 ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice const& base)
@@ -395,7 +386,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
 
   // Flags
   if (base.hasKey("shortestPathFlags")) {
-    _options = std::make_unique<graph::ShortestPathOptions>(
+    _options = std::make_unique<ShortestPathOptions>(
         _plan->getAst()->query()->trx(), base);
   }
 }
@@ -456,7 +447,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
                                        bool withProperties) const {
 
   auto tmp =
-      std::make_unique<arangodb::graph::ShortestPathOptions>(*_options.get());
+      std::make_unique<ShortestPathOptions>(*_options.get());
   auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _directions,
                                 _inStartVariable, _startVertexId,
                                 _inTargetVariable, _targetVertexId, tmp);
@@ -508,4 +499,8 @@ double ShortestPathNode::estimateCost(size_t& nrItems) const {
   // Hard-Coded number of vertices edges / 10
   nrItems = edgesCount + static_cast<size_t>(std::log2(edgesCount / 10) * (edgesCount / 10));
   return depCost + nrItems;
+}
+
+ShortestPathOptions* ShortestPathNode::options() const {
+  return _options.get();
 }

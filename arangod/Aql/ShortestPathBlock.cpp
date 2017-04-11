@@ -198,7 +198,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _vertexReg(ExecutionNode::MaxRegisterId),
       _edgeVar(nullptr),
       _edgeReg(ExecutionNode::MaxRegisterId),
-      _opts(_trx),
+      _opts(nullptr),
       _posInPath(0),
       _pathLength(0),
       _path(nullptr),
@@ -207,7 +207,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _targetReg(ExecutionNode::MaxRegisterId),
       _useTargetRegister(false),
       _usedConstant(false) {
-  ep->fillOptions(_opts);
+  _opts = ep->options();
   _mmdr.reset(new ManagedDocumentResult);
 
   size_t count = ep->_edgeColls.size();
@@ -216,8 +216,8 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
 
   for (size_t j = 0; j < count; ++j) {
     auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(
-        _trx, ep->_edgeColls[j], ep->_directions[j], _opts.weightAttribute,
-        _opts.defaultWeight);
+        _trx, ep->_edgeColls[j], ep->_directions[j], _opts->weightAttribute,
+        _opts->defaultWeight);
     _collectionInfos.emplace_back(info.get());
     info.release();
   }
@@ -250,19 +250,19 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   _path = std::make_unique<arangodb::traverser::ShortestPath>();
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    if (_opts.useWeight) {
+    if (_opts->useWeight) {
       _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(
           EdgeWeightExpanderCluster(this, false),
-          EdgeWeightExpanderCluster(this, true), _opts.bidirectional));
+          EdgeWeightExpanderCluster(this, true), _opts->bidirectional));
     } else {
       _finder.reset(
           new arangodb::graph::ConstantWeightShortestPathFinder(this));
     }
   } else {
-    if (_opts.useWeight) {
+    if (_opts->useWeight) {
       _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(
           EdgeWeightExpanderLocal(this, false),
-          EdgeWeightExpanderLocal(this, true), _opts.bidirectional));
+          EdgeWeightExpanderLocal(this, true), _opts->bidirectional));
     } else {
       _finder.reset(
           new arangodb::graph::ConstantWeightShortestPathFinder(this));
@@ -329,13 +329,13 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
                                            "_id are allowed");
       return false;
     } else {
-      _opts.setStart(_startVertexId);
+      _opts->setStart(_startVertexId);
     }
   } else {
     AqlValue const& in = items->getValueReference(_pos, _startReg);
     if (in.isObject()) {
       try {
-        _opts.setStart(_trx->extractIdString(in.slice()));
+        _opts->setStart(_trx->extractIdString(in.slice()));
       } catch (...) {
         // _id or _key not present... ignore this error and fall through
         // returning no path
@@ -343,7 +343,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
       }
     } else if (in.isString()) {
       _startVertexId = in.slice().copyString();
-      _opts.setStart(_startVertexId);
+      _opts->setStart(_startVertexId);
     } else {
       _engine->getQuery()->registerWarning(
           TRI_ERROR_BAD_PARAMETER,
@@ -363,14 +363,14 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
                                            "_id are allowed");
       return false;
     } else {
-      _opts.setEnd(_targetVertexId);
+      _opts->setEnd(_targetVertexId);
     }
   } else {
     AqlValue const& in = items->getValueReference(_pos, _targetReg);
     if (in.isObject()) {
       try {
         std::string idString = _trx->extractIdString(in.slice());
-        _opts.setEnd(idString);
+        _opts->setEnd(idString);
       } catch (...) {
         // _id or _key not present... ignore this error and fall through
         // returning no path
@@ -378,7 +378,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
       }
     } else if (in.isString()) {
       _targetVertexId = in.slice().copyString();
-      _opts.setEnd(_targetVertexId);
+      _opts->setEnd(_targetVertexId);
     } else {
       _engine->getQuery()->registerWarning(
           TRI_ERROR_BAD_PARAMETER,
@@ -389,8 +389,8 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
     }
   }
 
-  VPackSlice start = _opts.getStart();
-  VPackSlice end = _opts.getEnd();
+  VPackSlice start = _opts->getStart();
+  VPackSlice end = _opts->getEnd();
   TRI_ASSERT(_finder != nullptr);
   // We do not need this data anymore. Result has been processed.
   // Save some memory.

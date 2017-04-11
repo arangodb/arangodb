@@ -101,7 +101,7 @@ class ShortestPathBlock : public ExecutionBlock {
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief options to compute the shortest path
-  graph::ShortestPathOptions _opts;
+  graph::ShortestPathOptions* _opts;
 
   /// @brief list of edge collection infos used to compute the path
   std::vector<arangodb::traverser::EdgeCollectionInfo*> _collectionInfos;

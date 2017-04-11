@@ -151,7 +151,7 @@ class ShortestPathNode : public ExecutionNode {
     }
   }
 
-  void fillOptions(arangodb::graph::ShortestPathOptions&) const;
+  graph::ShortestPathOptions* options() const;
 
  private:
 
