@@ -159,6 +159,7 @@ Result RocksDBTransactionState::commitTransaction(
                                << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
+  TRI_IF_FAILURE("TransactionWriteCommitMarker") { return Result(TRI_ERROR_DEBUG); }
 
   arangodb::Result result;
 
