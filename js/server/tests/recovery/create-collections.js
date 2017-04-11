@@ -36,55 +36,59 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  var c;
-  db._drop('UnitTestsRecovery1');
-  c = db._create('UnitTestsRecovery1', {
-    waitForSync: true,
-    journalSize: 8 * 1024 * 1024,
-    doCompact: false
-  });
+  {
+    db._drop('UnitTestsRecovery1');
+    var c = db._create('UnitTestsRecovery1', {
+      waitForSync: true,
+      journalSize: 8 * 1024 * 1024,
+      doCompact: false
+    });
+    c.save({ value1: 1, value2: [ 'the',
+        'quick',
+        'brown',
+        'foxx',
+        'jumped',
+        'over',
+        'the',
+        'lazy',
+        'dog',
+      'xxxxxxxxxxx' ] });
+    c.ensureHashIndex('value1');
+    c.ensureSkiplist('value2');
+  }
 
-  c.save({ value1: 1, value2: [ 'the',
-      'quick',
-      'brown',
-      'foxx',
-      'jumped',
-      'over',
-      'the',
-      'lazy',
-      'dog',
-    'xxxxxxxxxxx' ] });
-  c.ensureHashIndex('value1');
-  c.ensureSkiplist('value2');
+  {
+    db._drop('UnitTestsRecovery2');
+    var c = db._create('UnitTestsRecovery2', {
+      waitForSync: false,
+      journalSize: 16 * 1024 * 1024,
+      doCompact: true,
+      isVolatile: true
+    });
+    c.save({ value1: { 'some': 'rubbish' } });
+    c.ensureSkiplist('value1');
+  }
 
-  db._drop('UnitTestsRecovery2');
-  c = db._create('UnitTestsRecovery2', {
-    waitForSync: false,
-    journalSize: 16 * 1024 * 1024,
-    doCompact: true,
-    isVolatile: true
-  });
+  {
+    db._drop('UnitTestsRecovery3');
+    var c = db._createEdgeCollection('UnitTestsRecovery3', {
+      waitForSync: false,
+      journalSize: 32 * 1024 * 1024,
+      doCompact: true
+    });
 
-  c.save({ value1: { 'some': 'rubbish' } });
-  c.ensureSkiplist('value1');
+    c.save('UnitTestsRecovery1/foo', 'UnitTestsRecovery2/bar', { value1: { 'some': 'rubbish' } });
+    c.ensureUniqueSkiplist('value1');
+  }
 
-  db._drop('UnitTestsRecovery3');
-  c = db._createEdgeCollection('UnitTestsRecovery3', {
-    waitForSync: false,
-    journalSize: 32 * 1024 * 1024,
-    doCompact: true
-  });
+  {
+    db._drop('_UnitTestsRecovery4');
+    var c = db._create('_UnitTestsRecovery4', { isSystem: true });
 
-  c.save('UnitTestsRecovery1/foo', 'UnitTestsRecovery2/bar', { value1: { 'some': 'rubbish' } });
-  c.ensureUniqueSkiplist('value1');
-
-  db._drop('_UnitTestsRecovery4');
-  c = db._create('_UnitTestsRecovery4', { isSystem: true });
-  c.save({ value42: 42 });
-  c.ensureUniqueConstraint('value42');
-
-  c.save({ _key: 'crashme' }, true);
-
+    c.save({ value42: 42 });
+    c.ensureUniqueConstraint('value42');
+    c.save({ _key: 'crashme' }, true);
+  }
   internal.debugSegfault('crashing server');
 }
 
@@ -122,7 +126,12 @@ function recoverySuite () {
       assertEqual(3, idx.length);
 
       c = db._collection('UnitTestsRecovery2');
-      assertEqual(0, c.count());
+      if (db._engine().name == "mmfiles") {
+        // is volatile
+        assertEqual(0, c.count());
+      } else {
+        assertEqual(1, c.count());
+      }
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(2, c.type());
@@ -138,6 +147,7 @@ function recoverySuite () {
       assertFalse(idx[1].unique);
 
       c = db._collection('UnitTestsRecovery3');
+
       assertEqual(1, c.count());
       prop = c.properties();
       assertFalse(prop.waitForSync);
