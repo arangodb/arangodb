@@ -28,7 +28,9 @@
 const functionsDocumentation = {
   'ldap': 'ldap tests',
 };
-const optionsDocumentation = [];
+const optionsDocumentation = [
+  '   - `ldapUrl : testing authentication and authentication_paramaters will be skipped.'
+];
 
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
@@ -44,15 +46,36 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 const download = require('internal').download;
 
+
+
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: authentication
+// / @brief TEST: ldap
 // //////////////////////////////////////////////////////////////////////////////
 
-function ldap (options) {
+function ldap(options) {
 
-  print(`DAP FQDN is: ${options.ldapURL}`);
+  print(`DAP FQDN is: ${options.ldapUrl}`);
 
-
+  const confs = [{
+    'server.authentication-system-only':false,
+    'ldap.enabled':true,
+    'ldap.server':options.ldapUrl,
+    'ldap.basedn':'dc=example,dc=com',
+    'ldap.search-filter': 'objectClass=simpleSecurityObject',
+    'ldap.search-attribute': 'uid',
+    'ldap.binddn': 'cn=admin,dc=example,dc=com',
+    'ldap.bindpasswd': 'hallo',
+    'ldap.permissions-attribute-name': 'description'
+  },
+{
+    'server.authentication-system-only':false,
+    'ldap.enabled':true,
+    'ldap.url':`ldap://${options.ldapUrl}/dc=example,dc=com?uid?sub`,
+    'ldap.search-filter': 'objectClass=simpleSecurityObject',
+    'ldap.binddn': 'cn=admin,dc=example,dc=com',
+    'ldap.bindpasswd': 'hallo',
+    'ldap.permissions-attribute-name': 'description'
+  }];
 
   if (options.skipLdap === true) {
     print('skipping LDAP tests!');
@@ -67,7 +90,7 @@ function ldap (options) {
   if (options.cluster) {
     print('skipping LDAP tests on cluster!');
     return {
-      authentication: {
+      ldap: {
         status: true,
         skipped: true
       }
@@ -76,10 +99,19 @@ function ldap (options) {
 
   print(CYAN + 'LDAP tests...' + RESET);
 
+  for(const conf of confs) {
+    const adbInstance = pu.startInstance('tcp', options, confs[0], 'ldap');
+
+
+    // try auth
+
+    pu.shutdownInstance(adbInstance, options);
+  }
+
   return {
-    authentication: {
+    ldap: {
       status: true,
-      skipped: true
+      skipped: false
     }
   };
 }
@@ -87,6 +119,7 @@ function ldap (options) {
 exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['ldap'] = ldap;
   defaultFns.push('ldap');
+  opts['ldapUrl'] = '127.0.0.1';
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
