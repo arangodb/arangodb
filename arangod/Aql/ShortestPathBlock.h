@@ -33,6 +33,7 @@ class ManagedDocumentResult;
 
 namespace graph {
 class ShortestPathFinder;
+class ConstantWeightShortestPathFinder;
 }
 
 namespace traverser {
@@ -45,10 +46,11 @@ namespace aql {
 class ShortestPathNode;
 
 class ShortestPathBlock : public ExecutionBlock {
-  friend struct ConstDistanceExpanderLocal;
-  friend struct ConstDistanceExpanderCluster;
   friend struct EdgeWeightExpanderLocal;
   friend struct EdgeWeightExpanderCluster;
+
+  // TODO ONLY TEMPORARY
+  friend class graph::ConstantWeightShortestPathFinder;
 
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
