@@ -32,7 +32,7 @@
 namespace arangodb {
 
 namespace aql {
-class AstNode;
+struct AstNode;
 class Expression;
 class Query;
 }

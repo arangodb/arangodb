@@ -282,7 +282,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
       RocksDBCounterManager::Counter& cc = deltas[objectId];
-      if (cc._sequenceNumber < seqNum) {
+      if (cc._sequenceNumber <= seqNum) {
         cc._sequenceNumber = seqNum;
         cc._count++;
         cc._revisionId = revisionId;
@@ -296,7 +296,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
       RocksDBCounterManager::Counter& cc = deltas[objectId];
-      if (cc._sequenceNumber < seqNum) {
+      if (cc._sequenceNumber <= seqNum) {
         cc._sequenceNumber = seqNum;
         cc._count--;
         cc._revisionId = revisionId;
@@ -310,7 +310,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
       RocksDBCounterManager::Counter& cc = deltas[objectId];
-      if (cc._sequenceNumber < seqNum) {
+      if (cc._sequenceNumber <= seqNum) {
         cc._sequenceNumber = seqNum;
         cc._count--;
         cc._revisionId = revisionId;

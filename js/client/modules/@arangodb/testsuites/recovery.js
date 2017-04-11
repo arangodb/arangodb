@@ -76,6 +76,13 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
     ]);
   }
 
+  // enable development debugging if extremeVerbosity is set
+  if (options.extremeVerbosity === true){
+    argv = argv.concat([
+      '--log.level', 'development=info',
+    ]);
+  }
+
   argv = argv.concat([
     '--javascript.script', script
   ]);

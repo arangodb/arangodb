@@ -112,14 +112,13 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       // aquire the document token through the primary index
       RocksDBToken token;
       Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
+      _iterator->Next();
       if (res.ok()) {
         cb(token);
         if (--limit == 0) {
           break;
         }
       }  // TODO do we need to handle failed lookups here?
-
-      _iterator->Next();
     }
     if (limit > 0) {
       _keysIterator.next();

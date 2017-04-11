@@ -46,6 +46,10 @@ namespace arangodb {
 
 class RocksDBCounterManager : Thread {
   friend class RocksDBEngine;
+  
+  
+  /// Constructor needs to be called synchronously,
+  /// will load counts from the db and scan the WAL
   RocksDBCounterManager(rocksdb::DB* db, double interval);
 
  public:
@@ -65,11 +69,7 @@ class RocksDBCounterManager : Thread {
     uint64_t revisionId() { return _revisionId; }
   };
 
-  /// Constructor needs to be called synchrunously,
-  /// will load counts from the db and scan the WAL
-
   /// Thread-Safe load a counter
-  /// FIXME: is it possible to return a const& to a counter?
   Counter const loadCounter(uint64_t objectId);
 
   /// collections / views / indexes can call this method to update
