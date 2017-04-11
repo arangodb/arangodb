@@ -146,7 +146,10 @@ struct BaseOptions {
 
  protected:
   transaction::Methods* _trx;
+
+  /// @brief Lookup info to find all edges fulfilling the base conditions
   std::vector<LookupInfo> _baseLookupInfos;
+
   aql::Variable const* _tmpVar;
   bool const _isCoordinator;
 

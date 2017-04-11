@@ -39,7 +39,6 @@ class Slice;
 namespace graph {
 
 struct ShortestPathOptions : public BaseOptions {
-
  public:
   std::string start;
   std::string direction;
@@ -79,9 +78,19 @@ struct ShortestPathOptions : public BaseOptions {
   /// @brief Estimate the total cost for this operation
   double estimateCost(size_t& nrItems) const override;
 
+  // Creates a complete Object containing all EngineInfo
+  // in the given builder.
+  void addReverseLookupInfo(aql::Ast* ast, std::string const& collectionName,
+                            std::string const& attributeName,
+                            aql::AstNode* condition);
+
+ private:
+
+  /// @brief Lookup info to find all reverse edges.
+  std::vector<LookupInfo> _reverseLookupInfos;
 };
 
-} // namespace graph
-} // namespace arangodb
+}  // namespace graph
+}  // namespace arangodb
 
 #endif
