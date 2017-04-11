@@ -122,7 +122,8 @@ function recoverySuite () {
       assertEqual(3, idx.length);
 
       c = db._collection('UnitTestsRecovery2');
-      assertEqual(0, c.count());
+      // isVolatile has no effect on rocksdb
+      assertEqual(db._engine().name  == "mmfiles" ? 0 : 1, c.count());
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(2, c.type());
