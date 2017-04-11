@@ -64,10 +64,14 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _index(index),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)) {
   keys.release();  // now we have ownership for _keys
+  TRI_ASSERT(_keys->slice().isArray());
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   _iterator.reset(rtrx->GetIterator(state->readOptions()));
   updateBounds();
+  /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
+                                << " new EdgeIndexIterator for "
+                                << _keysIterator.size() << " keys";*/
 }
 
 bool RocksDBEdgeIndexIterator::updateBounds() {
@@ -79,7 +83,12 @@ bool RocksDBEdgeIndexIterator::updateBounds() {
     TRI_ASSERT(fromTo.isString());
     _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId,
                                                 fromTo.copyString());
-    
+    /*LOG_TOPIC(ERR, Logger::FIXME)
+        << "#" << _trx->state()->id() << " EdgeIndexIterator set bounds for "
+        << fromTo.copyString() << " as "
+        << std::string(_bounds.start().data(), _bounds.start().size()) << " to "
+        << std::string(_bounds.end().data(), _bounds.end().size());*/
+
     _iterator->Seek(_bounds.start());
     return true;
   }
@@ -94,9 +103,13 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 }
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << _trx->state()->id()
+                                << " EdgeIndexIterator next(...) called";*/
   if (limit == 0 || !_keysIterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
+    /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << _trx->state()->id()
+                                  << " EdgeIndexIterator is done";*/
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
@@ -104,29 +117,43 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   // aquire rocksdb collection
   auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
   while (limit > 0) {
-    
-    while (_iterator->Valid() && _iterator->key().starts_with(_bounds.start())) {
-      TRI_ASSERT(_iterator->key().size() > _bounds.start().size());
+    while (_iterator->Valid() &&
+           (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
+      // TRI_ASSERT(_iterator->key().size() > _bounds.start().size());
       StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
+      /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << _trx->state()->id()
+                                    << " EdgeIndexIterator has key "
+                                    << edgeKey.toString();*/
 
       // aquire the document token through the primary index
       RocksDBToken token;
       Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
       if (res.ok()) {
+        /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << _trx->state()->id()
+                                      << " EdgeIndexIterator found token for "
+                                      << edgeKey.toString();*/
         cb(token);
-        if (--limit == 0) {
-          break;
-        }
+        --limit;
       }  // TODO do we need to handle failed lookups here?
 
       _iterator->Next();
-    }
-    if (limit > 0) {
-      _keysIterator.next();
-      if (!updateBounds()) {
-        return false;
+      /*LOG_TOPIC(ERR, Logger::FIXME)
+          << "#" << _trx->state()->id()
+          << " EdgeIndexIterator advanced rocks iterator...";*/
+
+      if (limit == 0) {
+        return true;
       }
     }
+    _keysIterator.next();
+    if (!updateBounds()) {
+      /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << _trx->state()->id()
+                                    << " EdgeIndexIterator out of keys!";*/
+      return false;
+    }
+    /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << _trx->state()->id()
+                                  << " EdgeIndexIterator advanced to next
+       key";*/
   }
   return true;
 }
@@ -147,7 +174,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                    false, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _directionAttr(attr) {
-  
   TRI_ASSERT(iid != 0);
 }
 
@@ -278,7 +304,8 @@ int RocksDBEdgeIndex::drop() {
   // First drop the cache all indexes can work without it.
   RocksDBIndex::drop();
   return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::EdgeIndex(_objectId)).errorNumber();
+                                      RocksDBKeyBounds::EdgeIndex(_objectId))
+      .errorNumber();
 }
 
 /// @brief checks whether the index supports the condition

@@ -207,7 +207,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
       }
     }
     if (!_iterator->Valid()) {
-      //LOG_TOPIC(ERR, Logger::FIXME) << "invalid iterator!!! offset " << goal;
+      // LOG_TOPIC(ERR, Logger::FIXME) << "invalid iterator!!! offset " << goal;
       _iterator->Seek(_bounds.start());
     }
   }
