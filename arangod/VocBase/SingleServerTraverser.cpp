@@ -44,7 +44,7 @@ using namespace arangodb::graph;
 ////////////////////////////////////////////////////////////////////////////////
 
 SingleServerEdgeCursor::SingleServerEdgeCursor(ManagedDocumentResult* mmdr,
-    TraverserOptions* opts,
+    BaseOptions* opts,
     size_t nrCursors, std::vector<size_t> const* mapping)
     : _opts(opts),
       _trx(opts->trx()),

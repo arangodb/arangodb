@@ -24,6 +24,7 @@
 #include "NeighborsEnumerator.h"
 
 #include "Basics/VelocyPackHelper.h"
+#include "Graph/EdgeCursor.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserCache.h"
 
@@ -73,7 +74,7 @@ bool NeighborsEnumerator::next() {
             }
           }
         };
-        std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(
+        std::unique_ptr<arangodb::graph::EdgeCursor> cursor(
             _opts->nextCursor(_traverser->mmdr(), nextVertex, _searchDepth));
         cursor->readAll(callback);
       }

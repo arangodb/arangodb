@@ -507,7 +507,7 @@ bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
   return evaluateExpression(expression, vertex);
 }
 
-arangodb::traverser::EdgeCursor*
+EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
                                                   StringRef vid,
                                                   uint64_t depth) {
@@ -525,7 +525,7 @@ arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
   return nextCursorLocal(mmdr, vid, depth, list);
 }
 
-arangodb::traverser::EdgeCursor*
+EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursorLocal(
     ManagedDocumentResult* mmdr, StringRef vid, uint64_t depth,
     std::vector<LookupInfo>& list) {
@@ -558,7 +558,7 @@ arangodb::traverser::TraverserOptions::nextCursorLocal(
   return allCursor.release();
 }
 
-arangodb::traverser::EdgeCursor*
+EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursorCoordinator(StringRef vid,
                                                              uint64_t depth) {
   TRI_ASSERT(_traverser != nullptr);

@@ -23,6 +23,7 @@
 
 #include "BreadthFirstEnumerator.h"
 
+#include "Graph/EdgeCursor.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserCache.h"
 #include "VocBase/TraverserOptions.h"
@@ -116,7 +117,7 @@ bool BreadthFirstEnumerator::next() {
     auto const nextVertex = _schreier[nextIdx].vertex;
     StringRef vId;
 
-    std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(_opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
+    std::unique_ptr<arangodb::graph::EdgeCursor> cursor(_opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
     if (cursor != nullptr) {
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;

@@ -48,6 +48,8 @@ class Slice;
 
 namespace graph {
 
+class EdgeCursor;
+
 struct BaseOptions {
  protected:
   struct LookupInfo {

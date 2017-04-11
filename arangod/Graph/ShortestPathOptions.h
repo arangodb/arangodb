@@ -84,8 +84,18 @@ struct ShortestPathOptions : public BaseOptions {
                             std::string const& attributeName,
                             aql::AstNode* condition);
 
- private:
+  EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
 
+  EdgeCursor* nextReverseCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
+
+ private:
+  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid, uint64_t,
+                              std::vector<LookupInfo>&);
+
+  EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
+  EdgeCursor* nextReverseCursorCoordinator(StringRef vid, uint64_t);
+
+ private:
   /// @brief Lookup info to find all reverse edges.
   std::vector<LookupInfo> _reverseLookupInfos;
 };

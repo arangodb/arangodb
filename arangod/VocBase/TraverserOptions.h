@@ -51,24 +51,6 @@ namespace traverser {
 class ClusterTraverser;
 class TraverserCache;
 
-/// @brief Abstract class used in the traversals
-/// to abstract away access to indexes / DBServers.
-/// Returns edges as VelocyPack.
-
-class EdgeCursor {
- public:
-  EdgeCursor() {}
-  virtual ~EdgeCursor() {}
-
-  virtual bool next(
-      std::function<void(arangodb::StringRef const&, VPackSlice, size_t)>
-          callback) = 0;
-
-  virtual void readAll(
-      std::function<void(arangodb::StringRef const&,
-                         arangodb::velocypack::Slice, size_t&)>) = 0;
-};
-
 struct TraverserOptions : public graph::BaseOptions {
   friend class arangodb::aql::TraversalNode;
 
@@ -127,17 +109,17 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
 
-  EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
+  graph::EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
   double estimateCost(size_t& nrItems) const;
 
  private:
-  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid, uint64_t,
+  graph::EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid, uint64_t,
                               std::vector<LookupInfo>&);
 
-  EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
+  graph::EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
 };
 }
 }
