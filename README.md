@@ -89,24 +89,13 @@ Other features of ArangoDB include:
 For more in-depth information read the [design goals of ArangoDB](https://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
 
 
-Latest Release - ArangoDB 3.0
------------------------------
+Latest Release
+--------------
 
-The [What's new in ArangoDB 3.0](https://docs.arangodb.com/3.0/Manual/ReleaseNotes/NewFeatures30.html) can be found in the documentation.
+Packages for all supported platforms can be downloaded from [https://www.arangodb.com/download](https://www.arangodb.com/download/).
 
-Key features of the 3.0 release are:
+Please also check [what's new in ArangoDB](https://docs.arangodb.com/latest/Manual/ReleaseNotes/).
 
-- Use of VelocyPack as internal storage format
-- AQL improvements
-- Much better cluster state management
-- Synchronous replication (master/master)
-- Unified APIs for CRUD operations
-- Persistent indexes
-- Upgraded version of V8
-- New web admin interface
-- Foxx improvements
-- Logging improvements
-- Improved documentation
 
 More Information
 ----------------

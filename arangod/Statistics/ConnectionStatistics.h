@@ -26,8 +26,11 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/Mutex.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/figures.h"
+
+#include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
 class ConnectionStatistics {
@@ -44,11 +47,7 @@ class ConnectionStatistics {
     }
   }
 
-  static void SET_HTTP(ConnectionStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_http = true;
-    }
-  }
+  static void SET_HTTP(ConnectionStatistics* stat);
 
   static void fill(basics::StatisticsCounter& httpConnections,
                    basics::StatisticsCounter& totalRequests,

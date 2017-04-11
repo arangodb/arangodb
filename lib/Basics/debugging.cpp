@@ -41,27 +41,18 @@
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a global string containing the currently registered failure points
 /// the string is a comma-separated list of point names
-////////////////////////////////////////////////////////////////////////////////
-
 static char* FailurePoints = nullptr;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-write lock for thread-safe access to the failure-points list
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::basics::ReadWriteLock FailurePointsLock;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief make a delimited value from a string, so we can unambigiously
 /// search for it (e.g. searching for just "foo" would find "foo" and "foobar",
 /// so we'll be putting the value inside some delimiter: ",foo,")
-////////////////////////////////////////////////////////////////////////////////
-
 static char* MakeValue(char const* value) {
   if (value == nullptr) {
     return nullptr;
@@ -84,13 +75,10 @@ static char* MakeValue(char const* value) {
   return delimited;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
 /// this is used for crash and recovery tests
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_SegfaultDebugging(char const* message) {
-  LOG(WARN) << "" << message << ": summon Baal!";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
   TRI_FlushDebugging();
 
@@ -104,10 +92,7 @@ void TRI_SegfaultDebugging(char const* message) {
   abort();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether we should fail at a specific failure point
-////////////////////////////////////////////////////////////////////////////////
-
 bool TRI_ShouldFailDebugging(char const* value) {
   char* found = nullptr;
 
@@ -130,10 +115,7 @@ bool TRI_ShouldFailDebugging(char const* value) {
   return (found != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a failure point
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_AddFailurePointDebugging(char const* value) {
   char* checkValue = MakeValue(value);
 
@@ -154,7 +136,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
     // not yet found. so add it
     char* copy;
 
-    LOG(WARN) << "activating intentional failure point '" << value << "'. the server will misbehave!";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "activating intentional failure point '" << value << "'. the server will misbehave!";
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {
@@ -190,10 +172,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a failure point
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_RemoveFailurePointDebugging(char const* value) {
   WRITE_LOCKER(writeLocker, FailurePointsLock);
 
@@ -244,10 +223,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clear all failure points
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_ClearFailurePointsDebugging() {
   WRITE_LOCKER(writeLocker, FailurePointsLock);
 
@@ -260,16 +236,10 @@ void TRI_ClearFailurePointsDebugging() {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the debugging
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_InitializeDebugging() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the debugging
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_ShutdownDebugging() {
   if (FailurePoints != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, FailurePoints);
@@ -278,10 +248,7 @@ void TRI_ShutdownDebugging() {
   FailurePoints = nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a backtrace to the string provided
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_GetBacktrace(std::string& btstr) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -370,10 +337,7 @@ void TRI_GetBacktrace(std::string& btstr) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a backtrace on stderr
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_PrintBacktrace() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -389,37 +353,28 @@ void TRI_PrintBacktrace() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a backtrace in log level warning
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_LogBacktrace() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
   std::string bt;
   TRI_GetBacktrace(bt);
   if (!bt.empty()) {  
-    LOG(WARN) << bt;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << bt;
   }
 #endif
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes the logger and shuts it down
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_FlushDebugging() {
   Logger::flush();
   Logger::shutdown();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes the logger and shuts it down
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_FlushDebugging(char const* file, int line, char const* message) {
-  LOG(FATAL) << "assertion failed in " << file << ":" << line << ": " << message;
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "assertion failed in " << file << ":" << line << ": " << message;
   Logger::flush();
   Logger::shutdown();
 }

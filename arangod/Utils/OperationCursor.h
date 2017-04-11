@@ -37,7 +37,6 @@
 namespace arangodb {
 
 // FORWARD declaration
-class IndexIterator;
 class LogicalCollection;
 struct OperationResult;
 
@@ -80,12 +79,9 @@ struct OperationCursor {
     return _indexIterator.get();
   }
   
-  LogicalCollection* collection() const {
-    TRI_ASSERT(_indexIterator != nullptr);
-    return _indexIterator->collection();
-  }
+  LogicalCollection* collection() const;
 
-  inline bool hasMore() const { return _hasMore; }
+  bool hasMore();
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
@@ -102,43 +98,21 @@ struct OperationCursor {
   void reset();
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements.
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
+/// @brief Calls cb for the next batchSize many elements 
 //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<OperationResult> getMore(uint64_t batchSize = UINT64_MAX,
-                                           bool useExternals = true);
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements.
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
-  void getMore(std::shared_ptr<OperationResult>&, uint64_t batchSize = UINT64_MAX,
-               bool useExternals = true);
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements. mptr variant
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
+  bool getMore(
+      std::function<void(DocumentIdentifierToken const& token)> const& callback,
+      uint64_t batchSize);
   
-  std::vector<IndexLookupResult> getMoreMptr(uint64_t batchSize = UINT64_MAX);
-
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements. mptr variant
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-///        NOTE: The result vector handed in will be cleared.
+/// @brief convenience function to retrieve all results
 //////////////////////////////////////////////////////////////////////////////
 
-  void getMoreMptr(std::vector<IndexLookupResult>& result, uint64_t batchSize = UINT64_MAX);
+  void getAll(
+      std::function<void(DocumentIdentifierToken const& token)> const& callback) {
+    while (getMore(callback, 1000)) {}
+  }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.

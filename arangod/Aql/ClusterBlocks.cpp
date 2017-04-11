@@ -23,14 +23,13 @@
 
 #include "ClusterBlocks.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
+#include "Aql/BlockCollector.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionStats.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -39,10 +38,17 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -54,6 +60,7 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
       _isSimple(en->getElements().empty()) {
+
   if (!_isSimple) {
     for (auto const& p : en->getElements()) {
       // We know that planRegisters has been run, so
@@ -96,12 +103,17 @@ int GatherBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
   // don't call default shutdown method since it does the wrong thing to
   // _gatherBlockBuffer
+  int ret = TRI_ERROR_NO_ERROR;
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
     int res = (*it)->shutdown(errorCode);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      ret = res;
     }
+  }
+
+  if (ret != TRI_ERROR_NO_ERROR) {
+    return ret;
   }
 
   if (!_isSimple) {
@@ -150,7 +162,11 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     }
   }
 
-  _done = false;
+  if (_dependencies.empty()) {
+    _done = true;
+  } else {
+    _done = false;
+  }
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
@@ -195,7 +211,7 @@ int64_t GatherBlock::remaining() {
 /// otherwise.
 bool GatherBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
-  if (_done) {
+  if (_done || _dependencies.empty()) {
     return false;
   }
 
@@ -226,6 +242,11 @@ bool GatherBlock::hasMore() {
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
+     
+  if (_dependencies.empty()) {
+    _done = true;
+  }
+
   if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;
@@ -250,6 +271,9 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   size_t index = 0;      // an index of a non-empty buffer
 
   // pull more blocks from dependencies . . .
+  TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
+  TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
+ 
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
@@ -260,7 +284,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
       index = i;
     }
 
-    auto cur = _gatherBlockBuffer.at(i);
+    auto const& cur = _gatherBlockBuffer.at(i);
     if (!cur.empty()) {
       available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
       for (size_t j = 1; j < cur.size(); j++) {
@@ -285,12 +309,8 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   AqlItemBlock* example = _gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
-  auto res = std::make_unique<AqlItemBlock>(
-    _engine->getQuery()->resourceMonitor(), 
-    toSend, 
-    static_cast<arangodb::aql::RegisterId>(nrRegs)
-  );
   // automatically deleted if things go wrong
+  std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
 
   for (size_t i = 0; i < toSend; i++) {
     // get the next smallest row from the buffer . . .
@@ -324,9 +344,19 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     if (_gatherBlockPos.at(val.first).second ==
         _gatherBlockBuffer.at(val.first).front()->size()) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
-      delete cur;
+      returnBlock(cur);
       _gatherBlockBuffer.at(val.first).pop_front();
       _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
+
+      if (_gatherBlockBuffer.at(val.first).empty()) {
+        // if we pulled everything from the buffer, we need to fetch
+        // more data for the shard for which we have no more local
+        // values. 
+        getBlock(val.first, atLeast, atMost);
+        // note that if getBlock() returns false here, this is not
+        // a problem, because the sort function used takes care of
+        // this
+      }
     }
   }
 
@@ -398,7 +428,7 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
     if (_gatherBlockPos.at(val.first).second ==
         _gatherBlockBuffer.at(val.first).front()->size()) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
-      delete cur;
+      returnBlock(cur);
       _gatherBlockBuffer.at(val.first).pop_front();
       _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
     }
@@ -416,14 +446,11 @@ bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(i < _dependencies.size());
   TRI_ASSERT(!_isSimple);
-  AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
+
+  std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSome(atLeast, atMost));
   if (docs != nullptr) {
-    try {
-      _gatherBlockBuffer.at(i).emplace_back(docs);
-    } catch (...) {
-      delete docs;
-      throw;
-    }
+    _gatherBlockBuffer.at(i).emplace_back(docs.get());
+    docs.release();
     return true;
   }
 
@@ -437,10 +464,10 @@ bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
 bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
                                           std::pair<size_t, size_t> const& b) {
   // nothing in the buffer is maximum!
-  if (_gatherBlockBuffer.at(a.first).empty()) {
+  if (_gatherBlockBuffer[a.first].empty()) {
     return false;
   }
-  if (_gatherBlockBuffer.at(b.first).empty()) {
+  if (_gatherBlockBuffer[b.first].empty()) {
     return true;
   }
 
@@ -451,14 +478,14 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     if (reg.attributePath.empty()) {
       cmp = AqlValue::Compare(
           _trx,
-          _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.reg),
-          _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.reg),
+          _gatherBlockBuffer[a.first].front()->getValue(a.second, reg.reg),
+          _gatherBlockBuffer[b.first].front()->getValue(b.second, reg.reg),
           true);
     } else {
       // Take attributePath into consideration:
-      AqlValue topA = _gatherBlockBuffer.at(a.first).front()->getValue(a.second,
+      AqlValue topA = _gatherBlockBuffer[a.first].front()->getValue(a.second,
                                                                        reg.reg);
-      AqlValue topB = _gatherBlockBuffer.at(b.first).front()->getValue(b.second,
+      AqlValue topB = _gatherBlockBuffer[b.first].front()->getValue(b.second,
                                                                        reg.reg);
       bool mustDestroyA;
       AqlValue aa = topA.get(_trx, reg.attributePath, mustDestroyA, false);
@@ -484,7 +511,7 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
 BlockWithClients::BlockWithClients(ExecutionEngine* engine,
                                    ExecutionNode const* ep,
                                    std::vector<std::string> const& shardIds)
-    : ExecutionBlock(engine, ep), _nrClients(shardIds.size()) {
+    : ExecutionBlock(engine, ep), _nrClients(shardIds.size()), _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
@@ -520,7 +547,12 @@ int BlockWithClients::shutdown(int errorCode) {
 
   _doneForClient.clear();
 
-  return ExecutionBlock::shutdown(errorCode);
+  if (_wasShutdown) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  int res = ExecutionBlock::shutdown(errorCode);
+  _wasShutdown = true;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -646,6 +678,9 @@ int ScatterBlock::shutdown(int errorCode) {
 /// @brief hasMoreForShard: any more for shard <shardId>?
 bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  
+  TRI_ASSERT(_nrClients != 0);
+
   size_t clientId = getClientId(shardId);
 
   if (_doneForClient.at(clientId)) {
@@ -672,6 +707,7 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
 /// in the buffer and _dependencies[0]->remaining()
 int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  
   size_t clientId = getClientId(shardId);
   if (_doneForClient.at(clientId)) {
     return 0;
@@ -880,74 +916,48 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
 
   std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
 
-  std::vector<AqlItemBlock*> collector;
+  BlockCollector collector(&_engine->_itemBlockManager);
 
-  auto freeCollector = [&collector]() {
-    for (auto& x : collector) {
-      delete x;
-    }
-    collector.clear();
-  };
-
-  try {
-    if (buf.empty()) {
-      if (!getBlockForClient(atLeast, atMost, clientId)) {
-        _doneForClient.at(clientId) = true;
-        traceGetSomeEnd(result);
-        return TRI_ERROR_NO_ERROR;
-      }
-    }
-
-    skipped = (std::min)(buf.size(), atMost);
-
-    if (skipping) {
-      for (size_t i = 0; i < skipped; i++) {
-        buf.pop_front();
-      }
-      freeCollector();
+  if (buf.empty()) {
+    if (!getBlockForClient(atLeast, atMost, clientId)) {
+      _doneForClient.at(clientId) = true;
       traceGetSomeEnd(result);
       return TRI_ERROR_NO_ERROR;
     }
+  }
 
-    size_t i = 0;
-    while (i < skipped) {
-      std::vector<size_t> chosen;
-      size_t const n = buf.front().first;
-      while (buf.front().first == n && i < skipped) {
-        chosen.emplace_back(buf.front().second);
-        buf.pop_front();
-        i++;
+  skipped = (std::min)(buf.size(), atMost);
 
-        // make sure we are not overreaching over the end of the buffer
-        if (buf.empty()) {
-          break;
-        }
-      }
-
-      std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
-      collector.emplace_back(more.get());
-      more.release();  // do not delete it!
+  if (skipping) {
+    for (size_t i = 0; i < skipped; i++) {
+      buf.pop_front();
     }
-  } catch (...) {
-    freeCollector();
-    throw;
+    traceGetSomeEnd(result);
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  size_t i = 0;
+  while (i < skipped) {
+    std::vector<size_t> chosen;
+    size_t const n = buf.front().first;
+    while (buf.front().first == n && i < skipped) {
+      chosen.emplace_back(buf.front().second);
+      buf.pop_front();
+      i++;
+
+      // make sure we are not overreaching over the end of the buffer
+      if (buf.empty()) {
+        break;
+      }
+    }
+
+    std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+    collector.add(std::move(more));
   }
 
   if (!skipping) {
-    if (collector.size() == 1) {
-      result = collector[0];
-      collector.clear();
-    } else if (!collector.empty()) {
-      try {
-        result = AqlItemBlock::concatenate(_engine->getQuery()->resourceMonitor(), collector);
-      } catch (...) {
-        freeCollector();
-        throw;
-      }
-    }
+    result = collector.steal();
   }
-
-  freeCollector();
 
   // _buffer is left intact, deleted and cleared at shutdown
 
@@ -1245,30 +1255,35 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
     std::string const& body) const {
   DEBUG_BEGIN_BLOCK();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc != nullptr) {
+    // nullptr only happens on controlled shutdown
 
-  // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = "AQL";
-  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  if (!_ownName.empty()) {
-    headers.emplace("Shard-Id", _ownName);
+    // Later, we probably want to set these sensibly:
+    ClientTransactionID const clientTransactionId = "AQL";
+    CoordTransactionID const coordTransactionId = TRI_NewTickServer();
+    std::unordered_map<std::string, std::string> headers;
+    if (!_ownName.empty()) {
+      headers.emplace("Shard-Id", _ownName);
+    }
+
+    ++_engine->_stats.httpRequests;
+    {
+      JobGuard guard(SchedulerFeature::SCHEDULER);
+      guard.block();
+
+      auto result =
+          cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                          std::string("/_db/") +
+                              arangodb::basics::StringUtils::urlEncode(
+                                  _engine->getQuery()->trx()->vocbase()->name()) +
+                              urlPart + _queryId,
+                          body, headers, defaultTimeOut);
+
+      return result;
+    }
   }
-
-  {
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.block();
-
-    auto result =
-        cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                        std::string("/_db/") +
-                            arangodb::basics::StringUtils::urlEncode(
-                                _engine->getQuery()->trx()->vocbase()->name()) +
-                            urlPart + _queryId,
-                        body, headers, defaultTimeOut);
-
-    return result;
-  }
+  return std::make_unique<ClusterCommResult>();
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1351,7 +1366,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
         responseBodyBuf.c_str(), responseBodyBuf.length());
 
     VPackSlice slice = builder->slice();
-
+  
     if (slice.hasKey("code")) {
       return slice.get("code").getNumericValue<int>();
     }
@@ -1366,28 +1381,35 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 int RemoteBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
 
-  if (!_isResponsibleForInitializeCursor) {
-    // do nothing...
-    return TRI_ERROR_NO_ERROR;
-  }
-
   // For every call we simply forward via HTTP
 
   std::unique_ptr<ClusterCommResult> res =
       sendRequest(rest::RequestType::PUT, "/_api/aql/shutdown/",
                   std::string("{\"code\":" + std::to_string(errorCode) + "}"));
-  if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
-    // artificially ignore error in case query was not found during shutdown
-    return TRI_ERROR_NO_ERROR;
+  try {
+    if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
+      // artificially ignore error in case query was not found during shutdown
+      return TRI_ERROR_NO_ERROR;
+    }
+  } catch (arangodb::basics::Exception &ex) {
+    if (ex.code() == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    }
+    throw;
   }
 
   StringBuffer const& responseBodyBuf(res->result->getBody());
   std::shared_ptr<VPackBuilder> builder =
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
-
-  // read "warnings" attribute if present and add it to our query
+   
   if (slice.isObject()) {
+    if (slice.hasKey("stats")) { 
+      ExecutionStats newStats(slice.get("stats"));
+      _engine->_stats.add(newStats);
+    }
+
+    // read "warnings" attribute if present and add it to our query
     VPackSlice warnings = slice.get("warnings");
     if (warnings.isArray()) {
       auto query = _engine->getQuery();
@@ -1438,19 +1460,14 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
       res->result->getBodyVelocyPack();
   VPackSlice responseBody = responseBodyBuilder->slice();
 
-  ExecutionStats newStats(responseBody.get("stats"));
-
-  _engine->_stats.addDelta(_deltaStats, newStats);
-  _deltaStats = newStats;
-
   if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
-  auto r = new arangodb::aql::AqlItemBlock(_engine->getQuery()->resourceMonitor(), responseBody);
-  traceGetSomeEnd(r);
-  return r;
+  auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
+  traceGetSomeEnd(r.get());
+  return r.release();
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

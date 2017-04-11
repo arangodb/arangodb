@@ -566,28 +566,6 @@ function INDEX_FULLTEXT (collection, attribute) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief find an index of a certain type for a collection
-// //////////////////////////////////////////////////////////////////////////////
-
-function INDEX (collection, indexTypes) {
-  'use strict';
-
-  var indexes = collection.getIndexes(), i, j;
-
-  for (i = 0; i < indexes.length; ++i) {
-    var index = indexes[i];
-
-    for (j = 0; j < indexTypes.length; ++j) {
-      if (index.type === indexTypes[j]) {
-        return index;
-      }
-    }
-  }
-
-  return null;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief get access to a collection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1179,7 +1157,7 @@ function AQL_DOCUMENT (collection, id) {
 
   try {
     if (TYPEWEIGHT(collection) !== TYPEWEIGHT_STRING) {
-      WARN("DOCUMENT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      WARN('DOCUMENT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return null;
     }
     return COLLECTION(collection, 'DOCUMENT').document(id);
@@ -4130,19 +4108,9 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     THROW('NEAR', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
 
-  if (isCoordinator) {
-    var query = COLLECTION(collection, 'NEAR').near(latitude, longitude);
-    query._distance = distanceAttribute;
-    return query.limit(limit).toArray();
-  }
-
-  var idx = INDEX(COLLECTION(collection, 'NEAR'), [ 'geo1', 'geo2' ]);
-
-  if (idx === null) {
-    THROW('NEAR', INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
-  }
-
-  return COLLECTION(collection, 'NEAR').NEAR(idx.id, latitude, longitude, limit, distanceAttribute);
+  var query = COLLECTION(collection, 'NEAR').near(latitude, longitude);
+  query._distance = distanceAttribute;
+  return query.limit(limit).toArray();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -4163,19 +4131,10 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
   }
   radius = AQL_TO_NUMBER(radius);
 
-  if (isCoordinator) {
-    var query = COLLECTION(collection, 'WITHIN').within(latitude, longitude, radius);
-    query._distance = distanceAttribute;
-    return query.toArray();
-  }
-
-  var idx = INDEX(COLLECTION(collection, 'WITHIN'), [ 'geo1', 'geo2' ]);
-
-  if (idx === null) {
-    THROW('WITHIN', INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
-  }
-
-  return COLLECTION(collection, 'WITHIN').WITHIN(idx.id, latitude, longitude, radius, distanceAttribute);
+  // Just start a simple query
+  var query = COLLECTION(collection, 'WITHIN').within(latitude, longitude, radius);
+  query._distance = distanceAttribute;
+  return query.toArray();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -4301,14 +4260,11 @@ function AQL_FULLTEXT (collection, attribute, query, limit) {
     THROW('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
   }
 
-  if (isCoordinator) {
-    if (limit !== undefined && limit !== null && limit > 0) {
-      return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).limit(limit).toArray();
-    }
-    return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).toArray();
+  // Just start a simple query
+  if (limit !== undefined && limit !== null && limit > 0) {
+    return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).limit(limit).toArray();
   }
-
-  return COLLECTION(collection, 'FULLTEXT').FULLTEXT(idx, query, limit).documents;
+  return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).toArray();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -5473,6 +5429,21 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     return null;
   }
 }
+        
+        
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return at most <limit> documents near a certain point
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_PREGEL_RESULT (executionNr) {
+  'use strict';
+
+  if (isCoordinator) {
+      return INTERNAL.db._pregelAqlResult(executionNr);
+  } else {
+    THROW('PREGEL_RESULT', INTERNAL.errors.ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+  }
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief format a date (numerical values only)
@@ -5730,6 +5701,7 @@ exports.AQL_DATE_SUBTRACT = AQL_DATE_SUBTRACT;
 exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
 exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
+exports.AQL_PREGEL_RESULT = AQL_PREGEL_RESULT;
 
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;

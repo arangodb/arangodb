@@ -2,6 +2,7 @@ project(boost)
 
 #the boost version must also be adjusted in the top-level CMakeLists.txt file
 set(boost_version "1.62.0")
+set(BOOST_VERSION ${boost_version} PARENT_SCOPE)
 set(boost_src "${CMAKE_CURRENT_SOURCE_DIR}/${boost_version}")
 
 #find_package(Boost 1.62.0 EXACT COMPONENTS system)
@@ -9,14 +10,14 @@ set(boost_src "${CMAKE_CURRENT_SOURCE_DIR}/${boost_version}")
 option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
 if(false) #for now we do not use the system's boost but our own instead!
     add_library(boost_boost INTERFACE)
-    target_include_directories(boost_boost PUBLIC SYSTEM ${Boost_INCLUDE_DIRS})
+    target_include_directories(boost_boost SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
     # we are good
     # create imported targets?!
 else()
     #create interface target for boost header only libraries
     message(STATUS "using 3rdParty BOOST")
     add_library(boost_boost INTERFACE)
-    target_include_directories(boost_boost INTERFACE SYSTEM "${boost_src}")
+    target_include_directories(boost_boost SYSTEM INTERFACE "${boost_src}")
 
     #build boost_system - there seems to be just one cpp file:)
     add_library(boost_system STATIC

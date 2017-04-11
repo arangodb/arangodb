@@ -221,21 +221,19 @@ bool AddFollower::start() {
   pending.close();
 
   // --- Plan changes
-  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-  for (auto const& srv : VPackArrayIterator(planned)) {
-    pending.add(srv);
-  }
   for (auto const& i : _newFollower) {
-    pending.add(VPackValue(i));
+    pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Object));
+    pending.add("op", VPackValue("push"));
+    pending.add("new", VPackValue(i));
+    pending.close();
   }
-  pending.close();
 
   // --- Increment Plan/Version
   pending.add(_agencyPrefix + planVersion, VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("increment"));
   pending.close();
 
-  pending.close();
+  pending.close(); // Operations
 
   // Preconditions
   

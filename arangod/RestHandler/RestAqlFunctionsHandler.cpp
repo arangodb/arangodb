@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlFunctionsHandler.h"
-#include "Aql/FunctionDefinitions.h"
+#include "Aql/AqlFunctionFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -43,7 +43,9 @@ RestStatus RestAqlFunctionsHandler::execute() {
 
     builder.openObject();
     builder.add(VPackValue("functions"));
-    aql::FunctionDefinitions::toVelocyPack(builder);
+    auto functions = aql::AqlFunctionFeature::AQLFUNCTIONS;
+    TRI_ASSERT(functions != nullptr);
+    functions->toVelocyPack(builder);
     builder.close();
 
     generateResult(rest::ResponseCode::OK, builder.slice());

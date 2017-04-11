@@ -222,7 +222,7 @@ HTTP layer:
   * HEAD
   * PATCH
   * OPTIONS
-  
+
   Please note that not all server actions allow using all of these HTTP methods.
   You should look up up the supported methods for each method you intend to use
   in the manual.
@@ -230,52 +230,112 @@ HTTP layer:
   Requests using any other HTTP method (such as for example CONNECT, TRACE etc.)
   will be rejected by ArangoDB as mentioned before.
 
-Cross Origin Resource Sharing (CORS) requests
+Cross-Origin Resource Sharing (CORS) requests
 ---------------------------------------------
 
 ArangoDB will automatically handle CORS requests as follows:
 
-* when the client sends an *Origin* HTTP header, ArangoDB will return a header
-  *access-control-allow-origin* containing the value the client sent in the
-  *Origin* header.
-* for non-trivial CORS requests, clients may issue a preflight request via an
-  additional HTTP OPTIONS request.  ArangoDB will automatically answer such
-  preflight HTTP OPTIONS requests with an HTTP 200 response with an empty
-  body. ArangoDB will return the following headers in the response:
-  * *access-control-allow-origin*: will contain the value that the client
-    provided in the *Origin* header of the request
-  * *access-control-allow-methods*: will contain an array of all HTTP methods
-    generally supported by ArangoDB. This array does not depend on the URL the 
-    client requested and is the same for all CORS requests. 
-  * *access-control-allow-headers*: will contain exactly the value that
-    the client has provided in the *Access-Control-Request-Header* header 
-    of the request. This header will only be returned if the client has
-    specified the header in the request. ArangoDB will send back the original
-    value without further validation.
-  * *access-control-max-age*: will return a cache lifetime for the preflight
-    response as determined by ArangoDB.
-* any *access-control-allow-credentials* header sent by the client is ignored by
-  ArangoDB if its value is not *true*. If a client sends a header value of *true*,
-  ArangoDB will return the header *access-control-allow-credentials: true* too,
-  but only if the value of the sent `Origin` header matches a trusted origin
-  in the `--http.trusted-origin` startup option. To make ArangoDB trust a certain
-  origin, specify the origin at server start like this: 
-  `--http.trusted-origin "http://localhost:8529"`
-  To specify multiple trusted origins, the option can be specified multiple times.
-  To trust any origin, the special value `*` can be specified as a trusted origin:
-  `--http.trusted-origin "*"`
+### Preflight
 
-Note that CORS preflight requests will probably not send any authentication data
-with them. One of the purposes of the preflight request is to check whether the
-server accepts authentication or not.
+When a browser is told to make a cross-origin request that includes explicit
+headers, credentials or uses HTTP methods other than `GET` or `POST`, it will
+first perform a so-called preflight request using the `OPTIONS` method.
 
-A consequence of this is that ArangoDB will allow requests using the HTTP
-OPTIONS method without credentials, even when the server is run with
-authentication enabled.
+ArangoDB will respond to `OPTIONS` requests with an HTTP 200 status response
+with an empty body. Since preflight requests are not expected to include or
+even indicate the presence of authentication credentials even when they will
+be present in the actual request, ArangoDB does not enforce authentication for
+`OPTIONS` requests even when authentication is enabled.
 
-The response to the HTTP OPTIONS request will however be a generic response that
-will not expose any private data and thus can be considered "safe" even without
-credentials.
+ArangoDB will set the following headers in the response:
+
+* `access-control-allow-credentials`: will be set to `false` by default.
+  For details on when it will be set to `true` see the next section on cookies.
+
+* `access-control-allow-headers`: will be set to the exect value of the
+  request's `access-control-request-headers` header or omitted if no such
+  header was sent in the request.
+
+* `access-control-allow-methods`: will be set to a list of all supported HTTP
+  headers regardless of the target endpoint. In other words that a method is
+  listed in this header does not guarantee that it will be supported by the
+  endpoint in the actual request.
+
+* `access-control-allow-origin`: will be set to the exact value of the
+  request's `origin` header.
+
+* `access-control-expose-headers`: will be set to a list of response headers used
+  by the ArangoDB HTTP API.
+
+* `access-control-max-age`: will be set to an implementation-specifc value.
+
+### Actual request
+
+If a request using any other HTTP method than `OPTIONS` includes an `origin` header,
+ArangoDB will add the following headers to the response:
+
+* `access-control-allow-credentials`: will be set to `false` by default.
+  For details on when it will be set to `true` see the next section on cookies.
+
+* `access-control-allow-origin`: will be set to the exact value of the
+  request's `origin` header.
+
+* `access-control-expose-headers`: will be set to a list of response headers used
+  by the ArangoDB HTTP API.
+
+When making CORS requests to endpoints of Foxx services, the value of the
+`access-control-expose-headers` header will instead be set to a list of
+response headers used in the response itself (but not including the
+`access-control-` headers). Note that [Foxx services may override this behaviour](../../Manual/Foxx/Cors).
+
+### Cookies and authentication
+
+In order for the client to be allowed to correctly provide authentication
+credentials or handle cookies, ArangoDB needs to set the
+`access-control-allow-credentials` response header to `true` instead of `false`.
+
+ArangoDB will automatically set this header to `true` if the value of the
+request's `origin` header matches a trusted origin in the `http.trusted-origin`
+configuration option. To make ArangoDB trust a certain origin, you can provide
+a startup option when running `arangod` like this:
+
+`--http.trusted-origin "http://localhost:8529"`
+
+To specify multiple trusted origins, the option can be specified multiple times.
+Alternatively you can use the special value `"*"` to trust any origin:
+
+`--http.trusted-origin "*"`
+
+Note that browsers will not actually include credentials or cookies in cross-origin
+requests unless explicitly told to do so:
+
+* When using the Fetch API you need to set the
+  [`credentials` option to `include`](https://fetch.spec.whatwg.org/#cors-protocol-and-credentials).
+
+  ```js
+  fetch("./", { credentials:"include" }).then(/* … */)
+  ```
+
+* When using `XMLHttpRequest` you need to set the
+  [`withCredentials` option to `true`](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials).
+
+  ```js
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'https://example.com/', true);
+  xhr.withCredentials = true;
+  xhr.send(null);
+  ```
+
+* When using jQuery you need to set the `xhrFields` option:
+
+  ```js
+  $.ajax({
+     url: 'https://example.com',
+     xhrFields: {
+        withCredentials: true
+     }
+  });
+  ```
 
 HTTP method overriding
 ----------------------

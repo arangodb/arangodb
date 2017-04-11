@@ -26,9 +26,12 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/Mutex.h"
 #include "Rest/CommonDefines.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/figures.h"
+
+#include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
 class RequestStatistics {

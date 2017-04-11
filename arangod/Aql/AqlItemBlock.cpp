@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlock.h"
+#include "Aql/BlockCollector.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -66,10 +69,11 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
                                    "exhausted must be false");
   }
 
-  _nrItems = VelocyPackHelper::getNumericValue<size_t>(slice, "nrItems", 0);
-  if (_nrItems == 0) {
+  int64_t nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
+  if (nrItems <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
+  _nrItems = static_cast<size_t>(nrItems);
 
   _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
 
@@ -203,7 +207,10 @@ void AqlItemBlock::destroy() {
 }
 
 /// @brief shrink the block to the specified number of rows
-void AqlItemBlock::shrink(size_t nrItems) {
+/// if sweep is set, then the superfluous rows are cleaned
+/// if sweep is not set, the caller has to ensure that the
+/// superfluous rows are empty
+void AqlItemBlock::shrink(size_t nrItems, bool sweep) {
   TRI_ASSERT(nrItems > 0);
 
   if (nrItems == _nrItems) {
@@ -217,28 +224,30 @@ void AqlItemBlock::shrink(size_t nrItems) {
                                    "cannot use shrink() to increase block");
   }
 
-  // erase all stored values in the region that we freed
-  for (size_t i = nrItems; i < _nrItems; ++i) {
-    for (RegisterId j = 0; j < _nrRegs; ++j) {
-      AqlValue& a(_data[_nrRegs * i + j]);
+  if (sweep) {
+    // erase all stored values in the region that we freed
+    for (size_t i = nrItems; i < _nrItems; ++i) {
+      for (RegisterId j = 0; j < _nrRegs; ++j) {
+        AqlValue& a(_data[_nrRegs * i + j]);
 
-      if (a.requiresDestruction()) {
-        auto it = _valueCount.find(a);
+        if (a.requiresDestruction()) {
+          auto it = _valueCount.find(a);
 
-        if (it != _valueCount.end()) {
-          TRI_ASSERT((*it).second > 0);
+          if (it != _valueCount.end()) {
+            TRI_ASSERT((*it).second > 0);
 
-          if (--((*it).second) == 0) {
-            decreaseMemoryUsage(a.memoryUsage());
-            a.destroy();
-            try {
-              _valueCount.erase(it);
-            } catch (...) {
+            if (--((*it).second) == 0) {
+              decreaseMemoryUsage(a.memoryUsage());
+              a.destroy();
+              try {
+                _valueCount.erase(it);
+              } catch (...) {
+              }
             }
           }
         }
+        a.erase();
       }
-      a.erase();
     }
   }
     
@@ -246,6 +255,39 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
   // adjust the size of the block
   _nrItems = nrItems;
+  _data.resize(_nrItems * _nrRegs);
+}
+
+void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
+  TRI_ASSERT(_valueCount.empty());
+  TRI_ASSERT(nrRegs > 0);
+  TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
+
+  size_t const targetSize = nrItems * nrRegs;
+  size_t const currentSize = _nrItems * _nrRegs;
+  TRI_ASSERT(currentSize <= _data.size());
+
+  if (targetSize > _data.size()) {
+    increaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
+    try {
+      _data.resize(targetSize);
+    } catch (...) {
+      decreaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
+      throw;
+    }
+  } else if (targetSize < _data.size()) {
+    decreaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
+    try {
+      _data.resize(targetSize);
+    } catch (...) {
+      increaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
+      throw;
+    }
+  }
+
+  TRI_ASSERT(_data.size() >= targetSize);
+  _nrItems = nrItems;
+  _nrRegs = nrRegs;
 }
 
 /// @brief clears out some columns (registers), this deletes the values if
@@ -430,6 +472,37 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
   return res.release();
 }
 
+/// @brief concatenate multiple blocks
+AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
+    BlockCollector* collector) {
+  
+  size_t totalSize = collector->totalSize();
+  RegisterId nrRegs = collector->nrRegs();
+
+  TRI_ASSERT(totalSize > 0);
+  TRI_ASSERT(nrRegs > 0);
+
+  auto res = std::make_unique<AqlItemBlock>(resourceMonitor, totalSize, nrRegs);
+
+  size_t pos = 0;
+  for (auto& it : collector->_blocks) {
+    size_t const n = it->size();
+    for (size_t row = 0; row < n; ++row) {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        // copy over value
+        AqlValue const& a = it->getValueReference(row, col);
+        if (!a.isEmpty()) {
+          res->setValue(pos + row, col, a);
+        }
+      }
+    }
+    it->eraseAll();
+    pos += n;
+  }
+
+  return res.release();
+}
+
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
@@ -455,7 +528,6 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 
   size_t pos = 0;
   for (auto& it : blocks) {
-    TRI_ASSERT(it != res.get());
     size_t const n = it->size();
     for (size_t row = 0; row < n; ++row) {
       for (RegisterId col = 0; col < nrRegs; ++col) {
@@ -467,7 +539,7 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
       }
     }
     it->eraseAll();
-    pos += it->size();
+    pos += n;
   }
 
   return res.release();
@@ -497,7 +569,7 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 ///                      corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                      such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
+void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
                                 VPackBuilder& result) const {
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;

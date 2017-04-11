@@ -99,17 +99,19 @@ class GeneralCommTask : public SocketTask {
 
   virtual void addResponse(GeneralResponse*, RequestStatistics*) = 0;
 
+  virtual void handleSimpleError(rest::ResponseCode, uint64_t messageId) = 0;
+
+  virtual void handleSimpleError(rest::ResponseCode, int code,
+                                 std::string const& errorMessage,
+                                 uint64_t messageId) = 0;
+
+  virtual bool allowDirectHandling() const = 0;
+
  protected:
   void executeRequest(std::unique_ptr<GeneralRequest>&&,
                       std::unique_ptr<GeneralResponse>&&);
 
   void processResponse(GeneralResponse*);
-
-  virtual void handleSimpleError(rest::ResponseCode, uint64_t messagid) = 0;
-
-  virtual void handleSimpleError(rest::ResponseCode, int code,
-                                 std::string const& errorMessage,
-                                 uint64_t messageId) = 0;
 
   RequestStatistics* acquireStatistics(uint64_t);
   RequestStatistics* statistics(uint64_t);

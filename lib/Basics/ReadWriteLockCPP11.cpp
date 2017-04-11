@@ -23,42 +23,13 @@
 
 #include "ReadWriteLockCPP11.h"
 
-#ifdef TRI_TRACE_LOCKS
-
-#include <iostream>
-
-static thread_local std::unordered_map<ReadWriteLockCPP11*, int> _threadLocks;
-
-static void LockError(ReadWriteLockCPP11* lock, int mode) {
-  auto it = _threadLocks.find(lock);
-  auto m = (*it).second;
-  std::cout << "ERROR. TRYING TO ACQUIRE " << (mode == 1 ? "READ" : "WRITE")
-            << " LOCK WHILE ALREADY HOLDING IT IN "
-            << (m == 1 ? "READ" : "WRITE") << " MODE" << std::endl;
-  TRI_ASSERT(false);
-}
-
-#endif
-
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locks for writing
-////////////////////////////////////////////////////////////////////////////////
-
 void ReadWriteLockCPP11::writeLock() {
-#ifdef TRI_TRACE_LOCKS
-  if (_threadLocks.find(this) != _threadLocks.end()) {
-    LockError(this, 0);
-  }
-#endif
-
   std::unique_lock<std::mutex> guard(_mut);
   if (_state == 0) {
     _state = -1;
-#ifdef TRI_TRACE_LOCKS
-    _threadLocks.emplace(this, 0);
-#endif
     return;
   }
   do {
@@ -67,50 +38,23 @@ void ReadWriteLockCPP11::writeLock() {
   } while (_state != 0);
   _state = -1;
   _wantWrite = false;
-
-#ifdef TRI_TRACE_LOCKS
-  _threadLocks.emplace(this, 0);
-#endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locks for writing, but only tries
-////////////////////////////////////////////////////////////////////////////////
-
 bool ReadWriteLockCPP11::tryWriteLock() {
-#ifdef TRI_TRACE_LOCKS
-  if (_threadLocks.find(this) != _threadLocks.end()) {
-    LockError(this, 0);
-  }
-#endif
-
   std::unique_lock<std::mutex> guard(_mut);
   if (_state == 0) {
     _state = -1;
-#ifdef TRI_TRACE_LOCKS
-    _threadLocks.emplace(this, 0);
-#endif
     return true;
   }
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locks for reading
-////////////////////////////////////////////////////////////////////////////////
-
 void ReadWriteLockCPP11::readLock() {
-#ifdef TRI_TRACE_LOCKS
-  if (_threadLocks.find(this) != _threadLocks.end()) {
-    LockError(this, 1);
-  }
-#endif
   std::unique_lock<std::mutex> guard(_mut);
   if (!_wantWrite && _state >= 0) {
     _state += 1;
-#ifdef TRI_TRACE_LOCKS
-    _threadLocks.emplace(this, 1);
-#endif
     return;
   }
   while (true) {
@@ -121,43 +65,21 @@ void ReadWriteLockCPP11::readLock() {
       break;
     }
   }
-#ifdef TRI_TRACE_LOCKS
-  _threadLocks.emplace(this, 1);
-#endif
   _state += 1;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locks for reading, tries only
-////////////////////////////////////////////////////////////////////////////////
-
 bool ReadWriteLockCPP11::tryReadLock() {
-#ifdef TRI_TRACE_LOCKS
-  if (_threadLocks.find(this) != _threadLocks.end()) {
-    LockError(this, 0);
-  }
-#endif
   std::unique_lock<std::mutex> guard(_mut);
   if (!_wantWrite && _state >= 0) {
     _state += 1;
-#ifdef TRI_TRACE_LOCKS
-    _threadLocks.emplace(this, 1);
-#endif
     return true;
   }
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the read-lock or write-lock
-////////////////////////////////////////////////////////////////////////////////
-
 void ReadWriteLockCPP11::unlock() {
-#ifdef TRI_TRACE_LOCKS
-  if (_threadLocks.find(this) == _threadLocks.end()) {
-    LockError(this, 0);
-  }
-#endif
   std::unique_lock<std::mutex> guard(_mut);
   if (_state == -1) {
     _state = 0;
@@ -168,7 +90,14 @@ void ReadWriteLockCPP11::unlock() {
       _bell.notify_all();
     }
   }
-#ifdef TRI_TRACE_LOCKS
-  _threadLocks.erase(this);
-#endif
+}
+  
+/// @brief releases the read-lock
+void ReadWriteLockCPP11::unlockRead() {
+  unlock();
+}
+  
+/// @brief releases the write-lock
+void ReadWriteLockCPP11::unlockWrite() {
+  unlock();
 }

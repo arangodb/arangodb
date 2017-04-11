@@ -33,9 +33,12 @@
 #include <sys/types.h>
 
 #include <openssl/ssl.h>
-
+#include <openssl/err.h>
 #include "Basics/socket-utils.h"
+#include "Logger/Logger.h"
 #include "Ssl/ssl-helper.h"
+
+#undef TRACE_SSL_CONNECTIONS
 
 #ifdef _WIN32
 #define STR_ERROR()                                                  \
@@ -55,6 +58,107 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 
+namespace {
+
+#ifdef TRACE_SSL_CONNECTIONS
+static char const* tlsTypeName(int type) {
+  switch (type) {
+#ifdef SSL3_RT_HEADER
+    case SSL3_RT_HEADER:
+      return "TLS header";
+#endif
+    case SSL3_RT_CHANGE_CIPHER_SPEC:
+      return "TLS change cipher";
+    case SSL3_RT_ALERT:
+      return "TLS alert";
+    case SSL3_RT_HANDSHAKE:
+      return "TLS handshake";
+    case SSL3_RT_APPLICATION_DATA:
+      return "TLS app data";
+    default:
+      return "TLS Unknown";
+  }
+}
+
+static char const* sslMessageType(int sslVersion, int msg) {
+#ifdef SSL2_VERSION_MAJOR
+  if (sslVersion == SSL2_VERSION_MAJOR) {
+    switch (msg) {
+      case SSL2_MT_ERROR:
+        return "Error";
+      case SSL2_MT_CLIENT_HELLO:
+        return "Client hello";
+      case SSL2_MT_CLIENT_MASTER_KEY:
+        return "Client key";
+      case SSL2_MT_CLIENT_FINISHED:
+        return "Client finished";
+      case SSL2_MT_SERVER_HELLO:
+        return "Server hello";
+      case SSL2_MT_SERVER_VERIFY:
+        return "Server verify";
+      case SSL2_MT_SERVER_FINISHED:
+        return "Server finished";
+      case SSL2_MT_REQUEST_CERTIFICATE:
+        return "Request CERT";
+      case SSL2_MT_CLIENT_CERTIFICATE:
+        return "Client CERT";
+    }
+  }
+  else
+#endif
+  if (sslVersion == SSL3_VERSION_MAJOR) {
+    switch (msg) {
+      case SSL3_MT_HELLO_REQUEST:
+        return "Hello request";
+      case SSL3_MT_CLIENT_HELLO:
+        return "Client hello";
+      case SSL3_MT_SERVER_HELLO:
+        return "Server hello";
+#ifdef SSL3_MT_NEWSESSION_TICKET
+      case SSL3_MT_NEWSESSION_TICKET:
+        return "Newsession Ticket";
+#endif
+      case SSL3_MT_CERTIFICATE:
+        return "Certificate";
+      case SSL3_MT_SERVER_KEY_EXCHANGE:
+        return "Server key exchange";
+      case SSL3_MT_CLIENT_KEY_EXCHANGE:
+        return "Client key exchange";
+      case SSL3_MT_CERTIFICATE_REQUEST:
+        return "Request CERT";
+      case SSL3_MT_SERVER_DONE:
+        return "Server finished";
+      case SSL3_MT_CERTIFICATE_VERIFY:
+        return "CERT verify";
+      case SSL3_MT_FINISHED:
+        return "Finished";
+#ifdef SSL3_MT_CERTIFICATE_STATUS
+      case SSL3_MT_CERTIFICATE_STATUS:
+        return "Certificate Status";
+#endif
+    }
+  }
+  return "Unknown";
+}
+
+static void sslTlsTrace(int direction, int sslVersion, int contentType,
+                        void const* buf, size_t, SSL*, void*) {
+  // enable this for tracing SSL connections
+  if (sslVersion) {
+    sslVersion >>= 8; /* check the upper 8 bits only below */
+    char const* tlsRtName;
+    if (sslVersion == SSL3_VERSION_MAJOR && contentType)
+      tlsRtName = tlsTypeName(contentType);
+    else
+      tlsRtName = "";
+
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection trace: " << (direction ? "out" : "in") << ", " << tlsRtName << ", " << sslMessageType(sslVersion, *static_cast<char const*>(buf));
+  }
+}
+#endif
+
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +171,8 @@ SslClientConnection::SslClientConnection(Endpoint* endpoint,
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
                               connectRetries),
       _ssl(nullptr),
-      _ctx(nullptr) {
+      _ctx(nullptr),
+      _sslProtocol(sslProtocol) {
 
   TRI_invalidatesocket(&_socket);
   init(sslProtocol);
@@ -81,7 +186,8 @@ SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
                               connectRetries),
       _ssl(nullptr),
-      _ctx(nullptr) {
+      _ctx(nullptr),
+      _sslProtocol(sslProtocol) {
 
   TRI_invalidatesocket(&_socket);
   init(sslProtocol);
@@ -145,7 +251,12 @@ void SslClientConnection::init(uint64_t sslProtocol) {
   _ctx = SSL_CTX_new(meth);
 
   if (_ctx != nullptr) {
+#ifdef TRACE_SSL_CONNECTIONS
+    SSL_CTX_set_msg_callback(_ctx, sslTlsTrace);
+#endif
     SSL_CTX_set_cipher_list(_ctx, "ALL");
+    // TODO: better use the following ciphers...
+    // SSL_CTX_set_cipher_list(_ctx, "ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH");
 
     bool sslCache = true;
     SSL_CTX_set_session_cache_mode(
@@ -158,10 +269,6 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::connectSocket() {
-#ifdef _WIN32
-  char windowsErrorBuf[256];
-#endif
-
   TRI_ASSERT(_endpoint != nullptr);
 
   if (_endpoint->isConnected()) {
@@ -169,6 +276,7 @@ bool SslClientConnection::connectSocket() {
     _isConnected = false;
   }
 
+  _errorDetails.clear();
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
   if (!TRI_isvalidsocket(_socket) || _ctx == nullptr) {
@@ -188,6 +296,15 @@ bool SslClientConnection::connectSocket() {
     return false;
   }
 
+  switch (protocol_e(_sslProtocol)) {
+    case TLS_V1:
+    case TLS_V12:
+    default:
+      SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());
+  }
+
+  SSL_set_connect_state(_ssl);
+
   if (SSL_set_fd(_ssl, (int)TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
     _errorDetails = std::string("SSL: failed to create context ") +
                     ERR_error_string(ERR_get_error(), nullptr);
@@ -203,6 +320,8 @@ bool SslClientConnection::connectSocket() {
   int ret = SSL_connect(_ssl);
 
   if (ret != 1) {
+    _errorDetails.append("SSL: during SSL_connect: ");
+
     int errorDetail;
     int certError;
 
@@ -210,49 +329,59 @@ bool SslClientConnection::connectSocket() {
     if ((errorDetail == SSL_ERROR_WANT_READ) ||
         (errorDetail == SSL_ERROR_WANT_WRITE)) {
       return true;
-    } else if (errorDetail == SSL_ERROR_SYSCALL) {
-      char const* pErr = STR_ERROR();
-      _errorDetails = std::string("SSL: during SSL_connect: ") +
-                      std::to_string(errno) + std::string(" - ") + pErr;
-    } else {
-      errorDetail = ERR_get_error(); /* Gets the earliest error code from the
-                                        thread's error queue and removes the
-                                        entry. */
-      switch (errorDetail) {
-        case 0x1407E086:
-        /* 1407E086:
-          SSL routines:
-          SSL2_SET_CERTIFICATE:
-          certificate verify failed */
-        /* fall-through */
-        case 0x14090086:
-          /* 14090086:
-            SSL routines:
-            SSL3_GET_SERVER_CERTIFICATE:
-            certificate verify failed */
-
-          certError = SSL_get_verify_result(_ssl);
-
-          if (certError != X509_V_OK) {
-            _errorDetails = std::string("SSL: certificate problem: ") +
-                            X509_verify_cert_error_string(certError);
-          } else {
-            _errorDetails = std::string(
-                "SSL: certificate problem, verify that the CA cert is OK.");
-          }
-          break;
-
-        default:
-          char errorBuffer[256];
-          ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
-          _errorDetails = std::string("SSL: ") + errorBuffer;
-          break;
-      }
     }
+      
+    /* Gets the earliest error code from the
+       thread's error queue and removes the entry. */
+    unsigned long lastError = ERR_get_error();
+     
+    if (errorDetail == SSL_ERROR_SYSCALL && lastError == 0) {
+      if (ret == 0) {
+        _errorDetails += "an EOF was observed that violates the protocol. this may happen when the other side has closed the connection";
+      } else if (ret == -1) {
+        _errorDetails += "I/O reported by BIO";
+      }
+    } 
+
+    switch (errorDetail) {
+      case 0x1407E086:
+      /* 1407E086:
+        SSL routines:
+        SSL2_SET_CERTIFICATE:
+        certificate verify failed */
+      /* fall-through */
+      case 0x14090086:
+        /* 14090086:
+          SSL routines:
+          SSL3_GET_SERVER_CERTIFICATE:
+          certificate verify failed */
+
+        certError = SSL_get_verify_result(_ssl);
+
+        if (certError != X509_V_OK) {
+          _errorDetails += std::string("certificate problem: ") +
+                           X509_verify_cert_error_string(certError);
+        } else {
+          _errorDetails = std::string("certificate problem, verify that the CA cert is OK");
+        }
+        break;
+
+      default:
+        char errorBuffer[256];
+        ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
+        _errorDetails += std::string(" - details: ") + errorBuffer;
+        break;
+    }
+    
     disconnectSocket();
     _isConnected = false;
     return false;
   }
+
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection opened: " 
+             << SSL_get_cipher(_ssl) << ", " 
+             << SSL_get_cipher_version(_ssl) 
+             << " (" << SSL_get_cipher_bits(_ssl, 0) << " bits)"; 
 
   return true;
 }

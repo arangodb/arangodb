@@ -30,7 +30,8 @@
 #include "Aql/Scopes.h"
 #include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"
-#include "VocBase/transaction.h"
+#include "Transaction/Methods.h"
+#include "VocBase/AccessMode.h"
 
 #include <functional>
 
@@ -39,11 +40,10 @@ namespace velocypack {
 class Slice;
 }
 
-class Transaction;
-
 namespace aql {
 
 class Query;
+class VariableGenerator;
 
 typedef std::unordered_map<Variable const*, std::unordered_set<std::string>>
     TopLevelAttributes;
@@ -54,7 +54,7 @@ class Ast {
 
  public:
   /// @brief create the AST
-  Ast(Query*);
+  explicit Ast(Query*);
 
   /// @brief destroy the AST
   ~Ast();
@@ -65,12 +65,7 @@ class Ast {
 
   /// @brief return the variable generator
   inline VariableGenerator* variables() { return &_variables; }
-
-  /// @brief return the variable generator
-  inline VariableGenerator* variables() const {
-    return const_cast<VariableGenerator*>(&_variables);
-  }
-
+  
   /// @brief return the root of the AST
   inline AstNode const* root() const { return _root; }
 
@@ -220,7 +215,7 @@ class Ast {
   AstNode* createNodeVariable(char const*, size_t, bool);
 
   /// @brief create an AST collection node
-  AstNode* createNodeCollection(char const*, TRI_transaction_type_e);
+  AstNode* createNodeCollection(char const*, AccessMode::Type);
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(char const*, size_t);
@@ -292,10 +287,10 @@ class Ast {
   AstNode* createNodeArray(size_t members);
 
   /// @brief create an AST unique array node, AND-merged from two other arrays
-  AstNode* createNodeIntersectedArray(arangodb::Transaction* trx, AstNode const*, AstNode const*);
+  AstNode* createNodeIntersectedArray(AstNode const*, AstNode const*);
 
   /// @brief create an AST unique array node, OR-merged from two other arrays
-  AstNode* createNodeUnionizedArray(arangodb::Transaction* trx, AstNode const*, AstNode const*);
+  AstNode* createNodeUnionizedArray(AstNode const*, AstNode const*);
 
   /// @brief create an AST object node
   AstNode* createNodeObject();

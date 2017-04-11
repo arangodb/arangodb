@@ -19,9 +19,9 @@ endif()
 # debug info directory:
 if (${CMAKE_INSTALL_LIBDIR} STREQUAL "usr/lib64")
   # some systems have weird places for usr/lib: 
-  set(CMAKE_INSTALL_DEBINFO_DIR "usr/lib/debug/${CMAKE_PROJECT_NAME}")
+  set(CMAKE_INSTALL_DEBINFO_DIR "usr/lib/debug/")
 else ()
-  set(CMAKE_INSTALL_DEBINFO_DIR "${CMAKE_INSTALL_LIBDIR}/debug/${CMAKE_PROJECT_NAME}")
+  set(CMAKE_INSTALL_DEBINFO_DIR "${CMAKE_INSTALL_LIBDIR}/debug/")
 endif ()
 
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
@@ -40,6 +40,8 @@ FILE(MAKE_DIRECTORY "${ARANGODB_FULL_APPS_DIRECTORY}")
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
 
 set(INSTALL_ICU_DT_DEST "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
+
+set(CMAKE_TEST_DIRECTORY "tests")
 
 include(InstallMacros)
 # install ----------------------------------------------------------------------
@@ -136,6 +138,12 @@ install(
 set(IS_SYSTEMD_INSTALL 0)
 set(SYSTEMD_UNIT_DIR "")
 if (UNIX)
+  if (${USE_ENTERPRISE})
+    set(SERVICE_NAME "arangodb3e")
+  else ()
+    set(SERVICE_NAME "arangodb3")
+  endif ()
+
   find_package(PkgConfig QUIET)
   pkg_check_modules(SYSTEMD systemd)
   if (SYSTEMD_FOUND)
@@ -144,18 +152,29 @@ if (UNIX)
       OUTPUT_VARIABLE SYSTEMD_UNIT_DIR
       OUTPUT_STRIP_TRAILING_WHITESPACE)
     set(IS_SYSTEMD_INSTALL 1)
+    
     configure_file (
-        ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
-        ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
-        NEWLINE_STYLE UNIX)
-      if (${USE_ENTERPRISE})
-        install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
-          DESTINATION ${SYSTEMD_UNIT_DIR}/
-          RENAME arangodb3e.service)
-      else()
-        install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
-          DESTINATION ${SYSTEMD_UNIT_DIR}/)
-      endif()
+      ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
+      ${PROJECT_BINARY_DIR}/arangodb3.service
+      NEWLINE_STYLE UNIX)
+    install(FILES ${PROJECT_BINARY_DIR}/arangodb3.service
+      DESTINATION ${SYSTEMD_UNIT_DIR}/
+      RENAME ${SERVICE_NAME}.service)
+    
+    configure_file (
+      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.systemd
+      ${PROJECT_BINARY_DIR}/arangod.systemd
+      NEWLINE_STYLE UNIX)
+    install(
+      FILES ${PROJECT_BINARY_DIR}/arangod.systemd
+      PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+      DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
+      RENAME ${SERVICE_NAME})
+  else ()
+    configure_file (
+      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
+      ${PROJECT_BINARY_DIR}/arangod.sysv
+      NEWLINE_STYLE UNIX)
   endif()
 endif()
 ################################################################################
@@ -173,6 +192,7 @@ to_native_path("ICU_DT_DEST")
 to_native_path("CMAKE_INSTALL_SBINDIR")
 to_native_path("CMAKE_INSTALL_BINDIR")
 to_native_path("INSTALL_ICU_DT_DEST")
+to_native_path("CMAKE_TEST_DIRECTORY")
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/directories.h.in"
@@ -180,16 +200,15 @@ configure_file (
   NEWLINE_STYLE UNIX
 )
 
+install(FILES ${ICU_DT}
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME ${ICU_DT_DEST})
 
 if (MSVC)
   # so we don't need to ship dll's twice, make it one directory:
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
   set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
 
-  # other platforms link the file into the binary
-  install(FILES ${ICU_DT}
-    DESTINATION "${INSTALL_ICU_DT_DEST}"
-    RENAME ${ICU_DT_DEST})
 
   install_readme(README.windows README.windows.txt)
 

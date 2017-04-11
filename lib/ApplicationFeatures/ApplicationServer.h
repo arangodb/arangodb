@@ -216,11 +216,12 @@ class ApplicationServer {
     _progressReports.emplace_back(reporter);
   }
 
-  char const* getBinaryPath() { return _binaryPath;}
- private:
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);
+  
+  char const* getBinaryPath() { return _binaryPath;}
 
+ private:
   // throws an exception that a requested feature was not found
   static void throwFeatureNotFoundException(std::string const& name);
 
@@ -246,14 +247,15 @@ class ApplicationServer {
   // allows features to cross-validate their program options
   void validateOptions();
 
-  // enable automatic features
-  void enableAutomaticFeatures();
-
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
   // allows process control
   void daemonize();
+
+  // disables all features that depend on other features, which, themselves
+  // are disabled
+  void disableDependentFeatures();
 
   // allows features to prepare themselves
   void prepare();

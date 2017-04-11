@@ -30,11 +30,14 @@
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Indexes/Index.h"
 #include "VocBase/SingleServerTraverser.h"
+#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb::transaction;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
+using TraverserOptions = arangodb::traverser::TraverserOptions;
 
 arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo()
     : expression(nullptr),
@@ -94,7 +97,6 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
         "Each lookup requires expression to be an object");
   }
 
-
   expression = new aql::Expression(query->ast(), read);
 
   read = info.get("condition");
@@ -113,7 +115,7 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
       indexCondition(other.indexCondition),
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
-  expression = other.expression->clone();
+  expression = other.expression->clone(nullptr);
 }
 
 void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
@@ -137,14 +139,48 @@ void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
   result.close();
 }
 
+double arangodb::traverser::TraverserOptions::LookupInfo::estimateCost(size_t& nrItems) const {
+  // If we do not have an index yet we cannot do anything.
+  // Should NOT be the case
+  TRI_ASSERT(!idxHandles.empty());
+  auto idx = idxHandles[0].getIndex();
+  if (idx->hasSelectivityEstimate()) {
+    double expected = 1 / idx->selectivityEstimate();
+    nrItems += static_cast<size_t>(expected);
+    return expected;
+  }
+  // Some hard-coded value
+  nrItems += 1000;
+  return 1000.0;
+}
+
+arangodb::traverser::TraverserCache* arangodb::traverser::TraverserOptions::cache() const {
+  return _cache.get();
+}
+
+arangodb::traverser::TraverserOptions::TraverserOptions(transaction::Methods* trx)
+      : _trx(trx),
+        _baseVertexExpression(nullptr),
+        _tmpVar(nullptr),
+        _ctx(new aql::FixedVarExpressionContext()),
+        _traverser(nullptr),
+        _isCoordinator(trx->state()->isCoordinator()),
+        _cache(new TraverserCache(trx)),
+        minDepth(1),
+        maxDepth(1),
+        useBreadthFirst(false),
+        uniqueVertices(UniquenessLevel::NONE),
+        uniqueEdges(UniquenessLevel::PATH) {}
+
 arangodb::traverser::TraverserOptions::TraverserOptions(
-    arangodb::Transaction* trx, VPackSlice const& slice)
+    transaction::Methods* trx, VPackSlice const& slice)
     : _trx(trx),
       _baseVertexExpression(nullptr),
       _tmpVar(nullptr),
       _ctx(new aql::FixedVarExpressionContext()),
       _traverser(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _cache(new TraverserCache(trx)),
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
@@ -198,6 +234,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       _ctx(new aql::FixedVarExpressionContext()),
       _traverser(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _cache(new TraverserCache(_trx)),
       minDepth(1),
       maxDepth(1),
       useBreadthFirst(false),
@@ -296,7 +333,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
     }
     _depthLookupInfo.reserve(read.length());
     for (auto const& depth : VPackObjectIterator(read)) {
-      size_t d = basics::StringUtils::uint64(depth.key.copyString());
+      uint64_t d = basics::StringUtils::uint64(depth.key.copyString());
       auto it = _depthLookupInfo.emplace(d, std::vector<LookupInfo>());
       TRI_ASSERT(it.second);
       VPackSlice list = depth.value;
@@ -318,7 +355,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
 
     _vertexExpressions.reserve(read.length());
     for (auto const& info : VPackObjectIterator(read)) {
-      size_t d = basics::StringUtils::uint64(info.key.copyString());
+      uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINAINER_MODE
       auto it = _vertexExpressions.emplace(
           d, new aql::Expression(query->ast(), info.value));
@@ -356,6 +393,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       _ctx(new aql::FixedVarExpressionContext()),
       _traverser(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _cache(new TraverserCache(_trx)),
       minDepth(other.minDepth),
       maxDepth(other.maxDepth),
       useBreadthFirst(other.useBreadthFirst),
@@ -528,7 +566,7 @@ void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result
 }
 
 bool arangodb::traverser::TraverserOptions::vertexHasFilter(
-    size_t depth) const {
+    uint64_t depth) const {
   if (_baseVertexExpression != nullptr) {
     return true;
   }
@@ -536,8 +574,8 @@ bool arangodb::traverser::TraverserOptions::vertexHasFilter(
 }
 
 bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
-    arangodb::velocypack::Slice edge, arangodb::velocypack::Slice vertex,
-    size_t depth, size_t cursorId) const {
+    arangodb::velocypack::Slice edge, StringRef vertexId,
+    uint64_t depth, size_t cursorId) const {
   if (_isCoordinator) {
     // The Coordinator never checks conditions. The DBServer is responsible!
     return true;
@@ -558,9 +596,6 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
   if (expression != nullptr) {
     TRI_ASSERT(!expression->isV8());
     expression->setVariable(_tmpVar, edge);
-  
-    VPackValueLength vidLength;
-    char const* vid = vertex.getString(vidLength);
 
     // inject _from/_to value
     auto node = expression->nodeForModification();
@@ -574,7 +609,7 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
     idNode->stealComputedValue();
-    idNode->setStringValue(vid, vidLength);
+    idNode->setStringValue(vertexId.data(), vertexId.length());
 
     bool mustDestroy = false;
     aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
@@ -589,7 +624,7 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
 }
 
 bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
-    arangodb::velocypack::Slice vertex, size_t depth) const {
+    arangodb::velocypack::Slice vertex, uint64_t depth) const {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _vertexExpressions.find(depth);
@@ -619,10 +654,10 @@ bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
 
 arangodb::traverser::EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
-                                                  VPackSlice vertex,
-                                                  size_t depth) const {
+                                                  StringRef vid,
+                                                  uint64_t depth) {
   if (_isCoordinator) {
-    return nextCursorCoordinator(vertex, depth);
+    return nextCursorCoordinator(vid, depth);
   }
   TRI_ASSERT(mmdr != nullptr);
   auto specific = _depthLookupInfo.find(depth);
@@ -632,17 +667,15 @@ arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
   } else {
     list = _baseLookupInfos;
   }
-  return nextCursorLocal(mmdr, vertex, depth, list);
+  return nextCursorLocal(mmdr, vid, depth, list);
 }
 
 arangodb::traverser::EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
-    VPackSlice vertex, size_t depth, std::vector<LookupInfo>& list) const {
+    StringRef vid, uint64_t depth, std::vector<LookupInfo>& list) {
   TRI_ASSERT(mmdr != nullptr);
-  auto allCursor = std::make_unique<SingleServerEdgeCursor>(mmdr, _trx, list.size());
+  auto allCursor = std::make_unique<SingleServerEdgeCursor>(mmdr, this, list.size());
   auto& opCursors = allCursor->getCursors();
-  VPackValueLength vidLength;
-  char const* vid = vertex.getString(vidLength);
   for (auto& info : list) {
     auto& node = info.indexCondition;
     TRI_ASSERT(node->numMembers() > 0);
@@ -655,7 +688,7 @@ arangodb::traverser::TraverserOptions::nextCursorLocal(ManagedDocumentResult* mm
       auto idNode = dirCmp->getMemberUnchecked(1);
       TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
       TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-      idNode->setStringValue(vid, vidLength);
+      idNode->setStringValue(vid.data(), vid.length());
     }
     std::vector<OperationCursor*> csrs;
     csrs.reserve(info.idxHandles.size());
@@ -670,9 +703,9 @@ arangodb::traverser::TraverserOptions::nextCursorLocal(ManagedDocumentResult* mm
 
 arangodb::traverser::EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursorCoordinator(
-    VPackSlice vertex, size_t depth) const {
+    StringRef vid, uint64_t depth) {
   TRI_ASSERT(_traverser != nullptr);
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vertex, depth, _traverser);
+  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, depth, _traverser);
   return cursor.release();
 }
 
@@ -696,3 +729,36 @@ void arangodb::traverser::TraverserOptions::serializeVariables(
   _ctx->serializeAllVariables(_trx, builder);
 }
 
+double arangodb::traverser::TraverserOptions::costForLookupInfoList(
+    std::vector<arangodb::traverser::TraverserOptions::LookupInfo> const& list,
+    size_t& createItems) const {
+  double cost = 0;
+  createItems = 0;
+  for (auto const& li : list) {
+    cost += li.estimateCost(createItems);
+  }
+  return cost;
+}
+
+double arangodb::traverser::TraverserOptions::estimateCost(size_t& nrItems) const {
+  size_t count = 1;
+  double cost = 0;
+  size_t baseCreateItems = 0;
+  double baseCost = costForLookupInfoList(_baseLookupInfos, baseCreateItems);
+
+  for (uint64_t depth = 0; depth < maxDepth; ++depth) {
+    auto liList = _depthLookupInfo.find(depth);
+    if (liList == _depthLookupInfo.end()) {
+      // No LookupInfo for this depth use base
+      cost += baseCost * count;
+      count *= baseCreateItems;
+    } else {
+      size_t createItems = 0;
+      double depthCost = costForLookupInfoList(liList->second, createItems);
+      cost += depthCost * count;
+      count *= createItems;
+    }
+  }
+  nrItems = count;
+  return cost;
+}

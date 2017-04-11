@@ -30,6 +30,7 @@ compile_commands.json
 instanceinfo.json
 testresult.json
 testsStarted
+soc-pokec-*
 
 build.sh
 build*/
@@ -41,6 +42,7 @@ Release64/
 Release32/
 WindowsLibraries/
 cluster/
+p/
 
 core
 TAGS
@@ -72,6 +74,7 @@ Installation/MacOSX/Bundle/Info.plist
 
 nbproject/
 .idea
+.vscode
 
 test.cpp.txt
 
@@ -97,14 +100,11 @@ js/apps/system/_admin/aardvark/APP/frontend/build/libs.js.gz
 js/apps/system/_admin/aardvark/APP/frontend/build/style.css
 js/apps/system/_admin/aardvark/APP/frontend/build/scripts.html.part
 
-3rdParty/boost/1.61.0/b2
-3rdParty/boost/1.61.0/bin.v2/
-3rdParty/boost/1.61.0/bjam
-3rdParty/boost/1.61.0/project-config.jam
-3rdParty/boost/1.61.0/stage/
+js/common/tests/shell/shell-database.js
 
 .gdb-history
 npm-debug.log
 
 log-*
 data-*
+cluster-init

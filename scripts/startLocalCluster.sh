@@ -1,119 +1,6 @@
 #!/bin/bash
 
-function help() {
-  echo "USAGE: scripts/startLocalCluster.sh [options]"
-  echo ""
-  echo "OPTIONS:"
-  echo "  -a/--nagents            # agents            (odd integer      default: 1))"
-  echo "  -c/--ncoordinators      # coordinators      (odd integer      default: 1))"
-  echo "  -d/--ndbservers         # db servers        (odd integer      default: 2))"
-  echo "  -s/--secondaries        Start secondaries   (0|1              default: 0)"
-  echo "  -t/--transport          Protocol            (ssl|tcp          default: tcp)"
-  echo "  -j/--jwt-secret         JWT-Secret          (string           default: )"
-  echo "     --log-level-agency   Log level (agency)  (string           default: )"
-  echo "     --log-level-cluster  Log level (cluster) (string           default: )"
-  echo "  -i/--interactive        Interactive mode    (C|D|R            default: '')"
-  echo "  -x/--xterm              XTerm command       (default: xterm)"
-  echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
-  echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
-  echo ""
-  echo "EXAMPLES:"
-  echo "  scripts/startLocalCluster.sh"
-  echo "  scripts/startLocalCluster.sh -a 1 -c 1 -d 3 -t ssl"
-  echo "  scripts/startLocalCluster.sh -a 3 -c 1 -d 2 -t tcp -i C"
-  
-}
-
-# defaults
-NRAGENTS=1
-NRDBSERVERS=2
-NRCOORDINATORS=1
-POOLSZ=""
-TRANSPORT="tcp"
-LOG_LEVEL="INFO"
-LOG_LEVEL_AGENCY=""
-LOG_LEVEL_CLUSTER=""
-if [ -z "$XTERM" ] ; then
-    XTERM="x-terminal-emulator"
-fi
-if [ -z "$XTERMOPTIONS" ] ; then
-    XTERMOPTIONS="--geometry=80x43"
-fi
-SECONDARIES=0
-BUILD="build"
-JWT_SECRET=""
-PORT_OFFSET=0
-
-while [[ ${1} ]]; do
-    case "${1}" in
-    -a|--agency-size)
-      NRAGENTS=${2}
-      shift
-      ;;
-    -c|--ncoordinators)
-      NRCOORDINATORS=${2}
-      shift
-      ;;
-    -d|--ndbservers)
-      NRDBSERVERS=${2}
-      shift
-      ;;
-    -s|--secondaries)
-      SECONDARIES=${2}
-      shift
-      ;;
-    -t|--transport)
-      TRANSPORT=${2}
-      shift
-      ;;
-    --log-level-agency)
-      LOG_LEVEL_AGENCY=${2}
-      shift
-      ;;
-    --log-level-cluster)
-      LOG_LEVEL_CLUSTER=${2}
-      shift
-      ;;
-    -i|--interactive)
-      INTERACTIVE_MODE=${2}
-      shift
-      ;;
-    -j|--jwt-secret)
-      JWT_SECRET=${2}
-      shift
-      ;;
-    -x|--xterm)
-      XTERM=${2}
-      shift
-      ;;
-    -o|--xterm-options)
-      XTERMOPTIONS=${2}
-      shift
-      ;;
-    -b|--port-offset)
-      PORT_OFFSET=${2}
-      shift
-      ;;
-    -h|--help)
-      help
-      exit 1  
-      ;;
-    -B|--build)
-      BUILD=${2}
-      shift
-      ;;
-    *)
-      echo "Unknown parameter: ${1}" >&2
-      help
-      exit 1
-      ;;
-  esac
-  
-  if ! shift; then
-    echo 'Missing parameter argument.' >&2
-    return 1
-  fi
-done
+. `dirname $0`/cluster-run-common.sh
 
 if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
@@ -155,8 +42,10 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
 fi
 
 SFRE=5.0
-COMP=2000
-KEEP=0
+COMP=200000
+KEEP=500
+MINT=0.2
+MAXT=1.0
 AG_BASE=$(( $PORT_OFFSET + 4001 ))
 CO_BASE=$(( $PORT_OFFSET + 8530 ))
 DB_BASE=$(( $PORT_OFFSET + 8629 ))
@@ -193,6 +82,8 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.activate true \
         --agency.compaction-step-size $COMP \
         --agency.compaction-keep-size $KEEP \
+        --agency.election-timeout-min $MINT \
+        --agency.election-timeout-max $MAXT \
         --agency.endpoint $TRANSPORT://localhost:$AG_BASE \
         --agency.my-address $TRANSPORT://localhost:$port \
         --agency.pool-size $NRAGENTS \
@@ -233,6 +124,8 @@ start() {
        --database.directory cluster/data$PORT \
        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
+       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
+       --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
@@ -346,6 +239,8 @@ for p in `seq $DB_BASE $PORTTOPDB` ; do
         start dbserver $p
     fi
 done
+
+if [ "$NRCOORDINATORS" -gt 0 ] ; then
 PORTTOPCO=`expr $CO_BASE + $NRCOORDINATORS - 1`
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     if [ "$CLUSTERDEBUGGER" == "1" ] ; then
@@ -358,6 +253,7 @@ for p in `seq $CO_BASE $PORTTOPCO` ; do
         start coordinator $p
     fi
 done
+fi
 
 if [ "$CLUSTERDEBUGGER" == "1" ] ; then
     echo Waiting for you to setup debugger windows, hit RETURN to continue!
@@ -387,20 +283,25 @@ testServer() {
 for p in `seq $DB_BASE $PORTTOPDB` ; do
     testServer $p
 done
+
+if [ "$NRCOORDINATORS" -gt 0 ] ; then
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     testServer $p
 done
+fi
 
 if [ "$SECONDARIES" == "1" ] ; then
     let index=1
     PORTTOPSE=`expr 8729 + $NRDBSERVERS - 1` 
     for PORT in `seq 8729 $PORTTOPSE` ; do
+        let dbserverindex=$index-1
         mkdir cluster/data$PORT
         
         CLUSTER_ID="Secondary$index"
         
-        echo Registering secondary $CLUSTER_ID for "DBServer$index"
-        curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:$CO_BASE/_admin/cluster/replaceSecondary
+        DBSERVER_ID=$(curl -s 127.0.0.1:$CO_BASE/_admin/cluster/health | jq '.Health | to_entries | map(select(.value.Role == "DBServer")) | .' | jq -r ".[$dbserverindex].key")
+        echo Registering secondary $CLUSTER_ID for $DBSERVER_ID
+        curl -s -f -X PUT --data "{\"primary\": \"$DBSERVER_ID\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:$CO_BASE/_admin/cluster/replaceSecondary
         echo Starting Secondary $CLUSTER_ID on port $PORT
         ${BUILD}/bin/arangod \
             -c none \
@@ -423,7 +324,9 @@ if [ "$SECONDARIES" == "1" ] ; then
 fi
 
 echo Done, your cluster is ready at
+if [ "$NRCOORDINATORS" -gt 0 ] ; then
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://127.0.0.1:$p"
 done
+fi
 

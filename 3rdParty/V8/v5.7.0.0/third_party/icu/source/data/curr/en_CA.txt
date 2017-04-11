@@ -1,0 +1,18 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_CA{
+    %%Parent{"en_001"}
+    Currencies{
+        CAD{
+            "$",
+            "Canadian Dollar",
+        }
+    }
+    CurrencyPlurals{
+        ILS{
+            one{"Israeli new sheqel"}
+            other{"Israeli new sheqels"}
+        }
+    }
+    Version{"2.1.29.54"}
+}

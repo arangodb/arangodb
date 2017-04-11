@@ -1,5 +1,5 @@
 ################################################################################
-# the client package is a complete cmake sub package.
+# the debug package is a complete cmake sub package.
 ################################################################################
 project(PACKAGE-DBG)
 cmake_minimum_required(VERSION 2.8)
@@ -14,6 +14,9 @@ set(CROSS_COMPILING @CROSS_COMPILING@)
 
 set(CMAKE_INSTALL_BINDIR @CMAKE_INSTALL_BINDIR@)
 set(CMAKE_INSTALL_FULL_BINDIR @CMAKE_INSTALL_FULL_BINDIR@)
+
+set(CMAKE_INSTALL_SBINDIR @CMAKE_INSTALL_SBINDIR@)
+set(CMAKE_INSTALL_FULL_SBINDIR @CMAKE_INSTALL_FULL_SBINDIR@)
 
 set(CMAKE_INSTALL_DATAROOTDIR @CMAKE_INSTALL_DATAROOTDIR@)
 set(CMAKE_INSTALL_DATAROOTDIR_ARANGO @CMAKE_INSTALL_DATAROOTDIR_ARANGO@)
@@ -30,6 +33,8 @@ set(CMAKE_INSTALL_DEBINFO_DIR @CMAKE_INSTALL_DEBINFO_DIR@)
 
 set(CMAKE_OBJCOPY @CMAKE_OBJCOPY@)
 
+set(FILE_EXECUTABLE @FILE_EXECUTABLE@)
+
 set(INSTALL_CONFIGFILES_LIST)
 set(PACKAGING_HANDLE_CONFIG_FILES false)
 
@@ -40,11 +45,12 @@ set(BIN_ARANGOD @BIN_ARANGOD@)
 
 set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
 set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
+set(BIN_ARANGOEXPORT @BIN_ARANGOEXPORT@)
 set(BIN_ARANGOIMP @BIN_ARANGOIMP@)
 set(BIN_ARANGORESTORE @BIN_ARANGORESTORE@)
 set(BIN_ARANGOSH @BIN_ARANGOSH@)
 set(BIN_ARANGOVPACK @BIN_ARANGOVPACK@)
-
+# set(CPACK_DEBIAN_PACKAGE_DEBUG TRUE)
 ################################################################################
 #   build specific variables:
 ################################################################################
@@ -70,7 +76,7 @@ set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
 set(CPACK_PACKAGE_VENDOR  "${ARANGODB_PACKAGE_VENDOR}")
 set(CPACK_PACKAGE_CONTACT ${ARANGODB_PACKAGE_CONTACT})
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${ARANGODB_URL_INFO_ABOUT})
-set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS OFF)
 set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 set(CPACK_COMPONENTS_ALL debian-extras)
 set(CPACK_GENERATOR "DEB")
@@ -102,7 +108,7 @@ else()
 endif()
 
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${ARANGODB_PACKAGE_ARCHITECTURE})
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+set(CPACK_PACKAGE_FILE_NAME @ARANGODB_DBG_PACKAGE_FILE_NAME@)
 
 ################################################################################
 # Install the external files into the package directory:
@@ -110,6 +116,7 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${AR
 
 
 set(INSTALL_MACROS_NO_TARGET_INSTALL TRUE)
+include(${ORIGINAL_SOURCE_DIR}/cmake/debugInformation.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangosh/dbg.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangod/dbg.cmake)

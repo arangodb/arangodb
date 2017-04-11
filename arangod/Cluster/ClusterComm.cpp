@@ -26,6 +26,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
@@ -34,10 +35,28 @@
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
+#include <thread>
+
 using namespace arangodb;
+using namespace arangodb::communicator;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief the pointer to the singleton instance
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<ClusterComm> arangodb::ClusterComm::_theInstance;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief the following atomic int is 0 in the beginning, is set to 1
+/// if some thread initializes the singleton and is 2 once _theInstance
+/// is set. Note that after a shutdown has happened, _theInstance can be
+/// a nullptr, which means no new ClusterComm operations can be started.
+//////////////////////////////////////////////////////////////////////////////
+
+std::atomic<int> arangodb::ClusterComm::_theInstanceInit(0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief routine to set the destination
@@ -234,9 +253,38 @@ ClusterComm::~ClusterComm() {
 /// @brief getter for our singleton instance
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterComm* ClusterComm::instance() {
-  static ClusterComm* Instance = new ClusterComm();
-  return Instance;
+std::shared_ptr<ClusterComm> ClusterComm::instance() {
+  int state = _theInstanceInit;
+  if (state < 2) {
+    // Try to set from 0 to 1:
+    while (state == 0) {
+      if (_theInstanceInit.compare_exchange_weak(state, 1)) {
+        break;
+      }
+    }
+    // Now _state is either 0 (in which case we have changed _theInstanceInit
+    // to 1, or is 1, in which case somebody else has set it to 1 and is working
+    // to initialize the singleton, or is 2, in which case somebody else has 
+    // done all the work and we are done:
+    if (state == 0) {
+      // we must initialize (cannot use std::make_shared here because
+      // constructor is private), if we throw here, everything is broken:
+      ClusterComm* cc = new ClusterComm();
+      _theInstance = std::shared_ptr<ClusterComm>(cc);
+      _theInstanceInit = 2;
+    } else if (state == 1) {
+      while (_theInstanceInit < 2) {
+        std::this_thread::yield();
+      }
+    }
+  }
+  // We want to achieve by other means that nobody requests a copy of the
+  // shared_ptr when the singleton is already destroyed. Therefore we put
+  // an assertion despite the fact that we have checks for nullptr in
+  // all places that call this method. Assertions have no effect in released
+  // code at the customer's site.
+  TRI_ASSERT(_theInstance != nullptr);
+  return _theInstance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,7 +292,7 @@ ClusterComm* ClusterComm::instance() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::initialize() {
-  auto* i = instance();
+  auto i = instance();   // this will create the static instance
   i->startBackgroundThread();
 }
 
@@ -253,10 +301,8 @@ void ClusterComm::initialize() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanup() {
-  auto i = instance();
-  TRI_ASSERT(i != nullptr);
-
-  delete i;
+  _theInstance.reset();    // no more operations will be started, but running
+                           // ones have their copy of the shared_ptr
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,10 +620,9 @@ ClusterCommResult const ClusterComm::wait(
   ResponseIterator i;
   AsyncResponse response;
 
-  // tell Dispatcher that we are waiting:
+  // tell scheduler that we are waiting:
   JobGuard guard{SchedulerFeature::SCHEDULER};
   guard.block();
-
 
   CONDITION_LOCKER(locker, somethingReceived);
   if (ticketId == 0) {
@@ -747,7 +792,7 @@ void ClusterComm::cleanupAllQueues() {
 }
 
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
-  _cc = ClusterComm::instance();
+  _cc = ClusterComm::instance().get();
 }
 
 ClusterCommThread::~ClusterCommThread() { shutdown(); }
@@ -757,14 +802,15 @@ ClusterCommThread::~ClusterCommThread() { shutdown(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommThread::beginShutdown() {
+  // Note that this is called from the destructor of the ClusterComm singleton
+  // object. This means that our pointer _cc is still valid and the condition
+  // variable in it is still OK. However, this method is called from a 
+  // different thread than the ClusterCommThread. Therefore we can still 
+  // use the condition variable to wake up the ClusterCommThread.
   Thread::beginShutdown();
 
-  ClusterComm* cc = ClusterComm::instance();
-
-  if (cc != nullptr) {
-    CONDITION_LOCKER(guard, cc->somethingToSend);
-    guard.signal();
-  }
+  CONDITION_LOCKER(guard, _cc->somethingToSend);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1034,11 +1080,11 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 
   std::unordered_map<std::string, std::string> headersCopy(headerFields);
   if (destination.substr(0, 6) == "shard:") {
-    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    if (CollectionLockState::_noLockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
-      auto it = arangodb::Transaction::_makeNolockHeaders->find(result->shardID);
-      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      auto it = CollectionLockState::_noLockHeaders->find(result->shardID);
+      if (it != CollectionLockState::_noLockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found our shard\n";
         headersCopy["X-Arango-Nolock"] = result->shardID;
@@ -1109,9 +1155,9 @@ void ClusterCommThread::run() {
       _cc->communicator()->work_once();
       _cc->communicator()->wait();
     } catch (std::exception const& ex) {
-      LOG(ERR) << "caught exception in ClusterCommThread: " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in ClusterCommThread: " << ex.what();
     } catch (...) {
-      LOG(ERR) << "caught unknown exception in ClusterCommThread";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in ClusterCommThread";
     }
   }
   _cc->communicator()->abortRequests();

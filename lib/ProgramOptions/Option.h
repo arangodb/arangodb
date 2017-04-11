@@ -84,6 +84,11 @@ struct Option {
       if (obsolete) {
         value += " (obsolete option)";
       } else {
+        std::string description = parameter->description();
+        if (!description.empty()) {
+          value.append(". ");
+          value.append(description);
+        }
         value += " (default: " + parameter->valueString() + ")";
       }
       auto parts = wordwrap(value, tw - ow - 6);

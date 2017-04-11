@@ -83,7 +83,8 @@ function versionJsonJson() {
   expect(obj).to.have.property('license');
 
   expect(obj.server).to.be('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
+  
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
@@ -108,7 +109,7 @@ function versionVpackJson() {
   expect(obj).to.have.property('license');
 
   expect(obj.server).to.be('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
@@ -133,7 +134,7 @@ function versionJsonVpack () {
   expect(obj).to.have.property('license');
 
   expect(obj.server).to.be('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
@@ -158,11 +159,10 @@ function versionVpackVpack () {
   expect(obj).to.have.property('license');
 
   expect(obj.server).to.be('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
-///////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////
 
 function echoVpackVpack () {
@@ -179,12 +179,7 @@ function echoVpackVpack () {
   expect(res).to.be.a(request.Response);
   expect(res.body).to.be.a('string');
   expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-  //var obj = JSON.parse(res.body);
-  //print_vpack_as_json(res.body);
-  //expect(VPACK_TO_V8().to.equal();
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite

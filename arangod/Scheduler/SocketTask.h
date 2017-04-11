@@ -55,21 +55,13 @@ class SocketTask : virtual public Task {
 
   virtual ~SocketTask();
 
-  std::unique_ptr<Socket> releasePeer() {
-    _abandoned = true;
-    return std::move(_peer);
-  }
-
-  ConnectionInfo&& releaseConnectionInfo() {
-    _abandoned = true;
-    return std::move(_connectionInfo);
-  }
-
  public:
   void start();
 
  protected:
+  // caller will hold the _readLock
   virtual bool processRead(double start_time) = 0;
+  virtual void compactify() {}
 
   // This function is used during the protocol switch from http
   // to VelocyStream. This way we no not require additional
@@ -83,6 +75,30 @@ class SocketTask : virtual public Task {
 
     WriteBuffer(basics::StringBuffer* buffer, RequestStatistics* statistics)
         : _buffer(buffer), _statistics(statistics) {}
+    
+    WriteBuffer(WriteBuffer const&) = delete;
+    WriteBuffer& operator=(WriteBuffer const&) = delete;
+
+    WriteBuffer(WriteBuffer&& other) 
+        : _buffer(other._buffer), _statistics(other._statistics) {
+      other._buffer = nullptr;
+      other._statistics = nullptr;
+    }
+
+    WriteBuffer& operator=(WriteBuffer&& other) {
+      if (this != &other) {
+        // release our own memory to prevent memleaks
+        release();
+
+        // take over ownership from other
+        _buffer = other._buffer;
+        _statistics = other._statistics;
+        // fix other
+        other._buffer = nullptr;
+        other._statistics = nullptr;
+      }
+      return *this;
+    }
 
     ~WriteBuffer() { release(); }
 
@@ -108,12 +124,16 @@ class SocketTask : virtual public Task {
     }
   };
 
+  // will acquire the _writeLock
   void addWriteBuffer(WriteBuffer&);
-  void writeWriteBuffer();
 
+  // will acquire the _writeLock
   void closeStream();
 
+  // will acquire the _writeLock
   void resetKeepAlive();
+
+  // will acquire the _writeLock
   void cancelKeepAlive();
 
  protected:
@@ -121,16 +141,26 @@ class SocketTask : virtual public Task {
   ConnectionInfo _connectionInfo;
 
   Mutex _readLock;
-  basics::StringBuffer _readBuffer;
+  basics::StringBuffer _readBuffer; // needs _readLock
 
  private:
+  // caller must hold the _writeLock
+  void closeStreamNoLock();
+
+  void writeWriteBuffer();
   bool completedWriteBuffer();
 
+  bool reserveMemory();
+  bool trySyncRead();
+  bool processAll();
+  void asyncReadSome();
+  void closeReceiveStream();
+
+ private:
   Mutex _writeLock;
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
 
- protected:
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
   boost::asio::deadline_timer _keepAliveTimer;
@@ -139,14 +169,6 @@ class SocketTask : virtual public Task {
   bool _closeRequested;
   std::atomic_bool _abandoned;
 
- private:
-  bool reserveMemory();
-  bool trySyncRead();
-  bool processAll();
-  void asyncReadSome();
-  void closeReceiveStream();
-
- private:
   bool _closedSend = false;
   bool _closedReceive = false;
 };

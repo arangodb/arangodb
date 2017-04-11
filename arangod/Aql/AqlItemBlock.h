@@ -32,6 +32,7 @@
 
 namespace arangodb {
 namespace aql {
+class BlockCollector;
 
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
@@ -228,9 +229,19 @@ class AqlItemBlock {
 
   /// @brief getter for _nrItems
   inline size_t size() const { return _nrItems; }
+  
+  inline size_t capacity() const { return _data.size(); }
 
   /// @brief shrink the block to the specified number of rows
-  void shrink(size_t nrItems);
+  /// if sweep is set, then the superfluous rows are cleaned
+  /// if sweep is not set, the caller has to ensure that the
+  /// superfluous rows are empty
+  void shrink(size_t nrItems, bool sweep);
+
+  /// @brief rescales the block to the specified dimensions
+  /// note that the block should be empty before rescaling to prevent
+  /// losses of still managed AqlValues 
+  void rescale(size_t nrItems, RegisterId nrRegs);
 
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.
@@ -254,6 +265,9 @@ class AqlItemBlock {
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
   AqlItemBlock* steal(std::vector<size_t> const& chosen, size_t from, size_t to);
+  
+  /// @brief concatenate multiple blocks from a collector
+  static AqlItemBlock* concatenate(ResourceMonitor*, BlockCollector* collector);
 
   /// @brief concatenate multiple blocks, note that the new block now owns all
   /// AqlValue pointers in the old blocks, therefore, the latter are all
@@ -262,7 +276,7 @@ class AqlItemBlock {
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
-  void toVelocyPack(arangodb::Transaction* trx,
+  void toVelocyPack(transaction::Methods* trx,
                     arangodb::velocypack::Builder&) const;
 
  private:
@@ -281,7 +295,7 @@ class AqlItemBlock {
   /// @brief _nrItems, number of rows
   size_t _nrItems;
 
-  /// @brief _nrRegs, number of rows
+  /// @brief _nrRegs, number of columns
   RegisterId _nrRegs;
 
   /// @brief resources manager for this item block

@@ -23,6 +23,7 @@
 
 #include "VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
@@ -99,12 +100,12 @@ static int8_t const TypeWeights[256] = {
 struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
   void dump(VPackSlice const&, VPackDumper* dumper,
             VPackSlice const&) override {
-    LOG(WARN) << "DefaultCustomTypeHandler called";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "DefaultCustomTypeHandler called";
     dumper->appendString("hello from CustomTypeHandler");
   }
   std::string toString(VPackSlice const&, VPackOptions const*,
                        VPackSlice const&) override {
-    LOG(WARN) << "DefaultCustomTypeHandler called";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "DefaultCustomTypeHandler called";
     return "hello from CustomTypeHandler";
   }
 };
@@ -141,7 +142,7 @@ struct SystemAttributeExcludeHandler final
 
 /// @brief static initializer for all VPack values
 void VelocyPackHelper::initialize() {
-  LOG(TRACE) << "initializing vpack";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing vpack";
 
   // initialize attribute translator
   Translator.reset(new VPackAttributeTranslator);
@@ -638,44 +639,44 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     TRI_UnlinkFile(tmp.c_str());
   }
 
-  int fd = TRI_CREATE(tmp.c_str(),
+  int fd = TRI_TRACKED_CREATE_FILE(tmp.c_str(),
                       O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERR) << "cannot create json file '" << tmp
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create json file '" << tmp
              << "': " << TRI_LAST_ERROR_STR;
     return false;
   }
 
   if (!PrintVelocyPack(fd, slice, true)) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERR) << "cannot write to json file '" << tmp
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot write to json file '" << tmp
              << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
   }
 
   if (syncFile) {
-    LOG(TRACE) << "syncing tmp file '" << tmp << "'";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG(ERR) << "cannot sync saved json '" << tmp
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot sync saved json '" << tmp
                << "': " << TRI_LAST_ERROR_STR;
       TRI_UnlinkFile(tmp.c_str());
       return false;
     }
   }
 
-  int res = TRI_CLOSE(fd);
+  int res = TRI_TRACKED_CLOSE_FILE(fd);
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERR) << "cannot close saved file '" << tmp
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot close saved file '" << tmp
              << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
@@ -685,7 +686,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG(ERR) << "cannot rename saved file '" << tmp << "' to '" << filename
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot rename saved file '" << tmp << "' to '" << filename
              << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
 
@@ -731,10 +732,6 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
   auto lhsType = lhs.type();
 
   switch (lhsType) {
-    case VPackValueType::Illegal:
-    case VPackValueType::MinKey:
-    case VPackValueType::MaxKey:
-    case VPackValueType::None:
     case VPackValueType::Null:
       return 0;
     case VPackValueType::Bool: {
@@ -811,29 +808,61 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       return 0;
     }
     case VPackValueType::Object: {
-      std::set<std::string, AttributeSorterUTF8> keys;
-      VPackCollection::keys(lhs, keys);
-      VPackCollection::keys(rhs, keys);
-      for (auto const& key : keys) {
-        VPackSlice lhsValue = lhs.get(key).resolveExternal();
-        if (lhsValue.isNone()) {
-          // not present => null
-          lhsValue = VPackSlice::nullSlice();
-        }
-        VPackSlice rhsValue = rhs.get(key).resolveExternal();
-        if (rhsValue.isNone()) {
-          // not present => null
-          rhsValue = VPackSlice::nullSlice();
-        }
+      if (useUTF8) {
+        // must sort attributes by proper UTF8 values
+        // this is expensive
+        std::set<std::string, AttributeSorterUTF8> keys;
+        VPackCollection::keys(lhs, keys);
+        VPackCollection::keys(rhs, keys);
+        for (auto const& key : keys) {
+          VPackSlice lhsValue = lhs.get(key).resolveExternal();
+          if (lhsValue.isNone()) {
+            // not present => null
+            lhsValue = VPackSlice::nullSlice();
+          }
+          VPackSlice rhsValue = rhs.get(key).resolveExternal();
+          if (rhsValue.isNone()) {
+            // not present => null
+            rhsValue = VPackSlice::nullSlice();
+          }
 
-        int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
-        if (result != 0) {
-          return result;
+          int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
+          if (result != 0) {
+            return result;
+          }
+        }
+      } else {
+        // no UTF8-awareness is required here. do a quick and dirty comparison
+        std::set<std::string> keys;
+        VPackCollection::unorderedKeys(lhs, keys);
+        VPackCollection::unorderedKeys(rhs, keys);
+        for (auto const& key : keys) {
+          VPackSlice lhsValue = lhs.get(key).resolveExternal();
+          if (lhsValue.isNone()) {
+            // not present => null
+            lhsValue = VPackSlice::nullSlice();
+          }
+          VPackSlice rhsValue = rhs.get(key).resolveExternal();
+          if (rhsValue.isNone()) {
+            // not present => null
+            rhsValue = VPackSlice::nullSlice();
+          }
+
+          int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
+          if (result != 0) {
+            return result;
+          }
         }
       }
 
       return 0;
     }
+    case VPackValueType::Illegal:
+    case VPackValueType::MinKey:
+    case VPackValueType::MaxKey:
+    case VPackValueType::None:
+      // uncommon cases are compared at the end
+      return 0;
     default:
       // Contains all other ValueTypes of VelocyPack.
       // They are not used in ArangoDB so this cannot occur
@@ -970,41 +999,20 @@ uint64_t VelocyPackHelper::hashByAttributes(
 }
 #endif
 
-void VelocyPackHelper::SanitizeExternals(VPackSlice const input,
-                                         VPackBuilder& output) {
+bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, bool checkCustom) {
   if (input.isExternal()) {
-    // recursively resolve externals
-    SanitizeExternals(input.resolveExternal(), output);
+    return checkExternals;
+  } else if (input.isCustom()) {
+    return checkCustom;
   } else if (input.isObject()) {
-    output.openObject();
-    for (auto const& it : VPackObjectIterator(input)) {
-      output.add(VPackValue(it.key.copyString()));
-      SanitizeExternals(it.value, output);
-    }
-    output.close();
-  } else if (input.isArray()) {
-    output.openArray();
-    for (auto const& it : VPackArrayIterator(input)) {
-      SanitizeExternals(it, output);
-    }
-    output.close();
-  } else {
-    output.add(input);
-  }
-}
-
-bool VelocyPackHelper::hasExternals(VPackSlice input) {
-  if (input.isExternal()) {
-    return true;
-  } else if (input.isObject()) {
-    for (auto const& it : VPackObjectIterator(input)) {
-      if (hasExternals(it.value)) {
+    for (auto const& it : VPackObjectIterator(input, true)) {
+      if (hasNonClientTypes(it.value, checkExternals, checkCustom)) {
         return true;
       }
     }
   } else if (input.isArray()) {
     for (auto const& it : VPackArrayIterator(input)) {
-      if (hasExternals(it)) {
+      if (hasNonClientTypes(it, checkExternals, checkCustom)) {
         return true;
       }
     }
@@ -1012,16 +1020,50 @@ bool VelocyPackHelper::hasExternals(VPackSlice input) {
   return false;
 }
 
-VPackBuffer<uint8_t> VelocyPackHelper::sanitizeExternalsChecked(
-    VPackSlice input, VPackOptions const* options, bool checkExternals) {
+void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input,
+                                              VPackSlice base,
+                                              VPackBuilder& output,
+                                              VPackOptions const* options,
+                                              bool sanitizeExternals,
+                                              bool sanitizeCustom) {
+  if (sanitizeExternals && input.isExternal()) {
+    // recursively resolve externals
+    sanitizeNonClientTypes(input.resolveExternal(), base, output, options, sanitizeExternals, sanitizeCustom);
+  } else if (sanitizeCustom && input.isCustom()) {
+    if (options == nullptr || options->customTypeHandler == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot sanitize vpack without custom type handler"); 
+    }
+    std::string custom = options->customTypeHandler->toString(input, options, base);
+    output.add(VPackValue(custom));
+  } else if (input.isObject()) {
+    output.openObject();
+    for (auto const& it : VPackObjectIterator(input)) {
+      output.add(VPackValue(it.key.copyString()));
+      sanitizeNonClientTypes(it.value, input, output, options, sanitizeExternals, sanitizeCustom);
+    }
+    output.close();
+  } else if (input.isArray()) {
+    output.openArray();
+    for (auto const& it : VPackArrayIterator(input)) {
+      sanitizeNonClientTypes(it, input, output, options, sanitizeExternals, sanitizeCustom);
+    }
+    output.close();
+  } else {
+    output.add(input);
+  }
+}
+
+VPackBuffer<uint8_t> VelocyPackHelper::sanitizeNonClientTypesChecked(
+    VPackSlice input, VPackOptions const* options, bool sanitizeExternals, bool sanitizeCustom) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, options);
   bool resolveExt = true;
-  if (checkExternals) {
-    resolveExt = hasExternals(input);
+  if (sanitizeExternals) {
+    resolveExt = hasNonClientTypes(input, sanitizeExternals, sanitizeCustom);
   }
   if (resolveExt) {  // resolve
-    SanitizeExternals(input, builder);
+    buffer.reserve(input.byteSize()); // reserve space space already
+    sanitizeNonClientTypes(input, VPackSlice::noneSlice(), builder, options, sanitizeExternals, sanitizeCustom);
   } else {
     builder.add(input);
   }

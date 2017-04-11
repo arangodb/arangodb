@@ -25,6 +25,8 @@
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -33,8 +35,6 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
-#include "VocBase/replication-dump.h"
-#include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -54,15 +54,15 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::wal::LogfileManagerState const s =
-      arangodb::wal::LogfileManager::instance()->state();
+  MMFilesLogfileManagerState const s =
+      MMFilesLogfileManager::instance()->state();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   v8::Handle<v8::Object> state = v8::Object::New(isolate);
   state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
-  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, s.lastCommittedTick));
-  state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), V8TickId(isolate, s.lastAssignedTick));
+  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
+  state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
   state->Set(TRI_V8_ASCII_STRING("totalEvents"),
              v8::Number::New(isolate, static_cast<double>(s.numEvents + s.numEventsSync)));
   state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
@@ -91,7 +91,7 @@ static void JS_TickRangesLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)ranges.size());
   uint32_t i = 0;
@@ -102,8 +102,8 @@ static void JS_TickRangesLoggerReplication(
     df->ForceSet(TRI_V8_ASCII_STRING("datafile"),
                  TRI_V8_STD_STRING(it.filename));
     df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(it.state));
-    df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), V8TickId(isolate, it.tickMin));
-    df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), V8TickId(isolate, it.tickMax));
+    df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMin));
+    df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMax));
 
     result->Set(i++, df);
   }
@@ -121,7 +121,7 @@ static void JS_FirstTickLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
   TRI_voc_tick_t tick = UINT64_MAX;
 
@@ -139,7 +139,7 @@ static void JS_FirstTickLoggerReplication(
     TRI_V8_RETURN(v8::Null(isolate));
   }
 
-  TRI_V8_RETURN(V8TickId(isolate, tick));
+  TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_tick_t>(isolate, tick));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -163,13 +163,13 @@ static void JS_LastLoggerReplication(
         "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
     
-  auto transactionContext = std::make_shared<StandaloneTransactionContext>(vocbase);
+  auto transactionContext = std::make_shared<transaction::StandaloneContext>(vocbase);
 
-  TRI_replication_dump_t dump(transactionContext, 0, true, 0);
+  MMFilesReplicationDumpContext dump(transactionContext, 0, true, 0);
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
 
-  int res = TRI_DumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
+  int res = MMFilesDumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
                                    0, tickStart, tickEnd, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -209,7 +209,11 @@ void addReplicationAuthentication(v8::Isolate* isolate,
   if (!hasUsernamePassword) {
     auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
     if (cluster->isEnabled()) {
-      config._jwt = ClusterComm::instance()->jwt();
+      auto cc = ClusterComm::instance();
+      if (cc != nullptr) {
+        // nullptr happens only during controlled shutdown
+        config._jwt = ClusterComm::instance()->jwt();
+      }
     }
   }
 }
@@ -347,11 +351,11 @@ static void JS_SynchronizeReplication(
 
     if (keepBarrier) {
       result->Set(TRI_V8_ASCII_STRING("barrierId"),
-                  V8TickId(isolate, syncer.stealBarrier()));
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.stealBarrier()));
     }
 
     result->Set(TRI_V8_ASCII_STRING("lastLogTick"),
-                V8TickId(isolate, syncer.getLastLogTick()));
+                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.getLastLogTick()));
 
     std::map<TRI_voc_cid_t, std::string>::const_iterator it;
     std::map<TRI_voc_cid_t, std::string> const& c =
@@ -835,37 +839,37 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
                            TRI_vocbase_t* vocbase,
                            size_t threadNumber, TRI_v8_global_t* v8g) {
   // replication functions. not intended to be used by end users
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_LOGGER_STATE"),
                                JS_StateLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_LOGGER_LAST"),
                                JS_LastLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_TICK_RANGES"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_TICK_RANGES"),
       JS_TickRangesLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_FIRST_TICK"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_FIRST_TICK"),
       JS_FirstTickLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_SYNCHRONIZE"),
                                JS_SynchronizeReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_SERVER_ID"),
                                JS_ServerIdReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_CONFIGURE"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_CONFIGURE"),
       JS_ConfigureApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_APPLIER_START"),
                                JS_StartApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_SHUTDOWN"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_SHUTDOWN"),
       JS_ShutdownApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_APPLIER_STATE"),
                                JS_StateApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_FORGET"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_FORGET"),
       JS_ForgetApplierReplication, true);
 }

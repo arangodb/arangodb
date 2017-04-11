@@ -87,7 +87,7 @@ function MovingShardsSuite () {
             database, c[i].name(), s)
         );
         let replicas = ccinfo.map(s => s.servers.length);
-        if (_.every(replicas, x => x === replFactor)) {
+        if (_.every(replicas, x => x >= replFactor)) {
           console.info("Replication up and running!");
           break;
         }
@@ -142,7 +142,7 @@ function MovingShardsSuite () {
     if (toCollNr === undefined) {
       toCollNr = c.length - 1;
     }
-    var count = 300;
+    var count = 600;
     var ok = false;
 
     console.info("Waiting for server " + id + " to be cleaned out ...");
@@ -163,7 +163,7 @@ function MovingShardsSuite () {
       }
 
       if (!ok) {
-        console.info(
+        console.error(
           "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
             + obj.cleanedServers + "]");
       }

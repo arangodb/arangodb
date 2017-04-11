@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -67,14 +68,14 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _result(result),
       _batchId(0),
       _clusterMode(false),
-      _stats{ 0, 0, 0 } {
+      _stats{0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
   startsAfter("Logger");
 
   _outputDirectory =
-      FileUtils::buildFilename(FileUtils::currentDirectory(), "dump");
+      FileUtils::buildFilename(FileUtils::currentDirectory().result(), "dump");
 }
 
 void DumpFeature::collectOptions(
@@ -117,8 +118,9 @@ void DumpFeature::collectOptions(
 
   options->addOption("--tick-end", "last tick to be included in data dump",
                      new UInt64Parameter(&_tickEnd));
-  
-  options->addOption("--compat28", "produce a dump compatible with ArangoDB 2.8",
+
+  options->addOption("--compat28",
+                     "produce a dump compatible with ArangoDB 2.8",
                      new BooleanParameter(&_compat28));
 }
 
@@ -130,8 +132,9 @@ void DumpFeature::validateOptions(
   if (1 == n) {
     _outputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG(FATAL) << "expecting at most one directory, got " +
-                      StringUtils::join(positionals, ", ");
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "expecting at most one directory, got " +
+               StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
 
@@ -144,7 +147,8 @@ void DumpFeature::validateOptions(
   }
 
   if (_tickStart < _tickEnd) {
-    LOG(FATAL) << "invalid values for --tick-start or --tick-end";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid values for --tick-start or --tick-end";
     FATAL_ERROR_EXIT();
   }
 
@@ -165,23 +169,28 @@ void DumpFeature::prepare() {
     isDirectory = TRI_IsDirectory(_outputDirectory.c_str());
 
     if (isDirectory) {
-      std::vector<std::string> files(TRI_FullTreeDirectory(_outputDirectory.c_str()));
+      std::vector<std::string> files(
+          TRI_FullTreeDirectory(_outputDirectory.c_str()));
       // we don't care if the target directory is empty
-      isEmptyDirectory = (files.size() <= 1); // TODO: TRI_FullTreeDirectory always returns at least one element (""), even if directory is empty?
+      isEmptyDirectory = (files.size() <= 1);  // TODO: TRI_FullTreeDirectory
+                                               // always returns at least one
+                                               // element (""), even if
+                                               // directory is empty?
     }
   }
 
   if (_outputDirectory.empty() ||
       (TRI_ExistsFile(_outputDirectory.c_str()) && !isDirectory)) {
-    LOG(FATAL) << "cannot write to output directory '" << _outputDirectory
-               << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot write to output directory '" << _outputDirectory << "'";
     FATAL_ERROR_EXIT();
   }
 
   if (isDirectory && !isEmptyDirectory && !_overwrite) {
-    LOG(FATAL) << "output directory '" << _outputDirectory
-               << "' already exists. use \"--overwrite true\" to "
-                  "overwrite data in it";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "output directory '" << _outputDirectory
+        << "' already exists. use \"--overwrite true\" to "
+           "overwrite data in it";
     FATAL_ERROR_EXIT();
   }
 
@@ -192,8 +201,9 @@ void DumpFeature::prepare() {
                                   errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to create output directory '" << _outputDirectory
-               << "': " << errorMessage;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "unable to create output directory '" << _outputDirectory
+          << "': " << errorMessage;
       FATAL_ERROR_EXIT();
     }
   }
@@ -209,9 +219,8 @@ int DumpFeature::startBatch(std::string DBserver, std::string& errorMsg) {
     urlExt = "?DBserver=" + DBserver;
   }
 
-  std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(rest::RequestType::POST, url + urlExt,
-                           body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+      rest::RequestType::POST, url + urlExt, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -262,9 +271,8 @@ void DumpFeature::extendBatch(std::string DBserver) {
     urlExt = "?DBserver=" + DBserver;
   }
 
-  std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(rest::RequestType::PUT, url + urlExt,
-                           body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+      rest::RequestType::PUT, url + urlExt, body.c_str(), body.size()));
 
   // ignore any return value
 }
@@ -294,8 +302,8 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
                                 std::string& errorMsg) {
   uint64_t chunkSize = _chunkSize;
 
-  std::string const baseUrl = "/_api/replication/dump?collection=" + cid +
-                              "&ticks=false&flush=false";
+  std::string const baseUrl =
+      "/_api/replication/dump?collection=" + cid + "&ticks=false&flush=false";
 
   uint64_t fromTick = _tickStart;
 
@@ -313,8 +321,8 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     _stats._totalBatches++;
 
-    std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-        rest::RequestType::GET, url, nullptr, 0));
+    std::unique_ptr<SimpleHttpResult> response(
+        _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -496,7 +504,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       TRI_UnlinkFile(fileName.c_str());
     }
 
-    fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                     S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
@@ -508,13 +516,13 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
     std::string const metaString = meta.slice().toJson();
     if (!TRI_WritePointer(fd, metaString.c_str(), metaString.size())) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
       errorMsg = "cannot write to file '" + fileName + "'";
 
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
 
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
   } catch (...) {
     errorMsg = "out of memory";
 
@@ -543,7 +551,8 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       return TRI_ERROR_INTERNAL;
     }
 
-    uint64_t const cid = arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
+    uint64_t const cid =
+        arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
         parameters, "name", "");
     bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -595,7 +604,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(),
+      fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
                       O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR);
 
@@ -609,13 +618,13 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
       if (!TRI_WritePointer(fd, collectionInfo.c_str(),
                             collectionInfo.size())) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
 
     if (_dumpData) {
@@ -631,7 +640,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(),
+      fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
                       O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR);
 
@@ -642,9 +651,10 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       extendBatch("");
-      int res = dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
+      int res =
+          dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
 
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (errorMsg.empty()) {
@@ -664,8 +674,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
                            std::string const& name, std::string& errorMsg) {
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
                               "&collection=" + name + "&chunkSize=" +
-                              StringUtils::itoa(_chunkSize) +
-                              "&ticks=false";
+                              StringUtils::itoa(_chunkSize) + "&ticks=false";
 
   uint64_t fromTick = 0;
   uint64_t maxTick = UINT64_MAX;
@@ -679,8 +688,8 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
     _stats._totalBatches++;
 
-    std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-        rest::RequestType::GET, url, nullptr, 0));
+    std::unique_ptr<SimpleHttpResult> response(
+        _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -825,7 +834,8 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       return TRI_ERROR_INTERNAL;
     }
 
-    uint64_t const cid = arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
+    uint64_t const cid =
+        arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
         parameters, "name", "");
     bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -869,7 +879,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_CREATE(fileName.c_str(),
+      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
                           O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                           S_IRUSR | S_IWUSR);
 
@@ -883,13 +893,13 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
       if (!TRI_WritePointer(fd, collectionInfo.c_str(),
                             collectionInfo.size())) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
 
     if (_dumpData) {
@@ -905,7 +915,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_CREATE(fileName.c_str(),
+      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
                           O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                           S_IRUSR | S_IWUSR);
 
@@ -926,7 +936,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
         if (!it.value.isArray() || it.value.length() == 0 ||
             !it.value[0].isString()) {
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
           errorMsg = "unexpected value for 'shards' attribute";
 
           return TRI_ERROR_BAD_PARAMETER;
@@ -940,18 +950,18 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         }
         res = startBatch(DBserver, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
           return res;
         }
         res = dumpShard(fd, DBserver, shardName, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
           return res;
         }
         endBatch(DBserver);
       }
 
-      res = TRI_CLOSE(fd);
+      res = TRI_TRACKED_CLOSE_FILE(fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (errorMsg.empty()) {
@@ -967,7 +977,9 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 }
 
 void DumpFeature::start() {
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>("Client");
+  ClientFeature* client =
+      application_features::ApplicationServer::getFeature<ClientFeature>(
+          "Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -975,22 +987,26 @@ void DumpFeature::start() {
   try {
     _httpClient = client->createHttpClient();
   } catch (...) {
-    LOG(FATAL) << "cannot create server connection, giving up!";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
   std::string dbName = client->databaseName();
 
-  _httpClient->setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
+  _httpClient->setLocationRewriter(static_cast<void*>(client),
+                                   &rewriteLocation);
   _httpClient->setUserNamePassword("/", client->username(), client->password());
 
   std::string const versionString = _httpClient->getServerVersion();
 
   if (!_httpClient->isConnected()) {
-    LOG(ERR) << "Could not connect to endpoint '" << client->endpoint()
-             << "', database: '" << dbName << "', username: '"
-             << client->username() << "'";
-    LOG(FATAL) << "Error message: '" << _httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Could not connect to endpoint '" << client->endpoint()
+        << "', database: '" << dbName << "', username: '" << client->username()
+        << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "Error message: '" << _httpClient->getErrorMessage() << "'";
 
     FATAL_ERROR_EXIT();
   }
@@ -1003,8 +1019,8 @@ void DumpFeature::start() {
 
   if (version.first < 3) {
     // we can connect to 3.x
-    LOG(ERR) << "Error: got incompatible server version '" << versionString
-             << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Error: got incompatible server version '" << versionString << "'";
 
     if (!_force) {
       FATAL_ERROR_EXIT();
@@ -1015,16 +1031,19 @@ void DumpFeature::start() {
 
   if (_clusterMode) {
     if (_tickStart != 0 || _tickEnd != 0) {
-      LOG(ERR) << "Error: cannot use tick-start or tick-end on a cluster";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Error: cannot use tick-start or tick-end on a cluster";
       FATAL_ERROR_EXIT();
     }
   }
 
   if (!_httpClient->isConnected()) {
-    LOG(ERR) << "Lost connection to endpoint '" << client->endpoint()
-             << "', database: '" << dbName << "', username: '"
-             << client->username() << "'";
-    LOG(FATAL) << "Error message: '" << _httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Lost connection to endpoint '" << client->endpoint()
+        << "', database: '" << dbName << "', username: '" << client->username()
+        << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "Error message: '" << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -1060,18 +1079,19 @@ void DumpFeature::start() {
       res = runClusterDump(errorMsg);
     }
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG(ERR) << "Error: caught unknown exception";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Error: caught unknown exception";
     res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (!errorMsg.empty()) {
-      LOG(ERR) << errorMsg;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << errorMsg;
     } else {
-      LOG(ERR) << "An error occurred";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "An error occurred";
     }
     ret = EXIT_FAILURE;
   }

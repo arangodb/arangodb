@@ -25,7 +25,6 @@
 #define ARANGOD_SINGLE_SERVER_TRAVERSER_H 1
 
 #include "Aql/AqlValue.h"
-#include "Indexes/IndexElement.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserOptions.h"
@@ -33,27 +32,27 @@
 
 namespace arangodb {
 
-class EdgeIndex;
 class LogicalCollection;
 class ManagedDocumentResult;
 
 namespace traverser {
 
 class PathEnumerator;
-
+  
 class SingleServerEdgeCursor : public EdgeCursor {
  private:
-  arangodb::Transaction* _trx;
+  TraverserOptions* _opts;
+  transaction::Methods* _trx;
   ManagedDocumentResult* _mmdr;
   std::vector<std::vector<OperationCursor*>> _cursors;
   size_t _currentCursor;
   size_t _currentSubCursor;
-  std::vector<IndexLookupResult> _cache;
+  std::vector<DocumentIdentifierToken> _cache;
   size_t _cachePos;
   std::vector<size_t> const* _internalCursorMapping;
 
  public:
-  SingleServerEdgeCursor(ManagedDocumentResult* mmdr, arangodb::Transaction* trx, size_t, std::vector<size_t> const* mapping = nullptr);
+  SingleServerEdgeCursor(ManagedDocumentResult* mmdr, TraverserOptions* options, size_t, std::vector<size_t> const* mapping = nullptr);
 
   ~SingleServerEdgeCursor() {
     for (auto& it : _cursors) {
@@ -63,9 +62,9 @@ class SingleServerEdgeCursor : public EdgeCursor {
     }
   }
 
-  bool next(std::vector<arangodb::velocypack::Slice>&, size_t&) override;
+  bool next(std::function<void(arangodb::StringRef const&, VPackSlice, size_t)> callback) override;
 
-  bool readAll(std::unordered_set<arangodb::velocypack::Slice>&, size_t&) override;
+  void readAll(std::function<void(arangodb::StringRef const&, arangodb::velocypack::Slice, size_t&)>) override;
 
   std::vector<std::vector<OperationCursor*>>& getCursors() {
     return _cursors;
@@ -75,7 +74,7 @@ class SingleServerEdgeCursor : public EdgeCursor {
 class SingleServerTraverser final : public Traverser {
 
  public:
-  SingleServerTraverser(TraverserOptions*, Transaction*, ManagedDocumentResult*);
+  SingleServerTraverser(TraverserOptions*, transaction::Methods*, ManagedDocumentResult*);
 
   ~SingleServerTraverser();
 
@@ -84,62 +83,65 @@ class SingleServerTraverser final : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   void setStartVertex(std::string const& v) override;
+  
+  size_t getAndResetReadDocuments() override;
 
  protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   ///        Adds the _id of the vertex into the given vector
 
-  bool getVertex(arangodb::velocypack::Slice,
-                 std::vector<arangodb::velocypack::Slice>&) override;
+  bool getVertex(arangodb::velocypack::Slice edge,
+                 std::vector<arangodb::StringRef>&) override;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-
-  bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::Slice,
-                       size_t depth, arangodb::velocypack::Slice&) override;
+  bool getSingleVertex(arangodb::velocypack::Slice edge,
+                       arangodb::StringRef const sourceVertexId,
+                       uint64_t depth,
+                       arangodb::StringRef& targetVertexId) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchVertexData(arangodb::velocypack::Slice) override;
+  aql::AqlValue fetchVertexData(StringRef) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of an edge into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchEdgeData(arangodb::velocypack::Slice) override;
+  aql::AqlValue fetchEdgeData(StringRef) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(arangodb::velocypack::Slice,
+  void addVertexToVelocyPack(StringRef,
                              arangodb::velocypack::Builder&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of an edge into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addEdgeToVelocyPack(arangodb::velocypack::Slice,
+  void addEdgeToVelocyPack(StringRef,
                            arangodb::velocypack::Builder&) override;
 
  private:
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Cache for vertex documents, points from _id to start of 
   /// document VPack value (in datafiles)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<arangodb::velocypack::Slice, uint8_t const*> _vertices;
+  //std::unordered_map<arangodb::velocypack::Slice, uint8_t const*> _vertices;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Cache for edge documents, points from _id to start of edge
   /// VPack value (in datafiles)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<std::string, uint8_t const*> _edges;
+  //std::unordered_map<std::string, uint8_t const*> _edges;
 
 };
 } // namespace traverser

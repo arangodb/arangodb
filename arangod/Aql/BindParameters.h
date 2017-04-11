@@ -39,7 +39,9 @@ class BindParameters {
  public:
   BindParameters(BindParameters const&) = delete;
   BindParameters& operator=(BindParameters const&) = delete;
-  BindParameters() = delete;
+  
+  BindParameters() 
+    : _builder(nullptr), _parameters(), _processed(false) {}
 
   /// @brief create the parameters
   explicit BindParameters(std::shared_ptr<arangodb::velocypack::Builder> builder) 
@@ -54,6 +56,9 @@ class BindParameters {
     process();
     return _parameters;
   }
+
+  /// @brief return the bind parameters as passed by the user
+  std::shared_ptr<arangodb::velocypack::Builder> builder() const { return _builder; }
 
   /// @brief create a hash value for the bind parameters
   uint64_t hash() const;

@@ -26,7 +26,8 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
-#include "Utils/Transaction.h"
+#include "Aql/Query.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -37,7 +38,7 @@ using namespace arangodb::aql;
 /// @brief constructor
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
-            std::vector<arangodb::Transaction::IndexHandle> const& indexes,
+            std::vector<transaction::Methods::IndexHandle> const& indexes,
             Condition* condition, bool reverse)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
@@ -51,11 +52,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
   TRI_ASSERT(_outVariable != nullptr);
   TRI_ASSERT(_condition != nullptr);
 }
-
-/// @brief return the transaction for the node
-arangodb::Transaction* IndexNode::trx() const {
-  return _plan->getAst()->query()->trx();
-};
 
 /// @brief toVelocyPack, for IndexNode
 void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -144,12 +140,12 @@ IndexNode::~IndexNode() { delete _condition; }
 double IndexNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double const dependencyCost = _dependencies.at(0)->getCost(incoming);
-  size_t const itemsInCollection = _collection->count();
+  transaction::Methods* trx = _plan->getAst()->query()->trx();
+  size_t const itemsInCollection = _collection->count(trx);
   size_t totalItems = 0;
   double totalCost = 0.0;
 
   auto root = _condition->root();
-  auto transaction = trx();
 
   for (size_t i = 0; i < _indexes.size(); ++i) {
     double estimatedCost = 0.0;
@@ -163,7 +159,7 @@ double IndexNode::estimateCost(size_t& nrItems) const {
     }
 
     if (condition != nullptr &&
-        transaction->supportsFilterCondition(_indexes[i], condition,
+        trx->supportsFilterCondition(_indexes[i], condition,
                                      _outVariable, itemsInCollection,
                                      estimatedItems, estimatedCost)) {
       totalItems += estimatedItems;

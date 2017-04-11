@@ -38,6 +38,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
   builder.add("filtered", VPackValue(filtered));
+  builder.add("httpRequests", VPackValue(httpRequests));
 
   if (fullCount > -1) {
     // fullCount is exceptional. it has a default value of -1 and is
@@ -56,6 +57,7 @@ void ExecutionStats::toVelocyPackStatic(VPackBuilder& builder) {
   builder.add("scannedFull", VPackValue(0));
   builder.add("scannedIndex", VPackValue(0));
   builder.add("filtered", VPackValue(0));
+  builder.add("httpRequests", VPackValue(0));
   builder.add("fullCount", VPackValue(-1));
   builder.add("executionTime", VPackValue(0.0));
   builder.close();
@@ -67,12 +69,12 @@ ExecutionStats::ExecutionStats()
       scannedFull(0),
       scannedIndex(0),
       filtered(0),
+      httpRequests(0),
       fullCount(-1),
       executionTime(0.0) {}
 
 ExecutionStats::ExecutionStats(VPackSlice const& slice) 
-    : fullCount(-1),
-      executionTime(0.0) {
+    : ExecutionStats() {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "stats is not an object");
@@ -83,6 +85,10 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
   scannedFull = slice.get("scannedFull").getNumber<int64_t>();
   scannedIndex = slice.get("scannedIndex").getNumber<int64_t>();
   filtered = slice.get("filtered").getNumber<int64_t>();
+  
+  if (slice.hasKey("httpRequests")) {
+    httpRequests = slice.get("httpRequests").getNumber<int64_t>();
+  }
 
   // note: fullCount is an optional attribute!
   if (slice.hasKey("fullCount")) {

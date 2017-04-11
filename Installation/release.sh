@@ -120,11 +120,13 @@ fi
 VERSION_MAJOR=`echo $VERSION | awk -F. '{print $1}'`
 VERSION_MINOR=`echo $VERSION | awk -F. '{print $2}'`
 VERSION_REVISION=`echo $VERSION | awk -F. '{print $3}'`
+VERSION_PACKAGE="1"
 
 cat CMakeLists.txt \
     | sed -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")~" \
     | sed -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")~" \
     | sed -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")~" \
+    | sed -e "s~set(ARANGODB_PACKAGE_REVISION.*~set(ARANGODB_PACKAGE_REVISION   \"$VERSION_PACKAGE\")~" \
           > CMakeLists.txt.tmp
 
 mv CMakeLists.txt.tmp CMakeLists.txt
@@ -197,7 +199,7 @@ if [ "$BOOK" == "1" ];  then
 fi
 
 case "$TAG" in
-    *-alpha*|*-beta*|devel)
+    *-milestone*|*-alpha*|*-beta*|devel)
     ;;
 
     *)

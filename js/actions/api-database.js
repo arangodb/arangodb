@@ -126,9 +126,21 @@ function post_api_database (req, res) {
   var i;
   for (i = 0; i < users.length; ++i) {
     var user = users[i];
-    if (typeof user !== 'object' ||
-      !user.hasOwnProperty('username') ||
-      typeof (user.username) !== 'string') {
+    
+    if (typeof user !== 'object') {
+      // bad username
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+      return;
+    }
+
+    var name;
+    if (user.hasOwnProperty('username')) {
+      name = user.username;
+    } else if (user.hasOwnProperty('user')) {
+      name = user.user;
+    }
+
+    if (typeof name !== 'string') {
       // bad username
       actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
       return;

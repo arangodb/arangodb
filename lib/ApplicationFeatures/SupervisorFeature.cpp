@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -33,13 +34,74 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace {
 static bool DONE = false;
 static int CLIENT_PID = false;
 
+static char const* restartMessage = "will now start a new child process";
+static char const* noRestartMessage = "will intentionally not start a new child process";
+static char const* fixErrorMessage = "please check what causes the child process to fail and fix the error first";
+
+static char const* translateSignal(int signal) {
+  if (signal >= 128) {
+    signal -= 128;
+  }
+  switch (signal) {
+#ifdef SIGHUP
+    case SIGHUP:  return "SIGHUP";
+#endif
+#ifdef SIGINT
+    case SIGINT:  return "SIGINT";
+#endif
+#ifdef SIGQUIT
+    case SIGQUIT: return "SIGQUIT";
+#endif
+#ifdef SIGKILL
+    case SIGILL:  return "SIGILL";
+#endif
+#ifdef SIGTRAP
+    case SIGTRAP: return "SIGTRAP";
+#endif
+#ifdef SIGABRT
+    case SIGABRT: return "SIGABRT";
+#endif
+#ifdef SIGBUS
+    case SIGBUS:  return "SIGBUS";
+#endif
+#ifdef SIGFPE
+    case SIGFPE:  return "SIGFPE";
+#endif
+#ifdef SIGKILL
+    case SIGKILL: return "SIGKILL";
+#endif
+#ifdef SIGSEGV
+    case SIGSEGV: return "SIGSEGV";
+#endif
+#ifdef SIGPIPE
+    case SIGPIPE: return "SIGPIPE";
+#endif
+#ifdef SIGTERM
+    case SIGTERM: return "SIGTERM";
+#endif
+#ifdef SIGCONT
+    case SIGCONT: return "SIGCONT";
+#endif
+#ifdef SIGSTOP
+    case SIGSTOP: return "SIGSTOP";
+#endif
+    default:      return "unknown";
+  }
+}
+
 static void StopHandler(int) {
-  LOG_TOPIC(INFO, Logger::STARTUP) << "received SIGINT for supervisor";
-  kill(CLIENT_PID, SIGTERM);
+  LOG_TOPIC(INFO, Logger::STARTUP) << "received SIGINT for supervisor; commanding client [" << CLIENT_PID << "] to shut down.";
+  int rc = kill(CLIENT_PID, SIGTERM);
+  if (rc < 0) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "commanding client [" << CLIENT_PID << "] to shut down failed: [" << errno << "] " << strerror(errno);
+  }
   DONE = true;
+}
+
 }
 
 SupervisorFeature::SupervisorFeature(
@@ -71,7 +133,7 @@ void SupervisorFeature::validateOptions(
       // revalidate options
       daemon->validateOptions(options);
     } catch (...) {
-      LOG(FATAL) << "daemon mode not available, cannot start supervisor";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "daemon mode not available, cannot start supervisor";
       FATAL_ERROR_EXIT();
     }
   }
@@ -128,7 +190,7 @@ void SupervisorFeature::daemonize() {
       signal(SIGINT, StopHandler);
       signal(SIGTERM, StopHandler);
 
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor has forked a child process with pid " << _clientPid;
+      LOG_TOPIC(INFO, Logger::STARTUP) << "supervisor has forked a child process with pid " << _clientPid;
 
       TRI_SetProcessTitle("arangodb [supervisor]");
 
@@ -141,9 +203,9 @@ void SupervisorFeature::daemonize() {
       int res = waitpid(_clientPid, &status, 0);
       bool horrible = true;
 
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "waitpid woke up with return value "
-					<< res << " and status " << status
-					<< " and DONE = " << (DONE ? "true" : "false");
+      LOG_TOPIC(INFO, Logger::STARTUP) << "waitpid woke up with return value "
+                                       << res << " and status " << status
+                                       << " and DONE = " << (DONE ? "true" : "false");
 
       if (DONE) {
         // signal handler for SIGINT or SIGTERM was invoked
@@ -156,35 +218,42 @@ void SupervisorFeature::daemonize() {
         if (WIFEXITED(status)) {
           // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
-            LOG_TOPIC(INFO, Logger::STARTUP) << "child " << _clientPid
-                                             << " died of natural causes";
+            LOG_TOPIC(INFO, Logger::STARTUP) << "child process " << _clientPid
+                                             << " died of natural causes. " << noRestartMessage;
+
             done = true;
             horrible = false;
           } else {
             t = time(0) - startTime;
 
-            LOG_TOPIC(ERR, Logger::STARTUP)
-                << "child " << _clientPid
-                << " died a horrible death, exit status " << WEXITSTATUS(status);
-
             if (t < MIN_TIME_ALIVE_IN_SEC) {
               LOG_TOPIC(ERR, Logger::STARTUP)
-                  << "child only survived for " << t
-                  << " seconds, this will not work - please fix the error "
-                     "first";
+                    << "child process " << _clientPid << " died a horrible death, exit status"
+                    << WEXITSTATUS(status) << ". the child process only survived for " << t
+                    << " seconds. this is lower than the minimum threshold value of " << MIN_TIME_ALIVE_IN_SEC
+                    << " s. " << noRestartMessage << ". " << fixErrorMessage;
+
               done = true;
             } else {
+              LOG_TOPIC(ERR, Logger::STARTUP)
+                  << "child process " << _clientPid
+                  << " died a horrible death, exit status " << WEXITSTATUS(status)
+                  << ". " << restartMessage;
+
               done = false;
             }
           }
         } else if (WIFSIGNALED(status)) {
-          switch (WTERMSIG(status)) {
+          int const s = WTERMSIG(status);
+          switch (s) {
             case 2: // SIGINT
             case 9: // SIGKILL
             case 15: // SIGTERM
               LOG_TOPIC(INFO, Logger::STARTUP)
-                  << "child " << _clientPid
-                  << " died of natural causes, exit status " << WTERMSIG(status);
+                  << "child process " << _clientPid
+                  << " died of natural causes, exit status " << s
+                  << " (" << translateSignal(s) << "). " << noRestartMessage;
+
               done = true;
               horrible = false;
               break;
@@ -193,25 +262,28 @@ void SupervisorFeature::daemonize() {
               TRI_ASSERT(horrible);
               t = time(0) - startTime;
 
-              LOG_TOPIC(ERR, Logger::STARTUP) << "child " << _clientPid
-                                              << " died a horrible death, signal "
-                                              << WTERMSIG(status);
-
               if (t < MIN_TIME_ALIVE_IN_SEC) {
                 LOG_TOPIC(ERR, Logger::STARTUP)
-                    << "child only survived for " << t
-                    << " seconds, this will not work - please fix the "
-                       "error first";
+                    << "child process " << _clientPid << " died a horrible death, signal "
+                    << s << " (" << translateSignal(s) << "). the child process only survived for " << t
+                    << " seconds. this is lower than the minimum threshold value of " << MIN_TIME_ALIVE_IN_SEC
+                    << " s. " << noRestartMessage << ". " << fixErrorMessage;
+
                 done = true;
 
 #ifdef WCOREDUMP
                 if (WCOREDUMP(status)) {
                   LOG_TOPIC(WARN, Logger::STARTUP) << "child process "
                                                    << _clientPid
-                                                   << " produced a core dump";
+                                                   << " also produced a core dump";
                 }
 #endif
               } else {
+                LOG_TOPIC(ERR, Logger::STARTUP) << "child process " << _clientPid
+                                                << " died a horrible death, signal "
+                                                << s << " (" << translateSignal(s) << "). "
+                                                << restartMessage;
+
                 done = false;
               }
 
@@ -219,8 +291,9 @@ void SupervisorFeature::daemonize() {
           }
         } else {
           LOG_TOPIC(ERR, Logger::STARTUP)
-              << "child " << _clientPid
-              << " died a horrible death, unknown cause";
+              << "child process " << _clientPid
+              << " died a horrible death, unknown cause. " << restartMessage;
+          
           done = false;
         }
       }
@@ -255,7 +328,7 @@ void SupervisorFeature::daemonize() {
       return;
     }
   }
-
+    
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: finished";
 
   Logger::flush();

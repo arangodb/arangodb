@@ -46,6 +46,15 @@ std::string const GlobalContextMethods::CodeBootstrapCoordinator =
 
 std::string const GlobalContextMethods::CodeWarmupExports =
     "require(\"@arangodb/actions\").warmupExports()";
+  
+V8Context::V8Context(size_t id)
+    : _id(id), _isolate(nullptr), _locker(nullptr), 
+      _numExecutions(0), _creationStamp(TRI_microtime()), 
+      _lastGcStamp(0.0), _hasActiveExternals(0) {}
+
+double V8Context::age() const {
+  return TRI_microtime() - _creationStamp;
+}
 
 bool V8Context::addGlobalContextMethod(
     std::string const& method) {
@@ -89,7 +98,7 @@ void V8Context::handleGlobalContextMethods() {
   for (auto& type : copy) {
     std::string const& func = GlobalContextMethods::code(type);
 
-    LOG(DEBUG) << "executing global context method '" << func
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "executing global context method '" << func
                << "' for context " << _id;
 
     TRI_GET_GLOBALS2(_isolate);
@@ -116,7 +125,7 @@ void V8Context::handleGlobalContextMethods() {
 void V8Context::handleCancelationCleanup() {
   v8::HandleScope scope(_isolate);
 
-  LOG(DEBUG) << "executing cancelation cleanup context " << _id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "executing cancelation cleanup context " << _id;
 
   TRI_ExecuteJavaScriptString(
       _isolate, _isolate->GetCurrentContext(),

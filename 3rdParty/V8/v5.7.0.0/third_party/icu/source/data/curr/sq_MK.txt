@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+sq_MK{
+    Currencies{
+        MKD{
+            "den",
+            "Denari maqedonas",
+        }
+    }
+    Version{"2.1.27.40"}
+}

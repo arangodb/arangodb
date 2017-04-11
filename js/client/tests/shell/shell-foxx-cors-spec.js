@@ -6,7 +6,7 @@ var FoxxManager = require('org/arangodb/foxx/manager');
 var fs = require('fs');
 var internal = require('internal');
 var basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps', 'headers'));
-var url = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 
 describe('HTTP headers in Foxx services', function () {
   describe('Check request-response', function () {
@@ -24,38 +24,52 @@ describe('HTTP headers in Foxx services', function () {
     afterEach(function () {
       FoxxManager.uninstall(mount, {force: true});
     });
-    
+
     it("sends a CORS options request", function () {
-      var opts = { headers: { "origin" : url }, method: "OPTIONS" };
-      var result = internal.download(url + "/unittest/headers/header-echo", "", opts);
-      expect(result.code).to.eql(200);
-      expect(result.headers['allow']).to.eql('DELETE, GET, HEAD, PATCH, POST, PUT');
-      expect(result.headers['access-control-expose-headers']).to.eql('etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id');
-      expect(result.headers['access-control-allow-credentials']).to.eql('true');
-      expect(result.headers['access-control-allow-origin']).to.eql(url);
-      expect(result.headers['access-control-allow-methods']).to.eql('DELETE, GET, HEAD, PATCH, POST, PUT');
-    });
-    
-    it("sends a CORS options request, overriding headers", function () {
-      var opts = { headers: { "origin" : url, 'x-session-id' : 'abc' } };
-      var result = internal.download(url + "/unittest/headers/header-cors", "", opts);
-      expect(result.code).to.eql(204);
-      expect(result.headers['access-control-expose-headers']).to.eql('x-session-id');
-    });
-    
-    it("echoes back the headers sent", function () {
-      var opts = { headers: { "x-test" : "abc", "x-xxxx" : "1234", "X-Testmann" : "1,2,3" } };
-      var result = internal.download(url + "/unittest/headers/header-echo", "", opts);
-
-      expect(result.headers['x-xxxx']).to.eql('1234');
-      expect(result.headers['x-testmann']).to.eql('1,2,3');
-      expect(result.headers['x-test']).to.eql('abc');
+      var opts = { headers: { origin }, method: "OPTIONS" };
+      var result = internal.download(origin + "/unittest/headers/header-echo", "", opts);
+      expect(result.code).to.equal(200);
+      expect(result.headers['access-control-expose-headers']).to.equal('etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id');
+      expect(result.headers).not.to.have.property('access-control-allow-headers');
+      expect(result.headers['access-control-allow-credentials']).to.equal('true');
+      expect(result.headers['access-control-allow-origin']).to.equal(origin);
+      expect(result.headers['access-control-allow-methods']).to.equal('DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT');
     });
 
-    it("returns a static header", function () {
-      var result = internal.download(url + "/unittest/headers/header-static");
-      expect(result.headers['x-foobar']).to.eql('baz');
+    it("exposes response headers automatically", function () {
+      var result = internal.download(origin + "/unittest/headers/header-automatic", "", { headers: { origin }, method: "POST" });
+      expect(result.code).to.equal(204);
+      expect(result.headers['x-foobar']).to.equal('baz');
+      expect(result.headers['x-nofoobar']).to.equal('baz');
+      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type'];
+      expect(result.headers['access-control-expose-headers']).to.equal(Object.keys(result.headers).filter(x => !x.startsWith('access-control-') && !irrelevantHeaders.includes(x)).sort().join(', '));
+      expect(result.headers['access-control-allow-credentials']).to.equal('true');
     });
-    
+
+    it("exposes response headers manually", function () {
+      var result = internal.download(origin + "/unittest/headers/header-manual", "", { headers: { origin }, method: "POST" });
+      expect(result.code).to.equal(204);
+      expect(result.headers['x-foobar']).to.equal('baz');
+      expect(result.headers['x-nofoobar']).to.equal('baz');
+      expect(result.headers['access-control-expose-headers']).to.equal('x-foobar');
+      expect(result.headers['access-control-allow-credentials']).to.equal('false');
+    });
+
+    it("allows requested headers", function () {
+      var opts = { headers: { origin, "access-control-request-headers" : "foo, bar" }, method: "OPTIONS" };
+      var result = internal.download(origin + "/unittest/headers/header-echo", "", opts);
+      expect(result.code).to.equal(200);
+      expect(result.headers['access-control-allow-headers']).to.equal("foo, bar");
+      expect(result.headers['access-control-allow-credentials']).to.equal('true');
+      expect(result.headers['access-control-allow-origin']).to.equal(origin);
+    });
+
+    it("sets defaults for responses without headers", function () {
+      var opts = { headers: { origin }, method: "POST" };
+      var result = internal.download(origin + "/unittest/headers/header-empty", "", opts);
+      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type'];
+      expect(result.headers['access-control-expose-headers']).to.equal(Object.keys(result.headers).filter(x => !x.startsWith('access-control-') && !irrelevantHeaders.includes(x)).sort().join(', '));
+      expect(result.headers['access-control-allow-credentials']).to.equal('true');
+    });
   });
 });

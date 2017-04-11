@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 2.8)
 ################################################################################
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "@CMAKE_BINARY_DIR@/bin")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X "@CMAKE_BINARY_DIR@/bin/$<CONFIGURATION>/")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X "@CMAKE_BINARY_DIR@/bin/$<CONFIG>/")
 
 set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@)
 
@@ -20,6 +20,7 @@ set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@)
 
 set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
 set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
+set(BIN_ARANGOEXPORT @BIN_ARANGOEXPORT@)
 set(BIN_ARANGOIMP @BIN_ARANGOIMP@)
 set(BIN_ARANGORESTORE @BIN_ARANGORESTORE@)
 set(BIN_ARANGOSH @BIN_ARANGOSH@)
@@ -39,10 +40,11 @@ set(ARANGODB_PACKAGE_REVISION "@ARANGODB_PACKAGE_REVISION@")
 
 set(CMAKE_INSTALL_FULL_BINDIR "@CMAKE_INSTALL_FULL_BINDIR@")
 set(CMAKE_TARGET_ARCHITECTURES "@CMAKE_TARGET_ARCHITECTURES@")
+set(CPACK_PACKAGE_FILE_NAME @ARANGODB_CLIENT_PACKAGE_FILE_NAME@)
 
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "@CMAKE_INSTALL_SYSCONFDIR_ARANGO@")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "@CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO@")
-set(CPACK_PACKAGE_NAME "@CPACK_PACKAGE_NAME@")
+set(CPACK_PACKAGE_NAME "@CPACK_CLIENT_PACKAGE_NAME@")
 
 set(CMAKE_CL_64 @CMAKE_CL_64@)
 if (CMAKE_CL_64)
@@ -68,7 +70,6 @@ set(INSTALL_ICU_DT_DEST "@INSTALL_ICU_DT_DEST@")
 ################################################################################
 
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
-set(CPACK_PACKAGE_NAME "${CPACK_PACKAGE_NAME}-client")
 set(CPACK_PACKAGE_CONTACT ${ARANGODB_PACKAGE_CONTACT})
 
 if (USE_ENTERPRISE)
@@ -77,7 +78,6 @@ else ()
   set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 endif ()
 
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
 ################################################################################
 # ------------------------------------------------------------------------------
@@ -88,7 +88,6 @@ set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
 set(W_INSTALL_FILES                "${PROJECT_SOURCE_DIR}/Installation/Windows/")
 set(CPACK_MODULE_PATH              "${W_INSTALL_FILES}/client/Templates")
 set(CPACK_PLUGIN_PATH              "${W_INSTALL_FILES}/client/Plugins")
-set(CPACK_PACKAGE_NAME             "ArangoSH")
 set(CPACK_NSIS_DISPLAY_NAME,       ${ARANGODB_DISPLAY_NAME})
 set(CPACK_NSIS_HELP_LINK           ${ARANGODB_HELP_LINK})
 set(CPACK_NSIS_URL_INFO_ABOUT      ${ARANGODB_URL_INFO_ABOUT})
@@ -168,12 +167,13 @@ set(CPACK_ARANGODB_NSIS_DEFINES "
 ################################################################################
 # Install the external files into the package directory:
 ################################################################################
+include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
+include(${ORIGINAL_SOURCE_DIR}/cmake/debugInformation.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)
 
 install_readme(README.windows README.windows.txt)
 
-# other platforms link the file into the binary
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})

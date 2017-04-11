@@ -34,7 +34,6 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,6 +245,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
+
     testSortBlock4 : function () {
       internal.debugSetFailAt("SortBlock::doSortingNext1");
       c.ensureSkiplist("value");
@@ -296,7 +296,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFilterBlock4 : function () {
-      internal.debugSetFailAt("FilterBlock::getOrSkipSomeConcatenate");
+      internal.debugSetFailAt("BlockCollector::getOrSkipSomeConcatenate");
       assertFailingQuery("FOR c IN " + c.name() + " FILTER c.value >= 20 && c.value < 30 LIMIT 0, 10 SORT c.value RETURN c");
     },
 

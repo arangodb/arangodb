@@ -71,7 +71,10 @@ namespace {
 }
 
 namespace arangodb {
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace aql {
 class AqlItemBlock;
@@ -366,7 +369,7 @@ struct AqlValue final {
   }
 
   /// @brief hashes the value
-  uint64_t hash(arangodb::Transaction*, uint64_t seed = 0xdeadbeef) const;
+  uint64_t hash(transaction::Methods*, uint64_t seed = 0xdeadbeef) const;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;
@@ -398,33 +401,33 @@ struct AqlValue final {
   size_t length() const;
   
   /// @brief get the (array) element at position 
-  AqlValue at(arangodb::Transaction* trx, int64_t position, bool& mustDestroy, bool copy) const;
+  AqlValue at(transaction::Methods* trx, int64_t position, bool& mustDestroy, bool copy) const;
   
   /// @brief get the _key attribute from an object/document
-  AqlValue getKeyAttribute(arangodb::Transaction* trx,
+  AqlValue getKeyAttribute(transaction::Methods* trx,
                            bool& mustDestroy, bool copy) const;
   /// @brief get the _id attribute from an object/document
-  AqlValue getIdAttribute(arangodb::Transaction* trx,
+  AqlValue getIdAttribute(transaction::Methods* trx,
                           bool& mustDestroy, bool copy) const;
   /// @brief get the _from attribute from an object/document
-  AqlValue getFromAttribute(arangodb::Transaction* trx,
+  AqlValue getFromAttribute(transaction::Methods* trx,
                             bool& mustDestroy, bool copy) const;
   /// @brief get the _to attribute from an object/document
-  AqlValue getToAttribute(arangodb::Transaction* trx,
+  AqlValue getToAttribute(transaction::Methods* trx,
                           bool& mustDestroy, bool copy) const;
   
   /// @brief get the (object) element by name(s)
-  AqlValue get(arangodb::Transaction* trx,
+  AqlValue get(transaction::Methods* trx,
                std::string const& name, bool& mustDestroy, bool copy) const;
-  AqlValue get(arangodb::Transaction* trx,
+  AqlValue get(transaction::Methods* trx,
                std::vector<std::string> const& names, bool& mustDestroy,
                bool copy) const;
-  bool hasKey(arangodb::Transaction* trx, std::string const& name) const;
+  bool hasKey(transaction::Methods* trx, std::string const& name) const;
 
   /// @brief get the numeric value of an AqlValue
-  double toDouble(arangodb::Transaction* trx) const;
-  double toDouble(arangodb::Transaction* trx, bool& failed) const;
-  int64_t toInt64(arangodb::Transaction* trx) const;
+  double toDouble(transaction::Methods* trx) const;
+  double toDouble(transaction::Methods* trx, bool& failed) const;
+  int64_t toInt64(transaction::Methods* trx) const;
   
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;
@@ -447,20 +450,20 @@ struct AqlValue final {
   /// @brief construct a V8 value as input for the expression execution in V8
   /// only construct those attributes that are needed in the expression
   v8::Handle<v8::Value> toV8Partial(v8::Isolate* isolate,
-                                    arangodb::Transaction*,
+                                    transaction::Methods*,
                                     std::unordered_set<std::string> const&) const;
   
   /// @brief construct a V8 value as input for the expression execution in V8
-  v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::Transaction*) const;
+  v8::Handle<v8::Value> toV8(v8::Isolate* isolate, transaction::Methods*) const;
 
   /// @brief materializes a value into the builder
-  void toVelocyPack(arangodb::Transaction*,
+  void toVelocyPack(transaction::Methods*,
                     arangodb::velocypack::Builder& builder,
                     bool resolveExternals) const;
 
   /// @brief materialize a value into a new one. this expands docvecs and 
   /// ranges
-  AqlValue materialize(arangodb::Transaction*, bool& hasCopied,
+  AqlValue materialize(transaction::Methods*, bool& hasCopied,
                        bool resolveExternals) const;
 
   /// @brief return the slice for the value
@@ -501,17 +504,17 @@ struct AqlValue final {
   }
 
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  static AqlValue CreateFromBlocks(arangodb::Transaction*,
+  static AqlValue CreateFromBlocks(transaction::Methods*,
                                     std::vector<AqlItemBlock*> const&,
                                     std::vector<std::string> const&);
 
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  static AqlValue CreateFromBlocks(arangodb::Transaction*,
+  static AqlValue CreateFromBlocks(transaction::Methods*,
                                     std::vector<AqlItemBlock*> const&,
                                     arangodb::aql::RegisterId);
   
   /// @brief compare function for two values
-  static int Compare(arangodb::Transaction*, 
+  static int Compare(transaction::Methods*, 
                      AqlValue const& left, AqlValue const& right, bool useUtf8);
 
  private:
@@ -576,7 +579,7 @@ class AqlValueGuard {
 };
 
 struct AqlValueMaterializer {
-  explicit AqlValueMaterializer(arangodb::Transaction* trx) 
+  explicit AqlValueMaterializer(transaction::Methods* trx) 
       : trx(trx), materialized(), hasCopied(false) {}
 
   AqlValueMaterializer(AqlValueMaterializer const& other) 
@@ -637,7 +640,7 @@ struct AqlValueMaterializer {
     return materialized.slice();
   }
 
-  arangodb::Transaction* trx;
+  transaction::Methods* trx;
   AqlValue materialized;
   bool hasCopied;
 };

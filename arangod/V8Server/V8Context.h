@@ -110,12 +110,18 @@ class GlobalContextMethods {
 
 class V8Context {
  public:
-  size_t _id;
+  explicit V8Context(size_t id);
+
+  bool isDefault() const { return _id == 0; }
+  double age() const;
+
+  size_t const _id;
 
   v8::Persistent<v8::Context> _context;
-  v8::Isolate* _isolate = nullptr;
-  v8::Locker* _locker = nullptr;
+  v8::Isolate* _isolate;
+  v8::Locker* _locker;
   size_t _numExecutions;
+  double const _creationStamp;
   double _lastGcStamp;
   bool _hasActiveExternals;
 

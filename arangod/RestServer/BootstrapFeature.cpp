@@ -45,7 +45,7 @@ BootstrapFeature::BootstrapFeature(
   startsAfter("Endpoint");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("LogfileManager");
+  startsAfter("MMFilesLogfileManager");
   startsAfter("Database");
   startsAfter("Upgrade");
   startsAfter("CheckVersion");
@@ -114,8 +114,8 @@ static void raceForClusterBootstrap() {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
     auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
-    V8DealerFeature::DEALER->loadJavascriptFiles(
-        vocbase, "server/bootstrap/cluster-bootstrap.js", 0);
+    V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(
+        vocbase, "server/bootstrap/cluster-bootstrap.js");
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -141,29 +141,29 @@ void BootstrapFeature::start() {
 
   if (!ss->isRunningInCluster()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
-    V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js");
   } else if (ss->isCoordinator()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
     raceForClusterBootstrap();
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/coordinator.js";
-    V8DealerFeature::DEALER->loadJavascript(vocbase,
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
                                             "server/bootstrap/coordinator.js");
   } else if (ss->isDBServer()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/db-server.js";
-    V8DealerFeature::DEALER->loadJavascript(vocbase,
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
                                             "server/bootstrap/db-server.js");
   }
 
   // Start service properly:
   rest::RestHandlerFactory::setMaintenance(false);
 
-  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
 
   if (_bark) {
-    LOG(INFO) << "The dog says: wau wau!";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "The dog says: wau wau!";
   }
 
   _isReady = true;

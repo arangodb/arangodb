@@ -23,11 +23,12 @@
 
 #include "Logger/LogAppenderFile.h"
 
-#include <iostream>
-
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Logger/Logger.h"
+
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -56,7 +57,7 @@ void LogAppenderFile::reopen() {
     FileUtils::rename(filename, backup);
 
     // open new log file
-    int fd = TRI_CREATE(filename.c_str(),
+    int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
                         O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
                         S_IRUSR | S_IWUSR | S_IRGRP);
 
@@ -72,7 +73,7 @@ void LogAppenderFile::reopen() {
     _fds[pos].first = fd;
 
     if (old > STDERR_FILENO) {
-      TRI_CLOSE(old);
+      TRI_TRACKED_CLOSE_FILE(old);
     }
   }
 }
@@ -83,14 +84,14 @@ void LogAppenderFile::close() {
     _fds[pos].first = -1;
 
     if (fd > STDERR_FILENO) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
   }
 }
 
 LogAppenderFile::LogAppenderFile(std::string const& filename,
                                  std::string const& filter)
-    : LogAppender(filter), _pos(-1), _buffer(nullptr), _bufferSize(0) {
+    : LogAppender(filter), _pos(-1), _bufferSize(0) {
   // logging to stdout
   if (filename == "-") {
     _pos = 0;
@@ -112,7 +113,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename,
     }
 
     if (pos == _fds.size() || _fds[pos].first == -1) {
-      int fd = TRI_CREATE(filename.c_str(),
+      int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
                           O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
                           S_IRUSR | S_IWUSR | S_IRGRP);
 
@@ -135,9 +136,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename,
   }
 }
   
-LogAppenderFile::~LogAppenderFile() {
-  delete[] _buffer;
-}
+LogAppenderFile::~LogAppenderFile() {}
 
 bool LogAppenderFile::logMessage(LogLevel level, std::string const& message,
                                  size_t offset) {
@@ -151,13 +150,12 @@ bool LogAppenderFile::logMessage(LogLevel level, std::string const& message,
     return false;
   }
 
-  // check required output length
+  // check max. required output length
   size_t const neededBufferSize = TRI_MaxLengthEscapeControlsCString(message.size());
   
   // check if we can re-use our already existing buffer
   if (neededBufferSize > _bufferSize) {
-    delete[] _buffer;
-    _buffer = nullptr;
+    _buffer.reset();
     _bufferSize = 0;
   }
 
@@ -165,7 +163,7 @@ bool LogAppenderFile::logMessage(LogLevel level, std::string const& message,
     // create a new buffer
     try {
       // grow buffer exponentially
-      _buffer = new char[neededBufferSize * 2];
+      _buffer.reset(new char[neededBufferSize * 2]);
       _bufferSize = neededBufferSize * 2;
     } catch (...) {
       // if allocation fails, simply give up
@@ -177,14 +175,14 @@ bool LogAppenderFile::logMessage(LogLevel level, std::string const& message,
   
   size_t escapedLength;
   // this is guaranteed to succeed given that we already have a buffer
-  TRI_EscapeControlsCString(message.c_str(), message.size(), _buffer, &escapedLength, true);
+  TRI_EscapeControlsCString(message.c_str(), message.size(), _buffer.get(), &escapedLength, true);
+  TRI_ASSERT(escapedLength <= neededBufferSize);
 
-  writeLogFile(fd, _buffer, static_cast<ssize_t>(escapedLength));
+  writeLogFile(fd, _buffer.get(), static_cast<ssize_t>(escapedLength));
 
-  if (_bufferSize > 8192) {
+  if (_bufferSize > 16384) {
     // free the buffer so the Logger is not hogging so much memory
-    delete[] _buffer;
-    _buffer = nullptr;
+    _buffer.reset();
     _bufferSize = 0;
   }
 

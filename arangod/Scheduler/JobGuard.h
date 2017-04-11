@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/SameThreadAsserter.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/Scheduler.h"
 
@@ -33,60 +34,52 @@ namespace rest {
 class Scheduler;
 }
 
-class JobGuard {
+class JobGuard : public SameThreadAsserter {
  public:
-  explicit JobGuard(EventLoop const& loop) : _scheduler(loop._scheduler) {}
-  explicit JobGuard(rest::Scheduler* scheduler) : _scheduler(scheduler) {}
+  JobGuard(JobGuard const&) = delete;
+  JobGuard& operator=(JobGuard const&) = delete;
+
+  explicit JobGuard(EventLoop const& loop) : SameThreadAsserter(), _scheduler(loop._scheduler) {}
+  explicit JobGuard(rest::Scheduler* scheduler) : SameThreadAsserter(), _scheduler(scheduler) {}
   ~JobGuard() { release(); }
 
  public:
-  bool isIdle() {
-    return _scheduler->isIdle();
-  }
-
-  void busy() {
-    if (0 == _isBusy) {
-      _scheduler->enterThread();
-    }
-
-    ++_isBusy;
-  }
-
   void work() {
+    TRI_ASSERT(!_isWorkingFlag);
+
     if (0 == _isWorking) {
       _scheduler->workThread();
     }
 
     ++_isWorking;
+    _isWorkingFlag = true;
   }
 
   void block() {
+    TRI_ASSERT(!_isBlockedFlag);
+
     if (0 == _isBlocked) {
       _scheduler->blockThread();
     }
-    
+
     ++_isBlocked;
+    _isBlockedFlag = true;
   }
 
+ private:
   void release() {
-    if (0 < _isBusy) {
-      --_isBusy;
-
-      if (0 == _isBusy) {
-        _scheduler->unenterThread();
-      }
-    }
-    
-    if (0 < _isWorking) {
+    if (_isWorkingFlag) {
       --_isWorking;
+      _isWorkingFlag = false;
 
       if (0 == _isWorking) {
         _scheduler->unworkThread();
       }
     }
 
-    if (0 < _isBlocked) {
+    if (_isBlockedFlag) {
       --_isBlocked;
+      _isBlockedFlag = false;
 
       if (0 == _isBlocked) {
         _scheduler->unblockThread();
@@ -97,7 +90,9 @@ class JobGuard {
  private:
   rest::Scheduler* _scheduler;
 
-  static thread_local size_t _isBusy;
+  bool _isWorkingFlag = false;
+  bool _isBlockedFlag = false;
+
   static thread_local size_t _isWorking;
   static thread_local size_t _isBlocked;
 };

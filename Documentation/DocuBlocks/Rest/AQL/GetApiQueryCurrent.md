@@ -12,10 +12,14 @@ database. Each query is a JSON object with the following attributes:
 
 - *query*: the query string (potentially truncated)
 
+- *bindVars*: the bind parameter values used by the query
+
 - *started*: the date and time when the query was started
 
 - *runTime*: the query's run time up to the point the list of queries was
   queried
+
+- *state*: the query's current execution state (as a string)
 
 @RESTRETURNCODES
 

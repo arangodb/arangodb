@@ -27,6 +27,7 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <signal.h>
 #include <fstream>
 #include <iostream>
 
@@ -111,7 +112,8 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                               std::string const& message) noexcept {
   try {
     if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
-      LOG(ERR) << "encountered out-of-memory error";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "encountered out-of-memory error";
     }
 
     v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(message);
@@ -136,7 +138,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
     }
 
     errorObject->Set(TRI_V8_ASCII_STRING("errorNum"),
-                    v8::Number::New(isolate, errorNumber));
+                     v8::Number::New(isolate, errorNumber));
     errorObject->Set(TRI_V8_ASCII_STRING("errorMessage"), errorMessage);
 
     TRI_GET_GLOBALS();
@@ -168,8 +170,9 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
 
   if (content == nullptr) {
-    LOG(ERR) << "cannot load java script file '" << filename
-             << "': " << TRI_last_error();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '"
+                                            << filename
+                                            << "': " << TRI_last_error();
     return false;
   }
 
@@ -204,8 +207,9 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   if (content == nullptr) {
-    LOG(ERR) << "cannot load java script file '" << filename
-             << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot load java script file '" << filename
+        << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
 
@@ -226,8 +230,9 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    LOG(ERR) << "cannot load java script file '" << filename
-             << "': compilation failed.";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '"
+                                            << filename
+                                            << "': compilation failed.";
     return false;
   }
 
@@ -245,7 +250,8 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     }
   }
 
-  LOG(TRACE) << "loaded java script file: '" << filename << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded java script file: '"
+                                            << filename << "'";
   return true;
 }
 
@@ -259,7 +265,8 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
   v8::HandleScope scope(isolate);
   bool result;
 
-  LOG(TRACE) << "loading JavaScript directory: '" << path << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loading JavaScript directory: '"
+                                            << path << "'";
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
@@ -411,10 +418,13 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // compilation failed, we have caught an exception
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
+      v8::Local<v8::Object> exceptionObj =
+          tryCatch.Exception().As<v8::Object>();
       v8::Handle<v8::Message> message = tryCatch.Message();
-      exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"), v8::Number::New(isolate, message->GetLineNumber()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"), v8::Number::New(isolate, message->GetStartColumn()));
+      exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"),
+                        v8::Number::New(isolate, message->GetLineNumber()));
+      exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"),
+                        v8::Number::New(isolate, message->GetStartColumn()));
       exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"), filename->ToString());
       tryCatch.ReThrow();
       return;
@@ -471,19 +481,21 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::TryCatch tryCatch;
-  v8::Handle<v8::Script> script =
-      v8::Script::Compile(TRI_V8_PAIR_STRING(content, (int)length),
-                                    args[0]->ToString());
+  v8::Handle<v8::Script> script = v8::Script::Compile(
+      TRI_V8_PAIR_STRING(content, (int)length), args[0]->ToString());
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   // compilation failed, we have caught an exception
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
+      v8::Local<v8::Object> exceptionObj =
+          tryCatch.Exception().As<v8::Object>();
       v8::Handle<v8::Message> message = tryCatch.Message();
-      exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"), v8::Number::New(isolate, message->GetLineNumber()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"), v8::Number::New(isolate, message->GetStartColumn()));
+      exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"),
+                        v8::Number::New(isolate, message->GetLineNumber()));
+      exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"),
+                        v8::Number::New(isolate, message->GetStartColumn()));
       exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"), args[0]);
       tryCatch.ReThrow();
       return;
@@ -513,7 +525,10 @@ static std::string GetEndpointFromUrl(std::string const& url) {
   size_t slashes = 0;
 
   while (p < e) {
-    if (*p == '/') {
+    if (*p == '?') {
+      // http(s)://example.com?foo=bar
+      return url.substr(0, p - url.c_str());
+    } else if (*p == '/') {
       if (++slashes == 3) {
         return url.substr(0, p - url.c_str());
       }
@@ -658,7 +673,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (options.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_USAGE(signature);
     }
-    
+
     // ssl protocol
     if (options->Has(TRI_V8_ASCII_STRING("sslProtocol"))) {
       if (sslProtocol >= SSL_LAST) {
@@ -666,14 +681,15 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "invalid option value for sslProtocol");
       }
-      
-      sslProtocol = TRI_ObjectToUInt64(options->Get(TRI_V8_ASCII_STRING("sslProtocol")), false);
+
+      sslProtocol = TRI_ObjectToUInt64(
+          options->Get(TRI_V8_ASCII_STRING("sslProtocol")), false);
     }
 
     // method
     if (options->Has(TRI_V8_ASCII_STRING("method"))) {
-      std::string methodString =
-          TRI_ObjectToString(isolate, options->Get(TRI_V8_ASCII_STRING("method")));
+      std::string methodString = TRI_ObjectToString(
+          isolate, options->Get(TRI_V8_ASCII_STRING("method")));
 
       method = HttpRequest::translateMethod(methodString);
     }
@@ -764,33 +780,25 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::string relative;
 
     if (url.substr(0, 7) == "http://") {
-      size_t found = url.find('/', 7);
+      endpoint = GetEndpointFromUrl(url).substr(7);
+      relative = url.substr(7 + endpoint.length());
 
-      relative = "/";
-      if (found != std::string::npos) {
-        relative.append(url.substr(found + 1));
-        endpoint = url.substr(7, found - 7);
-      } else {
-        endpoint = url.substr(7);
+      if (relative.empty() || relative[0] != '/') {
+        relative = "/" + relative;
       }
-      found = endpoint.find(":");
-      if (found == std::string::npos) {
-        endpoint = endpoint + ":80";
+      if (endpoint.find(':') == std::string::npos) {
+        endpoint.append(":80");
       }
       endpoint = "tcp://" + endpoint;
     } else if (url.substr(0, 8) == "https://") {
-      size_t found = url.find('/', 8);
+      endpoint = GetEndpointFromUrl(url).substr(8);
+      relative = url.substr(8 + endpoint.length());
 
-      relative = "/";
-      if (found != std::string::npos) {
-        relative.append(url.substr(found + 1));
-        endpoint = url.substr(8, found - 8);
-      } else {
-        endpoint = url.substr(8);
+      if (relative.empty() || relative[0] != '/') {
+        relative = "/" + relative;
       }
-      found = endpoint.find(":");
-      if (found == std::string::npos) {
-        endpoint = endpoint + ":443";
+      if (endpoint.find(':') == std::string::npos) {
+        endpoint.append(":443");
       }
       endpoint = "ssl://" + endpoint;
     } else if (url.substr(0, 6) == "srv://") {
@@ -805,21 +813,33 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
       endpoint = "srv://" + endpoint;
     } else if (!url.empty() && url[0] == '/') {
+      size_t found;
       // relative URL. prefix it with last endpoint
       relative = url;
       url = lastEndpoint + url;
       endpoint = lastEndpoint;
       if (endpoint.substr(0, 5) == "http:") {
-        endpoint = "tcp:" + endpoint.substr(5);
+        endpoint = endpoint.substr(5);
+        found = endpoint.find(":");
+        if (found == std::string::npos) {
+          endpoint = endpoint + ":80";
+        }
+        endpoint = "tcp:" + endpoint;
       } else if (endpoint.substr(0, 6) == "https:") {
-        endpoint = "ssl:" + endpoint.substr(6);
+        endpoint = endpoint.substr(6);
+        found = endpoint.find(":");
+        if (found == std::string::npos) {
+          endpoint = endpoint + ":443";
+        }
+        endpoint = "ssl:" + endpoint;
       }
     } else {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
     }
 
-    LOG(TRACE) << "downloading file. endpoint: " << endpoint
-               << ", relative URL: " << url;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "downloading file. endpoint: " << endpoint
+        << ", relative URL: " << url;
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
@@ -828,7 +848,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
-        GeneralClientConnection::factory(ep.get(), timeout, timeout, 3, sslProtocol));
+        GeneralClientConnection::factory(ep.get(), timeout, timeout, 3,
+                                         sslProtocol));
 
     if (connection == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -992,8 +1013,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != nullptr) {
-          LOG(TRACE) << "copying key '" << *keyName
-                     << "' from sandbox to context";
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+              << "copying key '" << *keyName << "' from sandbox to context";
         }
       }
 
@@ -1022,11 +1043,15 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
 
       if (tryCatch.CanContinue()) {
-        v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
+        v8::Local<v8::Object> exceptionObj =
+            tryCatch.Exception().As<v8::Object>();
         v8::Handle<v8::Message> message = tryCatch.Message();
-        exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"), v8::Number::New(isolate, message->GetLineNumber()));
-        exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"), v8::Number::New(isolate, message->GetStartColumn()));
-        exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"), filename->ToString());
+        exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"),
+                          v8::Number::New(isolate, message->GetLineNumber()));
+        exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"),
+                          v8::Number::New(isolate, message->GetStartColumn()));
+        exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"),
+                          filename->ToString());
         tryCatch.ReThrow();
         return;
       } else {
@@ -1070,8 +1095,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != nullptr) {
-          LOG(TRACE) << "copying key '" << *keyName
-                     << "' from context to sandbox";
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+              << "copying key '" << *keyName << "' from context to sandbox";
         }
       }
 
@@ -1140,15 +1165,16 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const modeStr = TRI_ObjectToString(isolate, args[1]);
+  size_t const length = modeStr.length();
 
-  if ((modeStr.length() > 5) || (modeStr.length() == 0)) {
+  if (length == 0 || length > 5) {
     TRI_V8_THROW_TYPE_ERROR(
         "<mode> must be a string with up to 4 octal digits in it plus a "
         "leading zero.");
   }
 
   long mode = 0;
-  for (uint32_t i = 0; i < modeStr.length(); i++) {
+  for (uint32_t i = 0; i < length; ++i) {
     if (!isdigit(modeStr[i])) {
       TRI_V8_THROW_TYPE_ERROR(
           "<mode> must be a string with up to 4 octal digits in it plus a "
@@ -1163,7 +1189,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "<mode> must be a string with up to 4 octal digits in it plus a "
           "leading zero.");
     }
-    mode = mode | digit << ((modeStr.length() - i - 1) * 3);
+    mode = mode | digit << ((length - i - 1) * 3);
   }
   std::string err;
   int rc = TRI_ChMod(*name, mode, err);
@@ -1359,20 +1385,22 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
 
-  int err = 0;
-  std::string cwd = arangodb::basics::FileUtils::currentDirectory(&err);
-  if (0 != err) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(err, "cannot get current working directory");
+  FileResultString cwd = FileUtils::currentDirectory();
+
+  if (!cwd.ok()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        cwd.sysErrorNumber(),
+        "cannot get current working directory: " + cwd.errorMessage());
   }
 
-  char* abs = TRI_GetAbsolutePath(*name, cwd.c_str());
+  char* abs = TRI_GetAbsolutePath(*name, cwd.result().c_str());
   v8::Handle<v8::String> res;
 
-  if (0 != abs) {
+  if (nullptr != abs) {
     res = TRI_V8_STRING(abs);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
   } else {
-    res = TRI_V8_STD_STRING(cwd);
+    res = TRI_V8_STD_STRING(cwd.result());
   }
 
   // return result
@@ -1732,20 +1760,47 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<message> must be a string");
   }
 
-  if (TRI_CaseEqualString(*level, "fatal")) {
-    LOG(ERR) << "(FATAL) " << *message;
-  } else if (TRI_CaseEqualString(*level, "error")) {
-    LOG(ERR) << "" << *message;
-  } else if (TRI_CaseEqualString(*level, "warning")) {
-    LOG(WARN) << "" << *message;
-  } else if (TRI_CaseEqualString(*level, "info")) {
-    LOG(INFO) << "" << *message;
-  } else if (TRI_CaseEqualString(*level, "debug")) {
-    LOG(DEBUG) << "" << *message;
-  } else if (TRI_CaseEqualString(*level, "trace")) {
-    LOG(TRACE) << "" << *message;
+  std::vector<std::string> splitted = StringUtils::split(*level, '=');
+
+  std::string ls = "info";
+  std::string ts = "";
+
+  if (splitted.size() == 1) {
+    ts = splitted[0];
+  } else if (splitted.size() >= 2) {
+    ts = splitted[0];
+    ls = splitted[1];
+  }
+
+  std::string msg = *message;
+  LogLevel ll = LogLevel::WARN;
+
+  StringUtils::tolowerInPlace(&ls);
+  StringUtils::tolowerInPlace(&ts);
+
+  if (ls == "fatal") {
+    msg = "FATAL! " + msg;
+    ll = LogLevel::ERR;
+  } else if (ls == "error") {
+    ll = LogLevel::ERR;
+  } else if (ls == "warning" || ls == "warn") {
+    ll = LogLevel::WARN;
+  } else if (ls == "info") {
+    ll = LogLevel::INFO;
+  } else if (ls == "debug") {
+    ll = LogLevel::DEBUG;
+  } else if (ls == "trace") {
+    ll = LogLevel::TRACE;
   } else {
-    LOG(ERR) << "(unknown log level '" << *level << "') " << *message;
+    msg = ls + "!" + msg;
+  }
+
+  LogTopic* topic = ts.empty() ? nullptr : LogTopic::lookup(ts);
+
+  if (topic == nullptr) {
+    LOG_TOPIC_RAW(ll, Logger::FIXME) << msg;
+  } else {
+    LOG_TOPIC_RAW(ll, *topic) << msg;
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -3034,11 +3089,7 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
                             ? 500000
                             : static_cast<uint64_t>((until - now) * 1000000);
 
-#ifdef _WIN32
-    usleep(static_cast<unsigned long>(duration));
-#else
-    usleep(duration);
-#endif
+    usleep(static_cast<TRI_usleep_t>(duration));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -3154,7 +3205,7 @@ static void JS_PBKDF2HS1(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string result =
       SslInterface::sslPBKDF2HS1(salt.c_str(), salt.size(), password.c_str(),
-                              password.size(), iterations, keyLength);
+                                 password.size(), iterations, keyLength);
   TRI_V8_RETURN_STD_STRING(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -3176,7 +3227,8 @@ static void JS_PBKDF2(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 4 || !args[0]->IsString() || !args[1]->IsString() ||
       !args[2]->IsNumber() || !args[3]->IsNumber()) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "PBKDF2_SHA(<salt>, <password>, <iterations>, <keyLength>, <algorithm>)");
+        "PBKDF2_SHA(<salt>, <password>, <iterations>, <keyLength>, "
+        "<algorithm>)");
   }
 
   SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA1;
@@ -3620,10 +3672,14 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>)");
+  if (args.Length() < 1 || args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "killExternal(<external-identifier>, <signal>)");
   }
-
+  int signal = SIGTERM;
+  if (args.Length() == 2) {
+    signal = static_cast<int>(TRI_ObjectToInt64(args[1]));
+  }
   TRI_external_id_t pid;
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
@@ -3634,7 +3690,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
   // return the result
-  if (TRI_KillExternalProcess(pid)) {
+  if (TRI_KillExternalProcess(pid, signal)) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();
@@ -3780,11 +3836,13 @@ static void JS_V8ToVPack(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackSlice slice = builder.slice();
-              
-  V8Buffer* buffer = V8Buffer::New(isolate, slice.startAs<char const>(), slice.byteSize());
-  v8::Local<v8::Object> bufferObject = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+
+  V8Buffer* buffer =
+      V8Buffer::New(isolate, slice.startAs<char const>(), slice.byteSize());
+  v8::Local<v8::Object> bufferObject =
+      v8::Local<v8::Object>::New(isolate, buffer->_handle);
   TRI_V8_RETURN(bufferObject);
-  
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -3802,9 +3860,9 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args[0]->IsString() || args[0]->IsStringObject()) {
     // supplied argument is a string
     std::string const value = TRI_ObjectToString(isolate, args[0]);
-    
+
     VPackValidator validator;
-    validator.validate(value.c_str(), value.size(), false); 
+    validator.validate(value.c_str(), value.size(), false);
 
     VPackSlice slice(value.c_str());
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
@@ -3815,16 +3873,17 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
     size_t size = V8Buffer::length(args[0].As<v8::Object>());
 
     VPackValidator validator;
-    validator.validate(data, size, false); 
+    validator.validate(data, size, false);
 
     VPackSlice slice(data);
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
 
     TRI_V8_RETURN(result);
   } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid argument type for VPACK_TO_V8()");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid argument type for VPACK_TO_V8()");
   }
-  
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -4058,9 +4117,10 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   // exception.
   if (message.IsEmpty()) {
     if (exceptionString == nullptr) {
-      LOG(ERR) << "JavaScript exception";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception";
     } else {
-      LOG(ERR) << "JavaScript exception: " << exceptionString;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception: "
+                                              << exceptionString;
     }
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
@@ -4074,18 +4134,20 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
     if (filenameString == nullptr) {
       if (exceptionString == nullptr) {
-        LOG(ERR) << "JavaScript exception";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception";
       } else {
-        LOG(ERR) << "JavaScript exception: " << exceptionString;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception: "
+                                                << exceptionString;
       }
     } else {
       if (exceptionString == nullptr) {
-        LOG(ERR) << "JavaScript exception in file '" << filenameString
-                 << "' at " << linenum << "," << start;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception in file '" << filenameString << "' at "
+            << linenum << "," << start;
       } else {
-        LOG(ERR) << "JavaScript exception in file '" << filenameString
-                 << "' at " << linenum << "," << start << ": "
-                 << exceptionString;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception in file '" << filenameString << "' at "
+            << linenum << "," << start << ": " << exceptionString;
       }
     }
 
@@ -4094,7 +4156,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     if (*sourceline) {
       std::string l = *sourceline;
 
-      LOG(ERR) << "!" << l;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "!" << l;
 
       if (1 < start) {
         l = std::string(start - 1, ' ');
@@ -4104,7 +4166,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
       l += std::string((size_t)(end - start + 1), '^');
 
-      LOG(ERR) << "!" << l;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "!" << l;
     }
   }
 }
@@ -4193,7 +4255,8 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
         }
       }
     } else {
-      LOG(ERR) << "no output function defined in Javascript context";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "no output function defined in Javascript context";
     }
   }
 
@@ -4210,14 +4273,12 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an error in a javascript object, using supplied text
+/// @brief creates an error in a javascript object, based on arangodb::result
 ////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                           std::string const& message) {
-  v8::HandleScope scope(isolate);
-  CreateErrorObject(isolate, errorNumber, message);
+void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const& res){
+  TRI_CreateErrorObject(isolate, res.errorNumber(), res.errorMessage(), false);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object
@@ -4227,18 +4288,18 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                            std::string const& message, bool autoPrepend) {
   v8::HandleScope scope(isolate);
 
-  if (autoPrepend) {
-    try {
-      // does string concatenation, so we must wrap this in a try...catch block
-      CreateErrorObject(
-          isolate, errorNumber,
-          message + ": " + std::string(TRI_errno_string(errorNumber)));
-    } catch (...) {
-      // we cannot do anything about this here, but no C++ exception must
-      // escape the C++ bindings called by V8
+  try {
+    // does string concatenation, so we must wrap this in a try...catch block
+    if (autoPrepend && message.empty()) {
+        CreateErrorObject(
+            isolate, errorNumber,
+            message + ": " + std::string(TRI_errno_string(errorNumber)));
+    } else {
+      CreateErrorObject(isolate, errorNumber, message);
     }
-  } else {
-    CreateErrorObject(isolate, errorNumber, message);
+  } catch (...) {
+    // we cannot do anything about this here, but no C++ exception must
+    // escape the C++ bindings called by V8
   }
 }
 
@@ -4255,7 +4316,7 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
   size_t str_len = str.length();
   if (str_len > 0) {
     UErrorCode errorCode = U_ZERO_ERROR;
-    const Normalizer2* normalizer =
+    Normalizer2 const* normalizer =
         Normalizer2::getInstance(nullptr, "nfc", UNORM2_COMPOSE, errorCode);
 
     if (U_FAILURE(errorCode)) {
@@ -4279,7 +4340,7 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
                                       result.length()));
   }
 
-  TRI_V8_RETURN(v8::String::NewFromUtf8(isolate, ""));
+  TRI_V8_RETURN(v8::String::Empty(isolate));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4430,7 +4491,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->SetPrototype(ErrorPrototype);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("ArangoError"), ArangoErrorFunc);
+      isolate, TRI_V8_ASCII_STRING("ArangoError"), ArangoErrorFunc);
 
   rt = ft->InstanceTemplate();
   v8g->ArangoErrorTempl.Reset(isolate, rt);
@@ -4439,213 +4500,213 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("FS_CHMOD"), JS_ChMod);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_EXISTS"), JS_Exists);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_FILESIZE"), JS_SizeFile);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_GET_TEMP_FILE"),
                                JS_GetTempFile);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_GET_TEMP_PATH"),
                                JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("FS_IS_DIRECTORY"), JS_IsDirectory);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+      isolate, TRI_V8_ASCII_STRING("FS_IS_DIRECTORY"), JS_IsDirectory);
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_IS_FILE"), JS_IsFile);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("FS_LIST"),
                                JS_List);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("FS_LIST_TREE"), JS_ListTree);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+      isolate, TRI_V8_ASCII_STRING("FS_LIST_TREE"), JS_ListTree);
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("FS_MAKE_ABSOLUTE"),
                                JS_MakeAbsolute);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY"),
                                JS_MakeDirectory);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY_RECURSIVE"),
+      isolate, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY_RECURSIVE"),
       JS_MakeDirectoryRecursive);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MOVE"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("FS_MOVE"),
                                JS_MoveFile);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("FS_COPY_RECURSIVE"),
                                JS_CopyRecursive);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("FS_COPY_FILE"), JS_CopyFile);
+      isolate, TRI_V8_ASCII_STRING("FS_COPY_FILE"), JS_CopyFile);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_MTIME"), JS_MTime);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_REMOVE"), JS_Remove);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_REMOVE_DIRECTORY"),
                                JS_RemoveDirectory);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE_RECURSIVE_DIRECTORY"),
+      isolate, TRI_V8_ASCII_STRING("FS_REMOVE_RECURSIVE_DIRECTORY"),
       JS_RemoveRecursiveDirectory);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("FS_UNZIP_FILE"), JS_UnzipFile);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+      isolate, TRI_V8_ASCII_STRING("FS_UNZIP_FILE"), JS_UnzipFile);
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_ZIP_FILE"), JS_ZipFile);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_APPEND"), JS_Append);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_BASE64DECODE"),
                                JS_Base64Decode);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_BASE64ENCODE"),
                                JS_Base64Encode);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_CHECK_AND_MARK_NONCE"),
                                JS_MarkNonce);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_CREATE_NONCE"),
                                JS_CreateNonce);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_DOWNLOAD"), JS_Download);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+      isolate, TRI_V8_ASCII_STRING("SYS_DOWNLOAD"), JS_Download);
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_EXECUTE"), JS_Execute);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_EXECUTE_EXTERNAL"),
                                JS_ExecuteExternal);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_EXECUTE_EXTERNAL_AND_WAIT"),
+      isolate, TRI_V8_ASCII_STRING("SYS_EXECUTE_EXTERNAL_AND_WAIT"),
       JS_ExecuteAndWaitExternal);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_GEN_RANDOM_ALPHA_NUMBERS"),
+      isolate, TRI_V8_ASCII_STRING("SYS_GEN_RANDOM_ALPHA_NUMBERS"),
       JS_RandomAlphaNum);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_GEN_RANDOM_NUMBERS"),
                                JS_RandomNumbers);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_GEN_RANDOM_SALT"),
                                JS_RandomSalt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_GETLINE"), JS_Getline);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_HMAC"), JS_HMAC);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_IS_IP"), JS_IsIP);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SPLIT_WORDS_ICU"),
                                JS_SplitWordlist);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_KILL_EXTERNAL"),
                                JS_KillExternal);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SUSPEND_EXTERNAL"),
                                JS_SuspendExternal);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_CONTINUE_EXTERNAL"),
                                JS_ContinueExternal);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_LOAD"), JS_Load);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_LOG"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("SYS_LOG"),
                                JS_Log);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_LOG_LEVEL"), JS_LogLevel);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_MD5"),
+      isolate, TRI_V8_ASCII_STRING("SYS_LOG_LEVEL"), JS_LogLevel);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("SYS_MD5"),
                                JS_Md5);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_OPTIONS"), JS_Options);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_OUTPUT"), JS_Output);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_PARSE"), JS_Parse);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_PARSE_FILE"), JS_ParseFile);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("SYS_PBKDF2HS1"), JS_PBKDF2HS1);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+      isolate, TRI_V8_ASCII_STRING("SYS_PARSE_FILE"), JS_ParseFile);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING("SYS_PBKDF2HS1"), JS_PBKDF2HS1);
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_PBKDF2"), JS_PBKDF2);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_PROCESS_STATISTICS"),
                                JS_ProcessStatistics);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_RAND"), JS_Rand);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_READ"), JS_Read);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_READ64"), JS_Read64);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_READ_BUFFER"), JS_ReadBuffer);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+      isolate, TRI_V8_ASCII_STRING("SYS_READ_BUFFER"), JS_ReadBuffer);
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SHA1"), JS_Sha1);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SHA224"), JS_Sha224);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SHA256"), JS_Sha256);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SHA384"), JS_Sha384);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SHA512"), JS_Sha512);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SLEEP"), JS_Sleep);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SPRINTF"), JS_SPrintF);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_STATUS_EXTERNAL"),
                                JS_StatusExternal);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_TEST_PORT"), JS_TestPort);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+      isolate, TRI_V8_ASCII_STRING("SYS_TEST_PORT"), JS_TestPort);
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_TIME"), JS_Time);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_WAIT"), JS_Wait);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_WRITE"), JS_Write);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CAN_USE_FAILAT"),
                                JS_DebugCanUseFailAt);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_IS_STOPPING"), JS_IsStopping);
-  
+      isolate, TRI_V8_ASCII_STRING("SYS_IS_STOPPING"), JS_IsStopping);
+
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("V8_TO_VPACK"), JS_V8ToVPack);
-  
+      isolate, TRI_V8_ASCII_STRING("V8_TO_VPACK"), JS_V8ToVPack);
+
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("VPACK_TO_V8"), JS_VPackToV8);
+      isolate, TRI_V8_ASCII_STRING("VPACK_TO_V8"), JS_VPackToV8);
 
   // .............................................................................
   // create the global variables
   // .............................................................................
 
-  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("HOME"),
+  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING("HOME"),
                                TRI_V8_STD_STRING(FileUtils::homeDirectory()));
 
-  TRI_AddGlobalVariableVocbase(isolate, context,
+  TRI_AddGlobalVariableVocbase(isolate, 
                                TRI_V8_ASCII_STRING("MODULES_PATH"),
                                V8PathList(isolate, modules));
 
-  TRI_AddGlobalVariableVocbase(isolate, context,
+  TRI_AddGlobalVariableVocbase(isolate, 
                                TRI_V8_ASCII_STRING("STARTUP_PATH"),
                                TRI_V8_STD_STRING(startupPath));
 
-  TRI_AddGlobalVariableVocbase(isolate, context,
+  TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING("PATH_SEPARATOR"),
                                TRI_V8_ASCII_STRING(TRI_DIR_SEPARATOR_STR));
 
   TRI_AddGlobalVariableVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("VALGRIND"),
+      isolate, TRI_V8_ASCII_STRING("VALGRIND"),
       v8::Boolean::New(isolate, (RUNNING_ON_VALGRIND > 0)));
 
 #ifdef COVERAGE
   TRI_AddGlobalVariableVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("COVERAGE"), v8::True(isolate));
+      isolate, TRI_V8_ASCII_STRING("COVERAGE"), v8::True(isolate));
 #else
   TRI_AddGlobalVariableVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("COVERAGE"), v8::False(isolate));
+      isolate, TRI_V8_ASCII_STRING("COVERAGE"), v8::False(isolate));
 #endif
 
-  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("VERSION"),
+  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING("VERSION"),
                                TRI_V8_ASCII_STRING(ARANGODB_VERSION));
 
-  TRI_AddGlobalVariableVocbase(isolate, context,
+  TRI_AddGlobalVariableVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_PLATFORM"),
                                TRI_V8_ASCII_STRING(TRI_PLATFORM));
 

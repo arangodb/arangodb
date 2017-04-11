@@ -41,8 +41,6 @@ namespace basics {
 class StringBuffer;
 }
 
-class Transaction;
-
 namespace aql {
 class Ast;
 struct Variable;
@@ -251,7 +249,6 @@ struct AstNode {
   /// @brief compute the value for a constant value node
   /// the value is owned by the node and must not be freed by the caller
   arangodb::velocypack::Slice computeValue() const;
-  arangodb::velocypack::Slice computeValue(arangodb::Transaction*) const;
 
   /// @brief sort the members of an (array) node
   /// this will also set the FLAG_SORTED flag for the node
@@ -292,12 +289,12 @@ struct AstNode {
   /// @brief convert the node's value to a boolean value
   /// this may create a new node or return the node itself if it is already a
   /// boolean value node
-  AstNode* castToBool(Ast*);
+  AstNode const* castToBool(Ast*) const;
 
   /// @brief convert the node's value to a number value
   /// this may create a new node or return the node itself if it is already a
   /// numeric value node
-  AstNode* castToNumber(Ast*);
+  AstNode const* castToNumber(Ast*) const;
 
   /// @brief check a flag for the node
   inline bool hasFlag(AstNodeFlagType flag) const {
@@ -421,7 +418,6 @@ struct AstNode {
   bool isAttributeAccessForVariable(Variable const* variable, bool allowIndexedAccess) const {
     auto node = getAttributeAccessForVariable(allowIndexedAccess);
 
-
     if (node == nullptr) {
       return false;
     }
@@ -485,6 +481,10 @@ struct AstNode {
   /// @brief whether or not a node (and its subnodes) may contain a call to a
   /// user-defined function
   bool callsUserDefinedFunction() const;
+  
+  /// @brief whether or not a node (and its subnodes) may contain a call to a
+  /// a function or a user-defined function
+  bool callsFunction() const;
 
   /// @brief whether or not the object node contains dynamically named
   /// attributes

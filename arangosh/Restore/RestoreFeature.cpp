@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -68,14 +69,14 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _defaultNumberOfShards(1),
       _defaultReplicationFactor(1),
       _result(result),
-      _stats{ 0, 0, 0 } {
+      _stats{0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
   startsAfter("Logger");
 
   _inputDirectory =
-      FileUtils::buildFilename(FileUtils::currentDirectory(), "dump");
+      FileUtils::buildFilename(FileUtils::currentDirectory().result(), "dump");
 }
 
 void RestoreFeature::collectOptions(
@@ -112,8 +113,7 @@ void RestoreFeature::collectOptions(
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_overwrite));
 
-  options->addOption("--recycle-ids",
-                     "recycle collection ids from dump",
+  options->addOption("--recycle-ids", "recycle collection ids from dump",
                      new BooleanParameter(&_recycleIds));
 
   options->addOption("--default-number-of-shards",
@@ -137,8 +137,9 @@ void RestoreFeature::validateOptions(
   if (1 == n) {
     _inputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG(FATAL) << "expecting at most one directory, got " +
-                      StringUtils::join(positionals, ", ");
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "expecting at most one directory, got " +
+               StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
 
@@ -162,12 +163,13 @@ void RestoreFeature::prepare() {
   // .............................................................................
 
   if (_inputDirectory == "" || !TRI_IsDirectory(_inputDirectory.c_str())) {
-    LOG(FATAL) << "input directory '" << _inputDirectory << "' does not exist";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "input directory '" << _inputDirectory << "' does not exist";
     FATAL_ERROR_EXIT();
   }
 
   if (!_importStructure && !_importData) {
-    LOG(FATAL)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "Error: must specify either --create-collection or --import-data";
     FATAL_ERROR_EXIT();
   }
@@ -188,9 +190,8 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 
   std::string const body = builder.slice().toJson();
 
-  std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(rest::RequestType::POST, "/_api/database",
-                           body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+      rest::RequestType::POST, "/_api/database", body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_INTERNAL;
@@ -202,7 +203,7 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
       returnCode == static_cast<int>(rest::ResponseCode::CREATED)) {
     // all ok
     return TRI_ERROR_NO_ERROR;
-  } 
+  }
   if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
@@ -238,14 +239,14 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
                 << _defaultNumberOfShards << std::endl;
       url += "&numberOfShards=" + std::to_string(_defaultNumberOfShards);
     }
-    if (!slice.hasKey(std::vector<std::string>({"parameters", "replicationFactor"}))) {
+    if (!slice.hasKey(
+            std::vector<std::string>({"parameters", "replicationFactor"}))) {
       // No replication factor given, so take the default:
       std::cerr << "# no replication information specified for collection '"
                 << name << "', using default replication factor "
                 << _defaultReplicationFactor << std::endl;
       url += "&replicationFactor=" + std::to_string(_defaultReplicationFactor);
     }
-
   }
 
   std::string const body = slice.toJson();
@@ -312,8 +313,8 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
                           (_recycleIds ? "true" : "false") + "&force=" +
                           (_force ? "true" : "false");
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::PUT, url, buffer, bufferSize));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -344,7 +345,7 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
   // We first have to create collections defining the distribution.
   VPackSlice leftDist = left.get("distributeShardsLike");
   VPackSlice rightDist = right.get("distributeShardsLike");
-  
+
   if (leftDist.isNone() && !rightDist.isNone()) {
     return true;
   }
@@ -471,7 +472,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     }
 
     std::sort(collections.begin(), collections.end(), SortCollections);
-    
+
     StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
 
     // step2: run the actual import
@@ -528,7 +529,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                       << " collection '" << cname << "'..." << std::endl;
           }
 
-          int fd = TRI_OPEN(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+          int fd = TRI_TRACKED_OPEN_FILE(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
           if (fd < 0) {
             errorMsg = "cannot open collection data file '" + datafile + "'";
@@ -540,7 +541,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
           while (true) {
             if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
-              TRI_CLOSE(fd);
+              TRI_TRACKED_CLOSE_FILE(fd);
               errorMsg = "out of memory";
 
               return TRI_ERROR_OUT_OF_MEMORY;
@@ -551,7 +552,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             if (numRead < 0) {
               // error while reading
               int res = TRI_errno();
-              TRI_CLOSE(fd);
+              TRI_TRACKED_CLOSE_FILE(fd);
               errorMsg = std::string(TRI_errno_string(res));
 
               return res;
@@ -588,8 +589,6 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                 length = found - buffer.begin();
               }
 
-              TRI_ASSERT(length > 0);
-
               _stats._totalBatches++;
 
               int res =
@@ -607,7 +606,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                   std::cerr << errorMsg << std::endl;
                   continue;
                 }
-                TRI_CLOSE(fd);
+                TRI_TRACKED_CLOSE_FILE(fd);
 
                 return res;
               }
@@ -621,7 +620,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             }
           }
 
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
         }
       }
 
@@ -654,7 +653,9 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 }
 
 void RestoreFeature::start() {
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>("Client");
+  ClientFeature* client =
+      application_features::ApplicationServer::getFeature<ClientFeature>(
+          "Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -662,13 +663,15 @@ void RestoreFeature::start() {
   try {
     _httpClient = client->createHttpClient();
   } catch (...) {
-    LOG(FATAL) << "cannot create server connection, giving up!";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
   std::string dbName = client->databaseName();
 
-  _httpClient->setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
+  _httpClient->setLocationRewriter(static_cast<void*>(client),
+                                   &rewriteLocation);
   _httpClient->setUserNamePassword("/", client->username(), client->password());
 
   int err = TRI_ERROR_NO_ERROR;
@@ -683,8 +686,10 @@ void RestoreFeature::start() {
     int res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "Could not create database '" << dbName << "'";
-      LOG(FATAL) << _httpClient->getErrorMessage() << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '"
+                                              << dbName << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << _httpClient->getErrorMessage() << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -696,9 +701,11 @@ void RestoreFeature::start() {
   }
 
   if (!_httpClient->isConnected()) {
-    LOG(ERR) << "Could not connect to endpoint "
-             << _httpClient->getEndpointSpecification();
-    LOG(FATAL) << _httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Could not connect to endpoint "
+        << _httpClient->getEndpointSpecification();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage()
+                                              << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -710,10 +717,11 @@ void RestoreFeature::start() {
 
   if (version.first < 3) {
     // we can connect to 3.x
-    LOG(ERR) << "got incompatible server version '" << versionString << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "got incompatible server version '" << versionString << "'";
 
     if (!_force) {
-      LOG(FATAL) << "giving up!";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "giving up!";
       FATAL_ERROR_EXIT();
     }
   }
@@ -732,18 +740,19 @@ void RestoreFeature::start() {
   try {
     res = processInputDirectory(errorMsg);
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG(ERR) << "Error: caught unknown exception";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Error: caught unknown exception";
     res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (!errorMsg.empty()) {
-      LOG(ERR) << errorMsg;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << errorMsg;
     } else {
-      LOG(ERR) << "An error occurred";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "An error occurred";
     }
     ret = EXIT_FAILURE;
   }
@@ -759,6 +768,6 @@ void RestoreFeature::start() {
                 << std::endl;
     }
   }
-  
+
   *_result = ret;
 }

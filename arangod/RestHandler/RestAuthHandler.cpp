@@ -71,12 +71,9 @@ RestStatus RestAuthHandler::execute() {
     return RestStatus::DONE;
   }
 
-  VPackOptions options = VPackOptions::Defaults;
-  options.checkAttributeUniqueness = true;
-
   bool parseSuccess;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     return badRequest();
   }

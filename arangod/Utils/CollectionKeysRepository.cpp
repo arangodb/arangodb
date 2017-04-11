@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionKeysRepository.h"
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -57,9 +57,9 @@ CollectionKeysRepository::~CollectionKeysRepository() {
     }
 
     if (tries == 0) {
-      LOG(INFO) << "waiting for used keys to become unused";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "waiting for used keys to become unused";
     } else if (tries == 120) {
-      LOG(WARN) << "giving up waiting for unused keys";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for unused keys";
     }
 
     usleep(500000);

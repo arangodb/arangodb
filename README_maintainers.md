@@ -29,6 +29,7 @@ CMake flags
  * *-DUSE_MAINTAINER_MODE=1* - generate lex/yacc and errors files
  * *-DUSE_BACKTRACE=1* - add backtraces to native code asserts & exceptions
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
+ * *-DUSE_CATCH_TESTS=On (default is On so this is set unless you explicitly disable it)
 
 CFLAGS
 ------
@@ -122,7 +123,7 @@ Dependencies
 ------------
 * *Ruby*, *rspec*, *httparty* to install the required dependencies run:
   `cd UnitTests/HttpInterface; bundler`
-* boost_test (compile time)
+* catch (compile time, shipped in the 3rdParty directory)
 
 
 Filename conventions
@@ -166,13 +167,36 @@ Test frameworks used
 ====================
 There are several major places where unittests live: 
  - *UnitTests/HttpInterface*        - rspec tests
- - *UnitTests/Basics*               - boost unittests
- - *UnitTests/Geo*                  - boost unittests
+ - tests/*                          - catch unittests
  - *js/server/tests*                - runneable on the server
  - *js/common/tests*                - runneable on the server & via arangosh
  - *js/common/test-data*
  - *js/client/tests*                - runneable via arangosh
  - *js/apps/system/aardvark/test*
+
+
+Debugging Tests (quick intro)
+-----------------------------
+
+runnuing single rspec test
+
+   ./scripts/unittest http_server --test api-import-spec.rb
+
+debugging rspec with gdb
+
+    server> ./scripts/unittest http_server --test api-import-spec.rb --server tcp://127.0.0.1:7777
+    - or -
+    server> ARANGO_SERVER="127.0.0.1:6666" rspec -IUnitTests/HttpInterface --format d --color UnitTests/HttpInterface/api-import-spec.rb
+
+    client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 --server.authentication false --log.level communication=trace ../arangodb-data-test-mmfiles
+
+debugging a storage engine
+
+    host> rm -fr ../arangodb-data-rocksdb/; gdb --args ./build/bin/arangod --console --server.storage-engine rocksdb --foxx.queues false --server.statistics false --server.endpoint http+tcp://0.0.0.0:7777 ../arangodb-data-rocksdb
+    (gdb) catch throw
+    (gdb) r
+    arangod> require("jsunity").runTest("js/client/tests/shell/shell-client.js");
+
 
 
 HttpInterface - RSpec Client Tests
@@ -318,9 +342,21 @@ arangod commandline arguments
 
 __________________________________________________________________________________________________________
 
-Linux Cordeumps
+Linux Coredumps
 ===============
-Hint: on Ubuntu the `apport` package may interfere with this.
+Generally coredumps have to be enabled using:
+
+     ulimit -c unlimited
+
+You should then see:
+
+     ulimit -a
+     core file size          (blocks, -c) unlimited
+
+for each shell and its subsequent processes.
+
+Hint: on Ubuntu the `apport` package may interfere with this; however you may use the `systemd-coredump` package
+which automates much of the following:
 
 So that the unit testing framework can autorun gdb it needs to reliably find the corefiles.
 In Linux this is configured via the `/proc` filesystem, you can make this reboot permanent by
@@ -340,6 +376,22 @@ Solaris Coredumps
 =================
 Solaris configures the system corefile behaviour via the `coreadm` programm.
 see https://docs.oracle.com/cd/E19455-01/805-7229/6j6q8svhr/ for more details.
+
+Analyzing Coredumps on Linux
+============================
+We offer debug packages containing the debug symbols for your binaries. Please install them if you didn't compile yourselves.
+
+Given you saw in the log of the arangod with the PID `25216` that it died, you should then find 
+`/var/tmp/core-V8 WorkerThread-25216-1490887259` with this information. We may now start GDB and inspect whats going on:
+
+    gdb /usr/sbin/arangod /var/tmp/*25216*
+
+These commands give usefull information about the incident:
+
+    backtrace full
+    thread apply all bt
+
+The first gives the full stacktrace including variables of the last active thread, the later one the stacktraces of all threads.
 
 Windows debugging
 =================
@@ -366,6 +418,34 @@ via the environment variable or in the menu. Given we want to store the symbols 
 
 You then will be able to see stack traces in the debugger.
 
+You may also try to download the symbols manually using: 
+
+    symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://www.arangodb.com/repositories/symsrv/
+
+
+The symbolserver over at https://www.arangodb.com/repositories/symsrv/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corosponding to the components of arangodb:
+
+  - arango - the basic arangodb library needed by all components
+  - arango_v8 - the basic V8 wrappers needed by all components
+  - arangod - the server process 
+  - the client utilities:
+    - arangob
+    - arangobench
+    - arangoexport
+    - arangoimp
+    - arangorestore
+    - arangosh
+    - arangovpack
+
+In these directories you will find subdirectories with the hash corosponding to the id of the binaries. Their date should corrospond to the release date of their respective arango release. 
+
+This means i.e. for ArangoDB 3.1.11: 
+
+ https://www.arangodb.com/repositories/symsrv/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
+
+This file is a microsoft cabinet file, which is a little bit compressed. You can dismantle it so the windows explorer offers you its proper handler by renaming it to .cab; click on the now named `arangod.cab`, copy the contained arangod.pdb into your symbol path.
+
+
 Coredump analysis
 -----------------
 While Visual studio may cary a nice shiny gui, the concept of GUI fails miserably i.e. in testautomation. Getting an overview over all running threads is a tedious task with it. Here the commandline version of [WinDBG](http://www.windbg.org/) cdb comes to the aid. `testing.js` utilizes it to obtain automatical stack traces for crashes.
@@ -386,6 +466,22 @@ ________________________________________________________________________________
 
 Documentation
 =============
+Using Docker container
+----------------------
+We provide the docker container `arangodb/documentation-builder` which brings all neccessary dependencies to build the documentation.
+
+You can automagically build it using
+
+    ./scripts/generateDocumentation.sh
+
+which will start the docker container, compile ArangoDB, generate fresh example snippets, generate swagger, and all gitbook
+produced output files.
+
+You can also use `proselint` inside of that container to let it proof read your english ;-)
+
+
+Installing on local system
+--------------------------
 Dependencies to build documentation:
 
 - [swagger 2](http://swagger.io/) for the API-Documentation inside aardvark (no installation required)
@@ -425,6 +521,9 @@ Dependencies to build documentation:
 
         npm install gitbook-cli -g
 
+- [ditaa (DIagrams Through Ascii Art)](http://ditaa.sourceforge.net/) to build the 
+  ascii art diagrams (optional)
+
 - Calibre2 (optional, only required if you want to build the e-book version)
 
   http://calibre-ebook.com/download
@@ -459,11 +558,13 @@ It does not, if `SUMMARY.md` in `Books/ppbooks/` looks like this:
 If sub-chapters do not show in the navigation, try another browser (Firefox).
 Chrome's security policies are pretty strict about localhost and file://
 protocol. You may access the docs through a local web server to lift the
-restrictions.
+restrictions. You can use pythons build in http server for this.
+
+    ~/books$ python -m SimpleHTTPServer 8000
 
 To only regereneate one file (faster) you may specify a filter:
 
-    make FILTER=Manual/Aql/Invoke.mdpp
+    make build-book NAME=Manual FILTER=Manual/Aql/Invoke.mdpp
 
 (regular expressions allowed)
 
@@ -495,8 +596,9 @@ generate
  - `./utils/generateExamples.sh --onlyThisOne geoIndexSelect` will only produce one example - *geoIndexSelect*
  - `./utils/generateExamples.sh --onlyThisOne 'MOD.*'` will only produce the examples matching that regex; Note that
    examples with enumerations in their name may base on others in their series - so you should generate the whole group.
- - `./utils/generateExamples.sh --server.endpoint tcp://127.0.0.1:8529` will utilize an existing arangod instead of starting a new one.
-   this does seriously cut down the execution time.
+ - running `onlyThisOne` in conjunction with a pre-started server cuts down the execution time even more.
+   In addition to the `--onlyThisOne ...` specify i.e. `--server.endpoint tcp://127.0.0.1:8529` to utilize your already running arangod.
+   Please note that examples may collide with existing collections like 'test' - you need to make sure your server is clean enough.
  - you can use generateExamples like that:
     `./utils/generateExamples.sh \
        --server.endpoint 'tcp://127.0.0.1:8529' \
@@ -807,9 +909,9 @@ Deploying a locally changed version
 
 Create local docker images using the following repositories:
 
-https://github.com/arangodb/arangodb-docker
-https://github.com/arangodb/arangodb-mesos-docker
-https://github.com/arangodb/arangodb-mesos-framework
+ - https://github.com/arangodb/arangodb-docker
+ - https://github.com/arangodb/arangodb-mesos-docker
+ - https://github.com/arangodb/arangodb-mesos-framework
 
 Then adjust the docker images in the config (`arangodb3.json`) and redeploy it using the curl command above.
 

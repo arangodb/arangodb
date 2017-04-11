@@ -26,11 +26,12 @@
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -363,15 +364,15 @@ void Condition::andCombine(AstNode const* node) {
 /// filtering(first) and sorting(second)
 std::pair<bool, bool> Condition::findIndexes(
     EnumerateCollectionNode const* node,
-    std::vector<arangodb::Transaction::IndexHandle>& usedIndexes,
+    std::vector<transaction::Methods::IndexHandle>& usedIndexes,
     SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
   std::string collectionName = node->collection()->getName();
  
-  arangodb::Transaction* trx = _ast->query()->trx();
+  transaction::Methods* trx = _ast->query()->trx();
 
-  size_t const itemsInIndex = node->collection()->count();
+  size_t const itemsInIndex = node->collection()->count(trx);
   if (_root == nullptr) {
     size_t dummy;
     return trx->getIndexForSortCondition(collectionName, sortCondition,
@@ -622,7 +623,7 @@ void Condition::optimize(ExecutionPlan* plan) {
     return;
   }
 
-  Transaction* trx = plan->getAst()->query()->trx(); 
+  transaction::Methods* trx = plan->getAst()->query()->trx(); 
 
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
@@ -1073,7 +1074,7 @@ void Condition::deduplicateInOperation(AstNode* operation) {
 }
 
 /// @brief merge the values from two IN operations
-AstNode* Condition::mergeInOperations(arangodb::Transaction* trx, AstNode const* lhs, AstNode const* rhs) {
+AstNode* Condition::mergeInOperations(transaction::Methods* trx, AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
   TRI_ASSERT(rhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
 
@@ -1083,7 +1084,7 @@ AstNode* Condition::mergeInOperations(arangodb::Transaction* trx, AstNode const*
   TRI_ASSERT(lValue->isArray() && lValue->isConstant());
   TRI_ASSERT(rValue->isArray() && rValue->isConstant());
 
-  return _ast->createNodeIntersectedArray(trx, lValue, rValue);
+  return _ast->createNodeIntersectedArray(lValue, rValue);
 }
 
 /// @brief merges the current node with the sub nodes of same type

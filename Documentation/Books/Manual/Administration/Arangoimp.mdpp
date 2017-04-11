@@ -34,7 +34,7 @@ example user records to import:
 To import these records, all you need to do is to put them into a file (with one
 line for each record to import) and run the following command:
 
-    > arangoimp --file "data.json" --type json --collection "users"
+    > arangoimp --file "data.json" --type jsonl --collection "users"
 
 This will transfer the data to the server, import the records, and print a
 status summary. To show the intermediate progress during the import process, the
@@ -96,8 +96,9 @@ use the *--server.database* option when invoking _arangoimp_.
 ### JSON input file formats
 
 **Note**: *arangoimp* supports two formats when importing JSON data from 
-a file. The first format (also used above) requires the input file to contain one 
-complete JSON document in each line, e.g.
+a file. The first format that we also used above is commonly known as [jsonl](http://jsonlines.org)).
+However, in contrast to the JSONL specification it requires the input file to contain
+one complete JSON document in each line, e.g.
 
 ```js
 { "_key": "one", "value": 1 }
@@ -105,6 +106,8 @@ complete JSON document in each line, e.g.
 { "_key": "foo", "value": "bar" }
 ...
 ```
+
+So one could argue that this is only a subset of JSONL.
 
 The above format can be imported sequentially by _arangoimp_. It will read data
 from the input file in chunks and send it in batches to the server. Each batch
@@ -238,6 +241,25 @@ An example command line to execute the TSV import is:
 
     > arangoimp --file "data.tsv" --type tsv --collection "users" 
 
+
+### Attribute Name Translation
+
+For the CSV and TSV input formats, attribute names can be translated automatically.
+This is useful in case the import file has different attribute names than those
+that should be used in ArangoDB.
+
+A common use case is to rename an "id" column from the input file into "_key" as
+it is expected by ArangoDB. To do this, specify the following translation when
+invoking arangoimp:
+
+    > arangoimp --file "data.csv" --type csv --translate "id=_key"
+
+Other common cases are to rename columns in the input file to *_from* and *_to*:
+    
+    > arangoimp --file "data.csv" --type csv --translate "from=_from" --translate "to=_to"
+
+The *translate* option can be specified multiple types. The source attribute name
+and the target attribute must be separated with a *=*.
 
 ### Importing into an Edge Collection
 

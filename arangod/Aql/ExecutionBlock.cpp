@@ -20,21 +20,25 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionBlock.h"
-#include "Aql/ExecutionEngine.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
+#include "Aql/BlockCollector.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 
 using namespace arangodb::aql;
-
+  
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
       _exeNode(ep),
       _pos(0),
       _done(false),
-      _tracing(engine->getQuery()->getNumericOption("tracing", 0)) {}
+      _tracing(engine->getQuery()->getNumericOption<double>("tracing", 0.0)) {}
 
 ExecutionBlock::~ExecutionBlock() {
   for (auto& it : _buffer) {
@@ -389,110 +393,81 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   }
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
-  std::vector<AqlItemBlock*> collector;
+  BlockCollector collector(&_engine->_itemBlockManager);
 
-  auto freeCollector = [&collector]() {
-    for (auto& x : collector) {
-      delete x;
-    }
-    collector.clear();
-  };
-
-  try {
-    while (skipped < atLeast) {
-      if (_buffer.empty()) {
-        if (skipping) {
-          size_t numActuallySkipped = 0;
-          _dependencies[0]->skip(atLeast - skipped, numActuallySkipped);
-          skipped = atLeast;
-          freeCollector();
-          return TRI_ERROR_NO_ERROR;
-        } else {
-          if (!getBlock(atLeast - skipped, atMost - skipped)) {
-            _done = true;
-            break;  // must still put things in the result from the collector .
-                    // . .
-          }
-          _pos = 0;
-        }
-      }
-
-      AqlItemBlock* cur = _buffer.front();
-
-      if (cur->size() - _pos > atMost - skipped) {
-        // The current block is too large for atMost:
-        if (!skipping) {
-          std::unique_ptr<AqlItemBlock> more(
-              cur->slice(_pos, _pos + (atMost - skipped)));
-
-          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-
-          collector.emplace_back(more.get());
-          more.release();  // do not delete it!
-        }
-        _pos += atMost - skipped;
-        skipped = atMost;
-      } else if (_pos > 0) {
-        // The current block fits into our result, but it is already
-        // half-eaten:
-        if (!skipping) {
-          std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
-
-          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-
-          collector.emplace_back(more.get());
-          more.release();
-        }
-        skipped += cur->size() - _pos;
-        delete cur;
-        _buffer.pop_front();
-        _pos = 0;
+  while (skipped < atLeast) {
+    if (_buffer.empty()) {
+      if (skipping) {
+        size_t numActuallySkipped = 0;
+        _dependencies[0]->skip(atLeast - skipped, numActuallySkipped);
+        skipped = atLeast;
+        return TRI_ERROR_NO_ERROR;
       } else {
-        // The current block fits into our result and is fresh:
-        skipped += cur->size();
-        if (!skipping) {
-          // if any of the following statements throw, then cur is not lost,
-          // as it is still contained in _buffer
-          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          collector.emplace_back(cur);
-        } else {
-          delete cur;
+        if (!getBlock(atLeast - skipped, atMost - skipped)) {
+          _done = true;
+          break;  // must still put things in the result from the collector .
+                  // . .
         }
-        _buffer.pop_front();
         _pos = 0;
       }
     }
-  } catch (...) {
-    freeCollector();
-    throw;
+
+    AqlItemBlock* cur = _buffer.front();
+
+    if (cur->size() - _pos > atMost - skipped) {
+      // The current block is too large for atMost:
+      if (!skipping) {
+        std::unique_ptr<AqlItemBlock> more(
+            cur->slice(_pos, _pos + (atMost - skipped)));
+
+        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        collector.add(std::move(more));
+      }
+      _pos += atMost - skipped;
+      skipped = atMost;
+    } else if (_pos > 0) {
+      // The current block fits into our result, but it is already
+      // half-eaten:
+      if (!skipping) {
+        std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
+
+        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        collector.add(std::move(more));
+      }
+      skipped += cur->size() - _pos;
+      returnBlock(cur);
+      _buffer.pop_front();
+      _pos = 0;
+    } else {
+      // The current block fits into our result and is fresh:
+      skipped += cur->size();
+      if (!skipping) {
+        // if any of the following statements throw, then cur is not lost,
+        // as it is still contained in _buffer
+        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        collector.add(cur);
+      } else {
+        returnBlock(cur);
+      }
+      _buffer.pop_front();
+      _pos = 0;
+    }
   }
 
   TRI_ASSERT(result == nullptr);
 
   if (!skipping) {
-    if (collector.size() == 1) {
-      result = collector[0];
-      collector.clear();
-    } else if (!collector.empty()) {
-      try {
-        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSomeConcatenate") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        result = AqlItemBlock::concatenate(_engine->getQuery()->resourceMonitor(), collector);
-      } catch (...) {
-        freeCollector();
-        throw;
-      }
-    }
+    result = collector.steal();
   }
 
-  freeCollector();
   return TRI_ERROR_NO_ERROR;
   DEBUG_END_BLOCK();
 }

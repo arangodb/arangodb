@@ -52,7 +52,7 @@ SchedulerFeature::SchedulerFeature(
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("Database");
+  // startsAfter("Database");
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
@@ -67,11 +67,13 @@ void SchedulerFeature::collectOptions(
   options->addOption("--server.threads", "number of threads",
                      new UInt64Parameter(&_nrServerThreads));
 
-  options->addHiddenOption("--server.minimal-threads", "minimal number of threads",
-                     new Int64Parameter(&_nrMinimalThreads));
+  options->addHiddenOption("--server.minimal-threads",
+                           "minimal number of threads",
+                           new UInt64Parameter(&_nrMinimalThreads));
 
-  options->addHiddenOption("--server.maximal-threads", "maximal number of threads",
-                     new Int64Parameter(&_nrMaximalThreads));
+  options->addHiddenOption("--server.maximal-threads",
+                           "maximal number of threads",
+                           new UInt64Parameter(&_nrMaximalThreads));
 
   options->addOption("--server.maximal-queue-size",
                      "maximum queue length for asynchronous operations",
@@ -84,18 +86,38 @@ void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
   if (_nrServerThreads == 0) {
     _nrServerThreads = TRI_numberProcessors();
-    LOG(DEBUG) << "Detected number of processors: " << _nrServerThreads;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Detected number of processors: " << _nrServerThreads;
   }
 
   if (_queueSize < 128) {
-    LOG(FATAL)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--server.maximal-queue-size', need at least 128";
     FATAL_ERROR_EXIT();
   }
 
-  if (_nrMinimalThreads != 0 && _nrMaximalThreads != 0 && _nrMinimalThreads > _nrMaximalThreads) {
+  if (_nrMinimalThreads < 2) {
+    _nrMinimalThreads = 2;
+  }
+
+  if (_nrServerThreads <= _nrMinimalThreads) {
+    _nrServerThreads = _nrMinimalThreads;
+  }
+
+  if (_nrMaximalThreads == 0) {
+    _nrMaximalThreads = 4 * _nrServerThreads;
+  }
+
+  if (_nrMaximalThreads < 64) {
+    _nrMaximalThreads = 64;
+  }
+
+  if (_nrMinimalThreads > _nrMaximalThreads) {
     _nrMaximalThreads = _nrMinimalThreads;
   }
+
+  TRI_ASSERT(0 < _nrMinimalThreads);
+  TRI_ASSERT(_nrMinimalThreads <= _nrServerThreads);
+  TRI_ASSERT(_nrServerThreads <= _nrMaximalThreads);
 }
 
 void SchedulerFeature::start() {
@@ -105,7 +127,7 @@ void SchedulerFeature::start() {
   bool ok = _scheduler->start(nullptr);
 
   if (!ok) {
-    LOG(FATAL) << "the scheduler cannot be started";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "the scheduler cannot be started";
     FATAL_ERROR_EXIT();
   }
 
@@ -123,8 +145,15 @@ void SchedulerFeature::start() {
       nullptr);
 }
 
+void SchedulerFeature::beginShutdown() {
+  // shut-down scheduler
+  if (_scheduler != nullptr) {
+    _scheduler->stopRebalancer();
+  }
+}
+
 void SchedulerFeature::stop() {
-  static size_t const MAX_TRIES = 10;
+  static size_t const MAX_TRIES = 100;
 
   // shutdown user jobs (needs the scheduler)
   TRI_ShutdownV8Dispatcher();
@@ -153,11 +182,11 @@ void SchedulerFeature::stop() {
     LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
     usleep(100000);
   }
-
+  
+  _scheduler->shutdown();
 }
 
 void SchedulerFeature::unprepare() {
-  _scheduler->shutdown();
   SCHEDULER = nullptr;
 }
 
@@ -204,14 +233,14 @@ bool CtrlHandler(DWORD eventType) {
   }
 
   if (shutdown == false) {
-    LOG(ERR) << "Invalid CTRL HANDLER event received - ignoring event";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid CTRL HANDLER event received - ignoring event";
     return true;
   }
 
   static bool seen = false;
 
   if (!seen) {
-    LOG(INFO) << "" << shutdownMessage << ", beginning shut down sequence";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << shutdownMessage << ", beginning shut down sequence";
 
     if (application_features::ApplicationServer::server != nullptr) {
       application_features::ApplicationServer::server->beginShutdown();
@@ -225,7 +254,7 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG(INFO) << "" << shutdownMessage << ", terminating";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
@@ -234,12 +263,11 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler =
-      std::make_unique<Scheduler>(static_cast<size_t>(_nrServerThreads),
-                                  static_cast<size_t>(_queueSize));
+      std::make_unique<Scheduler>(static_cast<uint64_t>(_nrMinimalThreads),
+                                  static_cast<uint64_t>(_nrServerThreads),
+                                  static_cast<uint64_t>(_nrMaximalThreads),
+                                  static_cast<uint64_t>(_queueSize));
 
-  _scheduler->setMinimal(_nrMinimalThreads);
-  _scheduler->setRealMaximum(_nrMaximalThreads);
-  
   SCHEDULER = _scheduler.get();
 }
 
@@ -249,20 +277,21 @@ void SchedulerFeature::buildControlCHandler() {
     int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
     if (result == 0) {
-      LOG(WARN) << "unable to install control-c handler";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to install control-c handler";
     }
   }
 #else
 
   auto ioService = _scheduler->managerService();
-  _exitSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGINT, SIGTERM, SIGQUIT);
+  _exitSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGINT,
+                                                           SIGTERM, SIGQUIT);
 
   _signalHandler = [this](const boost::system::error_code& error, int number) {
     if (error) {
       return;
     }
 
-    LOG(INFO) << "control-c received, beginning shut down sequence";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "control-c received, beginning shut down sequence";
     server()->beginShutdown();
     _exitSignals->async_wait(_exitHandler);
   };
@@ -272,7 +301,7 @@ void SchedulerFeature::buildControlCHandler() {
       return;
     }
 
-    LOG(FATAL) << "control-c received (again!), terminating";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "control-c received (again!), terminating";
     FATAL_ERROR_EXIT();
   };
 
@@ -284,16 +313,17 @@ void SchedulerFeature::buildHangupHandler() {
 #ifndef WIN32
   auto ioService = _scheduler->managerService();
 
-  _hangupSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGHUP);
+  _hangupSignals =
+      std::make_shared<boost::asio::signal_set>(*ioService, SIGHUP);
 
   _hangupHandler = [this](const boost::system::error_code& error, int number) {
     if (error) {
       return;
     }
 
-    LOG(INFO) << "hangup received, about to reopen logfile";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "hangup received, about to reopen logfile";
     LogAppender::reopen();
-    LOG(INFO) << "hangup received, reopened logfile";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "hangup received, reopened logfile";
 
     _hangupSignals->async_wait(_hangupHandler);
   };

@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;

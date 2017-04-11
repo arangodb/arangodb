@@ -47,6 +47,7 @@ static void logEntry(LogMessage* message) {
   ptr->_timestamp = timestamp;
   TRI_CopyString(ptr->_message, message->_message.c_str() + message->_offset,
                  sizeof(ptr->_message) - 1);
+  ptr->_topicId = message->_topicId;
 }
 
 std::vector<LogBuffer> LogBuffer::entries(LogLevel level, uint64_t start,

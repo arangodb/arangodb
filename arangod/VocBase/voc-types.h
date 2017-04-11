@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;
@@ -62,20 +61,14 @@ typedef uint64_t TRI_server_id_t;
 /// @brief Convert a revision ID to a string
 std::string TRI_RidToString(TRI_voc_rid_t rid);
 
-/// @brief Convert a string into a revision ID, no check variant
+/// @brief Convert a string into a revision ID, returns UINT64_MAX if invalid
 TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld, bool warn);
 
 /// @brief Convert a string into a revision ID, no check variant
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool warn);
 
-/// @brief Convert a string into a revision ID, no check variant
+/// @brief Convert a string into a revision ID, returns UINT64_MAX if invalid
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn);
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr, bool& isOld, bool warn);
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len, bool& isOld, bool warn);
 
 /// @brief enum for write operations
 enum TRI_voc_document_operation_e : uint8_t {
@@ -103,9 +96,9 @@ enum TRI_edge_direction_e {
 namespace std {
 
 template <>
-struct hash<std::vector<VPackSlice>> {
-  size_t operator()(std::vector<VPackSlice> const& x) const {
-    std::hash<VPackSlice> sliceHash;
+struct hash<std::vector<arangodb::velocypack::Slice>> {
+  size_t operator()(std::vector<arangodb::velocypack::Slice> const& x) const {
+    std::hash<arangodb::velocypack::Slice> sliceHash;
     size_t res = 0xdeadbeef;
     for (auto& el : x) {
       res ^= sliceHash(el);
@@ -127,12 +120,6 @@ struct DocumentDescriptor {
     _vpack = other._vpack;
   }
 
-/*
-  void reset(TRI_voc_rid_t revisionId, uint8_t const* vpack) {
-    _revisionId = revisionId;
-    _vpack = vpack;
-  }
-*/
   void clear() {
     _revisionId = 0;
     _vpack = nullptr;

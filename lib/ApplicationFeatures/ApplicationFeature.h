@@ -27,7 +27,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace application_features {
@@ -46,7 +45,7 @@ class ApplicationFeature {
 
  public:
   // return the feature's name
-  std::string name() const { return _name; }
+  std::string const& name() const { return _name; }
 
   bool isOptional() const { return _optional; }
   bool isRequired() const { return !_optional; }
@@ -69,16 +68,13 @@ class ApplicationFeature {
 
   // enable or disable a feature
   void setEnabled(bool value) {
-    if (!value && !isOptional() && _enableWith.empty()) {
+    if (!value && !isOptional()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "cannot disable non-optional feature '" + name() + "'");
     }
     _enabled = value;
   }
-
-  // return whether a feature is automatically enabled with another feature
-  std::string enableWith() const { return _enableWith; }
 
   // names of features required to be enabled for this feature to be enabled
   std::vector<std::string> const& requires() const { return _requires; }
@@ -142,12 +138,6 @@ class ApplicationFeature {
   // make the feature optional (or not)
   void setOptional(bool value) { _optional = value; }
 
-  // enable this feature automatically when another is enabled
-  void enableWith(std::string const& other) {
-    _enableWith = other;
-    _requires.emplace_back(other);
-  }
-
   // note that this feature requires another to be present
   void requires(std::string const& other) { _requires.emplace_back(other); }
 
@@ -161,6 +151,13 @@ class ApplicationFeature {
 
   // determine all direct and indirect ancestors of a feature
   std::unordered_set<std::string> ancestors() const;
+
+  void onlyEnabledWith(std::string const& other) { _onlyEnabledWith.emplace(other); }
+  
+  // return the list of other features that this feature depends on
+  std::unordered_set<std::string> const& onlyEnabledWith() const {
+    return _onlyEnabledWith;
+  }
 
  private:
   // set a feature's state. this method should be called by the
@@ -183,14 +180,14 @@ class ApplicationFeature {
   // is enabled
   std::vector<std::string> _requires;
 
-  // name of other feature that will enable or disable this feature
-  std::string _enableWith;
-
   // a list of start dependencies for the feature
   std::unordered_set<std::string> _startsAfter;
 
   // list of direct and indirect ancestors of the feature
   std::unordered_set<std::string> _ancestors;
+  
+  // enable this feature only if the following other features are enabled
+  std::unordered_set<std::string> _onlyEnabledWith;
 
   // state of feature
   ApplicationServer::FeatureState _state;

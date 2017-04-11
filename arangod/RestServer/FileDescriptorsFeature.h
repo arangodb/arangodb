@@ -28,6 +28,9 @@
 
 namespace arangodb {
 class FileDescriptorsFeature : public application_features::ApplicationFeature {
+public:
+  static uint64_t const RECOMMENDED;
+
  public:
   explicit FileDescriptorsFeature(application_features::ApplicationServer*);
 

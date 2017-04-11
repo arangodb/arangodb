@@ -1,0 +1,1696 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ur{
+    Version{"2.1.28.79"}
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
+    units{
+        acceleration{
+            g-force{
+                dnam{"جی-فورس"}
+                one{"{0} جی-فورس"}
+                other{"{0} جی-فورس"}
+            }
+            meter-per-second-squared{
+                dnam{"m/s²"}
+                one{"{0} m/s²"}
+                other{"{0} m/s²"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"آرک منٹ"}
+                one{"{0} آرک منٹ"}
+                other{"{0} آرک منٹ"}
+            }
+            arc-second{
+                dnam{"آرک سیکنڈ"}
+                one{"{0} آرک سیکنڈ"}
+                other{"{0} آرک سیکنڈ"}
+            }
+            degree{
+                dnam{"ڈگری"}
+                one{"{0} ڈگری"}
+                other{"{0} ڈگری"}
+            }
+            radian{
+                dnam{"rad"}
+                one{"{0} rad"}
+                other{"{0} rad"}
+            }
+            revolution{
+                dnam{"rev"}
+                one{"{0} rev"}
+                other{"{0} rev"}
+            }
+        }
+        area{
+            acre{
+                dnam{"ایکڑ"}
+                one{"{0} ایکڑ"}
+                other{"{0} ایکڑ"}
+            }
+            hectare{
+                dnam{"ہیکٹر"}
+                one{"{0} ہیکٹر"}
+                other{"{0} ہیکٹر"}
+            }
+            square-centimeter{
+                dnam{"مربع سینٹی میٹر"}
+                one{"{0} مربع سینٹی میٹر"}
+                other{"{0} مربع سینٹی میٹر"}
+                per{"{0} فی مربع سینٹی میٹر"}
+            }
+            square-foot{
+                dnam{"سکویر فٹ"}
+                one{"{0} سکویر فٹ"}
+                other{"{0} سکویر فٹ"}
+            }
+            square-inch{
+                dnam{"مربع انچ"}
+                one{"{0} مربع انچ"}
+                other{"{0} مربع انچ"}
+                per{"{0} فی مربع انچ"}
+            }
+            square-kilometer{
+                dnam{"سکویر کلو میٹر"}
+                one{"{0} سکویر کلو میٹر"}
+                other{"{0} سکویر کلو میٹر"}
+                per{"{0} فی سکویر کلو میٹر"}
+            }
+            square-meter{
+                dnam{"سکویر میٹر"}
+                one{"{0} سکویر میٹر"}
+                other{"{0} سکویر میٹر"}
+                per{"{0} فی سکویر میٹر"}
+            }
+            square-mile{
+                dnam{"سکویر میل"}
+                one{"{0} سکویر میل"}
+                other{"{0} سکویر میل"}
+            }
+            square-yard{
+                dnam{"مربع گز"}
+                one{"{0} مربع گز"}
+                other{"{0} مربع گز"}
+            }
+        }
+        compound{
+            per{"{0} فی {1}"}
+        }
+        concentr{
+            karat{
+                dnam{"قیراط"}
+                one{"{0} قیراط"}
+                other{"{0} قیراط"}
+            }
+            milligram-per-deciliter{
+                dnam{"ملی گرام فی ڈیسی لیٹر"}
+                one{"{0} ملی گرام فی ڈیسی لیٹر"}
+                other{"{0} ملی گرام فی ڈیسی لیٹر"}
+            }
+            millimole-per-liter{
+                dnam{"ملی مولس فی لیٹر"}
+                one{"{0} ملی مول فی لیٹر"}
+                other{"{0} ملی مول فی لیٹر"}
+            }
+            part-per-million{
+                dnam{"فی ملین حصے"}
+                one{"{0} فی ملین حصے"}
+                other{"{0} فی ملین حصے"}
+            }
+        }
+        consumption{
+            liter-per-100kilometers{
+                dnam{"لیٹر فی 100 کلو میٹر"}
+                one{"{0} لیٹر فی 100 کلو میٹر"}
+                other{"{0} لیٹر فی 100 کلو میٹر"}
+            }
+            liter-per-kilometer{
+                dnam{"لیٹر فی کلومیٹر"}
+                one{"{0} لیٹر فی کلومیٹر"}
+                other{"{0} لیٹر فی کلومیٹر"}
+            }
+            mile-per-gallon{
+                dnam{"میل فی گیلن"}
+                one{"{0} میل فی گیلن"}
+                other{"{0} میل فی گیلن"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"میل فی امپیریل گیلن"}
+                one{"{0} میل فی امپیریل گیلن"}
+                other{"{0} میل فی امپیریل گیلن"}
+            }
+        }
+        coordinate{
+            east{"{0}E"}
+            north{"{0}N"}
+            south{"{0}S"}
+            west{"{0}W"}
+        }
+        digital{
+            bit{
+                dnam{"bit"}
+                one{"{0} bit"}
+                other{"{0} bit"}
+            }
+            byte{
+                dnam{"byte"}
+                one{"{0} byte"}
+                other{"{0} byte"}
+            }
+            gigabit{
+                dnam{"Gb"}
+                one{"{0} Gb"}
+                other{"{0} Gb"}
+            }
+            gigabyte{
+                dnam{"GB"}
+                one{"{0} GB"}
+                other{"{0} GB"}
+            }
+            kilobit{
+                dnam{"kb"}
+                one{"{0} kb"}
+                other{"{0} kb"}
+            }
+            kilobyte{
+                dnam{"kB"}
+                one{"{0} kB"}
+                other{"{0} kB"}
+            }
+            megabit{
+                dnam{"Mb"}
+                one{"{0} Mb"}
+                other{"{0} Mb"}
+            }
+            megabyte{
+                dnam{"MB"}
+                one{"{0} MB"}
+                other{"{0} MB"}
+            }
+            terabit{
+                dnam{"Tb"}
+                one{"{0} Tb"}
+                other{"{0} Tb"}
+            }
+            terabyte{
+                dnam{"TB"}
+                one{"{0} TB"}
+                other{"{0} TB"}
+            }
+        }
+        duration{
+            century{
+                dnam{"صدیاں"}
+                one{"{0} صدی"}
+                other{"{0} صدیاں"}
+            }
+            day{
+                dnam{"دن"}
+                one{"{0} دن"}
+                other{"{0} دن"}
+                per{"{0}/d"}
+            }
+            hour{
+                dnam{"گھنٹے"}
+                one{"{0} گھنٹہ"}
+                other{"{0} گھنٹے"}
+                per{"{0} فی گھنٹہ"}
+            }
+            microsecond{
+                dnam{"مائیکرو سیکنڈز"}
+                one{"{0} مائیکرو سیکنڈ"}
+                other{"{0} مائیکرو سیکنڈز"}
+            }
+            millisecond{
+                dnam{"ملی سیکنڈز"}
+                one{"{0} ملی سیکنڈ"}
+                other{"{0} میل سیکنڈ"}
+            }
+            minute{
+                dnam{"منٹ"}
+                one{"{0} منٹ"}
+                other{"{0} منٹ"}
+                per{"{0}/min"}
+            }
+            month{
+                dnam{"مہینے"}
+                one{"{0} مہینہ"}
+                other{"{0} مہینے"}
+                per{"{0}/m"}
+            }
+            nanosecond{
+                dnam{"نینو سیکنڈز"}
+                one{"{0} نینو سیکنڈ"}
+                other{"{0} نینو سیکنڈ"}
+            }
+            second{
+                dnam{"سیکنڈ"}
+                one{"{0} سیکنڈ"}
+                other{"{0} سیکنڈ"}
+                per{"{0} فی سیکنڈ"}
+            }
+            week{
+                dnam{"ہفتے"}
+                one{"{0} ہفتہ"}
+                other{"{0} ہفتے"}
+                per{"{0}/w"}
+            }
+            year{
+                dnam{"سال"}
+                one{"{0} سال"}
+                other{"{0} سال"}
+                per{"فی سال {0}"}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"amp"}
+                one{"{0} A"}
+                other{"{0} A"}
+            }
+            milliampere{
+                dnam{"mA"}
+                one{"{0} mA"}
+                other{"{0} mA"}
+            }
+            ohm{
+                dnam{"ohm"}
+                one{"{0} Ω"}
+                other{"{0} Ω"}
+            }
+            volt{
+                dnam{"volt"}
+                one{"{0} V"}
+                other{"{0} V"}
+            }
+        }
+        energy{
+            calorie{
+                dnam{"کیلوریز"}
+                one{"{0} کیلوری"}
+                other{"{0} کیلوریز"}
+            }
+            foodcalorie{
+                dnam{"کیلوریز"}
+                one{"{0} کیلوری"}
+                other{"{0} کیلوریز"}
+            }
+            joule{
+                dnam{"جول"}
+                one{"{0} جول"}
+                other{"{0} جول"}
+            }
+            kilocalorie{
+                dnam{"کلو کیلوریز"}
+                one{"{0} کلو کیلوری"}
+                other{"{0} کلو کیلوریز"}
+            }
+            kilojoule{
+                dnam{"کلو جول"}
+                one{"{0} کلو جول"}
+                other{"{0} کلو جول"}
+            }
+            kilowatt-hour{
+                dnam{"کلو واٹ آور"}
+                one{"{0} کلو واٹ آور"}
+                other{"{0} کلو واٹ آور"}
+            }
+        }
+        frequency{
+            gigahertz{
+                dnam{"GHz"}
+                one{"{0} GHz"}
+                other{"{0} GHz"}
+            }
+            hertz{
+                dnam{"Hz"}
+                one{"{0} Hz"}
+                other{"{0} Hz"}
+            }
+            kilohertz{
+                dnam{"kHz"}
+                one{"{0} kHz"}
+                other{"{0} kHz"}
+            }
+            megahertz{
+                dnam{"MHz"}
+                one{"{0} MHz"}
+                other{"{0} MHz"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"ایسٹرونومیکل یونٹس"}
+                one{"{0} ایسٹرونومیکل یونٹ"}
+                other{"{0} ایسٹرونومیکل یونٹس"}
+            }
+            centimeter{
+                dnam{"سینٹی میٹر"}
+                one{"{0} سینٹی میٹر"}
+                other{"{0} سینٹی میٹر"}
+                per{"{0} فی سینٹی میٹر"}
+            }
+            decimeter{
+                dnam{"ڈیسی میٹر"}
+                one{"{0} ڈیسی میٹر"}
+                other{"{0} ڈیسی میٹر"}
+            }
+            foot{
+                dnam{"فیٹ"}
+                one{"{0} فیٹ"}
+                other{"{0} فیٹ"}
+                per{"{0} فی فوٹ"}
+            }
+            inch{
+                dnam{"انچ"}
+                one{"{0} انچ"}
+                other{"{0} انچ"}
+                per{"{0} فی انچ"}
+            }
+            kilometer{
+                dnam{"کلو میٹر"}
+                one{"{0} کلو میٹر"}
+                other{"{0} کلو میٹر"}
+                per{"{0} فی کلومیٹر"}
+            }
+            light-year{
+                dnam{"نوری سال"}
+                one{"{0} نوری سال"}
+                other{"{0} نوری سال"}
+            }
+            meter{
+                dnam{"میٹر"}
+                one{"{0} میٹر"}
+                other{"{0} میٹر"}
+                per{"{0} فی میٹر"}
+            }
+            micrometer{
+                dnam{"مائیکرو میٹر"}
+                one{"{0} مائیکرو میٹر"}
+                other{"{0} مائیکرو میٹر"}
+            }
+            mile{
+                dnam{"میل"}
+                one{"{0} میل"}
+                other{"{0} میل"}
+            }
+            mile-scandinavian{
+                dnam{"اسکینڈی نیویائی میل"}
+                one{"{0} اسکینڈی نیویائی میل"}
+                other{"{0} اسکینڈی نیویائی میل"}
+            }
+            millimeter{
+                dnam{"ملی میٹر"}
+                one{"{0} ملیمیٹر"}
+                other{"{0} ملیمیٹر"}
+            }
+            nanometer{
+                dnam{"نینو میٹر"}
+                one{"{0} نینو میٹر"}
+                other{"{0} نینو میٹر"}
+            }
+            nautical-mile{
+                dnam{"بحری میل"}
+                one{"{0} بحری میل"}
+                other{"{0} بحری میل"}
+            }
+            parsec{
+                dnam{"پارسیک"}
+                one{"{0} پارسیک"}
+                other{"{0} پارسیک"}
+            }
+            picometer{
+                dnam{"پیکو میٹر"}
+                one{"{0} پیکو میٹر"}
+                other{"{0} پیکو میٹر"}
+            }
+            yard{
+                dnam{"گز"}
+                one{"{0} یارڈ"}
+                other{"{0} یارڈ"}
+            }
+        }
+        light{
+            lux{
+                dnam{"lux"}
+                one{"{0} lux"}
+                other{"{0} lux"}
+            }
+        }
+        mass{
+            carat{
+                dnam{"قیراط"}
+                one{"{0} قیراط"}
+                other{"{0} قیراط"}
+            }
+            gram{
+                dnam{"گرام"}
+                one{"{0} گرام"}
+                other{"{0} گرام"}
+                per{"{0} فی گرام"}
+            }
+            kilogram{
+                dnam{"کلو گرام"}
+                one{"{0} کلو گرام"}
+                other{"{0} کلو گرام"}
+                per{"{0} فی کلو گرام"}
+            }
+            metric-ton{
+                dnam{"میٹرک ٹن"}
+                one{"{0} میٹرک ٹن"}
+                other{"{0} میٹرک ٹن"}
+            }
+            microgram{
+                dnam{"مائکرو گرام"}
+                one{"{0} مائکرو گرام"}
+                other{"{0} مائکرو گرام"}
+            }
+            milligram{
+                dnam{"ملی گرام"}
+                one{"{0} ملی گرام"}
+                other{"{0} ملی گرام"}
+            }
+            ounce{
+                dnam{"اونس"}
+                one{"{0} ونس"}
+                other{"{0} ونس"}
+                per{"{0} فی اونس"}
+            }
+            ounce-troy{
+                dnam{"oz t"}
+                one{"{0} oz t"}
+                other{"{0} oz t"}
+            }
+            pound{
+                dnam{"پاؤنڈ"}
+                one{"{0} پونڈ"}
+                other{"{0} پونڈ"}
+                per{"{0} فی پاؤنڈ"}
+            }
+            ton{
+                dnam{"ٹن"}
+                one{"{0} ٹن"}
+                other{"{0} ٹن"}
+            }
+        }
+        power{
+            gigawatt{
+                dnam{"گیگا واٹ"}
+                one{"{0} گیگا واٹ"}
+                other{"{0} گیگا واٹ"}
+            }
+            horsepower{
+                dnam{"ہارس پاور"}
+                one{"{0} ہارس پاور"}
+                other{"{0} ہارس پاور"}
+            }
+            kilowatt{
+                dnam{"کلو واٹ"}
+                one{"{0} کلو واٹ"}
+                other{"{0} کلو واٹ"}
+            }
+            megawatt{
+                dnam{"میگا واٹ"}
+                one{"{0} میگا واٹ"}
+                other{"{0} میگا واٹ"}
+            }
+            milliwatt{
+                dnam{"ملی واٹ"}
+                one{"{0} ملی واٹ"}
+                other{"{0} ملی واٹ"}
+            }
+            watt{
+                dnam{"واٹ"}
+                one{"{0} واٹ"}
+                other{"{0} واٹ"}
+            }
+        }
+        pressure{
+            hectopascal{
+                dnam{"ہیکٹو پاسکل"}
+                one{"{0} ہیکٹو پاسکل"}
+                other{"{0} ہیکٹو پاسکل"}
+            }
+            inch-hg{
+                dnam{"انچ مرکری"}
+                one{"{0} انچ مرکری"}
+                other{"{0} انچ مرکری"}
+            }
+            millibar{
+                dnam{"ملی بار"}
+                one{"{0} ملی بار"}
+                other{"{0} ملی بار"}
+            }
+            millimeter-of-mercury{
+                dnam{"mm Hg"}
+                one{"{0} mm Hg"}
+                other{"{0} mm Hg"}
+            }
+            pound-per-square-inch{
+                dnam{"psi"}
+                one{"{0} psi"}
+                other{"{0} psi"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"کلومیٹر فی گھنٹہ"}
+                one{"{0} کلومیٹر فی گھنٹہ"}
+                other{"{0} کلومیٹر فی گھنٹہ"}
+            }
+            knot{
+                dnam{"kn"}
+                one{"{0} kn"}
+                other{"{0} kn"}
+            }
+            meter-per-second{
+                dnam{"میٹر فی سیکنڈ"}
+                one{"{0} میٹر فی سیکنڈ"}
+                other{"{0} میٹر فی سیکنڈ"}
+            }
+            mile-per-hour{
+                dnam{"میل فی گھنٹہ"}
+                one{"{0} میل فی گھنٹہ"}
+                other{"{0} میل فی گھنٹہ"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"ڈگری سیلسیس"}
+                one{"{0} ڈگری سیلسیس"}
+                other{"{0} ڈگری سیلسیس"}
+            }
+            fahrenheit{
+                dnam{"ڈگری فارن ہائیٹ"}
+                one{"{0} ڈگری فارن ہائیٹ"}
+                other{"{0} ڈگری فارن ہائیٹ"}
+            }
+            generic{
+                dnam{"°"}
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+            kelvin{
+                dnam{"کیلون"}
+                one{"{0} کیلون"}
+                other{"{0} کیلون"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"ایکڑ فٹ"}
+                one{"{0} ایکڑ فٹ"}
+                other{"{0} ایکڑ فٹ"}
+            }
+            centiliter{
+                dnam{"سینٹی لیٹر"}
+                one{"{0} سینٹی لیٹر"}
+                other{"{0} سینٹی لیٹر"}
+            }
+            cubic-centimeter{
+                dnam{"کیوبک سینٹی میٹر"}
+                one{"{0} کیوبک سینٹی میٹر"}
+                other{"{0} کیوبک سینٹی میٹر"}
+                per{"{0} فی کیوبک سینٹی میٹر"}
+            }
+            cubic-foot{
+                dnam{"کیوبک فیٹ"}
+                one{"{0} کیوبک فیٹ"}
+                other{"{0} کیوبک فٹ"}
+            }
+            cubic-inch{
+                dnam{"کیوبک انچ"}
+                one{"{0} کیوبک انچ"}
+                other{"{0} کیوبک انچ"}
+            }
+            cubic-kilometer{
+                dnam{"کیوبک کلو میٹر"}
+                one{"{0} کیوبک کلو میٹر"}
+                other{"{0} کیوبک کلو میٹر"}
+            }
+            cubic-meter{
+                dnam{"کیوبک میٹر"}
+                one{"{0} کیوبک میٹر"}
+                other{"{0} کیوبک میٹر"}
+                per{"{0} فی کیوبک میٹر"}
+            }
+            cubic-mile{
+                dnam{"کیوبک میل"}
+                one{"{0} کیوبک میل"}
+                other{"{0} کیوبک میل"}
+            }
+            cubic-yard{
+                dnam{"کیوبک گز"}
+                one{"{0} کیوبک گز"}
+                other{"{0} کیوبک گز"}
+            }
+            cup{
+                dnam{"کپ"}
+                one{"{0} کپ"}
+                other{"{0} کپ"}
+            }
+            cup-metric{
+                dnam{"میٹرک کپ"}
+                one{"{0} میٹرک کپ"}
+                other{"{0} میٹرک کپ"}
+            }
+            deciliter{
+                dnam{"ڈیسی لیٹر"}
+                one{"{0} ڈیسی لیٹر"}
+                other{"{0} ڈیسی لیٹر"}
+            }
+            fluid-ounce{
+                dnam{"فلوئڈ اونس"}
+                one{"{0} فلوئڈ اونس"}
+                other{"{0} فلوئڈ اونس"}
+            }
+            gallon{
+                dnam{"گیلن"}
+                one{"{0} گیلن"}
+                other{"{0} گیلن"}
+                per{"{0} فی گیلن"}
+            }
+            gallon-imperial{
+                dnam{"امپیریل گیلن"}
+                one{"{0} امپیریل گیلن"}
+                other{"{0} امپیریل گیلن"}
+                per{"{0} فی امپیریل گیلن"}
+            }
+            hectoliter{
+                dnam{"ہیکٹو لیٹر"}
+                one{"{0} ہیکٹو لیٹر"}
+                other{"{0} ہیکٹو لیٹر"}
+            }
+            liter{
+                dnam{"لیٹر"}
+                one{"{0} لیٹر"}
+                other{"{0} لیٹر"}
+                per{"{0} فی لیٹر"}
+            }
+            megaliter{
+                dnam{"میگا لیٹر"}
+                one{"{0} میگا لیٹر"}
+                other{"{0} میگا لیٹر"}
+            }
+            milliliter{
+                dnam{"ملی لیٹر"}
+                one{"{0} ملی لیٹر"}
+                other{"{0} ملی لیٹر"}
+            }
+            pint{
+                dnam{"پائنٹ"}
+                one{"{0} پائنٹ"}
+                other{"{0} پائنٹ"}
+            }
+            pint-metric{
+                dnam{"میٹرک پائنٹ"}
+                one{"{0} میٹرک پائنٹ"}
+                other{"{0} میٹرک پائنٹ"}
+            }
+            quart{
+                dnam{"کوارٹ"}
+                one{"{0} کوارٹ"}
+                other{"{0} کوارٹ"}
+            }
+            tablespoon{
+                dnam{"ٹیبل سپون"}
+                one{"{0} ٹیبل سپون"}
+                other{"{0} ٹیبل سپون"}
+            }
+            teaspoon{
+                dnam{"ٹی سپون"}
+                one{"{0} ٹی سپون"}
+                other{"{0} ٹی سپون"}
+            }
+        }
+    }
+    unitsNarrow{
+        acceleration{
+            g-force{
+                one{"{0}g"}
+                other{"{0}g"}
+            }
+        }
+        angle{
+            arc-minute{
+                one{"{0} منٹ"}
+                other{"{0} منٹ"}
+            }
+            arc-second{
+                one{"{0}″"}
+                other{"{0}″"}
+            }
+            degree{
+                one{"{0} ڈگری"}
+                other{"{0} ڈگری"}
+            }
+        }
+        area{
+            acre{
+                one{"{0} ایکڑ"}
+                other{"{0} ایکڑ"}
+            }
+            hectare{
+                one{"{0} ہیکٹر"}
+                other{"{0} ہیکٹر"}
+            }
+            square-foot{
+                one{"{0}ft²"}
+                other{"{0}ft²"}
+            }
+            square-kilometer{
+                one{"{0} km²"}
+                other{"{0} km²"}
+            }
+            square-meter{
+                one{"{0} m²"}
+                other{"{0} m²"}
+            }
+            square-mile{
+                one{"{0}mi²"}
+                other{"{0}mi²"}
+            }
+        }
+        compound{
+            per{"{0}/{1}"}
+        }
+        consumption{
+            liter-per-100kilometers{
+                dnam{"لیٹر/100 کلو میٹر"}
+                one{"{0}L/100km"}
+                other{"{0}L/100km"}
+            }
+        }
+        coordinate{
+            east{"{0}E"}
+            north{"{0}N"}
+            south{"{0}S"}
+            west{"{0}W"}
+        }
+        duration{
+            day{
+                dnam{"دن"}
+                one{"{0} دن"}
+                other{"{0} دن"}
+            }
+            hour{
+                dnam{"گھنٹہ"}
+                one{"{0} گھنٹہ"}
+                other{"{0} گھنٹے"}
+            }
+            millisecond{
+                dnam{"ملی سیکنڈ"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"منٹ"}
+                one{"{0} منٹ"}
+                other{"{0} منٹ"}
+            }
+            month{
+                dnam{"مہینہ"}
+                one{"{0} مہینہ"}
+                other{"{0} مہینے"}
+            }
+            second{
+                dnam{"سیکنڈ"}
+                one{"{0}s"}
+                other{"{0}s"}
+            }
+            week{
+                dnam{"ہفتہ"}
+                one{"{0} ہفتہ"}
+                other{"{0} ہفتے"}
+            }
+            year{
+                dnam{"سال"}
+                one{"{0} سال"}
+                other{"{0} سال"}
+            }
+        }
+        length{
+            centimeter{
+                dnam{"سینٹی میٹر"}
+                one{"{0}cm"}
+                other{"{0}cm"}
+            }
+            foot{
+                one{"{0}′"}
+                other{"{0}′"}
+            }
+            inch{
+                one{"{0} انچ"}
+                other{"{0} انچ"}
+            }
+            kilometer{
+                dnam{"کلو میٹر"}
+                one{"{0}km"}
+                other{"{0}km"}
+            }
+            light-year{
+                one{"{0}ly"}
+                other{"{0}ly"}
+            }
+            meter{
+                dnam{"میٹر"}
+                one{"{0} میٹر"}
+                other{"{0} میٹر"}
+            }
+            mile{
+                one{"{0} میل"}
+                other{"{0} میل"}
+            }
+            millimeter{
+                dnam{"ملی میٹر"}
+                one{"{0} ملیمیٹر"}
+                other{"{0} ملیمیٹر"}
+            }
+            picometer{
+                one{"{0}pm"}
+                other{"{0}pm"}
+            }
+            yard{
+                one{"{0} یارڈ"}
+                other{"{0} یارڈ"}
+            }
+        }
+        mass{
+            gram{
+                dnam{"گرام"}
+                one{"{0} گرام"}
+                other{"{0} گرام"}
+            }
+            kilogram{
+                dnam{"kg"}
+                one{"{0}kg"}
+                other{"{0}kg"}
+            }
+            ounce{
+                one{"{0} ونس"}
+                other{"{0} ونس"}
+            }
+            pound{
+                one{"{0} پونڈ"}
+                other{"{0} پونڈ"}
+            }
+        }
+        power{
+            horsepower{
+                one{"{0}hp"}
+                other{"{0}hp"}
+            }
+            kilowatt{
+                one{"{0}kW"}
+                other{"{0}kW"}
+            }
+            watt{
+                one{"{0} واٹ"}
+                other{"{0} واٹ"}
+            }
+        }
+        pressure{
+            hectopascal{
+                one{"{0}hPa"}
+                other{"{0}hPa"}
+            }
+            inch-hg{
+                one{"{0} انچ مرکری"}
+                other{"{0} انچ مرکری"}
+            }
+            millibar{
+                one{"{0}mb"}
+                other{"{0}mb"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"km/hr"}
+                one{"{0}kph"}
+                other{"{0}kph"}
+            }
+            meter-per-second{
+                one{"{0}m/s"}
+                other{"{0}m/s"}
+            }
+            mile-per-hour{
+                one{"{0}mph"}
+                other{"{0}mph"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"⁰C"}
+                one{"{0}‎°"}
+                other{"{0}‎°"}
+            }
+            fahrenheit{
+                one{"{0}‎°F"}
+                other{"{0}°F"}
+            }
+        }
+        volume{
+            cubic-kilometer{
+                dnam{"km³"}
+                one{"{0}km³"}
+                other{"{0}km³"}
+            }
+            cubic-mile{
+                dnam{"mi³"}
+                one{"{0}mi³"}
+                other{"{0}mi³"}
+            }
+            liter{
+                dnam{"لیٹر"}
+                one{"{0} لیٹر"}
+                other{"{0} لیٹر"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"جی-فورس"}
+                one{"{0} G"}
+                other{"{0} G"}
+            }
+            meter-per-second-squared{
+                dnam{"m/s²"}
+                one{"{0} m/s²"}
+                other{"{0} m/s²"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"arcmin"}
+                one{"{0} آرک منٹ"}
+                other{"{0} آرک منٹ"}
+            }
+            arc-second{
+                dnam{"arcsec"}
+                one{"{0} آرک سیکنڈ"}
+                other{"{0} آرک سیکنڈ"}
+            }
+            degree{
+                dnam{"ڈگری"}
+                one{"{0} ڈگری"}
+                other{"{0} ڈگری"}
+            }
+            radian{
+                dnam{"rad"}
+                one{"{0} rad"}
+                other{"{0} rad"}
+            }
+            revolution{
+                dnam{"rev"}
+                one{"{0} rev"}
+                other{"{0} rev"}
+            }
+        }
+        area{
+            acre{
+                dnam{"ایکڑ"}
+                one{"{0} ایکڑ"}
+                other{"{0} ایکڑ"}
+            }
+            hectare{
+                dnam{"ہیکٹر"}
+                one{"{0} ہیکٹر"}
+                other{"{0} ہیکٹر"}
+            }
+            square-centimeter{
+                dnam{"cm²"}
+                one{"{0} cm²"}
+                other{"{0} cm²"}
+                per{"{0}/cm²"}
+            }
+            square-foot{
+                dnam{"سکویر فٹ"}
+                one{"{0} سکویر فٹ"}
+                other{"{0} سکویر فٹ"}
+            }
+            square-inch{
+                dnam{"مربع انچ"}
+                one{"{0} in²"}
+                other{"{0} in²"}
+                per{"{0}/in²"}
+            }
+            square-kilometer{
+                dnam{"km²"}
+                one{"{0} km²"}
+                other{"{0} km²"}
+                per{"{0}/km²"}
+            }
+            square-meter{
+                dnam{"سکویر میٹر"}
+                one{"{0} m²"}
+                other{"{0} m²"}
+                per{"{0}/m²"}
+            }
+            square-mile{
+                dnam{"سکویر میل"}
+                one{"{0} سکویر میل"}
+                other{"{0} سکویر میل"}
+            }
+            square-yard{
+                dnam{"مربع گز"}
+                one{"{0} yd²"}
+                other{"{0} yd²"}
+            }
+        }
+        compound{
+            per{"{0}/{1}"}
+        }
+        concentr{
+            karat{
+                dnam{"قیراط"}
+                one{"{0} kt"}
+                other{"{0} kt"}
+            }
+            milligram-per-deciliter{
+                dnam{"mg/dL"}
+                one{"{0} mg/dL"}
+                other{"{0} mg/dL"}
+            }
+            millimole-per-liter{
+                dnam{"ملی مول/لیٹر"}
+                one{"{0} mmol/L"}
+                other{"{0} mmol/L"}
+            }
+            part-per-million{
+                dnam{"حصے/ملین"}
+                one{"{0} ppm"}
+                other{"{0} ppm"}
+            }
+        }
+        consumption{
+            liter-per-100kilometers{
+                dnam{"لیٹر/100 کلو میٹر"}
+                one{"{0} L/100km"}
+                other{"{0} L/100km"}
+            }
+            liter-per-kilometer{
+                dnam{"L/km"}
+                one{"{0} L/km"}
+                other{"{0} L/km"}
+            }
+            mile-per-gallon{
+                dnam{"mpg"}
+                one{"{0} mpg"}
+                other{"{0} mpg"}
+            }
+            mile-per-gallon-imperial{
+                one{"{0} mpg Imp."}
+                other{"{0} mpg Imp."}
+            }
+        }
+        coordinate{
+            east{"{0}E"}
+            north{"{0}N"}
+            south{"{0}S"}
+            west{"{0}W"}
+        }
+        digital{
+            bit{
+                dnam{"bit"}
+                one{"{0} bit"}
+                other{"{0} bit"}
+            }
+            byte{
+                dnam{"byte"}
+                one{"{0} byte"}
+                other{"{0} byte"}
+            }
+            gigabit{
+                dnam{"Gb"}
+                one{"{0} Gb"}
+                other{"{0} Gb"}
+            }
+            gigabyte{
+                dnam{"GB"}
+                one{"{0} GB"}
+                other{"{0} GB"}
+            }
+            kilobit{
+                dnam{"kb"}
+                one{"{0} kb"}
+                other{"{0} kb"}
+            }
+            kilobyte{
+                dnam{"kB"}
+                one{"{0} kB"}
+                other{"{0} kB"}
+            }
+            megabit{
+                dnam{"Mb"}
+                one{"{0} Mb"}
+                other{"{0} Mb"}
+            }
+            megabyte{
+                dnam{"MB"}
+                one{"{0} MB"}
+                other{"{0} MB"}
+            }
+            terabit{
+                dnam{"Tb"}
+                one{"{0} Tb"}
+                other{"{0} Tb"}
+            }
+            terabyte{
+                dnam{"TB"}
+                one{"{0} TB"}
+                other{"{0} TB"}
+            }
+        }
+        duration{
+            century{
+                dnam{"صدی"}
+                one{"{0} صدی"}
+                other{"{0} صدیاں"}
+            }
+            day{
+                dnam{"دن"}
+                one{"{0} دن"}
+                other{"{0} دن"}
+                per{"{0}/d"}
+            }
+            hour{
+                dnam{"گھنٹے"}
+                one{"{0} گھنٹہ"}
+                other{"{0} گھنٹے"}
+                per{"{0} فی گھنٹہ"}
+            }
+            microsecond{
+                dnam{"مائیکرو سیکنڈ"}
+                one{"{0} مائیکرو سیکنڈ"}
+                other{"{0} مائیکرو سیکنڈ"}
+            }
+            millisecond{
+                dnam{"ملی سیکنڈ"}
+                one{"{0} ملی سیکنڈ"}
+                other{"{0} ملی سیکنڈ"}
+            }
+            minute{
+                dnam{"منٹ"}
+                one{"{0} منٹ"}
+                other{"{0} منٹ"}
+                per{"{0}/min"}
+            }
+            month{
+                dnam{"مہینے"}
+                one{"{0} مہینہ"}
+                other{"{0} مہینے"}
+                per{"{0}/m"}
+            }
+            nanosecond{
+                dnam{"نینو سیکنڈز"}
+                one{"{0} نینو سیکنڈ"}
+                other{"{0} نینو سیکنڈ"}
+            }
+            second{
+                dnam{"سیکنڈ"}
+                one{"{0} سیکنڈ"}
+                other{"{0} سیکنڈ"}
+                per{"{0} فی سیکنڈ"}
+            }
+            week{
+                dnam{"ہفتے"}
+                one{"{0} ہفتہ"}
+                other{"{0} ہفتے"}
+                per{"{0}/w"}
+            }
+            year{
+                dnam{"سال"}
+                one{"{0} سال"}
+                other{"{0} سال"}
+                per{"{0}/y"}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"amp"}
+                one{"{0} A"}
+                other{"{0} A"}
+            }
+            milliampere{
+                dnam{"mA"}
+                one{"{0} mA"}
+                other{"{0} mA"}
+            }
+            ohm{
+                dnam{"ohm"}
+                one{"{0} Ω"}
+                other{"{0} Ω"}
+            }
+            volt{
+                dnam{"volt"}
+                one{"{0} V"}
+                other{"{0} V"}
+            }
+        }
+        energy{
+            calorie{
+                dnam{"cal"}
+                one{"{0} cal"}
+                other{"{0} cal"}
+            }
+            foodcalorie{
+                dnam{"Cal"}
+                one{"{0} Cal"}
+                other{"{0} Cal"}
+            }
+            joule{
+                dnam{"joule"}
+                one{"{0} J"}
+                other{"{0} J"}
+            }
+            kilocalorie{
+                dnam{"kcal"}
+                one{"{0} kcal"}
+                other{"{0} kcal"}
+            }
+            kilojoule{
+                dnam{"kJ"}
+                one{"{0} kJ"}
+                other{"{0} kJ"}
+            }
+            kilowatt-hour{
+                dnam{"kW-hour"}
+                one{"{0} kWh"}
+                other{"{0} kWh"}
+            }
+        }
+        frequency{
+            gigahertz{
+                dnam{"GHz"}
+                one{"{0} GHz"}
+                other{"{0} GHz"}
+            }
+            hertz{
+                dnam{"Hz"}
+                one{"{0} Hz"}
+                other{"{0} Hz"}
+            }
+            kilohertz{
+                dnam{"kHz"}
+                one{"{0} kHz"}
+                other{"{0} kHz"}
+            }
+            megahertz{
+                dnam{"MHz"}
+                one{"{0} MHz"}
+                other{"{0} MHz"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"au"}
+                one{"{0} au"}
+                other{"{0} au"}
+            }
+            centimeter{
+                dnam{"سینٹی میٹر"}
+                one{"{0} سینٹی میٹر"}
+                other{"{0} سینٹی میٹر"}
+                per{"{0}/cm"}
+            }
+            decimeter{
+                dnam{"dm"}
+                one{"{0} dm"}
+                other{"{0} dm"}
+            }
+            foot{
+                dnam{"فیٹ"}
+                one{"{0} فیٹ"}
+                other{"{0} فیٹ"}
+                per{"{0}/ft"}
+            }
+            inch{
+                dnam{"انچ"}
+                one{"{0} انچ"}
+                other{"{0} انچ"}
+                per{"{0}/in"}
+            }
+            kilometer{
+                dnam{"کلو میٹر"}
+                one{"{0} کلو میٹر"}
+                other{"{0} کلو میٹر"}
+                per{"{0}/km"}
+            }
+            light-year{
+                dnam{"نوری سال"}
+                one{"{0} ly"}
+                other{"{0} ly"}
+            }
+            meter{
+                dnam{"میٹر"}
+                one{"{0} میٹر"}
+                other{"{0} میٹر"}
+                per{"{0}/m"}
+            }
+            micrometer{
+                dnam{"µm"}
+                one{"{0} µm"}
+                other{"{0} µm"}
+            }
+            mile{
+                dnam{"میل"}
+                one{"{0} میل"}
+                other{"{0} میل"}
+            }
+            mile-scandinavian{
+                dnam{"smi"}
+                one{"{0} smi"}
+                other{"{0} smi"}
+            }
+            millimeter{
+                dnam{"ملی میٹر"}
+                one{"{0} ملیمیٹر"}
+                other{"{0} ملیمیٹر"}
+            }
+            nanometer{
+                dnam{"nm"}
+                one{"{0} nm"}
+                other{"{0} nm"}
+            }
+            nautical-mile{
+                dnam{"nmi"}
+                one{"{0} nmi"}
+                other{"{0} nmi"}
+            }
+            parsec{
+                dnam{"پارسیک"}
+                one{"{0} pc"}
+                other{"{0} pc"}
+            }
+            picometer{
+                dnam{"پیکو میٹر"}
+                one{"{0} پیکو میٹر"}
+                other{"{0} پیکو میٹر"}
+            }
+            yard{
+                dnam{"گز"}
+                one{"{0} یارڈ"}
+                other{"{0} یارڈ"}
+            }
+        }
+        light{
+            lux{
+                dnam{"lux"}
+                one{"{0} lx"}
+                other{"{0} lx"}
+            }
+        }
+        mass{
+            carat{
+                dnam{"قیراط"}
+                one{"{0} CD"}
+                other{"{0} CD"}
+            }
+            gram{
+                dnam{"گرام"}
+                one{"{0} گرام"}
+                other{"{0} گرام"}
+                per{"{0}/g"}
+            }
+            kilogram{
+                dnam{"kg"}
+                one{"{0} کلو گرام"}
+                other{"{0} کلو گرام"}
+                per{"{0}/kg"}
+            }
+            metric-ton{
+                dnam{"t"}
+                one{"{0} t"}
+                other{"{0} t"}
+            }
+            microgram{
+                dnam{"µg"}
+                one{"{0} µg"}
+                other{"{0} µg"}
+            }
+            milligram{
+                dnam{"mg"}
+                one{"{0} mg"}
+                other{"{0} mg"}
+            }
+            ounce{
+                dnam{"oz"}
+                one{"{0} ونس"}
+                other{"{0} ونس"}
+                per{"{0}/oz"}
+            }
+            ounce-troy{
+                dnam{"oz t"}
+                one{"{0} oz t"}
+                other{"{0} oz t"}
+            }
+            pound{
+                dnam{"پاؤنڈ"}
+                one{"{0} پونڈ"}
+                other{"{0} پونڈ"}
+                per{"{0}/lb"}
+            }
+            ton{
+                dnam{"ٹن"}
+                one{"{0} tn"}
+                other{"{0} tn"}
+            }
+        }
+        power{
+            gigawatt{
+                dnam{"GW"}
+                one{"{0} GW"}
+                other{"{0} GW"}
+            }
+            horsepower{
+                dnam{"hp"}
+                one{"{0} ہارس پاور"}
+                other{"{0} ہارس پاور"}
+            }
+            kilowatt{
+                dnam{"kW"}
+                one{"{0} کلو واٹ"}
+                other{"{0} کلو واٹ"}
+            }
+            megawatt{
+                dnam{"MW"}
+                one{"{0} MW"}
+                other{"{0} MW"}
+            }
+            milliwatt{
+                dnam{"mW"}
+                one{"{0} mW"}
+                other{"{0} mW"}
+            }
+            watt{
+                dnam{"watts"}
+                one{"{0} واٹ"}
+                other{"{0} واٹ"}
+            }
+        }
+        pressure{
+            hectopascal{
+                dnam{"hPa"}
+                one{"{0} hPa"}
+                other{"{0} hPa"}
+            }
+            inch-hg{
+                dnam{"انچ مرکری"}
+                one{"{0} انچ مرکری"}
+                other{"{0} انچ مرکری"}
+            }
+            millibar{
+                dnam{"mbar"}
+                one{"{0} ملی بار"}
+                other{"{0} ملی بار"}
+            }
+            millimeter-of-mercury{
+                dnam{"mm Hg"}
+                one{"{0} mm Hg"}
+                other{"{0} mm Hg"}
+            }
+            pound-per-square-inch{
+                dnam{"psi"}
+                one{"{0} psi"}
+                other{"{0} psi"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"کلومیٹر/گھنٹہ"}
+                one{"{0} kph"}
+                other{"{0} kph"}
+            }
+            knot{
+                dnam{"kn"}
+                one{"{0} kn"}
+                other{"{0} kn"}
+            }
+            meter-per-second{
+                dnam{"میٹر فی سیکنڈ"}
+                one{"{0} m/s"}
+                other{"{0} m/s"}
+            }
+            mile-per-hour{
+                dnam{"میل فی گھنٹہ"}
+                one{"{0} mph"}
+                other{"{0} mph"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"ڈگری سیلسیس"}
+                one{"{0}‎°C"}
+                other{"{0}‎°C"}
+            }
+            fahrenheit{
+                dnam{"ڈگری فارن ہائیٹ"}
+                one{"{0}‎°F"}
+                other{"{0}‎°F"}
+            }
+            generic{
+                dnam{"°"}
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+            kelvin{
+                dnam{"K"}
+                one{"{0} K"}
+                other{"{0} K"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"ایکڑ فٹ"}
+                one{"{0} ac ft"}
+                other{"{0} ac ft"}
+            }
+            centiliter{
+                dnam{"سینٹی لیٹر"}
+                one{"{0} cL"}
+                other{"{0} cL"}
+            }
+            cubic-centimeter{
+                dnam{"کیوبک سینٹی میٹر"}
+                one{"{0} cm³"}
+                other{"{0} cm³"}
+                per{"{0}/cm³"}
+            }
+            cubic-foot{
+                dnam{"کیوبک فٹ"}
+                one{"{0} ft³"}
+                other{"{0} ft³"}
+            }
+            cubic-inch{
+                dnam{"in³"}
+                one{"{0} in³"}
+                other{"{0} in³"}
+            }
+            cubic-kilometer{
+                dnam{"km³"}
+                one{"{0} km³"}
+                other{"{0} km³"}
+            }
+            cubic-meter{
+                dnam{"m³"}
+                one{"{0} m³"}
+                other{"{0} m³"}
+                per{"{0}/m³"}
+            }
+            cubic-mile{
+                dnam{"کیوبک میل"}
+                one{"{0} کیوبک میل"}
+                other{"{0} کیوبک میل"}
+            }
+            cubic-yard{
+                dnam{"کیوبک گز"}
+                one{"{0} yd³"}
+                other{"{0} yd³"}
+            }
+            cup{
+                dnam{"کپ"}
+                one{"{0} c"}
+                other{"{0} c"}
+            }
+            cup-metric{
+                dnam{"mcup"}
+                one{"{0} mc"}
+                other{"{0} mc"}
+            }
+            deciliter{
+                dnam{"ڈیسی لیٹر"}
+                one{"{0} dL"}
+                other{"{0} dL"}
+            }
+            fluid-ounce{
+                dnam{"fl oz"}
+                one{"{0} fl oz"}
+                other{"{0} fl oz"}
+            }
+            gallon{
+                dnam{"gal"}
+                one{"{0} gal"}
+                other{"{0} gal"}
+                per{"{0}/gal"}
+            }
+            gallon-imperial{
+                dnam{"Imp. gal"}
+                one{"{0} gal Imp."}
+                other{"{0} gal Imp."}
+                per{"{0}/gal Imp."}
+            }
+            hectoliter{
+                dnam{"hL"}
+                one{"{0} hL"}
+                other{"{0} hL"}
+            }
+            liter{
+                dnam{"لیٹر"}
+                one{"{0} لیٹر"}
+                other{"{0} لیٹر"}
+                per{"{0} فی لیٹر"}
+            }
+            megaliter{
+                dnam{"ML"}
+                one{"{0} ML"}
+                other{"{0} ML"}
+            }
+            milliliter{
+                dnam{"mL"}
+                one{"{0} mL"}
+                other{"{0} mL"}
+            }
+            pint{
+                dnam{"pt"}
+                one{"{0} pt"}
+                other{"{0} pt"}
+            }
+            pint-metric{
+                dnam{"mpt"}
+                one{"{0} mpt"}
+                other{"{0} mpt"}
+            }
+            quart{
+                dnam{"qts"}
+                one{"{0} qt"}
+                other{"{0} qt"}
+            }
+            tablespoon{
+                dnam{"tbsp"}
+                one{"{0} tbsp"}
+                other{"{0} tbsp"}
+            }
+            teaspoon{
+                dnam{"tsp"}
+                one{"{0} tsp"}
+                other{"{0} tsp"}
+            }
+        }
+    }
+}

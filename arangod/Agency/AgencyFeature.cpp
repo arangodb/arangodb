@@ -24,6 +24,7 @@
 #include "AgencyFeature.h"
 
 #include "Agency/Agent.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -40,12 +41,12 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _activated(false),
       _size(1),
       _poolSize(1),
-      _minElectionTimeout(0.5),
-      _maxElectionTimeout(2.5),
+      _minElectionTimeout(1.0),
+      _maxElectionTimeout(5.0),
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
-      _compactionStepSize(2000),
+      _compactionStepSize(200000),
       _compactionKeepSize(500),
       _supervisionGracePeriod(15.0),
       _cmdLineTimings(false)
@@ -59,6 +60,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
   startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Server");
+  startsAfter("Aql");
 }
 
 AgencyFeature::~AgencyFeature() {}
@@ -105,9 +107,9 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "supervision time, after which a server is considered to have failed [s]",
       new DoubleParameter(&_supervisionGracePeriod));
 
-  options->addOption("--agency.compaction-step-size",
-                     "step size between state machine compactions",
-                     new UInt64Parameter(&_compactionStepSize));
+  options->addHiddenOption("--agency.compaction-step-size",
+                           "step size between state machine compactions",
+                           new UInt64Parameter(&_compactionStepSize));
 
   options->addOption("--agency.compaction-keep-size",
                      "keep as many indices before compaction point",
@@ -232,7 +234,7 @@ void AgencyFeature::start() {
 
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
-      _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
+      _agencyEndpoints, _supervision, false, _supervisionFrequency,
       _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
       _cmdLineTimings)));
 

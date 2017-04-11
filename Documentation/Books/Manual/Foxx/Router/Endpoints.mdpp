@@ -372,3 +372,30 @@ Returns the endpoint.
 router.get(/* ... */)
 .deprecated();
 ```
+
+
+tag
+---
+
+`endpoint.tag(...tags): this`
+
+Marks the endpoint with the given tags that will be used to group related routes in the generated API documentation.
+
+If the endpoint is a child router, all routes of that router will also be marked with the tags. If the endpoint is a middleware, this method has no effect.
+
+This method only affects the generated API documentation and has not other effect within the service itself.
+
+**Arguments**
+
+* **tags**: `string`
+
+  One or more strings that will be used to group the endpoint's routes.
+
+Returns the endpoint.
+
+**Examples**
+
+```js
+router.get(/* ... */)
+.tag('auth', 'restricted');
+```

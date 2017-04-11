@@ -122,19 +122,25 @@ int RestHandler::finalizeEngine() {
   try {
     finalizeExecute();
   } catch (Exception const& ex) {
-    LOG(ERR) << "caught exception in " << name() << ": "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in " << name() << ": "
              << DIAGNOSTIC_INFORMATION(ex);
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
-    res = TRI_ERROR_INTERNAL;
+    res = ex.code();
+  } catch (std::bad_alloc const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught memory exception in " << name() << ": " << ex.what();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
+    handleError(err);
+    res = TRI_ERROR_OUT_OF_MEMORY;
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception in " << name() << ": " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in " << name() << ": " << ex.what();
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG(ERR) << "caught unknown exception in " << name();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
@@ -176,14 +182,14 @@ int RestHandler::executeEngine() {
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(WARN) << "caught exception in " << name() << ": "
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception in " << name() << ": "
               << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(WARN) << "caught exception in " << name() << ": "
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught velocypack exception in " << name() << ": "
               << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -192,7 +198,7 @@ int RestHandler::executeEngine() {
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(WARN) << "caught exception in " << name() << ": "
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught memory exception in " << name() << ": "
               << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -200,7 +206,7 @@ int RestHandler::executeEngine() {
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(WARN) << "caught exception in " << name() << ": "
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception in " << name() << ": "
               << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -208,7 +214,7 @@ int RestHandler::executeEngine() {
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(WARN) << "caught unknown exception in " << name();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);

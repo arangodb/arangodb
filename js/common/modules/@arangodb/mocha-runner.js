@@ -29,8 +29,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const Module = require('module');
+const chalk = require('chalk');
 const runTests = require('@arangodb/mocha').run;
-const colors = require('internal').COLORS;
+const indent = require('@arangodb/util').indentation;
 
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
 
@@ -47,42 +48,21 @@ module.exports = function (files, returnJson, grep) {
 };
 
 function logStats (stats) {
-  print(
-    (
+  print(`${
     stats.failures
-      ? (
-      colors.COLOR_RED
-      + '[FAIL]'
-      + colors.COLOR_RESET
-      )
-      : (
-      colors.COLOR_GREEN
-      + '[PASS]'
-      + colors.COLOR_RESET
-      )
-    )
-    + ' Completed '
-    + colors.COLOR_BOLD_WHITE
-    + stats.tests
-    + colors.COLOR_RESET
-    + ' tests in '
-    + colors.COLOR_BOLD_WHITE
-    + stats.duration + 'ms'
-    + colors.COLOR_RESET
-    + ' ( '
-    + colors.COLOR_GREEN
-    + stats.passes
-    + colors.COLOR_RESET
-    + ' | '
-    + colors.COLOR_RED
-    + stats.failures
-    + colors.COLOR_RESET
-    + ' | '
-    + colors.COLOR_CYAN
-    + stats.pending
-    + colors.COLOR_RESET
-    + ' )'
-  );
+    ? chalk.red('[FAIL]')
+    : chalk.green('[PASS]')
+  } Completed ${
+    chalk.bold(stats.tests)
+  } tests in ${
+    chalk.bold(stats.duration + 'ms')
+  } (${
+    chalk.green(stats.passes)
+  }|${
+    chalk.red(stats.failures)
+  }|${
+    chalk.cyan(stats.pending)
+  })`);
 }
 
 function logSuite (suite, indentLevel) {
@@ -91,43 +71,30 @@ function logSuite (suite, indentLevel) {
   }
   if (suite.title) {
     print(
-      indent(indentLevel - 1)
-      + colors.COLOR_BOLD_WHITE
-      + suite.title
-      + colors.COLOR_RESET
+      indent(indentLevel - 1) +
+      chalk.bold(suite.title)
     );
   }
   for (let test of suite.tests) {
     if (test.result === 'pass') {
       print(
-        indent(indentLevel)
-        + colors.COLOR_GREEN
-        + '[PASS] '
-        + test.title
-        + colors.COLOR_RESET
+        indent(indentLevel) +
+        chalk.green('[PASS] ' + test.title)
       );
     } else if (test.result === 'pending') {
       print(
-        indent(indentLevel)
-        + colors.COLOR_CYAN
-        + '[SKIP] '
-        + test.title
-        + colors.COLOR_RESET
+        indent(indentLevel) +
+        chalk.cyan('[SKIP] ' + test.title)
       );
     } else {
       print(
-        indent(indentLevel)
-        + colors.COLOR_RED
-        + '[' + test.result.toUpperCase() + '] '
-        + test.title
-        + colors.COLOR_RESET
+        indent(indentLevel) +
+        chalk.red('[' + test.result.toUpperCase() + '] ' + test.title)
       );
       for (let line of test.err.stack.split(/\n/)) {
         print(
-          indent(indentLevel + 1)
-          + colors.COLOR_RED
-          + line
-          + colors.COLOR_RESET
+          indent(indentLevel + 1) +
+          chalk.red(line)
         );
       }
     }
@@ -140,21 +107,10 @@ function logSuite (suite, indentLevel) {
   }
 }
 
-function indent (level, indentWith) {
-  if (!indentWith) {
-    indentWith = '    ';
-  }
-  let padding = '';
-  for (let i = 0; i < level; i++) {
-    padding += indentWith;
-  }
-  return padding;
-}
-
 function buildJson (results) {
   const result = {
     duration: results.stats.duration,
-    status: results.stats.failures ? false : true,
+    status: !results.stats.failures,
     failed: results.stats.failures,
     total: results.stats.tests
   };

@@ -106,17 +106,19 @@ bool RestQueryHandler::readQuery(bool slow) {
   result.add(VPackValue(VPackValueType::Array));
 
   for (auto const& q : queries) {
-    auto const& timeString = TRI_StringTimeStamp(q.started, Logger::getUseLocalTime());
-
-    auto const& queryString = q.queryString;
-    auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
+    auto timeString = TRI_StringTimeStamp(q.started, Logger::getUseLocalTime());
 
     result.add(VPackValue(VPackValueType::Object));
     result.add("id", VPackValue(StringUtils::itoa(q.id)));
-    result.add("query", VPackValue(queryString));
+    result.add("query", VPackValue(q.queryString));
+    if (q.bindParameters != nullptr) {
+      result.add("bindVars", q.bindParameters->slice());
+    } else {
+      result.add("bindVars", arangodb::basics::VelocyPackHelper::EmptyObjectValue());
+    }
     result.add("started", VPackValue(timeString));
     result.add("runTime", VPackValue(q.runTime));
-    result.add("state", VPackValue(queryState));
+    result.add("state", VPackValue(QueryExecutionState::toString(q.state)));
     result.close();
   }
   result.close();
@@ -229,7 +231,7 @@ bool RestQueryHandler::replaceProperties() {
 
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
@@ -296,7 +298,7 @@ bool RestQueryHandler::parseQuery() {
 
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;

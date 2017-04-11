@@ -39,12 +39,10 @@
 #include "SimpleHttpClient/Communicator.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-using namespace communicator;
-
 class ClusterCommThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +61,7 @@ typedef TRI_voc_tick_t CoordTransactionID;
 /// @brief trype of an operation ID
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef Ticket OperationID;
+typedef communicator::Ticket OperationID;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of an (a-)synchronous cluster operation
@@ -398,10 +396,11 @@ class ClusterComm {
   /// @brief get the unique instance
   //////////////////////////////////////////////////////////////////////////////
 
-  static ClusterComm* instance();
+  static std::shared_ptr<ClusterComm> instance();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize function to call once when still single-threaded
+  /// @brief initialize function to call once, instance() can be called
+  /// beforehand but the background thread is only started here.
   //////////////////////////////////////////////////////////////////////////////
 
   static void initialize();
@@ -531,11 +530,21 @@ class ClusterComm {
       std::string const& destination, arangodb::rest::RequestType reqtype,
       std::string const* body,
       std::unordered_map<std::string, std::string> const& headerFields);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
   //////////////////////////////////////////////////////////////////////////////
 
-  static ClusterComm* _theinstance;
+  static std::shared_ptr<ClusterComm> _theInstance;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the following atomic int is 0 in the beginning, is set to 1
+  /// if some thread initializes the singleton and is 2 once _theInstance
+  /// is set. Note that after a shutdown has happened, _theInstance can be
+  /// a nullptr, which means no new ClusterComm operations can be started.
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::atomic<int>             _theInstanceInit;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief produces an operation ID which is unique in this process
@@ -561,8 +570,8 @@ class ClusterComm {
     std::shared_ptr<ClusterCommResult> result;
   };
 
-  typedef std::unordered_map<Ticket, AsyncResponse>::iterator ResponseIterator;
-  std::unordered_map<Ticket, AsyncResponse> responses;
+  typedef std::unordered_map<communicator::Ticket, AsyncResponse>::iterator ResponseIterator;
+  std::unordered_map<communicator::Ticket, AsyncResponse> responses;
 
   // Receiving answers:
   std::list<ClusterCommOperation*> received;

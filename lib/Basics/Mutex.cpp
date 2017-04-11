@@ -70,12 +70,28 @@ void Mutex::lock() {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG(ERR) << "mutex deadlock detected";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
     }
 
-    LOG(FATAL) << "could not lock the mutex object: " << strerror(rc);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not lock the mutex object: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
+}
+
+bool Mutex::tryLock() {
+  int rc = pthread_mutex_trylock(&_mutex);
+  
+  if (rc != 0) {
+    if (rc == EBUSY) { // lock is already beeing held
+      return false;
+    } else if (rc == EDEADLK) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+    }
+    
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not lock the mutex object: " << strerror(rc);
+    FATAL_ERROR_ABORT();
+  }
+  return true;
 }
 
 #endif
@@ -83,6 +99,8 @@ void Mutex::lock() {
 #ifdef TRI_HAVE_WIN32_THREADS
 
 void Mutex::lock() { AcquireSRWLockExclusive(&_mutex); }
+
+bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
 
 #endif
 
@@ -96,7 +114,7 @@ void Mutex::unlock() {
   int rc = pthread_mutex_unlock(&_mutex);
 
   if (rc != 0) {
-    LOG(FATAL) << "could not release the mutex: " << strerror(rc);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not release the mutex: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }

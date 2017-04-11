@@ -25,21 +25,25 @@
 #define ARANGOD_UTILS_OPERATION_RESULT_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/Result.h"
 #include <velocypack/Buffer.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-
+  
+//TODO FIXME -- This class shoulb be based on the arangodb::Result class
 struct OperationResult {
 
   OperationResult() 
       : code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
   
   explicit OperationResult(int code) 
-      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), customTypeHandler(), code(code), wasSynchronous(false) { 
+      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
+        customTypeHandler(), 
+        code(code), 
+        wasSynchronous(false) { 
     if (code != TRI_ERROR_NO_ERROR) {
       errorMessage = TRI_errno_string(code);
     }
@@ -66,10 +70,22 @@ struct OperationResult {
   }
 
   OperationResult(int code, std::string const& message) 
-      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), customTypeHandler(), errorMessage(message), code(code),
+      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
+        customTypeHandler(), 
+        errorMessage(message), 
+        code(code),
         wasSynchronous(false) { 
     TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   }
+  
+
+  //TODO FIXME -- more and better ctors for creation from Result
+  explicit OperationResult(Result const& other) 
+      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
+        customTypeHandler(), 
+        errorMessage(other.errorMessage()), 
+        code(other.errorNumber()),
+        wasSynchronous(false) {}
 
   OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
                   std::shared_ptr<VPackCustomTypeHandler> handler,

@@ -22,18 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVocbaseBaseHandler.h"
-#include "Basics/conversions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
-#include "Meta/conversion.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/conversions.h"
+#include "Basics/tri-strings.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
+#include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -84,12 +85,6 @@ std::string const RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
 std::string const RestVocbaseBaseHandler::EDGES_PATH = "/_api/edges";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief export path
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const RestVocbaseBaseHandler::EXPORT_PATH = "/_api/export";
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief documents import path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -137,14 +132,15 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wal path
+/// @brief view path
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const RestVocbaseBaseHandler::WAL_PATH = "/_admin/wal";
+std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 
 /// @brief Internal Traverser path
 
-std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH = "/_internal/traverser";
+std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
+    "/_internal/traverser";
 
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
                                                GeneralResponse* response)
@@ -291,7 +287,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   writeResult(builder.slice(), *(transactionContext->getVPackOptionsForDump()));
 }
 
@@ -595,8 +591,8 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     TRI_voc_rid_t rid = 0;
 
     bool isOld;
-    rid = TRI_StringToRidWithCheck(s, e - s, isOld, false);
-    isValid = (rid != 0);
+    rid = TRI_StringToRid(s, e - s, isOld, false);
+    isValid = (rid != 0 && rid != UINT64_MAX);
 
     return rid;
   }
@@ -631,9 +627,17 @@ void RestVocbaseBaseHandler::prepareExecute() {
   std::string const& shardId = _request->header("x-arango-nolock", found);
 
   if (found) {
-    _nolockHeaderSet =
-        new std::unordered_set<std::string>{std::string(shardId)};
-    arangodb::Transaction::_makeNolockHeaders = _nolockHeaderSet;
+    _nolockHeaderSet = new std::unordered_set<std::string>();
+    // Split value at commas, if there are any, otherwise take full value:
+    size_t pos = shardId.find(',');
+    size_t oldpos = 0;
+    while (pos != std::string::npos) {
+      _nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
+      oldpos = pos + 1;
+      pos = shardId.find(',', oldpos);
+    }
+    _nolockHeaderSet->emplace(shardId.substr(oldpos));
+    CollectionLockState::_noLockHeaders = _nolockHeaderSet;
   }
 }
 
@@ -643,7 +647,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    arangodb::Transaction::_makeNolockHeaders = nullptr;
+    CollectionLockState::_noLockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }

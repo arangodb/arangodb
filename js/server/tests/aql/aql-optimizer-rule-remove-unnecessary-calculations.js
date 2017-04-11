@@ -82,7 +82,8 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1] LET a = i, b = i RETURN [ a, b ]",
         "FOR i IN [1] LET a = i + 1, b = i - 1 RETURN [ a, b ]",
         "FOR i IN [1] LET a = i RETURN a.value",
-        "FOR i IN [1] LET a = i RETURN a[0]"
+        "FOR i IN [1] LET a = i RETURN a[0]",
+        "FOR i IN [ 1, 2, 3 ] LET a = CONCAT(i, 'b') RETURN CONCAT(a, 'b')"
       ];
 
       queries.forEach(function(query) {
@@ -169,7 +170,10 @@ function optimizerRuleTestSuite () {
         
         // v8 vs. non-v8 expression types
         "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = V8(ATTRIBUTES(doc)) RETURN KEEP(doc, a)",
-        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = ATTRIBUTES(doc) RETURN V8(KEEP(doc, a))"
+        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = ATTRIBUTES(doc) RETURN V8(KEEP(doc, a))",
+        
+        // different loop
+        "LET a = NOOPT(CONCAT('a', 'b')) FOR i IN [ 1, 2, 3 ] RETURN CONCAT(a, 'b')"
       ];
 
       queries.forEach(function(query) {
@@ -266,7 +270,10 @@ function optimizerRuleTestSuite () {
         
         // same expression types
         "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = V8(ATTRIBUTES(doc)) RETURN V8(KEEP(doc, a))",
-        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = ATTRIBUTES(doc) RETURN KEEP(doc, a)"
+        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = ATTRIBUTES(doc) RETURN KEEP(doc, a)",
+        
+        // same loop
+        "FOR i IN [ 1, 2, 3 ] LET a = CONCAT(i, 'b') RETURN CONCAT(a, 'b')"
       ];
 
       queries.forEach(function(query) {

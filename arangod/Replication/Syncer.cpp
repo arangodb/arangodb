@@ -29,12 +29,15 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -370,7 +373,7 @@ arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, 
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::applyCollectionDumpMarker(
-    arangodb::Transaction& trx, std::string const& collectionName,
+    transaction::Methods& trx, std::string const& collectionName,
     TRI_replication_operation_e type, VPackSlice const& old, 
     VPackSlice const& slice, std::string& errorMsg) {
 
@@ -492,7 +495,7 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
 
   int res = TRI_ERROR_NO_ERROR;
   try {
-    col = _vocbase->createCollection(merged.slice(), cid, true);
+    col = _vocbase->createCollection(merged.slice());
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
@@ -527,7 +530,7 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _vocbase->dropCollection(col, true, true);
+  return _vocbase->dropCollection(col, true, -1.0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -552,24 +555,21 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     LogicalCollection* collection = guard.collection();
 
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->cid(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), guard.collection()->cid(), AccessMode::Type::WRITE);
 
-    int res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (!res.ok()) {
+      return res.errorNumber();
     }
 
+    auto physical = collection->getPhysical();
+    TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
-    res = collection->restoreIndex(&trx, indexSlice, idx);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = collection->saveIndex(idx.get(), true);
-    }
-
+    res = physical->restoreIndex(&trx, indexSlice, idx);
     res = trx.finish(res);
 
-    return res;
+    return res.errorNumber();
   } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
@@ -602,7 +602,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
     LogicalCollection* collection = guard.collection();
 
-    bool result = collection->dropIndex(iid, true);
+    bool result = collection->dropIndex(iid);
 
     if (!result) {
       return TRI_ERROR_NO_ERROR;

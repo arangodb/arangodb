@@ -25,6 +25,7 @@
 #include "ClusterInfo.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -42,6 +43,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartVertexCollection.h"
@@ -465,7 +467,7 @@ void ClusterInfo::loadPlan() {
               std::shared_ptr<LogicalCollection> newCollection;
 #ifndef USE_ENTERPRISE
               newCollection = std::make_shared<LogicalCollection>(
-                  vocbase, collectionSlice, false);
+                  vocbase, collectionSlice);
 #else
               VPackSlice isSmart = collectionSlice.get("isSmart");
               if (isSmart.isTrue()) {
@@ -479,7 +481,7 @@ void ClusterInfo::loadPlan() {
                 }
               } else {
                 newCollection = std::make_shared<LogicalCollection>(
-                    vocbase, collectionSlice, false);
+                    vocbase, collectionSlice);
               }
 #endif
               std::string const collectionName = newCollection->name();
@@ -511,12 +513,12 @@ void ClusterInfo::loadPlan() {
               // This should not happen in healthy situations.
               // If it happens in unhealthy situations the
               // cluster should not fail.
-              LOG(ERR) << "Failed to load information for collection '"
-                       << collectionId << "': " << ex.what()
-                       << ". invalid information in plan. The collection will "
-                          "be ignored for now and the invalid information will "
-                          "be repaired. VelocyPack: "
-                       << collectionSlice.toJson();
+              LOG_TOPIC(ERR, Logger::AGENCY)
+                << "Failed to load information for collection '" << collectionId
+                << "': " << ex.what() << ". invalid information in plan. The"
+                "collection will be ignored for now and the invalid information"
+                "will be repaired. VelocyPack: "
+                << collectionSlice.toJson();
 
               TRI_ASSERT(false);
               continue;
@@ -525,12 +527,12 @@ void ClusterInfo::loadPlan() {
               // This should not happen in healthy situations.
               // If it happens in unhealthy situations the
               // cluster should not fail.
-              LOG(ERR) << "Failed to load information for collection '"
-                       << collectionId
-                       << ". invalid information in plan. The collection will "
-                          "be ignored for now and the invalid information will "
-                          "be repaired. VelocyPack: "
-                       << collectionSlice.toJson();
+              LOG_TOPIC(ERR, Logger::AGENCY)
+                << "Failed to load information for collection '" << collectionId
+                << ". invalid information in plan. The collection will "
+                "be ignored for now and the invalid information will "
+                "be repaired. VelocyPack: "
+                << collectionSlice.toJson();
 
               TRI_ASSERT(false);
               continue;
@@ -1144,7 +1146,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   AgencyOperation createCollection(
       "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, builder.slice());
+      AgencyValueOperationType::SET, builder.slice()); 
   AgencyOperation increaseVersion("Plan/Version",
                                   AgencySimpleOperationType::INCREMENT_OP);
 
@@ -1380,32 +1382,20 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
   if (!collection.isObject()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+ 
+  VPackBuilder temp;     
+  temp.openObject();
+  temp.add("waitForSync", VPackValue(info->waitForSync()));
+  info->getPhysical()->getPropertiesVPackCoordinator(temp);
+  temp.close();
 
-  VPackBuilder copy;
-  try {
-    VPackObjectBuilder b(&copy);
-    for (auto const& entry : VPackObjectIterator(collection)) {
-      std::string key = entry.key.copyString();
-      // Copy all values except the following
-      // They are overwritten later
-      if (key != "doCompact" && key != "journalSize" && key != "waitForSync" &&
-          key != "indexBuckets") {
-        copy.add(key, entry.value);
-      }
-    }
-    copy.add("doCompact", VPackValue(info->doCompact()));
-    copy.add("journalSize", VPackValue(info->journalSize()));
-    copy.add("waitForSync", VPackValue(info->waitForSync()));
-    copy.add("indexBuckets", VPackValue(info->indexBuckets()));
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);
 
   res.clear();
 
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, copy.slice());
+      AgencyValueOperationType::SET, builder.slice());
 
   AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
 
@@ -1548,7 +1538,7 @@ int ClusterInfo::ensureIndexCoordinator(
   auto numberOfShardsMutex = std::make_shared<Mutex>();
   auto numberOfShards = std::make_shared<int>(0);
   auto resBuilder = std::make_shared<VPackBuilder>();
-  auto collectionBuilder = std::make_shared<VPackBuilder>();
+  VPackBuilder collectionBuilder;
 
   {
     std::shared_ptr<LogicalCollection> c =
@@ -1606,9 +1596,14 @@ int ClusterInfo::ensureIndexCoordinator(
     }
 
     // now create a new index
-    c->toVelocyPackForAgency(*collectionBuilder);
+    std::unordered_set<std::string> const ignoreKeys{
+        "allowUserKeys", "cid", /* cid really ignore?*/
+        "count",         "planId", "version",
+    };
+    c->setStatus(TRI_VOC_COL_STATUS_LOADED);
+    collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false);
   }
-  VPackSlice const collectionSlice = collectionBuilder->slice();
+  VPackSlice const collectionSlice = collectionBuilder.slice();
 
   auto newBuilder = std::make_shared<VPackBuilder>();
   if (!collectionSlice.isObject()) {
@@ -2394,26 +2389,28 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _currentProt.lock);
-      // _shardIds is a map-type <ShardId,
-      // std::shared_ptr<std::vector<ServerId>>>
-      auto it = _shardIds.find(shardID);
+      {
+        READ_LOCKER(readLocker, _currentProt.lock);
+        // _shardIds is a map-type <ShardId,
+        // std::shared_ptr<std::vector<ServerId>>>
+        auto it = _shardIds.find(shardID);
 
-      if (it != _shardIds.end()) {
-        auto serverList = (*it).second;
-        if (serverList != nullptr && serverList->size() > 0 &&
-            (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
-          // This is a temporary situation in which the leader has already
-          // resigned, let's wait half a second and try again.
-          --tries;
-          LOG_TOPIC(INFO, Logger::CLUSTER)
-              << "getResponsibleServer: found resigned leader,"
-              << "waiting for half a second...";
-          usleep(500000);
-        } else {
-          return (*it).second;
+        if (it != _shardIds.end()) {
+          auto serverList = (*it).second;
+          if (serverList != nullptr && serverList->size() > 0 &&
+              (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
+            // This is a temporary situation in which the leader has already
+            // resigned, let's wait half a second and try again.
+            --tries;
+            LOG_TOPIC(INFO, Logger::CLUSTER)
+                << "getResponsibleServer: found resigned leader,"
+                << "waiting for half a second...";
+          } else {
+            return (*it).second;
+          }
         }
       }
+      usleep(500000);
     }
 
     if (++tries >= 2) {

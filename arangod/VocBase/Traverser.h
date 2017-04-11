@@ -26,17 +26,24 @@
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
-#include "Basics/ShortestPathFinder.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
+#include "Graph/AttributeWeightShortestPathFinder.h"
+#include "Graph/ConstantWeightShortestPathFinder.h"
+#include "Graph/ShortestPathFinder.h"
+#include "Transaction/Helpers.h"
 #include "VocBase/PathEnumerator.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
 
 class ManagedDocumentResult;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace velocypack {
 class Builder;
@@ -48,15 +55,23 @@ struct AstNode;
 class Expression;
 class Query;
 }
+
+namespace graph {
+class BreadthFirstEnumerator;
+class NeighborsEnumerator;
+}
+
 namespace traverser {
 
+class PathEnumerator;
 struct TraverserOptions;
+class TraverserCache;
 
 class ShortestPath {
-  friend class arangodb::basics::DynamicDistanceFinder<
+  friend class arangodb::graph::DynamicDistanceFinder<
       arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
       ShortestPath>;
-  friend class arangodb::basics::ConstDistanceFinder<
+  friend class arangodb::graph::ConstDistanceFinder<
       arangodb::velocypack::Slice, arangodb::velocypack::Slice,
       arangodb::basics::VelocyPackHelper::VPackStringHash,
       arangodb::basics::VelocyPackHelper::VPackStringEqual, ShortestPath>;
@@ -76,13 +91,13 @@ class ShortestPath {
   /// @brief Builds only the last edge pointing to the vertex at position as
   /// VelocyPack
 
-  void edgeToVelocyPack(Transaction*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
+  void edgeToVelocyPack(transaction::Methods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the vertex at position as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void vertexToVelocyPack(Transaction*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
+  void vertexToVelocyPack(transaction::Methods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -127,21 +142,21 @@ class TraversalPath {
   ///        }
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void pathToVelocyPack(Transaction*,
+  virtual void pathToVelocyPack(transaction::Methods*,
                                 arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge on the path as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void lastEdgeToVelocyPack(Transaction*,
+  virtual void lastEdgeToVelocyPack(transaction::Methods*,
                                     arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual aql::AqlValue lastVertexToAqlValue(Transaction*) = 0;
+  virtual aql::AqlValue lastVertexToAqlValue(transaction::Methods*) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -159,9 +174,9 @@ class TraversalPath {
 
 
 class Traverser {
-  friend class BreadthFirstEnumerator;
+  friend class arangodb::graph::BreadthFirstEnumerator;
   friend class DepthFirstEnumerator;
-  friend class NeighborsEnumerator;
+  friend class arangodb::graph::NeighborsEnumerator;
 #ifdef USE_ENTERPRISE
   friend class SmartDepthFirstPathEnumerator;
   friend class SmartBreadthFirstPathEnumerator;
@@ -181,13 +196,12 @@ class Traverser {
     virtual ~VertexGetter() = default;
 
     virtual bool getVertex(arangodb::velocypack::Slice,
-                           std::vector<arangodb::velocypack::Slice>&);
+                           std::vector<arangodb::StringRef>&);
 
-    virtual bool getSingleVertex(arangodb::velocypack::Slice,
-                                 arangodb::velocypack::Slice, size_t,
-                                 arangodb::velocypack::Slice&);
+    virtual bool getSingleVertex(arangodb::velocypack::Slice, StringRef,
+                                 uint64_t, StringRef&);
 
-    virtual void reset(arangodb::velocypack::Slice);
+    virtual void reset(arangodb::StringRef const&);
 
    protected:
     Traverser* _traverser;
@@ -205,16 +219,15 @@ class Traverser {
     ~UniqueVertexGetter() = default;
 
     bool getVertex(arangodb::velocypack::Slice,
-                   std::vector<arangodb::velocypack::Slice>&) override;
+                   std::vector<arangodb::StringRef>&) override;
 
-    bool getSingleVertex(arangodb::velocypack::Slice,
-                         arangodb::velocypack::Slice, size_t,
-                         arangodb::velocypack::Slice&) override;
+    bool getSingleVertex(arangodb::velocypack::Slice, StringRef,
+                         uint64_t, StringRef&) override;
 
-    void reset(arangodb::velocypack::Slice) override;
+    void reset(arangodb::StringRef const&) override;
 
    private:
-    std::unordered_set<arangodb::basics::VPackHashedSlice> _returnedVertices;
+    std::unordered_set<arangodb::StringRef> _returnedVertices;
   };
 
 
@@ -223,14 +236,14 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(TraverserOptions* opts, Transaction* trx, ManagedDocumentResult*);
+  Traverser(TraverserOptions* opts, transaction::Methods* trx, ManagedDocumentResult*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destructor
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~Traverser() {}
-
+  virtual ~Traverser();
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the traverser to use another start vertex
   //////////////////////////////////////////////////////////////////////////////
@@ -256,20 +269,23 @@ class Traverser {
   /// @brief Get the next possible path in the graph.
   bool next();
 
+  TraverserCache* traverserCache();
+
+ protected:
+
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   ///        Also appends the _id value of the vertex in the given vector
-
- protected:
   virtual bool getVertex(arangodb::velocypack::Slice,
-                         std::vector<arangodb::velocypack::Slice>&) = 0;
+                         std::vector<arangodb::StringRef>&) = 0;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-
-  virtual bool getSingleVertex(arangodb::velocypack::Slice,
-                               arangodb::velocypack::Slice, size_t,
-                               arangodb::velocypack::Slice&) = 0;
+  virtual bool getSingleVertex(arangodb::velocypack::Slice edge,
+                               arangodb::StringRef const sourceVertexId,
+                               uint64_t depth,
+                               arangodb::StringRef& targetVertexId) = 0;
+ 
  public:
  
   //////////////////////////////////////////////////////////////////////////////
@@ -310,13 +326,13 @@ class Traverser {
   /// @brief Get the number of documents loaded
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getAndResetReadDocuments() {
+  virtual size_t getAndResetReadDocuments() {
     size_t tmp = _readDocuments;
     _readDocuments = 0;
     return tmp;
   }
   
-  TraverserOptions const* options() { return _opts; }
+  TraverserOptions* options() { return _opts; }
   
   ManagedDocumentResult* mmdr() const { return _mmdr; }
 
@@ -328,17 +344,17 @@ class Traverser {
 
   bool hasMore() { return !_done; }
 
-  bool edgeMatchesConditions(arangodb::velocypack::Slice,
-                             arangodb::velocypack::Slice, size_t, size_t);
+  bool edgeMatchesConditions(arangodb::velocypack::Slice edge, StringRef vid,
+                             uint64_t depth, size_t cursorId);
 
-  bool vertexMatchesConditions(arangodb::velocypack::Slice, size_t);
+  bool vertexMatchesConditions(arangodb::velocypack::Slice, uint64_t);
 
   void allowOptimizedNeighbors();
-
+    
  protected:
 
   /// @brief Outer top level transaction
-  Transaction* _trx;
+  transaction::Methods* _trx;
 
   ManagedDocumentResult* _mmdr;
 
@@ -349,7 +365,7 @@ class Traverser {
   std::unique_ptr<VertexGetter> _vertexGetter;
 
   /// @brief Builder for the start value slice. Leased from transaction
-  TransactionBuilderLeaser _startIdBuilder;
+  transaction::BuilderLeaser _startIdBuilder;
 
   /// @brief counter for all read documents
   size_t _readDocuments;
@@ -365,21 +381,21 @@ class Traverser {
 
   /// @brief options for traversal
   TraverserOptions* _opts;
-
+  
   bool _canUseOptimizedNeighbors;
 
   /// @brief Function to fetch the real data of a vertex into an AQLValue
-  virtual aql::AqlValue fetchVertexData(arangodb::velocypack::Slice) = 0;
+  virtual aql::AqlValue fetchVertexData(StringRef vid) = 0;
 
   /// @brief Function to fetch the real data of an edge into an AQLValue
-  virtual aql::AqlValue fetchEdgeData(arangodb::velocypack::Slice) = 0;
+  virtual aql::AqlValue fetchEdgeData(StringRef eid) = 0;
 
   /// @brief Function to add the real data of a vertex into a velocypack builder
-  virtual void addVertexToVelocyPack(arangodb::velocypack::Slice,
+  virtual void addVertexToVelocyPack(StringRef vid,
                                      arangodb::velocypack::Builder&) = 0;
 
   /// @brief Function to add the real data of an edge into a velocypack builder
-  virtual void addEdgeToVelocyPack(arangodb::velocypack::Slice,
+  virtual void addEdgeToVelocyPack(StringRef eid,
                                    arangodb::velocypack::Builder&) = 0;
  
 };

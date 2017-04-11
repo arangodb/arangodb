@@ -28,8 +28,8 @@
 // Execution plan:
 //  Id   NodeType                  Est.   Comment
 //   1   SingletonNode                1   * ROOT
-//   2   EnumerateCollectionNode   6400     - FOR d IN ulf   /* full collection scan */
-//   3   CalculationNode           6400       - LET #1 = DISTANCE(d.`lat`, d.`lon`, 0, 0)   /* simple expression */   /* collections used: d : ulf */
+//   2   EnumerateCollectionNode   6400     - FOR d IN coll   /* full collection scan */
+//   3   CalculationNode           6400       - LET #1 = DISTANCE(d.`lat`, d.`lon`, 0, 0)   /* simple expression */   /* collections used: d : coll */
 //   4   SortNode                  6400       - SORT #1 ASC
 //   5   LimitNode                    5       - LIMIT 0, 5
 //   6   ReturnNode                   5       - RETURN d
@@ -101,7 +101,6 @@ class ExecutionNode {
 
  public:
   enum NodeType : int {
-    ILLEGAL = 0,
     SINGLETON = 1,
     ENUMERATE_COLLECTION = 2,
     // INDEX_RANGE          =  3, // not used anymore
@@ -586,8 +585,8 @@ class ExecutionNode {
   void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, bool) const;
 
   /// @brief set regs to be deleted
-  void setRegsToClear(std::unordered_set<RegisterId> const& toClear) {
-    _regsToClear = toClear;
+  void setRegsToClear(std::unordered_set<RegisterId>&& toClear) {
+    _regsToClear = std::move(toClear);
   }
 
  protected:

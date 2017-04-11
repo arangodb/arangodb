@@ -550,7 +550,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   delete[] buffer;
 
   if (corrupted) {
-    LOG(WARN) << "escaped corrupted unicode string";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "escaped corrupted unicode string";
   }
 
   return result;
@@ -1139,6 +1139,52 @@ bool isSuffix(std::string const& str, std::string const& postfix) {
     return str.compare(str.size() - postfix.length(), postfix.length(),
                        postfix) == 0;
   }
+}
+
+std::string urlDecodePath(std::string const& str) {
+  std::string result;
+  // reserve enough room so we do not need to re-alloc
+  result.reserve(str.size() + 16); 
+
+  char const* src = str.c_str();
+  char const* end = src + str.size();
+
+  while (src < end) {
+    if (*src == '%') {
+      if (src + 2 < end) {
+        int h1 = hex2int(src[1], -1);
+        int h2 = hex2int(src[2], -1);
+
+        if (h1 == -1) {
+          ++src;
+        } else {
+          if (h2 == -1) {
+            result.push_back(h1);
+            src += 2;
+          } else {
+            result.push_back(h1 << 4 | h2);
+            src += 3;
+          }
+        }
+      } else if (src + 1 < end) {
+        int h1 = hex2int(src[1], -1);
+
+        if (h1 == -1) {
+          ++src;
+        } else {
+          result.push_back(h1);
+          src += 2;
+        }
+      } else {
+        ++src;
+      }
+    } else {
+      result.push_back(*src);
+      ++src;
+    }
+  }
+
+  return result;
 }
 
 std::string urlDecode(std::string const& str) {

@@ -187,10 +187,6 @@ if (typeof window === 'undefined') {
     }
   }
 
-  try {
-    global.process.stdout.isTTY = true;
-  } catch (e) {}
-
   delete global.IS_EXECUTE_SCRIPT;
   delete global.IS_EXECUTE_STRING;
   delete global.IS_CHECK_SCRIPT;

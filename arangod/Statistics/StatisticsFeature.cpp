@@ -22,6 +22,8 @@
 
 #include "StatisticsFeature.h"
 
+
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -87,12 +89,7 @@ class arangodb::StatisticsThread final : public Thread {
           }
         }
 
-#ifdef _WIN32
-        usleep((unsigned long)sleepTime);
-#else
-        usleep((useconds_t)sleepTime);
-#endif
-
+        usleep(static_cast<TRI_usleep_t>(sleepTime));
       } else {
         nothingHappened = 0;
 
@@ -120,6 +117,7 @@ StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Statistics"), _statistics(true) {
   startsAfter("Logger");
+  startsAfter("Aql");
 }
 
 void StatisticsFeature::collectOptions(
@@ -165,23 +163,24 @@ void StatisticsFeature::prepare() {
       new StatisticsDistribution(TRI_BytesSentDistributionVectorStatistics);
   TRI_BytesReceivedDistributionStatistics =
       new StatisticsDistribution(TRI_BytesReceivedDistributionVectorStatistics);
+
+  STATISTICS = this;
+
+  ServerStatistics::initialize();
+  ConnectionStatistics::initialize();
+  RequestStatistics::initialize();
 }
 
 void StatisticsFeature::start() {
-  STATISTICS = this;
 
   if (!_statistics) {
     return;
   }
 
-  ServerStatistics::initialize();
-  ConnectionStatistics::initialize();
-  RequestStatistics::initialize();
-
   _statisticsThread.reset(new StatisticsThread);
 
   if (!_statisticsThread->start()) {
-    LOG(FATAL) << "could not start statistics thread";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start statistics thread";
     FATAL_ERROR_EXIT();
   }
 }

@@ -49,7 +49,8 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _maxPacketSize(128 * 1024 * 1024),
       _sslProtocol(4),
       _retries(DEFAULT_RETRIES),
-      _warn(false) {
+      _warn(false),
+      _haveServerPassword(false){
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -63,7 +64,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_databaseName));
 
   options->addOption("--server.authentication",
-                     "require authentication when connecting",
+                     "require authentication credentials when connecting (does not affect the server-side authentication settings)",
                      new BooleanParameter(&_authentication));
 
   options->addOption("--server.username",
@@ -89,9 +90,9 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "request timeout in seconds",
                      new DoubleParameter(&_requestTimeout));
   
-  options->addOption("--server.max-packet-size",
-                     "maximum packet size (in bytes) for client/server communication",
-                     new UInt64Parameter(&_maxPacketSize));
+  options->addHiddenOption("--server.max-packet-size",
+                           "maximum packet size (in bytes) for client/server communication",
+                           new UInt64Parameter(&_maxPacketSize));
 
   std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
 
@@ -111,33 +112,40 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // check timeouts
   if (_connectionTimeout < 0.0) {
-    LOG(FATAL) << "invalid value for --server.connect-timeout, must be >= 0";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --server.connect-timeout, must be >= 0";
     FATAL_ERROR_EXIT();
   } else if (_connectionTimeout == 0.0) {
     _connectionTimeout = LONG_TIMEOUT;
   }
 
   if (_requestTimeout < 0.0) {
-    LOG(FATAL) << "invalid value for --server.request-timeout, must be positive";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --server.request-timeout, must be positive";
     FATAL_ERROR_EXIT();
   } else if (_requestTimeout == 0.0) {
     _requestTimeout = LONG_TIMEOUT;
   }
 
   if (_maxPacketSize < 1 * 1024 * 1024) {
-    LOG(FATAL) << "invalid value for --server.max-packet-size, must be at least 1 MB";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --server.max-packet-size, must be at least 1 MB";
     FATAL_ERROR_EXIT();
   }
 
   // username must be non-empty
   if (_username.empty()) {
-    LOG(FATAL) << "no value specified for --server.username";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no value specified for --server.username";
     FATAL_ERROR_EXIT();
   }
 
+  _haveServerPassword = !options->processingResult().touched("server.password");
+
+  SimpleHttpClient::setMaxPacketSize(_maxPacketSize);
+}
+
+void ClientFeature::prepare() {
   // ask for a password
   if (_authentication &&
-      !options->processingResult().touched("server.password")) {
+      isEnabled() &&
+      _haveServerPassword) {
     usleep(10 * 1000);
 
     try {
@@ -155,8 +163,6 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     _password = ConsoleFeature::readPassword();
     std::cout << std::endl << std::flush;
   }
-
-  SimpleHttpClient::setMaxPacketSize(_maxPacketSize);
 }
 
 std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection() {
@@ -168,7 +174,7 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint.get() == nullptr) {
-    LOG(ERR) << "invalid value for --server.endpoint ('" << definition << "')";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for --server.endpoint ('" << definition << "')";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -189,7 +195,7 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint.get() == nullptr) {
-    LOG(ERR) << "invalid value for --server.endpoint ('" << definition << "')";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for --server.endpoint ('" << definition << "')";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -209,4 +215,20 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
   }
 
   return { http };
+}
+ 
+int ClientFeature::runMain(int argc, char* argv[],
+                           std::function<int(int argc, char* argv[])> const& mainFunc) {
+  try {
+    return mainFunc(argc, argv);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << argv[0] << " terminated because of an unhandled exception: "
+        << ex.what();
+    return EXIT_FAILURE;
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << argv[0] << " terminated because of an unhandled exception of unknown type";
+    return EXIT_FAILURE;
+  }
 }

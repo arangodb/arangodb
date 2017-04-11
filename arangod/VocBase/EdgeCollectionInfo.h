@@ -24,11 +24,15 @@
 #ifndef ARANGOD_EDGE_COLLECTION_INFO_H
 #define ARANGOD_EDGE_COLLECTION_INFO_H 1
 
+#include "Aql/Graphs.h"
 #include "VocBase/Traverser.h"
 
 namespace arangodb {
 class ManagedDocumentResult;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace traverser {
 
@@ -45,7 +49,7 @@ class EdgeCollectionInfo {
   /// @brief the underlying transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Transaction* _trx;
+  transaction::Methods* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief edge collection name
@@ -53,30 +57,28 @@ class EdgeCollectionInfo {
 
   std::string _collectionName;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief index id
-  //////////////////////////////////////////////////////////////////////////////
+  /// @brief index used for forward iteration
+  transaction::Methods::IndexHandle _forwardIndexId;
 
-  arangodb::Transaction::IndexHandle _indexId;
+  /// @brief index used for backward iteration
+  transaction::Methods::IndexHandle _backwardIndexId;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Temporary builder for index search values
   ///        NOTE: Single search builder is NOT thread-save
   //////////////////////////////////////////////////////////////////////////////
 
-  VPackBuilder _searchBuilder;
+  aql::EdgeConditionBuilderContainer _searchBuilder;
 
   std::string _weightAttribute;
 
   double _defaultWeight;
 
-  TRI_edge_direction_e _forwardDir;
-
-  TRI_edge_direction_e _backwardDir;
+  TRI_edge_direction_e _dir;
 
  public:
 
-  EdgeCollectionInfo(arangodb::Transaction* trx,
+  EdgeCollectionInfo(transaction::Methods* trx,
                      std::string const& collectionName,
                      TRI_edge_direction_e const direction,
                      std::string const& weightAttribute,
@@ -87,8 +89,6 @@ class EdgeCollectionInfo {
 ////////////////////////////////////////////////////////////////////////////////
 
   std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&, ManagedDocumentResult*);
-
-  std::unique_ptr<arangodb::OperationCursor> getEdges(arangodb::velocypack::Slice const&, ManagedDocumentResult*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get edges for the given direction and start vertex. On Coordinator.
@@ -101,20 +101,20 @@ class EdgeCollectionInfo {
 /// @brief Get edges for the given direction and start vertex. Reverse version
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&, ManagedDocumentResult*);
+  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(
+      std::string const&, ManagedDocumentResult*);
 
-  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(arangodb::velocypack::Slice const&, ManagedDocumentResult*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. Reverse version on Coordinator.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get edges for the given direction and start vertex. Reverse version
+  /// on Coordinator.
+  ////////////////////////////////////////////////////////////////////////////////
 
   int getReverseEdgesCoordinator(arangodb::velocypack::Slice const&,
                                  arangodb::velocypack::Builder&);
 
   double weightEdge(arangodb::velocypack::Slice const);
   
-  arangodb::Transaction* trx() const { return _trx; }
+  transaction::Methods* trx() const { return _trx; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return name of the wrapped collection

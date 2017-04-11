@@ -83,12 +83,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   static std::string const EDGES_PATH;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief document export path
-  //////////////////////////////////////////////////////////////////////////////
-
-  static std::string const EXPORT_PATH;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief document import path
   //////////////////////////////////////////////////////////////////////////////
 
@@ -129,12 +123,12 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string const UPLOAD_PATH;
-  
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief wal path
+  /// @brief view path
   //////////////////////////////////////////////////////////////////////////////
-  
-  static std::string const WAL_PATH;
+
+  static std::string const VIEW_PATH;
 
   /// @brief Internal Traverser path
 
@@ -163,9 +157,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates ok message without content
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk() {
-    resetResponse(rest::ResponseCode::NO_CONTENT);
-  }
+  void generateOk() { resetResponse(rest::ResponseCode::NO_CONTENT); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message with no body but with certain status code
@@ -245,6 +237,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateTransactionError(std::string const&, int, std::string const& key,
                                 TRI_voc_rid_t = 0);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief generate an error message for a transaction error
+  //////////////////////////////////////////////////////////////////////////////
+  void generateTransactionError(std::string const& str, Result const& res,
+                                std::string const& key, TRI_voc_rid_t rid = 0){
+    generateTransactionError(str, res.errorNumber(), key, rid);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate an error message for a transaction error
@@ -265,7 +265,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool extractBooleanParameter(std::string const& name, bool def) const;
-  
+
   bool extractBooleanParameter(char const* name, bool def) const {
     return extractBooleanParameter(std::string(name), def);
   }

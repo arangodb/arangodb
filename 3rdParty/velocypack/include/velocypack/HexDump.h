@@ -49,6 +49,9 @@ struct HexDump {
       : HexDump(*slice, valuesPerLine, separator) {}
 
   static std::string toHex(uint8_t value);
+  std::string toString() const;
+
+  friend std::ostream& operator<<(std::ostream&, HexDump const&);
 
   Slice const slice;
   int valuesPerLine;
@@ -57,9 +60,5 @@ struct HexDump {
 
 }  // namespace arangodb::velocypack
 }  // namespace arangodb
-
-std::ostream& operator<<(std::ostream&, arangodb::velocypack::HexDump const*);
-
-std::ostream& operator<<(std::ostream&, arangodb::velocypack::HexDump const&);
 
 #endif

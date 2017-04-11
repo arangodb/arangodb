@@ -22,75 +22,97 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ManagedDocumentResult.h"
-#include "Logger/Logger.h"
-#include "Utils/Transaction.h"
+#include "Aql/AqlValue.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::aql;
 
-ManagedDocumentResult::ManagedDocumentResult(Transaction* trx) 
-        : _trx(trx), _vpack(nullptr), _lastRevisionId(0) {}
-
-ManagedDocumentResult::~ManagedDocumentResult() {
-//  clear();
-}
-  
-//static std::atomic<uint64_t> ADDCALLS(0);
-void ManagedDocumentResult::add(ChunkProtector& protector, TRI_voc_rid_t revisionId) {
-//  if (++ADDCALLS % 10000 == 0) {
-//    LOG(ERR) << ADDCALLS.load() << " CALLS TO ADD";
-//  }
-  /*
-  if (protector.chunk() != _chunk) {
-    clear();
+void ManagedDocumentResult::clone(ManagedDocumentResult& cloned) const {
+  cloned.reset();
+  if (_useString) {
+    cloned._useString = true;
+    cloned._string = _string;
+    cloned._lastRevisionId = _lastRevisionId;
+    cloned._vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(cloned._string.data()));
+  } else if (_managed) {
+    cloned.setManaged(_vpack, _lastRevisionId);
+  } else {
+    cloned.setUnmanaged(_vpack, _lastRevisionId);
   }
-  
-  _vpack = protector.vpack();
-  _chunk = protector.chunk();
-  */
-  if (_trx != nullptr) {
-    _trx->addChunk(protector.chunk());
-    protector.steal();
-  }
-  _vpack = protector.vpack();
-  _lastRevisionId = revisionId;
-  _chunkCache.add(protector.chunk());
 }
 
-//static std::atomic<uint64_t> ADDEXISTINGCALLS(0);
-void ManagedDocumentResult::addExisting(ChunkProtector& protector, TRI_voc_rid_t revisionId) {
-//  if (++ADDEXISTINGCALLS % 10000 == 0) {
-//    LOG(ERR) << ADDEXISTINGCALLS.load() << " CALLS TO ADDEXISTING";
-//  }
-  /*
-  if (protector.chunk() != _chunk) {
-    clear();
+//add unmanaged vpack 
+void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
+  if(_managed || _useString) {
+    reset();
   }
-  
-  _vpack = protector.vpack();
-  _chunk = protector.chunk();
-  */
-  _vpack = protector.vpack();
+  TRI_ASSERT(_length == 0);
+  _vpack = const_cast<uint8_t*>(vpack);
   _lastRevisionId = revisionId;
 }
 
-void ManagedDocumentResult::clear(size_t threshold) {
-  if (_trx != nullptr) {
-    _trx->clearChunks(threshold);
+void ManagedDocumentResult::setManaged(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
+  VPackSlice slice(vpack);
+  auto newLen = slice.byteSize();
+  if (_length >= newLen && _managed){
+    std::memcpy(_vpack, vpack, newLen);
+  } else {
+    reset();
+    _vpack = new uint8_t[newLen];
+    std::memcpy(_vpack, vpack, newLen);
+    _length=newLen;
   }
-  _vpack = nullptr;
+  _lastRevisionId = revisionId;
+  _managed = true;
+}
+
+void ManagedDocumentResult::setManaged(std::string&& str, TRI_voc_rid_t revisionId) {
+  reset();
+  _string = std::move(str);
+  _vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(_string.data()));
+  _lastRevisionId = revisionId;
+  _useString = true;
+}
+
+void ManagedDocumentResult::reset() noexcept {
+  if(_managed) {
+    delete _vpack;
+  }
+  _managed = false;
+  _length = 0;
+
+  if(_useString){
+    _string.clear();
+  }
+  _useString = false;
+
   _lastRevisionId = 0;
-  _chunkCache.clear();
-}
-  
-ManagedDocumentResult& ManagedDocumentResult::operator=(ManagedDocumentResult const& other) {
-  if (this != &other) {
-  //  clear();
-    _trx = other._trx;
-    _vpack = other._vpack;
-    _chunkCache = other._chunkCache;
-    _lastRevisionId = 0; // clear cache
-  //  _chunk->use();
-  }
-  return *this;
+  _vpack = nullptr;
 }
 
+void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder, bool allowExternals) const {
+  TRI_ASSERT(!empty());
+  if (allowExternals && canUseInExternal()) {
+    builder.addExternal(_vpack);
+  } else {
+    builder.add(velocypack::Slice(_vpack));
+  }
+}
+
+// @brief Creates an AQLValue with the content of this ManagedDocumentResult
+// The caller is responsible to properly destroy() the
+// returned value
+AqlValue ManagedDocumentResult::createAqlValue() const {
+  TRI_ASSERT(!empty());
+  if (canUseInExternal()) {
+    // No need to copy. Underlying structure guarantees that Slices stay
+    // valid
+    return AqlValue(_vpack, AqlValueFromManagedDocument());
+  }
+  // Do copy. Otherwise the slice may go out of scope
+  return AqlValue(VPackSlice(_vpack));
+}

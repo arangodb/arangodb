@@ -478,8 +478,8 @@ exports.checkAvailableVersions = function (version) {
     version = internal.version;
   }
 
-  if (version.match(/beta|alpha|preview|devel/) !== null) {
-    log("You are using an alpha/beta/preview version ('" + version + "') of ArangoDB");
+  if (version.match(/beta|alpha|preview|milestone|devel/) !== null) {
+    log("You are using a milestone/alpha/beta/preview version ('" + version + "') of ArangoDB");
     return;
   }
 

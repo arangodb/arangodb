@@ -27,13 +27,13 @@
 
 #include "Basics/Common.h"
 
+#include "Endpoint/ConnectionInfo.h"
+#include "Rest/CommonDefines.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Endpoint/ConnectionInfo.h"
-#include "Rest/CommonDefines.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -95,9 +95,6 @@ class GeneralRequest {
   void setProtocol(char const* protocol) { _protocol = protocol; }
 
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
-  void setConnectionInfo(ConnectionInfo const& connectionInfo) {
-    _connectionInfo = connectionInfo;
-  }
 
   uint64_t clientTaskId() const { return _clientTaskId; }
   void setClientTaskId(uint64_t clientTaskId) { _clientTaskId = clientTaskId; }
@@ -125,6 +122,12 @@ class GeneralRequest {
   std::string const& requestPath() const { return _requestPath; }
   void setRequestPath(std::string const& requestPath) {
     _requestPath = requestPath;
+  }
+  void setRequestPath(char const* begin) {
+    _requestPath = std::string(begin);
+  }
+  void setRequestPath(char const* begin, char const* end) {
+    _requestPath = std::string(begin, end - begin);
   }
 
   // The request path consists of the URL without the host and without any
@@ -167,15 +170,13 @@ class GeneralRequest {
   virtual std::unordered_map<std::string, std::vector<std::string>>
   arrayValues() const = 0;
 
-  bool velocyPackResponse() const;
-
-  // should toVelocyPack be renamed to payload?
   virtual VPackSlice payload(arangodb::velocypack::Options const* options =
-                                 &VPackOptions::Defaults) = 0;
+                             &VPackOptions::Defaults) = 0;
 
-  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr(
-      arangodb::velocypack::Options const* options) {
-    return std::make_shared<VPackBuilder>(payload(options), options);
+  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
+    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
+    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);
   };
 
   ContentType contentType() const { return _contentType; }

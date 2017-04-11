@@ -22,18 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ModificationBlocks.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterMethods.h"
+#include "StorageEngine/TransactionState.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -46,7 +48,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _isDBServer(false),
       _usesDefaultSharding(true) {
 
-  _trx->orderDitch(_collection->cid());
+  _trx->pinData(_collection->cid());
 
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
 
@@ -62,7 +64,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
   }
 
   // check if we're a DB server in a cluster
-  _isDBServer = arangodb::ServerState::instance()->isDBServer();
+  _isDBServer = transaction()->state()->isDBServer();
 
   if (_isDBServer) {
     _usesDefaultSharding = _collection->usesDefaultSharding();
@@ -266,10 +268,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr);
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   VPackBuilder keyBuilder;
 
@@ -431,10 +430,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   bool const producesOutput = (ep->_outVariableNew != nullptr);
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -575,10 +571,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -772,10 +765,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   std::string errorMessage;
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -1020,10 +1010,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;

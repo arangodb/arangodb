@@ -152,7 +152,11 @@ exports.manage = function () {
   });
 
   // switch back into previous database
-  db._useDatabase(initialDatabase);
+  try {
+    db._useDatabase(initialDatabase);
+  } catch (err) {
+    db._useDatabase('_system');
+  }
 };
 
 exports.run = function () {

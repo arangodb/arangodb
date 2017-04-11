@@ -21,6 +21,7 @@
 
     customQueries: [],
     cachedQueries: {},
+    queriesHistory: {},
     graphViewers: [],
     queries: [],
 
@@ -177,11 +178,13 @@
     },
 
     removeResults: function () {
+      var self = this;
       this.cachedQueries = {};
-      $('.outputEditorWrapper').hide('fast', function () {
-        $('.outputEditorWrapper').remove();
+      this.queriesHistory = {};
+
+      _.each($('.outputEditorWrapper'), function (v) {
+        self.closeAceResults(v.id.replace(/^\D+/g, ''));
       });
-      $('#removeResults').hide();
     },
 
     getCustomQueryParameterByName: function (qName) {
@@ -441,28 +444,25 @@
 
       // deselect editors
       this.deselect(ace.edit('outputEditor' + count));
-      this.deselect(ace.edit('sentQueryEditor' + count));
-      this.deselect(ace.edit('sentBindParamEditor' + count));
     },
 
     downloadQueryResult: function (e) {
-      var count = $(e.currentTarget).attr('counter');
-      var editor = ace.edit('sentQueryEditor' + count);
-      var query = editor.getValue();
+      var counter = $(e.currentTarget).attr('counter');
+      var query = this.queriesHistory[counter].sentQuery;
 
-      if (query !== '' || query !== undefined || query !== null) {
+      if (query !== '' && query !== undefined && query !== null) {
         var url;
-        if (Object.keys(this.bindParamTableObj).length === 0) {
+        if (Object.keys(this.queriesHistory[counter].bindParam).length === 0) {
           url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({ query: query })));
         } else {
           url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({
             query: query,
-            bindVars: this.bindParamTableObj
+            bindVars: this.queriesHistory[counter].bindParam
           })));
         }
         arangoHelper.download(url);
       } else {
-        arangoHelper.arangoError('Query error', 'could not query result.');
+        arangoHelper.arangoError('Query error', 'Could not download the result.');
       }
     },
 
@@ -480,32 +480,23 @@
 
       var counter = this.outputCounter;
       var outputEditor = ace.edit('outputEditor' + counter);
-      var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
-      var sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
-
-      sentQueryEditor.getSession().setMode('ace/mode/aql');
-      sentQueryEditor.setOption('vScrollBarAlwaysVisible', true);
-      sentQueryEditor.setReadOnly(true);
-      this.setEditorAutoHeight(sentQueryEditor);
 
       outputEditor.setReadOnly(true);
       outputEditor.getSession().setMode('ace/mode/json');
       outputEditor.setOption('vScrollBarAlwaysVisible', true);
       this.setEditorAutoHeight(outputEditor);
 
-      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj), 1);
-      sentBindParamEditor.setOption('vScrollBarAlwaysVisible', true);
-      sentBindParamEditor.getSession().setMode('ace/mode/json');
-      sentBindParamEditor.setReadOnly(true);
-      this.setEditorAutoHeight(sentBindParamEditor);
+      // Store sent query and bindParameter
+      this.queriesHistory[counter] = {
+        sentQuery: this.aqlEditor.getValue(),
+        bindParam: this.bindParamTableObj
+      };
 
-      this.fillExplain(outputEditor, sentQueryEditor, counter);
+      this.fillExplain(outputEditor, counter);
       this.outputCounter++;
     },
 
-    fillExplain: function (outputEditor, sentQueryEditor, counter) {
-      sentQueryEditor.setValue(this.aqlEditor.getValue(), 1);
-
+    fillExplain: function (outputEditor, counter) {
       var self = this;
       var queryData = this.readQueryData();
 
@@ -648,21 +639,42 @@
       }
     },
 
+    closeAceResults: function (counter, target) {
+      var self = this;
+      ace.edit('outputEditor' + counter).destroy();
+      $('#outputEditorWrapper' + this.outputCounter).hide();
+
+      var cleanup = function (target) {
+        $(target).hide('fast', function () {
+          // remove dom
+          $(target).remove();
+          if ($('.outputEditorWrapper').length === 0) {
+            self.cachedQueries = {};
+            $('#removeResults').hide();
+          }
+        });
+      };
+
+      if (target) {
+        cleanup(target);
+      } else {
+        _.each($('#outputEditors').children(), function (elem) {
+          cleanup(elem);
+        });
+      }
+    },
+
     closeResult: function (e) {
       var self = this;
       var target = $('#' + $(e.currentTarget).attr('element')).parent();
       var id = $(target).attr('id');
-      var counter = id.substring(id.length - 1, id.length - 0);
+      var counter = id.replace(/^\D+/g, '');
+
+      // remove unused ace editor instances
+      self.closeAceResults(counter, target);
 
       delete this.cachedQueries[counter];
-
-      $(target).hide('fast', function () {
-        $(target).remove();
-        if ($('.outputEditorWrapper').length === 0) {
-          self.cachedQueries = {};
-          $('#removeResults').hide();
-        }
-      });
+      delete this.queriesHistory[counter];
     },
 
     fillSelectBoxes: function () {
@@ -738,7 +750,6 @@
         _.each(this.cachedQueries, function (query, counter) {
           self.renderQueryResultBox(counter, null, true);
           self.renderQueryResult(query, counter, true);
-          self.fillSentQueryValue(counter);
 
           if (query.sentQuery) {
             self.bindQueryResultButtons(null, counter);
@@ -746,11 +757,6 @@
         });
         $('#removeResults').show();
       }
-    },
-
-    fillSentQueryValue: function (counter) {
-      var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
-      sentQueryEditor.setValue(this.cachedQueries[counter].sentQuery, 1);
     },
 
     showSpotlight: function (type) {
@@ -1097,11 +1103,13 @@
 
       // init aql editor
       this.aqlEditor = ace.edit('aqlEditor');
+      this.aqlEditor.$blockScrolling = Infinity;
       this.aqlEditor.getSession().setMode('ace/mode/aql');
       this.aqlEditor.setFontSize('10pt');
       this.aqlEditor.setShowPrintMargin(false);
 
       this.bindParamAceEditor = ace.edit('bindParamAceEditor');
+      this.bindParamAceEditor.$blockScrolling = Infinity;
       this.bindParamAceEditor.getSession().setMode('ace/mode/json');
       this.bindParamAceEditor.setFontSize('10pt');
       this.bindParamAceEditor.setShowPrintMargin(false);
@@ -1560,29 +1568,24 @@
       }));
 
       var outputEditor = ace.edit('outputEditor' + counter);
-      var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
-      var sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
 
-      sentQueryEditor.getSession().setMode('ace/mode/aql');
-      sentQueryEditor.setOption('vScrollBarAlwaysVisible', true);
-      sentQueryEditor.setFontSize('13px');
-      sentQueryEditor.setReadOnly(true);
-      this.setEditorAutoHeight(sentQueryEditor);
+      // store query and bind parameters history
 
       outputEditor.setFontSize('13px');
+      outputEditor.$blockScrolling = Infinity;
       outputEditor.getSession().setMode('ace/mode/json');
       outputEditor.setReadOnly(true);
       outputEditor.setOption('vScrollBarAlwaysVisible', true);
       outputEditor.setShowPrintMargin(false);
       this.setEditorAutoHeight(outputEditor);
 
-      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj), 1);
-      sentBindParamEditor.setOption('vScrollBarAlwaysVisible', true);
-      sentBindParamEditor.getSession().setMode('ace/mode/json');
-      sentBindParamEditor.setReadOnly(true);
-      this.setEditorAutoHeight(sentBindParamEditor);
-
       if (!cached) {
+        // Store sent query and bindParameter
+        this.queriesHistory[counter] = {
+          sentQuery: this.aqlEditor.getValue(),
+          bindParam: this.bindParamTableObj
+        };
+
         this.fillResult(counter, selected);
         this.outputCounter++;
       }
@@ -1590,7 +1593,6 @@
 
     readQueryData: function (selected, forExecute) {
       // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
-      var sizeBox = $('#querySize');
       var data = {
         id: 'currentFrontendQuery'
       };
@@ -1608,12 +1610,6 @@
         }
         data = false;
       } else {
-        if (sizeBox.val() === 'all') {
-          data.batchSize = 1000000;
-        } else {
-          data.batchSize = parseInt(sizeBox.val(), 10);
-        }
-
         var bindVars = {};
         if (Object.keys(this.bindParamTableObj).length > 0) {
           _.each(this.bindParamTableObj, function (val, key) {
@@ -1648,9 +1644,6 @@
       }
 
       if (queryData) {
-        var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
-        sentQueryEditor.setValue(self.aqlEditor.getValue(), 1);
-
         $.ajax({
           type: 'POST',
           url: arangoHelper.databaseUrl('/_api/cursor'),
@@ -1737,7 +1730,7 @@
       outputEditor.getSession().setScrollTop(0);
     },
 
-    renderQueryResult: function (data, counter, cached) {
+    renderQueryResult: function (data, counter, cached, queryID) {
       var self = this;
 
       if (window.location.hash === '#queries') {
@@ -1749,7 +1742,6 @@
         if (!data.msg) {
           // handle usual query
           var result = self.analyseQuery(data.result);
-          // console.log('Using ' + result.defaultType + ' as data format.');
           if (result.defaultType === 'table') {
             $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
               '<div id="outputTable' + counter + '" class="outputTable"></div>'
@@ -1798,7 +1790,13 @@
 
           var time = '-';
           if (data && data.extra && data.extra.stats) {
-            time = data.extra.stats.executionTime.toFixed(3) + ' s';
+            if (data.extra.stats.executionTime > 1) {
+              time = numeral(data.extra.stats.executionTime).format('0.000');
+              time += ' s';
+            } else {
+              time = numeral(data.extra.stats.executionTime * 1000).format('0.000');
+              time += ' ms';
+            }
           }
           appendSpan(
             data.result.length + ' elements', 'fa-calculator'
@@ -1849,9 +1847,26 @@
         self.deselect(outputEditor);
 
         // when finished send a delete req to api (free db space)
-        if (data.id) {
+        // deletion only necessary if result was not fully fetched
+        var url;
+        if (queryID && data.hasMore) {
+          url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(queryID));
+        } else {
+          if (data.id && data.hasMore) {
+            url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id));
+          }
+        }
+
+        /*
+        if (!data.complete) {
+          // TODO notify user?
+          // console.log('result was cutted down - more result avail - change limit');
+        }
+        */
+
+        if (url) {
           $.ajax({
-            url: arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id)),
+            url: url,
             type: 'DELETE'
           });
         }
@@ -1904,8 +1919,9 @@
           self.toggleQueries();
         }
 
-        var aql = ace.edit('sentQueryEditor' + counter).getValue();
-        var bindParam = JSON.parse(ace.edit('sentBindParamEditor' + counter).getValue());
+        var aql = self.queriesHistory[counter].sentQuery;
+        var bindParam = self.queriesHistory[counter].bindParam;
+
         self.aqlEditor.setValue(aql, 1);
         self.deselect(self.aqlEditor);
         if (Object.keys(bindParam).length > 0) {
@@ -1926,21 +1942,67 @@
 
     queryCallbackFunction: function (queryID, counter) {
       var self = this;
+      self.tmpQueryResult = null;
 
       this.bindQueryResultButtons(queryID, counter);
       this.execPending = false;
 
+      var userLimit;
+      try {
+        userLimit = parseInt($('#querySize').val());
+      } catch (e) {
+        arangoHelper.arangoError('Parse Error', 'Could not parse defined user limit.');
+      }
+
+      var pushQueryResults = function (data) {
+        if (self.tmpQueryResult === null) {
+          self.tmpQueryResult = {
+            result: [],
+            complete: true
+          };
+        }
+
+        _.each(data, function (val, key) {
+          if (key !== 'result') {
+            self.tmpQueryResult[key] = val;
+          } else {
+            _.each(data.result, function (d) {
+              if (self.tmpQueryResult.result.length < userLimit) {
+                self.tmpQueryResult.result.push(d);
+              } else {
+                self.tmpQueryResult.complete = false;
+              }
+            });
+          }
+        });
+      };
+
       // check if async query is finished
-      var checkQueryStatus = function () {
+      var checkQueryStatus = function (cursorID) {
+        var url = arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(queryID));
+        if (cursorID) {
+          url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(cursorID));
+        }
+
         $.ajax({
           type: 'PUT',
-          url: arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(queryID)),
+          url: url,
           contentType: 'application/json',
           processData: false,
           success: function (data, textStatus, xhr) {
-            // query finished, now fetch results
-            if (xhr.status === 201) {
-              self.renderQueryResult(data, counter);
+            // query finished, now fetch results using cursor
+
+            if (xhr.status === 201 || xhr.status === 200) {
+              if (data.hasMore) {
+                pushQueryResults(data);
+
+                // continue to fetch result
+                checkQueryStatus(data.id);
+              } else {
+                pushQueryResults(data);
+                self.renderQueryResult(self.tmpQueryResult, counter, queryID);
+                self.tmpQueryResult = null;
+              }
               // SCROLL TO RESULT BOX
               $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
             } else if (xhr.status === 204) {
@@ -2053,14 +2115,20 @@
           var width;
           var adjustWidth = 0;
 
+          var time = '';
           _.each(data, function (value, key) {
-            var ms = numeral(value * 1000).format('0.000');
-            ms += ' ms';
+            if (value > 1) {
+              time = numeral(value).format('0.000');
+              time += ' s';
+            } else {
+              time = numeral(value * 1000).format('0.000');
+              time += ' ms';
+            }
 
             queryProfile.find('.pure-g').append(
               '<div class="pure-table-row noHover">' +
               '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
-              '<div class="pure-u-4-24 left">' + ms + '</div>' +
+              '<div class="pure-u-4-24 left">' + time + '</div>' +
               '<div class="pure-u-6-24 left">' + key + '</div>' +
               '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
               '</div>'
@@ -2164,8 +2232,10 @@
           var totalb = result.length;
 
           _.each(result, function (obj) {
-            if (obj._from && obj._to && obj._id) {
-              hitsb++;
+            if (obj) {
+              if (obj._from && obj._to && obj._id) {
+                hitsb++;
+              }
             }
           });
 
@@ -2262,7 +2332,7 @@
 
       var callback = function (error) {
         if (error) {
-          arangoHelper.arangoError('Query', 'Could not reload Queries');
+          arangoHelper.arangoError('Query', 'Could not reload queries');
         } else {
           self.updateLocalQueries();
           self.updateQueryTable();
@@ -2321,21 +2391,31 @@
       };
 
       var first = true;
-      var part = [];
-      // self.tableDescription.rows.push(;
+      var headers = {}; // quick lookup cache
+      var pos = 0;
       _.each(data.original, function (obj) {
         if (first === true) {
           tableDescription.titles = Object.keys(obj);
+          tableDescription.titles.forEach(function (t) {
+            headers[String(t)] = pos++;
+          });
           first = false;
         }
-        _.each(obj, function (val) {
+        var part = Array(pos);
+        _.each(obj, function (val, key) {
+          if (!headers.hasOwnProperty(key)) {
+            // different attribute
+            return;
+          }
+
           if (typeof val === 'object') {
             val = JSON.stringify(val);
           }
-          part.push(val);
+
+          part[headers[key]] = val;
         });
+
         tableDescription.rows.push(part);
-        part = [];
       });
 
       $('#outputTable' + counter).append(this.table.render({content: tableDescription}));

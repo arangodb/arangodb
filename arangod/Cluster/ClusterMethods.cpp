@@ -32,6 +32,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/ticks.h"
@@ -43,10 +44,13 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
+#include <vector>
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static double const CL_DEFAULT_TIMEOUT = 90.0;
+static double const CL_DEFAULT_TIMEOUT = 120.0;
 
 namespace {
 template<typename T>
@@ -452,7 +456,7 @@ static void collectResultsFromAllShards(
     } else {
       TRI_ASSERT(res.answer != nullptr);
       resultMap.emplace(res.shardID,
-                        res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+                        res.answer->toVelocyPackBuilderPtr());
       extractErrorCodes(res, errorCounter, true);
       responseCode = res.answer_code;
     }
@@ -560,7 +564,11 @@ int revisionOnCoordinator(std::string const& dbname,
                           std::string const& collname, TRI_voc_rid_t& rid) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -607,7 +615,7 @@ int revisionOnCoordinator(std::string const& dbname,
             char const* p = r.getString(len);
             TRI_voc_rid_t cmp = TRI_StringToRid(p, len, false);
 
-            if (cmp > rid) {
+            if (cmp != UINT64_MAX && cmp > rid) {
               // get the maximum value
               rid = cmp;
             }
@@ -634,7 +642,11 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                          std::shared_ptr<arangodb::velocypack::Builder>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -699,7 +711,11 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
                        std::vector<std::pair<std::string, uint64_t>>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   result.clear();
 
@@ -769,7 +785,11 @@ int createDocumentOnCoordinator(
     std::shared_ptr<VPackBuilder>& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -872,7 +892,7 @@ int createDocumentOnCoordinator(
 
     responseCode = res.answer_code;
     TRI_ASSERT(res.answer != nullptr);
-    auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto parsedResult = res.answer->toVelocyPackBuilderPtr();
     resultBody.swap(parsedResult);
     return TRI_ERROR_NO_ERROR;
   }
@@ -904,7 +924,11 @@ int deleteDocumentOnCoordinator(
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -941,7 +965,7 @@ int deleteDocumentOnCoordinator(
         VPackSlice const node, VPackValueLength const index) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
 
-      StringRef _key(Transaction::extractKeyPart(node));
+      StringRef _key(transaction::helpers::extractKeyPart(node));
       ShardID shardID;
       if (_key.empty()) {
         // We have invalid input at this point.
@@ -1032,7 +1056,7 @@ int deleteDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1084,7 +1108,7 @@ int deleteDocumentOnCoordinator(
 
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
           resultBody.swap(parsedResult);
         }
       }
@@ -1115,7 +1139,7 @@ int deleteDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1133,7 +1157,11 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
                                     std::string const& collname) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -1189,7 +1217,11 @@ int getDocumentOnCoordinator(
     std::shared_ptr<VPackBuilder>& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -1321,7 +1353,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
 
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1393,7 +1425,7 @@ int getDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
           resultBody.swap(parsedResult);
         }
       } else {
@@ -1428,7 +1460,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1454,13 +1486,17 @@ int fetchEdgesFromEngines(
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
     VPackSlice const vertexId,
     size_t depth,
-    std::unordered_map<VPackSlice, VPackSlice>& cache,
+    std::unordered_map<StringRef, VPackSlice>& cache,
     std::vector<VPackSlice>& result,
     std::vector<std::shared_ptr<VPackBuilder>>& datalake,
     VPackBuilder& builder,
     size_t& filtered,
     size_t& read) {
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -1498,7 +1534,7 @@ int fetchEdgesFromEngines(
       return commError;
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto resBody = res.answer->toVelocyPackBuilderPtr();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -1511,11 +1547,12 @@ int fetchEdgesFromEngines(
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
       VPackSlice id = e.get(StaticStrings::IdString);
-      auto resE = cache.find(id);
+      StringRef idRef(id);
+      auto resE = cache.find(idRef);
       if (resE == cache.end()) {
         // This edge is not yet cached. 
         allCached = false;
-        cache.emplace(id, e);
+        cache.emplace(idRef, e);
         result.emplace_back(e);
       } else {
         result.emplace_back(resE->second);
@@ -1540,11 +1577,15 @@ int fetchEdgesFromEngines(
 void fetchVerticesFromEngines(
     std::string const& dbname,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::unordered_set<VPackSlice>& vertexIds,
-    std::unordered_map<VPackSlice, std::shared_ptr<VPackBuffer<uint8_t>>>&
+    std::unordered_set<StringRef>& vertexIds,
+    std::unordered_map<StringRef, std::shared_ptr<VPackBuffer<uint8_t>>>&
         result,
     VPackBuilder& builder) {
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return;
+  }
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -1554,8 +1595,8 @@ void fetchVerticesFromEngines(
   builder.add(VPackValue("keys"));
   builder.openArray();
   for (auto const& v : vertexIds) {
-    TRI_ASSERT(v.isString());
-    builder.add(v);
+    //TRI_ASSERT(v.isString());
+    builder.add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
   }
   builder.close(); // 'keys' Array
   builder.close(); // base object
@@ -1583,7 +1624,7 @@ void fetchVerticesFromEngines(
       THROW_ARANGO_EXCEPTION(commError);
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto resBody = res.answer->toVelocyPackBuilderPtr();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -1598,17 +1639,18 @@ void fetchVerticesFromEngines(
                     resSlice, "errorMessage", TRI_errno_string(code)));
     }
     for (auto const& pair : VPackObjectIterator(resSlice)) {
-      if (vertexIds.erase(pair.key) == 0) {
+      StringRef key(pair.key);
+      if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
         // or found a vertex we did not request.
         // Anyways something somewhere went seriously wrong
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
       }
-      TRI_ASSERT(result.find(pair.key) == result.end());
+      TRI_ASSERT(result.find(key) == result.end());
       auto val = VPackBuilder::clone(pair.value);
       VPackSlice id = val.slice().get(StaticStrings::IdString);
       TRI_ASSERT(id.isString());
-      result.emplace(id, val.steal());
+      result.emplace(StringRef(id), val.steal());
     }
   }
 
@@ -1634,7 +1676,11 @@ int getFilteredEdgesOnCoordinator(
 
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo =
@@ -1689,7 +1735,7 @@ int getFilteredEdgesOnCoordinator(
       return error;
     }
     TRI_ASSERT(res.answer != nullptr);
-    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtr();
 
     if (shardResult == nullptr) {
       return TRI_ERROR_INTERNAL;
@@ -1753,7 +1799,11 @@ int modifyDocumentOnCoordinator(
     std::shared_ptr<VPackBuilder>& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo =
@@ -1895,7 +1945,7 @@ int modifyDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1952,7 +2002,7 @@ int modifyDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
           resultBody.swap(parsedResult);
         }
       } else {
@@ -1987,7 +2037,7 @@ int modifyDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -2003,7 +2053,11 @@ int modifyDocumentOnCoordinator(
 
 int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   std::vector<ServerID> DBservers = ci->getCurrentDBServers();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::string url = std::string("/_admin/wal/flush?waitForSync=") +
@@ -2032,6 +2086,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   }
 
   if (nrok != (int)DBservers.size()) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not flush WAL on all servers. confirmed: " << nrok << ", expected: " << DBservers.size();
     return TRI_ERROR_INTERNAL;
   }
 
@@ -2114,11 +2169,11 @@ std::unique_ptr<LogicalCollection>
 ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
                                               TRI_vocbase_t* vocbase,
                                               VPackSlice parameters) {
-    auto col = std::make_unique<LogicalCollection>(vocbase, parameters, false);
-    // Collection is a temporary collection object that undergoes sanity checks etc.
-    // It is not used anywhere and will be cleaned up after this call.
-    // Persist collection will return the real object.
-    return persistCollectionInAgency(col.get());
+  auto col = std::make_unique<LogicalCollection>(vocbase, parameters);
+  // Collection is a temporary collection object that undergoes sanity checks etc.
+  // It is not used anywhere and will be cleaned up after this call.
+  // Persist collection will return the real object.
+  return persistCollectionInAgency(col.get());
 }
 #endif
 
@@ -2130,18 +2185,21 @@ std::unique_ptr<LogicalCollection>
 ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> dbServers;
-
+  std::vector<std::string> avoid = col->avoidServers();
+    
   ClusterInfo* ci = ClusterInfo::instance();
   if (!distributeShardsLike.empty()) {
+
     CollectionNameResolver resolver(col->vocbase());
     TRI_voc_cid_t otherCid =
-        resolver.getCollectionIdCluster(distributeShardsLike);
+      resolver.getCollectionIdCluster(distributeShardsLike);
+
     if (otherCid != 0) {
       std::string otherCidString 
-          = arangodb::basics::StringUtils::itoa(otherCid);
+        = arangodb::basics::StringUtils::itoa(otherCid);
       try {
         std::shared_ptr<LogicalCollection> collInfo =
-            ci->getCollection(col->dbName(), otherCidString);
+          ci->getCollection(col->dbName(), otherCidString);
         auto shards = collInfo->shardIds();
         auto shardList = ci->getShardList(otherCidString);
         for (auto const& s : *shardList) {
@@ -2156,6 +2214,20 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
       }
       col->distributeShardsLike(otherCidString);
     }
+    
+  } else if(!avoid.empty()) {
+    
+    size_t replicationFactor = col->replicationFactor();
+    dbServers = ci->getCurrentDBServers();
+    if (dbServers.size() - avoid.size() >= replicationFactor) {
+      dbServers.erase(
+        std::remove_if(
+          dbServers.begin(), dbServers.end(), [&](const std::string&x) {
+            return std::find(avoid.begin(), avoid.end(), x) != avoid.end();
+          }), dbServers.end());
+    }
+    std::random_shuffle(dbServers.begin(), dbServers.end());
+    
   }
   
   // If the list dbServers is still empty, it will be filled in
@@ -2172,8 +2244,12 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
   }
   col->setShardMap(shards);
 
-  VPackBuilder velocy;
-  col->toVelocyPackForAgency(velocy);
+  std::unordered_set<std::string> const ignoreKeys{
+      "allowUserKeys", "cid", /* cid really ignore?*/
+      "count",         "planId", "version",
+  };
+  col->setStatus(TRI_VOC_COL_STATUS_LOADED);
+  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false);
 
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(

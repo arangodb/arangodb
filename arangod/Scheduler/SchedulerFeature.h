@@ -45,6 +45,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
+  void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
 
@@ -53,9 +54,9 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
  private:
   uint64_t _nrServerThreads = 0;
-  int64_t _nrMinimalThreads = 0;
-  int64_t _nrMaximalThreads = 0;
-  uint64_t _queueSize = 128;
+  uint64_t _nrMinimalThreads = 0;
+  uint64_t _nrMaximalThreads = 0;
+  uint64_t _queueSize = 512;
 
  public:
   size_t concurrency() const {
@@ -70,14 +71,12 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
  private:
   std::unique_ptr<rest::Scheduler> _scheduler;
 
-//#ifndef WIN32
   std::function<void(const boost::system::error_code&, int)> _signalHandler;
   std::function<void(const boost::system::error_code&, int)> _exitHandler;
   std::shared_ptr<boost::asio::signal_set> _exitSignals;
   
   std::function<void(const boost::system::error_code&, int)> _hangupHandler;
   std::shared_ptr<boost::asio::signal_set> _hangupSignals;
-//#endif
 };
 }
 

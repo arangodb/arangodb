@@ -40,7 +40,7 @@ using namespace arangodb::basics;
 #ifdef TRI_SHOW_LOCK_TIME
 
 MutexLocker::MutexLocker(Mutex* mutex, char const* file, int line)
-    : _mutex(mutex), isLocked(true), _isLocked(true), _file(file), _line(line), _time(0.0) {
+    : _mutex(mutex), _isLocked(true), _file(file), _line(line), _time(0.0) {
   double t = TRI_microtime();
   _mutex->lock();
   _time = TRI_microtime() - t;
@@ -65,12 +65,33 @@ MutexLocker::~MutexLocker() {
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-    LOG(WARN) << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
   }
 #endif
 }
 
 void MutexLocker::unlock() {
+  if (_isLocked) {
+    _mutex->unlock();
+    _isLocked = false;
+  }
+}
+
+TryMutexLocker::TryMutexLocker(Mutex* mutex) : _mutex(mutex), _isLocked(true) {
+  _isLocked = _mutex->tryLock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases the lock
+////////////////////////////////////////////////////////////////////////////////
+
+TryMutexLocker::~TryMutexLocker() {
+  if (_isLocked) {
+    _mutex->unlock();
+  }
+}
+
+void TryMutexLocker::unlock() {
   if (_isLocked) {
     _mutex->unlock();
     _isLocked = false;

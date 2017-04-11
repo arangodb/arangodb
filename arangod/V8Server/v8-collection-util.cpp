@@ -27,14 +27,12 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "V8/v8-conv.h"
+#include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-/// @brief slot for a "collection"
-static int const SLOT_COLLECTION = 2;
 
 /// @brief check if a name belongs to a collection
 bool EqualCollection(CollectionNameResolver const* resolver,
@@ -66,23 +64,11 @@ bool EqualCollection(CollectionNameResolver const* resolver,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 collection id value from the internal collection id
-////////////////////////////////////////////////////////////////////////////////
-
-static inline v8::Handle<v8::Value> V8CollectionId(v8::Isolate* isolate,
-                                                   TRI_voc_cid_t cid) {
-  char buffer[21];
-  size_t len = TRI_StringUInt64InPlace((uint64_t)cid, (char*)&buffer);
-
-  return TRI_V8_PAIR_STRING((char const*)buffer, (int)len);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakCollectionCallback(const v8::WeakCallbackData<
-    v8::External, v8::Persistent<v8::External>>& data) {
+static void WeakCollectionCallback(const v8::WeakCallbackInfo<
+                                   v8::Persistent<v8::External>>& data) {
   auto isolate = data.GetIsolate();
   auto persistent = data.GetParameter();
   auto myCollection = v8::Local<v8::External>::New(isolate, *persistent);
@@ -92,7 +78,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   v8g->decreaseActiveExternals();
 
   // decrease the reference-counter for the database
-  collection->vocbase()->release();
+  TRI_ASSERT(!collection->vocbase()->isDangling());
 
   // find the persistent handle
 #if ARANGODB_ENABLE_MAINTAINER_MODE
@@ -103,9 +89,12 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   // dispose and clear the persistent handle
   v8g->JSCollections[collection].Reset();
   v8g->JSCollections.erase(collection);
-
+  
   if (!collection->isLocal()) {
+    collection->vocbase()->release();
     delete collection;
+  } else {
+    collection->vocbase()->release();
   }
 }
 
@@ -125,7 +114,6 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
   v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
 
   if (!result.IsEmpty()) {
-
     LogicalCollection* nonconstCollection =
         const_cast<LogicalCollection*>(collection);
 
@@ -138,15 +126,17 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
 
     if (it == v8g->JSCollections.end()) {
       // increase the reference-counter for the database
-      nonconstCollection->vocbase()->use();
+      TRI_ASSERT(!nonconstCollection->vocbase()->isDangling());
+      nonconstCollection->vocbase()->forceUse();
       try {
         auto externalCollection = v8::External::New(isolate, nonconstCollection);
 
-        result->SetInternalField(SLOT_COLLECTION, externalCollection);
+        result->SetInternalField(SLOT_EXTERNAL, externalCollection);
 
         v8g->JSCollections[nonconstCollection].Reset(isolate, externalCollection);
-        v8g->JSCollections[nonconstCollection].SetWeak(
-            &v8g->JSCollections[nonconstCollection], WeakCollectionCallback);
+        v8g->JSCollections[nonconstCollection].SetWeak(&v8g->JSCollections[nonconstCollection],
+                                                       WeakCollectionCallback,
+                                                       v8::WeakCallbackType::kFinalizer);
         v8g->increaseActiveExternals();
       } catch (...) {
         nonconstCollection->vocbase()->release();
@@ -155,12 +145,12 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
     } else {
       auto myCollection = v8::Local<v8::External>::New(isolate, it->second);
 
-      result->SetInternalField(SLOT_COLLECTION, myCollection);
+      result->SetInternalField(SLOT_EXTERNAL, myCollection);
     }
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
     TRI_GET_GLOBAL_STRING(VersionKeyHidden);
-    result->ForceSet(_IdKey, V8CollectionId(isolate, collection->cid()),
+    result->ForceSet(_IdKey, TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->cid()),
                      v8::ReadOnly);
     result->Set(_DbNameKey, TRI_V8_STRING(collection->vocbase()->name().c_str()));
     result->ForceSet(

@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Zip/zip.h"
 
 #include <sstream>
@@ -423,7 +422,7 @@ class StringBuffer {
   ~StringBuffer() { TRI_DestroyStringBuffer(&_buffer); }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure the string buffer has a specific capacity
+  /// @brief frees the string buffer and cleans the buffer
   //////////////////////////////////////////////////////////////////////////////
 
   void annihilate() { TRI_AnnihilateStringBuffer(&_buffer); }

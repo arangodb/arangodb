@@ -50,6 +50,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
 
  public:
   std::string const& databaseName() const { return _databaseName; }
@@ -82,6 +83,9 @@ class ClientFeature final : public application_features::ApplicationFeature,
 
   void setWarn(bool warn) { _warn = warn; }
 
+  static int runMain(int argc, char* argv[],
+                     std::function<int(int argc, char* argv[])> const& mainFunc);
+
  private:
   std::string _databaseName;
   bool _authentication;
@@ -96,6 +100,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
  private:
   size_t _retries;
   bool _warn;
+  bool _haveServerPassword;
 };
 }
 

@@ -121,15 +121,17 @@ void arangodb::basics::TRI_ParseAttributeString(
   for (size_t pos = 0; pos < length; ++pos) {
     auto token = input[pos];
     if (token == '[') {
-      // We only allow attr[*] and attr[*].attr2 as valid patterns
-      if (length - pos < 3 || input[pos + 1] != '*' || input[pos + 2] != ']' ||
-          (length - pos > 3 && input[pos + 3] != '.')) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
-      }
       if (!allowExpansion) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
             "cannot use [*] expansion for this type of index");
+      }
+      // We only allow attr[*] and attr[*].attr2 as valid patterns
+      if (length - pos < 3 || input[pos + 1] != '*' || input[pos + 2] != ']' ||
+          (length - pos > 3 && input[pos + 3] != '.')) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+            "can only use [*] for indexes");
       }
       if (foundExpansion) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -211,40 +213,10 @@ bool arangodb::basics::TRI_AttributeNamesHaveExpansion(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator<<(std::ostream& stream,
-                         arangodb::basics::AttributeName const* name) {
-  stream << name->name;
-  if (name->shouldExpand) {
-    stream << "[*]";
-  }
-  return stream;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append the attribute name to an output stream
-////////////////////////////////////////////////////////////////////////////////
-
-std::ostream& operator<<(std::ostream& stream,
                          arangodb::basics::AttributeName const& name) {
   stream << name.name;
   if (name.shouldExpand) {
     stream << "[*]";
-  }
-  return stream;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append the attribute names to an output stream
-////////////////////////////////////////////////////////////////////////////////
-
-std::ostream& operator<<(
-    std::ostream& stream,
-    std::vector<arangodb::basics::AttributeName> const* attributes) {
-  size_t const n = attributes->size();
-  for (size_t i = 0; i < n; ++i) {
-    if (i > 0) {
-      stream << ".";
-    }
-    stream << attributes[i];
   }
   return stream;
 }

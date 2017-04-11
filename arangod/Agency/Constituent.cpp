@@ -40,7 +40,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -87,13 +87,6 @@ Constituent::~Constituent() { shutdown(); }
 /// Wait for sync
 bool Constituent::waitForSync() const { return _agent->config().waitForSync(); }
 
-/// Random sleep times in election process
-duration_t Constituent::sleepFor(double min_t, double max_t) {
-  int32_t left = static_cast<int32_t>(1000.0 * min_t),
-    right = static_cast<int32_t>(1000.0 * max_t);
-  return duration_t(static_cast<long>(RandomGenerator::interval(left, right)));
-}
-
 /// Get my term
 term_t Constituent::term() const {
   MUTEX_LOCKER(guard, _castLock);
@@ -116,35 +109,52 @@ void Constituent::termNoLock(term_t t) {
       << roleStr[_role] << " new term " << t;
 
     _cast = false;
-    Builder body;
-    body.add(VPackValue(VPackValueType::Object));
-    std::ostringstream i_str;
-    i_str << std::setw(20) << std::setfill('0') << t;
-    body.add("_key", Value(i_str.str()));
-    body.add("term", Value(t));
-    body.add("voted_for", Value(_votedFor));
-    body.close();
 
-    TRI_ASSERT(_vocbase != nullptr);
-    auto transactionContext =
-        std::make_shared<StandaloneTransactionContext>(_vocbase);
-    SingleCollectionTransaction trx(transactionContext, "election",
-                                    TRI_TRANSACTION_WRITE);
+    if (!_votedFor.empty()) {
+      Builder body;
+      body.add(VPackValue(VPackValueType::Object));
+      std::ostringstream i_str;
+      i_str << std::setw(20) << std::setfill('0') << t;
+      body.add("_key", Value(i_str.str()));
+      body.add("term", Value(t));
+      body.add("voted_for", Value(_votedFor));
+      body.close();
+      
+      TRI_ASSERT(_vocbase != nullptr);
+      auto transactionContext =
+        std::make_shared<transaction::StandaloneContext>(_vocbase);
+      SingleCollectionTransaction trx(transactionContext, "election",
+                                      AccessMode::Type::WRITE);
+      Result res = trx.begin();
 
-    int res = trx.begin();
+      if (!res.ok()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
+      OperationOptions options;
+      options.waitForSync = _agent->config().waitForSync();
+      options.silent = true;
+
+      OperationResult result = trx.insert("election", body.slice(), options);
+      trx.finish(result.code);
     }
-
-    OperationOptions options;
-    options.waitForSync = false;
-    options.silent = true;
-
-    OperationResult result = trx.insert("election", body.slice(), options);
-    trx.finish(result.code);
   }
 }
+
+bool Constituent::logUpToDate(
+  arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) const {
+  log_t myLastLogEntry = _agent->state().lastLog();
+  return (prevLogTerm > myLastLogEntry.term ||
+          (prevLogTerm == myLastLogEntry.term &&
+           prevLogIndex >= myLastLogEntry.index));
+}
+
+
+bool Constituent::logMatches(
+  arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) const {
+  return _agent->state().has(prevLogIndex, prevLogTerm);
+}
+
 
 /// My role
 role_t Constituent::role() const {
@@ -180,7 +190,17 @@ void Constituent::followNoLock(term_t t) {
 void Constituent::lead(term_t term) {
 
   // we need to rebuild spear_head and read_db
-  _agent->prepareLead();
+
+  _agent->beginPrepareLeadership();
+  TRI_DEFER(_agent->endPrepareLeadership());
+  
+  if (!_agent->prepareLead()) {
+    {
+      MUTEX_LOCKER(guard, _castLock);
+      followNoLock(term);
+    }
+    return;
+  }
 
   {
     MUTEX_LOCKER(guard, _castLock);
@@ -257,8 +277,8 @@ std::string Constituent::endpoint(std::string id) const {
 }
 
 /// @brief Check leader
-bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
-                              term_t prevLogTerm) {
+bool Constituent::checkLeader(
+  term_t term, std::string id, index_t prevLogIndex, term_t prevLogTerm) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -277,6 +297,11 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
     if (term > _term) {
       termNoLock(term);
     }
+
+    if (!logMatches(prevLogIndex,prevLogTerm)) {
+      return false;
+    }
+    
     if (_leaderID != id) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Set _leaderID to " << id << " in term " << _term;
@@ -421,7 +446,7 @@ void Constituent::callElection() {
     
     auto res = ClusterComm::instance()->wait(
       "", coordinatorTransactionID, 0, "",
-      duration<double>(steady_clock::now()-timeout).count());
+      duration<double>(timeout - steady_clock::now()).count());
 
     if (res.status == CL_COMM_SENT) {
       auto body = res.result->getBodyVelocyPack();
@@ -468,11 +493,13 @@ void Constituent::callElection() {
 void Constituent::update(std::string const& leaderID, term_t t) {
   MUTEX_LOCKER(guard, _castLock);
   _term = t;
+
   if (_leaderID != leaderID) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Constituent::update: setting _leaderID to " << leaderID
       << " in term " << _term;
     _leaderID = leaderID;
+    _role = FOLLOWER;
   }
 }
 
@@ -500,33 +527,35 @@ void Constituent::run() {
   // single instance
   _id = _agent->config().id();
 
-  TRI_ASSERT(_vocbase != nullptr);
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
+  {
+    TRI_ASSERT(_vocbase != nullptr);
+    auto bindVars = std::make_shared<VPackBuilder>();
+    bindVars->openObject();
+    bindVars->close();
 
-  // Most recent vote
-  std::string const aql("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-  arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
+    // Most recent vote
+    std::string const aql("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
+    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
+                              nullptr, arangodb::aql::PART_MAIN);
 
-  auto queryResult = query.execute(_queryRegistry);
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
-  }
+    auto queryResult = query.execute(_queryRegistry);
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    }
 
-  VPackSlice result = queryResult.result->slice();
+    VPackSlice result = queryResult.result->slice();
 
-  if (result.isArray()) {
-    for (auto const& i : VPackArrayIterator(result)) {
-      auto ii = i.resolveExternals();
-      try {
-        MUTEX_LOCKER(locker, _castLock);
-        _term = ii.get("term").getUInt();
-        _votedFor = ii.get("voted_for").copyString();
-      } catch (std::exception const&) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
+    if (result.isArray()) {
+      for (auto const& i : VPackArrayIterator(result)) {
+        auto ii = i.resolveExternals();
+        try {
+          MUTEX_LOCKER(locker, _castLock);
+          _term = ii.get("term").getUInt();
+          _votedFor = ii.get("voted_for").copyString();
+        } catch (std::exception const&) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+              << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
+        }
       }
     }
   }
@@ -546,6 +575,11 @@ void Constituent::run() {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
   } else {
+
+    {
+      MUTEX_LOCKER(guard, _castLock);
+      _role = FOLLOWER;
+    }
     while (!this->isStopping()) {
       if (_role == FOLLOWER) {
         static double const M = 1.0e6;
@@ -557,10 +591,18 @@ void Constituent::run() {
         {
           MUTEX_LOCKER(guard, _castLock);
 
-          // in the beginning, pure random
+          // in the beginning, pure random, after that, we might have to
+          // wait for less than planned, since the last heartbeat we have
+          // seen is already some time ago, note that this waiting time
+          // can become negative:
           if (_lastHeartbeatSeen > 0.0) {
             double now = TRI_microtime();
-            randWait += static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
+            randWait -= static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
+            if (randWait < a) {
+              randWait = a;
+            } else if (randWait > b) {
+              randWait = b;
+            }
           }
         }
        

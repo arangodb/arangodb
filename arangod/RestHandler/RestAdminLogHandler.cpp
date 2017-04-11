@@ -192,6 +192,14 @@ void RestAdminLogHandler::reportLogs() {
 
     result.close();
 
+    result.add("topic", VPackValue(VPackValueType::Array));
+
+    for (size_t i = 0; i < length; ++i) {
+      auto& buf = clean.at(i + static_cast<size_t>(offset));
+      result.add(VPackValue(LogTopic::lookup(buf._topicId)));
+    }
+    result.close();
+
     // second level
     result.add("level", VPackValue(VPackValueType::Array));
 
@@ -285,7 +293,7 @@ void RestAdminLogHandler::setLogLevel() {
   } else if (type == rest::RequestType::PUT) { 
     // set loglevel
     bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
     if (!parseSuccess) {
       return;
     }

@@ -1,0 +1,79 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Michael Hackstein
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef ARANGOD_AQL_AQL_FUNCTION_FEATURE_H
+#define ARANGOD_AQL_AQL_FUNCTION_FEATURE_H 1
+
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Aql/AstNode.h"
+#include "Aql/Function.h"
+
+namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
+namespace aql {
+
+class AqlFunctionFeature final : public application_features::ApplicationFeature {
+
+ public:
+  static AqlFunctionFeature* AQLFUNCTIONS;
+
+ public:
+  explicit AqlFunctionFeature(application_features::ApplicationServer* server);
+
+ public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void unprepare() override final;
+
+  void add(Function const& func);
+  void toVelocyPack(arangodb::velocypack::Builder&);
+  Function const* byName(std::string const& name);
+  std::string const& getOperatorName(AstNodeType const type,
+                                     std::string const& errorMessage);
+
+ private:
+  // Internal functions
+  void addTypeCheckFunctions();
+  void addTypeCastFunctions();
+  void addStringFunctions();
+  void addNumericFunctions();
+  void addListFunctions();
+  void addDocumentFunctions();
+  void addGeoFunctions();
+  void addDateFunctions();
+  void addMiscFunctions();
+  void addStorageEngineFunctions();
+
+ private:
+  /// @brief AQL internal function names
+  std::unordered_map<int, std::string const> const
+      _internalFunctionNames;
+  /// @brief AQL user-callable function names
+  std::unordered_map<std::string, Function const> _functionNames;
+};
+} // namespace aql
+} // namespace arangodb
+#endif

@@ -64,6 +64,7 @@
     * [Using Traversal Objects](Graphs/Traversals/UsingTraversalObjects.md)
     * [Example Data](Graphs/Traversals/ExampleData.md)
   * [Working with Edges](Graphs/Edges/README.md)
+  * [Pregel](Graphs/Pregel/README.md)
 #
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)
@@ -87,6 +88,7 @@
       * [Header transport](Foxx/Sessions/Transports/Header.md)
   * [Serving files](Foxx/Assets.md)
   * [Writing tests](Foxx/Testing.md)
+  * [Cross Origin](Foxx/Cors.md)
   * [Scripts and queued jobs](Foxx/Scripts.md)
   * [Migrating 2.x services](Foxx/Migrating2x/README.md)
     * [Migrating from pre-2.8](Foxx/Migrating2x/Wayback.md)
@@ -144,6 +146,7 @@
   * [Arangoimp](Administration/Arangoimp.md)
   * [Arangodump](Administration/Arangodump.md)
   * [Arangorestore](Administration/Arangorestore.md)
+  * [Arangoexport](Administration/Arangoexport.md)
   * [Managing Users](Administration/ManagingUsers.md)
   * [Server Configuration](Administration/Configuration/README.md)
     * [Managing Endpoints](Administration/Configuration/Endpoint.md)
@@ -163,7 +166,7 @@
     * [Synchronous Replication](Administration/Replication/Synchronous/README.md)
       * [Implementation](Administration/Replication/Synchronous/Implementation.md)
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
-    * [Satellite Collections](Administration/Replication/Synchronous/Satellites/README.md)
+
   * [Sharding](Administration/Sharding/README.md)
 #    * [Authentication](Administration/Sharding/Authentication.md)
 #    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
@@ -192,6 +195,8 @@
 #  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
+  * [Whats New in 3.2](ReleaseNotes/NewFeatures32.md)
+  * [Incompatible changes in 3.2](ReleaseNotes/UpgradingChanges32.md)
   * [Whats New in 3.1](ReleaseNotes/NewFeatures31.md)
   * [Incompatible changes in 3.1](ReleaseNotes/UpgradingChanges31.md)
   * [Whats New in 3.0](ReleaseNotes/NewFeatures30.md)

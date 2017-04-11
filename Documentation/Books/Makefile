@@ -28,7 +28,7 @@ stop_X11_display:
 # per book targets
 check-summary:
 	@echo "${STD_COLOR}##### checking summary for $(NAME)${RESET}"
-	@find ppbooks/$(NAME) -name \*.md |sed -e "s;ppbooks/$(NAME)/;;" |grep -vf SummaryBlacklist.txt |grep -v gitbook-plugin |sort > /tmp/is_md.txt
+	@find ppbooks/$(NAME) -name \*.md |sed -e "s;ppbooks/$(NAME)/;;" |grep -vf SummaryBlacklist.txt |grep -v gitbook-plugin |grep -v node_modules/ |sort > /tmp/is_md.txt
 	@cat $(NAME)/SUMMARY.md |grep -v '^ *# '|grep '(' |sed -e "s;.*(;;" -e "s;).*;;" |sort  > /tmp/is_summary.txt
 	@if test "`comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l`" -ne 0; then \
 		echo "${ERR_COLOR}"; \
@@ -273,10 +273,15 @@ build-book:
 	done
 	python ../Scripts/generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json $(FILTER)
 
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' HEADER.html
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' book.json
+	if echo $(newVersionNumber) | grep devel; then \
+		export VERSION="$(newVersionNumber) `date +' %d. %b %Y '`"; \
+	else \
+		export VERSION="$(newVersionNumber)"; \
+	fi; \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" styles/header.js); \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" HEADER.html); \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" README.md); \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" book.json)
 
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
 
@@ -287,7 +292,11 @@ build-book:
 	make ppbook-check-directory-link
 	make book-check-images-referenced
 
-	cd ppbooks/$(NAME) && gitbook install
+	if test -n "$(NODE_MODLUES_DIR)"; then \
+		cp -a $(NODE_MODLUES_DIR) ppbooks/$(NAME); \
+	else \
+		cd ppbooks/$(NAME); gitbook install -g ; \
+	fi
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	rm -f ./books/$(NAME)/HEADER.html
 	python ../Scripts/deprecated.py
@@ -416,22 +425,26 @@ build-books:
 
 
 build-dist-books:
+	set -x ; set -e ; \
 	PIDFILE=/tmp/xvfb_20_0.pid; \
 	if test -z "$${DISPLAY}"; then \
 		make start_X11_display PIDFILE=$${PIDFILE} DISP=':20.0'; \
-	fi; \
-	set -x ; \
-	if test -z "$${DISPLAY}"; then \
+		trap 'make stop_X11_display PIDFILE="$${PIDFILE}"' 0; \
 		DISP=:20.0; \
 	else \
 		DISPL="$${DISPLAY}"; \
 	fi; \
 	make build-books DISPLAY="$${DISP}"; \
-	mkdir -p ${OUTPUT_DIR}; \
-	( cd books; tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ${ALLBOOKS} index.html; ); \
+	mkdir -p ${OUTPUT_DIR} ; \
+	( \
+		mv books ArangoDB-${newVersionNumber} ; pwd; \
+		if test -n "${COOKBOOK_DIR}" ; then \
+			cp -a ${COOKBOOK_DIR} ArangoDB-${newVersionNumber}/cookbook ; \
+		fi ; \
+		tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ArangoDB-${newVersionNumber} ; \
+		mv ArangoDB-${newVersionNumber} books ; \
+	) ; \
 	for book in $(ALLBOOKS); do \
-		make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
+	    make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
 	done; \
-	if test -z "$${DISPLAY}"; then \
-		make stop_X11_display PIDFILE="$${PIDFILE}"; \
-	fi
+	exit $$rc

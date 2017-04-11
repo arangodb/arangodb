@@ -25,13 +25,13 @@
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
@@ -45,48 +45,49 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
-  ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
-  context.installHup();
+  return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
+    ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
+    context.installHup();
 
-  std::string name = context.binaryName();
+    std::string name = context.binaryName();
 
-  std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-      argv[0], "Usage: " + name + " [<options>]", "For more information use:", BIN_DIRECTORY));
+    std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
+        argv[0], "Usage: " + name + " [<options>]", "For more information use:", BIN_DIRECTORY));
 
-  ApplicationServer server(options, BIN_DIRECTORY);
+    ApplicationServer server(options, BIN_DIRECTORY);
 
-  int ret = EXIT_SUCCESS;
+    int ret = EXIT_SUCCESS;
+    
+    try {
+      server.addFeature(new ClientFeature(&server));
+      server.addFeature(new ConfigFeature(&server, name));
+      server.addFeature(new ConsoleFeature(&server));
+      server.addFeature(new LanguageFeature(&server));
+      server.addFeature(new LoggerFeature(&server, false));
+      server.addFeature(new RandomFeature(&server));
+      server.addFeature(new ShellFeature(&server, &ret));
+      server.addFeature(new ShutdownFeature(&server, {"Shell"}));
+      server.addFeature(new SslFeature(&server));
+      server.addFeature(new TempFeature(&server, name));
+      server.addFeature(new V8PlatformFeature(&server));
+      server.addFeature(new V8ShellFeature(&server, name));
+      server.addFeature(new VersionFeature(&server));
 
-  server.addFeature(new ClientFeature(&server));
-  server.addFeature(new ConfigFeature(&server, name));
-  server.addFeature(new ConsoleFeature(&server));
-  server.addFeature(new GreetingsFeature(&server, "arangosh"));
-  server.addFeature(new LanguageFeature(&server));
-  server.addFeature(new LoggerFeature(&server, false));
-  server.addFeature(new RandomFeature(&server));
-  server.addFeature(new ShellFeature(&server, &ret));
-  server.addFeature(new ShutdownFeature(&server, {"Shell"}));
-  server.addFeature(new SslFeature(&server));
-  server.addFeature(new TempFeature(&server, name));
-  server.addFeature(new V8PlatformFeature(&server));
-  server.addFeature(new V8ShellFeature(&server, name));
-  server.addFeature(new VersionFeature(&server));
-
-  try {
-    server.run(argc, argv);
-    if (server.helpShown()) {
-      // --help was displayed
-      ret = EXIT_SUCCESS;
+      server.run(argc, argv);
+      if (server.helpShown()) {
+        // --help was displayed
+        ret = EXIT_SUCCESS;
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangosh terminated because of an unhandled exception: "
+              << ex.what();
+      ret = EXIT_FAILURE;
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangosh terminated because of an unhandled exception of "
+                  "unknown type";
+      ret = EXIT_FAILURE;
     }
-  } catch (std::exception const& ex) {
-    LOG(ERR) << "arangosh terminated because of an unhandled exception: "
-             << ex.what();
-    ret = EXIT_FAILURE;
-  } catch (...) {
-    LOG(ERR) << "arangosh terminated because of an unhandled exception of "
-                "unknown type";
-    ret = EXIT_FAILURE;
-  }
 
-  return context.exit(ret);
+    return context.exit(ret);
+  });
 }

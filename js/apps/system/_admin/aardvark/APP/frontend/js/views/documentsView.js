@@ -941,9 +941,6 @@
       );
 
       this.collectionName = window.location.hash.split('/')[1];
-      // fill navigation and breadcrumb
-      this.breadcrumb();
-      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
 
       this.checkCollectionState();
 
@@ -969,6 +966,10 @@
       this.selectActivePagesize();
       this.markFilterToggle();
       this.resize();
+
+      // fill navigation and breadcrumb
+      this.breadcrumb();
+
       return this;
     },
 
@@ -996,12 +997,28 @@
       if (this.type === 'edge') {
         total.html(numeral(this.collection.getTotal()).format('0,0') + ' edge(s)');
       }
+      if (this.collection.getTotal() > this.collection.MAX_SORT) {
+        $('#docsSort').attr('disabled', true);
+        $('#docsSort').attr('placeholder', 'Sort limit reached (docs count)');
+      } else {
+        $('#docsSort').attr('disabled', false);
+        $('#docsSort').attr('placeholder', 'Sort by attribute');
+      }
     },
 
     breadcrumb: function () {
-      $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + this.collectionName
-      );
+      var self = this;
+
+      if (window.App.naviView) {
+        $('#subNavigationBar .breadcrumb').html(
+          'Collection: ' + this.collectionName
+        );
+        window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
+      } else {
+        window.setTimeout(function () {
+          self.breadcrumb();
+        }, 100);
+      }
     }
 
   });

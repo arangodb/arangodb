@@ -231,10 +231,51 @@ function ahuacatlDistinct () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for COLLECT
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlCollect () {
+  var c;
+
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection");
+
+      for (var i = 0; i < 10; ++i) {
+        for (var j = 0; j < 10; ++j) {
+          c.save({a:{key: i, name: j}});
+          c.save({a:{key: i, name: j}});
+        }
+      }
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distinct usage 
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollect1 : function () {
+      var result = AQL_EXECUTE(`FOR result IN UnitTestsCollection
+                                  COLLECT key=result.a.key,
+                                          name = result.a.name INTO group
+                                  LIMIT 2,5
+                                  RETURN [key,name]`).json;
+      assertEqual([[0,2],[0,3],[0,4],[0,5],[0,6]], result);
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlDistinct);
+jsunity.run(ahuacatlCollect);
 
 return jsunity.done();
 

@@ -1,0 +1,317 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+pt_PT{
+    Version{"2.1.29.54"}
+    units{
+        acceleration{
+            g-force{
+                dnam{"força G"}
+                one{"{0} força G"}
+                other{"{0} força G"}
+            }
+            meter-per-second-squared{
+                dnam{"metros por segundo quadrado"}
+                one{"{0} metro por segundo quadrado"}
+                other{"{0} metros por segundo quadrado"}
+            }
+        }
+        area{
+            square-kilometer{
+                dnam{"quilómetros quadrados"}
+                one{"{0} quilómetro quadrado"}
+                other{"{0} quilómetros quadrados"}
+                per{"{0} por quilómetro quadrado"}
+            }
+        }
+        concentr{
+            karat{
+                dnam{"quilates"}
+                one{"{0} quilate"}
+                other{"{0} quilates"}
+            }
+        }
+        consumption{
+            liter-per-100kilometers{
+                dnam{"litros por 100 quilómetros"}
+                one{"{0} litro por 100 quilómetros"}
+                other{"{0} litros por 100 quilómetros"}
+            }
+            liter-per-kilometer{
+                dnam{"litros por quilómetro"}
+                one{"{0} litro por quilómetro"}
+                other{"{0} litros por quilómetro"}
+            }
+        }
+        duration{
+            century{
+                one{"{0} século"}
+                other{"{0} séculos"}
+            }
+            hour{
+                per{"{0}/h"}
+            }
+            second{
+                per{"{0}/s"}
+            }
+        }
+        energy{
+            foodcalorie{
+                dnam{"quilocalorias"}
+                one{"{0} quilocaloria"}
+                other{"{0} quilocalorias"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"unidades astronómicas"}
+                one{"{0} unidade astronómica"}
+                other{"{0} unidades astronómicas"}
+            }
+            kilometer{
+                dnam{"quilómetros"}
+                one{"{0} quilómetro"}
+                other{"{0} quilómetros"}
+                per{"{0} por quilómetro"}
+            }
+            micrometer{
+                dnam{"micrómetros"}
+                one{"{0} micrómetro"}
+                other{"{0} micrómetros"}
+            }
+            mile-scandinavian{
+                dnam{"milha escandinava"}
+            }
+            nanometer{
+                dnam{"nanómetros"}
+                one{"{0} nanómetro"}
+                other{"{0} nanómetros"}
+            }
+            picometer{
+                dnam{"picómetros"}
+                one{"{0} picómetro"}
+                other{"{0} picómetros"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"quilómetros por hora"}
+                one{"{0} quilómetro por hora"}
+                other{"{0} quilómetros por hora"}
+            }
+        }
+        volume{
+            cubic-kilometer{
+                dnam{"quilómetros cúbicos"}
+                one{"{0} quilómetro cúbico"}
+                other{"{0} quilómetros cúbicos"}
+            }
+            cup{
+                dnam{"chávenas"}
+                one{"{0} chávena"}
+                other{"{0} chávenas"}
+            }
+            cup-metric{
+                one{"{0} chávena métrica"}
+                other{"{0} chávenas métricas"}
+            }
+        }
+    }
+    unitsNarrow{
+        consumption{
+            liter-per-100kilometers{
+                one{"{0}l/100km"}
+                other{"{0}l/100km"}
+            }
+        }
+        duration{
+            second{
+                dnam{"s"}
+            }
+        }
+        length{
+            foot{
+                one{"{0}′"}
+                other{"{0}′"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"força G"}
+            }
+            meter-per-second-squared{
+                dnam{"m/s²"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"minutos de arco"}
+            }
+            arc-second{
+                dnam{"segundos de arco"}
+            }
+        }
+        area{
+            acre{
+                one{"{0} acre"}
+                other{"{0} acres"}
+            }
+            square-centimeter{
+                per{"{0}/cm²"}
+            }
+            square-foot{
+                dnam{"pés quadrados"}
+            }
+            square-inch{
+                dnam{"in²"}
+                one{"{0} in²"}
+                other{"{0} in²"}
+                per{"{0}/in²"}
+            }
+            square-meter{
+                dnam{"m²"}
+                per{"{0}/m²"}
+            }
+            square-mile{
+                dnam{"mi²"}
+            }
+            square-yard{
+                dnam{"yd²"}
+            }
+        }
+        concentr{
+            karat{
+                dnam{"quilates"}
+                one{"{0} kt"}
+                other{"{0} kt"}
+            }
+        }
+        consumption{
+            liter-per-100kilometers{
+                dnam{"l/100km"}
+                one{"{0} l/100km"}
+                other{"{0} l/100km"}
+            }
+            mile-per-gallon{
+                dnam{"milhas/galão"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"milhas/gal imp."}
+            }
+        }
+        duration{
+            minute{
+                dnam{"minutos"}
+            }
+            second{
+                dnam{"s"}
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+        }
+        energy{
+            foodcalorie{
+                dnam{"kcal"}
+                one{"{0} kcal"}
+                other{"{0} kcal"}
+            }
+        }
+        length{
+            inch{
+                dnam{"polegadas"}
+            }
+            mile{
+                one{"{0} milha"}
+                other{"{0} milhas"}
+            }
+            nautical-mile{
+                dnam{"nmi"}
+                one{"{0} nmi"}
+                other{"{0} nmi"}
+            }
+            parsec{
+                dnam{"pc"}
+            }
+        }
+        mass{
+            carat{
+                one{"{0} ct"}
+                other{"{0} ct"}
+            }
+            ton{
+                one{"{0} ton"}
+                other{"{0} ton"}
+            }
+        }
+        pressure{
+            inch-hg{
+                dnam{"in Hg"}
+                one{"{0} inHg"}
+                other{"{0} inHg"}
+            }
+            millibar{
+                one{"{0} mb"}
+                other{"{0} mb"}
+            }
+        }
+        speed{
+            meter-per-second{
+                dnam{"m/s"}
+            }
+            mile-per-hour{
+                dnam{"mi/h"}
+                one{"{0} mi/h"}
+                other{"{0} mi/h"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"graus Celsius"}
+                one{"{0} °C"}
+                other{"{0} °C"}
+            }
+            fahrenheit{
+                dnam{"graus Fahrenheit"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"ac ft"}
+                one{"{0} ac ft"}
+                other{"{0} ac ft"}
+            }
+            cubic-foot{
+                dnam{"ft³"}
+            }
+            cubic-inch{
+                dnam{"in³"}
+                one{"{0} in³"}
+                other{"{0} in³"}
+            }
+            cubic-yard{
+                dnam{"yd³"}
+            }
+            cup{
+                dnam{"chávenas"}
+                one{"{0} cháv."}
+                other{"{0} cháv."}
+            }
+            cup-metric{
+                one{"{0} chám"}
+                other{"{0} chám"}
+            }
+            gallon-imperial{
+                dnam{"gal imp."}
+                one{"{0} gal imp."}
+                other{"{0} gal imp."}
+                per{"{0}/gal imp."}
+            }
+            tablespoon{
+                dnam{"cs"}
+                one{"{0} cs"}
+                other{"{0} cs"}
+            }
+        }
+    }
+}

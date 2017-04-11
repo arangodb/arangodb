@@ -52,7 +52,7 @@ void GeneralResponse::addPayload(VPackSlice const& slice,
   if (!skipBody) {
     if (resolveExternals) {
       auto tmpBuffer =
-          basics::VelocyPackHelper::sanitizeExternalsChecked(slice, options);
+          basics::VelocyPackHelper::sanitizeNonClientTypesChecked(slice, options);
       _vpackPayloads.push_back(std::move(tmpBuffer));
     } else {
       // just copy
@@ -76,7 +76,7 @@ void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   addPayloadPreHook(true, resolveExternals, skipBody);
   if (!skipBody) {
     if (resolveExternals) {
-      auto tmpBuffer = basics::VelocyPackHelper::sanitizeExternalsChecked(
+      auto tmpBuffer = basics::VelocyPackHelper::sanitizeNonClientTypesChecked(
           VPackSlice(buffer.data()), options);
       _vpackPayloads.push_back(std::move(tmpBuffer));
     } else {
@@ -420,6 +420,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 
     case TRI_ERROR_ARANGO_DATABASE_NOT_FOUND:
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
+    case TRI_ERROR_ARANGO_VIEW_NOT_FOUND:
     case TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED:
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
     case TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND:
@@ -443,6 +444,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
       return ResponseCode::GONE;
 
     case TRI_ERROR_ARANGO_CONFLICT:
+    case TRI_ERROR_ARANGO_DUPLICATE_NAME:
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
     case TRI_ERROR_CURSOR_BUSY:
     case TRI_ERROR_USER_DUPLICATE:

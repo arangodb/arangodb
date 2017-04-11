@@ -40,7 +40,13 @@
     isRelaunch: false,
     upgrade: false
   };
+  
   var result = internal.loadStartup('server/upgrade-database.js');
+  
+  if (result) {
+    delete global.UPGRADE_TYPE;
+  }
+
   result = global.UPGRADE_STARTED && result;
   delete global.UPGRADE_STARTED;
   delete global.UPGRADE_ARGS;

@@ -27,8 +27,6 @@
 #include <limits>
 #include <stdexcept>
 
-#include <velocypack/velocypack-aliases.h>
-
 #include <boost/optional.hpp>
 
 #include "Basics/HybridLogicalClock.h"
@@ -51,6 +49,35 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+inline std::size_t validateAndCount(char const* vpStart,
+                                    char const* vpEnd) {
+  VPackOptions validationOptions = VPackOptions::Defaults;
+  validationOptions.validateUtf8Strings = true;
+  VPackValidator validator(&validationOptions);
+
+  try {
+    std::size_t numPayloads = 0;
+    // check for slice start to the end of Chunk
+    // isSubPart allows the slice to be shorter than the checked buffer.
+    do {
+      validator.validate(vpStart, std::distance(vpStart, vpEnd),
+                         /*isSubPart =*/true);
+
+      // get offset to next
+      VPackSlice tmp(vpStart);
+      vpStart += tmp.byteSize();
+      numPayloads++;
+    } while (vpStart != vpEnd);
+    return numPayloads - 1;
+  } catch (std::exception const& e) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      << "len: " << std::distance(vpStart, vpEnd) << " - " << VPackSlice(vpStart).toHex();
+    throw std::runtime_error(
+        std::string("error during validation of incoming VPack: ") + e.what());
+  }
+}
+
 
 VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
@@ -79,6 +106,10 @@ void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
 
   if (response->generateBody()) {
     for (auto& payload : response_message._payloads) {
+      LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
+                                         << (void*)this << "/" << id << "\","
+                                         << payload.toJson() << "\"";
+
       slices.push_back(payload);
     }
   }
@@ -131,7 +162,7 @@ void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
-      << "\"vst-request-end\",\"" << (void*)this << "\",\""
+      << "\"vst-request-end\",\"" << (void*)this << "/" << id << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VppRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
@@ -278,13 +309,14 @@ bool VppCommTask::processRead(double startTime) {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-header\",\""
-                                       << "\"," << message.header().toJson()
-                                       << "\"";
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+        << "\"vst-request-header\",\"" << (void*)this << "/"
+        << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-payload\",\""
-                                       << "\"," << message.payload().toJson()
-                                       << "\"";
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+        << "\"vst-request-payload\",\"" << (void*)this << "/"
+        << chunkHeader._messageID << "\"," << message.payload().toJson()
+        << "\"";
 
     // get type of request
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);

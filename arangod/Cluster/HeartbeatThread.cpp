@@ -40,9 +40,14 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Recovery.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -86,6 +91,79 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
 HeartbeatThread::~HeartbeatThread() { shutdown(); }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief running of heartbeat background jobs (in JavaScript), we run
+/// these by instantiating an object in class HeartbeatBackgroundJob,
+/// which is a std::function<void()> and holds a shared_ptr to the
+/// HeartbeatThread singleton itself. This instance is then posted to
+/// the io_service for execution in the thread pool. Should the heartbeat
+/// thread itself terminate during shutdown, then the HeartbeatThread
+/// singleton itself is still kept alive by the shared_ptr in the instance
+/// of HeartbeatBackgroundJob. The operator() method simply calls the
+/// runBackgroundJob() method of the heartbeat thread. Should this have
+/// to schedule another background job, then it can simply create a new
+/// HeartbeatBackgroundJob instance, again using shared_from_this() to
+/// create a new shared_ptr keeping the HeartbeatThread object alive.
+////////////////////////////////////////////////////////////////////////////////
+
+class HeartbeatBackgroundJob {
+  std::shared_ptr<HeartbeatThread> _heartbeatThread;
+  double _startTime;
+  std::string _schedulerInfo;
+ public:
+  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt,
+                                  double startTime)
+    : _heartbeatThread(hbt), _startTime(startTime),_schedulerInfo(SchedulerFeature::SCHEDULER->infoStatus()) {
+  }
+
+  void operator()() {
+    // first tell the scheduler that this thread is working:
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.work();
+
+    double now = TRI_microtime();
+    if (now > _startTime + 5.0) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "ALARM: Scheduling background job "
+        "took " << now - _startTime
+        << " seconds, scheduler info at schedule time: " << _schedulerInfo
+        << ", scheduler info now: "
+        << SchedulerFeature::SCHEDULER->infoStatus();
+    }
+    _heartbeatThread->runBackgroundJob();
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief method runBackgroundJob()
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::runBackgroundJob() {
+  uint64_t jobNr = ++_backgroundJobsLaunched;
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
+  {
+    DBServerAgencySync job(this);
+    job.work();
+  }
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
+
+  {
+    MUTEX_LOCKER(mutexLocker, *_statusLock);
+    TRI_ASSERT(_backgroundJobScheduledOrRunning);
+    if (_launchAnotherBackgroundJob) {
+      jobNr = ++_backgroundJobsPosted;
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
+      _launchAnotherBackgroundJob = false;
+
+      // the JobGuard is in the operator() of HeartbeatBackgroundJob
+      _ioService->post(HeartbeatBackgroundJob(shared_from_this(),
+                                              TRI_microtime()));
+    } else {
+      _backgroundJobScheduledOrRunning = false;
+      _launchAnotherBackgroundJob = false;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
 /// the heartbeat thread constantly reports the current server status to the
 /// agency. it does so by sending the current state string to the key
@@ -102,31 +180,6 @@ void HeartbeatThread::run() {
   if (ServerState::instance()->isCoordinator()) {
     runCoordinator();
   } else {
-    // Set the member variable that holds a closure to run background
-    // jobs in JS:
-    auto self = shared_from_this();
-    _backgroundJob = [self, this]() {
-      uint64_t jobNr = ++_backgroundJobsLaunched;
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
-      {
-        DBServerAgencySync job(this);
-        job.work();
-      }
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
-
-      {
-        MUTEX_LOCKER(mutexLocker, *_statusLock);
-        if (_launchAnotherBackgroundJob) {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail "
-            << ++_backgroundJobsPosted;
-          _launchAnotherBackgroundJob = false;
-          _ioService->post(_backgroundJob);
-        } else {
-          _backgroundJobScheduledOrRunning = false;
-          _launchAnotherBackgroundJob = false;
-        }
-      }
-    };
     runDBServer();
   }
 }
@@ -189,7 +242,8 @@ void HeartbeatThread::runDBServer() {
 
   bool registered = false;
   while (!registered) {
-    registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
+    registered =
+      _agencyCallbackRegistry->registerCallback(planAgencyCallback);
     if (!registered) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Couldn't register plan change in agency!";
@@ -244,7 +298,7 @@ void HeartbeatThread::runDBServer() {
               agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
           }
           
           VPackSlice shutdownSlice =
@@ -338,16 +392,6 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
-  int count = 0;
-  while (++count < 3000) {
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      if (!_backgroundJobScheduledOrRunning) {
-        break;
-      }
-    }
-    usleep(100000);
-  }
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "stopped heartbeat thread (DBServer version)";
 }
@@ -413,7 +457,7 @@ void HeartbeatThread::runCoordinator() {
               agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
           }
         
         VPackSlice shutdownSlice = result.slice()[0].get(
@@ -526,7 +570,21 @@ void HeartbeatThread::runCoordinator() {
               failedServers.push_back(server.key.copyString());
             }
           }
+          // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
+          
+          pregel::PregelFeature *prgl = pregel::PregelFeature::instance();
+          if (prgl != nullptr && failedServers.size() > 0) {
+            pregel::RecoveryManager* mngr = prgl->recoveryManager();
+            if (mngr != nullptr) {
+              try {
+                mngr->updatedFailedServers();
+              } catch (std::exception const& e) {
+                LOG_TOPIC(ERR, Logger::HEARTBEAT)
+                << "Got an exception in coordinator heartbeat: " << e.what();
+              }
+            }
+          }
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";
@@ -542,7 +600,7 @@ void HeartbeatThread::runCoordinator() {
           usleep(500000);
           remain -= 0.5;
         } else {
-          usleep((unsigned long)(remain * 1000.0 * 1000.0));
+          usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
           remain = 0.0;
         }
       }
@@ -675,7 +733,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         int res = databaseFeature->createDatabaseCoordinator(id, name, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG(ERR) << "creating local database '" << name
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "creating local database '" << name
                    << "' failed: " << TRI_errno_string(res);
         } else {
           HasRunOnce = true;
@@ -706,7 +764,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   ClusterInfo::instance()->flush();
 
   // turn on error logging now
-  if (!ClusterComm::instance()->enableConnectionErrorLogging(true)) {
+  auto cc = ClusterComm::instance();
+  if (cc != nullptr && cc->enableConnectionErrorLogging(true)) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
         << "created coordinator databases for the first time";
   }
@@ -761,9 +820,12 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   }
 
   // schedule a job for the change:
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync "
-    << ++_backgroundJobsPosted;
-  _ioService->post(_backgroundJob);
+  uint64_t jobNr = ++_backgroundJobsPosted;
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
+  _backgroundJobScheduledOrRunning = true;
+
+  // the JobGuard is in the operator() of HeartbeatBackgroundJob
+  _ioService->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

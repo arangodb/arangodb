@@ -78,7 +78,7 @@ std::string GeneralRequest::translateMethod(RequestType method) {
       return "STATUS";
 
     case RequestType::ILLEGAL:
-      LOG(WARN) << "illegal http request method encountered in switch";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "illegal http request method encountered in switch";
       return "UNKNOWN";
   }
 
@@ -217,7 +217,7 @@ std::vector<std::string> GeneralRequest::decodedSuffixes() const {
   result.reserve(_suffixes.size());
 
   for (auto const& it : _suffixes) {
-    result.emplace_back(StringUtils::urlDecode(it));
+    result.emplace_back(StringUtils::urlDecodePath(it));
   }
   return result;
 }
@@ -225,10 +225,4 @@ std::vector<std::string> GeneralRequest::decodedSuffixes() const {
 void GeneralRequest::addSuffix(std::string&& part) {
   // part will not be URL-decoded here!
   _suffixes.emplace_back(std::move(part));
-}
-
-bool GeneralRequest::velocyPackResponse() const {
-  // needs only to be used in http case?!
-  std::string const& result = header(StaticStrings::Accept);
-  return (result.compare(StaticStrings::MimeTypeVPack) == 0);
 }

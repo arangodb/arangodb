@@ -28,11 +28,13 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionStats.h"
 #include "Rest/GeneralRequest.h"
 
 namespace arangodb {
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 struct ClusterCommResult;
 
 namespace aql {
@@ -100,7 +102,7 @@ class GatherBlock : public ExecutionBlock {
   /// @brief OurLessThan: comparison method for elements of _gatherBlockPos
   class OurLessThan {
    public:
-    OurLessThan(arangodb::Transaction* trx,
+    OurLessThan(transaction::Methods* trx,
                 std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
                 std::vector<SortElementBlock>& sortRegisters)
         : _trx(trx),
@@ -111,7 +113,7 @@ class GatherBlock : public ExecutionBlock {
                     std::pair<size_t, size_t> const& b);
 
    private:
-    arangodb::Transaction* _trx;
+    transaction::Methods* _trx;
     std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
     std::vector<SortElementBlock>& _sortRegisters;
   };
@@ -192,6 +194,9 @@ class BlockWithClients : public ExecutionBlock {
   /// @brief _doneForClient: the analogue of _done: _doneForClient.at(i) = true
   /// if we are done for the shard with clientId = i
   std::vector<bool> _doneForClient;
+
+ private:
+  bool _wasShutdown;
 };
 
 class ScatterBlock : public BlockWithClients {
@@ -338,9 +343,6 @@ class RemoteBlock : public ExecutionBlock {
 
   /// @brief the ID of the query on the server as a string
   std::string _queryId;
-
-  /// @brief the ID of the query on the server as a string
-  ExecutionStats _deltaStats;
 
   /// @brief whether or not this block will forward initialize, 
   /// initializeCursor or shutDown requests

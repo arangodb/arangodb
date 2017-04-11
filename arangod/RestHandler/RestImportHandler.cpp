@@ -28,9 +28,10 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -204,7 +205,7 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
 
   // add prefixes to _from and _to
   if (!_fromPrefix.empty() || !_toPrefix.empty()) {
-    TransactionBuilderLeaser tempBuilder(&trx);
+    transaction::BuilderLeaser tempBuilder(&trx);
 
     tempBuilder->openObject();
     if (!_fromPrefix.empty()) {
@@ -356,16 +357,16 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
-      TRI_TRANSACTION_WRITE);
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
+      AccessMode::Type::WRITE);
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -458,13 +459,13 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       res = handleSingleDocument(trx, result, babies, builder->slice(),
                                  isEdgeCollection, i);
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res.fail()) {
         if (complete) {
           // only perform a full import: abort
           break;
         }
 
-        res = TRI_ERROR_NO_ERROR;
+        res.reset();
       }
     }
   }
@@ -475,9 +476,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     VPackSlice documents;
     try {
       documents = _request->payload();
-    } catch (VPackException const&) {
+    } catch (VPackException const& ex) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expecting a JSON array in the request");
+                    std::string("expecting a valid JSON array in the request. got: ") + ex.what());
       return false;
     }
 
@@ -498,7 +499,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
                                  static_cast<size_t>(i + 1));
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res.fail()) {
         if (complete) {
           // only perform a full import: abort
           break;
@@ -511,7 +512,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   babies.close();
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     // no error so far. go on and perform the actual insert
     res =
         performImport(trx, result, collectionName, babies, complete, opOptions);
@@ -519,7 +520,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   res = trx.finish(res);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
   } else {
     generateDocumentsCreated(result);
@@ -562,15 +563,15 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
-      TRI_TRANSACTION_WRITE);
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
+      AccessMode::Type::WRITE);
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = trx.begin();
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -603,7 +604,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
     res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
                                static_cast<size_t>(i + 1));
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (res.fail()) {
       if (complete) {
         // only perform a full import: abort
         break;
@@ -615,7 +616,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   babies.close();
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     // no error so far. go on and perform the actual insert
     res =
         performImport(trx, result, collectionName, babies, complete, opOptions);
@@ -623,7 +624,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   res = trx.finish(res);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
   } else {
     generateDocumentsCreated(result);
@@ -736,16 +737,16 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
-      TRI_TRANSACTION_WRITE);
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
+      AccessMode::Type::WRITE);
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -826,7 +827,7 @@ bool RestImportHandler::createFromKeyValueList() {
       }
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (res.fail()) {
       if (complete) {
         // only perform a full import: abort
         break;
@@ -838,7 +839,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   babies.close();
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     // no error so far. go on and perform the actual insert
     res =
         performImport(trx, result, collectionName, babies, complete, opOptions);
@@ -846,7 +847,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   res = trx.finish(res);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     generateTransactionError(collectionName, res, "");
   } else {
     generateDocumentsCreated(result);
@@ -880,7 +881,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
     registerError(result, errorMsg);
   };
 
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
   OperationResult opResult =
       trx.insert(collectionName, babies.slice(), opOptions);
 
@@ -939,7 +940,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
 
     updateReplace.close();
 
-    if (res == TRI_ERROR_NO_ERROR && updateReplace.slice().length() > 0) {
+    if (res.ok() && updateReplace.slice().length() > 0) {
       if (_onDuplicateAction == DUPLICATE_UPDATE) {
         opResult = trx.update(collectionName, updateReplace.slice(), opOptions);
       } else {
@@ -947,7 +948,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
             trx.replace(collectionName, updateReplace.slice(), opOptions);
       }
 
-      if (opResult.failed() && res == TRI_ERROR_NO_ERROR) {
+      if (opResult.failed() && res.ok()) {
         res = opResult.code;
       }
 
@@ -979,11 +980,11 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
     }
   }
   
-  if (opResult.failed() && res == TRI_ERROR_NO_ERROR) {
+  if (opResult.failed() && res.ok()) {
     res = opResult.code;
   }
 
-  return res;
+  return res.errorNumber();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1072,27 +1073,35 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
   }
 
   TRI_ASSERT(keys.isArray());
-  VPackValueLength const n = keys.length();
-  VPackValueLength const m = values.length();
-
-  if (n != m) {
+  
+  VPackArrayIterator itKeys(keys);
+  VPackArrayIterator itValues(values);
+ 
+  if (itKeys.size() != itValues.size()) { 
     errorMsg = positionize(lineNumber) + "wrong number of JSON values (got " +
-               std::to_string(m) + ", expected " + std::to_string(n) + ")";
+               std::to_string(itValues.size()) + ", expected " + std::to_string(itKeys.size()) + ")";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
   }
 
   auto result = std::make_shared<VPackBuilder>();
   result->openObject();
 
-  for (size_t i = 0; i < n; ++i) {
-    VPackSlice const key = keys.at(i);
-    VPackSlice const value = values.at(i);
+  while (itKeys.valid()) {
+    TRI_ASSERT(itValues.valid());
+    
+    VPackSlice const key = itKeys.value();
+    VPackSlice const value = itValues.value();
 
     if (key.isString() && !value.isNone() && !value.isNull()) {
-      std::string tmp = key.copyString();
-      result->add(tmp, value);
+      VPackValueLength l;
+      char const* p = key.getString(l);
+      result->add(p, l, value);
     }
+
+    itKeys.next();
+    itValues.next();
   }
+
   result->close();
 
   return result;

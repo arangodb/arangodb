@@ -44,7 +44,7 @@ std::unordered_map<std::string, std::string> const
     SimpleHttpClient::NO_HEADERS{};
 
 /// @brief default value for max packet size
-size_t SimpleHttpClient::MaxPacketSize = 128 * 1024 * 1024;
+size_t SimpleHttpClient::MaxPacketSize = 256 * 1024 * 1024;
 
 SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
                                    double requestTimeout, bool warn)
@@ -179,15 +179,11 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     }
 
     if (!_retryMessage.empty() && (_maxRetries - tries) > 0) {
-      LOG(WARN) << "" << _retryMessage
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << _retryMessage
                 << " - retries left: " << (_maxRetries - tries);
     }
 
-#ifdef _WIN32
-    usleep((unsigned long)_retryWaitTime);
-#else
-    usleep((useconds_t)_retryWaitTime);
-#endif
+    usleep(static_cast<TRI_usleep_t>(_retryWaitTime));
   }
 
   return result;
@@ -608,7 +604,7 @@ void SimpleHttpClient::setRequest(
 
   _writeBuffer.ensureNullTerminated();
 
-  LOG(TRACE) << "Request: "
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Request: "
              << std::string(_writeBuffer.c_str(), _writeBuffer.length());
 
   if (_state == DEAD) {

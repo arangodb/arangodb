@@ -32,7 +32,7 @@
 #include "Aql/Function.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
-#include "Aql/Optimizer.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/ShortestPathOptions.h"
@@ -43,8 +43,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "VocBase/AccessMode.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
@@ -69,7 +69,7 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 }
 
 static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
-    Transaction* trx, AstNode const* direction, AstNode const* optionsNode) {
+    transaction::Methods* trx, AstNode const* direction, AstNode const* optionsNode) {
 
   auto options = std::make_unique<traverser::TraverserOptions>(trx);
 
@@ -177,10 +177,12 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
     : _ids(),
       _root(nullptr),
       _varUsageComputed(false),
+      _isResponsibleForInitialize(true),
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
-      _subqueries() {}
+      _subqueries() {
+}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
@@ -226,12 +228,10 @@ void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast,
   }
 
   for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
-    auto typeStr = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-        collection, "type");
     ast->query()->collections()->add(
         arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                    "name"),
-        TRI_GetTransactionTypeFromStr(
+        AccessMode::fromString(
             arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
                 collection, "type")
                 .c_str()));
@@ -274,12 +274,13 @@ class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
 };
 
 /// @brief clone an existing execution plan
-ExecutionPlan* ExecutionPlan::clone() {
-  auto plan = std::make_unique<ExecutionPlan>(_ast);
+ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
+  auto plan = std::make_unique<ExecutionPlan>(ast);
 
   plan->_root = _root->clone(plan.get(), true, false);
   plan->_nextId = _nextId;
   plan->_appliedRules = _appliedRules;
+  plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
 
   CloneNodeAdder adder(plan.get());
   plan->_root->walk(&adder);
@@ -294,13 +295,19 @@ ExecutionPlan* ExecutionPlan::clone() {
   return plan.release();
 }
 
+/// @brief clone an existing execution plan
+ExecutionPlan* ExecutionPlan::clone() {
+  return clone(_ast);
+}
+
 /// @brief create an execution plan identical to this one
 ///   keep the memory of the plan on the query object specified.
 ExecutionPlan* ExecutionPlan::clone(Query const& query) {
   auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
 
   for (auto const& it : _ids) {
-    otherPlan->registerNode(it.second->clone(otherPlan.get(), false, true));
+    auto clonedNode = it.second->clone(otherPlan.get(), false, true);
+    otherPlan->registerNode(clonedNode);
   }
 
   return otherPlan.release();
@@ -324,7 +331,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   // set up rules
   builder.add(VPackValue("rules"));
   builder.openArray();
-  for (auto const& r : Optimizer::translateRules(_appliedRules)) {
+  for (auto const& r : OptimizerRulesFeature::translateRules(_appliedRules)) {
     builder.add(VPackValue(r));
   }
   builder.close();
@@ -336,7 +343,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
     builder.openObject();
     builder.add("name", VPackValue(c.first));
     builder.add("type",
-                VPackValue(TRI_TransactionTypeGetStr(c.second->accessType)));
+                VPackValue(AccessMode::typeString(c.second->accessType)));
     builder.close();
   }
   builder.close();
@@ -348,13 +355,14 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   size_t nrItems = 0;
   builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
   builder.add("estimatedNrItems", VPackValue(nrItems));
+  builder.add("initialize", VPackValue(_isResponsibleForInitialize));
 
   builder.close();
 }
 
 /// @brief get a list of all applied rules
 std::vector<std::string> ExecutionPlan::getAppliedRules() const {
-  return Optimizer::translateRules(_appliedRules);
+  return OptimizerRulesFeature::translateRules(_appliedRules);
 }
 
 /// @brief get a node by its id
@@ -941,7 +949,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
 
       if (!handled) {
         // if no sort order is set, ensure we have one
-        auto ascendingNode = ascending->castToBool(_ast);
+        AstNode const* ascendingNode = ascending->castToBool(_ast);
         if (ascendingNode->type == NODE_TYPE_VALUE &&
             ascendingNode->value.type == VALUE_TYPE_BOOL) {
           isAscending = ascendingNode->value.value._bool;
@@ -1882,10 +1890,13 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
 
 /// @brief create a plan from VPack
 ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
-  ExecutionNode* ret = nullptr;
-
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan slice is not an object");
+  }
+
+  if (slice.hasKey("initialize")) {
+    // whether or not this plan (or fragment) is responsible for calling initialize
+    _isResponsibleForInitialize = slice.get("initialize").getBoolean();
   }
 
   VPackSlice nodes = slice.get("nodes");
@@ -1893,6 +1904,8 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan \"nodes\" attribute is not an array");
   }
+  
+  ExecutionNode* ret = nullptr;
 
   // first, re-create all nodes from the Slice, using the node ids
   // no dependency links will be set up in this step

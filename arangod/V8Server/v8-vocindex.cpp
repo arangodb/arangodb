@@ -29,24 +29,25 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
-#include "FulltextIndex/fulltext-index.h"
-#include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
-#include "Indexes/PrimaryIndex.h"
+#include "Indexes/IndexFactory.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Hints.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-collection.h"
+#include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/modes.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "Indexes/RocksDBIndex.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -55,21 +56,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the unique flag from the data
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ExtractBoolFlag(v8::Isolate* isolate,
-                            v8::Handle<v8::Object> const obj,
-                            v8::Handle<v8::String> name, bool defaultValue) {
-  // extract unique flag
-  if (obj->Has(name)) {
-    return TRI_ObjectToBoolean(obj->Get(name));
-  }
-
-  return defaultValue;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if argument is an index identifier
@@ -131,208 +117,6 @@ static v8::Handle<v8::Value> IndexRep(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process the fields list and add them to the json
-////////////////////////////////////////////////////////////////////////////////
-
-static int ProcessIndexFields(v8::Isolate* isolate,
-                              v8::Handle<v8::Object> const obj,
-                              VPackBuilder& builder, int numFields,
-                              bool create) {
-  v8::HandleScope scope(isolate);
-  std::set<std::string> fields;
-
-  v8::Handle<v8::String> fieldsString = TRI_V8_ASCII_STRING("fields");
-  if (obj->Has(fieldsString) && obj->Get(fieldsString)->IsArray()) {
-    // "fields" is a list of fields
-    v8::Handle<v8::Array> fieldList =
-        v8::Handle<v8::Array>::Cast(obj->Get(fieldsString));
-
-    uint32_t const n = fieldList->Length();
-
-    for (uint32_t i = 0; i < n; ++i) {
-      if (!fieldList->Get(i)->IsString()) {
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      std::string const f = TRI_ObjectToString(fieldList->Get(i));
-
-      if (f.empty() || (create && f == StaticStrings::IdString)) {
-        // accessing internal attributes is disallowed
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      if (fields.find(f) != fields.end()) {
-        // duplicate attribute name
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      fields.insert(f);
-    }
-  }
-
-  if (fields.empty() || (numFields > 0 && (int)fields.size() != numFields)) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  try {
-    builder.add(VPackValue("fields"));
-    int res = TRI_V8ToVPack(isolate, builder,
-                            obj->Get(TRI_V8_ASCII_STRING("fields")), false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the geojson flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-static void ProcessIndexGeoJsonFlag(v8::Isolate* isolate,
-                                    v8::Handle<v8::Object> const obj,
-                                    VPackBuilder& builder) {
-  v8::HandleScope scope(isolate);
-  bool geoJson =
-      ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("geoJson"), false);
-  builder.add("geoJson", VPackValue(geoJson));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the sparse flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-static void ProcessIndexSparseFlag(v8::Isolate* isolate,
-                                   v8::Handle<v8::Object> const obj,
-                                   VPackBuilder& builder, bool create) {
-  v8::HandleScope scope(isolate);
-  if (obj->Has(TRI_V8_ASCII_STRING("sparse"))) {
-    bool sparse =
-        ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("sparse"), false);
-    builder.add("sparse", VPackValue(sparse));
-  } else if (create) {
-    // not set. now add a default value
-    builder.add("sparse", VPackValue(false));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the unique flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-static void ProcessIndexUniqueFlag(v8::Isolate* isolate,
-                                   v8::Handle<v8::Object> const obj,
-                                   VPackBuilder& builder) {
-  v8::HandleScope scope(isolate);
-  bool unique =
-      ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("unique"), false);
-  builder.add("unique", VPackValue(unique));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a geo1 index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexGeo1(v8::Isolate* isolate,
-                                v8::Handle<v8::Object> const obj,
-                                VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(isolate, obj, builder, 1, create);
-  if (ServerState::instance()->isCoordinator()) {
-    builder.add("ignoreNull", VPackValue(true));
-    builder.add("constraint", VPackValue(false));
-  }
-  builder.add("sparse", VPackValue(true));
-  builder.add("unique", VPackValue(false));
-  ProcessIndexGeoJsonFlag(isolate, obj, builder);
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a geo2 index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexGeo2(v8::Isolate* isolate,
-                                v8::Handle<v8::Object> const obj,
-                                VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(isolate, obj, builder, 2, create);
-  if (ServerState::instance()->isCoordinator()) {
-    builder.add("ignoreNull", VPackValue(true));
-    builder.add("constraint", VPackValue(false));
-  }
-  builder.add("sparse", VPackValue(true));
-  builder.add("unique", VPackValue(false));
-  ProcessIndexGeoJsonFlag(isolate, obj, builder);
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a hash index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexHash(v8::Isolate* isolate,
-                                v8::Handle<v8::Object> const obj,
-                                VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(isolate, obj, builder, 0, create);
-  ProcessIndexSparseFlag(isolate, obj, builder, create);
-  ProcessIndexUniqueFlag(isolate, obj, builder);
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexSkiplist(v8::Isolate* isolate,
-                                    v8::Handle<v8::Object> const obj,
-                                    VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(isolate, obj, builder, 0, create);
-  ProcessIndexSparseFlag(isolate, obj, builder, create);
-  ProcessIndexUniqueFlag(isolate, obj, builder);
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a RocksDB index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexRocksDB(v8::Isolate* isolate,
-                                   v8::Handle<v8::Object> const obj,
-                                   VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(isolate, obj, builder, 0, create);
-  ProcessIndexSparseFlag(isolate, obj, builder, create);
-  ProcessIndexUniqueFlag(isolate, obj, builder);
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexFulltext(v8::Isolate* isolate,
-                                    v8::Handle<v8::Object> const obj,
-                                    VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(isolate, obj, builder, 1, create);
-
-  // handle "minLength" attribute
-  int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-
-  if (obj->Has(TRI_V8_ASCII_STRING("minLength"))) {
-    if (obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsNumber() ||
-        obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsNumberObject()) {
-      minWordLength =
-          (int)TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("minLength")));
-    } else if (!obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsNull() &&
-               !obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsUndefined()) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-  }
-  builder.add("minLength", VPackValue(minWordLength));
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of an index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -342,105 +126,16 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
-
-  // extract index type
-  arangodb::Index::IndexType type = arangodb::Index::TRI_IDX_TYPE_UNKNOWN;
-
-  if (obj->Has(TRI_V8_ASCII_STRING("type")) &&
-      obj->Get(TRI_V8_ASCII_STRING("type"))->IsString()) {
-    TRI_Utf8ValueNFC typeString(TRI_UNKNOWN_MEM_ZONE,
-                                obj->Get(TRI_V8_ASCII_STRING("type")));
-
-    if (*typeString == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    std::string t(*typeString);
-    // rewrite type "geo" into either "geo1" or "geo2", depending on the number
-    // of fields
-    if (t == "geo") {
-      t = "geo1";
-
-      if (obj->Has(TRI_V8_ASCII_STRING("fields")) &&
-          obj->Get(TRI_V8_ASCII_STRING("fields"))->IsArray()) {
-        v8::Handle<v8::Array> f = v8::Handle<v8::Array>::Cast(
-            obj->Get(TRI_V8_ASCII_STRING("fields")));
-        if (f->Length() == 2) {
-          t = "geo2";
-        }
-      }
-    }
-
-    type = arangodb::Index::type(t);
+  VPackBuilder input;
+  int res = TRI_V8ToVPack(isolate, input, obj, false);
+  if (res != TRI_ERROR_NO_ERROR) {
+    // Failed to parse input object
+    return res;
   }
 
-  if (type == arangodb::Index::TRI_IDX_TYPE_UNKNOWN) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  if (create) {
-    if (type == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-        type == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      // creating these indexes yourself is forbidden
-      return TRI_ERROR_FORBIDDEN;
-    }
-  }
-
-  TRI_ASSERT(builder.isEmpty());
-  int res = TRI_ERROR_INTERNAL;
-  try {
-    VPackObjectBuilder b(&builder);
-
-    if (obj->Has(TRI_V8_ASCII_STRING("id"))) {
-      uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_ASCII_STRING("id")), true);
-      if (id > 0) {
-        builder.add("id", VPackValue(std::to_string(id)));
-      }
-    }
-
-    char const* idxType = arangodb::Index::typeName(type);
-    builder.add("type", VPackValue(idxType));
-
-    switch (type) {
-      case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
-        res = TRI_ERROR_BAD_PARAMETER;
-        break;
-      }
-
-      case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-      case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
-        break;
-      }
-
-      case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-        res = EnhanceJsonIndexGeo1(isolate, obj, builder, create);
-        break;
-
-      case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
-        res = EnhanceJsonIndexGeo2(isolate, obj, builder, create);
-        break;
-
-      case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX:
-        res = EnhanceJsonIndexHash(isolate, obj, builder, create);
-        break;
-
-      case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
-        res = EnhanceJsonIndexSkiplist(isolate, obj, builder, create);
-        break;
-      
-      case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX:
-        res = EnhanceJsonIndexRocksDB(isolate, obj, builder, create);
-        break;
-
-      case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
-        res = EnhanceJsonIndexFulltext(isolate, obj, builder, create);
-        break;
-    }
-  } catch (...) {
-    // TODO Check for different type of Errors
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  return res;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory(); 
+  return idxFactory->enhanceIndexDefinition(input.slice(), builder, create);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -471,12 +166,12 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), create ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
+      transaction::V8Context::Create(collection->vocbase(), true),
+      collection->cid(), create ? AccessMode::Type::WRITE : AccessMode::Type::READ);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -504,7 +199,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
   }
 
-  TransactionBuilderLeaser builder(&trx);
+  transaction::BuilderLeaser builder(&trx);
   builder->openObject();
   try {
     idx->toVelocyPack(*(builder.get()), false);
@@ -518,8 +213,8 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   res = trx.commit();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, TRI_errno_string(res));
+  if (!res.ok()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   if (ret->IsObject()) {
@@ -762,12 +457,12 @@ static void JS_DropIndexVocbaseCol(
   READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), TRI_TRANSACTION_WRITE);
+      transaction::V8Context::Create(collection->vocbase(), true),
+      collection->cid(), AccessMode::Type::WRITE);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -784,7 +479,7 @@ static void JS_DropIndexVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  bool ok = col->dropIndex(idx->id(), true);
+  bool ok = col->dropIndex(idx->id());
 
   if (ok) {
     TRI_V8_RETURN_TRUE();
@@ -856,14 +551,14 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), TRI_TRANSACTION_READ);
+      transaction::V8Context::Create(collection->vocbase(), true),
+      collection->cid(), AccessMode::Type::READ);
     
-  trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, false);
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -873,7 +568,7 @@ static void JS_GetIndexesVocbaseCol(
   std::string const collectionName(collection->name());
 
   // get list of indexes
-  TransactionBuilderLeaser builder(&trx);
+  transaction::BuilderLeaser builder(&trx);
   auto indexes = collection->getIndexes();
 
   trx.finish(res);
@@ -1032,9 +727,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   try {
-    TRI_voc_cid_t cid = 0;
     arangodb::LogicalCollection const* collection =
-        vocbase->createCollection(infoSlice, cid, true);
+        vocbase->createCollection(infoSlice);
 
     TRI_ASSERT(collection != nullptr);
 
@@ -1085,7 +779,7 @@ static void JS_CreateEdgeCollectionVocbase(
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8indexArangoDB(v8::Isolate* isolate,
+void TRI_InitV8IndexArangoDB(v8::Isolate* isolate,
                              v8::Handle<v8::ObjectTemplate> rt) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_create"),
                        JS_CreateVocbase, true);
@@ -1097,7 +791,7 @@ void TRI_InitV8indexArangoDB(v8::Isolate* isolate,
                        JS_CreateDocumentCollectionVocbase);
 }
 
-void TRI_InitV8indexCollection(v8::Isolate* isolate,
+void TRI_InitV8IndexCollection(v8::Isolate* isolate,
                                v8::Handle<v8::ObjectTemplate> rt) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("dropIndex"),
                        JS_DropIndexVocbaseCol);

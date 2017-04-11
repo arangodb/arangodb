@@ -33,7 +33,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
@@ -851,22 +851,6 @@ VPackSlice AstNode::computeValue() const {
   return VPackSlice(computedValue);
 }
 
-/// @brief compute the value for a constant value node
-/// the value is owned by the node and must not be freed by the caller
-VPackSlice AstNode::computeValue(arangodb::Transaction* trx) const {
-  TRI_ASSERT(isConstant());
-
-  if (computedValue == nullptr) {
-    TransactionBuilderLeaser builder(trx);
-    toVelocyPackValue(*builder.get());
-
-    computedValue = new uint8_t[builder->size()];
-    memcpy(computedValue, builder->data(), builder->size());
-  }
-
-  return VPackSlice(computedValue);
-}
-
 /// @brief sort the members of an (array) node
 /// this will also set the VALUE_SORTED flag for the node
 void AstNode::sort() {
@@ -1134,7 +1118,11 @@ bool AstNode::containsNodeType(AstNodeType searchType) const {
 /// @brief convert the node's value to a boolean value
 /// this may create a new node or return the node itself if it is already a
 /// boolean value node
-AstNode* AstNode::castToBool(Ast* ast) {
+AstNode const* AstNode::castToBool(Ast* ast) const {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    return Ast::resolveConstAttributeAccess(this)->castToBool(ast);
+  }
+
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
              type == NODE_TYPE_OBJECT);
 
@@ -1167,7 +1155,11 @@ AstNode* AstNode::castToBool(Ast* ast) {
 /// @brief convert the node's value to a number value
 /// this may create a new node or return the node itself if it is already a
 /// numeric value node
-AstNode* AstNode::castToNumber(Ast* ast) {
+AstNode const* AstNode::castToNumber(Ast* ast) const {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    return Ast::resolveConstAttributeAccess(this)->castToNumber(ast);
+  }
+
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
              type == NODE_TYPE_OBJECT);
 
@@ -1886,7 +1878,7 @@ bool AstNode::isCacheable() const {
 /// user-defined function
 bool AstNode::callsUserDefinedFunction() const {
   if (isConstant()) {
-    return true;
+    return false;
   }
 
   // check sub-nodes first
@@ -1895,12 +1887,34 @@ bool AstNode::callsUserDefinedFunction() const {
   for (size_t i = 0; i < n; ++i) {
     auto member = getMemberUnchecked(i);
 
-    if (!member->callsUserDefinedFunction()) {
-      return false;
+    if (member->callsUserDefinedFunction()) {
+      return true;
     }
   }
 
   return (type == NODE_TYPE_FCALL_USER);
+}
+
+/// @brief whether or not a node (and its subnodes) may contain a call to a
+/// function or user-defined function
+bool AstNode::callsFunction() const {
+  if (isConstant()) {
+    return false;
+  }
+
+  // check sub-nodes first
+  size_t const n = numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMemberUnchecked(i);
+
+    if (member->callsFunction()) {
+      // abort early
+      return true;
+    }
+  }
+
+  return (type == NODE_TYPE_FCALL || type == NODE_TYPE_FCALL_USER);
 }
 
 /// @brief whether or not the object node contains dynamically named attributes

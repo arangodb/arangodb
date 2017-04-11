@@ -42,6 +42,7 @@ std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
 bool Logger::_showLineNumber(false);
+bool Logger::_shortenFilenames(true);
 bool Logger::_showThreadIdentifier(false);
 bool Logger::_threaded(false);
 bool Logger::_useLocalTime(false);
@@ -69,7 +70,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (v.empty() || v.size() > 2) {
     Logger::setLogLevel(LogLevel::INFO);
-    LOG(ERR) << "strange log level '" << levelName
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName
              << "', using log level 'info'";
     return;
   }
@@ -84,7 +85,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (l == "fatal") {
     level = LogLevel::FATAL;
-  } else if (l == "error") {
+  } else if (l == "error" || l == "err") {
     level = LogLevel::ERR;
   } else if (l == "warning" || l == "warn") {
     level = LogLevel::WARN;
@@ -99,10 +100,10 @@ void Logger::setLogLevel(std::string const& levelName) {
   } else {
     if (isGeneral) {
       Logger::setLogLevel(LogLevel::INFO);
-      LOG(ERR) << "strange log level '" << levelName
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName
                << "', using log level 'info'";
     } else {
-      LOG(ERR) << "strange log level '" << levelName << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
     }
 
     return;
@@ -110,6 +111,9 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (isGeneral) {
     Logger::setLogLevel(level);
+    // setting the log level for topic "fixme" is required here, too,
+    // as "fixme" is the previous general log topic...
+    LogTopic::setLogLevel(std::string("fixme"), level);
   } else {
     LogTopic::setLogLevel(v[0], level);
   }
@@ -139,6 +143,16 @@ void Logger::setShowLineNumber(bool show) {
   }
 
   _showLineNumber = show;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setShortenFilenames(bool shorten) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change shorten filenames if logging is active");
+  }
+
+  _shortenFilenames = shorten;
 }
 
 // NOTE: this function should not be called if the logging is active.
@@ -257,13 +271,13 @@ void Logger::log(char const* function, char const* file, long int line,
   }
 
   // output prefix
-  if (! _outputPrefix.empty()) {
+  if (!_outputPrefix.empty()) {
     out << _outputPrefix << " ";
   }
 
   // append the process / thread identifier
   {
-    char processPrefix[128];
+    char processPrefix[48];
 
     TRI_pid_t processId = Thread::currentProcessId();
 
@@ -280,11 +294,20 @@ void Logger::log(char const* function, char const* file, long int line,
   }
 
   // log level
-  out << Logger::translateLogLevel(level) << " ";
+  out << Logger::translateLogLevel(level) << ' ';
 
   // check if we must display the line number
   if (_showLineNumber) {
-    out << "[" << file << ":" << line << "] ";
+    char const* filename = file;
+
+    if (_shortenFilenames) {
+      // shorten file names from `/home/.../file.cpp` to just `file.cpp`
+      char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
+      if (shortened != nullptr) {
+        filename = shortened + 1;
+      }
+    }
+    out << '[' << filename << ':' << line << "] ";
   }
 
   // generate the complete message
@@ -296,12 +319,17 @@ void Logger::log(char const* function, char const* file, long int line,
   if (_threaded) {
     try {
       _loggingThread->log(msg);
+      bool const isDirectLogLevel = (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
+      if (isDirectLogLevel) {
+        _loggingThread->flush();
+      }
+      return;
     } catch (...) {
-      LogAppender::log(msg.get());
+      // fall-through to non-threaded logging
     }
-  } else {
-    LogAppender::log(msg.get());
   }
+   
+  LogAppender::log(msg.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

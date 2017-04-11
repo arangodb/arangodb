@@ -1,0 +1,204 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_AU{
+    %%Parent{"en_001"}
+    Currencies{
+        AUD{
+            "$",
+            "Australian Dollar",
+        }
+        BAM{
+            "BAM",
+            "Bosnia-Herzegovina Convertible Marka",
+        }
+        BBD{
+            "BBD",
+            "Barbados Dollar",
+        }
+        BMD{
+            "BMD",
+            "Bermuda Dollar",
+        }
+        BOB{
+            "BOB",
+            "Boliviano",
+        }
+        BRL{
+            "BRL",
+            "Brazilian Real",
+        }
+        CAD{
+            "CAD",
+            "Canadian Dollar",
+        }
+        CNY{
+            "CNY",
+            "Chinese Yuan",
+        }
+        EUR{
+            "EUR",
+            "Euro",
+        }
+        GBP{
+            "GBP",
+            "British Pound",
+        }
+        HKD{
+            "HKD",
+            "Hong Kong Dollar",
+        }
+        ILS{
+            "ILS",
+            "Israeli Shekel",
+        }
+        INR{
+            "INR",
+            "Indian Rupee",
+        }
+        JPY{
+            "JPY",
+            "Japanese Yen",
+        }
+        KRW{
+            "KRW",
+            "South Korean Won",
+        }
+        MXN{
+            "MXN",
+            "Mexican Peso",
+        }
+        NZD{
+            "NZD",
+            "New Zealand Dollar",
+        }
+        QAR{
+            "QAR",
+            "Qatari Riyal",
+        }
+        SCR{
+            "Rs",
+            "Seychellois Rupee",
+        }
+        SRD{
+            "SRD",
+            "Suriname Dollar",
+        }
+        TWD{
+            "TWD",
+            "New Taiwan Dollar",
+        }
+        USD{
+            "USD",
+            "US Dollar",
+        }
+        UYU{
+            "UYU",
+            "Peso Uruguayo",
+        }
+        VND{
+            "VND",
+            "Vietnamese Dong",
+        }
+        XAF{
+            "XAF",
+            "Central African CFA Franc",
+        }
+        XCD{
+            "XCD",
+            "East Caribbean Dollar",
+        }
+        XOF{
+            "XOF",
+            "West African CFA Franc",
+        }
+        XPF{
+            "CFP",
+            "CFP Franc",
+        }
+    }
+    Currencies%narrow{
+        BDT{"Tk"}
+        BOB{"$b"}
+        CUP{"₱"}
+        EGP{"£"}
+        ISK{"Kr"}
+        PYG{"Gs"}
+        SEK{"Kr"}
+        UYU{"$U"}
+    }
+    Currencies%variant{
+        GEL{"GEL"}
+        TRY{"TRY"}
+    }
+    CurrencyPlurals{
+        BAM{
+            one{"Bosnia-Herzegovina convertible marka"}
+            other{"Bosnia-Herzegovina convertible marka"}
+        }
+        BBD{
+            one{"Barbados dollar"}
+            other{"Barbados dollars"}
+        }
+        BMD{
+            one{"Bermuda dollar"}
+            other{"Bermuda dollars"}
+        }
+        BOB{
+            one{"boliviano"}
+            other{"bolivianos"}
+        }
+        EUR{
+            one{"euro"}
+            other{"euro"}
+        }
+        GEL{
+            one{"Georgian lari"}
+            other{"Georgian lari"}
+        }
+        ILS{
+            one{"Israeli shekel"}
+            other{"Israeli sheckles"}
+        }
+        KZT{
+            one{"Kazakhstani tenge"}
+            other{"Kazakhstani tenge"}
+        }
+        LAK{
+            one{"Laotian kip"}
+            other{"Laotian kip"}
+        }
+        MKD{
+            one{"Macedonian denar"}
+            other{"Macedonian denar"}
+        }
+        PGK{
+            one{"Papua New Guinean kina"}
+            other{"Papua New Guinean kinas"}
+        }
+        QAR{
+            one{"Qatari riyal"}
+            other{"Quatari riyals"}
+        }
+        SRD{
+            one{"Suriname dollar"}
+            other{"Suriname dollars"}
+        }
+        TRY{
+            one{"Turkish lira"}
+            other{"Turkish lire"}
+        }
+        UZS{
+            one{"Uzbekistani som"}
+            other{"Uzbekistani soms"}
+        }
+        VND{
+            one{"Vietnamese dong"}
+            other{"Vietnamese dongs"}
+        }
+        WST{
+            one{"Samoan tala"}
+            other{"Samoan talas"}
+        }
+    }
+    Version{"2.1.30.50"}
+}

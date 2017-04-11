@@ -29,15 +29,17 @@
 
 #include <boost/asio/steady_timer.hpp>
 
-#include "Basics/asio-helper.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
 #include "Logger/Logger.h"
 #include "Scheduler/EventLoop.h"
+#include "Scheduler/Job.h"
 
 namespace arangodb {
 class JobQueue;
+class JobGuard;
 
 namespace basics {
 class ConditionVariable;
@@ -47,12 +49,16 @@ class Builder;
 }
 
 namespace rest {
+
 class Scheduler {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
+  friend class arangodb::JobGuard;
+
  public:
-  Scheduler(size_t nrThreads, size_t maxQueueSize);
+  Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
+            uint64_t maxQueueSize);
   virtual ~Scheduler();
 
  public:
@@ -62,10 +68,12 @@ class Scheduler {
   }
 
   EventLoop eventLoop() {
-    // return EventLoop{._ioService = *_ioService.get(), ._scheduler = this}; //
+    // return EventLoop{._ioService = *_ioService.get(), ._scheduler = this};
     // windows complains ...
     return EventLoop{_ioService.get(), this};
   }
+
+  void post(std::function<void()> callback);
 
   bool start(basics::ConditionVariable*);
   bool isRunning() { return _nrRunning.load() > 0; }
@@ -78,82 +86,64 @@ class Scheduler {
   static void initializeSignalHandlers();
 
  public:
-  JobQueue* jobQueue() const { return _jobQueue.get(); }
+  bool shouldStopThread() const;
+  bool shouldQueueMore() const;
+  bool hasQueueCapacity() const;
 
-  bool isIdle() {
-    if (_nrWorking < _nrRunning && _nrWorking < _nrMaximal) {
-      return true;
-    }
+  bool queue(std::unique_ptr<Job> job);
 
-    return false;
-  }
+  uint64_t minimum() const { return _nrMinimum; }
 
-  bool tryBlocking() {
-    static int64_t const MIN_FREE = 2;
+  uint64_t incRunning() { return ++_nrRunning; }
+  uint64_t decRunning() { return --_nrRunning; }
 
-    if (_nrWorking < (_nrRealMaximum - MIN_FREE)) {
-      ++_nrWorking;
-      return true;
-    }
+  std::string infoStatus();
 
-    return false;
-  }
+  void startNewThread();
+  void threadDone(Thread*);
+  void deleteOldThreads();
+  
+  void stopRebalancer() noexcept;
 
-  void enterThread() { ++_nrBusy; }
-
-  void unenterThread() { --_nrBusy; }
-
+ private:
   void workThread() { ++_nrWorking; }
-
   void unworkThread() { --_nrWorking; }
 
   void blockThread() { ++_nrBlocked; }
-
   void unblockThread() { --_nrBlocked; }
 
-  uint64_t incRunning() { return ++_nrRunning; }
-
-  uint64_t decRunning() { return --_nrRunning; }
-
-  void setMinimal(int64_t minimal) { _nrMinimal = minimal; }
-  void setMaximal(int64_t maximal) { _nrMaximal = maximal; }
-  void setRealMaximum(int64_t maximum) { _nrRealMaximum = maximum; }
-
-  std::string infoStatus() {
-    return "busy: " + std::to_string(_nrBusy) + ", working: " +
-           std::to_string(_nrWorking) + ", blocked: " +
-           std::to_string(_nrBlocked) + ", running: " +
-           std::to_string(_nrRunning) + ", maximal: " +
-           std::to_string(_nrMaximal) + ", real maximum: " +
-           std::to_string(_nrRealMaximum);
-  }
-
-  void startNewThread();
-  bool stopThread();
-  void threadDone(Thread*);
-  void deleteOldThreads();
-
- private:
   void startIoService();
   void startRebalancer();
   void startManagerThread();
   void rebalanceThreads();
 
  private:
-  size_t _nrThreads;
-  size_t _maxQueueSize;
-
   std::atomic<bool> _stopping;
 
-  std::atomic<int64_t> _nrBusy;
-  std::atomic<int64_t> _nrWorking;
-  std::atomic<int64_t> _nrBlocked;
-  std::atomic<int64_t> _nrRunning;
-  std::atomic<int64_t> _nrMinimal;
-  std::atomic<int64_t> _nrMaximal;
-  std::atomic<int64_t> _nrRealMaximum;
+  // maximal number of outstanding user requests
+  int64_t const _maxQueueSize;
 
-  std::atomic<double> _lastThreadWarning;
+  // minimum number of running SchedulerThreads
+  int64_t const _nrMinimum;
+
+  // desired number of running SchedulerThreads
+  int64_t const _nrDesired;
+
+  // maximal number of outstanding user requests
+  int64_t const _nrMaximum;
+
+  // number of jobs currently been worked on
+  // use signed values just in case we have an underflow
+  std::atomic<int64_t> _nrWorking;
+
+  // number of jobs that are currently been queued, but not worked on
+  std::atomic<int64_t> _nrQueued;
+
+  // number of jobs that entered a potentially blocking situation
+  std::atomic<int64_t> _nrBlocked;
+
+  // number of SchedulerThread that are running
+  std::atomic<int64_t> _nrRunning;
 
   std::unique_ptr<JobQueue> _jobQueue;
 

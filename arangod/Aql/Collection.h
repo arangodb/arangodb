@@ -25,11 +25,13 @@
 #define ARANGOD_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/transaction.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 namespace aql {
 struct Index;
 
@@ -38,7 +40,7 @@ struct Collection {
   Collection(Collection const&) = delete;
   Collection() = delete;
 
-  Collection(std::string const&, TRI_vocbase_t*, TRI_transaction_type_e);
+  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
 
   ~Collection();
 
@@ -67,7 +69,7 @@ struct Collection {
   }
 
   /// @brief count the LOCAL number of documents in the collection
-  size_t count() const;
+  size_t count(transaction::Methods* trx) const;
 
   /// @brief returns the collection's plan id
   TRI_voc_cid_t getPlanId() const;
@@ -75,27 +77,28 @@ struct Collection {
   /// @brief returns the shard ids of a collection
   std::shared_ptr<std::vector<std::string>> shardIds() const;
 
+  /// @brief returns the filtered list of shard ids of a collection
+  std::shared_ptr<std::vector<std::string>> shardIds(std::unordered_set<std::string> const& includedShards) const;
+
   /// @brief returns the shard keys of a collection
   std::vector<std::string> shardKeys() const;
+  
+  size_t numberOfShards() const;
 
   /// @brief whether or not the collection uses the default sharding
   bool usesDefaultSharding() const;
 
   /// @brief set the underlying collection
-  void setCollection(arangodb::LogicalCollection* coll) { collection = coll; }
+  void setCollection(arangodb::LogicalCollection* coll);
 
   /// @brief either use the set collection or get one from ClusterInfo:
   std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
 
   /// @brief check smartness of the underlying collection
-  bool isSmart() const {
-    return getCollection()->isSmart();
-  }
+  bool isSmart() const;
 
   /// @brief check if collection is a satellite collection
-  bool isSatellite() const {
-    return getCollection()->isSatellite();
-  }
+  bool isSatellite() const;
 
  private:
 
@@ -108,7 +111,7 @@ struct Collection {
  public:
   std::string const name;
   TRI_vocbase_t* vocbase;
-  TRI_transaction_type_e accessType;
+  AccessMode::Type accessType;
   bool isReadWrite;
   int64_t mutable numDocuments = UNINITIALIZED;
 

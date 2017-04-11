@@ -171,6 +171,25 @@ function explainSuite () {
         ]
       };
       assertEqual([ 1, 2, 3], AQL_EXECUTE(query, bindParams).json);
+    },
+
+    testInvalidValuesInINFilter : function () {
+      var query = "FOR i IN " + cn + " FILTER i._id IN @idList SORT i.value RETURN i.value";
+      var bindParams = {
+        idList: [
+          null,
+          cn + "/testkey1", // Find this
+          "blub/bla",
+          "noKey",
+          cn + "/testkey2", // And this
+          123456,
+          { "the": "foxx", "is": "wrapped", "in":"objects"},
+          [15, "man", "on", "the", "dead", "mans", "chest"],
+          cn + "/testkey3" // And this
+        ]
+      };
+      require("internal").db._explain(query, bindParams);
+      assertEqual([ 1, 2, 3], AQL_EXECUTE(query, bindParams).json);
     }
   };
 }

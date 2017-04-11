@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -24,16 +25,18 @@
 #ifndef ARANGOD_INDEXES_INDEX_H
 #define ARANGOD_INDEXES_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Indexes/IndexElement.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <iosfwd>
 
 namespace arangodb {
+namespace basics {
+class LocalTaskQueue;
+}
 
 class LogicalCollection;
 class ManagedDocumentResult;
@@ -50,7 +53,10 @@ class SortCondition;
 struct Variable;
 }
 
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 }
 
 namespace arangodb {
@@ -83,7 +89,7 @@ class Index {
     TRI_IDX_TYPE_EDGE_INDEX,
     TRI_IDX_TYPE_FULLTEXT_INDEX,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
-    TRI_IDX_TYPE_ROCKSDB_INDEX
+    TRI_IDX_TYPE_PERSISTENT_INDEX
   };
 
  public:
@@ -102,6 +108,7 @@ class Index {
 
     for (auto const& it : _fields) {
       std::vector<std::string> parts;
+      parts.reserve(it.size());
       for (auto const& it2 : it) {
         parts.emplace_back(it2.name);
       }
@@ -154,9 +161,7 @@ class Index {
   }
 
   /// @brief return the underlying collection
-  inline LogicalCollection* collection() const {
-    return _collection;
-  }
+  inline LogicalCollection* collection() const { return _collection; }
 
   /// @brief return a contextual string for logging
   std::string context() const;
@@ -171,25 +176,27 @@ class Index {
   static void validateFields(VPackSlice const& slice);
 
   /// @brief return the name of the index
-  char const* typeName() const { return typeName(type()); }
+  char const* oldtypeName() const { return oldtypeName(type()); }
 
   /// @brief return the index type based on a type name
   static IndexType type(char const* type);
 
   static IndexType type(std::string const& type);
+  
+  virtual char const* typeName() const = 0;
 
   virtual bool allowExpansion() const = 0;
 
   static bool allowExpansion(IndexType type) {
     return (type == TRI_IDX_TYPE_HASH_INDEX ||
             type == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-            type == TRI_IDX_TYPE_ROCKSDB_INDEX);
+            type == TRI_IDX_TYPE_PERSISTENT_INDEX);
   }
 
   virtual IndexType type() const = 0;
 
   /// @brief return the name of an index type
-  static char const* typeName(IndexType);
+  static char const* oldtypeName(IndexType);
 
   /// @brief validate an index id
   static bool validateId(char const*);
@@ -216,13 +223,15 @@ class Index {
 
   /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
-  
+
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
-  virtual double selectivityEstimate(arangodb::StringRef const* = nullptr) const;
-  
+  virtual double selectivityEstimate(
+      arangodb::StringRef const* = nullptr) const;
+
   /// @brief whether or not the index is implicitly unique
-  /// this can be the case if the index is not declared as unique, but contains a 
+  /// this can be the case if the index is not declared as unique, but contains
+  /// a
   /// unique attribute such as _key
   virtual bool implicitlyUnique() const;
 
@@ -234,11 +243,16 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual int insert(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  virtual int remove(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  
-  virtual int batchInsert(arangodb::Transaction*, std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&, size_t);
-  
+  virtual int insert(transaction::Methods*, TRI_voc_rid_t revisionId,
+                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
+  virtual int remove(transaction::Methods*, TRI_voc_rid_t revisionId,
+                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
+
+  virtual void batchInsert(
+      transaction::Methods*,
+      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      arangodb::basics::LocalTaskQueue* queue = nullptr);
+
   virtual int unload() = 0;
 
   // a garbage collection function for the index
@@ -247,7 +261,7 @@ class Index {
   virtual int drop();
 
   // give index a hint about the expected size
-  virtual int sizeHint(arangodb::Transaction*, size_t);
+  virtual int sizeHint(transaction::Methods*, size_t);
 
   virtual bool hasBatchInsert() const;
 
@@ -259,18 +273,11 @@ class Index {
                                      arangodb::aql::Variable const*, size_t,
                                      double&, size_t&) const;
 
-  virtual IndexIterator* iteratorForCondition(arangodb::Transaction*,
+  virtual IndexIterator* iteratorForCondition(transaction::Methods*,
                                               ManagedDocumentResult*,
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
-                                              bool) const;
-
-  virtual IndexIterator* iteratorForSlice(arangodb::Transaction*,
-                                          ManagedDocumentResult*,
-                                          arangodb::velocypack::Slice const,
-                                          bool) const {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+                                              bool);
 
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;

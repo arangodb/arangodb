@@ -396,18 +396,10 @@ The _shortestPath function returns all shortest paths of a graph.
 This function determines all shortest paths in a graph.
 The function accepts an id, an example, a list of examples
 or even an empty example as parameter for
-start and end vertex. If one wants to call this function to receive nearly all
-shortest paths for a graph the option *algorithm* should be set to
-[Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
-to increase performance.
-If no algorithm is provided in the options the function chooses the appropriate
-one (either [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
-or [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)) according to its parameters.
+start and end vertex.
 The length of a path is by default the amount of edges from one start vertex to
 an end vertex. The option weight allows the user to define an edge attribute
 representing the length.
-
-<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here] (../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms). -->
 
 
 **Parameters**
@@ -426,13 +418,6 @@ representing the length.
   - *endVertexCollectionRestriction*: One or multiple vertex
     collection names. Only vertices from these collections will be considered as
     end vertex of a path.
-  - *edgeExamples*: A filter example for the
-    edges in the shortest paths
-    (see [example](#definition-of-examples)).
-  - *algorithm*: The algorithm to calculate
-    the shortest paths. If both start and end vertex examples are empty
-    [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
-    used, otherwise the default is [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)
   - *weight*: The name of the attribute of
     the edges containing the length as a string.
   - *defaultWeight*: Only used with the option *weight*.
@@ -527,8 +512,6 @@ of the vertices defined by the examples.
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertexExample.
 
-<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here] (../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms). -->
-
 
 **Parameters**
 
@@ -541,10 +524,6 @@ example as parameter for vertexExample.
     considered for source vertices.
   - *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
     considered for target vertices.
-  - *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
-  - *algorithm*: The algorithm to calculate the shortest paths, possible values are
-    [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
-    [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
   - *weight*: The name of the attribute of the edges containing the weight.
   - *defaultWeight*: Only used with the option *weight*.
     If an edge does not have the attribute named as defined in option *weight* this default
@@ -607,8 +586,6 @@ of the vertices defined by the examples.
 
 Similar to [_absoluteEccentricity](#absoluteeccentricity) but returns a normalized result.
 
-<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here] (../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms). -->
-
 
 **Examples**
 
@@ -651,9 +628,6 @@ of the vertices defined by the examples.
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for *vertexExample*.
 
-<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here] (../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).-->
-
-
 **Parameters**
 
 - vertexExample (optional) Filter the vertices, see [Definition of examples](#definition-of-examples)
@@ -665,10 +639,6 @@ example as parameter for *vertexExample*.
     considered for source vertices.
   - *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
     considered for target vertices.
-  - *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
-  - *algorithm*: The algorithm to calculate the shortest paths, possible values are
-    [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
-    [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
   - *weight*: The name of the attribute of the edges containing the weight.
   - *defaultWeight*: Only used with the option *weight*.
     If an edge does not have the attribute named as defined in option *weight* this default
@@ -730,8 +700,6 @@ of graphs vertices.
 `graph._closeness(options)`
 
 Similar to [_absoluteCloseness](#absolutecloseness) but returns a normalized value.
-
-<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here] (../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms). -->
 
 
 **Examples**
@@ -906,16 +874,11 @@ of a graph.
 
 `
 
-<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here] (../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).-->
-
 
 **Parameters**
 
 - options (optional) An object defining further options. Can have the following values:
   - *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-  - *algorithm*: The algorithm to calculate the shortest paths, possible values are
-    [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
-    [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
   - *weight*: The name of the attribute of the edges containing the weight.
   - *defaultWeight*: Only used with the option *weight*.
     If an edge does not have the attribute named as defined in option *weight* this default
@@ -975,16 +938,11 @@ of a graph.
 
 `graph._diameter(graphName, options)`
 
-<!-- TODO mchacki: das hier ist geloescht, wollen wir darueber etwas schreiben?  The complexity of the function is described [here] (../../../AQL/Graphs/Operations.html#the-complexity-of-the-shortest-path-algorithms).-->
-
 
 **Parameters**
 
 - options (optional) An object defining further options. Can have the following values:
   - *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-  - *algorithm*: The algorithm to calculate the shortest paths, possible values are
-      [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
-      [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
   - *weight*: The name of the attribute of the edges containing the weight.
   - *defaultWeight*: Only used with the option *weight*.
     If an edge does not have the attribute named as defined in option *weight* this default

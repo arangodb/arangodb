@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+so{
+    Version{"2.1.27.78"}
+    zoneStrings{
+        "meta:Colombia"{
+            ld{"Waqtiyada Xagaaga Kolambiya"}
+            lg{"Waqtiga Kolambiya"}
+            ls{"Waqtiyada Caadiga ah ee kolambiya"}
+        }
+        "meta:Galapagos"{
+            ls{"Waqtiga Galabagos"}
+        }
+    }
+}

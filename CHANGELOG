@@ -1,6 +1,382 @@
 devel
 -----
 
+* issue #2413: improve logging in case of lock timeout and deadlocks
+
+* added log topic attribute to /_admin/log api
+
+* removed internal build option `USE_DEV_TIMERS`
+
+  Enabling this option activated some proprietary timers for only selected 
+  events in arangod. Instead better use `perf` to gather timings.
+
+* increase default collection lock timeout from 30 to 900 seconds
+
+* added function `db._engine()` for retrieval of storage engine information at
+  server runtime
+
+  There is also an HTTP REST handler at GET /_api/engine that returns engine
+  information.
+
+* require at least cmake 3.2 for building ArangoDB
+
+* make arangod start with less V8 JavaScript contexts
+
+  This speeds up the server start (a little bit) and makes it use less memory.
+  Whenever a V8 context is needed by a Foxx action or some other operation and
+  there is no usable V8 context, a new one will be created dynamically now.
+
+  Up to `--javascript.v8-contexts` V8 contexts will be created, so this option 
+  will change its meaning. Previously as many V8 contexts as specified by this 
+  option were created at server start, and the number of V8 contexts did not
+  change at runtime. Now up to this number of V8 contexts will be in use at the 
+  same time, but the actual number of V8 contexts is dynamic.
+
+  The garbage collector thread will automatically delete unused V8 contexts after 
+  a while. The number of spare contexts will go down to as few as configured in 
+  the new option `--javascript.v8-contexts-minimum`. Actually that many V8 contexts 
+  are also created at server start.
+
+  The first few requests in new V8 contexts will take longer than in contexts 
+  that have been there already. Performance may therefore suffer a bit for the
+  initial requests sent to ArangoDB or when there are only few but performance-
+  critical situations in which new V8 contexts will be created. If this is a 
+  concern, it can easily be fixed by setting `--javascipt.v8-contexts-minimum`
+  and `--javascript.v8-contexts` to a relatively high value, which will guarantee
+  that many number of V8 contexts to be created at startup and kept around even
+  when unused.
+
+  Waiting for an unused V8 context will now also abort if no V8 context can be 
+  acquired/created after 120 seconds.
+
+* improved diagnostic messages written to logfiles by supervisor process
+
+* fixed issue #2367
+
+* added "bindVars" to attributes of currently running and slow queries
+
+* added "jsonl" as input file type for arangoimp
+
+* upgraded version of bundled zlib library from 1.2.8 to 1.2.11
+
+* added input file type `auto` for arangoimp so it can automatically detect the 
+  type of the input file from the filename extension
+
+* fixed variables parsing in GraphQL
+
+* added `--translate` option for arangoimp to translate attribute names from
+  the input files to attriubte names expected by ArangoDB
+
+  The `--translate` option can be specified multiple times (once per translation
+  to be executed). The following example renames the "id" column from the input
+  file to "_key", and the "from" column to "_from", and the "to" column to "_to":
+
+      arangoimp --type csv --file data.csv --translate "id=_key" --translate "from=_from" --translate "to=_to"
+
+  `--translate` works for CSV and TSV inputs only.
+
+* changed default value for `--server.max-packet-size` from 128 MB to 256 MB
+
+* fixed issue #2350
+
+* fixed issue #2349
+
+* fixed issue #2346
+
+* fixed issue #2342
+
+* change default string truncation length from 80 characters to 256 characters for
+  `print`/`printShell` functions in ArangoShell and arangod. This will emit longer
+  prefixes of string values before truncating them with `...`, which is helpful
+  for debugging.
+
+* always validate incoming JSON HTTP requests for duplicate attribute names
+
+  Incoming JSON data with duplicate attribute names will now be rejected as
+  invalid. Previous versions of ArangoDB only validated the uniqueness of
+  attribute names inside incoming JSON for some API endpoints, but not
+  consistently for all APIs.
+
+* don't let read-only transactions block the WAL collector
+
+* allow passing own `graphql-sync` module instance to Foxx GraphQL router
+
+* arangoexport can now export to csv format
+
+* arangoimp: fixed issue #2214
+
+* Foxx: automatically add CORS response headers
+
+* added "OPTIONS" to CORS `access-control-allow-methods` header
+
+* Foxx: Fix arangoUser sometimes not being set correctly
+
+* fixed issue #1974
+
+
+v3.2.alpha2 (2017-02-20)
+------------------------
+
+* ui: fixed issue #2065
+
+* ui: fixed a dashboard related memory issue
+
+* Internal javascript rest actions will now hide their stack traces to the client
+  unless maintainer mode is activated. Instead they will always log to the logfile
+
+* Removed undocumented internal HTTP API:
+  * PUT _api/edges
+
+  The documented GET _api/edges and the undocumented POST _api/edges remains unmodified.
+
+* updated V8 version to 5.7.0.0
+
+* change undocumented behaviour in case of invalid revision ids in
+  If-Match and If-None-Match headers from 400 (BAD) to 412 (PRECONDITION
+  FAILED).
+
+* change undocumented behaviour in case of invalid revision ids in
+  JavaScript document operations from 1239 ("illegal document revision")
+  to 1200 ("conflict").
+
+* added data export tool, arangoexport.
+
+  arangoexport can be used to export collections to json, jsonl or xml
+  and export a graph or collections to xgmml.
+
+* fixed a race condition when closing a connection
+
+* raised default hard limit on threads for very small to 64
+
+* fixed negative counting of http connection in UI
+
+
+v3.2.alpha1 (2017-02-05)
+------------------------
+
+* added figure `httpRequests` to AQL query statistics
+
+* removed revisions cache intermediate layer implementation
+
+* obsoleted startup options `--database.revision-cache-chunk-size` and
+  `--database.revision-cache-target-size`
+
+* fix potential port number over-/underruns
+
+* added startup option `--log.shorten-filenames` for controlling whether filenames
+  in log message should be shortened to just the filename with the absolute path
+
+* removed IndexThreadFeature, made `--database.index-threads` option obsolete
+
+* changed index filling to make it more parallel, dispatch tasks to boost::asio
+
+* more detailed stacktraces in Foxx apps
+
+* generated Foxx services now use swagger tags
+
+
+v3.1.18 (2017-XX-XX)
+--------------------
+
+* Fixed a dead-lock situation in cluster traversers, it could happen in
+  rare cases if the computation on one DBServer could be completed much earlier
+  than the other server. It could also be restricted to SmartGraphs only.
+
+* (Enterprise only) Fixed a bug in SmartGraph DepthFirstSearch. In some
+  more complicated queries, the maxDepth limit of 1 was not considered strictly
+  enough, causing the traverser to do unlimited depth searches.
+
+* fixed issue #2415
+
+
+v3.1.17 (2017-04-04)
+--------------------
+
+* (Enterprise only) fixed a bug where replicationFactor was not correctly
+  forwarded in SmartGraph creation.
+
+* fixed issue #2404
+
+* fixed issue #2397
+
+* ui - fixed smart graph option not appearing
+
+* fixed issue #2389
+
+* fixed issue #2400
+
+
+v3.1.16 (2017-03-27)
+--------------------
+
+* fixed issue #2392
+
+* try to raise file descriptors to at least 8192, warn otherwise
+
+* ui - aql editor improvements + updated ace editor version (memory leak)
+
+* fixed lost HTTP requests
+
+* ui - fixed some event issues
+
+* avoid name resolution when given connection string is a valid ip address
+
+* helps with issue #1842, bug in COLLECT statement in connection with LIMIT.
+
+* fix locking bug in cluster traversals
+
+* increase lock timeout defaults
+
+* increase various cluster timeouts
+
+* limit default target size for revision cache to 1GB, which is better for
+  tight RAM situations (used to be 40% of (totalRAM - 1GB), use
+  --database.revision-cache-target-size <VALUEINBYTES> to get back the
+  old behaviour
+
+* fixed a bug with restarted servers indicating status as "STARTUP"
+  rather that "SERVING" in Nodes UI.
+
+
+v3.1.15 (2017-03-20)
+--------------------
+
+* add logrotate configuration as requested in #2355
+
+* fixed issue #2376
+
+* ui - changed document api due a chrome bug
+
+* ui - fixed a submenu bug
+
+* added endpoint /_api/cluster/endpoints in cluster case to get all
+  coordinator endpoints
+
+* fix documentation of /_api/endpoint, declaring this API obsolete.
+
+* Foxx response objects now have a `type` method for manipulating the content-type header
+
+* Foxx tests now support `xunit` and `tap` reporters
+
+
+v3.1.14 (2017-03-13)
+--------------------
+
+* ui - added feature request (multiple start nodes within graph viewer) #2317
+
+* added missing locks to authentication cache methods
+
+* ui - added feature request (multiple start nodes within graph viewer) #2317
+
+* ui - fixed wrong merge of statistics information from different coordinators
+
+* ui - fixed issue #2316
+
+* ui - fixed wrong protocol usage within encrypted environment
+
+* fixed compile error on Mac Yosemite
+
+* minor UI fixes
+
+
+v3.1.13 (2017-03-06)
+--------------------
+
+* fixed variables parsing in GraphQL
+
+* fixed issue #2214
+
+* fixed issue #2342
+
+* changed thread handling to queue only user requests on coordinator
+
+* use exponential backoff when waiting for collection locks
+
+* repair short name server lookup in cluster in the case of a removed
+  server
+
+
+v3.1.12 (2017-02-28)
+--------------------
+
+* disable shell color escape sequences on Windows
+
+* fixed issue #2326
+
+* fixed issue #2320
+
+* fixed issue #2315
+
+* fixed a race condition when closing a connection
+
+* raised default hard limit on threads for very small to 64
+
+* fixed negative counting of http connection in UI
+
+* fixed a race when renaming collections
+
+* fixed a race when dropping databases
+
+
+v3.1.11 (2017-02-17)
+--------------------
+
+* fixed a race between connection closing and sending out last chunks of data to clients
+  when the "Connection: close" HTTP header was set in requests
+
+* ui: optimized smart graph creation usability
+
+* ui: fixed #2308
+
+* fixed a race in async task cancellation via `require("@arangodb/tasks").unregisterTask()`
+
+* fixed spuriously hanging threads in cluster AQL that could sit idle for a few minutes
+
+* fixed potential numeric overflow for big index ids in index deletion API
+
+* fixed sort issue in cluster, occurring when one of the local sort buffers of a
+  GatherNode was empty
+
+* reduce number of HTTP requests made for certain kinds of join queries in cluster,
+  leading to speedup of some join queries
+
+* supervision deals with demised coordinators correctly again
+
+* implement a timeout in TraverserEngineRegistry
+
+* agent communication reduced in large batches of append entries RPCs
+
+* inception no longer estimates RAFT timings
+
+* compaction in agents has been moved to a separate thread
+
+* replicated logs hold local timestamps
+
+* supervision jobs failed leader and failed follower revisited for
+  function in precarious stability situations
+
+* fixed bug in random number generator for 64bit int
+
+
+v3.1.10 (2017-02-02)
+--------------------
+
+* updated versions of bundled node modules:
+  - joi: from 8.4.2 to 9.2.0
+  - joi-to-json-schema: from 2.2.0 to 2.3.0
+  - sinon: from 1.17.4 to 1.17.6
+  - lodash: from 4.13.1 to 4.16.6
+
+* added shortcut for AQL ternary operator
+  instead of `condition ? true-part : false-part` it is now possible to also use a
+  shortcut variant `condition ? : false-part`, e.g.
+
+      FOR doc IN docs RETURN doc.value ?: 'not present'
+
+  instead of
+
+      FOR doc IN docs RETURN doc.value ? doc.value : 'not present'
+
 * fixed wrong sorting order in cluster, if an index was used to sort with many
 shards.
 
@@ -16,39 +392,57 @@ shards.
   setting the flag to `true` will make the count operation returned the per-shard
   counts for the collection:
 
-      db._create("test", { numberOfShards: 10 }); 
-      for (i = 0; i < 1000; ++i) { 
-        db.test.insert({value: i}); 
+      db._create("test", { numberOfShards: 10 });
+      for (i = 0; i < 1000; ++i) {
+        db.test.insert({value: i});
       }
       db.test.count(true);
 
-      { 
-	"s100058" : 99, 
-	"s100057" : 103, 
-	"s100056" : 100, 
-	"s100050" : 94, 
-	"s100055" : 90, 
-	"s100054" : 122, 
-	"s100051" : 109, 
-	"s100059" : 99, 
-	"s100053" : 95, 
-	"s100052" : 89 
+      {
+	"s100058" : 99,
+	"s100057" : 103,
+	"s100056" : 100,
+	"s100050" : 94,
+	"s100055" : 90,
+	"s100054" : 122,
+	"s100051" : 109,
+	"s100059" : 99,
+	"s100053" : 95,
+	"s100052" : 89
       }
 
 * added optional memory limit for AQL queries:
 
       db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { options: { memoryLimit: 100000 } });
 
-* added startup option --query.memory-limit
+  This option limits the default maximum amount of memory (in bytes) that a single
+  AQL query can use.
+  When a single AQL query reaches the specified limit value, the query will be
+  aborted with a *resource limit exceeded* exception. In a cluster, the memory
+  accounting is done per shard, so the limit value is effectively a memory limit per
+  query per shard.
+
+  The global limit value can be overriden per query by setting the *memoryLimit*
+  option value for individual queries when running an AQL query.
+
+* added server startup option `--query.memory-limit`
 
 * added convenience function to create vertex-centric indexes.
-Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
-That will create an index that can be used on OUTBOUND with filtering on the
-edge attribute `label`.
+
+  Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
+  That will create an index that can be used on OUTBOUND with filtering on the
+  edge attribute `label`.
 
 * change default log output for tools to stdout (instead of stderr)
 
 * added option -D to define a configuration file environment key=value
+
+* changed encoding behavior for URLs encoded in the C++ code of ArangoDB:
+  previously the special characters `-`, `_`, `~` and `.` were returned as-is 
+  after URL-encoding, now `.` will be encoded to be `%2e`. 
+  This also changes the behavior of how incoming URIs are processed: previously
+  occurrences of `..` in incoming request URIs were collapsed (e.g. `a/../b/` was 
+  collapsed to a plain `b/`). Now `..` in incoming request URIs are not collapsed.
 
 * Foxx request URL suffix is no longer unescaped
 
@@ -60,6 +454,8 @@ edge attribute `label`.
 * module.context.dependencies is now immutable
 
 * process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
+
+* add support for Swagger tags in Foxx
 
 
 v3.1.9 (XXXX-XX-XX)
@@ -160,7 +556,7 @@ v3.1.4 (2016-12-08)
 
 * agency RAFT timing estimates more conservative in waitForSync
   scenario
-  
+
 * agency RAFT timing estimates capped at maximum 2.0/10.0 for low/high
 
 
@@ -271,7 +667,7 @@ v3.1.1 (2016-11-15)
   produced an empty result
 
 * disallow updating `_from` and `_to` values of edges in Smart Graphs. Updating these
-  attributes would lead to potential redistribution of edges to other shards, which must be 
+  attributes would lead to potential redistribution of edges to other shards, which must be
   avoided.
 
 * fixed issue #2148
@@ -507,6 +903,8 @@ v3.1.alpha2 (2016-09-01)
 
 v3.0.13 (XXXX-XX-XX)
 --------------------
+
+* fixed issue #2315
 
 * fixed issue #2210
 
@@ -1159,7 +1557,7 @@ v2.8.12 (XXXX-XX-XX)
 v2.8.11 (2016-07-13)
 --------------------
 
-* fixed array index batch insertion issues for hash indexes that caused problems when 
+* fixed array index batch insertion issues for hash indexes that caused problems when
   no elements remained for insertion
 
 * fixed issue #1937
@@ -1601,9 +1999,9 @@ v2.8.0-beta7 (2016-01-06)
 * fixes for AQL optimizer and traversal
 
 * added `--create-collection-type` option to arangoimp
- 
-  This allows specifying the type of the collection to be created when 
-  `--create-collection` is set to `true`. 
+
+  This allows specifying the type of the collection to be created when
+  `--create-collection` is set to `true`.
 
 * Foxx export cache should no longer break if a broken app is loaded in the
   web admin interface.

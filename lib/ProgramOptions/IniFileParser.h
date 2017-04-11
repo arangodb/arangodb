@@ -23,7 +23,7 @@
 #ifndef ARANGODB_PROGRAM_OPTIONS_INI_FILE_PARSER_H
 #define ARANGODB_PROGRAM_OPTIONS_INI_FILE_PARSER_H 1
 
-#include "Basics/Common.h"
+#include "Basics/FileUtils.h"
 
 #include <fstream>
 #include <iostream>
@@ -56,13 +56,19 @@ class IniFileParser {
         "^[ \t]*(([-_A-Za-z0-9]*\\.)?[-_A-Za-z0-9]*)[ \t]*=[ \t]*(.*?)?[ \t]*$",
         std::regex::ECMAScript);
     // an include line
-    _matchers.include = std::regex(
-        "^[ \t]*@include[ \t]*([-_A-Za-z0-9/\\.]*)[ \t]*$", std::regex::ECMAScript);
+    _matchers.include =
+        std::regex("^[ \t]*@include[ \t]*([-_A-Za-z0-9/\\.]*)[ \t]*$",
+                   std::regex::ECMAScript);
   }
 
   // parse a config file. returns true if all is well, false otherwise
   // errors that occur during parse are reported to _options
   bool parse(std::string const& filename) {
+    if (filename.empty()) {
+      return _options->fail(
+          "unable to open configuration file: no configuration file specified");
+    }
+
     std::ifstream ifs(filename, std::ifstream::in);
 
     if (!ifs.is_open()) {
@@ -108,10 +114,28 @@ class IniFileParser {
         isEnterprise = true;
       } else if (std::regex_match(line, match, _matchers.include)) {
         // found include
-        std::string option;
-        std::string value(match[1].str());
+        std::string include(match[1].str());
 
-        _includes.emplace_back(value);
+        if (!basics::StringUtils::isSuffix(include, ".conf")) {
+          include += ".conf";
+        }
+        if (_seen.find(include) != _seen.end()) {
+          LOG_TOPIC(FATAL, Logger::CONFIG) << "recursive include of file '"
+                                           << include << "'";
+          FATAL_ERROR_EXIT();
+        }
+
+        _seen.insert(include);
+
+        if (!basics::FileUtils::isRegularFile(include)) {
+          auto dn = basics::FileUtils::dirname(filename);
+          include = basics::FileUtils::buildFilename(dn, include);
+        }
+
+        LOG_TOPIC(DEBUG, Logger::CONFIG) << "reading include file '" << include
+                                         << "'";
+
+        parse(include);
       } else if (std::regex_match(line, match, _matchers.assignment)) {
         // found assignment
         std::string option;
@@ -151,12 +175,9 @@ class IniFileParser {
     return true;
   }
 
-  // seen includes
-  std::vector<std::string> const& includes() const { return _includes; }
-
  private:
   ProgramOptions* _options;
-  std::vector<std::string> _includes;
+  std::set<std::string> _seen;
 
   struct {
     std::regex comment;

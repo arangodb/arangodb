@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateListBlock.h"
+#include "Aql/AqlItemBlock.h"
+#include "Aql/AqlValue.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
@@ -120,11 +122,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
       size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
-      res.reset(new AqlItemBlock(
-        _engine->getQuery()->resourceMonitor(),
-        toSend,
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
-      );
+      res.reset(requestBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       inheritRegisters(cur, res.get(), _pos);
 
@@ -156,7 +154,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
       _seen = 0;
       // advance read position in the current block . . .
       if (++_pos == cur->size()) {
-        delete cur;
+        returnBlock(cur);
         _buffer.pop_front();  // does not throw
         _pos = 0;
       }
@@ -221,7 +219,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
       _index = 0;
       _thisBlock = 0;
       _seen = 0;
-      delete cur;
+      returnBlock(cur);
       _buffer.pop_front();
       _pos = 0;
     }

@@ -110,6 +110,8 @@ Creates a new collection with a given name. The request must contain an
 object with the following attributes.
 
 
+@RESTRETURNCODES
+
 @RESTRETURNCODE{400}
 If the *collection-name* is missing, then a *HTTP 400* is
 returned.

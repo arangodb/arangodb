@@ -49,6 +49,11 @@ Inception::~Inception() { shutdown(); }
 /// - Create outgoing gossip.
 /// - Send to all peers
 void Inception::gossip() {
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens during controlled shutdown
+    return;
+  }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Entering gossip phase ...";
   using namespace std::chrono;
@@ -93,7 +98,7 @@ void Inception::gossip() {
           std::make_unique<std::unordered_map<std::string, std::string>>();
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
             << out->toJson() << " to peer " << clientid;
-        arangodb::ClusterComm::instance()->asyncRequest(
+        cc->asyncRequest(
           clientid, 1, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
@@ -116,7 +121,7 @@ void Inception::gossip() {
           std::make_unique<std::unordered_map<std::string, std::string>>();
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
             << out->toJson() << " to pool member " << clientid;
-        arangodb::ClusterComm::instance()->asyncRequest(
+        cc->asyncRequest(
           clientid, 1, pair.second, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
@@ -156,6 +161,11 @@ void Inception::gossip() {
 
 
 bool Inception::restartingActiveAgent() {
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens during controlled shutdown
+    return false;
+  }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Restarting agent from persistence ...";
 
@@ -200,7 +210,7 @@ bool Inception::restartingActiveAgent() {
     std::vector<std::string> informed;
     
     for (auto& p : gp) {
-      auto comres = arangodb::ClusterComm::instance()->syncRequest(
+      auto comres = cc->syncRequest(
         clientId, 1, p, rest::RequestType::POST, path, greetstr,
         std::unordered_map<std::string, std::string>(), 2.0);
       if (comres->status == CL_COMM_SENT) {
@@ -224,7 +234,7 @@ bool Inception::restartingActiveAgent() {
       
       if (p.first != myConfig.id() && p.first != "") {
         
-        auto comres = arangodb::ClusterComm::instance()->syncRequest(
+        auto comres = cc->syncRequest(
           clientId, 1, p.second, rest::RequestType::POST, path, greetstr,
           std::unordered_map<std::string, std::string>(), 2.0);
         
@@ -249,7 +259,7 @@ bool Inception::restartingActiveAgent() {
 
               // Contact leader to update endpoint
               if (theirLeaderId != theirId) { 
-                comres = arangodb::ClusterComm::instance()->syncRequest(
+                comres = cc->syncRequest(
                   clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
                   greetstr, std::unordered_map<std::string, std::string>(), 2.0);
                 // Failed to contact leader move on until we do. This way at
@@ -365,6 +375,11 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 
 
 bool Inception::estimateRAFTInterval() {
+  auto cc = arangodb::ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens during controlled shutdown
+    return false;
+  }
 
   using namespace std::chrono;
   LOG_TOPIC(INFO, Logger::AGENCY) << "Estimating RAFT timeouts ...";
@@ -382,7 +397,7 @@ bool Inception::estimateRAFTInterval() {
         std::string clientid = peer.first + std::to_string(i);
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
-        arangodb::ClusterComm::instance()->asyncRequest(
+        cc->asyncRequest(
           clientid, 1, peer.second, rest::RequestType::GET, path,
           std::make_shared<std::string>(), hf,
           std::make_shared<MeasureCallback>(this, peer.second, timeStamp()),
@@ -448,7 +463,7 @@ bool Inception::estimateRAFTInterval() {
     for (auto const& peer : config.pool()) {
       if (peer.first != myid) {
         auto clientId = "1";
-        auto comres   = arangodb::ClusterComm::instance()->syncRequest(
+        auto comres   = cc->syncRequest(
           clientId, 1, peer.second, rest::RequestType::POST, path,
           measjson, std::unordered_map<std::string, std::string>(), 5.0);
       }
@@ -541,8 +556,10 @@ void Inception::run() {
       LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
       _agent->ready(true);
     } else {
+      if (!this->isStopping()) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
           << "Unable to restart with persisted pool. Fatal exit.";
+      }
         FATAL_ERROR_EXIT();
       // FATAL ERROR
     }
@@ -562,9 +579,9 @@ void Inception::run() {
 
   // If command line RAFT timings have not been set explicitly
   // Try good estimate of RAFT time limits
-  if (!config.cmdLineTimings()) {
+  /*if (!config.cmdLineTimings()) {
     estimateRAFTInterval();
-  }
+    }*/
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
   _agent->ready(true);

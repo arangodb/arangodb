@@ -40,11 +40,14 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class VocbaseContext : public arangodb::RequestContext {
+class VocbaseContext final : public arangodb::RequestContext {
  public:
   static double ServerSessionTtl;
 
  public:
+  VocbaseContext(VocbaseContext const&) = delete;
+  VocbaseContext& operator=(VocbaseContext const&) = delete;
+
   VocbaseContext(GeneralRequest*, TRI_vocbase_t*);
   ~VocbaseContext();
 
@@ -72,7 +75,7 @@ class VocbaseContext : public arangodb::RequestContext {
   /// @brief checks the authentication header and sets user if successful
   //////////////////////////////////////////////////////////////////////////////
 
-  rest::ResponseCode authenticateRequest(bool* forceOpen);
+  rest::ResponseCode authenticateRequest();
 
  private:
   TRI_vocbase_t* _vocbase;

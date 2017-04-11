@@ -94,7 +94,7 @@
     constant2name[DATABASE_EXISTING] = 'existing';
 
     // path to version file
-    const versionFile = internal.db._path() + '/VERSION';
+    let versionFile = internal.db._versionFilename();
 
     // all defined tasks
     const allTasks = [];
@@ -108,7 +108,7 @@
     // special logger with database name
     const logger = {
       info: function (msg) {
-        console.log("In database '%s': %s", db._name(), msg);
+        console.debug("In database '%s': %s", db._name(), msg);
       },
 
       error: function (msg) {
@@ -237,14 +237,14 @@
       }
 
       if (0 < activeTasks.length) {
-        logger.log('Found ' + allTasks.length + ' defined task(s), ' +
+        logger.info('Found ' + allTasks.length + ' defined task(s), ' +
           activeTasks.length + ' task(s) to run');
-        logger.log('state ' + constant2name[cluster] + '/' +
+        logger.info('state ' + constant2name[cluster] + '/' +
           constant2name[database] + ', tasks ' + activeTasks.map(function (a) {
             return a.name;
           }).join(', '));
       } else {
-        logger.log('Database is up-to-date (' + (lastVersion || '-') +
+        logger.info('Database is up-to-date (' + (lastVersion || '-') +
           '/' + constant2name[cluster] + '/' + constant2name[database] + ')');
       }
 
@@ -310,7 +310,7 @@
       }
 
       if (0 < activeTasks.length) {
-        logger.log(procedure + ' successfully finished');
+        logger.info(procedure + ' successfully finished');
       }
 
       // successfully finished
@@ -375,11 +375,13 @@
         const cv = Math.floor(currentVersion / 100);
 
         if (lv === cv || (lv === 300 && cv === 301)) {
+          global.UPGRADE_TYPE = 1;
           return runTasks(cluster, DATABASE_EXISTING, lastVersion);
         }
 
         // downgrade??
         if (lastVersion > currentVersion) {
+          global.UPGRADE_TYPE = 2;
           logger.error('Database directory version (' + lastVersion +
             ') is higher than current version (' + currentVersion + ').');
 
@@ -391,19 +393,22 @@
           return true;
         }
 
-        // upgrade
+        // upgrade??
         if (lastVersion < currentVersion) {
           if (args && args.upgrade) {
+            global.UPGRADE_TYPE = 3;
             return runTasks(cluster, DATABASE_UPGRADE, lastVersion);
           }
-
+        
+          global.UPGRADE_TYPE = 4;
+          
           logger.error('Database directory version (' + lastVersion +
             ') is lower than current version (' + currentVersion + ').');
 
           logger.error('----------------------------------------------------------------------');
           logger.error('It seems like you have upgraded the ArangoDB binary.');
           logger.error('If this is what you wanted to do, please restart with the');
-          logger.error('  --upgrade');
+          logger.error('  --database.auto-upgrade true');
           logger.error('option to upgrade the data in the database directory.');
 
           logger.error('Normally you can use the control script to upgrade your database');
@@ -412,12 +417,15 @@
           logger.error('  /etc/init.d/arangodb start');
           logger.error('----------------------------------------------------------------------');
 
-          // do not start unless started with --upgrade
+          // do not start unless started with --database.auto-upgrade
           return false;
         }
 
         // we should never get here
         return false;
+      } else {
+        // no VERSION file found
+        global.UPGRADE_TYPE = 5;
       }
 
       // VERSION file does not exist, we are running on a new database
@@ -781,6 +789,14 @@
 
   // set this global variable to inform the server we actually got until here...
   global.UPGRADE_STARTED = true;
+        
+  // 0 = undecided
+  // 1 = same version
+  // 2 = downgrade
+  // 3 = upgrade
+  // 4 = requires upgrade
+  // 5 = no version found
+  global.UPGRADE_TYPE = 0;
 
   // and run the upgrade
   return upgrade();

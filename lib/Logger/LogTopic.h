@@ -40,23 +40,29 @@ class LogTopic {
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
   static void setLogLevel(std::string const&, LogLevel);
   static LogTopic* lookup(std::string const&);
+  static std::string lookup(size_t topicId); 
 
  public:
   explicit LogTopic(std::string const& name);
 
   LogTopic(std::string const& name, LogLevel level);
 
-  LogTopic(LogTopic const& that) noexcept : _id(that._id), _name(that._name) {
+  LogTopic(LogTopic const& that)
+      : _id(that._id), _name(that._name), _displayName(that._displayName) {
     _level.store(that._level, std::memory_order_relaxed);
   }
 
-  LogTopic(LogTopic&& that) noexcept : _id(that._id), _name(that._name) {
+  LogTopic(LogTopic&& that) noexcept
+      : _id(that._id),
+        _name(std::move(that._name)),
+        _displayName(std::move(that._displayName)) {
     _level.store(that._level, std::memory_order_relaxed);
   }
 
  public:
   size_t id() const { return _id; }
   std::string const& name() const { return _name; }
+  std::string const& displayName() const { return _displayName; }
   LogLevel level() const { return _level.load(std::memory_order_relaxed); }
 
   void setLogLevel(LogLevel level) {
@@ -68,8 +74,9 @@ class LogTopic {
   static std::map<std::string, LogTopic*> _names;
 
  private:
-  size_t _id;
-  std::string _name;
+  size_t const _id;
+  std::string const _name;
+  std::string _displayName;
   std::atomic<LogLevel> _level;
 };
 }

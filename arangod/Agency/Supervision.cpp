@@ -105,9 +105,9 @@ void Supervision::upgradeAgency() {
 std::vector<check_t> Supervision::checkDBServers() {
 
   std::vector<check_t> ret;
-  Node::Children const& machinesPlanned =
+  auto const& machinesPlanned =
       _snapshot(planDBServersPrefix).children();
-  Node::Children const serversRegistered =
+  auto const& serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
 
   std::vector<std::string> todelete;
@@ -148,7 +148,7 @@ std::vector<check_t> Supervision::checkDBServers() {
       good = true;
     }
 
-    query_t report = std::make_shared<Builder>();
+    auto report = std::make_shared<Builder>();
     report->openArray();
     report->openArray();
     report->openObject();
@@ -158,7 +158,6 @@ std::vector<check_t> Supervision::checkDBServers() {
     report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
     report->add("Role", VPackValue("DBServer"));
     report->add("ShortName", VPackValue(shortName));
-
     auto endpoint = serversRegistered.find(serverID);
     if (endpoint != serversRegistered.end()) {
       endpoint = endpoint->second->children().find("endpoint");
@@ -197,25 +196,24 @@ std::vector<check_t> Supervision::checkDBServers() {
       
     } else {
       
-      std::chrono::seconds t{0};
-      t = std::chrono::duration_cast<std::chrono::seconds>(
+      auto elapsed = std::chrono::duration<double>(
         std::chrono::system_clock::now() -
-        stringToTimepoint(lastHeartbeatAcked));
+        stringToTimepoint(lastHeartbeatAcked)).count();
       
       auto secondsSinceLeader = std::chrono::duration<double>(
         std::chrono::system_clock::now() - _agent->leaderSince()).count();
       
       // Failed servers are considered only after having taken on leadership
       // for at least grace period
-      if (t.count() > _gracePeriod && secondsSinceLeader > _gracePeriod) {
-        if (lastStatus == "BAD") {
+      if (elapsed > _gracePeriod && secondsSinceLeader > _gracePeriod) {
+        if (lastStatus == Supervision::HEALTH_STATUS_BAD) {
           reportPersistent = true;
-          report->add("Status", VPackValue("FAILED"));
+          report->add("Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
           FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
                            "supervision", _agencyPrefix, serverID);
         }
       } else {
-        report->add("Status", VPackValue("BAD"));
+        report->add("Status", VPackValue(Supervision::HEALTH_STATUS_BAD));
       }
       
     }
@@ -258,9 +256,9 @@ std::vector<check_t> Supervision::checkDBServers() {
 std::vector<check_t> Supervision::checkCoordinators() {
 
   std::vector<check_t> ret;
-  Node::Children const& machinesPlanned =
+  auto const& machinesPlanned =
       _snapshot(planCoordinatorsPrefix).children();
-  Node::Children const serversRegistered =
+  auto const& serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
 
   std::string currentFoxxmaster;
@@ -297,7 +295,9 @@ std::vector<check_t> Supervision::checkCoordinators() {
 
     try {  // Existing
       lastHeartbeatTime =
-          _transient(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+        _transient(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+      lastHeartbeatAcked =
+        _transient(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
       lastStatus = _transient(healthPrefix + serverID + "/Status").toJson();
       if (lastHeartbeatTime != heartbeatTime) {  // Update
         good = true;
@@ -344,11 +344,15 @@ std::vector<check_t> Supervision::checkCoordinators() {
           VPackValue(timepointToString(std::chrono::system_clock::now())));
       report->add("Status", VPackValue(Supervision::HEALTH_STATUS_GOOD));
     } else {
-      std::chrono::seconds t{0};
-      t = std::chrono::duration_cast<std::chrono::seconds>(
-          std::chrono::system_clock::now() -
-          stringToTimepoint(lastHeartbeatAcked));
-      if (t.count() > _gracePeriod) {  // Failure
+
+      auto elapsed = std::chrono::duration<double>(
+        std::chrono::system_clock::now() -
+        stringToTimepoint(lastHeartbeatAcked)).count();
+      
+      auto secondsSinceLeader = std::chrono::duration<double>(
+        std::chrono::system_clock::now() - _agent->leaderSince()).count();
+      
+      if (elapsed > _gracePeriod && secondsSinceLeader > _gracePeriod) {
         if (lastStatus == Supervision::HEALTH_STATUS_BAD) {
           report->add("Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
           reportPersistent = true;
@@ -445,7 +449,7 @@ void Supervision::run() {
       // some other server in the cluster. Since the supervision does not
       // make sense at all without other ArangoDB servers, we wait pretty
       // long here before giving up:
-      if (!updateAgencyPrefix(1000, 1)) {
+      if (!updateAgencyPrefix(1000)) {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
             << "Cannot get prefix from Agency. Stopping supervision for good.";
         return;
@@ -501,8 +505,8 @@ bool Supervision::isShuttingDown() {
 // Guarded by caller
 std::string Supervision::serverHealth(std::string const& serverName) {
   try {
-    const std::string serverStatus(healthPrefix + serverName + "/Status");
-    const std::string status = _snapshot(serverStatus).getString();
+    std::string const serverStatus(healthPrefix + serverName + "/Status");
+    auto const status = _snapshot(serverStatus).getString();
     return status;
   } catch (...) {
     LOG_TOPIC(WARN, Logger::AGENCY)
@@ -515,7 +519,7 @@ std::string Supervision::serverHealth(std::string const& serverName) {
 void Supervision::handleShutdown() {
   _selfShutdown = true;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for clients to shut down";
-  Node::Children const& serversRegistered =
+  auto const& serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
   bool serversCleared = true;
   for (auto const& server : serversRegistered) {
@@ -536,7 +540,7 @@ void Supervision::handleShutdown() {
 
   if (serversCleared) {
     if (_agent->leading()) {
-      query_t del = std::make_shared<Builder>();
+      auto del = std::make_shared<Builder>();
       del->openArray();
       del->openArray();
       del->openObject();
@@ -548,11 +552,13 @@ void Supervision::handleShutdown() {
       del->close();
       auto result = _agent->write(del);
       if (result.indices.size() != 1) {
-        LOG(ERR) << "Invalid resultsize of " << result.indices.size()
-                 << " found during shutdown";
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Invalid resultsize of " << result.indices.size()
+          << " found during shutdown";
       } else {
-        if (!_agent->waitFor(result.indices.at(0))) {
-          LOG(ERR) << "Result was not written to followers during shutdown";
+        if (_agent->waitFor(result.indices.at(0)) != Agent::raft_commit_t::OK) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "Result was not written to followers during shutdown";
         }
       }
     }
@@ -576,7 +582,7 @@ void Supervision::workJobs() {
   Node::Children const& pends = _snapshot(pendingPrefix).children();
 
   for (auto const& todoEnt : todos) {
-    Node const& job = *todoEnt.second;
+    auto const& job = *todoEnt.second;
 
     std::string jobType = job("type").getString(),
                 jobId = job("jobId").getString(),
@@ -601,7 +607,7 @@ void Supervision::workJobs() {
   }
 
   for (auto const& pendEnt : pends) {
-    Node const& job = *pendEnt.second;
+    auto const& job = *pendEnt.second;
 
     std::string jobType = job("type").getString(),
                 jobId = job("jobId").getString(),
@@ -720,7 +726,7 @@ void Supervision::shrinkCluster() {
   }
   
   // Get servers from plan
-  std::vector<std::string> availServers = Job::availableServers(_snapshot);
+  auto availServers = Job::availableServers(_snapshot);
 
   size_t targetNumDBServers;
   try {
@@ -764,7 +770,7 @@ void Supervision::shrinkCluster() {
      **/
     // Find greatest replication factor among all collections
     uint64_t maxReplFact = 1;
-    Node::Children const& databases = _snapshot(planColPrefix).children();
+    auto const& databases = _snapshot(planColPrefix).children();
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
         uint64_t replFact{0};
@@ -782,7 +788,7 @@ void Supervision::shrinkCluster() {
         }
         if (uselessFailedServers.size() > 0) {
           try {
-            Node::Children const& shards =
+            auto const& shards =
                 (*collptr.second)("shards").children();
             for (auto const& shard : shards) {
               auto const& children = shard.second->children();
@@ -855,7 +861,7 @@ bool Supervision::start(Agent* agent) {
 }
 
 // Get agency prefix fron agency
-bool Supervision::updateAgencyPrefix(size_t nTries, int intervalSec) {
+bool Supervision::updateAgencyPrefix(size_t nTries, double intervalSec) {
   // Try nTries to get agency's prefix in intervals
   while (!this->isStopping()) {
     MUTEX_LOCKER(locker, _lock);
@@ -866,7 +872,7 @@ bool Supervision::updateAgencyPrefix(size_t nTries, int intervalSec) {
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency prefix is " << _agencyPrefix;
       return true;
     }
-    std::this_thread::sleep_for(std::chrono::seconds(intervalSec));
+    std::this_thread::sleep_for(std::chrono::duration<double>(intervalSec));
   }
 
   // Stand-alone agency
@@ -926,7 +932,7 @@ void Supervision::beginShutdown() {
 void Supervision::missingPrototype() {
 
   auto const& plannedDBs = _snapshot(planColPrefix).children();
-  auto available = Job::availableServers(_snapshot);
+  //auto available = Job::availableServers(_snapshot);
   
   // key: prototype, value: clone
   //std::multimap<std::string, std::string> likeness;

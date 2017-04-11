@@ -69,6 +69,10 @@
       return shortName;
     },
 
+    getDatabaseShortName: function (id) {
+      return this.getCoordinatorShortName(id);
+    },
+
     getDatabaseServerId: function (shortname) {
       var id;
       if (window.clusterHealth) {
@@ -290,7 +294,6 @@
         );
         if (!menu.disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
-            $('#subNavigationBar .breadcrumb').html('');
             window.App.navigate(menu.route, {trigger: true});
           });
         }

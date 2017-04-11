@@ -24,7 +24,6 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
-#include "AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Variable.h"
 
@@ -36,17 +35,17 @@
 #define DEBUG_END_BLOCK()                                                     \
   }                                                                           \
   catch (arangodb::basics::Exception const& ex) {                             \
-    LOG(WARN) << "arango exception caught in " << __FILE__ << ":" << __LINE__ \
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "arango exception caught in " << __FILE__ << ":" << __LINE__ \
               << ":" << ex.what();                                            \
     throw;                                                                    \
   }                                                                           \
   catch (std::exception const& ex) {                                          \
-    LOG(WARN) << "std exception caught in " << __FILE__ << ":" << __LINE__    \
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "std exception caught in " << __FILE__ << ":" << __LINE__    \
               << ": " << ex.what();                                           \
     throw;                                                                    \
   }                                                                           \
   catch (...) {                                                               \
-    LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__;       \
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "exception caught in " << __FILE__ << ":" << __LINE__;       \
     throw;                                                                    \
   }  //
 
@@ -58,9 +57,12 @@
 #endif
 
 namespace arangodb {
-class Transaction;
+namespace transaction {
+class Methods;
+}
 
 namespace aql {
+class AqlItemBlock;
 
 /// @brief sort element for block, consisting of register, sort direction, 
 /// and a possible attribute path to dig into the document
@@ -158,10 +160,10 @@ class ExecutionBlock {
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager
-  AqlItemBlock* requestBlock(size_t, RegisterId);
+  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return an AqlItemBlock to the memory manager
-  void returnBlock(AqlItemBlock*&);
+  void returnBlock(AqlItemBlock*& block);
 
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned
@@ -206,7 +208,7 @@ class ExecutionBlock {
 
   ExecutionNode const* getPlanNode() const { return _exeNode; }
   
-  arangodb::Transaction* transaction() const { return _trx; }
+  transaction::Methods* transaction() const { return _trx; }
 
  protected:
   /// @brief generic method to get or skip some
@@ -217,7 +219,7 @@ class ExecutionBlock {
   ExecutionEngine* _engine;
 
   /// @brief the transaction for this query
-  arangodb::Transaction* _trx;
+  transaction::Methods* _trx;
 
   /// @brief our corresponding ExecutionNode node
   ExecutionNode const* _exeNode;

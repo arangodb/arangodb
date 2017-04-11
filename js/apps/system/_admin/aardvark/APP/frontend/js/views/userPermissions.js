@@ -14,6 +14,14 @@
       this.username = options.username;
     },
 
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     events: {
       'click #userPermissionView [type="checkbox"]': 'setPermission'
     },
@@ -95,8 +103,6 @@
 
       this.breadcrumb();
 
-      arangoHelper.buildUserSubNav(this.currentUser.get('user'), 'Permissions');
-
       var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.currentUser.get('user')) + '/database');
       if (frontendConfig.db === '_system') {
         url = arangoHelper.databaseUrl('/_api/user/root/database');
@@ -146,9 +152,18 @@
     },
 
     breadcrumb: function () {
-      $('#subNavigationBar .breadcrumb').html(
-        'User: ' + this.currentUser.get('user')
-      );
+      var self = this;
+
+      if (window.App.naviView) {
+        $('#subNavigationBar .breadcrumb').html(
+          'User: ' + this.currentUser.get('user')
+        );
+        arangoHelper.buildUserSubNav(self.currentUser.get('user'), 'Permissions');
+      } else {
+        window.setTimeout(function () {
+          self.breadcrumb();
+        }, 100);
+      }
     }
 
   });

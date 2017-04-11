@@ -79,7 +79,8 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   bool importJson(std::string const& collectionName,
-                  std::string const& fileName);
+                  std::string const& fileName,
+                  bool assumeLinewise);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the action to carry out on duplicate _key
@@ -136,6 +137,10 @@ class ImportHelper {
 
   void setCreateCollectionType(std::string const& value) {
     _createCollectionType = value;
+  }
+
+  void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
+    _translations = translations;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -263,6 +268,8 @@ class ImportHelper {
   size_t _rowOffset;
   size_t _rowsToSkip;
 
+  int64_t _keyColumn;
+
   std::string _onDuplicateAction;
   std::string _collectionName;
   std::string _fromCollectionPrefix;
@@ -270,6 +277,8 @@ class ImportHelper {
   arangodb::basics::StringBuffer _lineBuffer;
   arangodb::basics::StringBuffer _outputBuffer;
   std::string _firstLine;
+
+  std::unordered_map<std::string, std::string> _translations;
 
   bool _hasError;
   std::string _errorMessage;

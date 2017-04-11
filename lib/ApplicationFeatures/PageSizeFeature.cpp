@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PageSizeFeature.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -37,5 +38,5 @@ PageSizeFeature::PageSizeFeature(
 
 void PageSizeFeature::prepare() {
   PageSize = static_cast<size_t>(getpagesize());
-  LOG(TRACE) << "page size is " << PageSize;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
 }

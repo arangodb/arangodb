@@ -28,7 +28,6 @@
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationOptions.h"
-#include "Aql/Query.h"
 #include "Aql/types.h"
 #include "Basics/SmallVector.h"
 
@@ -40,6 +39,7 @@ struct AstNode;
 class CalculationNode;
 class CollectNode;
 class ExecutionNode;
+class Query;
 
 class ExecutionPlan {
  public:
@@ -60,6 +60,8 @@ class ExecutionPlan {
   /// @brief create an execution plan from VelocyPack
   static ExecutionPlan* instantiateFromVelocyPack(
       Ast* ast, arangodb::velocypack::Slice const);
+  
+  ExecutionPlan* clone(Ast*);
 
   /// @brief clone the plan by recursively cloning starting from the root
   ExecutionPlan* clone();
@@ -69,12 +71,14 @@ class ExecutionPlan {
   ExecutionPlan* clone(Query const&);
   
   /// @brief export to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose) const;
   
-  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
+  
+  bool isResponsibleForInitialize() const { return _isResponsibleForInitialize; }
 
   /// @brief note that an optimizer rule was applied
   inline void addAppliedRule(int level) { _appliedRules.emplace_back(level); }
@@ -298,6 +302,8 @@ class ExecutionPlan {
 
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
+
+  bool _isResponsibleForInitialize;
 
   /// @brief auto-increment sequence for node ids
   size_t _nextId;

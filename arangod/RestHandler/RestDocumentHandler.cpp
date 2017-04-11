@@ -27,8 +27,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
+#include "Transaction/Hints.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -103,11 +105,8 @@ bool RestDocumentHandler::createDocument() {
   }
 
   bool parseSuccess = true;
-  // copy default options
-  VPackOptions options = VPackOptions::Defaults;
-  options.checkAttributeUniqueness = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     return false;
   }
@@ -121,17 +120,17 @@ bool RestDocumentHandler::createDocument() {
   opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
 
   // find and load collection given by name or identifier
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
   if (!isMultiple) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -149,7 +148,7 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -201,23 +200,19 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   // check for an etag
   bool isValidRevision;
-  TRI_voc_rid_t const ifNoneRid =
+  TRI_voc_rid_t ifNoneRid =
       extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-    return false;
+    ifNoneRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
   OperationOptions options;
   options.ignoreRevs = true;
 
-  TRI_voc_rid_t const ifRid =
+  TRI_voc_rid_t ifRid =
       extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-    return false;
+    ifRid = UINT64_MAX;    // an impossible rev, so precondition failed will happen
   }
 
   VPackBuilder builder;
@@ -232,18 +227,18 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collection,
-                                  TRI_TRANSACTION_READ);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+                                  AccessMode::Type::READ);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // ...........................................................................
   // inside read transaction
   // ...........................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collection, res, "");
     return false;
   }
@@ -264,7 +259,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collection, res, key);
     return false;
   }
@@ -366,7 +361,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     return false;
   }
@@ -394,9 +389,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     bool isValidRevision;
     revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-      return false;
+      revision = UINT64_MAX;   // an impossible revision, so precondition failed
     }
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
     if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
@@ -421,20 +414,20 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // find and load collection given by name or identifier
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   if (!isArrayCase) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   // ...........................................................................
   // inside write transaction
   // ...........................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -460,7 +453,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, key, 0);
     return false;
   }
@@ -500,9 +493,7 @@ bool RestDocumentHandler::deleteDocument() {
     bool isValidRevision = false;
     revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-      return false;
+      revision = UINT64_MAX;   // an impossible revision, so precondition failed
     }
   }
 
@@ -512,7 +503,7 @@ bool RestDocumentHandler::deleteDocument() {
   opOptions.waitForSync = extractBooleanParameter(StaticStrings::WaitForSyncString, false);
   opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
 
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
 
   VPackBuilder builder;
   VPackSlice search;
@@ -532,7 +523,7 @@ bool RestDocumentHandler::deleteDocument() {
   } else {
     try {
       TRI_ASSERT(_request != nullptr);
-      builderPtr = _request->toVelocyPackBuilderPtr(transactionContext->getVPackOptions());
+      builderPtr = _request->toVelocyPackBuilderPtr();
     } catch (...) {
       // If an error occurs here the body is not parsable. Fail with bad
       // parameter
@@ -550,14 +541,14 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   if (suffixes.size() == 2 || !search.isArray()) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -571,7 +562,7 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, key);
     return false;
   }
@@ -602,17 +593,17 @@ bool RestDocumentHandler::readManyDocuments() {
   OperationOptions opOptions;
   opOptions.ignoreRevs = extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
 
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
 
   // ...........................................................................
   // inside read transaction
   // ...........................................................................
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -629,7 +620,7 @@ bool RestDocumentHandler::readManyDocuments() {
     return false;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
   }

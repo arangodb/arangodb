@@ -32,8 +32,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -41,7 +41,7 @@ using namespace arangodb::aql;
 
 /// @brief create a collection wrapper
 Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
-                       TRI_transaction_type_e accessType)
+                       AccessMode::Type accessType)
     : collection(nullptr),
       currentShard(),
       name(name),
@@ -62,7 +62,7 @@ TRI_voc_cid_t Collection::cid() const {
 }
   
 /// @brief count the number of documents in the collection
-size_t Collection::count() const {
+size_t Collection::count(transaction::Methods* trx) const {
   if (numDocuments == UNINITIALIZED) {
     if (arangodb::ServerState::instance()->isCoordinator()) {
       // cluster case
@@ -80,7 +80,7 @@ size_t Collection::count() const {
     } else {
       // local case
       // cache the result
-      numDocuments = static_cast<int64_t>(collection->numberDocuments());
+      numDocuments = static_cast<int64_t>(collection->numberDocuments(trx));
     }
   }
 
@@ -109,8 +109,33 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     }
     return res;
   }
+
   return clusterInfo->getShardList(
       arangodb::basics::StringUtils::itoa(getPlanId()));
+}
+
+/// @brief returns the filtered list of shard ids of a collection
+std::shared_ptr<std::vector<std::string>> Collection::shardIds(std::unordered_set<std::string> const& includedShards) const {
+  // use the simple method first
+  auto copy = shardIds();
+
+  if (includedShards.empty()) {
+    // no shards given => return them all!
+    return copy;
+  }
+
+  // copy first as we will modify the result
+  auto result = std::make_shared<std::vector<std::string>>();
+
+  // post-filter the result
+  for (auto const& it : *copy) {
+    if (includedShards.find(it) == includedShards.end()) {
+      continue;
+    }
+    result->emplace_back(it);
+  }
+
+  return result;
 }
 
 /// @brief returns the shard keys of a collection
@@ -123,9 +148,17 @@ std::vector<std::string> Collection::shardKeys() const {
   return keys;
 }
 
+size_t Collection::numberOfShards() const {
+  return getCollection()->numberOfShards();
+}
+
 /// @brief whether or not the collection uses the default sharding
 bool Collection::usesDefaultSharding() const {
   return getCollection()->usesDefaultShardKeys();
+}
+
+void Collection::setCollection(arangodb::LogicalCollection* coll) {
+  collection = coll;
 }
 
 /// @brief either use the set collection or get one from ClusterInfo:
@@ -137,4 +170,14 @@ std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   std::shared_ptr<LogicalCollection> dummy;   // intentionally empty
   // Use the aliasing constructor:
   return std::shared_ptr<LogicalCollection>(dummy, collection);
+}
+
+/// @brief check smartness of the underlying collection
+bool Collection::isSmart() const {
+  return getCollection()->isSmart();
+}
+
+/// @brief check if collection is a satellite collection
+bool Collection::isSatellite() const {
+  return getCollection()->isSatellite();
 }

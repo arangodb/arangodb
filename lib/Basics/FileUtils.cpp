@@ -32,10 +32,11 @@
 #endif
 
 #include "Basics/Exceptions.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
-#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
@@ -81,13 +82,22 @@ void normalizePath(std::string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string buildFilename(char const* path, char const* name) {
+  TRI_ASSERT(path != nullptr);
+  TRI_ASSERT(name != nullptr);
+
   std::string result(path);
 
   if (!result.empty()) {
     result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
   }
 
-  result.append(name);
+  if (!result.empty() && *name == TRI_DIR_SEPARATOR_CHAR) {
+    // skip initial forward slash in name to avoid having two forward slashes in
+    // result
+    result.append(name + 1);
+  } else {
+    result.append(name);
+  }
   normalizePath(result);  // in place
 
   return result;
@@ -100,44 +110,35 @@ std::string buildFilename(std::string const& path, std::string const& name) {
     result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
   }
 
-  result.append(name);
+  if (!result.empty() && !name.empty() && name[0] == TRI_DIR_SEPARATOR_CHAR) {
+    // skip initial forward slash in name to avoid having two forward slashes in
+    // result
+    result.append(name.c_str() + 1, name.size() - 1);
+  } else {
+    result.append(name);
+  }
   normalizePath(result);  // in place
 
   return result;
 }
 
-void throwFileReadError(int fd, std::string const& filename) {
+static void throwFileReadError(int fd, std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
   if (fd >= 0) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
   }
 
   std::string message("read failed for file '" + filename + "': " +
                       strerror(res));
-  LOG(TRACE) << "" << message;
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
-}
-
-void throwFileWriteError(int fd, std::string const& filename) {
-  TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  int res = TRI_errno();
-
-  if (fd >= 0) {
-    TRI_CLOSE(fd);
-  }
-
-  std::string message("write failed for file '" + filename + "': " +
-                      strerror(res));
-  LOG(TRACE) << "" << message;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
 std::string slurp(std::string const& filename) {
-  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(fd, filename);
@@ -160,7 +161,7 @@ std::string slurp(std::string const& filename) {
     result.appendText(buffer, n);
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 
   std::string r(result.c_str(), result.length());
 
@@ -168,7 +169,7 @@ std::string slurp(std::string const& filename) {
 }
 
 void slurp(std::string const& filename, StringBuffer& result) {
-  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(fd, filename);
@@ -196,13 +197,28 @@ void slurp(std::string const& filename, StringBuffer& result) {
     result.appendText(buffer, n);
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
+}
+
+static void throwFileWriteError(int fd, std::string const& filename) {
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  int res = TRI_errno();
+
+  if (fd >= 0) {
+    TRI_TRACKED_CLOSE_FILE(fd);
+  }
+
+  std::string message("write failed for file '" + filename + "': " +
+                      strerror(res));
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
 void spit(std::string const& filename, char const* ptr, size_t len) {
-  int fd =
-      TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
-                 S_IRUSR | S_IWUSR | S_IRGRP);
+  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
+                                   O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
     throwFileWriteError(fd, filename);
@@ -219,13 +235,13 @@ void spit(std::string const& filename, char const* ptr, size_t len) {
     len -= n;
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 }
 
 void spit(std::string const& filename, std::string const& content) {
-  int fd =
-      TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
-                 S_IRUSR | S_IWUSR | S_IRGRP);
+  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
+                                   O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
     throwFileWriteError(fd, filename);
@@ -245,13 +261,13 @@ void spit(std::string const& filename, std::string const& content) {
     len -= n;
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 }
 
 void spit(std::string const& filename, StringBuffer const& content) {
-  int fd =
-      TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
-                 S_IRUSR | S_IWUSR | S_IRGRP);
+  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
+                                   O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
     throwFileWriteError(fd, filename);
@@ -271,7 +287,7 @@ void spit(std::string const& filename, StringBuffer const& content) {
     len -= n;
   }
 
-  TRI_CLOSE(fd);
+  TRI_TRACKED_CLOSE_FILE(fd);
 }
 
 bool remove(std::string const& fileName, int* errorNumber) {
@@ -343,11 +359,10 @@ bool copyRecursive(std::string const& source, std::string const& target,
 
 bool copyDirectoryRecursive(std::string const& source,
                             std::string const& target, std::string& error) {
-
   bool rc = true;
-  
+
   auto isSubDirectory = [](std::string const& name) -> bool {
-	  return isDirectory(name);
+    return isDirectory(name);
   };
 #ifdef TRI_HAVE_WIN32_LIST_FILES
   struct _finddata_t oneItem;
@@ -373,7 +388,8 @@ bool copyDirectoryRecursive(std::string const& source,
   struct dirent* oneItem = nullptr;
 
   // do not use readdir_r() here anymore as it is not safe and deprecated
-  // in newer versions of libc: http://man7.org/linux/man-pages/man3/readdir_r.3.html
+  // in newer versions of libc:
+  // http://man7.org/linux/man-pages/man3/readdir_r.3.html
   // the man page recommends to use plain readdir() because it can be expected
   // to be thread-safe in reality, and newer versions of POSIX may require its
   // thread-safety formally, and in addition obsolete readdir_r() altogether
@@ -544,39 +560,32 @@ std::string stripExtension(std::string const& path,
   return path;
 }
 
-bool changeDirectory(std::string const& path) {
-  return TRI_CHDIR(path.c_str()) == 0;
+FileResult changeDirectory(std::string const& path) {
+  int res = TRI_CHDIR(path.c_str());
+
+  if (res == 0) {
+    return FileResult();
+  } else {
+    return FileResult(errno);
+  }
 }
 
-std::string currentDirectory(int* errorNumber) {
-  if (errorNumber != 0) {
-    *errorNumber = 0;
-  }
-
+FileResultString currentDirectory() {
   size_t len = 1000;
-  char* current = new char[len];
+  std::unique_ptr<char[]> current(new char[len]);
 
-  while (TRI_GETCWD(current, (int)len) == nullptr) {
+  while (TRI_GETCWD(current.get(), (int)len) == nullptr) {
     if (errno == ERANGE) {
       len += 1000;
-      delete[] current;
-      current = new char[len];
+      current.reset(new char[len]);
     } else {
-      delete[] current;
-
-      if (errorNumber != 0) {
-        *errorNumber = errno;
-      }
-
-      return ".";
+      return FileResultString(errno, ".");
     }
   }
 
-  std::string result = current;
+  std::string result = current.get();
 
-  delete[] current;
-
-  return result;
+  return FileResultString(result);
 }
 
 std::string homeDirectory() {
@@ -591,7 +600,7 @@ std::string configDirectory(char const* binaryPath) {
   char* dir = TRI_LocateConfigDirectory(binaryPath);
 
   if (dir == nullptr) {
-    return currentDirectory();
+    return currentDirectory().result();
   }
 
   std::string result = dir;
@@ -612,15 +621,20 @@ std::string dirname(std::string const& name) {
   return base;
 }
 
-void makePathAbsolute(std::string &path) {
-  int err = 0;
+void makePathAbsolute(std::string& path) {
+  std::string cwd = FileUtils::currentDirectory().result();
 
-  std::string cwd = FileUtils::currentDirectory(&err);
-  char * p = TRI_GetAbsolutePath(path.c_str(), cwd.c_str());
-  path = p;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
+  if (path.empty()) {
+    path = cwd;
+  } else {
+    char* p = TRI_GetAbsolutePath(path.c_str(), cwd.c_str());
+
+    if (p != nullptr) {
+      path = p;
+      TRI_FreeString(TRI_CORE_MEM_ZONE, p);
+    }
+  }
 }
-
 }
 }
 }

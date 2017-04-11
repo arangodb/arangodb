@@ -29,8 +29,6 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -111,21 +109,20 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 
   if (1 < count) {
-    LOG(FATAL) << "cannot combine '--console', '--javascript.unit-tests' and "
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot combine '--console', '--javascript.unit-tests' and "
                << "'--javascript.script'";
     FATAL_ERROR_EXIT();
   }
 
   if (_operationMode == OperationMode::MODE_SERVER && !_restServer) {
-    LOG(FATAL) << "need at least '--console', '--javascript.unit-tests' or"
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "need at least '--console', '--javascript.unit-tests' or"
                << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
   }
 
   if (!_restServer) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
-                                        "Scheduler", "SslServer",
-                                        "Supervisor"});
+                                        "SslServer", "Supervisor"});
 
     DatabaseFeature* database =
         ApplicationServer::getFeature<DatabaseFeature>("Database");
@@ -158,7 +155,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void ServerFeature::start() {
-  if (_operationMode != OperationMode::MODE_CONSOLE && _restServer) {
+  if (_operationMode != OperationMode::MODE_CONSOLE) {
     auto scheduler =
         ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 

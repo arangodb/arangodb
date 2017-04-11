@@ -203,9 +203,9 @@
     .dashboard-interior-chart {
       @extend %pull-left;
 
-      .nv-bar rect {
-        fill-opacity: .15;
-        stroke-opacity: .8;
+     .nv-bar rect {
+        fill-opacity: .9;
+        stroke-opacity: 1;
         stroke-width: .5px;
       }
     }
@@ -494,4 +494,20 @@
 #system,
 #replication {
   margin-bottom: 10px;
+}
+
+#dataTransferDistributionContainer,
+#totalTimeDistributionContainer {
+  .dashboard-legend-inner {
+    float: right;
+    position: absolute;
+    right: 25px;
+    top: 15px;
+
+    span {
+      font-size: 12px;
+      font-weight: 400px;
+      margin-left: 10px;
+    }
+  }
 }

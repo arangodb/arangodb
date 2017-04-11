@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document */
+/* global window, $, Backbone, document, d3 */
 /* global $, arangoHelper, btoa, _, frontendConfig */
 
 (function () {
@@ -33,7 +33,7 @@
       'graphs/:name': 'showGraph',
       'users': 'userManagement',
       'user/:name': 'userView',
-      'user/:name/permission': 'userPermissionView',
+      'user/:name/permission': 'userPermission',
       'userProfile': 'userProfile',
       'cluster': 'cluster',
       'nodes': 'nodes',
@@ -50,6 +50,11 @@
       if (this.lastRoute === '#queries') {
         // cleanup old canvas elements
         this.queryView.cleanupGraphs();
+      }
+
+      if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
+        // dom graph cleanup
+        d3.selectAll('svg > *').remove();
       }
 
       this.lastRoute = window.location.hash;
@@ -510,11 +515,12 @@
         return;
       }
       var callback = function () {
-        if (!this.hasOwnProperty('applicationDetailView')) {
-          this.applicationDetailView = new window.ApplicationDetailView({
-            model: this.foxxList.get(decodeURIComponent(mount))
-          });
+        if (this.hasOwnProperty('applicationDetailView')) {
+          this.applicationDetailView.remove();
         }
+        this.applicationDetailView = new window.ApplicationDetailView({
+          model: this.foxxList.get(decodeURIComponent(mount))
+        });
 
         this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
         this.applicationDetailView.render('swagger');
@@ -556,11 +562,12 @@
         return;
       }
       var self = this;
-      if (!this.collectionsView) {
-        this.collectionsView = new window.CollectionsView({
-          collection: this.arangoCollectionsStore
-        });
+      if (this.collectionsView) {
+        this.collectionsView.remove();
       }
+      this.collectionsView = new window.CollectionsView({
+        collection: this.arangoCollectionsStore
+      });
       this.arangoCollectionsStore.fetch({
         cache: false,
         success: function () {
@@ -677,7 +684,7 @@
 
       var callback = function (error, type) {
         if (!error) {
-          this.documentView.setType(type);
+          this.documentView.setType();
         } else {
           console.log('Error', 'Could not fetch collection type');
         }
@@ -928,14 +935,19 @@
       }
     },
 
-    userPermissionView: function (name, initialized) {
+    userPermission: function (name, initialized) {
       this.checkUser();
       if (initialized || initialized === null) {
+        if (this.userPermissionView) {
+          this.userPermissionView.remove();
+        }
+
         this.userPermissionView = new window.UserPermissionView({
           collection: this.userCollection,
           databases: this.arangoDatabase,
           username: name
         });
+
         this.userPermissionView.render();
       } else if (initialized === false) {
         this.waitForInit(this.userPermissionView.bind(this), name);
@@ -962,11 +974,13 @@
         this.waitForInit(this.userManagement.bind(this));
         return;
       }
-      if (!this.userManagementView) {
-        this.userManagementView = new window.UserManagementView({
-          collection: this.userCollection
-        });
+      if (this.userManagementView) {
+        this.userManagementView.remove();
       }
+
+      this.userManagementView = new window.UserManagementView({
+        collection: this.userCollection
+      });
       this.userManagementView.render();
     },
 
