@@ -103,12 +103,17 @@ int GatherBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
   // don't call default shutdown method since it does the wrong thing to
   // _gatherBlockBuffer
+  int ret = TRI_ERROR_NO_ERROR;
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
     int res = (*it)->shutdown(errorCode);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      ret = res;
     }
+  }
+
+  if (ret != TRI_ERROR_NO_ERROR) {
+    return ret;
   }
 
   if (!_isSimple) {
@@ -506,7 +511,7 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
 BlockWithClients::BlockWithClients(ExecutionEngine* engine,
                                    ExecutionNode const* ep,
                                    std::vector<std::string> const& shardIds)
-    : ExecutionBlock(engine, ep), _nrClients(shardIds.size()) {
+    : ExecutionBlock(engine, ep), _nrClients(shardIds.size()), _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
@@ -542,7 +547,12 @@ int BlockWithClients::shutdown(int errorCode) {
 
   _doneForClient.clear();
 
-  return ExecutionBlock::shutdown(errorCode);
+  if (_wasShutdown) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  int res = ExecutionBlock::shutdown(errorCode);
+  _wasShutdown = true;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1371,19 +1381,21 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 int RemoteBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
 
-  if (!_isResponsibleForInitializeCursor) {
-    // do nothing...
-    return TRI_ERROR_NO_ERROR;
-  }
-
   // For every call we simply forward via HTTP
 
   std::unique_ptr<ClusterCommResult> res =
       sendRequest(rest::RequestType::PUT, "/_api/aql/shutdown/",
                   std::string("{\"code\":" + std::to_string(errorCode) + "}"));
-  if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
-    // artificially ignore error in case query was not found during shutdown
-    return TRI_ERROR_NO_ERROR;
+  try {
+    if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
+      // artificially ignore error in case query was not found during shutdown
+      return TRI_ERROR_NO_ERROR;
+    }
+  } catch (arangodb::basics::Exception &ex) {
+    if (ex.code() == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    }
+    throw;
   }
 
   StringBuffer const& responseBodyBuf(res->result->getBody());
