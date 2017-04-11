@@ -39,25 +39,6 @@
 
 using namespace arangodb;
 
-static size_t sortWeight(arangodb::aql::AstNode const* node) {
-  switch (node->type) {
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      return 1;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-      return 2;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      return 3;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      return 4;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      return 5;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      return 6;
-    default:
-      return 42; /* OPST_CIRCUS */
-  }
-}
-
 // .............................................................................
 // recall for all of the following comparison functions:
 //
@@ -1421,7 +1402,7 @@ arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
     std::sort(
         nodes.begin(), nodes.end(),
         [](arangodb::aql::AstNode const* lhs, arangodb::aql::AstNode const* rhs)
-            -> bool { return sortWeight(lhs) < sortWeight(rhs); });
+            -> bool { return Index::sortWeight(lhs) < Index::sortWeight(rhs); });
 
     lastContainsEquality = containsEquality;
     std::unordered_set<int> operatorsFound;

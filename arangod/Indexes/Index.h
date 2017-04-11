@@ -295,6 +295,9 @@ class Index {
   virtual void expandInSearchValues(arangodb::velocypack::Slice const,
                                     arangodb::velocypack::Builder&) const;
 
+ protected:
+  static size_t sortWeight(arangodb::aql::AstNode const* node);
+
  private:
   /// @brief set fields from slice
   void setFields(VPackSlice const& slice, bool allowExpansion);
