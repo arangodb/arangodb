@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
+#include "Graph/SingleServerEdgeCursor.h"
 #include "Indexes/Index.h"
 #include "VocBase/TraverserCache.h"
 
@@ -352,4 +353,36 @@ double BaseOptions::costForLookupInfoList(
     cost += li.estimateCost(createItems);
   }
   return cost;
+}
+
+EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
+                                         StringRef vid,
+                                         std::vector<LookupInfo>& list) {
+  TRI_ASSERT(mmdr != nullptr);
+  auto allCursor =
+      std::make_unique<SingleServerEdgeCursor>(mmdr, this, list.size());
+  auto& opCursors = allCursor->getCursors();
+  for (auto& info : list) {
+    auto& node = info.indexCondition;
+    TRI_ASSERT(node->numMembers() > 0);
+    if (info.conditionNeedUpdate) {
+      // We have to inject _from/_to iff the condition needs it
+      auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
+      TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+      TRI_ASSERT(dirCmp->numMembers() == 2);
+
+      auto idNode = dirCmp->getMemberUnchecked(1);
+      TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+      TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+      idNode->setStringValue(vid.data(), vid.length());
+    }
+    std::vector<OperationCursor*> csrs;
+    csrs.reserve(info.idxHandles.size());
+    for (auto const& it : info.idxHandles) {
+      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr,
+                                                    UINT64_MAX, 1000, false));
+    }
+    opCursors.emplace_back(std::move(csrs));
+  }
+  return allCursor.release();
 }

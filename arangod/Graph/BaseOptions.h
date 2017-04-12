@@ -147,6 +147,9 @@ struct BaseOptions {
   aql::FixedVarExpressionContext* _ctx;
 
  protected:
+  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid,
+                              std::vector<LookupInfo>&);
+ protected:
   transaction::Methods* _trx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions

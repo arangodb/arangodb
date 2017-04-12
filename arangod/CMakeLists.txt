@@ -223,6 +223,8 @@ SET(ARANGOD_SOURCES
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/ShortestPathOptions.cpp
+  Graph/ShortestPathResult.cpp
+  Graph/SingleServerEdgeCursor.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp

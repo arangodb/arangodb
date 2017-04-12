@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeWeightShortestPathFinder.h"
-#include "VocBase/Traverser.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
+#include "Graph/ShortestPathResult.h"
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -288,7 +290,7 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(
 bool AttributeWeightShortestPathFinder::shortestPath(
     arangodb::velocypack::Slice const& start,
     arangodb::velocypack::Slice const& target,
-    arangodb::traverser::ShortestPath& result,
+    ShortestPathResult& result,
     std::function<void()> const& callback) {
   // For the result:
   result.clear();
@@ -348,8 +350,9 @@ bool AttributeWeightShortestPathFinder::shortestPath(
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
   while (!s->_predecessor.isNone()) {
-    result._edges.push_front(s->_edge);
-    result._vertices.push_front(s->_predecessor);
+    // TODO FIXME
+    result._edges.push_front(StringRef(s->_edge));
+    result._vertices.push_front(StringRef(s->_predecessor));
     s = forward._pq.find(s->_predecessor);
   }
 
@@ -358,8 +361,8 @@ bool AttributeWeightShortestPathFinder::shortestPath(
   // Also insert the intermediate vertex
   s = backward._pq.find(_intermediate);
   while (!s->_predecessor.isNone()) {
-    result._edges.emplace_back(s->_edge);
-    result._vertices.emplace_back(s->_predecessor);
+    result._edges.emplace_back(StringRef(s->_edge));
+    result._vertices.emplace_back(StringRef(s->_predecessor));
     s = backward._pq.find(s->_predecessor);
   }
 
@@ -443,7 +446,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
 
 bool AttributeWeightShortestPathFinder::shortestPathTwoThreads(
     arangodb::velocypack::Slice& start, arangodb::velocypack::Slice& target,
-    arangodb::traverser::ShortestPath& result) {
+    ShortestPathResult& result) {
   // For the result:
   result.clear();
   _highscoreSet = false;
@@ -501,8 +504,8 @@ bool AttributeWeightShortestPathFinder::shortestPathTwoThreads(
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
   while (!s->_predecessor.isNone()) {
-    result._edges.push_front(s->_edge);
-    result._vertices.push_front(s->_predecessor);
+    result._edges.push_front(StringRef(s->_edge));
+    result._vertices.push_front(StringRef(s->_predecessor));
     s = forward._pq.find(s->_predecessor);
   }
 
@@ -511,8 +514,8 @@ bool AttributeWeightShortestPathFinder::shortestPathTwoThreads(
   // Also insert the intermediate vertex
   s = backward._pq.find(_intermediate);
   while (!s->_predecessor.isNone()) {
-    result._edges.emplace_back(s->_edge);
-    result._vertices.emplace_back(s->_predecessor);
+    result._edges.emplace_back(StringRef(s->_edge));
+    result._vertices.emplace_back(StringRef(s->_predecessor));
     s = backward._pq.find(s->_predecessor);
   }
 

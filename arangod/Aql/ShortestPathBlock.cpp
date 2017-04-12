@@ -26,6 +26,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Graph/ShortestPathResult.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/EdgeCollectionInfo.h"
@@ -247,7 +248,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   if (ep->usesEdgeOutVariable()) {
     _edgeVar = ep->edgeOutVariable();
   }
-  _path = std::make_unique<arangodb::traverser::ShortestPath>();
+  _path = std::make_unique<arangodb::graph::ShortestPathResult>();
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     if (_opts->useWeight()) {

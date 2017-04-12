@@ -36,46 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::traverser;
 
-/// @brief Class Shortest Path
-
-/// @brief Clears the path
-void arangodb::traverser::ShortestPath::clear() {
-  _vertices.clear();
-  _edges.clear();
-}
-
-void arangodb::traverser::ShortestPath::edgeToVelocyPack(transaction::Methods*, ManagedDocumentResult* mmdr,
-                                                         size_t position, VPackBuilder& builder) {
-  TRI_ASSERT(position < length());
-  if (position == 0) {
-    builder.add(basics::VelocyPackHelper::NullValue());
-  } else {
-    TRI_ASSERT(position - 1 < _edges.size());
-    builder.add(_edges[position - 1]);
-  }
-}
-
-void arangodb::traverser::ShortestPath::vertexToVelocyPack(transaction::Methods* trx, ManagedDocumentResult* mmdr, 
-                                                           size_t position, VPackBuilder& builder) {
-  TRI_ASSERT(position < length());
-  VPackSlice v = _vertices[position];
-  TRI_ASSERT(v.isString());
-  std::string collection =  v.copyString();
-  size_t p = collection.find("/");
-  TRI_ASSERT(p != std::string::npos);
-
-  transaction::BuilderLeaser searchBuilder(trx);
-  searchBuilder->add(VPackValue(collection.substr(p + 1)));
-  collection = collection.substr(0, p);
-
-  Result res =
-      trx->documentFastPath(collection, mmdr, searchBuilder->slice(), builder, true);
-  if (!res.ok()) {
-    builder.clear(); // Just in case...
-    builder.add(basics::VelocyPackHelper::NullValue());
-  }
-}
-
 bool Traverser::VertexGetter::getVertex(VPackSlice edge, std::vector<StringRef>& result) {
   VPackSlice res = transaction::helpers::extractFromFromDocument(edge);
   if (result.back() == StringRef(res)) {

@@ -116,8 +116,6 @@ struct TraverserOptions : public graph::BaseOptions {
   double estimateCost(size_t& nrItems) const;
 
  private:
-  graph::EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid, uint64_t,
-                              std::vector<LookupInfo>&);
 
   graph::EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
 };

@@ -222,7 +222,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   // path
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& target,
-                    arangodb::traverser::ShortestPath& result,
+                    arangodb::graph::ShortestPathResult& result,
                     std::function<void()> const& callback) override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -236,7 +236,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   bool shortestPathTwoThreads(arangodb::velocypack::Slice& start,
                               arangodb::velocypack::Slice& target,
-                              arangodb::traverser::ShortestPath& result);
+                              arangodb::graph::ShortestPathResult& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lowest total weight for a complete path found
