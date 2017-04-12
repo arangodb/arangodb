@@ -337,14 +337,14 @@ bool RocksDBCounterManager::parseRocksWAL() {
     iterator->Next();
   }
 
-  LOG_TOPIC(WARN, Logger::FIXME) << "Finished WAL scan";
+  LOG_TOPIC(INFO, Logger::ENGINES) << "Finished WAL scan";
   for (std::pair<uint64_t, RocksDBCounterManager::CounterUpdate> pair : handler->deltas) {
     auto const& it = _counters.find(pair.first);
     if (it != _counters.end()) {
       it->second._sequenceNum = start;
       it->second._count += pair.second._count;
       it->second._revisionId = pair.second._revisionId;
-      LOG_TOPIC(WARN, Logger::FIXME) << "WAL recovered " << pair.second._count
+      LOG_TOPIC(INFO, Logger::ENGINES) << "WAL recovered " << pair.second._count
                                      << " for a total of " << it->second._count;
 
     }
