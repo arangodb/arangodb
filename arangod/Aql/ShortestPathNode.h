@@ -151,7 +151,12 @@ class ShortestPathNode : public ExecutionNode {
     }
   }
 
-  void fillOptions(arangodb::graph::ShortestPathOptions&) const;
+  graph::ShortestPathOptions* options() const;
+
+  /// @brief Compute the shortest path options containing the expressions
+  ///        MUST! be called after optimization and before creation
+  ///        of blocks.
+  void prepareOptions();
 
  private:
 
@@ -187,6 +192,25 @@ class ShortestPathNode : public ExecutionNode {
 
   /// @brief our graph...
   Graph const* _graphObj;
+
+  /// @brief Temporary pseudo variable for the currently traversed object.
+  Variable const* _tmpObjVariable;
+
+  /// @brief Reference to the pseudo variable
+  AstNode* _tmpObjVarNode;
+
+  /// @brief Pseudo string value node to hold the last visted vertex id.
+  AstNode* _tmpIdNode;
+
+  /// @brief The hard coded condition on _from
+  AstNode* _fromCondition;
+
+  /// @brief The hard coded condition on _to
+  AstNode* _toCondition;
+
+  /// @brief Flag if the options have been build.
+  /// Afterwards this class is not copyable anymore.
+  bool _optionsBuild;
 
   /// @brief Options for traversals
   std::unique_ptr<graph::ShortestPathOptions> _options;

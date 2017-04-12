@@ -108,3 +108,5 @@ npm-debug.log
 log-*
 data-*
 cluster-init
+
+datafile-*.db

@@ -235,11 +235,11 @@ class RocksDBEngine final : public StorageEngine {
                                      arangodb::velocypack::Slice info) override;
   void addParametersForNewIndex(arangodb::velocypack::Builder& builder,
                                 arangodb::velocypack::Slice info) override;
-  
+
   rocksdb::TransactionDB* db() const { return _db; }
 
   RocksDBComparator* cmp() const { return _cmp.get(); }
-  
+
   int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
                                   VPackSlice const& slice);
 
@@ -266,6 +266,9 @@ class RocksDBEngine final : public StorageEngine {
 
   std::unique_ptr<RocksDBCounterManager> _counterManager;
   uint64_t _maxTransactionSize;
+  uint64_t _intermediateTransactionSize;
+  uint64_t _intermediateTransactionNumber;
+  bool _intermediateTransactionEnabled;
 };
 }
 #endif

@@ -56,25 +56,6 @@ using namespace arangodb;
 static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
     arangodb::basics::AttributeName("_key", false)};
 
-static size_t sortWeight(arangodb::aql::AstNode const* node) {
-  switch (node->type) {
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      return 1;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-      return 2;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      return 3;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      return 4;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      return 5;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      return 6;
-    default:
-      return 42;
-  }
-}
-
 // .............................................................................
 // recall for all of the following comparison functions:
 //

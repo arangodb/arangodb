@@ -39,11 +39,9 @@ class Slice;
 namespace graph {
 
 struct ShortestPathOptions : public BaseOptions {
-
  public:
   std::string start;
   std::string direction;
-  bool useWeight;
   std::string weightAttribute;
   double defaultWeight;
   bool bidirectional;
@@ -69,6 +67,9 @@ struct ShortestPathOptions : public BaseOptions {
   arangodb::velocypack::Slice getStart() const;
   arangodb::velocypack::Slice getEnd() const;
 
+  /// @brief  Test if we have to use a weight attribute
+  bool useWeight() const;
+
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const override;
 
@@ -79,9 +80,29 @@ struct ShortestPathOptions : public BaseOptions {
   /// @brief Estimate the total cost for this operation
   double estimateCost(size_t& nrItems) const override;
 
+  // Creates a complete Object containing all EngineInfo
+  // in the given builder.
+  void addReverseLookupInfo(aql::Ast* ast, std::string const& collectionName,
+                            std::string const& attributeName,
+                            aql::AstNode* condition);
+
+  EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
+
+  EdgeCursor* nextReverseCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
+
+ private:
+  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid, uint64_t,
+                              std::vector<LookupInfo>&);
+
+  EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
+  EdgeCursor* nextReverseCursorCoordinator(StringRef vid, uint64_t);
+
+ private:
+  /// @brief Lookup info to find all reverse edges.
+  std::vector<LookupInfo> _reverseLookupInfos;
 };
 
-} // namespace graph
-} // namespace arangodb
+}  // namespace graph
+}  // namespace arangodb
 
 #endif

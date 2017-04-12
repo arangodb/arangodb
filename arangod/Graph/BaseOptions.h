@@ -32,7 +32,7 @@
 namespace arangodb {
 
 namespace aql {
-class AstNode;
+struct AstNode;
 class Expression;
 class Query;
 }
@@ -47,6 +47,8 @@ class Slice;
 }
 
 namespace graph {
+
+class EdgeCursor;
 
 struct BaseOptions {
  protected:
@@ -146,7 +148,10 @@ struct BaseOptions {
 
  protected:
   transaction::Methods* _trx;
+
+  /// @brief Lookup info to find all edges fulfilling the base conditions
   std::vector<LookupInfo> _baseLookupInfos;
+
   aql::Variable const* _tmpVar;
   bool const _isCoordinator;
 

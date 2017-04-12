@@ -409,6 +409,9 @@ void RocksDBCollection::invokeOnAllElements(
 
 void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
+  // TODO FIXME -- improve transaction size
+  // TODO FIXME -- intermediate commit
+
   rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
   TRI_voc_cid_t cid = _logicalCollection->cid();
 
@@ -423,18 +426,26 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   iter->Seek(documentBounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
-    auto result =
-        state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-                            0, iter->key().size());
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
-    }
-
     rocksdb::Status s = rtrx->Delete(iter->key());
     if (!s.ok()) {
       auto converted = convertStatus(s);
       THROW_ARANGO_EXCEPTION(converted);
+    }
+
+    // transaction size limit reached -- fail
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    // report size of key
+    RocksDBOperationResult result =
+        state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
+                            0, iter->key().size());
+
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
+
+    // force intermediate commit
+    if (result.commitRequired()) {
+      // force commit
     }
 
     iter->Next();
@@ -473,21 +484,26 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     }
 
     iter->Seek(indexBounds.start());
-    while (iter->Valid() &&
-           -1 == cmp->Compare(iter->key(), indexBounds.end())) {
-      // update size
-      auto result = state->addOperation(cid, /*ignored revisionId*/ 0,
-                                        TRI_VOC_NOOP_OPERATION_UPDATE_SIZE, 0,
-                                        iter->key().size());
-
-      if (result.fail()) {
-        THROW_ARANGO_EXCEPTION(result);
-      }
-
+    while (iter->Valid() && cmp->Compare(iter->key(), indexBounds.end()) < 0) {
       rocksdb::Status s = rtrx->Delete(iter->key());
       if (!s.ok()) {
         auto converted = convertStatus(s);
         THROW_ARANGO_EXCEPTION(converted);
+      }
+
+      // report index key size
+      RocksDBOperationResult result = state->addOperation(
+          cid, /*ignored revisionId*/ 0, TRI_VOC_NOOP_OPERATION_UPDATE_SIZE, 0,
+          iter->key().size());
+
+      // transaction size limit reached -- fail
+      if (result.fail()) {
+        THROW_ARANGO_EXCEPTION(result);
+      }
+
+      // force intermediate commit
+      if (result.commitRequired()) {
+        // force commit
       }
       iter->Next();
     }
@@ -543,6 +559,9 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                               arangodb::ManagedDocumentResult& mdr,
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool /*lock*/) {
+  // TODO FIXME -- limit transaction size
+  // TODO FIXME -- intermediate commit
+
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -550,7 +569,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  RocksDBOperationResult rocksOpRes;
+  RocksDBOperationResult res;
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
@@ -558,36 +577,36 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     // _from:
     fromSlice = slice.get(StaticStrings::FromString);
     if (!fromSlice.isString()) {
-      rocksOpRes.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return rocksOpRes.errorNumber();
+      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return res.errorNumber();
     }
     VPackValueLength len;
     char const* docId = fromSlice.getString(len);
     size_t split;
     if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
                                             &split)) {
-      rocksOpRes.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return rocksOpRes.errorNumber();
+      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return res.errorNumber();
     }
     // _to:
     toSlice = slice.get(StaticStrings::ToString);
     if (!toSlice.isString()) {
-      rocksOpRes.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return rocksOpRes.errorNumber();
+      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return res.errorNumber();
     }
     docId = toSlice.getString(len);
     if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
                                             &split)) {
-      rocksOpRes.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return rocksOpRes.errorNumber();
+      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return res.errorNumber();
     }
   }
 
   transaction::BuilderLeaser builder(trx);
-  int res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
-                               *builder.get(), options.isRestore);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  res.reset(newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+                               *builder.get(), options.isRestore));
+  if (res.fail()) {
+    return res.errorNumber();
   }
   VPackSlice newSlice = builder->slice();
 
@@ -596,23 +615,35 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   RocksDBSavePoint guard(rocksTransaction(trx));
 
-  rocksOpRes = insertDocument(trx, revisionId, newSlice, options.waitForSync);
+  res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
+  if (res.ok()) {
+    Result lookupResult = lookupRevisionVPack(revisionId, trx, mdr);
 
-  if (rocksOpRes.ok()) {
-    rocksOpRes = lookupRevisionVPack(revisionId, trx, mdr);
-
-    if (rocksOpRes.fail()) {
-      return rocksOpRes.errorNumber();
+    if (lookupResult.fail()) {
+      return lookupResult.errorNumber();
     }
 
-    static_cast<RocksDBTransactionState*>(trx->state())
-        ->addOperation(_logicalCollection->cid(), revisionId,
-                       TRI_VOC_DOCUMENT_OPERATION_INSERT, newSlice.byteSize(),
-                       /*FIXME KEYSIZE*/ 0);
+    // report document and key size
+    RocksDBOperationResult result =
+        static_cast<RocksDBTransactionState*>(trx->state())
+            ->addOperation(_logicalCollection->cid(), revisionId,
+                           TRI_VOC_DOCUMENT_OPERATION_INSERT,
+                           newSlice.byteSize(), res.keySize());
+
+    // transaction size limit reached -- fail
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    // force intermediate commit
+    if (result.commitRequired()) {
+      // force commit
+    }
+
     guard.commit();
   }
 
-  return rocksOpRes.errorNumber();
+  return res.errorNumber();
 }
 
 int RocksDBCollection::update(arangodb::transaction::Methods* trx,
@@ -624,7 +655,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
                               ManagedDocumentResult& previous,
                               TRI_voc_rid_t const& revisionId,
                               arangodb::velocypack::Slice const key) {
-  // TODO FIXME -- limit transaction size
+  // TODO FIXME -- intermediate commit
 
   resultMarkerTick = 0;
   RocksDBOperationResult res;
@@ -691,22 +722,31 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
                        options.waitForSync);
-  uint64_t keySize = res.keySize();
 
   if (res.ok()) {
-    res = lookupRevisionVPack(revisionId, trx, mdr);
-
-    if (!res.ok()) {
-      return res.errorNumber();
+    RocksDBOperationResult result = lookupRevisionVPack(revisionId, trx, mdr);
+    if (result.fail()) {
+      return result.errorNumber();
     }
 
     TRI_ASSERT(!mdr.empty());
 
-    // update as combination of remove/insert?!
-    static_cast<RocksDBTransactionState*>(trx->state())
-        ->addOperation(_logicalCollection->cid(), revisionId,
-                       TRI_VOC_DOCUMENT_OPERATION_UPDATE, newDoc.byteSize(),
-                       keySize);
+    // report document and key size
+    result = static_cast<RocksDBTransactionState*>(trx->state())
+                 ->addOperation(_logicalCollection->cid(), revisionId,
+                                TRI_VOC_DOCUMENT_OPERATION_UPDATE,
+                                newDoc.byteSize(), res.keySize());
+
+    // transaction size limit reached -- fail
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
+
+    // force intermediate commit
+    if (result.commitRequired()) {
+      // force commit
+    }
+
     guard.commit();
   }
 
@@ -722,8 +762,10 @@ int RocksDBCollection::replace(
     arangodb::velocypack::Slice const toSlice) {
   resultMarkerTick = 0;
 
-  // TODO FIXME -- limit transaction size
+  // TODO FIXME -- improve transaction size
+  // TODO FIXME -- intermediate commit
 
+  Result res;
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
@@ -734,10 +776,10 @@ int RocksDBCollection::replace(
   }
 
   // get the previous revision
-  int res = lookupDocument(trx, key, previous).errorNumber();
+  res.reset(lookupDocument(trx, key, previous).errorNumber());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (res.fail()) {
+    return res.errorNumber();
   }
 
   TRI_ASSERT(!previous.empty());
@@ -781,7 +823,7 @@ int RocksDBCollection::replace(
       updateDocument(trx, oldRevisionId, oldDoc, revisionId,
                      VPackSlice(builder->slice()), options.waitForSync);
   if (opResult.ok()) {
-    Result result = lookupRevisionVPack(revisionId, trx, mdr);
+    RocksDBOperationResult result = lookupRevisionVPack(revisionId, trx, mdr);
 
     if (!result.ok()) {
       return result.errorNumber();
@@ -789,11 +831,23 @@ int RocksDBCollection::replace(
 
     TRI_ASSERT(!mdr.empty());
 
-    static_cast<RocksDBTransactionState*>(trx->state())
-        ->addOperation(_logicalCollection->cid(), revisionId,
-                       TRI_VOC_DOCUMENT_OPERATION_REPLACE,
-                       VPackSlice(builder->slice()).byteSize(),
-                       opResult.keySize());
+    // report document and key size
+    result = static_cast<RocksDBTransactionState*>(trx->state())
+                 ->addOperation(_logicalCollection->cid(), revisionId,
+                                TRI_VOC_DOCUMENT_OPERATION_REPLACE,
+                                VPackSlice(builder->slice()).byteSize(),
+                                opResult.keySize());
+
+    // transaction size limit reached -- fail
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
+
+    // force intermediate commit
+    if (result.commitRequired()) {
+      // force commit
+    }
+
     guard.commit();
   }
 
@@ -807,7 +861,8 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
                               TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
                               TRI_voc_rid_t const& revisionId,
                               TRI_voc_rid_t& prevRev) {
-  // TODO FIXME -- limit transaction size
+  // TODO FIXME -- improve transaction size
+  // TODO FIXME -- intermediate commit
 
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
@@ -852,12 +907,22 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   RocksDBSavePoint guard(rocksTransaction(trx));
 
   res = removeDocument(trx, oldRevisionId, oldDoc, options.waitForSync);
-
   if (res.ok()) {
-    static_cast<RocksDBTransactionState*>(trx->state())
-        ->addOperation(_logicalCollection->cid(), revisionId,
-                       TRI_VOC_DOCUMENT_OPERATION_REMOVE, oldDoc.byteSize(),
-                       res.keySize());
+    // report key size
+    res =
+        static_cast<RocksDBTransactionState*>(trx->state())
+            ->addOperation(_logicalCollection->cid(), revisionId,
+                           TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0, res.keySize());
+    // transaction size limit reached -- fail
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    // force intermediate commit
+    if (res.commitRequired()) {
+      // force commit
+    }
+
     guard.commit();
   }
 
@@ -1022,6 +1087,9 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
     Result converted =
         rocksutils::convertStatus(status, rocksutils::StatusHint::document);
     res = converted;
+
+    // set keysize that is passed up to the crud operations
+    res.keySize(key.string().size());
     return res;
   }
 
@@ -1031,22 +1099,17 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   RocksDBOperationResult innerRes;
   for (size_t i = 0; i < n; ++i) {
     auto& idx = indexes[i];
-
     innerRes.reset(idx->insert(trx, revisionId, doc, false));
 
     // in case of no-memory, return immediately
     if (innerRes.is(TRI_ERROR_OUT_OF_MEMORY)) {
       return innerRes;
     }
-    /*if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-      LOG_TOPIC(ERR, Logger::FIXME)
-          << "#" << trx->state()->id()
-          << " UNIQUE CONSTRAINT VIOLATION IN INDEX: #" << i;
-    }*/
-    if (res.fail()) {
+
+    if (innerRes.fail()) {
+      // "prefer" unique constraint violated over other errors
       if (innerRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
           res.ok()) {
-        // "prefer" unique constraint violated
         res = innerRes;
       }
     }
@@ -1148,7 +1211,7 @@ RocksDBOperationResult RocksDBCollection::lookupDocument(
                                     << " failed to find revision " << revisionId
                                     << " for key " << key.copyString();
     }*/
-} else {
+  } else {
     /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
                                   << " failed to find entry for key "
                                   << key.copyString();*/
@@ -1161,6 +1224,8 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
     transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
     VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
     VPackSlice const& newDoc, bool& waitForSync) {
+  // keysize in return value is set by insertDocument
+
   // Coordinator doesn't know index internals
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());

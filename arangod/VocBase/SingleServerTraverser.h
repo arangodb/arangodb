@@ -25,9 +25,9 @@
 #define ARANGOD_SINGLE_SERVER_TRAVERSER_H 1
 
 #include "Aql/AqlValue.h"
+#include "Graph/EdgeCursor.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/Traverser.h"
-#include "VocBase/TraverserOptions.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -35,13 +35,17 @@ namespace arangodb {
 class LogicalCollection;
 class ManagedDocumentResult;
 
+namespace graph {
+class BaseOptions;
+}
+
 namespace traverser {
 
 class PathEnumerator;
   
-class SingleServerEdgeCursor : public EdgeCursor {
+class SingleServerEdgeCursor : public graph::EdgeCursor {
  private:
-  TraverserOptions* _opts;
+   graph::BaseOptions* _opts;
   transaction::Methods* _trx;
   ManagedDocumentResult* _mmdr;
   std::vector<std::vector<OperationCursor*>> _cursors;
@@ -52,7 +56,7 @@ class SingleServerEdgeCursor : public EdgeCursor {
   std::vector<size_t> const* _internalCursorMapping;
 
  public:
-  SingleServerEdgeCursor(ManagedDocumentResult* mmdr, TraverserOptions* options, size_t, std::vector<size_t> const* mapping = nullptr);
+  SingleServerEdgeCursor(ManagedDocumentResult* mmdr, graph::BaseOptions* options, size_t, std::vector<size_t> const* mapping = nullptr);
 
   ~SingleServerEdgeCursor() {
     for (auto& it : _cursors) {

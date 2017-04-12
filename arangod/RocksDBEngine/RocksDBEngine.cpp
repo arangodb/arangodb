@@ -88,12 +88,20 @@ RocksDBEngine::~RocksDBEngine() { delete _db; }
 // ---------------------------------
 
 // add the storage engine's specifc options to the global list of options
-void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-    _maxTransactionSize = 100000000; // set sensible default value here
-    options->addOption("--rocksdb.max-transaction-size"
-                      ,"transaction size limit"
-                      ,new UInt64Parameter(&_maxTransactionSize)
-                      );
+void RocksDBEngine::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
+  options->addSection("rocksdb", "RocksDB engine specific configuration");
+
+  // control transaction size for RocksDB engine
+  _maxTransactionSize =
+      std::numeric_limits<uint64_t>::max();  // set sensible default value here
+  options->addOption("--rocksdb.max-transaction-size", "transaction size limit",
+                     new UInt64Parameter(&_maxTransactionSize));
+
+  // control intermediate transactions in RocksDB
+  _intermediateTransactionSize = (_maxTransactionSize / 5) * 4; // transaction size that will trigger an intermediate commit
+  _intermediateTransactionNumber = 100 * 1000; // number operation after that a commit will be tried
+  _intermediateTransactionEnabled = false;
 }
 
 // validate the storage engine's specific options
@@ -133,9 +141,9 @@ void RocksDBEngine::start() {
   _options.comparator = _cmp.get();
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager
-  _options.WAL_ttl_seconds = 15; //(uint64_t)(counter_sync_seconds * 2.0);
+  _options.WAL_ttl_seconds = 15;  //(uint64_t)(counter_sync_seconds * 2.0);
   // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
-  
+
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);
 
@@ -184,7 +192,9 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
 
 TransactionState* RocksDBEngine::createTransactionState(
     TRI_vocbase_t* vocbase) {
-  return new RocksDBTransactionState(vocbase, _maxTransactionSize);
+  return new RocksDBTransactionState(
+      vocbase, _maxTransactionSize, _intermediateTransactionEnabled,
+      _intermediateTransactionSize, _intermediateTransactionNumber);
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
@@ -449,15 +459,15 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
                                         bool useWriteMarker, int& status) {
   // probably not required
   // THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  
-  //status = saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
+
+  // status = saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
   VPackBuilder builder;
   builder.openObject();
   builder.add("id", VPackValue(std::to_string(vocbase->id())));
   builder.add("name", VPackValue(vocbase->name()));
   builder.add("deleted", VPackValue(true));
   builder.close();
-  
+
   status = writeCreateDatabaseMarker(vocbase->id(), builder.slice());
 }
 
@@ -514,11 +524,11 @@ arangodb::Result RocksDBEngine::persistCollection(
 
   int res = writeCreateCollectionMarker(vocbase->id(), cid, slice);
   result.reset(res);
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (result.ok()) {
-    RocksDBCollection *rcoll =
-      RocksDBCollection::toRocksDBCollection(collection->getPhysical());
+    RocksDBCollection* rcoll =
+        RocksDBCollection::toRocksDBCollection(collection->getPhysical());
     TRI_ASSERT(rcoll->numberDocuments() == 0);
   }
 #endif
@@ -563,7 +573,7 @@ arangodb::Result RocksDBEngine::dropCollection(
     return res;  // let collection exist so the remaining elements can still be
                  // accessed
   }
-  
+
   // delete collection
   _counterManager->removeCounter(coll->objectId());
   auto key = RocksDBKey::Collection(vocbase->id(), collection->cid());
@@ -670,7 +680,6 @@ void RocksDBEngine::signalCleanup(TRI_vocbase_t*) {
 void RocksDBEngine::iterateDocuments(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     std::function<void(arangodb::velocypack::Slice const&)> const& cb) {
-  
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
@@ -695,14 +704,14 @@ bool RocksDBEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
 /// @brief insert a compaction blocker
 int RocksDBEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
                                            TRI_voc_tick_t& id) {
-  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief touch an existing compaction blocker
 int RocksDBEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id, double ttl) {
-  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -783,8 +792,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     if (indexes.isArray()) {
       for (auto const& it : VPackArrayIterator(indexes)) {
         // delete index documents
-        uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
-            it, "objectId");
+        uint64_t objectId =
+            basics::VelocyPackHelper::stringUInt64(it, "objectId");
         RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
         res = rocksutils::removeLargeRange(_db, bounds);
         if (res.fail()) {

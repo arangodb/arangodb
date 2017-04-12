@@ -9,7 +9,7 @@ const UnitTest = require("@arangodb/testing");
 
 const internalMembers = UnitTest.internalMembers;
 const fs = require("fs");
-const internal = require("internal");
+const internal = require("internal"); // js/common/bootstrap/modules/internal.js
 const inspect = internal.inspect;
 
 let testOutputDirectory;
@@ -153,29 +153,29 @@ function main(argv) {
   start_pretty_print();
 
   // parse arguments
-  let cases = [];
+  let testSuits = []; // e.g all, http_server, recovery, ...
   let options = {};
 
   while (argv.length >= 1) {
-    if (argv[0].slice(0, 1) === '{') {
+    if (argv[0].slice(0, 1) === '{') { // stop parsing if there is a json document
       break;
     }
 
-    if (argv[0].slice(0, 1) === '-') {
+    if (argv[0].slice(0, 1) === '-') { // break parsing if we hit some -option
       break;
     }
 
-    cases.push(argv[0]);
-    argv = argv.slice(1);
+    testSuits.push(argv[0]); // append first arg to test suits
+    argv = argv.slice(1);    // and remove first arg (c++:pop_front/bash:shift)
   }
 
   // convert arguments
   if (argv.length >= 1) {
     try {
       if (argv[0].slice(0, 1) === '{') {
-        options = JSON.parse(argv[0]);
+        options = JSON.parse(argv[0]); // parse options form json
       } else {
-        options = internal.parseArgv(argv, 0);
+        options = internal.parseArgv(argv, 0); // parse option with parseArgv function
       }
     } catch (x) {
       print("failed to parse the json options: " + x.message);
@@ -186,7 +186,7 @@ function main(argv) {
   if (options.hasOwnProperty('testOutput')) {
     testOutputDirectory = options.testOutput + '/';
   } else {
-    testOutputDirectory = 'out/';    
+    testOutputDirectory = 'out/';
   }
 
   // force json reply
@@ -196,10 +196,10 @@ function main(argv) {
   fs.makeDirectoryRecursive(testOutputDirectory);
 
   // run the test and store the result
-  let r = {};
-
+  let r = {}; // result
   try {
-    r = UnitTest.unitTest(cases, options, testOutputDirectory) || {};
+    // run tests
+    r = UnitTest.unitTest(testSuits, options, testOutputDirectory) || {};
   } catch (x) {
     print("caught exception during test execution!");
 
@@ -248,6 +248,7 @@ function main(argv) {
     }
   }
 
+  // creates yaml like dump at the end
   UnitTest.unitTestPrettyPrintResults(r, testOutputDirectory);
 
   return r.status;
