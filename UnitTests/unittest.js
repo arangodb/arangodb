@@ -189,6 +189,8 @@ function main(argv) {
     testOutputDirectory = 'out/';    
   }
 
+  options.testOutputDirectory = testOutputDirectory;
+  
   // force json reply
   options.jsonReply = true;
 

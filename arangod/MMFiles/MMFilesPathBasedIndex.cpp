@@ -56,6 +56,8 @@ MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
       break;
     }
   }
+
+  TRI_ASSERT(baseSize > 0);
   
   _allocator.reset(new FixedSizeAllocator(baseSize + sizeof(MMFilesIndexElementValue) * numPaths()));
 }

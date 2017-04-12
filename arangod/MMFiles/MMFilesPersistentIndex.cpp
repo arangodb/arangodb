@@ -210,7 +210,7 @@ bool MMFilesPersistentIndexIterator::next(TokenCallback const& cb, size_t limit)
 MMFilesPersistentIndex::MMFilesPersistentIndex(TRI_idx_iid_t iid,
                            arangodb::LogicalCollection* collection,
                            arangodb::velocypack::Slice const& info)
-    : MMFilesPathBasedIndex(iid, collection, info, 0, true) {}
+    : MMFilesPathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t), true) {}
 
 /// @brief destroy the index
 MMFilesPersistentIndex::~MMFilesPersistentIndex() {}
