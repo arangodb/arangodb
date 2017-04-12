@@ -394,9 +394,7 @@ std::string Index::context() const {
 /// base functionality (called from derived classes)
 std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
   auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
   toVelocyPack(*builder, withFigures);
-  builder->close();
   return builder;
 }
 
