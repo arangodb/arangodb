@@ -141,7 +141,7 @@ void RocksDBEngine::start() {
   _options.comparator = _cmp.get();
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager
-  _options.WAL_ttl_seconds = 15;  //(uint64_t)(counter_sync_seconds * 2.0);
+  _options.WAL_ttl_seconds = 60;  //(uint64_t)(counter_sync_seconds * 2.0);
   // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
 
   rocksdb::Status status =

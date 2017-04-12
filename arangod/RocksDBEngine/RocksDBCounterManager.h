@@ -52,28 +52,32 @@ class RocksDBCounterManager : Thread {
 
  public:
   
-  struct CounterUpdate {
-    rocksdb::SequenceNumber _sequenceNum;
-    uint64_t _count; // used for number of documents
-    TRI_voc_rid_t _revisionId; // used for revision id
+  struct CounterAdjustment {
+    rocksdb::SequenceNumber _sequenceNum = 0;
+    uint64_t _added = 0;
+    uint64_t _removed = 0;
+    TRI_voc_rid_t _revisionId = 0; // used for revision id
     
-    CounterUpdate(rocksdb::SequenceNumber seq, uint64_t count, TRI_voc_rid_t revisionId)
-    : _sequenceNum(seq), _count(count), _revisionId(revisionId) {}
+    CounterAdjustment() {}
+    CounterAdjustment(rocksdb::SequenceNumber seq, uint64_t added,
+                  uint64_t removed, TRI_voc_rid_t revisionId)
+    : _sequenceNum(seq), _added(added), _removed(removed), _revisionId(revisionId) {}
     
     rocksdb::SequenceNumber sequenceNumber() const {return _sequenceNum;};
-    uint64_t count() const { return _count; }
+    uint64_t added() const { return _added; }
+    uint64_t removed() const { return _removed; }
     TRI_voc_rid_t revisionId() const { return _revisionId; }
   };
   
 
   /// Thread-Safe load a counter
-  CounterUpdate loadCounter(uint64_t objectId) const;
+  CounterAdjustment loadCounter(uint64_t objectId) const;
 
   /// collections / views / indexes can call this method to update
   /// their total counts. Thread-Safe needs the snapshot so we know
   /// the sequence number used
   void updateCounter(uint64_t objectId,
-                     CounterUpdate const&);
+                     CounterAdjustment const&);
 
   /// Thread-Safe remove a counter
   void removeCounter(uint64_t objectId);

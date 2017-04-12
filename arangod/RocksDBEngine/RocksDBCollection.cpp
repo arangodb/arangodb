@@ -192,8 +192,8 @@ void RocksDBCollection::open(bool ignoreErrors) {
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   auto counterValue = engine->counterManager()->loadCounter(this->objectId());
   LOG_TOPIC(ERR, Logger::DEVEL) << " number of documents: "
-                                << counterValue.count();
-  _numberDocuments = counterValue.count();
+                                << counterValue.added();
+  _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
   //_numberDocuments = countKeyRange(db, readOptions,
   // RocksDBKeyBounds::CollectionDocuments(_objectId));

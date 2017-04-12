@@ -213,7 +213,9 @@ Result RocksDBTransactionState::commitTransaction(
           RocksDBEngine* engine =
               static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
-          RocksDBCounterManager::CounterUpdate update(latestSeq, adjustment,
+          RocksDBCounterManager::CounterAdjustment update(latestSeq,
+                                                      collection->numInserts(),
+                                                      collection->numRemoves(),
                                                       collection->revision());
           engine->counterManager()->updateCounter(coll->objectId(), update);
         }
