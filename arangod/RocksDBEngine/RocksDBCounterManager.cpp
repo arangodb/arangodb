@@ -65,15 +65,6 @@ void RocksDBCounterManager::CMValue::serialize(VPackBuilder& b) const {
 /// will load counts from the db and scan the WAL
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db, double interval)
     : Thread("RocksDBCounters"), _db(db), _interval(interval) {
-      
-      usleep(1000000);
-      usleep(1000000);
-      usleep(1000000);
-      usleep(1000000);
-      usleep(1000000);
-      usleep(1000000);
-      usleep(1000000);
-
   readCounterValues();
   if (_counters.size() > 0) {
     if (parseRocksWAL()) {
