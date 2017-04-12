@@ -21,39 +21,39 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H
-#define ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H 1
+#ifndef ARANGOD_GRAPH_EDGECURSOR_H
+#define ARANGOD_GRAPH_EDGECURSOR_H 1
 
-#include "Graph/EdgeCursor.h"
-#include "VocBase/TraverserOptions.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
-class CollectionNameResolver;
-namespace traverser {
 
-class Traverser;
+class StringRef;
 
-class ClusterEdgeCursor : public graph::EdgeCursor {
+namespace velocypack {
+class Slice;
+}
 
+namespace graph {
+
+/// @brief Abstract class used in the traversals
+/// to abstract away access to indexes / DBServers.
+/// Returns edges as VelocyPack.
+class EdgeCursor {
  public:
-  ClusterEdgeCursor(StringRef vid, uint64_t, ClusterTraverser*);
+  EdgeCursor() {}
+  virtual ~EdgeCursor() {}
 
-  ~ClusterEdgeCursor() {
-  }
+  virtual bool next(std::function<void(arangodb::StringRef const&,
+                                       arangodb::velocypack::Slice, size_t)>
+                        callback) = 0;
 
-  bool next(std::function<void(arangodb::StringRef const&, arangodb::velocypack::Slice, size_t)> callback) override;
-
-  void readAll(std::function<void(arangodb::StringRef const&, arangodb::velocypack::Slice, size_t&)> callback) override;
-
- private:
-
-  std::vector<arangodb::velocypack::Slice> _edgeList;
-
-  size_t _position;
-  CollectionNameResolver const* _resolver;
-  arangodb::traverser::Traverser* _traverser;
+  virtual void readAll(
+      std::function<void(arangodb::StringRef const&,
+                         arangodb::velocypack::Slice, size_t&)>) = 0;
 };
-}
-}
+
+}  // namespace graph
+}  // namespace arangodb
 
 #endif
