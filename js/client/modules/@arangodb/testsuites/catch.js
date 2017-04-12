@@ -57,13 +57,11 @@ function catchRunner (options) {
   let results = {};
   let rootDir = pu.UNITTESTS_DIR;
 
-  const icuDir = pu.UNITTESTS_DIR + '/';
-  require('internal').env.ICU_DATA = icuDir;
   const run = locateCatchTest('arangodbtests');
   if (!options.skipCatch) {
     if (run !== '') {
       let argv = [
-        '[exclude:longRunning][exclude:cache][exclude:endpoints][exclude:structure-size]',
+        '[exclude:longRunning][exclude:cache]',
         '-r',
         'junit',
         '-o',
@@ -76,11 +74,7 @@ function catchRunner (options) {
       };
     }
   }
-  {
-    let argv = [
-      '[exclude:longRunning][exclude:cache][exclude:endpoints][exclude:structure-size]'];
-    results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir);
-  }
+
   if (!options.skipCache) {
     if (run !== '') {
       let argv = ['[cache][exclude:longRunning]',
