@@ -42,7 +42,6 @@ struct ShortestPathOptions : public BaseOptions {
  public:
   std::string start;
   std::string direction;
-  bool useWeight;
   std::string weightAttribute;
   double defaultWeight;
   bool bidirectional;
@@ -67,6 +66,9 @@ struct ShortestPathOptions : public BaseOptions {
 
   arangodb::velocypack::Slice getStart() const;
   arangodb::velocypack::Slice getEnd() const;
+
+  /// @brief  Test if we have to use a weight attribute
+  bool useWeight() const;
 
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const override;
