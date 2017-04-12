@@ -112,9 +112,9 @@ void RocksDBVPackIndexIterator::reset() {
 
 bool RocksDBVPackIndexIterator::outOfRange() const {
   if (_reverse) {
-    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
+    return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
   } else {
-    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+    return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
   }
 }
 
@@ -556,10 +556,14 @@ int RocksDBVPackIndex::drop() {
   RocksDBIndex::drop();
   if (_unique) {
     return rocksutils::removeLargeRange(
-        rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId)).errorNumber();
+               rocksutils::globalRocksDB(),
+               RocksDBKeyBounds::UniqueIndex(_objectId))
+        .errorNumber();
   } else {
-    return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                        RocksDBKeyBounds::IndexEntries(_objectId)).errorNumber();
+    return rocksutils::removeLargeRange(
+               rocksutils::globalRocksDB(),
+               RocksDBKeyBounds::IndexEntries(_objectId))
+        .errorNumber();
   }
 }
 
@@ -825,7 +829,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
                             estimatedCost);
   }
-  
+
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -989,7 +993,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     TRI_IF_FAILURE("HashIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    
+
   } else {
     // Create the search Values for the lookup
     VPackArrayBuilder guard(&searchValues);
@@ -1092,6 +1096,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
       if (it != found.end()) {
         auto rangeConditions = it->second;
         TRI_ASSERT(rangeConditions.size() <= 2);
+
         VPackObjectBuilder searchElement(&searchValues);
         for (auto& comp : rangeConditions) {
           TRI_ASSERT(comp->numMembers() == 2);
@@ -1194,7 +1199,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
     SimpleAttributeEqualityMatcher matcher(_fields);
     return matcher.specializeAll(this, node, reference);
   }
-  
+
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1240,6 +1245,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
       if (isDuplicateOperator(it, operatorsFound)) {
         continue;
       }
+
       operatorsFound.emplace(static_cast<int>(it->type));
       children.emplace_back(it);
     }

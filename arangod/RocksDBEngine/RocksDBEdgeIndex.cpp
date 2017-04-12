@@ -64,6 +64,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _index(index),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)) {
   keys.release();  // now we have ownership for _keys
+  TRI_ASSERT(_keys->slice().isArray());
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   _iterator.reset(rtrx->GetIterator(state->readOptions()));
@@ -79,7 +80,7 @@ bool RocksDBEdgeIndexIterator::updateBounds() {
     TRI_ASSERT(fromTo.isString());
     _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId,
                                                 fromTo.copyString());
-    
+
     _iterator->Seek(_bounds.start());
     return true;
   }
@@ -104,9 +105,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   // aquire rocksdb collection
   auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
   while (limit > 0) {
-    
-    while (_iterator->Valid() && _iterator->key().starts_with(_bounds.start())) {
-      TRI_ASSERT(_iterator->key().size() > _bounds.start().size());
+    while (_iterator->Valid() &&
+           (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
       StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
 
       // aquire the document token through the primary index
@@ -115,9 +115,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       _iterator->Next();
       if (res.ok()) {
         cb(token);
-        if (--limit == 0) {
-          break;
-        }
+        --limit;
       }  // TODO do we need to handle failed lookups here?
     }
     if (limit > 0) {
@@ -146,7 +144,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                    false, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _directionAttr(attr) {
-  
   TRI_ASSERT(iid != 0);
 }
 
@@ -277,7 +274,8 @@ int RocksDBEdgeIndex::drop() {
   // First drop the cache all indexes can work without it.
   RocksDBIndex::drop();
   return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::EdgeIndex(_objectId)).errorNumber();
+                                      RocksDBKeyBounds::EdgeIndex(_objectId))
+      .errorNumber();
 }
 
 /// @brief checks whether the index supports the condition
