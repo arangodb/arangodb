@@ -11,10 +11,10 @@ of documents. This skiplist is then used in queries to locate documents
 within a given range. If the skiplist is declared unique, then no two documents are
 allowed to have the same set of attribute values.
 
-Creating a new document or updating a document will fail if the uniqueness is violated. 
-If the skiplist index is declared sparse, a document will be excluded from the index and no 
-uniqueness checks will be performed if any index attribute value is not set or has a value 
-of `null`. 
+Creating a new document or updating a document will fail if the uniqueness is violated.
+If the skiplist index is declared sparse, a document will be excluded from the index and no
+uniqueness checks will be performed if any index attribute value is not set or has a value
+of `null`.
 
 Accessing Skiplist Indexes from the Shell
 -----------------------------------------
@@ -30,16 +30,16 @@ Creates a unique skiplist index on all documents using *field1*, ... *fieldn*
 as attribute paths. At least one attribute path has to be given. The index will
 be non-sparse by default.
 
-All documents in the collection must differ in terms of the indexed 
+All documents in the collection must differ in terms of the indexed
 attributes. Creating a new document or updating an existing document will
-will fail if the attribute uniqueness is violated. 
+fail if the attribute uniqueness is violated.
 
 To create a sparse unique index, set the *sparse* attribute to `true`:
 
 `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ], unique: true, sparse: true })`
 
-In a sparse index all documents will be excluded from the index that do not 
-contain at least one of the specified index attributes or that have a value 
+In a sparse index all documents will be excluded from the index that do not
+contain at least one of the specified index attributes or that have a value
 of `null` in any of the specified index attributes. Such documents will
 not be indexed, and not be taken into account for uniqueness checks.
 
@@ -61,7 +61,7 @@ details, including the index-identifier, is returned.
     ~db._drop("ids");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock ensureUniqueSkiplistSingle
-    
+
     @startDocuBlockInline ensureUniqueSkiplistMultiColumn
     @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistMultiColumn}
     ~db._create("ids");
@@ -86,7 +86,9 @@ Creates a non-unique skiplist index on all documents using *field1*, ...
 *fieldn* as attribute paths. At least one attribute path has to be given.
 The index will be non-sparse by default.
 
-To create a sparse unique index, set the *sparse* attribute to `true`.
+To create a sparse non-unique index, set the *sparse* attribute to `true`.
+
+`collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ], sparse: true })`
 
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
@@ -136,7 +138,7 @@ details, including the index-identifier, is returned.
 Constructs a query-by-example using a skiplist index:
 `collection.byExample(example)`
 
-Selects all documents from the collection that match the specified example 
+Selects all documents from the collection that match the specified example
 and returns a cursor. A skiplist index will be used if present.
 
 You can use *toArray*, *next*, or *hasNext* to access the
