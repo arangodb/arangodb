@@ -63,7 +63,7 @@ function catchRunner (options) {
   if (!options.skipCatch) {
     if (run !== '') {
       let argv = [
-        '[exclude:longRunning][exclude:cache]',
+        '[exclude:longRunning][exclude:cache][exclude:endpoints][exclude:structure-size]',
         '-r',
         'junit',
         '-o',
