@@ -26,6 +26,7 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
+#include "Graph/EdgeCursor.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Transaction/Context.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -160,7 +161,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
-    std::unique_ptr<arangodb::traverser::EdgeCursor> edgeCursor(_opts->nextCursor(&mmdr, StringRef(vertex), depth));
+    std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(_opts->nextCursor(&mmdr, StringRef(vertex), depth));
     edgeCursor->readAll([&] (StringRef const& documentId, VPackSlice edge, size_t cursorId) {
       if (!_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth, cursorId)) {
         filtered++;

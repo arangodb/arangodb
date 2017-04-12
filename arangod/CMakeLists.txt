@@ -217,10 +217,12 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VppCommTask.cpp
-  Graph/BreadthFirstEnumerator.cpp
-  Graph/NeighborsEnumerator.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
+  Graph/BaseOptions.cpp
+  Graph/BreadthFirstEnumerator.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/NeighborsEnumerator.cpp
+  Graph/ShortestPathOptions.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
@@ -314,7 +316,6 @@ SET(ARANGOD_SOURCES
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
-  V8Server/V8Traverser.cpp
   V8Server/v8-actions.cpp
   V8Server/v8-collection-util.cpp
   V8Server/v8-collection.cpp

@@ -74,16 +74,21 @@ void RocksDBSavePoint::rollback() {
 }
 
 /// @brief transaction type
-RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t* vocbase, uint64_t maxTransSize)
+RocksDBTransactionState::RocksDBTransactionState(
+    TRI_vocbase_t* vocbase, uint64_t maxTransSize,
+    bool intermediateTransactionEnabled, uint64_t intermediateTransactionSize,
+    uint64_t intermediateTransactionNumber)
     : TransactionState(vocbase),
       _rocksReadOptions(),
       _cacheTx(nullptr),
       _transactionSize(0),
       _maxTransactionSize(maxTransSize),
+      _intermediateTransactionSize(intermediateTransactionSize),
+      _intermediateTransactionNumber(intermediateTransactionNumber),
       _numInserts(0),
       _numUpdates(0),
-      _numRemoves(0)
-      {}
+      _numRemoves(0),
+      _intermediateTransactionEnabled(intermediateTransactionEnabled) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -159,6 +164,9 @@ Result RocksDBTransactionState::commitTransaction(
                                << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
+  TRI_IF_FAILURE("TransactionWriteCommitMarker") {
+    return Result(TRI_ERROR_DEBUG);
+  }
 
   arangodb::Result result;
 
@@ -261,15 +269,15 @@ Result RocksDBTransactionState::abortTransaction(
 }
 
 /// @brief add an operation for a transaction collection
-Result RocksDBTransactionState::addOperation(
+RocksDBOperationResult RocksDBTransactionState::addOperation(
     TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
-    TRI_voc_document_operation_e operationType,
-    uint64_t operationSize, uint64_t keySize) {
-  Result res;
+    TRI_voc_document_operation_e operationType, uint64_t operationSize,
+    uint64_t keySize) {
+  RocksDBOperationResult res;
 
   uint64_t newSize = _transactionSize + operationSize + keySize;
-  if(_maxTransactionSize < newSize){
-    //we hit the transaction size limit
+  if (_maxTransactionSize < newSize) {
+    // we hit the transaction size limit
     res.reset(TRI_ERROR_RESOURCE_LIMIT, "maximal transaction limit reached");
     return res;
   }
@@ -282,10 +290,11 @@ Result RocksDBTransactionState::addOperation(
                                    "collection not found in transaction state");
   }
 
-  //sould not fail or fail with exception
-  collection->addOperation(revisionId, operationType, operationSize);
+  // sould not fail or fail with exception
+  collection->addOperation(operationType, operationSize, revisionId);
 
   switch (operationType) {
+    case TRI_VOC_NOOP_OPERATION_UPDATE_SIZE:
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
@@ -301,5 +310,17 @@ Result RocksDBTransactionState::addOperation(
   }
 
   _transactionSize = newSize;
+  auto numOperations = _numInserts + _numUpdates + _numRemoves;
+
+  // signal if intermediate commit is required
+  // this will be done if intermeadiate transactions are endabled
+  // and either the number of operations or the transaction size 
+  // has reached the limit
+  if (_intermediateTransactionEnabled &&
+      (_intermediateTransactionNumber <= numOperations ||
+       _intermediateTransactionSize <= newSize)) {
+    res.commitRequired(true);
+  }
+
   return res;
 }

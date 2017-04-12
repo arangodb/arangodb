@@ -73,6 +73,7 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn)
 /// @brief enum for write operations
 enum TRI_voc_document_operation_e : uint8_t {
   TRI_VOC_DOCUMENT_OPERATION_UNKNOWN = 0,
+  TRI_VOC_NOOP_OPERATION_UPDATE_SIZE,
   TRI_VOC_DOCUMENT_OPERATION_INSERT,
   TRI_VOC_DOCUMENT_OPERATION_UPDATE,
   TRI_VOC_DOCUMENT_OPERATION_REPLACE,

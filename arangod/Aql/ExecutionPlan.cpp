@@ -43,7 +43,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "V8Server/V8Traverser.h"
+#include "Graph/ShortestPathOptions.h"
 #include "VocBase/AccessMode.h"
 
 #include <velocypack/Iterator.h>
@@ -145,9 +145,9 @@ static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
   return options;
 }
 
-static std::unique_ptr<traverser::ShortestPathOptions> CreateShortestPathOptions(
+static std::unique_ptr<graph::ShortestPathOptions> CreateShortestPathOptions(
     arangodb::transaction::Methods* trx, AstNode const* node) {
-  auto options = std::make_unique<traverser::ShortestPathOptions>(trx);
+  auto options = std::make_unique<graph::ShortestPathOptions>(trx);
 
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();

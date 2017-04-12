@@ -28,6 +28,11 @@
 #include "Graph/ShortestPathFinder.h"
 
 namespace arangodb {
+
+namespace aql {
+class ShortestPathBlock;
+}
+
 namespace velocypack {
 class Slice;
 }
@@ -68,12 +73,11 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
       _rightFound;
   std::deque<arangodb::velocypack::Slice> _rightClosure;
 
-  ExpanderFunction _leftNeighborExpander;
-  ExpanderFunction _rightNeighborExpander;
+  // TODO Remove Me!
+  arangodb::aql::ShortestPathBlock* _block;
 
  public:
-  ConstantWeightShortestPathFinder(ExpanderFunction left,
-                                   ExpanderFunction right);
+  ConstantWeightShortestPathFinder(arangodb::aql::ShortestPathBlock* block);
 
   ~ConstantWeightShortestPathFinder();
 
@@ -83,6 +87,14 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
                     std::function<void()> const& callback) override;
 
  private:
+  void expandVertex(bool backward, arangodb::velocypack::Slice& vertex,
+                    std::vector<arangodb::velocypack::Slice>& edges,
+                    std::vector<arangodb::velocypack::Slice>& neighbors);
+
+  void expandVertexCluster(bool backward, arangodb::velocypack::Slice& vertex,
+                           std::vector<arangodb::velocypack::Slice>& edges,
+                           std::vector<arangodb::velocypack::Slice>& neighbors);
+
   void clearVisited();
 };
 

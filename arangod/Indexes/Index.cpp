@@ -87,6 +87,26 @@ Index::Index(VPackSlice const& slice)
 
 Index::~Index() {}
 
+size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
+  switch (node->type) {
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      return 1;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+      return 2;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      return 3;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      return 4;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      return 5;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      return 6;
+    default:
+      return 42; /* OPST_CIRCUS */
+  }
+}
+
+
 /// @brief set fields from slice
 void Index::setFields(VPackSlice const& fields, bool allowExpansion) {
   if (!fields.isArray()) {

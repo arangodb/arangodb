@@ -116,17 +116,15 @@ void RocksDBCounterManager::updateCounter(uint64_t objectId,
                                           rocksdb::Snapshot const* snapshot,
                                           int64_t delta, uint64_t revisionId) {
 
-  LOG_TOPIC(ERR, Logger::DEVEL) << "UPDATE COUNTER: " <<  objectId;
-  LOG_TOPIC(ERR, Logger::DEVEL) << "delta: " << delta;
   bool needsSync = false;
   {
     WRITE_LOCKER(guard, _rwLock);
-    LOG_TOPIC(ERR, Logger::DEVEL) << "got lock: " <<  objectId;
+    
     auto const& it = _counters.find(objectId);
     if (it != _counters.end()) {
       // already have a counter for objectId. now adjust its value
       it->second._count += delta;
-      LOG_TOPIC(ERR, Logger::DEVEL) << "UPDATE COUNTER count: " << it->second._count;
+
       // just use the latest snapshot
       if (snapshot->GetSequenceNumber() > it->second._sequenceNumber) {
         it->second._sequenceNumber = snapshot->GetSequenceNumber();
@@ -136,7 +134,6 @@ void RocksDBCounterManager::updateCounter(uint64_t objectId,
       // insert new counter
       TRI_ASSERT(delta >= 0);
       auto tmpCounter = Counter(snapshot->GetSequenceNumber(), delta, revisionId);
-      LOG_TOPIC(ERR, Logger::DEVEL) << "UPDATE COUNTER count: " <<  tmpCounter.count();
       _counters.emplace(std::make_pair(objectId,std::move(tmpCounter)));
       needsSync = true;
     }
@@ -167,14 +164,14 @@ Result RocksDBCounterManager::sync() {
     return Result();
   }
 
-  std::unordered_map<uint64_t, Counter> tmp;
+  std::unordered_map<uint64_t, Counter> copy;
   {  // block all updates
     WRITE_LOCKER(guard, _rwLock);
     if (_syncing) {
       return Result();
     }
     _syncing = true;
-    tmp = _counters;
+    copy = _counters;
   }
 
   rocksdb::WriteOptions writeOptions;
@@ -183,7 +180,7 @@ Result RocksDBCounterManager::sync() {
       db->BeginTransaction(writeOptions));
 
   VPackBuilder b;
-  for (std::pair<uint64_t, Counter> const& pair : tmp) {
+  for (std::pair<uint64_t, Counter> const& pair : copy) {
     // Skip values which we did not change
     auto const& it = _syncedSeqNum.find(pair.first);
     if (it != _syncedSeqNum.end() && it->second == pair.second._sequenceNumber) {
@@ -192,6 +189,7 @@ Result RocksDBCounterManager::sync() {
 
     b.clear();
     pair.second.serialize(b);
+    LOG_TOPIC(ERR, Logger::DEVEL) << "Writing counter " << b.toJson();
 
     RocksDBKey key = RocksDBKey::CounterValue(pair.first);
     rocksdb::Slice value((char*)b.start(), b.size());
@@ -202,13 +200,16 @@ Result RocksDBCounterManager::sync() {
       return rocksutils::convertStatus(s);
     }
   }
+  // we have to commit all counters in one batch otherwise
+  // there would be the possibility of
   rocksdb::Status s = rtrx->Commit();
   if (s.ok()) {
-    for (std::pair<uint64_t, Counter> const& pair : tmp) {
+    for (std::pair<uint64_t, Counter> const& pair : copy) {
       _syncedSeqNum[pair.first] = pair.second._sequenceNumber;
     }
   }
   _syncing = false;
+  
   return rocksutils::convertStatus(s);
 }
 
@@ -269,7 +270,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
         return false;
       } else {
         TRI_ASSERT(deltas.find(objectId) != deltas.end());
-        return it->second < seqNum;
+        return it->second <= seqNum;
       }
     }
     return false;
@@ -282,7 +283,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
       RocksDBCounterManager::Counter& cc = deltas[objectId];
-      if (cc._sequenceNumber < seqNum) {
+      if (cc._sequenceNumber <= seqNum) {
         cc._sequenceNumber = seqNum;
         cc._count++;
         cc._revisionId = revisionId;
@@ -296,7 +297,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
       RocksDBCounterManager::Counter& cc = deltas[objectId];
-      if (cc._sequenceNumber < seqNum) {
+      if (cc._sequenceNumber <= seqNum) {
         cc._sequenceNumber = seqNum;
         cc._count--;
         cc._revisionId = revisionId;
@@ -310,7 +311,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
       RocksDBCounterManager::Counter& cc = deltas[objectId];
-      if (cc._sequenceNumber < seqNum) {
+      if (cc._sequenceNumber <= seqNum) {
         cc._sequenceNumber = seqNum;
         cc._count--;
         cc._revisionId = revisionId;
@@ -325,39 +326,48 @@ bool RocksDBCounterManager::parseRocksWAL() {
   TRI_ASSERT(_counters.size() > 0);
 
   // Determine which counter values might be outdated
-  rocksdb::SequenceNumber minSeq = UINT64_MAX;
+  rocksdb::SequenceNumber lastWrittenSeq = UINT64_MAX;
   for (auto const& it : _syncedSeqNum) {
-    if (it.second < minSeq) {
-      minSeq = it.second;
+    if (it.second < lastWrittenSeq) {
+      lastWrittenSeq = it.second;
     }
   }
 
   std::unique_ptr<WBReader> handler(new WBReader());
 
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
-  rocksdb::Status s = _db->GetUpdatesSince(minSeq, &iterator);
+  rocksdb::Status s = _db->GetUpdatesSince(lastWrittenSeq-1, &iterator);
   if (!s.ok()) {  // TODO do something?
     return false;
   }
   while (iterator->Valid()) {
-    rocksdb::BatchResult result = iterator->GetBatch();
-    if (result.sequence > minSeq) {
+    s = iterator->status();
+    if (s.ok()) {
+      rocksdb::BatchResult result = iterator->GetBatch();
       handler->seqNum = result.sequence;
       s = result.writeBatchPtr->Iterate(handler.get());
-      if (!s.ok()) {
-        break;
-      }
     }
+    if (!s.ok()) {
+      LOG_TOPIC(ERR, Logger::ENGINES) << "Error during WAL scan";
+      LOG_TOPIC(ERR, Logger::ENGINES) << iterator->status().getState();
+      break;
+    }
+    
     iterator->Next();
   }
 
+  LOG_TOPIC(WARN, Logger::FIXME) << "Finished WAL scan";
   for (std::pair<uint64_t, RocksDBCounterManager::Counter> pair : handler->deltas) {
     auto const& it = _counters.find(pair.first);
     if (it != _counters.end()
         && it->second._sequenceNumber < pair.second._sequenceNumber) {
+      
       it->second._sequenceNumber = pair.second._sequenceNumber;
       it->second._count += pair.second._count;
       it->second._revisionId = pair.second._revisionId;
+      LOG_TOPIC(WARN, Logger::FIXME) << "WAL recovered " << pair.second._count
+                                     << " for a total of " << it->second._count;
+
     }
   }
   return handler->deltas.size() > 0;
