@@ -76,7 +76,11 @@ function catchRunner (options) {
       };
     }
   }
-
+  {
+    let argv = [
+      '[exclude:longRunning][exclude:cache][exclude:endpoints][exclude:structure-size]'];
+    results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir);
+  }
   if (!options.skipCache) {
     if (run !== '') {
       let argv = ['[cache][exclude:longRunning]',
