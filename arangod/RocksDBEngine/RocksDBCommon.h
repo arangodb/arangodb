@@ -52,24 +52,32 @@ public:
   RocksDBOperationResult()
     :Result()
     ,_keySize(0)
+    ,_commitRequired(false)
   {}
 
   RocksDBOperationResult(Result const& other)
     : _keySize(0)
+    ,_commitRequired(false)
   {
     cloneData(other);
   }
 
   RocksDBOperationResult(Result&& other)
     : _keySize(0)
+    ,_commitRequired(false)
   {
     cloneData(std::move(other));
   }
 
   uint64_t keySize(){ return _keySize; }
   uint64_t keySize(uint64_t s ) { _keySize = s; return _keySize; }
+
+  bool commitRequired(){ return _commitRequired; }
+  bool commitRequired(bool cr ) { _commitRequired = cr; return _commitRequired; }
+
 protected:
   uint64_t _keySize;
+  bool _commitRequired;
 };
 
 class TransactionState;
