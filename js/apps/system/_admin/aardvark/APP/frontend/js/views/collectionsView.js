@@ -13,6 +13,14 @@
 
     template: templateEngine.createTemplate('collectionsView.ejs'),
 
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     refetchCollections: function () {
       var self = this;
       this.collection.fetch({

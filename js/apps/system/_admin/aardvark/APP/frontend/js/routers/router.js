@@ -562,11 +562,12 @@
         return;
       }
       var self = this;
-      if (!this.collectionsView) {
-        this.collectionsView = new window.CollectionsView({
-          collection: this.arangoCollectionsStore
-        });
+      if (this.collectionsView) {
+        this.collectionsView.remove();
       }
+      this.collectionsView = new window.CollectionsView({
+        collection: this.arangoCollectionsStore
+      });
       this.arangoCollectionsStore.fetch({
         cache: false,
         success: function () {
