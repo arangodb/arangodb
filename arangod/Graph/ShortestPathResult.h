@@ -31,8 +31,16 @@ namespace arangodb {
 class ManagedDocumentResult;
 class StringRef;
 
+namespace aql {
+class AqlValue;
+}
+
 namespace transaction {
 class Methods;
+}
+
+namespace traverser {
+class TraverserCache;
 }
 
 namespace velocypack {
@@ -60,16 +68,18 @@ class ShortestPathResult {
   /// @brief Clears the path
   void clear();
 
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge pointing to the vertex at position as
-  /// VelocyPack
-
-  void edgeToVelocyPack(transaction::Methods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds only the vertex at position as VelocyPack
+  /// AqlValue
   //////////////////////////////////////////////////////////////////////////////
 
-  void vertexToVelocyPack(transaction::Methods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
+  aql::AqlValue edgeToAqlValue(traverser::TraverserCache* cache, size_t depth) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Builds only the vertex at position as AqlValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  aql::AqlValue vertexToAqlValue(traverser::TraverserCache* cache, size_t depth) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents

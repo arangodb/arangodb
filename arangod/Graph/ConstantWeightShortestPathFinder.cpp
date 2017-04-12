@@ -42,9 +42,8 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(
-    arangodb::aql::ShortestPathBlock* block)
-    : _block(block),
-      _options(block->_opts),
+    ShortestPathOptions* options)
+    : _options(options),
       _mmdr(new ManagedDocumentResult{}) {}
 
 ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {

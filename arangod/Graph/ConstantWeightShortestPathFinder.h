@@ -58,7 +58,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   };
 
  public:
-  ConstantWeightShortestPathFinder(arangodb::aql::ShortestPathBlock* block);
+  ConstantWeightShortestPathFinder(ShortestPathOptions* options);
 
   ~ConstantWeightShortestPathFinder();
 
@@ -80,9 +80,6 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   std::unordered_map<arangodb::StringRef, PathSnippet*> _rightFound;
   std::deque<arangodb::StringRef> _rightClosure;
-
-  // TODO Remove Me!
-  arangodb::aql::ShortestPathBlock* _block;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The options to modify this shortest path computation

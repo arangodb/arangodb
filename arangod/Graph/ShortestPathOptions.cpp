@@ -107,6 +107,12 @@ void ShortestPathOptions::addReverseLookupInfo(
                          attributeName, condition);
 }
 
+double ShortestPathOptions::weightEdge(VPackSlice edge) {
+  TRI_ASSERT(useWeight());
+  return arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+      edge, weightAttribute.c_str(), defaultWeight);
+}
+
 EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr,
                                             StringRef vid) {
   if (_isCoordinator) {

@@ -41,157 +41,6 @@ typedef arangodb::graph::AttributeWeightShortestPathFinder ArangoDBPathFinder;
 
 using namespace arangodb::aql;
 
-/// @brief Local class to expand edges.
-///        Will be handed over to the path finder
-namespace arangodb {
-namespace aql {
-
-/// @brief Expander for weighted edges
-struct EdgeWeightExpanderLocal {
- private:
-  /// @brief reference to the Block
-  ShortestPathBlock const* _block;
-
-  /// @brief Defines if this expander follows the edges in reverse
-  bool _reverse;
-
- public:
-  EdgeWeightExpanderLocal(ShortestPathBlock const* block, bool reverse)
-      : _block(block), _reverse(reverse) {}
-
-  void inserter(std::unordered_map<VPackSlice, size_t>& candidates,
-                std::vector<ArangoDBPathFinder::Step*>& result,
-                VPackSlice const& s, VPackSlice const& t, double currentWeight,
-                VPackSlice edge) {
-    auto cand = candidates.find(t);
-    if (cand == candidates.end()) {
-      // Add weight
-      auto step =
-          std::make_unique<ArangoDBPathFinder::Step>(t, s, currentWeight, edge);
-      result.emplace_back(step.release());
-      candidates.emplace(t, result.size() - 1);
-    } else {
-      // Compare weight
-      auto old = result[cand->second];
-      auto oldWeight = old->weight();
-      if (currentWeight < oldWeight) {
-        old->setWeight(currentWeight);
-        old->_predecessor = s;
-        old->_edge = edge;
-      }
-    }
-  }
-
-  void operator()(VPackSlice const& source,
-                  std::vector<ArangoDBPathFinder::Step*>& result) {
-    TRI_ASSERT(source.isString());
-    std::string id = source.copyString();
-    ManagedDocumentResult* mmdr = _block->_mmdr.get();
-    std::unique_ptr<arangodb::OperationCursor> edgeCursor;
-    std::unordered_map<VPackSlice, size_t> candidates;
-    for (auto const& edgeCollection : _block->_collectionInfos) {
-      TRI_ASSERT(edgeCollection != nullptr);
-      if (_reverse) {
-        edgeCursor = edgeCollection->getReverseEdges(id, mmdr);
-      } else {
-        edgeCursor = edgeCollection->getEdges(id, mmdr);
-      }
-
-      candidates.clear();
-
-      LogicalCollection* collection = edgeCursor->collection();
-      auto cb = [&](DocumentIdentifierToken const& element) {
-        if (collection->readDocument(_block->transaction(), element, *mmdr)) {
-          VPackSlice edge(mmdr->vpack());
-          VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
-          VPackSlice to = transaction::helpers::extractToFromDocument(edge);
-          double currentWeight = edgeCollection->weightEdge(edge);
-          if (from == source) {
-            inserter(candidates, result, from, to, currentWeight, edge);
-          } else {
-            inserter(candidates, result, to, from, currentWeight, edge);
-          }
-        }
-      };
-
-      while (edgeCursor->getMore(cb, 1000)) {
-      }
-    }
-  }
-};
-
-/// @brief Expander for weighted edges
-struct EdgeWeightExpanderCluster {
- private:
-  /// @brief reference to the Block
-  ShortestPathBlock* _block;
-
-  /// @brief Defines if this expander follows the edges in reverse
-  bool _reverse;
-
- public:
-  EdgeWeightExpanderCluster(ShortestPathBlock* block, bool reverse)
-      : _block(block), _reverse(reverse) {}
-
-  void operator()(VPackSlice const& source,
-                  std::vector<ArangoDBPathFinder::Step*>& result) {
-    int res = TRI_ERROR_NO_ERROR;
-    std::unordered_map<VPackSlice, size_t> candidates;
-
-    for (auto const& edgeCollection : _block->_collectionInfos) {
-      TRI_ASSERT(edgeCollection != nullptr);
-      VPackBuilder edgesBuilder;
-      if (_reverse) {
-        res = edgeCollection->getReverseEdgesCoordinator(source, edgesBuilder);
-      } else {
-        res = edgeCollection->getEdgesCoordinator(source, edgesBuilder);
-      }
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-
-      candidates.clear();
-
-      auto inserter = [&](VPackSlice const& s, VPackSlice const& t,
-                          double currentWeight, VPackSlice const& edge) {
-        auto cand = candidates.find(t);
-        if (cand == candidates.end()) {
-          // Add weight
-          auto step = std::make_unique<ArangoDBPathFinder::Step>(
-              t, s, currentWeight, edge);
-          result.emplace_back(step.release());
-          candidates.emplace(t, result.size() - 1);
-        } else {
-          // Compare weight
-          auto old = result[cand->second];
-          auto oldWeight = old->weight();
-          if (currentWeight < oldWeight) {
-            old->setWeight(currentWeight);
-            old->_predecessor = s;
-            old->_edge = edge;
-          }
-        }
-      };
-
-      VPackSlice edges = edgesBuilder.slice().get("edges");
-      for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
-        VPackSlice to = transaction::helpers::extractToFromDocument(edge);
-        double currentWeight = edgeCollection->weightEdge(edge);
-        if (from == source) {
-          inserter(from, to, currentWeight, edge);
-        } else {
-          inserter(to, from, currentWeight, edge);
-        }
-      }
-      _block->_coordinatorCache.emplace_back(edgesBuilder.steal());
-    }
-  }
-};
-}
-}
-
 ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
                                      ShortestPathNode const* ep)
     : ExecutionBlock(engine, ep),
@@ -252,21 +101,19 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     if (_opts->useWeight()) {
-      _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(
-          EdgeWeightExpanderCluster(this, false),
-          EdgeWeightExpanderCluster(this, true), _opts->bidirectional));
+      _finder.reset(
+          new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
     } else {
       _finder.reset(
-          new arangodb::graph::ConstantWeightShortestPathFinder(this));
+          new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
     }
   } else {
     if (_opts->useWeight()) {
-      _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(
-          EdgeWeightExpanderLocal(this, false),
-          EdgeWeightExpanderLocal(this, true), _opts->bidirectional));
+      _finder.reset(
+          new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
     } else {
       _finder.reset(
-          new arangodb::graph::ConstantWeightShortestPathFinder(this));
+          new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
     }
   }
 }
@@ -457,18 +304,14 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
   // only copy 1st row of registers inherited from previous frame(s)
   inheritRegisters(cur, res.get(), _pos);
 
-  // TODO: lease builder?
-  VPackBuilder resultBuilder;
   for (size_t j = 0; j < toSend; j++) {
     if (usesVertexOutput()) {
-      resultBuilder.clear();
-      _path->vertexToVelocyPack(_trx, _mmdr.get(), _posInPath, resultBuilder);
-      res->setValue(j, _vertexReg, AqlValue(resultBuilder.slice()));
+      res->setValue(j, _vertexReg,
+                    _path->vertexToAqlValue(_opts->cache(), _posInPath));
     }
     if (usesEdgeOutput()) {
-      resultBuilder.clear();
-      _path->edgeToVelocyPack(_trx, _mmdr.get(), _posInPath, resultBuilder);
-      res->setValue(j, _edgeReg, AqlValue(resultBuilder.slice()));
+      res->setValue(j, _edgeReg,
+                    _path->edgeToAqlValue(_opts->cache(), _posInPath));
     }
     if (j > 0) {
       // re-use already copied aqlvalues

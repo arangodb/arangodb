@@ -23,17 +23,21 @@
 
 #include "Graph/ShortestPathResult.h"
 
+#include "Aql/AqlValue.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::transaction;
+using namespace arangodb::traverser;
 
 ShortestPathResult::ShortestPathResult() : _readDocuments(0) {}
 
@@ -45,39 +49,16 @@ void ShortestPathResult::clear() {
   _edges.clear();
 }
 
-void ShortestPathResult::edgeToVelocyPack(transaction::Methods*,
-                                          ManagedDocumentResult* mmdr,
-                                          size_t position,
-                                          VPackBuilder& builder) {
-  TRI_ASSERT(position < length());
+AqlValue ShortestPathResult::edgeToAqlValue(TraverserCache* cache, size_t position) const {
   if (position == 0) {
-    builder.add(basics::VelocyPackHelper::NullValue());
-  } else {
-    TRI_ASSERT(position - 1 < _edges.size());
-    // FIXME ADD CACHE!
-    std::string tmp = _edges[position - 1].toString();
-    builder.add(VPackValue(tmp));
+    // First Edge is defined as NULL
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
+  TRI_ASSERT(position - 1 < _edges.size());
+  return cache->fetchAqlResult(_edges[position - 1]);
 }
 
-void ShortestPathResult::vertexToVelocyPack(transaction::Methods* trx,
-                                            ManagedDocumentResult* mmdr,
-                                            size_t position,
-                                            VPackBuilder& builder) {
-  TRI_ASSERT(position < length());
-  StringRef v = _vertices[position];
-  std::string collection = v.toString();
-  size_t p = collection.find("/");
-  TRI_ASSERT(p != std::string::npos);
-
-  transaction::BuilderLeaser searchBuilder(trx);
-  searchBuilder->add(VPackValue(collection.substr(p + 1)));
-  collection = collection.substr(0, p);
-
-  Result res = trx->documentFastPath(collection, mmdr, searchBuilder->slice(),
-                                     builder, true);
-  if (!res.ok()) {
-    builder.clear();  // Just in case...
-    builder.add(basics::VelocyPackHelper::NullValue());
-  }
+AqlValue ShortestPathResult::vertexToAqlValue(TraverserCache* cache, size_t position) const {
+  TRI_ASSERT(position < _vertices.size());
+  return cache->fetchAqlResult(_vertices[position]);
 }
