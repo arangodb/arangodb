@@ -250,7 +250,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   _path = std::make_unique<arangodb::traverser::ShortestPath>();
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    if (_opts->useWeight) {
+    if (_opts->useWeight()) {
       _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(
           EdgeWeightExpanderCluster(this, false),
           EdgeWeightExpanderCluster(this, true), _opts->bidirectional));
@@ -259,7 +259,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
           new arangodb::graph::ConstantWeightShortestPathFinder(this));
     }
   } else {
-    if (_opts->useWeight) {
+    if (_opts->useWeight()) {
       _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(
           EdgeWeightExpanderLocal(this, false),
           EdgeWeightExpanderLocal(this, true), _opts->bidirectional));

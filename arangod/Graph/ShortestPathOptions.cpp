@@ -35,7 +35,6 @@ using namespace arangodb::graph;
 ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx)
     : BaseOptions(trx),
       direction("outbound"),
-      useWeight(false),
       weightAttribute(""),
       defaultWeight(1),
       bidirectional(true),
@@ -45,7 +44,6 @@ ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx,
                                          VPackSlice const& info)
     : BaseOptions(trx),
       direction("outbound"),
-      useWeight(false),
       weightAttribute(""),
       defaultWeight(1),
       bidirectional(true),
@@ -84,6 +82,10 @@ VPackSlice ShortestPathOptions::getStart() const {
 }
 
 VPackSlice ShortestPathOptions::getEnd() const { return endBuilder.slice(); }
+
+bool ShortestPathOptions::useWeight() const {
+  return !weightAttribute.empty();
+}
 
 void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
