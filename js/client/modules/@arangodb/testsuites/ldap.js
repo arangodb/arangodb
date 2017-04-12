@@ -131,7 +131,8 @@ function ldap(options) {
       'ldap.bindpasswd': 'hallo',
       'ldap.permissions-attribute-name': 'description',
       'ldap.tls': true,
-      'ldap.tls-cert-check-strategy': options.caCertFilePath
+      'ldap.tls-cacert-file': options.caCertFilePath,
+      'ldap.tls-cert-check-strategy': 'never'
 
     },
     user: {
