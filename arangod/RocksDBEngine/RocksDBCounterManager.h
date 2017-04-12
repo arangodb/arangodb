@@ -30,53 +30,50 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
+#include "VocBase/voc-types.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace rocksdb {
 class DB;
 class Transaction;
-class Snapshot;
 }
 
 namespace arangodb {
-
+  
 class RocksDBCounterManager : Thread {
   friend class RocksDBEngine;
-  
   
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
   RocksDBCounterManager(rocksdb::DB* db, double interval);
 
  public:
-  struct Counter {
-    rocksdb::SequenceNumber _sequenceNumber;
+  
+  struct CounterUpdate {
+    rocksdb::SequenceNumber _sequenceNum;
     uint64_t _count; // used for number of documents
-    uint64_t _revisionId; // used for revision id
-
-    Counter();
-    explicit Counter(VPackSlice const&);
-    Counter(rocksdb::SequenceNumber seq, uint64_t count, uint64_t revisionId)
-      : _sequenceNumber(seq), _count(count), _revisionId(revisionId) {}
-
-    void serialize(VPackBuilder&) const;
-    void reset();
-    uint64_t count() { return _count; }
-    uint64_t revisionId() { return _revisionId; }
+    TRI_voc_rid_t _revisionId; // used for revision id
+    
+    CounterUpdate(rocksdb::SequenceNumber seq, uint64_t count, TRI_voc_rid_t revisionId)
+    : _sequenceNum(seq), _count(count), _revisionId(revisionId) {}
+    
+    rocksdb::SequenceNumber sequenceNumber() const {return _sequenceNum;};
+    uint64_t count() const { return _count; }
+    TRI_voc_rid_t revisionId() const { return _revisionId; }
   };
+  
 
   /// Thread-Safe load a counter
-  Counter const loadCounter(uint64_t objectId);
+  CounterUpdate loadCounter(uint64_t objectId) const;
 
   /// collections / views / indexes can call this method to update
   /// their total counts. Thread-Safe needs the snapshot so we know
   /// the sequence number used
-  void updateCounter(uint64_t objectId, rocksdb::Snapshot const* snapshot,
-                     int64_t delta, uint64_t revisionId);
+  void updateCounter(uint64_t objectId,
+                     CounterUpdate const&);
 
   /// Thread-Safe remove a counter
   void removeCounter(uint64_t objectId);
@@ -88,20 +85,35 @@ class RocksDBCounterManager : Thread {
 
  protected:
   void run() override;
+  
+  struct CMValue {
+    /// ArangoDB transaction ID
+    rocksdb::SequenceNumber  _sequenceNum;
+    /// used for number of documents
+    uint64_t _count;
+    /// used for revision id
+    TRI_voc_rid_t _revisionId;
+    
+    CMValue(rocksdb::SequenceNumber sq, uint64_t cc, TRI_voc_rid_t rid)
+      : _sequenceNum(sq), _count(cc), _revisionId(rid) {}
+    explicit CMValue(arangodb::velocypack::Slice const&);
+    void serialize(arangodb::velocypack::Builder&) const;
+  };
 
  private:
+  
   void readCounterValues();
   bool parseRocksWAL();
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief counter values
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<uint64_t, Counter> _counters;
+  std::unordered_map<uint64_t, CMValue> _counters;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief synced sequence numbers
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<uint64_t, rocksdb::SequenceNumber> _syncedSeqNum;
+  std::unordered_map<uint64_t, rocksdb::SequenceNumber> _syncedSeqNums;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently syncing
@@ -126,7 +138,7 @@ class RocksDBCounterManager : Thread {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief protect _syncing and _counters
   //////////////////////////////////////////////////////////////////////////////
-  basics::ReadWriteLock _rwLock;
+  mutable basics::ReadWriteLock _rwLock;
 };
 }
 

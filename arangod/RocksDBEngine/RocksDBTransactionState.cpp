@@ -129,6 +129,10 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksWriteOptions, rocksdb::TransactionOptions()));
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
+    
+    // add WAL trx marker; Always in before all other operations!!
+    RocksDBValue tid = RocksDBValue::TransactionID(_id);
+    _rocksTransaction->PutLogData(tid.string());
 
     /*LOG_TOPIC(ERR, Logger::FIXME)
         << "#" << _id << " BEGIN (read-only: " << isReadOnlyTransaction()
@@ -177,7 +181,9 @@ Result RocksDBTransactionState::commitTransaction(
         _rocksWriteOptions.sync = true;
       }
 
+      // TODO wait for response on github issue to see how we can use the sequence number
       result = rocksutils::convertStatus(_rocksTransaction->Commit());
+      rocksdb::SequenceNumber latestSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
       if (!result.ok()) {
         abortTransaction(activeTrx);
         return result;
@@ -209,8 +215,10 @@ Result RocksDBTransactionState::commitTransaction(
           RocksDBEngine* engine =
               static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
-          engine->counterManager()->updateCounter(
-              coll->objectId(), snap, adjustment, collection->revision());
+          RocksDBCounterManager::CounterUpdate update(latestSeq,
+                                                      adjustment,
+                                                      collection->revision());
+          engine->counterManager()->updateCounter(coll->objectId(), update);
         }
       }
 
