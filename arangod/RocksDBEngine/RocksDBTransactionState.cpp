@@ -130,10 +130,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
     
-    // add WAL trx marker; Always in before all other operations!!
-    RocksDBValue tid = RocksDBValue::TransactionID(_id);
-    _rocksTransaction->PutLogData(tid.string());
-
     /*LOG_TOPIC(ERR, Logger::FIXME)
         << "#" << _id << " BEGIN (read-only: " << isReadOnlyTransaction()
         << ")";*/
