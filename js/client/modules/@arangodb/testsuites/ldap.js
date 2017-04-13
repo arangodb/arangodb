@@ -57,8 +57,9 @@ const download = require('internal').download;
 function ldap(options) {
 
   print(`DAP FQDN is: ${options.ldapUrl} ${options.caCertFilePath}`);
-
+  const results = {};
   const tests = [{
+    name: 'ldapBasicLDAP',
     conf: {
       'server.authentication': true,
       'server.authentication-system-only':false,
@@ -80,6 +81,7 @@ function ldap(options) {
     }
   },
   {
+    name: 'ldapBindSearchAuth',
     conf: {
       'server.authentication': true,
       'server.authentication-system-only':false,
@@ -102,6 +104,7 @@ function ldap(options) {
     }
   },
   {
+    name: 'ldapUrlBindSearchAuth',
     conf: {
       'server.authentication': true,
       'server.authentication-system-only':false,
@@ -121,6 +124,7 @@ function ldap(options) {
     }
   },
   {
+    name: 'ldapUrlBindSearchTlsAuth',
     conf: {
       'server.authentication': true,
       'server.authentication-system-only':false,
@@ -132,7 +136,7 @@ function ldap(options) {
       'ldap.permissions-attribute-name': 'description',
       'ldap.tls': true,
       'ldap.tls-cacert-file': options.caCertFilePath,
-      'ldap.tls-cert-check-strategy': 'never'
+      'ldap.tls-cert-check-strategy': 'hard'
 
     },
     user: {
@@ -173,17 +177,15 @@ function ldap(options) {
       body: JSON.stringify({username: t.user.name, password: t.user.pass})
     });
 
-    print(res.message, res.statusCode, t.result.statusCode === res.statusCode);
+    results[t.name] = { status: t.result.statusCode == res.statusCode };
+
+    // print(res.message, res.statusCode, t.result.statusCode === res.statusCode);
 
     pu.shutdownInstance(adbInstance, options);
   }
 
-  return {
-    ldap: {
-      status: true,
-      skipped: false
-    }
-  };
+  print(results);
+  return results;
 }
 
 exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
