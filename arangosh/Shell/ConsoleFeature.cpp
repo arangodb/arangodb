@@ -120,7 +120,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ConsoleFeature::prepare() {
 #if _WIN32
-  if (_is_cyg_tty (STDOUT_FILENO) || getenv("SHELL") != nullptr) {
+  if (getenv("SHELL") != nullptr) {
     _cygwinShell = true;
   }
 #endif

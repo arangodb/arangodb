@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -27,15 +27,21 @@
 
 const fs = require('fs');
 const yaml = require('js-yaml');
+const executeExternal = require('internal').executeExternal;
 const executeExternalAndWait = require('internal').executeExternalAndWait;
+const killExternal = require('internal').killExternal;
 const statusExternal = require('internal').statusExternal;
 
-let GDB_OUTPUT = '';
+let GDB_OUTPUT = "";
 
 const platform = require('internal').platform;
 
+const BLUE = require('internal').COLORS.COLOR_BLUE;
+const CYAN = require('internal').COLORS.COLOR_CYAN;
+const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
+const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief analyzes a core dump using gdb (Unix)
@@ -62,7 +68,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
 
   let command;
   command = '(';
-  command += 'printf \'bt full\\n thread apply all bt\\n\';';
+  command += "printf 'bt full\\n thread apply all bt\\n';";
   command += 'sleep 10;';
   command += 'echo quit;';
   command += 'sleep 2';
@@ -73,13 +79,14 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   } else {
     command += options.coreDirectory;
   }
-  command += ' > ' + gdbOutputFile + ' 2>&1';
+  command += " > " + gdbOutputFile + " 2>&1";
   const args = ['-c', command];
   print(JSON.stringify(args));
 
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT = fs.read(gdbOutputFile);
   print(GDB_OUTPUT);
+
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -91,27 +98,28 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
 function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   let lldbOutputFile = fs.getTempFile();
 
+
   let command;
   command = '(';
-  command += 'printf \'bt \n\n';
+  command += "printf 'bt \n\n";
   // LLDB doesn't have an equivilant of `bt full` so we try to show the upper
   // most 5 frames with all variables
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i < 5; i ++)
     command += 'frame variable\\n up \\n';
-  }
-  command += ' thread backtrace all\\n\';';
+  command += " thread backtrace all\\n';";
   command += 'sleep 10;';
   command += 'echo quit;';
   command += 'sleep 2';
   command += ') | lldb ' + storeArangodPath;
   command += ' -c /cores/core.' + pid;
-  command += ' > ' + lldbOutputFile + ' 2>&1';
+  command += " > " + lldbOutputFile + " 2>&1";
   const args = ['-c', command];
   print(JSON.stringify(args));
 
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT = fs.read(lldbOutputFile);
   print(GDB_OUTPUT);
+
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -151,7 +159,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
 // /        information about the incident.
 // //////////////////////////////////////////////////////////////////////////////
 function analyzeCrash (binary, arangod, options, checkStr) {
-  var cpf = '/proc/sys/kernel/core_pattern';
+  var cpf = "/proc/sys/kernel/core_pattern";
 
   if (fs.isFile(cpf)) {
     var matchApport = /.*apport.*/;
@@ -161,16 +169,18 @@ function analyzeCrash (binary, arangod, options, checkStr) {
     var cp = corePattern.asciiSlice(0, corePattern.length);
 
     if (matchApport.exec(cp) != null) {
-      print(RED + 'apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.' + RESET);
+      print(RED + "apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis." + RESET);
       return;
     }
 
     if (matchSystemdCoredump.exec(cp) !== null) {
-      options.coreDirectory = '/var/lib/systemd/coredump/*core*' + arangod.pid + '*';
-    } else if (matchVarTmp.exec(cp) !== null) {
-      options.coreDirectory = cp.replace('%e', '*').replace('%t', '*').replace('%p', arangod.pid);
-    } else {
-      print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '"' + RESET);
+      options.coreDirectory = "/var/lib/systemd/coredump/*core*" + arangod.pid + '*';
+    }
+    else if (matchVarTmp.exec(cp) !== null) {
+      options.coreDirectory = cp.replace("%e", "*").replace("%t", "*").replace("%p", arangod.pid);
+    }
+    else {
+      print(RED + "Don't know howto locate corefiles in your system. '" + cpf + "' contains: '" + cp + "'" + RESET);
       return;
     }
   }
@@ -180,7 +190,7 @@ function analyzeCrash (binary, arangod, options, checkStr) {
   if (pathParts.length > 0) {
     bareBinary = pathParts[pathParts.length - 1];
   }
-  const storeArangodPath = arangod.rootDir + '/' + bareBinary + '_' + arangod.pid;
+  const storeArangodPath = arangod.rootDir + '/'+ bareBinary + '_' + arangod.pid;
 
   print(RED +
     'during: ' + checkStr + ': Core dump written; copying ' + binary + ' to ' +
@@ -193,16 +203,17 @@ function analyzeCrash (binary, arangod, options, checkStr) {
       ? 'core'
       : options.coreDirectory;
 
-  arangod.exitStatus.gdbHint = 'Run debugger with "gdb ' +
+  arangod.exitStatus.gdbHint = "Run debugger with 'gdb " +
     storeArangodPath + ' ' + corePath;
 
   if (platform.substr(0, 3) === 'win') {
     // Windows: wait for procdump to do its job...
     statusExternal(arangod.monitor, true);
     analyzeCoreDumpWindows(arangod);
-  } else if (platform === 'darwin') {
+  }
+  else if (platform === 'darwin') {
     fs.copyFile(binary, storeArangodPath);
-    analyzeCoreDumpMac(arangod, options, storeArangodPath, arangod.pid);
+    analyzeCoreDumpMac(arangod, options, storeArangodPath, arangod.pid);    
   } else {
     fs.copyFile(binary, storeArangodPath);
     analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
@@ -210,6 +221,7 @@ function analyzeCrash (binary, arangod, options, checkStr) {
 
   print(RESET);
 }
+
 
 exports.analyzeCrash = analyzeCrash;
 Object.defineProperty(exports, 'GDB_OUTPUT', {get: () => GDB_OUTPUT});

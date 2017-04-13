@@ -740,7 +740,7 @@
 
 #define fileno _fileno
 #define fsync _commit
-#define isatty _cyg_isatty
+#define isatty _isatty
 #define putenv _putenv
 #define sleep TRI_sleep
 #define tzset _tzset

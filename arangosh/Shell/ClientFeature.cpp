@@ -49,8 +49,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _maxPacketSize(128 * 1024 * 1024),
       _sslProtocol(4),
       _retries(DEFAULT_RETRIES),
-      _warn(false),
-      _haveServerPassword(false){
+      _warn(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -136,16 +135,9 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  _haveServerPassword = !options->processingResult().touched("server.password");
-
-  SimpleHttpClient::setMaxPacketSize(_maxPacketSize);
-}
-
-void ClientFeature::prepare() {
   // ask for a password
   if (_authentication &&
-      isEnabled() &&
-      _haveServerPassword) {
+      !options->processingResult().touched("server.password")) {
     usleep(10 * 1000);
 
     try {
@@ -163,6 +155,8 @@ void ClientFeature::prepare() {
     _password = ConsoleFeature::readPassword();
     std::cout << std::endl << std::flush;
   }
+
+  SimpleHttpClient::setMaxPacketSize(_maxPacketSize);
 }
 
 std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection() {
