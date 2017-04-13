@@ -218,10 +218,14 @@ size_t MMFilesPrimaryIndex::memory() const {
 
 /// @brief return a VelocyPack representation of the index
 void MMFilesPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
-  // hard-coded
-  builder.add("unique", VPackValue(true));
-  builder.add("sparse", VPackValue(false));
+  builder.openObject();
+  {
+    Index::toVelocyPack(builder, withFigures);
+    // hard-coded
+    builder.add("unique", VPackValue(true));
+    builder.add("sparse", VPackValue(false));
+  }
+  builder.close();
 }
 
 /// @brief return a VelocyPack representation of the index figures

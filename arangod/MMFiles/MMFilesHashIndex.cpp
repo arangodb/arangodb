@@ -512,9 +512,11 @@ size_t MMFilesHashIndex::memory() const {
 
 /// @brief return a velocypack representation of the index
 void MMFilesHashIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  builder.openObject();
   Index::toVelocyPack(builder, withFigures);
   builder.add("unique", VPackValue(_unique));
   builder.add("sparse", VPackValue(_sparse));
+  builder.close();
 }
 
 /// @brief return a velocypack representation of the index figures

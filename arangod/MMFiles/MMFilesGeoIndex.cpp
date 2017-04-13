@@ -293,6 +293,7 @@ size_t MMFilesGeoIndex::memory() const { return GeoIndex_MemoryUsage(_geoIndex);
 
 /// @brief return a JSON representation of the index
 void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  builder.openObject();
   // Basic index
   Index::toVelocyPack(builder, withFigures);
 
@@ -311,6 +312,7 @@ void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) cons
   builder.add("unique", VPackValue(false));
   builder.add("ignoreNull", VPackValue(true));
   builder.add("sparse", VPackValue(true));
+  builder.close();
 }
 
 /// @brief Test if this index matches the definition
