@@ -237,27 +237,39 @@ int Aqlparse (arangodb::aql::Parser* parser);
 
 using namespace arangodb::aql;
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut macro for signaling out of memory
+////////////////////////////////////////////////////////////////////////////////
+
 #define ABORT_OOM                                   \
   parser->registerError(TRI_ERROR_OUT_OF_MEMORY);   \
   YYABORT;
 
 #define scanner parser->scanner()
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief forward for lexer function defined in Aql/tokens.ll
+////////////////////////////////////////////////////////////////////////////////
+
 int Aqllex (YYSTYPE*, 
             YYLTYPE*, 
             void*);
  
+////////////////////////////////////////////////////////////////////////////////
 /// @brief register parse error
+////////////////////////////////////////////////////////////////////////////////
+
 void Aqlerror (YYLTYPE* locp, 
                arangodb::aql::Parser* parser,
                char const* message) {
   parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check if any of the variables used in the INTO expression were 
 /// introduced by the COLLECT itself, in which case it would fail
+////////////////////////////////////////////////////////////////////////////////
+         
 static Variable const* CheckIntoVariables(AstNode const* collectVars, 
                                           std::unordered_set<Variable const*> const& vars) {
   if (collectVars == nullptr || collectVars->type != NODE_TYPE_ARRAY) {
@@ -280,7 +292,10 @@ static Variable const* CheckIntoVariables(AstNode const* collectVars,
   return nullptr;
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief register variables in the scope
+////////////////////////////////////////////////////////////////////////////////
+
 static void RegisterAssignVariables(arangodb::aql::Scopes* scopes, AstNode const* vars) { 
   size_t const n = vars->numMembers();
   for (size_t i = 0; i < n; ++i) {
@@ -294,7 +309,10 @@ static void RegisterAssignVariables(arangodb::aql::Scopes* scopes, AstNode const
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief validate the aggregate variables expressions
+////////////////////////////////////////////////////////////////////////////////
+
 static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
   size_t const n = aggregates->numMembers();
 
@@ -328,7 +346,10 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start a new scope for the collect
+////////////////////////////////////////////////////////////////////////////////
+
 static bool StartCollectScope(arangodb::aql::Scopes* scopes) { 
   // check if we are in the main scope
   if (scopes->type() == arangodb::aql::AQL_SCOPE_MAIN) {
@@ -342,7 +363,10 @@ static bool StartCollectScope(arangodb::aql::Scopes* scopes) {
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the INTO variable stored in a node (may not exist)
+////////////////////////////////////////////////////////////////////////////////
+
 static AstNode const* GetIntoVariable(Parser* parser, AstNode const* node) {
   if (node == nullptr) {
     return nullptr;
@@ -362,7 +386,10 @@ static AstNode const* GetIntoVariable(Parser* parser, AstNode const* node) {
   return parser->ast()->createNodeVariable(v->getStringValue(), v->getStringLength(), true);
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the INTO variable = expression stored in a node (may not exist)
+////////////////////////////////////////////////////////////////////////////////
+
 static AstNode const* GetIntoExpression(AstNode const* node) {
   if (node == nullptr || node->type == NODE_TYPE_VALUE) {
     return nullptr;

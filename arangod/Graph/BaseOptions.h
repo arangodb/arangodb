@@ -119,6 +119,10 @@ struct BaseOptions {
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
 
+  traverser::TraverserCache* cache();
+
+  void activateCache(bool enableDocumentCache);
+
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list,
                                size_t& createItems) const;

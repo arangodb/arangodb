@@ -189,6 +189,7 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
                                     bool withFigures) const {
   
   LOG_TOPIC(ERR, Logger::FIXME) << "EDGE INDEX (" << _directionAttr << ")";
+  /*
   // skip to
   if(_directionAttr == StaticStrings::ToString)
     return;
@@ -218,7 +219,13 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
       builder.add(ref.data(), ref.length(), item.value);
     }
   }
+  */
 
+  // Tmp test
+  builder.openObject();
+  RocksDBIndex::toVelocyPack(builder, withFigures);
+  // endof tmp test
+  //
   // add slectivity estimate
   // hard-coded
   builder.add("unique", VPackValue(false));

@@ -941,7 +941,16 @@ function executePlanForCollections(plannedCollections) {
               database,
               collections[collection].planId);
 
-            db._drop(collection);
+            try {
+              db._drop(collection, {timeout:1.0});
+            }
+            catch (err) {
+              console.debug("could not drop local shard '%s/%s' of '%s/%s within 1 second, trying again later",
+                database,
+                collection,
+                database,
+                collections[collection].planId);
+            }
           }
         }
       });
@@ -983,6 +992,9 @@ function updateCurrentForCollections(localErrors, currentCollections) {
       Object.assign(agencyIndex, index);
       // Fix up the IDs of the indexes:
       let pos = index.id.indexOf("/");
+      if (agencyIndex.hasOwnProperty("selectivityEstimate")) {
+        delete agencyIndex.selectivityEstimate;
+      }
       if (pos >= 0) {
         agencyIndex.id = index.id.slice(pos+1);
       } else {

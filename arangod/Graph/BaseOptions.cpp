@@ -28,6 +28,7 @@
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Indexes/Index.h"
 #include "VocBase/TraverserCache.h"
+#include "VocBase/TraverserCacheFactory.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -155,14 +156,14 @@ BaseOptions::BaseOptions(transaction::Methods* trx)
       _trx(trx),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(std::make_unique<TraverserCache>(_trx)) {}
+      _cache(nullptr) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other)
     : _ctx(new aql::FixedVarExpressionContext()),
       _trx(other._trx),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(std::make_unique<TraverserCache>(_trx)) {
+      _cache(nullptr) {
   TRI_ASSERT(other._baseLookupInfos.empty());
   TRI_ASSERT(other._tmpVar == nullptr);
 }
@@ -173,7 +174,7 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info,
       _trx(query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(std::make_unique<TraverserCache>(_trx)) {
+      _cache(nullptr) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -385,4 +386,23 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
     opCursors.emplace_back(std::move(csrs));
   }
   return allCursor.release();
+}
+
+TraverserCache* BaseOptions::cache() {
+  if (_cache == nullptr) {
+    // If this assert is triggered the code should
+    // have called activateCache() before
+    TRI_ASSERT(false);
+    // In production just gracefully initialize
+    // the cache without document cache, s.t. system does not crash
+    activateCache(false);
+  }
+  TRI_ASSERT(_cache != nullptr);
+  return _cache.get();
+}
+
+void BaseOptions::activateCache(bool enableDocumentCache) {
+  // Do not call this twice.
+  TRI_ASSERT(_cache == nullptr);
+  _cache.reset(cacheFactory::CreateCache(_trx, enableDocumentCache));
 }

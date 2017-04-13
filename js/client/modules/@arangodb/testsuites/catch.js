@@ -45,7 +45,10 @@ function locateCatchTest (name) {
   var file = fs.join(pu.UNITTESTS_DIR, name + pu.executableExt);
 
   if (!fs.exists(file)) {
-    return '';
+    file = fs.join(pu.BIN_DIR, name + pu.executableExt);
+    if (!fs.exists(file)) {
+      return '';
+    }
   }
   return file;
 }
@@ -54,8 +57,6 @@ function catchRunner (options) {
   let results = {};
   let rootDir = pu.UNITTESTS_DIR;
 
-  const icuDir = pu.UNITTESTS_DIR + '/';
-  require('internal').env.ICU_DATA = icuDir;
   const run = locateCatchTest('arangodbtests');
   if (!options.skipCatch) {
     if (run !== '') {
@@ -64,7 +65,7 @@ function catchRunner (options) {
         '-r',
         'junit',
         '-o',
-        fs.join('out', 'catch-standard.xml')];
+        fs.join(options.testOutputDirectory, 'catch-standard.xml')];
       results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir);
     } else {
       results.basics = {
@@ -80,7 +81,7 @@ function catchRunner (options) {
                   '-r',
                   'junit',
                   '-o',
-                  fs.join('out', 'catch-cache.xml')
+                  fs.join(options.testOutputDirectory, 'catch-cache.xml')
                  ];
       results.cache_suite = pu.executeAndWait(run, argv, options,
                                            'cache_suite', rootDir);
@@ -98,7 +99,7 @@ function catchRunner (options) {
                   '-r',
                   'junit',
                   '-o',
-                  fs.join('out', 'catch-geo.xml')
+                  fs.join(options.testOutputDirectory, 'catch-geo.xml')
                  ];
       results.geo_suite = pu.executeAndWait(run, argv, options, 'geo_suite', rootDir);
     } else {
