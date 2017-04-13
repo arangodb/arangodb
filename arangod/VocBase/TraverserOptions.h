@@ -170,7 +170,9 @@ struct TraverserOptions {
 
   double estimateCost(size_t& nrItems) const;
 
-  TraverserCache* cache() const;
+  TraverserCache* cache();
+
+  void activateCache(bool enableDocumentCache);
 
  private:
 

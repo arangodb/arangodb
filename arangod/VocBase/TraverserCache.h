@@ -30,11 +30,6 @@ namespace arangodb {
 class ManagedDocumentResult;
 class StringHeap;
 
-namespace cache {
-class Cache;
-class Finding;
-}
-
 namespace transaction {
 class Methods;
 }
@@ -54,47 +49,45 @@ class TraverserCache {
   public:
    explicit TraverserCache(transaction::Methods* trx);
 
-   ~TraverserCache();
+   virtual ~TraverserCache();
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Inserts the real document stored within the token
    ///        into the given builder.
-   ///        The document will be taken from the hash-cache.
-   ///        If it is not cached it will be looked up in the StorageEngine
+   ///        The document will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
 
-   void insertIntoResult(StringRef idString,
-                         arangodb::velocypack::Builder& builder);
+   virtual void insertIntoResult(StringRef idString,
+                                 arangodb::velocypack::Builder& builder);
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Return AQL value containing the result
-   ///        The document will be taken from the hash-cache.
-   ///        If it is not cached it will be looked up in the StorageEngine
+   ///        The document will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
   
-   aql::AqlValue fetchAqlResult(StringRef idString);
+   virtual aql::AqlValue fetchAqlResult(StringRef idString);
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Insert value into store
    //////////////////////////////////////////////////////////////////////////////
-   void insertDocument(StringRef idString,
-                       arangodb::velocypack::Slice const& document);
+
+   virtual void insertDocument(StringRef idString,
+                               arangodb::velocypack::Slice const& document);
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Throws the document referenced by the token into the filter
    ///        function and returns it result.
-   ///        The document will be taken from the hash-cache.
-   ///        If it is not cached it will be looked up in the StorageEngine
+   ///        The document will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
 
-   bool validateFilter(StringRef idString,
-       std::function<bool(arangodb::velocypack::Slice const&)> filterFunc);
+   virtual bool validateFilter(StringRef idString,
+                               std::function<bool(arangodb::velocypack::Slice const&)> filterFunc);
   
-  size_t getAndResetInsertedDocuments() {
-    size_t tmp = _insertedDocuments;
-    _insertedDocuments = 0;
-    return tmp;
-  }
+   size_t getAndResetInsertedDocuments() {
+     size_t tmp = _insertedDocuments;
+     _insertedDocuments = 0;
+     return tmp;
+   }
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Persist the given id string. The return value is guaranteed to
@@ -102,18 +95,10 @@ class TraverserCache {
    //////////////////////////////////////////////////////////////////////////////
    StringRef persistString(StringRef const idString);
 
-  private:
+  protected:
 
    //////////////////////////////////////////////////////////////////////////////
-   /// @brief Lookup a document by token in the cache.
-   ///        As long as finding is retained it is guaranteed that the result
-   ///        stays valid. Finding should not be retained very long, if it is
-   ///        needed for longer, copy the value.
-   //////////////////////////////////////////////////////////////////////////////
-   cache::Finding lookup(StringRef idString);
-
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Lookup a document from the database and insert it into the cache.
+   /// @brief Lookup a document from the database.
    ///        The Slice returned here is only valid until the NEXT call of this
    ///        function.
    //////////////////////////////////////////////////////////////////////////////
@@ -121,10 +106,7 @@ class TraverserCache {
    arangodb::velocypack::Slice lookupInCollection(
        StringRef idString);
 
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief The hash-cache that saves documents found in the Database
-   //////////////////////////////////////////////////////////////////////////////
-   std::shared_ptr<arangodb::cache::Cache> _cache;
+  protected:
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Reusable ManagedDocumentResult that temporarily takes

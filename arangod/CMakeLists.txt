@@ -341,6 +341,8 @@ SET(ARANGOD_SOURCES
   VocBase/TransactionManager.cpp
   VocBase/Traverser.cpp
   VocBase/TraverserCache.cpp
+  VocBase/TraverserCacheFactory.cpp
+  VocBase/TraverserDocumentCache.cpp
   VocBase/TraverserOptions.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
