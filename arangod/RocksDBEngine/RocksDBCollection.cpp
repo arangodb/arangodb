@@ -74,18 +74,14 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
-      _revisionId(0) {
-  TRI_ASSERT(_objectId != 0);
-}
+      _revisionId(0) {}
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      PhysicalCollection* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
       _numberDocuments(0),
-      _revisionId(0) {
-  TRI_ASSERT(_objectId != 0);
-}
+      _revisionId(0) {}
 
 RocksDBCollection::~RocksDBCollection() {}
 
@@ -135,6 +131,7 @@ PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical,
 }
 
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
+  // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
   result.add("objectId", VPackValue(std::to_string(_objectId)));
   TRI_ASSERT(result.isOpenObject());
@@ -181,6 +178,8 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
 size_t RocksDBCollection::memory() const { return 0; }
 
 void RocksDBCollection::open(bool ignoreErrors) {
+  TRI_ASSERT(_objectId != 0);
+
   LOG_TOPIC(ERR, Logger::DEVEL)
       << "OPEN ROCKS COLLECTION: " << _logicalCollection->name() << " ("
       << this->objectId() << ")";
@@ -411,6 +410,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
   // TODO FIXME -- improve transaction size
   // TODO FIXME -- intermediate commit
+  TRI_ASSERT(_objectId != 0);
 
   rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
   TRI_voc_cid_t cid = _logicalCollection->cid();
@@ -1137,6 +1137,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
+  TRI_ASSERT(_objectId != 0);
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
 
@@ -1243,6 +1244,8 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
 Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
                                               arangodb::StringRef key,
                                               RocksDBToken& outToken) {
+  TRI_ASSERT(_objectId != 0);
+
   // TODO fix as soon as we got a real primary index
   outToken = primaryIndex()->lookupKey(trx, key);
   /*if (outToken.revisionId() == 0) {
@@ -1259,6 +1262,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     TRI_voc_rid_t revisionId, transaction::Methods* trx,
     arangodb::ManagedDocumentResult& mdr) {
   TRI_ASSERT(trx->state()->isRunning());
+  TRI_ASSERT(_objectId != 0);
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;

@@ -2246,7 +2246,7 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
 
   std::unordered_set<std::string> const ignoreKeys{
       "allowUserKeys", "cid", /* cid really ignore?*/
-      "count",         "planId", "version",
+      "count",         "planId", "version", "objectId",
   };
   col->setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false);

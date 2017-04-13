@@ -629,7 +629,7 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
       case SSL_ERROR_SYSCALL:
       default: {
         char const* pErr = STR_ERROR();
-        int errorDetail = ERR_get_error();
+        unsigned long errorDetail = ERR_get_error();
         char errorBuffer[256];
         ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
         _errorDetails = std::string("SSL: while reading: error '") +
