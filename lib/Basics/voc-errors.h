@@ -374,6 +374,16 @@
 /// - 1483: @LIT{could not drop index in plan}
 ///   Will be raised when a coordinator in a cluster cannot remove an index
 ///   from the Plan hierarchy in the agency.
+/// - 1484: @LIT{chain of distributeShardsLike references}
+///   Will be raised if one tries to create a collection with a
+///   distributeShardsLike attribute which points to another collection that
+///   also has one.
+/// - 1485: @LIT{must not drop collection while another has a distributeShardsLike attribute pointing to it}
+///   Will be raised if one tries to drop a collection to which another
+///   collection points with its distributeShardsLike attribute.
+/// - 1486: @LIT{must not have a distributeShardsLike attribute pointing to an unknown collection}
+///   Will be raised if one tries to create a collection which points to an
+///   unknown collection in its distributeShardsLike attribute.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -654,6 +664,8 @@
 ///   The inform message in the agency must contain an object 'pool'.
 /// - 20020: @LIT{Inquiry failed}
 ///   Inquiry by clientId failed
+/// - 20501: @LIT{general supervision failure}
+///   General supervision failure.
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -2204,6 +2216,42 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN                    (1483)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1484: ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE
+///
+/// chain of distributeShardsLike references
+///
+/// Will be raised if one tries to create a collection with a
+/// distributeShardsLike attribute which points to another collection that also
+/// has one.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE                   (1484)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1485: ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE
+///
+/// must not drop collection while another has a distributeShardsLike attribute
+/// pointing to it
+///
+/// Will be raised if one tries to drop a collection to which another
+/// collection points with its distributeShardsLike attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE   (1485)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1486: ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE
+///
+/// must not have a distributeShardsLike attribute pointing to an unknown
+/// collection
+///
+/// Will be raised if one tries to create a collection which points to an
+/// unknown collection in its distributeShardsLike attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE                    (1486)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -3460,6 +3508,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING                 (20020)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20501: ERROR_SUPERVISION_GENERAL_FAILURE
+///
+/// general supervision failure
+///
+/// General supervision failure.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             (20501)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING

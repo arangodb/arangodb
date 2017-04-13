@@ -903,6 +903,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         }
       }
     } catch (...) {
+      LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
+                                        << "got an exception executing "
+                                        << " this: " << (uintptr_t) this;
       delete value;
       throw;
     }

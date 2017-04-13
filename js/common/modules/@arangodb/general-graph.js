@@ -2008,6 +2008,25 @@ exports._drop = function (graphId, dropCollections) {
 
   if (dropCollections === true) {
     graphs = exports._listObjects();
+    var initialCollections = [];  // Here we collect the initial collection(s)
+    // drop orphans
+    if (!graph.orphanCollections) {
+      graph.orphanCollections = [];
+    }
+    graph.orphanCollections.forEach(
+      function (oC) {
+        if (checkIfMayBeDropped(oC, graph._key, graphs)) {
+          try {
+            let colObj = db[oC];
+            if (colObj.properties().distributeShardsLike !== undefined) {
+              db._drop(oC);
+            } else {
+              initialCollections.push(oC);
+            }
+          } catch (ignore) {}
+        }
+      }
+    );
     var edgeDefinitions = graph.edgeDefinitions;
     edgeDefinitions.forEach(
       function (edgeDefinition) {
@@ -2020,32 +2039,36 @@ exports._drop = function (graphId, dropCollections) {
         from.forEach(
           function (col) {
             if (checkIfMayBeDropped(col, graph._key, graphs)) {
-              db._drop(col);
+              try {
+                let colObj = db[col];
+                if (colObj.properties().distributeShardsLike !== undefined) {
+                  db._drop(col);
+                } else {
+                  initialCollections.push(col);
+                }
+              } catch (ignore) {}
             }
           }
         );
         to.forEach(
           function (col) {
             if (checkIfMayBeDropped(col, graph._key, graphs)) {
-              db._drop(col);
+              try {
+                let colObj = db[col];
+                if (colObj.properties().distributeShardsLike !== undefined) {
+                  db._drop(col);
+                } else {
+                  initialCollections.push(col);
+                }
+              } catch (ignore2) {}
             }
           }
         );
       }
     );
-    // drop orphans
-    if (!graph.orphanCollections) {
-      graph.orphanCollections = [];
+    for (let i = 0; i < initialCollections.length; ++i) {
+      db._drop(initialCollections[i]);
     }
-    graph.orphanCollections.forEach(
-      function (oC) {
-        if (checkIfMayBeDropped(oC, graph._key, graphs)) {
-          try {
-            db._drop(oC);
-          } catch (ignore) {}
-        }
-      }
-    );
   }
 
   gdb.remove(graphId);

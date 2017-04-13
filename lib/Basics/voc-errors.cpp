@@ -152,6 +152,9 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC, "collection is out of sync");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN, "could not create index in plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN, "could not drop index in plan");
+  REG_ERROR(ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, "chain of distributeShardsLike references");
+  REG_ERROR(ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE, "must not drop collection while another has a distributeShardsLike attribute pointing to it");
+  REG_ERROR(ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE, "must not have a distributeShardsLike attribute pointing to an unknown collection");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -275,6 +278,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE, "Inform message must contain array 'active'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL, "Inform message must contain object 'pool'");
   REG_ERROR(ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING, "Inquiry failed");
+  REG_ERROR(ERROR_SUPERVISION_GENERAL_FAILURE, "general supervision failure");
   REG_ERROR(ERROR_DISPATCHER_IS_STOPPING, "dispatcher stopped");
   REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");

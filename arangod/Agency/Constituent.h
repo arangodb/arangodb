@@ -132,9 +132,6 @@ class Constituent : public Thread {
   // Check if log start matches entry in my log
   bool logMatches(index_t, term_t) const;
 
-  // Sleep for how long
-  duration_t sleepFor(double, double);
-
   TRI_vocbase_t* _vocbase;
   aql::QueryRegistry* _queryRegistry;
 

@@ -132,6 +132,9 @@ class Node {
   /// @brief Get node specified by path string
   Node const& operator()(std::string const& path) const;
 
+  /// @brief Get node specified by path string, always throw if not there
+  Node const& get(std::string const& path) const;
+
   /// @brief Remove child by name
   bool removeChild(std::string const& key);
 
@@ -162,6 +165,9 @@ class Node {
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
+
+  /// @brief Create Builder representing this store
+  VPackBuilder toBuilder() const;
 
   /// @brief Access children
   Children& children();
@@ -201,6 +207,12 @@ class Node {
 
   /// @brief Part of relative path which exists
   std::vector<std::string> exists(std::string const&) const;
+
+  /// @brief Part of relative path vector which exists
+  bool has(std::vector<std::string> const&) const;
+
+  /// @brief Part of relative path which exists
+  bool has(std::string const&) const;
 
   /// @brief Get integer value (throws if type NODE or if conversion fails)
   int getInt() const;

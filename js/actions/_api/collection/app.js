@@ -67,6 +67,7 @@ function collectionRepresentation(collection, showProperties, showCount, showFig
       result.numberOfShards = properties.numberOfShards;
       result.replicationFactor = properties.replicationFactor;
       result.avoidServers = properties.avoidServers;
+      result.distributeShardsLike = properties.distributeShardsLike;
     }
   }
 

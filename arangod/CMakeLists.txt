@@ -93,18 +93,17 @@ SET(ARANGOD_SOURCES
   Agency/GossipCallback.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
-  Agency/MeasureCallback.cpp
+  Agency/JobContext.cpp
   Agency/MoveShard.cpp
   Agency/Node.cpp
   Agency/NotifyCallback.cpp
-  Agency/RemoveServer.cpp
+  Agency/RemoveFollower.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
   Agency/Store.cpp
   Agency/StoreCallback.cpp
   Agency/Supervision.cpp
-  Agency/UnassumedLeadership.cpp
   Agency/v8-agency.cpp
   Aql/Aggregator.cpp
   Aql/AqlItemBlock.cpp
@@ -273,7 +272,6 @@ SET(ARANGOD_SOURCES
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
-  RestServer/arangod.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp
@@ -369,13 +367,14 @@ SET(ARANGOD_SOURCES
 if (NOT MSVC)
   SET(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
 endif()
-add_executable(${BIN_ARANGOD} ${ARANGOD_SOURCES})
+
+add_library(arangoserver STATIC ${ARANGOD_SOURCES})
 
 if(USE_SSL)
     target_compile_definitions(${BIN_ARANGOD} PUBLIC "ARANGODB_SSL_ENABLED=1")
 endif()
 
-target_link_libraries(${BIN_ARANGOD}
+target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
@@ -386,6 +385,14 @@ target_link_libraries(${BIN_ARANGOD}
   ${SYSTEM_LIBRARIES}
   boost_boost
   boost_system
+)
+
+add_executable(${BIN_ARANGOD}
+  RestServer/arangod.cpp
+)
+
+target_link_libraries(${BIN_ARANGOD}
+  arangoserver
 )
 
 install(

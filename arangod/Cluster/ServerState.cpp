@@ -219,12 +219,12 @@ bool ServerState::unregister() {
   TRI_ASSERT(!getId().empty());
 
   std::string const& id = getId();
-
+  std::vector<AgencyOperation> operations = {};
   std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
-  AgencyOperation deleteLocalIdMap("Target/MapLocalToID/" + localInfoEncoded,
-                                   AgencySimpleOperationType::DELETE_OP);
-
-  std::vector<AgencyOperation> operations = {deleteLocalIdMap};
+  if (!localInfoEncoded.empty()) {
+    operations.push_back(AgencyOperation("Target/MapLocalToID/" + localInfoEncoded,
+                                         AgencySimpleOperationType::DELETE_OP));
+  }
 
   auto role = loadRole();
   const std::string agencyKey = roleToAgencyKey(role);

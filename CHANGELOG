@@ -62,7 +62,6 @@ v3.1.16 (2017-03-27)
 * fixed a bug with restarted servers indicating status as "STARTUP"
   rather that "SERVING" in Nodes UI.
 
-
 v3.1.15 (2017-03-20)
 --------------------
 
