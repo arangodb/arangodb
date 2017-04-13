@@ -30,9 +30,9 @@
 
 namespace arangodb {
 
-class DocumentIdentifierToken;
+struct DocumentIdentifierToken;
 class ManagedDocumentResult;
-class OperationCursor;
+struct OperationCursor;
 class StringRef;
 
 namespace transaction {
@@ -44,7 +44,7 @@ class Slice;
 }
 
 namespace graph {
-class BaseOptions;
+struct BaseOptions;
 
 class SingleServerEdgeCursor : public EdgeCursor {
  private:

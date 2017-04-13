@@ -25,6 +25,7 @@
 #define ARANGOD_GRAPH_SHORTEST_PATH_RESULT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StringRef.h"
 
 namespace arangodb {
 
@@ -32,7 +33,7 @@ class ManagedDocumentResult;
 class StringRef;
 
 namespace aql {
-class AqlValue;
+struct AqlValue;
 }
 
 namespace transaction {
