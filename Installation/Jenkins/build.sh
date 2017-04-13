@@ -617,15 +617,15 @@ if test ${DOWNLOAD_STARTER} == 1; then
         curl -LO "${STARTER_URL}"
         FN=`echo ${STARTER_URL} |${SED} "s;.*/;;"`
         if test "${isCygwin}" == 1; then
-            TN=ArangoDBStarter.exe
+            TN=arangodb.exe
         else
-            TN=ArangoDBStarter
+            TN=arangodb
         fi
         mkdir -p ${BUILD_DIR}
         mv ${FN} ${BUILD_DIR}/${TN}
         chmod a+x ${BUILD_DIR}/${TN}
     fi
-    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DTHIRDPARTY_SBIN=${BUILD_DIR}/${TN} "
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DTHIRDPARTY_BIN=${BUILD_DIR}/${TN} "
 fi
 
 test -d ${BUILD_DIR} || mkdir ${BUILD_DIR}
