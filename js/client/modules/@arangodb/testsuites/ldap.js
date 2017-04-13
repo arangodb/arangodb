@@ -104,6 +104,29 @@ function ldap(options) {
     }
   },
   {
+    name: 'ldapBindSearchAuthWrongUser',
+    conf: {
+      'server.authentication': true,
+      'server.authentication-system-only':false,
+      'ldap.enabled':true,
+      'ldap.server':options.ldapUrl,
+      'ldap.port': 3890,
+      'ldap.basedn':'dc=example,dc=com',
+      'ldap.search-filter': 'objectClass=simpleSecurityObject',
+      'ldap.search-attribute': 'uid',
+      'ldap.binddn': 'cn=admin,dc=example,dc=com',
+      'ldap.bindpasswd': 'hallo',
+      'ldap.permissions-attribute-name': 'description'
+    },
+    user: {
+      name: 'werner',
+      pass: 'password'
+    },
+    result:{
+      statusCode: 500
+    }
+  },
+  {
     name: 'ldapUrlBindSearchAuth',
     conf: {
       'server.authentication': true,
@@ -178,8 +201,6 @@ function ldap(options) {
     });
 
     results[t.name] = { status: t.result.statusCode == res.statusCode };
-
-    // print(res.message, res.statusCode, t.result.statusCode === res.statusCode);
 
     pu.shutdownInstance(adbInstance, options);
   }
