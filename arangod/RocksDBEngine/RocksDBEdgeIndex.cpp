@@ -187,43 +187,10 @@ size_t RocksDBEdgeIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
                                     bool withFigures) const {
-  
-  LOG_TOPIC(ERR, Logger::FIXME) << "EDGE INDEX (" << _directionAttr << ")";
-  // skip to
-  if(_directionAttr == StaticStrings::ToString)
-    return;
-
   TRI_ASSERT(builder.isOpenArray() || builder.isEmpty());
-
   //get data that needs to be modified
-  VPackBuilder tmpBuilder;
-  tmpBuilder.openObject();
-  RocksDBIndex::toVelocyPack(tmpBuilder, withFigures);
-  tmpBuilder.close();
-  VPackSlice slice = tmpBuilder.slice();
-
   builder.openObject();
-  for(auto const& item : VPackObjectIterator(slice)){
-    //add id
-    //add type
-    if (item.key.compareString("fields") == 0){
-      // modify fields
-      builder.add("fields", VPackValue(VPackValueType::Array, false));
-        builder.add(VPackValue(StaticStrings::FromString));
-        builder.add(VPackValue(StaticStrings::ToString));
-      builder.close();
-    } else {
-      // copy other items
-      auto ref = StringRef(item.key);
-      builder.add(ref.data(), ref.length(), item.value);
-    }
-  }
-
-  // add slectivity estimate
-  // hard-coded
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(false));
-
+  RocksDBIndex::toVelocyPack(builder, withFigures);
   builder.close();
 }
 

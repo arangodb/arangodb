@@ -374,8 +374,13 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create edge index");
       }
+      VPackSlice fields = info.get("fields");
+      TRI_ASSERT(fields.isArray() && fields.length() == 1);
+      std::string direction = fields.at(0).copyString();
+      TRI_ASSERT(direction == StaticStrings::FromString
+                 || direction == StaticStrings::ToString);
       newIdx.reset(
-          new arangodb::RocksDBEdgeIndex(iid, col, info, StaticStrings::FromString));
+          new arangodb::RocksDBEdgeIndex(iid, col, info, direction));
       break;
     }
     //case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
