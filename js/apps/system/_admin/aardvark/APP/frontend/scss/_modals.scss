@@ -34,6 +34,10 @@
 
 }
 
+.tippy {
+  cursor: pointer;
+}
+
 .select2-drop-active {
   border: 2px solid $c-info;
   border-top: 0;

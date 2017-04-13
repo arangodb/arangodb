@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, setTimeout, Joi, _ */
+/* global Backbone, $, window, setTimeout, Joi, _, arangoHelper */
 /* global templateEngine */
 
 (function () {
@@ -364,12 +364,7 @@
         });
       }
 
-      $('.createModalDialog .modalTooltips').tooltip({
-        position: {
-          my: 'left top',
-          at: 'right+55 top-1'
-        }
-      });
+      arangoHelper.createTooltips('.createModalDialog .modalTooltips', 'left');
 
       var completeTableContent = tableContent || [];
       if (advancedContent && advancedContent.content) {
