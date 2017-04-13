@@ -530,7 +530,7 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _vocbase->dropCollection(col, true);
+  return _vocbase->dropCollection(col, true, -1.0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -87,7 +87,7 @@ When a service uses another mounted service as a dependency the dependency's `ma
 
 Service A and Service B are mounted in the same database.
 Service B has a dependency with the local alias `"greeter"`.
-The dependency is configured to use the mount path of Service B.
+The dependency is configured to use the mount path of Service A.
 
 ```js
 // Entry file of Service A

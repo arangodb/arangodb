@@ -96,11 +96,15 @@ arangodb::aql::AqlValue NeighborsEnumerator::lastVertexToAqlValue() {
 }
 
 arangodb::aql::AqlValue NeighborsEnumerator::lastEdgeToAqlValue() {
-  // TODO should return Optimizer failed
+  // If we get here the optimizer decided we do NOT need edges.
+  // But the Block asks for it.
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
-  // TODO should return Optimizer failed
+  // If we get here the optimizer decided we do NOT need paths
+  // But the Block asks for it.
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

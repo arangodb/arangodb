@@ -35,28 +35,32 @@
 using ClusterEdgeCursor = arangodb::traverser::ClusterEdgeCursor;
 using StringRef = arangodb::StringRef;
 
-ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
-                                     arangodb::traverser::ClusterTraverser* traverser)
-    : _position(0), _resolver(traverser->_trx->resolver()), _traverser(traverser) {
-      transaction::BuilderLeaser leased(traverser->_trx);
-      
-      transaction::BuilderLeaser b(traverser->_trx);
-      b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
+ClusterEdgeCursor::ClusterEdgeCursor(
+    StringRef vertexId, uint64_t depth,
+    arangodb::traverser::ClusterTraverser* traverser)
+    : _position(0),
+      _resolver(traverser->_trx->resolver()),
+      _traverser(traverser) {
+  transaction::BuilderLeaser leased(traverser->_trx);
 
-      
-      fetchEdgesFromEngines(traverser->_dbname, traverser->_engines, b->slice(), depth,
-                            traverser->_edges, _edgeList, traverser->_datalake,
-                            *(leased.get()), traverser->_filteredPaths,
-                            traverser->_readDocuments);
-      
-    }
+  transaction::BuilderLeaser b(traverser->_trx);
+  b->add(VPackValuePair(vertexId.data(), vertexId.length(),
+                        VPackValueType::String));
 
-bool ClusterEdgeCursor::next(std::function<void(StringRef const&,
-                                                VPackSlice, size_t)> callback) {
+  fetchEdgesFromEngines(traverser->_dbname, traverser->_engines, b->slice(),
+                        depth, traverser->_edges, _edgeList,
+                        traverser->_datalake, *(leased.get()),
+                        traverser->_filteredPaths, traverser->_readDocuments);
+}
+
+bool ClusterEdgeCursor::next(
+    std::function<void(StringRef const&, VPackSlice, size_t)> callback) {
   if (_position < _edgeList.size()) {
     VPackSlice edge = _edgeList[_position];
-    std::string eid = transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
-    StringRef persId = _traverser->traverserCache()->persistString(StringRef(eid));
+    std::string eid =
+        transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
+    StringRef persId =
+        _traverser->traverserCache()->persistString(StringRef(eid));
     callback(persId, edge, _position);
     ++_position;
     return true;
@@ -64,11 +68,13 @@ bool ClusterEdgeCursor::next(std::function<void(StringRef const&,
   return false;
 }
 
-void ClusterEdgeCursor::readAll(std::function<void(StringRef const&,
-                                                VPackSlice, size_t&)> callback) {
+void ClusterEdgeCursor::readAll(
+    std::function<void(StringRef const&, VPackSlice, size_t&)> callback) {
   for (auto const& edge : _edgeList) {
-    std::string eid = transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
-    StringRef persId = _traverser->traverserCache()->persistString(StringRef(eid));
+    std::string eid =
+        transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
+    StringRef persId =
+        _traverser->traverserCache()->persistString(StringRef(eid));
     callback(persId, edge, _position);
   }
 }

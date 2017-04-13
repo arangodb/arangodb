@@ -187,10 +187,11 @@ size_t RocksDBEdgeIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
                                     bool withFigures) const {
-  TRI_ASSERT(builder.isOpenArray() || builder.isEmpty());
-  //get data that needs to be modified
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures);
+  // add slectivity estimate hard-coded
+  builder.add("unique", VPackValue(false));
+  builder.add("sparse", VPackValue(false));
   builder.close();
 }
 
