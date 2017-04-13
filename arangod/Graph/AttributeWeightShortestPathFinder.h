@@ -39,7 +39,7 @@ class ManagedDocumentResult;
 
 namespace graph {
 
-class ShortestPathOptions;
+struct ShortestPathOptions;
 
 class AttributeWeightShortestPathFinder : public ShortestPathFinder {
  public:

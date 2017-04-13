@@ -129,10 +129,12 @@ size_t MMFilesFulltextIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder,
                                  bool withFigures) const {
+  builder.openObject();
   Index::toVelocyPack(builder, withFigures);
   builder.add("unique", VPackValue(false));
   builder.add("sparse", VPackValue(true));
   builder.add("minLength", VPackValue(_minWordLength));
+  builder.close();
 }
 
 /// @brief Test if this index matches the definition

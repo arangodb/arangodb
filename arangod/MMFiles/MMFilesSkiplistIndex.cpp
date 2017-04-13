@@ -676,9 +676,13 @@ size_t MMFilesSkiplistIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 void MMFilesSkiplistIndex::toVelocyPack(VPackBuilder& builder,
                                  bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
-  builder.add("unique", VPackValue(_unique));
-  builder.add("sparse", VPackValue(_sparse));
+  builder.openObject();
+  {
+    Index::toVelocyPack(builder, withFigures);
+    builder.add("unique", VPackValue(_unique));
+    builder.add("sparse", VPackValue(_sparse));
+  }
+  builder.close();
 }
 
 /// @brief return a VelocyPack representation of the index figures

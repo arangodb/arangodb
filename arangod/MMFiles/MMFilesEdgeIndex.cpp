@@ -253,19 +253,25 @@ size_t MMFilesEdgeIndex::memory() const {
 
 /// @brief return a VelocyPack representation of the index
 void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
+  builder.openObject();
+  {
+    Index::toVelocyPack(builder, withFigures);
 
-  // hard-coded
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(false));
+    // hard-coded
+    builder.add("unique", VPackValue(false));
+    builder.add("sparse", VPackValue(false));
+  }
+  builder.close();
 }
 
 /// @brief return a VelocyPack representation of the index figures
 void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   Index::toVelocyPackFigures(builder);
+
   builder.add("from", VPackValue(VPackValueType::Object));
   _edgesFrom->appendToVelocyPack(builder);
   builder.close();
+
   builder.add("to", VPackValue(VPackValueType::Object));
   _edgesTo->appendToVelocyPack(builder);
   builder.close();
