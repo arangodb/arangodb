@@ -33,7 +33,7 @@ namespace arangodb {
 class ManagedDocumentResult;
 
 namespace graph {
-class BaseOptions;
+struct BaseOptions;
 class SingleServerEdgeCursor;
 }
 
