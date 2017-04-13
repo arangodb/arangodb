@@ -368,9 +368,7 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
                                          bool withFigures) const {
   result.openArray();
   for (auto const& idx : _indexes) {
-    result.openObject();
     idx->toVelocyPack(result, withFigures);
-    result.close();
   }
   result.close();
 }

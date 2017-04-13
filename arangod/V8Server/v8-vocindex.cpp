@@ -116,6 +116,21 @@ static v8::Handle<v8::Value> IndexRep(v8::Isolate* isolate,
   return scope.Escape<v8::Value>(rep);
 }
 
+static void IndexRep(v8::Isolate* isolate, std::string const& collectionName,
+                     v8::Handle<v8::Array>& array) {
+  for (size_t i = 0; i < array->Length(); i++) {
+    v8::Handle<v8::Value> tmprep = array->Get(i);
+    // TODO -- modify rep inplace?!
+    v8::Handle<v8::Object> rep = v8::Handle<v8::Object>::Cast(tmprep);
+    std::string iid = TRI_ObjectToString(rep->Get(TRI_V8_ASCII_STRING("id")));
+    std::string const id =
+        collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
+    LOG_TOPIC(ERR, Logger::FIXME) << "FINAL INDEX ID = " << id;
+    rep->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(id));
+    array->Set(i, rep);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of an index
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,13 +215,14 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   transaction::BuilderLeaser builder(&trx);
-  builder->openObject();
+  // TODO FIXME FOR MMFILES
+  // builder->openObject();
   try {
     idx->toVelocyPack(*(builder.get()), false);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-  builder->close();
+  // builder->close();
 
   v8::Handle<v8::Value> ret =
       IndexRep(isolate, collection->name(), builder->slice());
@@ -574,18 +590,26 @@ static void JS_GetIndexesVocbaseCol(
   trx.finish(res);
   // READ-LOCK end
 
+  builder->clear();
   size_t const n = indexes.size();
-  v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
-
+  builder->openArray();
+  VPackBuilder tmpBuilder;
   for (size_t i = 0; i < n; ++i) {
+    tmpBuilder.clear();
     auto const& idx = indexes[i];
-    builder->clear();
-    builder->openObject();
-    idx->toVelocyPack(*(builder.get()), withFigures);
-    builder->close();
-    result->Set(static_cast<uint32_t>(i),
-                IndexRep(isolate, collectionName, builder->slice()));
+    // TODO FIXME FOR MMFILES
+    //builder->openObject();
+    idx->toVelocyPack(tmpBuilder, withFigures);
+    //builder->close();
+    if(!tmpBuilder.isEmpty()){
+      builder->add(tmpBuilder.slice());
+    }
   }
+  builder->close();
+  v8::Handle<v8::Value> objresult = TRI_VPackToV8(isolate, builder->slice());
+  v8::Handle<v8::Array> result = v8::Handle<v8::Array>::Cast(objresult);
+
+  IndexRep(isolate,collectionName,result);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

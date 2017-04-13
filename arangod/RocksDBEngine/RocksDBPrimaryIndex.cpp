@@ -275,10 +275,13 @@ size_t RocksDBPrimaryIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
                                        bool withFigures) const {
+  TRI_ASSERT(builder.isOpenArray() || builder.isEmpty());
+  builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures);
   // hard-coded
   builder.add("unique", VPackValue(true));
   builder.add("sparse", VPackValue(false));
+  builder.close();
 }
 
 /// @brief return a VelocyPack representation of the index figures
