@@ -125,7 +125,6 @@ static void IndexRep(v8::Isolate* isolate, std::string const& collectionName,
     std::string iid = TRI_ObjectToString(rep->Get(TRI_V8_ASCII_STRING("id")));
     std::string const id =
         collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
-    LOG_TOPIC(ERR, Logger::FIXME) << "FINAL INDEX ID = " << id;
     rep->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(id));
     array->Set(i, rep);
   }

@@ -328,9 +328,7 @@ void arangodb::traverser::TraverserOptions::toVelocyPackIndexes(
   builder.add("base", VPackValue(VPackValueType::Array));
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
-      builder.openObject();
       it2.getIndex()->toVelocyPack(builder, false);
-      builder.close();
     }
   }
   builder.close();
@@ -342,9 +340,7 @@ void arangodb::traverser::TraverserOptions::toVelocyPackIndexes(
     builder.add(VPackValue(VPackValueType::Array));
     for (auto const& it2 : it.second) {
       for (auto const& it3 : it2.idxHandles) {
-        builder.openObject();
         it3.getIndex()->toVelocyPack(builder, false);
-        builder.close();
       }
     }
     builder.close();
