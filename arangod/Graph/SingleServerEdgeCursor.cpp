@@ -31,7 +31,6 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/TraverserCache.h"
 
-
 using namespace arangodb;
 using namespace arangodb::graph;
 
@@ -42,12 +41,12 @@ using namespace arangodb::graph;
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-SingleServerEdgeCursor::SingleServerEdgeCursor(ManagedDocumentResult* mmdr,
-    BaseOptions* opts,
-    size_t nrCursors, std::vector<size_t> const* mapping)
+SingleServerEdgeCursor::SingleServerEdgeCursor(
+    ManagedDocumentResult* mmdr, BaseOptions* opts, size_t nrCursors,
+    std::vector<size_t> const* mapping)
     : _opts(opts),
       _trx(opts->trx()),
-      _mmdr(mmdr), 
+      _mmdr(mmdr),
       _cursors(),
       _currentCursor(0),
       _currentSubCursor(0),
@@ -56,6 +55,9 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(ManagedDocumentResult* mmdr,
   TRI_ASSERT(_mmdr != nullptr);
   _cursors.reserve(nrCursors);
   _cache.reserve(1000);
+  if (_opts->cache() == nullptr) {
+    throw;
+  }
 };
 
 SingleServerEdgeCursor::~SingleServerEdgeCursor() {
@@ -66,24 +68,27 @@ SingleServerEdgeCursor::~SingleServerEdgeCursor() {
   }
 }
 
-bool SingleServerEdgeCursor::next(std::function<void(StringRef const&, VPackSlice, size_t)> callback) {
+bool SingleServerEdgeCursor::next(
+    std::function<void(StringRef const&, VPackSlice, size_t)> callback) {
   if (_currentCursor == _cursors.size()) {
     return false;
   }
   if (_cachePos < _cache.size()) {
-    LogicalCollection* collection = _cursors[_currentCursor][_currentSubCursor]->collection();
+    LogicalCollection* collection =
+        _cursors[_currentCursor][_currentSubCursor]->collection();
     if (collection->readDocument(_trx, _cache[_cachePos++], *_mmdr)) {
       VPackSlice edgeDocument(_mmdr->vpack());
       std::string eid = _trx->extractIdString(edgeDocument);
       StringRef persId = _opts->cache()->persistString(StringRef(eid));
       if (_internalCursorMapping != nullptr) {
         TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-        callback(persId, edgeDocument, _internalCursorMapping->at(_currentCursor));
+        callback(persId, edgeDocument,
+                 _internalCursorMapping->at(_currentCursor));
       } else {
         callback(persId, edgeDocument, _currentCursor);
       }
     }
-    
+
     return true;
   }
   // We need to refill the cache.
@@ -119,7 +124,7 @@ bool SingleServerEdgeCursor::next(std::function<void(StringRef const&, VPackSlic
       _cache.clear();
     } else {
       _cache.clear();
-      auto cb = [&] (DocumentIdentifierToken const& token) {
+      auto cb = [&](DocumentIdentifierToken const& token) {
         _cache.emplace_back(token);
       };
       bool tmp = cursor->getMore(cb, 1000);
@@ -135,7 +140,8 @@ bool SingleServerEdgeCursor::next(std::function<void(StringRef const&, VPackSlic
     StringRef persId = _opts->cache()->persistString(StringRef(eid));
     if (_internalCursorMapping != nullptr) {
       TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-      callback(persId, edgeDocument, _internalCursorMapping->at(_currentCursor));
+      callback(persId, edgeDocument,
+               _internalCursorMapping->at(_currentCursor));
     } else {
       callback(persId, edgeDocument, _currentCursor);
     }
@@ -143,7 +149,9 @@ bool SingleServerEdgeCursor::next(std::function<void(StringRef const&, VPackSlic
   return true;
 }
 
-void SingleServerEdgeCursor::readAll(std::function<void(StringRef const&, arangodb::velocypack::Slice, size_t&)> callback) {
+void SingleServerEdgeCursor::readAll(
+    std::function<void(StringRef const&, arangodb::velocypack::Slice, size_t&)>
+        callback) {
   size_t cursorId = 0;
   for (_currentCursor = 0; _currentCursor < _cursors.size(); ++_currentCursor) {
     if (_internalCursorMapping != nullptr) {
@@ -155,11 +163,11 @@ void SingleServerEdgeCursor::readAll(std::function<void(StringRef const&, arango
     auto& cursorSet = _cursors[_currentCursor];
     for (auto& cursor : cursorSet) {
       LogicalCollection* collection = cursor->collection();
-      auto cb = [&] (DocumentIdentifierToken const& token) {
+      auto cb = [&](DocumentIdentifierToken const& token) {
         if (collection->readDocument(_trx, token, *_mmdr)) {
           VPackSlice doc(_mmdr->vpack());
           std::string tmpId = _trx->extractIdString(doc);
-          StringRef edgeId = _opts->cache()->persistString(StringRef(tmpId)); 
+          StringRef edgeId = _opts->cache()->persistString(StringRef(tmpId));
           callback(edgeId, doc, cursorId);
         }
       };
@@ -168,5 +176,3 @@ void SingleServerEdgeCursor::readAll(std::function<void(StringRef const&, arango
     }
   }
 }
-
-
