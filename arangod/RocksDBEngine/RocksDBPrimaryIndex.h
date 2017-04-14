@@ -89,6 +89,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
  private:
   bool outOfRange() const;
 
+  RocksDBPrimaryIndex const* _index;
   RocksDBComparator const* _cmp;
   bool const _reverse;
   std::unique_ptr<rocksdb::Iterator> _iterator;

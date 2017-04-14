@@ -29,6 +29,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -114,6 +115,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index, bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
+      _index(index),
       _cmp(index->_cmp),
       _reverse(reverse),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
@@ -141,6 +143,13 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   while (limit > 0) {
     RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
+    /*LOG_TOPIC(ERR, Logger::FIXME)
+        << "AllIndexIterator '" << _collection->name() << "' ("
+        << static_cast<RocksDBCollection*>(_collection->getPhysical())
+               ->objectId()
+        << ", " << _index->objectId()
+        << "): " << RocksDBKey::primaryKey(_iterator->key()) << " (" << limit
+        << "); " << token.revisionId();*/
     cb(token);
 
     --limit;
@@ -192,7 +201,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   _iterator.reset(rtrx->GetIterator(options));
   _total = collection->numberDocuments(trx);
   uint64_t off = RandomGenerator::interval(_total - 1);
-  //uint64_t goal = off;
+  // uint64_t goal = off;
   if (_total > 0) {
     if (off <= _total / 2) {
       _iterator->Seek(_bounds.start());
@@ -255,8 +264,15 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
-  _useCache = true;
-  createCache();
+  if (_objectId != 0) {
+    _useCache = true;
+    createCache();
+    /*LOG_TOPIC(ERR, Logger::FIXME)
+        << "primary index objectId: " << _objectId << " ("
+        << static_cast<RocksDBCollection*>(collection->getPhysical())
+               ->objectId()
+        << ", " << collection->name() << ")";*/
+  }
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
@@ -389,11 +405,12 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
     }
   }
 
+  /*LOG_TOPIC(ERR, Logger::FIXME)
+      << "#" << trx->state()->id() << "'" << _collection->name() << "' ("
+      << static_cast<RocksDBCollection*>(_collection->getPhysical())->objectId()
+      << ", " << _objectId << ") primary insert " << revisionId;*/
   auto status = rtrx->Put(key.string(), value.string());
   if (!status.ok()) {
-    /*LOG_TOPIC(ERR, Logger::FIXME)
-        << "#" << trx->state()->id() << " failed to insert "
-        << StringRef(slice.get(StaticStrings::KeyString)).toString();*/
     auto converted =
         rocksutils::convertStatus(status, rocksutils::StatusHint::index);
     return converted.errorNumber();

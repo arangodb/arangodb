@@ -512,6 +512,7 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
         // We ignore unique_constraint violated if we are not unique
         res = TRI_ERROR_NO_ERROR;
+        // TODO: remove this? seems dangerous...
       }
       break;
     }

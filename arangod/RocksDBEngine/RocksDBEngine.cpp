@@ -99,8 +99,11 @@ void RocksDBEngine::collectOptions(
                      new UInt64Parameter(&_maxTransactionSize));
 
   // control intermediate transactions in RocksDB
-  _intermediateTransactionSize = (_maxTransactionSize / 5) * 4; // transaction size that will trigger an intermediate commit
-  _intermediateTransactionNumber = 100 * 1000; // number operation after that a commit will be tried
+  _intermediateTransactionSize =
+      (_maxTransactionSize / 5) *
+      4;  // transaction size that will trigger an intermediate commit
+  _intermediateTransactionNumber =
+      100 * 1000;  // number operation after that a commit will be tried
   _intermediateTransactionEnabled = false;
 }
 

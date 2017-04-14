@@ -28,9 +28,9 @@
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
-#include "RocksDBEngine/RocksDBPersistentIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
+#include "RocksDBEngine/RocksDBPersistentIndex.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/ticks.h"
@@ -152,7 +152,7 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexPersistent(VPackSlice const definition,
-                                    VPackBuilder& builder, bool create) {
+                                      VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 0, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
@@ -294,7 +294,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
         res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
         break;
-        
+
       case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
         res = EnhanceJsonIndexPersistent(definition, enhanced, create);
         break;
@@ -377,14 +377,13 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       VPackSlice fields = info.get("fields");
       TRI_ASSERT(fields.isArray() && fields.length() == 1);
       std::string direction = fields.at(0).copyString();
-      TRI_ASSERT(direction == StaticStrings::FromString
-                 || direction == StaticStrings::ToString);
-      newIdx.reset(
-          new arangodb::RocksDBEdgeIndex(iid, col, info, direction));
+      TRI_ASSERT(direction == StaticStrings::FromString ||
+                 direction == StaticStrings::ToString);
+      newIdx.reset(new arangodb::RocksDBEdgeIndex(iid, col, info, direction));
       break;
     }
-    //case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    //case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
+    // case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
+    // case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
       newIdx.reset(new arangodb::RocksDBHashIndex(iid, col, info));
       break;
@@ -403,7 +402,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
     }
   }
-    
+
   TRI_ASSERT(newIdx != nullptr);
   return newIdx;
 }
@@ -415,7 +414,7 @@ void RocksDBIndexFactory::fillSystemIndexes(
   VPackBuilder builder;
   builder.openObject();
   builder.close();
-    
+
   systemIndexes.emplace_back(
       std::make_shared<arangodb::RocksDBPrimaryIndex>(col, builder.slice()));
   // create edges indexes
@@ -428,5 +427,6 @@ void RocksDBIndexFactory::fillSystemIndexes(
 }
 
 std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{ "primary", "edge", "hash", "skiplist", "persistent" };
+  return std::vector<std::string>{"primary", "edge", "hash", "skiplist",
+                                  "persistent"};
 }

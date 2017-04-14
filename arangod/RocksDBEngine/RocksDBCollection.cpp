@@ -521,14 +521,14 @@ int RocksDBCollection::read(transaction::Methods* trx,
       // found
       return TRI_ERROR_NO_ERROR;
     } else {
-      LOG_TOPIC(ERR, Logger::FIXME)
+      /*LOG_TOPIC(ERR, Logger::FIXME)
           << "#" << trx->state()->id() << " failed to read revision "
-          << token.revisionId() << " for key " << key.copyString();
+          << token.revisionId() << " for key " << key.copyString();*/
     }
   } else {
-    LOG_TOPIC(ERR, Logger::DEVEL) << "#" << trx->state()->id()
+    /*LOG_TOPIC(ERR, Logger::DEVEL) << "#" << trx->state()->id()
                                   << " failed to find token for "
-                                  << key.copyString() << " in read";
+                                  << key.copyString() << " in read";*/
   }
 
   // not found
@@ -1274,6 +1274,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   if (result.ok()) {
     mdr.setManaged(std::move(value), revisionId);
   } else {
+    /*LOG_TOPIC(ERR, Logger::ENGINES)
+        << "#" << trx->state()->id() << " LOOKUP REVISION FAILED. COLLECTION '"
+        << _logicalCollection->name() << "', OBJECTID: " << _objectId
+        << ", REVISIONID: " << revisionId << "; " << result.errorNumber();*/
     mdr.reset();
   }
   return result;

@@ -24,9 +24,9 @@
 
 #include "RocksDBEngine/RocksDBKey.h"
 #include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -47,14 +47,15 @@ RocksDBKey RocksDBKey::Document(uint64_t collectionId,
   return RocksDBKey(RocksDBEntryType::Document, collectionId, revisionId);
 }
 
-RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
-                                         arangodb::StringRef const& primaryKey) {
+RocksDBKey RocksDBKey::PrimaryIndexValue(
+    uint64_t indexId, arangodb::StringRef const& primaryKey) {
   return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, primaryKey);
 }
 
 RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
                                          char const* primaryKey) {
-  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, StringRef(primaryKey));
+  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId,
+                    StringRef(primaryKey));
 }
 
 RocksDBKey RocksDBKey::EdgeIndexValue(uint64_t indexId,
@@ -83,7 +84,6 @@ RocksDBKey RocksDBKey::View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) {
 RocksDBKey RocksDBKey::CounterValue(uint64_t objectId) {
   return RocksDBKey(RocksDBEntryType::CounterValue, objectId);
 }
-
 
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
   return type(key._buffer.data(), key._buffer.size());
@@ -248,7 +248,8 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   }
 }
 
-RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second)
+RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
+                       arangodb::StringRef const& second)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::PrimaryIndexValue: {
@@ -362,7 +363,7 @@ arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
   RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
   switch (type) {
     case RocksDBEntryType::PrimaryIndexValue: {
-      TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t) + sizeof(uint8_t)));
+      TRI_ASSERT(size >= (sizeof(char) + sizeof(uint64_t) + sizeof(char)));
       size_t keySize = size - (sizeof(char) + sizeof(uint64_t));
       return arangodb::StringRef(data + sizeof(char) + sizeof(uint64_t),
                                  keySize);
