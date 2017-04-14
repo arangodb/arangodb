@@ -43,7 +43,7 @@ class Slice;
 
 namespace graph {
 
-class ShortestPathOptions;
+struct ShortestPathOptions;
 
 class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
