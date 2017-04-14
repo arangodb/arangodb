@@ -120,9 +120,9 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("handle"));
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
-  result.openObject();
+  // result.openObject();
   idxHandles[0].toVelocyPack(result, false);
-  result.close();
+  // result.close();
   result.add(VPackValue("expression"));
   result.openObject();  // We need to encapsulate the expression into an
                         // expression object
