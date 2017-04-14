@@ -48,13 +48,16 @@ RocksDBKey RocksDBKey::Document(uint64_t collectionId,
 }
 
 RocksDBKey RocksDBKey::PrimaryIndexValue(
-    uint64_t indexId, arangodb::StringRef const& primaryKey) {
-  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, primaryKey);
+    uint64_t collectionId, uint64_t indexId,
+    arangodb::StringRef const& primaryKey) {
+  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, collectionId, indexId,
+                    primaryKey);
 }
 
-RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
+RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t collectionId,
+                                         uint64_t indexId,
                                          char const* primaryKey) {
-  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId,
+  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, collectionId, indexId,
                     StringRef(primaryKey));
 }
 
@@ -248,16 +251,17 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   }
 }
 
-RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
-                       arangodb::StringRef const& second)
+RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second,
+                       arangodb::StringRef const& third)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::PrimaryIndexValue: {
-      size_t length = sizeof(char) + sizeof(uint64_t) + second.size();
+      size_t length = sizeof(char) + (2 * sizeof(uint64_t)) + third.size();
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
-      _buffer.append(second.data(), second.size());
+      uint64ToPersistent(_buffer, second);
+      _buffer.append(third.data(), third.size());
       break;
     }
 
@@ -363,9 +367,10 @@ arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
   RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
   switch (type) {
     case RocksDBEntryType::PrimaryIndexValue: {
-      TRI_ASSERT(size >= (sizeof(char) + sizeof(uint64_t) + sizeof(char)));
-      size_t keySize = size - (sizeof(char) + sizeof(uint64_t));
-      return arangodb::StringRef(data + sizeof(char) + sizeof(uint64_t),
+      TRI_ASSERT(size >=
+                 (sizeof(char) + (2 * sizeof(uint64_t)) + sizeof(char)));
+      size_t keySize = size - (sizeof(char) + (2 * sizeof(uint64_t)));
+      return arangodb::StringRef(data + sizeof(char) + (2 * sizeof(uint64_t)),
                                  keySize);
     }
     case RocksDBEntryType::EdgeIndexValue:

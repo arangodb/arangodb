@@ -118,7 +118,9 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _index(index),
       _cmp(index->_cmp),
       _reverse(reverse),
-      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
+      _bounds(RocksDBKeyBounds::PrimaryIndex(
+          static_cast<RocksDBCollection*>(collection->getPhysical())
+              ->objectId(), index->objectId())) {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
@@ -191,7 +193,10 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
     : IndexIterator(collection, trx, mmdr, index),
       _cmp(index->_cmp),
-      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
+      _bounds(RocksDBKeyBounds::PrimaryIndex(
+          static_cast<RocksDBCollection*>(collection->getPhysical())
+              ->objectId(),
+          index->objectId())) {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
@@ -308,7 +313,9 @@ void RocksDBPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                             arangodb::StringRef keyRef) {
-  auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef);
+  auto key = RocksDBKey::PrimaryIndexValue(
+      static_cast<RocksDBCollection*>(_collection->getPhysical())->objectId(),
+      _objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
   if (_useCache) {
@@ -367,6 +374,7 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
                                 TRI_voc_rid_t revisionId,
                                 VPackSlice const& slice, bool) {
   auto key = RocksDBKey::PrimaryIndexValue(
+      static_cast<RocksDBCollection*>(_collection->getPhysical())->objectId(),
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
@@ -424,6 +432,7 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
                                 VPackSlice const& slice, bool) {
   // TODO: deal with matching revisions?
   auto key = RocksDBKey::PrimaryIndexValue(
+      static_cast<RocksDBCollection*>(_collection->getPhysical())->objectId(),
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
 
   if (_useCache) {
@@ -469,8 +478,12 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
 int RocksDBPrimaryIndex::drop() {
   // First drop the cache all indexes can work without it.
   RocksDBIndex::drop();
-  return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::PrimaryIndex(_objectId))
+  return rocksutils::removeLargeRange(
+             rocksutils::globalRocksDB(),
+             RocksDBKeyBounds::PrimaryIndex(
+                 static_cast<RocksDBCollection*>(_collection->getPhysical())
+                     ->objectId(),
+                 _objectId))
       .errorNumber();
 }
 

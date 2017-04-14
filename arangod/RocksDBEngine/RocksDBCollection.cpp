@@ -457,12 +457,13 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // implementations
   // don't do anything beyond deleting their contents
   RocksDBKeyBounds indexBounds =
-      RocksDBKeyBounds::PrimaryIndex(42);  // default constructor?
+      RocksDBKeyBounds::PrimaryIndex(42, 42);  // default constructor?
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
     switch (rindex->type()) {
       case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
-        indexBounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
+        indexBounds =
+            RocksDBKeyBounds::PrimaryIndex(_objectId, rindex->objectId());
         break;
       case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
         indexBounds = RocksDBKeyBounds::EdgeIndex(rindex->objectId());
