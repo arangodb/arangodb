@@ -1054,6 +1054,14 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::string const name =
       arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
 
+  std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
+  if (json.hasKey("distributeShardsLike")) {
+    auto const otherCidString = json.get("distributeShardsLike").copyString();
+    if (!otherCidString.empty()) {
+      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
+    }
+  }
+
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1148,7 +1156,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   AgencyOperation increaseVersion("Plan/Version",
                                   AgencySimpleOperationType::INCREMENT_OP);
 
-  AgencyPrecondition precondition = AgencyPrecondition(
+  AgencyPrecondition notexisting = AgencyPrecondition(
       "Plan/Collections/" + databaseName + "/" + collectionID,
       AgencyPrecondition::Type::EMPTY, true);
 
@@ -1156,7 +1164,16 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   transaction.operations.push_back(createCollection);
   transaction.operations.push_back(increaseVersion);
-  transaction.preconditions.push_back(precondition);
+  transaction.preconditions.push_back(notexisting);
+
+  // Any of the shards locked?
+  if (otherCidShardMap != nullptr) {
+    for (auto const& shard : *otherCidShardMap) {
+      transaction.preconditions.push_back(
+        AgencyPrecondition("Supervision/Shards/" + shard.first,
+                           AgencyPrecondition::Type::EMPTY, true));
+    }
+  }
 
   AgencyCommResult res = ac.sendTransactionWithFailover(transaction);
 
@@ -1171,17 +1188,15 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       } else {
         LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
       }
-    } else {
-      errorMsg += std::string("\nClientId ") + res._clientId;
-      errorMsg += std::string("\n") + __FILE__ + std::to_string(__LINE__);
-      errorMsg += std::string("\n") + res.errorMessage();
-      errorMsg += std::string("\n") + res.errorDetails();
-      errorMsg += std::string("\n") + res.body();
-      events::CreateCollection(
-        name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-      return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
     }
-    
+    errorMsg += std::string("\nClientId ") + res._clientId;
+    errorMsg += std::string("\n") + __FILE__ + std::to_string(__LINE__);
+    errorMsg += std::string("\n") + res.errorMessage();
+    errorMsg += std::string("\n") + res.errorDetails();
+    errorMsg += std::string("\n") + res.body();
+    events::CreateCollection(
+      name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
+    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
   }
 
   // Update our cache:
@@ -1210,6 +1225,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
             << ": database: " << databaseName << ", collId:" << collectionID
             << "\njson: " << json.toString()
             << "\ntransaction sent to agency: " << transaction.toJson();
+
+        // Put an agency dump into the log:
         AgencyCommResult ag = ac.getValues("");
         if (ag.successful()) {
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
@@ -1217,6 +1234,21 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         } else {
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
+
+        // Now we ought to remove the collection again in the Plan:
+        AgencyOperation removeCollection(
+            "Plan/Collections/" + databaseName + "/" + collectionID,
+            AgencySimpleOperationType::DELETE_OP);
+        AgencyOperation increaseVersion("Plan/Version",
+                                        AgencySimpleOperationType::INCREMENT_OP);
+        AgencyWriteTransaction transaction;
+
+        transaction.operations.push_back(removeCollection);
+        transaction.operations.push_back(increaseVersion);
+
+        // This is a best effort, in the worst case the collection stays:
+        ac.sendTransactionWithFailover(transaction);
+
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
@@ -1238,6 +1270,18 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
                                            double timeout) {
   AgencyComm ac;
   AgencyCommResult res;
+
+  // First check that no other collection has a distributeShardsLike
+  // entry pointing to us:
+  auto coll = getCollection(databaseName, collectionID);
+  std::string id = std::to_string(coll->cid());
+  auto colls = getCollections(databaseName);
+  for (std::shared_ptr<LogicalCollection> const& p : colls) {
+    if (p->distributeShardsLike() == coll->name() ||
+        p->distributeShardsLike() == collectionID) {
+      return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
+    }
+  }
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
@@ -2410,7 +2454,6 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
               (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
             // This is a temporary situation in which the leader has already
             // resigned, let's wait half a second and try again.
-            --tries;
             LOG_TOPIC(INFO, Logger::CLUSTER)
                 << "getResponsibleServer: found resigned leader,"
                 << "waiting for half a second...";
@@ -2422,7 +2465,7 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
       usleep(500000);
     }
 
-    if (++tries >= 2) {
+    if (++tries >= 240) {
       break;
     }
 
@@ -2430,6 +2473,8 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
     loadCurrent();
   }
 
+  LOG_TOPIC(ERR, Logger::CLUSTER) << "getResponsibleServer: could not find "
+    "responsible server for shard " << shardID << " within 2 minutes";
   return std::make_shared<std::vector<ServerID>>();
 }
 

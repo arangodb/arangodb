@@ -28,6 +28,14 @@
 #include "Basics/Common.h"
 #include "Basics/locks.h"
 
+#ifdef USE_CPP11_LOCKS
+#include "Basics/ReadWriteLockCPP11.h"
+
+namespace arangodb {
+namespace basics {
+
+typedef ReadWriteLockCPP11 ReadWriteLock;
+#else
 namespace arangodb {
 namespace basics {
 
@@ -80,6 +88,9 @@ class ReadWriteLock {
   /// @brief write lock marker
   bool _writeLocked;
 };
+
+#endif
+
 }
 }
 

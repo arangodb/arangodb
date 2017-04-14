@@ -262,9 +262,10 @@ void AgencyTransientTransaction::toVelocyPack(VPackBuilder& builder) const {
 }
 
 bool AgencyTransientTransaction::validate(AgencyCommResult const& result) const {
-  return (result.slice().isObject() &&
-          result.slice().hasKey("results") &&
-          result.slice().get("results").isArray());
+  return (result.slice().isArray() &&
+          result.slice().length() > 0 && 
+          result.slice()[0].isBool() &&
+          result.slice()[0].getBool() == true);
 }
 
 // -----------------------------------------------------------------------------
@@ -1591,20 +1592,14 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
 
   try {
     VPackObjectBuilder b(&builder);
-    builder.add(VPackValue("Sync"));
 
+    builder.add(VPackValue("Agency"));
     {
-      VPackObjectBuilder c(&builder);
-      builder.add("LatestID", VPackValue(1));
-      addEmptyVPackObject("Problems", builder);
-      builder.add("UserVersion", VPackValue(1));
-      addEmptyVPackObject("ServerStates", builder);
-      builder.add("HeartbeatIntervalMs", VPackValue(1000));
-      addEmptyVPackObject("Commands", builder);
+      VPackObjectBuilder a(&builder);
+      builder.add("Definition", VPackValue(1));
     }
 
-    builder.add(VPackValue("Current"));
-
+    builder.add(VPackValue("Current")); // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
       builder.add(VPackValue("Collections"));
@@ -1626,8 +1621,9 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       addEmptyVPackObject("Databases", builder);
     }
 
-    builder.add(VPackValue("Plan"));
+    builder.add("InitDone", VPackValue(true)); // InitDone
 
+    builder.add(VPackValue("Plan")); // Plan ----------------------------------
     {
       VPackObjectBuilder c(&builder);
       addEmptyVPackObject("Coordinators", builder);
@@ -1651,8 +1647,28 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       }
     }
 
-    builder.add(VPackValue("Target"));
+    builder.add("Secret", VPackValue(jwtSecret)); // Secret
 
+    builder.add(VPackValue("Sync")); // Sync ----------------------------------
+    {
+      VPackObjectBuilder c(&builder);
+      builder.add("LatestID", VPackValue(1));
+      addEmptyVPackObject("Problems", builder);
+      builder.add("UserVersion", VPackValue(1));
+      addEmptyVPackObject("ServerStates", builder);
+      builder.add("HeartbeatIntervalMs", VPackValue(1000));
+      addEmptyVPackObject("Commands", builder);
+    }
+
+    builder.add(VPackValue("Supervision")); // Supervision --------------------
+    {
+      VPackObjectBuilder c(&builder);
+      addEmptyVPackObject("Health", builder);
+      addEmptyVPackObject("Shards", builder);
+      addEmptyVPackObject("DBServers", builder);
+    }
+
+    builder.add(VPackValue("Target")); // Target ------------------------------
     {
       VPackObjectBuilder c(&builder);
       builder.add(VPackValue("Collections"));
@@ -1687,17 +1703,6 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       builder.add("Version", VPackValue(1));
     }
 
-    builder.add(VPackValue("Supervision"));
-
-    {
-      VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("Health", builder);
-      addEmptyVPackObject("Shards", builder);
-      addEmptyVPackObject("DBServers", builder);
-    }
-
-    builder.add("InitDone", VPackValue(true));
-    builder.add("Secret", VPackValue(jwtSecret));
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
         << "Couldn't create initializing structure " << e.what();

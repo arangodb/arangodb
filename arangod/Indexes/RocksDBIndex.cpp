@@ -207,7 +207,7 @@ IndexLookupResult RocksDBIterator::next() {
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t iid,
                            arangodb::LogicalCollection* collection,
                            arangodb::velocypack::Slice const& info)
-    : PathBasedIndex(iid, collection, info, 0, true) {}
+    : PathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t), true) {}
 
 /// @brief destroy the index
 RocksDBIndex::~RocksDBIndex() {}

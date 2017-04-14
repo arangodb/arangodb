@@ -95,8 +95,8 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
 
-  options->addOption("--cluster.agency-prefix", "agency prefix",
-                     new StringParameter(&_agencyPrefix));
+  options->addHiddenOption("--cluster.agency-prefix", "agency prefix",
+                           new StringParameter(&_agencyPrefix));
 
   options->addOption("--cluster.my-local-info", "this server's local info",
                      new StringParameter(&_myLocalInfo));
@@ -136,6 +136,19 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // validate
+  if (_agencyPrefix.empty()) {
+    _agencyPrefix = "arango";
+  }
+
+  // validate --cluster.agency-prefix
+  size_t found = _agencyPrefix.find_first_not_of(
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/");
+
+  if (found != std::string::npos || _agencyPrefix.empty()) {
+    LOG(FATAL) << "invalid value specified for --cluster.agency-prefix";
+    FATAL_ERROR_EXIT();
+  }
 
   if (options->processingResult().touched("cluster.disable-dispatcher-kickstarter") ||
       options->processingResult().touched("cluster.disable-dispatcher-frontend")) {
@@ -156,20 +169,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_agencyEndpoints.empty()) {
     LOG(FATAL)
         << "must at least specify one endpoint in --cluster.agency-endpoint";
-    FATAL_ERROR_EXIT();
-  }
-
-  // validate
-  if (_agencyPrefix.empty()) {
-    _agencyPrefix = "arango";
-  }
-
-  // validate --cluster.agency-prefix
-  size_t found = _agencyPrefix.find_first_not_of(
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/");
-
-  if (found != std::string::npos || _agencyPrefix.empty()) {
-    LOG(FATAL) << "invalid value specified for --cluster.agency-prefix";
     FATAL_ERROR_EXIT();
   }
 

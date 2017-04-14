@@ -156,6 +156,9 @@
     "ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC" : { "code" : 1481, "message" : "collection is out of sync" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN" : { "code" : 1482, "message" : "could not create index in plan" },
     "ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN" : { "code" : 1483, "message" : "could not drop index in plan" },
+    "ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE" : { "code" : 1484, "message" : "chain of distributeShardsLike references" },
+    "ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE" : { "code" : 1485, "message" : "must not drop collection while another has a distributeShardsLike attribute pointing to it" },
+    "ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE" : { "code" : 1486, "message" : "must not have a distributeShardsLike attribute pointing to an unknown collection" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
@@ -279,6 +282,7 @@
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE" : { "code" : 20014, "message" : "Inform message must contain array 'active'" },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL" : { "code" : 20015, "message" : "Inform message must contain object 'pool'" },
     "ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING" : { "code" : 20020, "message" : "Inquiry failed" },
+    "ERROR_SUPERVISION_GENERAL_FAILURE" : { "code" : 20501, "message" : "general supervision failure" },
     "ERROR_DISPATCHER_IS_STOPPING" : { "code" : 21001, "message" : "dispatcher stopped" },
     "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }

@@ -1,93 +1,152 @@
 #!/bin/bash
-NRAGENTS=$1
-if [ "$NRAGENTS" == "" ] ; then
-    NRAGENTS=1
-fi
-if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
-    echo Number of agents must be odd.
-    exit 1
-fi
-echo Number of Agents: $NRAGENTS
-NRDBSERVERS=$2
-if [ "$NRDBSERVERS" == "" ] ; then
-    NRDBSERVERS=2
-fi
-echo Number of DBServers: $NRDBSERVERS
-NRCOORDINATORS=$3
-if [ "$NRCOORDINATORS" == "" ] ; then
-    NRCOORDINATORS=1
-fi
-echo Number of Coordinators: $NRCOORDINATORS
 
-if [ ! -z "$4" ] ; then
-    if [ "$4" == "C" ] ; then
-        COORDINATORCONSOLE=1
-        echo Starting one coordinator in terminal with --console
-    elif [ "$4" == "D" ] ; then
-        CLUSTERDEBUGGER=1
-        echo Running cluster in debugger.
-    elif [ "$4" == "R" ] ; then
-        RRDEBUGGER=1
-        echo Running cluster in rr with --console.
-    fi
-fi
+function help() {
+  echo "USAGE: scripts/shutdownLocalCluster.sh [options]"
+  echo ""
+  echo "OPTIONS:"
+  echo "  -a/--nagents            # agents            (odd integer      default: 1))"
+  echo "  -c/--ncoordinators      # coordinators      (odd integer      default: 1))"
+  echo "  -d/--ndbservers         # db servers        (odd integer      default: 2))"
+  echo "  -s/--secondaries        Start secondaries   (0|1              default: 0)"
+  echo "  -t/--transport          Protocol            (ssl|tcp          default: tcp)"
+  echo ""
+  echo "EXAMPLES:"
+  echo "  scripts/shutdownLocalCluster.sh"
+  echo "  scripts/shutdownLocalCluster.sh -a 1 -c 1 -d 3 -t ssl"
+}
 
-SECONDARIES="$5"
+#defaults
+NRAGENTS=1
+NRDBSERVERS=2
+NRCOORDINATORS=1
+POOLSZ=""
+TRANSPORT="tcp"
+
+while [[ ${1} ]]; do
+    case "${1}" in
+    -a|--agency-size)
+      NRAGENTS=${2}
+      shift
+      ;;
+    -c|--ncoordinators)
+      NRCOORDINATORS=${2}
+      shift
+      ;;
+    -d|--ndbservers)
+      NRDBSERVERS=${2}
+      shift
+      ;;
+    -s|--secondaries)
+      SECONDARIES=${2}
+      shift
+      ;;
+    -t|--transport)
+      TRANSPORT=${2}
+      shift
+      ;;
+    -b|--port-offset)
+      PORT_OFFSET=${2}
+      shift
+      ;;
+    *)
+      echo "Unknown parameter: ${1}" >&2
+      help
+      exit 1
+      ;;
+  esac
+  
+  if ! shift; then
+    echo 'Missing parameter argument.' >&2
+    return 1
+  fi
+done
+
+AG_BASE=$(( $PORT_OFFSET + 4001 ))
+CO_BASE=$(( $PORT_OFFSET + 8530 ))
+DB_BASE=$(( $PORT_OFFSET + 8629 ))
+SE_BASE=$(( $PORT_OFFSET + 8729 ))
 
 shutdown() {
     PORT=$1
     echo -n "$PORT "
-    curl -X DELETE http://localhost:$PORT/_admin/shutdown >/dev/null 2>/dev/null
-    echo
+    curl -X DELETE http://[::1]:$PORT/_admin/shutdown >/dev/null 2>/dev/null
 }
 
+i=0
 if [ -n "$SECONDARIES" ]; then
-  echo "Shutting down secondaries..."
-  PORTTOPSE=`expr 8729 + $NRDBSERVERS - 1` 
-  for PORT in `seq 8729 $PORTTOPSE` ; do
-    shutdown $PORT
-  done
-fi
-
-echo Shutting down Coordinators...
-PORTTOPCO=`expr 8530 + $NRCOORDINATORS - 1`
-for p in `seq 8530 $PORTTOPCO` ; do
-    shutdown $p
-done
-
-echo Shutting down DBServers...
-PORTTOPDB=`expr 8629 + $NRDBSERVERS - 1`
-for p in `seq 8629 $PORTTOPDB` ; do
-    shutdown $p
-done
-
-testServerDown() {
-    PORT=$1
-    while true ; do
-        curl -s -f -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
-        if [ "$?" != "0" ] ; then
-            echo Server on port $PORT does not answer any more.
-            break
-        else
-            echo Server on port $PORT is still running
-        fi
-        sleep 1
+    echo -n "Shutting down secondaries... "
+    PORTTOPSE=`expr $SE_BASE + $NRDBSERVERS - 1` 
+    for PORT in `seq $SE_BASE $PORTTOPSE` ; do
+        spids[i]=`ps -eaf|grep data${PORT}|grep arangod|awk '{print $2}'`
+        shutdown $PORT
+        i=i+1
     done
-}
-
-for p in `seq 8530 $PORTTOPCO` ; do
-    testServerDown $p
+fi
+echo
+echo -n "Shutting down Coordinators... "
+i=0
+PORTTOPCO=`expr $CO_BASE + $NRCOORDINATORS - 1`
+for p in `seq $CO_BASE $PORTTOPCO` ; do
+    pid=`ps -eaf|grep data${p}|grep arangod|awk '{print $2}'`
+    if [ ! -z "$pid" ]; then
+        pids[$i]=$pid
+        let i=i+1
+    fi
+    shutdown $p
+done
+echo
+echo -n "Shutting down DBServers... "
+PORTTOPDB=`expr $DB_BASE + $NRDBSERVERS - 1`
+for p in `seq $DB_BASE $PORTTOPDB` ; do
+    pid=`ps -eaf|grep data${p}|grep arangod|awk '{print $2}'`
+    if [ ! -z "$pid" ]; then
+        pids[$i]=$pid
+        let i=i+1
+    fi
+    shutdown $p
 done
 
-for p in `seq 8629 $PORTTOPDB` ; do
-    testServerDown $p
+while true; do
+    i=0;
+    for p in "${pids[@]}"; do
+	      pid=`ps -p $p`
+        if [ $? == 0 ]; then
+           let i=i+1
+        fi
+    done
+    if [ $i == 0 ]; then
+        break;
+    fi
+    sleep .1;
 done
+echo
+echo -n "Shutting down agency ... "
+i=0;
 
-echo Shutting down agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
-    port=$(( 4001 + $aid ))
+    PORT=`expr $AG_BASE + $aid`
+    pid=`ps -eaf|grep data${PORT}|grep arangod|awk '{print $2}'`
+    if [ ! -z "$pid" ]; then
+        apids[$i]=$pid
+        let i=i+1
+    fi
+    port=$(( $AG_BASE + $aid ))
     shutdown $port
 done
 
+while true; do
+    i=0;
+    for p in "${apids[@]}"; do
+	      pid=`ps -p $p`
+        if [ $? == 0 ]; then
+           let i=i+1
+        fi
+    done
+    if [ $i == 0 ]; then
+        break;
+    fi
+    sleep .1;
+done
+echo
 echo Done, your cluster is gone
 

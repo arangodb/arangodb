@@ -162,14 +162,11 @@ RestStatus RestAgencyHandler::handleTransient() {
   // We're leading and handling the request
   if (ret.accepted) {  
 
-    Builder body;
-    body.openObject();
-    body.add("results", VPackValue(VPackValueType::Array));
-    body.close();
-    body.close();
-
-    generateResult(rest::ResponseCode::OK, body.slice());
-    
+    generateResult(
+      (ret.failed==0) ?
+      rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
+      ret.result->slice());
+      
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
       Builder body;
