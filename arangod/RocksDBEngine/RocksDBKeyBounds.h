@@ -39,7 +39,7 @@ namespace arangodb {
 class RocksDBKeyBounds {
  public:
   RocksDBKeyBounds() = delete;
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for list of all databases
   //////////////////////////////////////////////////////////////////////////////
@@ -56,10 +56,9 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds CollectionDocuments(uint64_t collectionId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all index-entries- belonging to a specified primary
-  /// index
+  /// @brief Bounds for all index-entries- belonging to a specified primary index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds PrimaryIndex(uint64_t collectionId, uint64_t indexId);
+  static RocksDBKeyBounds PrimaryIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified edge index
@@ -67,16 +66,14 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds EdgeIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all index-entries belonging to a specified edge index
-  /// related
+  /// @brief Bounds for all index-entries belonging to a specified edge index related
   /// to the specified vertex
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds EdgeIndexVertex(uint64_t indexId,
                                           std::string const& vertexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all index-entries belonging to a specified non-unique
-  /// index
+  /// @brief Bounds for all index-entries belonging to a specified non-unique index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds IndexEntries(uint64_t indexId);
 
@@ -104,7 +101,7 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all views belonging to a specified database
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds DatabaseViews(TRI_voc_tick_t databaseId);
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all counter values
   //////////////////////////////////////////////////////////////////////////////
@@ -130,7 +127,6 @@ class RocksDBKeyBounds {
  private:
   RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, uint64_t second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    std::string const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,

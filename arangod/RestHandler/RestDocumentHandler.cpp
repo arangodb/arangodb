@@ -144,6 +144,10 @@ bool RestDocumentHandler::createDocument() {
   arangodb::OperationResult result =
       trx.insert(collectionName, body, opOptions);
 
+  if (result.code != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "trx.insert: " << result.code;
+  }
+
   // Will commit if no error occured.
   // or abort if an error occured.
   // result stays valid!

@@ -48,10 +48,8 @@ RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionId) {
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t collectionId,
-                                                uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, collectionId,
-                          indexId);
+RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::EdgeIndex(uint64_t indexId) {
@@ -140,9 +138,9 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       // 7 + 8-byte object ID of index + VPack array with index value(s) ....
       // prefix is the same for non-unique indexes
       // static slices with an array with one entry
-      VPackSlice min("\x02\x03\x1e");  // [minSlice]
-      VPackSlice max("\x02\x03\x1f");  // [maxSlice]
-
+      VPackSlice min("\x02\x03\x1e");// [minSlice]
+      VPackSlice max("\x02\x03\x1f");// [maxSlice]
+  
       size_t length = sizeof(char) + sizeof(uint64_t) + min.byteSize();
       _startBuffer.reserve(length);
       _startBuffer.push_back(static_cast<char>(_type));
@@ -156,9 +154,9 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       _endBuffer.append((char*)(max.begin()), max.byteSize());
       break;
     }
-
+      
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Document: {
+    case RocksDBEntryType::Document:{
       // Collections are stored as follows:
       // Key: 1 + 8-byte ArangoDB database ID + 8-byte ArangoDB collection ID
       //
@@ -171,41 +169,21 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       // append common prefix
       _endBuffer.clear();
       _endBuffer.append(_startBuffer);
-
+      
       // construct min max
       uint64ToPersistent(_startBuffer, 0);
       uint64ToPersistent(_endBuffer, UINT64_MAX);
       break;
     }
-
+      
+      
+    case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::View: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _startBuffer.reserve(length);
       _startBuffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_startBuffer, first);
-
-      _endBuffer.clear();
-      _endBuffer.append(_startBuffer);
-      nextPrefix(_endBuffer);
-      break;
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-}
-
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                                   uint64_t second)
-    : _type(type), _startBuffer(), _endBuffer() {
-  switch (_type) {
-    case RocksDBEntryType::PrimaryIndexValue: {
-      size_t length = sizeof(char) + (2 * sizeof(uint64_t));
-      _startBuffer.reserve(length);
-      _startBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_startBuffer, first);
-      uint64ToPersistent(_startBuffer, second);
 
       _endBuffer.clear();
       _endBuffer.append(_startBuffer);
