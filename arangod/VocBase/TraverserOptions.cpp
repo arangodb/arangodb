@@ -315,7 +315,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.add("base", VPackValue(VPackValueType::Array));
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
-      it2.getIndex()->toVelocyPack(builder, false);
+      it2.getIndex()->toVelocyPack(builder, false, false);
     }
   }
   builder.close();
@@ -327,7 +327,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
     builder.add(VPackValue(VPackValueType::Array));
     for (auto const& it2 : it.second) {
       for (auto const& it3 : it2.idxHandles) {
-        it3.getIndex()->toVelocyPack(builder, false);
+        it3.getIndex()->toVelocyPack(builder, false, false);
       }
     }
     builder.close();
@@ -422,9 +422,9 @@ void TraverserOptions::addDepthLookupInfo(aql::Ast* ast,
                                           uint64_t depth) {
   TRI_ASSERT(_depthLookupInfo.find(depth) == _depthLookupInfo.end());
   auto ins = _depthLookupInfo.emplace(depth, std::vector<LookupInfo>());
-  TRI_ASSERT(ins.second); // The insert should always work
-  injectLookupInfoInList(ins.first->second, ast, collectionName,
-                         attributeName, condition);
+  TRI_ASSERT(ins.second);  // The insert should always work
+  injectLookupInfoInList(ins.first->second, ast, collectionName, attributeName,
+                         condition);
 }
 
 bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
@@ -489,10 +489,8 @@ bool TraverserOptions::evaluateVertexExpression(
   return evaluateExpression(expression, vertex);
 }
 
-EdgeCursor*
-arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
-                                                  StringRef vid,
-                                                  uint64_t depth) {
+EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
+    ManagedDocumentResult* mmdr, StringRef vid, uint64_t depth) {
   if (_isCoordinator) {
     return nextCursorCoordinator(vid, depth);
   }
@@ -506,7 +504,6 @@ arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
   }
   return nextCursorLocal(mmdr, vid, list);
 }
-
 
 EdgeCursor* TraverserOptions::nextCursorCoordinator(StringRef vid,
                                                     uint64_t depth) {

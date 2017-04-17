@@ -120,7 +120,8 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _reverse(reverse),
       _bounds(RocksDBKeyBounds::PrimaryIndex(
           static_cast<RocksDBCollection*>(collection->getPhysical())
-              ->objectId(), index->objectId())) {
+              ->objectId(),
+          index->objectId())) {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
@@ -294,11 +295,11 @@ size_t RocksDBPrimaryIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
-                                       bool withFigures) const {
+void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+                                       bool forPersistence) const {
   TRI_ASSERT(builder.isOpenArray() || builder.isEmpty());
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures);
+  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   // hard-coded
   builder.add("unique", VPackValue(true));
   builder.add("sparse", VPackValue(false));

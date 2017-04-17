@@ -69,9 +69,12 @@ RocksDBIndex::~RocksDBIndex() {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
-  builder.add("objectId", VPackValue(std::to_string(_objectId)));
+void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+                                bool forPersistence) const {
+  Index::toVelocyPack(builder, withFigures, forPersistence);
+  if (forPersistence) {
+    builder.add("objectId", VPackValue(std::to_string(_objectId)));
+  }
 }
 
 void RocksDBIndex::createCache() {

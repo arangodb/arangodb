@@ -106,7 +106,6 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
   }
 }
 
-
 /// @brief set fields from slice
 void Index::setFields(VPackSlice const& fields, bool allowExpansion) {
   if (!fields.isArray()) {
@@ -394,14 +393,14 @@ std::string Index::context() const {
 /// base functionality (called from derived classes)
 std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
   auto builder = std::make_shared<VPackBuilder>();
-  toVelocyPack(*builder, withFigures);
+  toVelocyPack(*builder, withFigures, false);
   return builder;
 }
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
 /// note: needs an already-opened object as its input!
-void Index::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("id", VPackValue(std::to_string(_iid)));
   builder.add("type", VPackValue(oldtypeName()));

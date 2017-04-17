@@ -299,7 +299,7 @@ void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
       builder.openObject();
-      it2.getIndex()->toVelocyPack(builder, false);
+      it2.getIndex()->toVelocyPack(builder, false, false);
       builder.close();
     }
   }

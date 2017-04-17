@@ -24,16 +24,16 @@
 #ifndef ARANGOD_MMFILES_SKIPLIST_INDEX_H
 #define ARANGOD_MMFILES_SKIPLIST_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AstNode.h"
+#include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "MMFiles/MMFilesSkiplist.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <list>
 
@@ -62,8 +62,8 @@ class MMFilesBaseSkiplistLookupBuilder {
   arangodb::velocypack::Slice _upperSlice;
 
  public:
-  explicit MMFilesBaseSkiplistLookupBuilder(transaction::Methods* trx) :
-    _lowerBuilder(trx), _upperBuilder(trx) {
+  explicit MMFilesBaseSkiplistLookupBuilder(transaction::Methods* trx)
+      : _lowerBuilder(trx), _upperBuilder(trx) {
     _isEquality = true;
     _includeUpper = true;
     _includeLower = true;
@@ -105,58 +105,55 @@ class MMFilesBaseSkiplistLookupBuilder {
 ///        returned in the correct ordering. And no
 ///        lookup is returned twice.
 
-class MMFilesSkiplistLookupBuilder final : public MMFilesBaseSkiplistLookupBuilder {
+class MMFilesSkiplistLookupBuilder final
+    : public MMFilesBaseSkiplistLookupBuilder {
+ public:
+  MMFilesSkiplistLookupBuilder(
+      transaction::Methods* trx,
+      std::vector<std::vector<arangodb::aql::AstNode const*>>&,
+      arangodb::aql::Variable const*, bool);
 
-  public:
-   MMFilesSkiplistLookupBuilder(
-       transaction::Methods* trx,
-       std::vector<std::vector<arangodb::aql::AstNode const*>>&,
-       arangodb::aql::Variable const*, bool);
+  ~MMFilesSkiplistLookupBuilder() {}
 
-   ~MMFilesSkiplistLookupBuilder() {}
-
-/// @brief Compute the next lookup values
-///        If returns false there is no further lookup
-    bool next() override;
-
+  /// @brief Compute the next lookup values
+  ///        If returns false there is no further lookup
+  bool next() override;
 };
 
-class MMFilesSkiplistInLookupBuilder final : public MMFilesBaseSkiplistLookupBuilder {
+class MMFilesSkiplistInLookupBuilder final
+    : public MMFilesBaseSkiplistLookupBuilder {
+ private:
+  struct PosStruct {
+    size_t field;
+    size_t current;
+    size_t _max;  // thanks, windows.h!
 
-  private:
+    PosStruct(size_t f, size_t c, size_t m) : field(f), current(c), _max(m) {}
+  };
 
-    struct PosStruct {
-      size_t field;
-      size_t current;
-      size_t _max; // thanks, windows.h!
+  transaction::BuilderLeaser _dataBuilder;
+  /// @brief keeps track of the positions in the in-lookup
+  /// values. (field, inPosition, maxPosition)
+  std::list<PosStruct> _inPositions;
 
-      PosStruct(size_t f, size_t c, size_t m) : field(f), current(c), _max(m) {}
-    };
+  bool _done;
 
-    transaction::BuilderLeaser _dataBuilder;
-    /// @brief keeps track of the positions in the in-lookup
-    /// values. (field, inPosition, maxPosition)
-    std::list<PosStruct> _inPositions;
+ public:
+  MMFilesSkiplistInLookupBuilder(
+      transaction::Methods* trx,
+      std::vector<std::vector<arangodb::aql::AstNode const*>>&,
+      arangodb::aql::Variable const*, bool);
 
-    bool _done;
+  ~MMFilesSkiplistInLookupBuilder() {}
 
-  public:
-   MMFilesSkiplistInLookupBuilder(
-       transaction::Methods* trx,
-       std::vector<std::vector<arangodb::aql::AstNode const*>>&,
-       arangodb::aql::Variable const*, bool);
+  /// @brief Compute the next lookup values
+  /// If returns false there is no further lookup
+  bool next() override;
 
-    ~MMFilesSkiplistInLookupBuilder() {}
+ private:
+  bool forwardInPosition();
 
-    /// @brief Compute the next lookup values
-    /// If returns false there is no further lookup
-    bool next() override;
-
-  private:
-
-    bool forwardInPosition();
-
-    void buildSearchValues();
+  void buildSearchValues();
 };
 
 /// @brief Iterator structure for skip list. We require a start and stop node
@@ -174,7 +171,6 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   typedef MMFilesSkiplist<VPackSlice, MMFilesSkiplistIndexElement> TRI_Skiplist;
 
  private:
-
   TRI_Skiplist const* _skiplistIndex;
   size_t _numPaths;
   bool _reverse;
@@ -188,21 +184,21 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
   MMFilesBaseSkiplistLookupBuilder* _builder;
 
-  std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
-                    MMFilesSkiplistCmpType)> _CmpElmElm;
+  std::function<int(void*, MMFilesSkiplistIndexElement const*,
+                    MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)>
+      _CmpElmElm;
 
  public:
-  MMFilesSkiplistIterator(LogicalCollection* collection, transaction::Methods* trx,
-      ManagedDocumentResult* mmdr,
-      arangodb::MMFilesSkiplistIndex const* index,
+  MMFilesSkiplistIterator(
+      LogicalCollection* collection, transaction::Methods* trx,
+      ManagedDocumentResult* mmdr, arangodb::MMFilesSkiplistIndex const* index,
       TRI_Skiplist const* skiplist, size_t numPaths,
-      std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
+      std::function<int(void*, MMFilesSkiplistIndexElement const*,
+                        MMFilesSkiplistIndexElement const*,
                         MMFilesSkiplistCmpType)> const& CmpElmElm,
       bool reverse, MMFilesBaseSkiplistLookupBuilder* builder);
 
-  ~MMFilesSkiplistIterator() {
-    delete _builder;
-  }
+  ~MMFilesSkiplistIterator() { delete _builder; }
 
   // always holds the last node returned, initially equal to
   // the _leftEndPoint (or the
@@ -210,7 +206,6 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   // can be nullptr if the iterator is exhausted.
 
  public:
-
   char const* typeName() const override { return "skiplist-index-iterator"; }
 
   /// @brief Get the next elements in the skiplist
@@ -218,11 +213,10 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
   /// @brief Reset the cursor
   void reset() override;
-  
+
   size_t numPaths() const { return _numPaths; }
 
  private:
-
   /// @brief Initialize left and right endpoints with current lookup
   ///        value. Also points the _cursor to the border of this interval.
   void initNextInterval();
@@ -249,7 +243,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   };
 
   struct ElementElementComparator {
-    int operator()(void* userData, 
+    int operator()(void* userData,
                    MMFilesSkiplistIndexElement const* leftElement,
                    MMFilesSkiplistIndexElement const* rightElement,
                    MMFilesSkiplistCmpType cmptype) const;
@@ -269,17 +263,15 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   MMFilesSkiplistIndex() = delete;
 
   MMFilesSkiplistIndex(TRI_idx_iid_t, LogicalCollection*,
-                arangodb::velocypack::Slice const&);
+                       arangodb::velocypack::Slice const&);
 
   ~MMFilesSkiplistIndex();
 
  public:
-  IndexType type() const override {
-    return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
-  }
-  
+  IndexType type() const override { return Index::TRI_IDX_TYPE_SKIPLIST_INDEX; }
+
   char const* typeName() const override { return "skiplist"; }
-  
+
   bool allowExpansion() const override { return true; }
 
   bool canBeDropped() const override { return true; }
@@ -290,13 +282,15 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
-  
+  int remove(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
+
   int unload() override;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
@@ -304,8 +298,8 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
                                double&) const override;
 
   bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                             arangodb::aql::Variable const*, size_t,
-                             double&, size_t&) const override;
+                             arangodb::aql::Variable const*, size_t, double&,
+                             size_t&) const override;
 
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
@@ -324,8 +318,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes,
-      bool) const;
+      std::unordered_set<std::string>& nonNullAttributes, bool) const;
 
   bool accessFitsIndex(
       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
@@ -336,8 +329,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   void matchAttributes(
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      size_t& values, 
-      std::unordered_set<std::string>& nonNullAttributes,
+      size_t& values, std::unordered_set<std::string>& nonNullAttributes,
       bool) const;
 
   bool findMatchingConditions(
@@ -352,7 +344,6 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   bool intervalValid(void*, Node* left, Node* right) const;
 
  private:
-
   ElementElementComparator CmpElmElm;
 
   KeyElementComparator CmpKeyElm;

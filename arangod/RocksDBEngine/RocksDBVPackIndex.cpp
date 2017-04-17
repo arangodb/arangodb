@@ -178,11 +178,11 @@ size_t RocksDBVPackIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
-                                     bool withFigures) const {
+void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+                                     bool forPersistence) const {
   TRI_ASSERT(builder.isOpenArray() || builder.isEmpty());
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures);
+  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   builder.add("unique", VPackValue(_unique));
   builder.add("sparse", VPackValue(_sparse));
   builder.close();

@@ -36,7 +36,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-namespace rocksdb {class TransactionDB; class Iterator;}
+namespace rocksdb {
+class TransactionDB;
+class Iterator;
+}
 
 namespace arangodb {
 class RocksDBEdgeIndex;
@@ -59,7 +62,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
 
  private:
   bool updateBounds();
-  
+
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _keysIterator;
   RocksDBEdgeIndex const* _index;
@@ -74,8 +77,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   RocksDBEdgeIndex() = delete;
 
   RocksDBEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                   velocypack::Slice const& info,
-                   std::string const&);
+                   velocypack::Slice const& info, std::string const&);
 
   ~RocksDBEdgeIndex();
 
@@ -96,7 +98,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
