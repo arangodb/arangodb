@@ -34,7 +34,7 @@
           }));
 
           self.breadcrumb();
-          window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Indexes');
+          window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
 
           self.getIndex();
         },
