@@ -285,7 +285,7 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   uint64_t newSize = _transactionSize + operationSize + keySize;
   if (_maxTransactionSize < newSize) {
     // we hit the transaction size limit
-    std::string message = "Maximal transaction size limit of " + std::to_string(_maxTransactionSize) + " Bytes reached!";
+    std::string message = "maximal transaction size limit of " + std::to_string(_maxTransactionSize) + " bytes reached!";
     res.reset(TRI_ERROR_RESOURCE_LIMIT, message);
     return res;
   }
@@ -294,7 +294,7 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
       static_cast<RocksDBTransactionCollection*>(findCollection(cid));
 
   if (collection == nullptr) {
-    std::string message = "Collection (" + collection->collectionName() + ") not found in transaction state";
+    std::string message = "collection '" + collection->collectionName() + "' not found in transaction state";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 

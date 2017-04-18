@@ -95,7 +95,7 @@ void RocksDBEngine::collectOptions(
   // control transaction size for RocksDB engine
   _maxTransactionSize =
       std::numeric_limits<uint64_t>::max();  // set sensible default value here
-  options->addOption("--rocksdb.max-transaction-size", "transaction size limit",
+  options->addOption("--rocksdb.max-transaction-size", "transaction size limit (in bytes)",
                      new UInt64Parameter(&_maxTransactionSize));
 
   // control intermediate transactions in RocksDB
@@ -103,7 +103,7 @@ void RocksDBEngine::collectOptions(
       (_maxTransactionSize / 5) *
       4;  // transaction size that will trigger an intermediate commit
   _intermediateTransactionNumber =
-      100 * 1000;  // number operation after that a commit will be tried
+      100 * 1000;  // number of operations after that a commit will be tried
   _intermediateTransactionEnabled = false;
 }
 
