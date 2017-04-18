@@ -631,17 +631,18 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                            newSlice.byteSize(), res.keySize());
 
     // transaction size limit reached -- fail
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
     }
+
+    guard.commit();
 
     // force intermediate commit
     if (result.commitRequired()) {
       // force commit
     }
-
-    guard.commit();
   }
+
 
   return res.errorNumber();
 }

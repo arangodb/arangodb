@@ -521,11 +521,11 @@ ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
 ArangoCollection.prototype.getIndexes = function (withFigures) {
   'use strict';
   var indexes = this.getIndexesPrivate(withFigures);
-  if (this.type() == 3) {
+  if (this.type() === 3) {
     var result = [];
     for (var i = 0; i < indexes.length; i++) {
-      if(indexes[i].type == "edge") {
-        if (indexes[i].fields.length == 1
+      if(indexes[i].type === "edge") {
+        if (indexes[i].fields.length === 1
             && indexes[i].fields[0] === "_from") {
           indexes[i].fields.push("_to");
           result.push(indexes[i]);
