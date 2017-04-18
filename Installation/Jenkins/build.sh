@@ -596,26 +596,26 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
             fi
             echo "I'm on Branch: ${GITARGS}"
         fi
-                
+
         if test "${EP_GITARGS}" != "${GITARGS}"; then
             git checkout master;
         fi
         git fetch --tags;
         if git pull --all; then
-            /bin/true;
+            if test "${EP_GITARGS}" != "${GITARGS}"; then
+                git checkout ${GITARGS};
+            fi
         else
             git checkout master;
             git pull --tags;
             git pull --all;
-        fi
-        if test "${EP_GITARGS}" != "${GITARGS}"; then
             git checkout ${GITARGS};
         fi
         ${FINAL_PULL}
     )
 fi
 
-if test ${DOWNLOAD_STARTER} == 1; then
+if test "${DOWNLOAD_STARTER}" == 1; then
     # we utilize https://developer.github.com/v3/repos/ to get the newest release:
     STARTER_REV=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases |grep tag_name |head -n 1 |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
     STARTER_URL=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases/tags/${STARTER_REV} |grep browser_download_url |grep "${OSNAME}" |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
