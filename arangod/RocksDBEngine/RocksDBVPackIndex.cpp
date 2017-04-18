@@ -298,7 +298,7 @@ void RocksDBVPackIndex::addIndexValue(
     VPackSlice const& document,
     std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
     std::vector<VPackSlice>& sliceStack) {
-  // TODO maybe use leaded Builder from transaction.
+  // TODO maybe use leased Builder from transaction.
   VPackBuilder b;
   b.openArray();
   for (VPackSlice const& s : sliceStack) {
@@ -319,7 +319,7 @@ void RocksDBVPackIndex::addIndexValue(
     // + primary key
     // - Value: empty
     elements.emplace_back(
-        RocksDBKey::IndexValue(_objectId, StringRef(key), b.slice()),
+        RocksDBKey::IndexValue(_objectId, key, b.slice()),
         RocksDBValue::IndexValue());
   }
 }
@@ -368,7 +368,7 @@ void RocksDBVPackIndex::buildIndexValues(
     for (size_t i = level; i < _paths.size(); i++) {
       sliceStack.emplace_back(illegalSlice);
     }
-    addIndexValue(document.get(StaticStrings::KeyString), elements, sliceStack);
+    addIndexValue(document, elements, sliceStack);
     for (size_t i = level; i < _paths.size(); i++) {
       sliceStack.pop_back();
     }
