@@ -938,9 +938,9 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
       }
 
       if (ignoreCount == 0) {
-        if (lineLength > 256) {
+        if (lineLength > 1024) {
           errorMsg +=
-              ", offending marker: " + std::string(lineStart, 256) + "...";
+              ", offending marker: " + std::string(lineStart, 1024) + "...";
         } else {
           errorMsg +=
               ", offending marker: " + std::string(lineStart, lineLength);
