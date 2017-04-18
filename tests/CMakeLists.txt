@@ -12,6 +12,7 @@ add_executable(
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
   Agency/RemoveFollowerTest.cpp
+  Basics/icu-helper.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp

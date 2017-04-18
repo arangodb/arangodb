@@ -32,16 +32,12 @@
 #include <string>
 
 #include "Basics/json.h"
+#include "Basics/files.h"
 #include "Basics/directories.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
-#if _WIN32
-#include "Basics/win-utils.h"
-#define FIX_ICU_ENV     TRI_FixIcuDataEnv(SBIN_DIRECTORY)
-#else
-#define FIX_ICU_ENV
-#endif
+#include "icu-helper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -59,17 +55,7 @@
 
 struct CJsonSetup {
   CJsonSetup () {
-    FIX_ICU_ENV;
-    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", SBIN_DIRECTORY)) {
-      std::string msg =
-        "cannot initialize ICU; please make sure ICU*dat is available; "
-        "the variable ICU_DATA='";
-      if (getenv("ICU_DATA") != nullptr) {
-        msg += getenv("ICU_DATA");
-      }
-      msg += "' should point the directory containing the ICU*dat file.";
-      throw std::runtime_error(msg);
-    }
+    IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
   }
 };
 

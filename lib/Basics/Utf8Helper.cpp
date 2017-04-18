@@ -33,6 +33,8 @@
 #include "unicode/uclean.h"
 #include "unicode/unorm2.h"
 #include "unicode/ustdio.h"
+#include "unicode/putil.h"
+#include "unicode/udata.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -40,14 +42,14 @@
 
 using namespace arangodb::basics;
 
-Utf8Helper Utf8Helper::DefaultUtf8Helper(SBIN_DIRECTORY);
+Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
-Utf8Helper::Utf8Helper(std::string const& lang, char const* binaryPath)
-     : _coll(nullptr) {
-  setCollatorLanguage(lang, binaryPath);
+Utf8Helper::Utf8Helper(std::string const& lang, void *icuDataPtr)
+  : _coll(nullptr) {
+  setCollatorLanguage(lang, icuDataPtr);
 }
 
-Utf8Helper::Utf8Helper(char const* binaryPath) : Utf8Helper("", binaryPath) {}
+Utf8Helper::Utf8Helper(void *icuDataPtr) : Utf8Helper("", icuDataPtr) {}
 
 Utf8Helper::~Utf8Helper() {
   if (_coll) {
@@ -130,19 +132,25 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                         (const UChar*)right, (int32_t)rightLength);
 }
 
-bool Utf8Helper::setCollatorLanguage(std::string const& lang, char const* binaryPath) {
-#ifdef _WIN32
-  TRI_FixIcuDataEnv(binaryPath);
-#endif
+bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPointer) {
+  if (icuDataPointer == nullptr) {
+     return false;
+    }
 
   UErrorCode status = U_ZERO_ERROR;
+  udata_setCommonData(reinterpret_cast<void*>(icuDataPointer), &status);
+  if (U_FAILURE(status)) {
+    LOG_TOPIC(ERR, arangodb::Logger::STARTUP) << "error while udata_setCommonData(...): " << u_errorName(status);
+    return false;
+  }
+  status = U_ZERO_ERROR;
 
   if (_coll) {
     ULocDataLocaleType type = ULOC_ACTUAL_LOCALE;
     const Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG(ERR) << "error in Collator::getLocale(...): " << u_errorName(status);
+      LOG_TOPIC(ERR, arangodb::Logger::STARTUP) << "error in Collator::getLocale(...): " << u_errorName(status);
       return false;
     }
     if (lang == locale.getName()) {
@@ -160,7 +168,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, char const* binary
   }
 
   if (U_FAILURE(status)) {
-    LOG(ERR) << "error in Collator::createInstance(): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::STARTUP) << "error in Collator::createInstance('" << lang << "'): " << u_errorName(status);
     if (coll) {
       delete coll;
     }
@@ -176,7 +184,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, char const* binary
       status);  // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
 
   if (U_FAILURE(status)) {
-    LOG(ERR) << "error in Collator::setAttribute(...): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::STARTUP) << "error in Collator::setAttribute(...): " << u_errorName(status);
     delete coll;
     return false;
   }
@@ -467,6 +475,7 @@ bool Utf8Helper::getWords(std::vector<std::string>& words,
 
   BreakIterator* wordIterator =
       BreakIterator::createWordInstance(locale, status);
+  TRI_ASSERT(wordIterator != nullptr);
   UnicodeString utext(textUtf16);
 
   wordIterator->setText(utext);
