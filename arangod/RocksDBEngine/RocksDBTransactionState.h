@@ -71,12 +71,11 @@ class RocksDBSavePoint {
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
  public:
-  explicit RocksDBTransactionState(TRI_vocbase_t* vocbase
-                                  , uint64_t maxOperationSize
-                                  , bool intermediateTransactionEnabled
-                                  , uint64_t intermediateTransactionSize
-                                  , uint64_t intermediateTransactionNumber
-                                  );
+  explicit RocksDBTransactionState(TRI_vocbase_t* vocbase,
+                                   uint64_t maxOperationSize,
+                                   bool intermediateTransactionEnabled,
+                                   uint64_t intermediateTransactionSize,
+                                   uint64_t intermediateTransactionNumber);
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
@@ -112,6 +111,8 @@ class RocksDBTransactionState final : public TransactionState {
   }
 
   rocksdb::ReadOptions const& readOptions() { return _rocksReadOptions; }
+
+  uint64_t sequenceNumber() const;
 
   void reset();
 

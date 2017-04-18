@@ -16,6 +16,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBKey.cpp
   RocksDBEngine/RocksDBKeyBounds.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
+  RocksDBEngine/RocksDBReplicationContext.cpp
   RocksDBEngine/RocksDBRestExportHandler.cpp
   RocksDBEngine/RocksDBRestHandlers.cpp
   RocksDBEngine/RocksDBRestWalHandler.cpp
