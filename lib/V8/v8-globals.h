@@ -679,7 +679,7 @@ inline void TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl,
                              bool isHidden = false) {
   // hidden method
   if (isHidden) {
-    tpl->Set(name, v8::FunctionTemplate::New(isolate, callback)->GetFunction());
+    tpl->ForceSet(name, v8::FunctionTemplate::New(isolate, callback)->GetFunction(), v8::DontEnum);
   }
   // normal method
   else {

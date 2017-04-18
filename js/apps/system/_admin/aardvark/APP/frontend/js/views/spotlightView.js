@@ -113,6 +113,7 @@
         url: arangoHelper.databaseUrl('/_api/aql-builtin'),
         contentType: 'application/json',
         success: function (data) {
+          console.log(data);
           self.stringToArray();
           self.updateDatasets();
           _.each(data.functions, function (val) {

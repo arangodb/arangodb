@@ -83,7 +83,6 @@ aql::AqlValue TraverserCache::fetchAqlResult(StringRef idString) {
 }
 
 void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Slice const& document) {
-  ++_insertedDocuments;
   return;
 }
 
