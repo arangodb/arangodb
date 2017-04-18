@@ -129,10 +129,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksWriteOptions, rocksdb::TransactionOptions()));
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
-
-    /*LOG_TOPIC(ERR, Logger::FIXME)
-        << "#" << _id << " BEGIN (read-only: " << isReadOnlyTransaction()
-        << ")";*/
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -333,8 +329,8 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   return res;
 }
   
-void RocksDBTransactionState::reset(){
-  //only rest when already commited
+void RocksDBTransactionState::reset() {
+  //only reset when already commited
   TRI_ASSERT(_status == transaction::Status::COMMITTED);
   //reset count
   _transactionSize = 0;
@@ -352,5 +348,4 @@ void RocksDBTransactionState::reset(){
 
   // start new transaction
   beginTransaction(transaction::Hints());
-
 }
