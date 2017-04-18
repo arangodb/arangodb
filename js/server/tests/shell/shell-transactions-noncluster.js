@@ -1332,6 +1332,10 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateFulltextIndex : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
+      
       c1 = db._create(cn1);
 
       var obj = {
@@ -1357,6 +1361,10 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateGeoIndex : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
+      
       c1 = db._create(cn1);
 
       var obj = {
@@ -1382,6 +1390,10 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateGeoConstraint : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
+      
       c1 = db._create(cn1);
 
       var obj = {
@@ -1939,6 +1951,10 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFulltext : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
+      
       c1 = db._create(cn1);
       var idx = c1.ensureFulltextIndex("text");
 

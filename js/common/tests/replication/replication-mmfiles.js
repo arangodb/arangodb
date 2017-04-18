@@ -702,6 +702,143 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
+    testLoggerCreateIndexFulltext1 : function () {
+      var c = db._create(cn);
+
+      var tick = getLastLogTick();
+      c.ensureFulltextIndex("a", 5);
+      var idx = c.getIndexes()[1];
+
+      var entry = getLogEntries(tick, 2100)[0];
+      assertTrue(2100, entry.type);
+      assertEqual(c._id, entry.cid, JSON.stringify(entry));
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
+      assertEqual("fulltext", entry.data.type);
+      assertEqual(false, entry.data.unique);
+      assertEqual(5, entry.data.minLength);
+      assertEqual([ "a" ], entry.data.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerCreateIndexGeo1 : function () {
+      var c = db._create(cn);
+
+      var tick = getLastLogTick();
+
+      c.ensureGeoIndex("a", "b");
+      var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
+
+      assertTrue(2100, entry.type);
+      assertEqual(c._id, entry.cid, JSON.stringify(entry));
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
+      assertEqual("geo2", entry.data.type);
+      assertEqual(false, entry.data.unique);
+      assertEqual(false, entry.data.constraint);
+      assertEqual([ "a", "b" ], entry.data.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerCreateIndexGeo2 : function () {
+      var c = db._create(cn);
+
+      var tick = getLastLogTick();
+
+      c.ensureGeoIndex("a", true);
+      var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
+
+      assertTrue(2100, entry.type);
+      assertEqual(c._id, entry.cid, JSON.stringify(entry));
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
+      assertEqual("geo1", entry.data.type);
+      assertEqual(false, entry.data.unique);
+      assertEqual(false, entry.data.constraint);
+      assertEqual([ "a" ], entry.data.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerCreateIndexGeo3 : function () {
+      var c = db._create(cn);
+
+      var tick = getLastLogTick();
+
+      c.ensureGeoConstraint("a", "b", true);
+      var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
+
+      assertTrue(2100, entry.type);
+      assertEqual(c._id, entry.cid, JSON.stringify(entry));
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
+      assertEqual("geo2", entry.data.type);
+      assertEqual(false, entry.data.unique);
+      assertEqual(false, entry.data.constraint);
+      assertEqual(true, entry.data.ignoreNull);
+      assertEqual(true, entry.data.sparse);
+      assertEqual([ "a", "b" ], entry.data.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerCreateIndexGeo4 : function () {
+      var c = db._create(cn);
+
+      var tick = getLastLogTick();
+
+      c.ensureGeoConstraint("a", "b", false);
+      var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
+
+      assertTrue(2100, entry.type);
+      assertEqual(c._id, entry.cid, JSON.stringify(entry));
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
+      assertEqual("geo2", entry.data.type);
+      assertEqual(false, entry.data.unique);
+      assertEqual(false, entry.data.constraint);
+      assertEqual(true, entry.data.ignoreNull);
+      assertEqual(true, entry.data.sparse);
+      assertEqual([ "a", "b" ], entry.data.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerCreateIndexGeo5 : function () {
+      var c = db._create(cn);
+
+      var tick = getLastLogTick();
+
+      c.ensureGeoConstraint("a", true);
+      var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
+
+      assertTrue(2100, entry.type);
+      assertEqual(c._id, entry.cid, JSON.stringify(entry));
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
+      assertEqual("geo1", entry.data.type);
+      assertEqual(false, entry.data.unique);
+      assertEqual(false, entry.data.constraint);
+      assertEqual(true, entry.data.ignoreNull);
+      assertEqual(true, entry.data.sparse);
+      assertEqual([ "a" ], entry.data.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
     testLoggerDropIndex : function () {
       var c = db._create(cn);
       c.ensureUniqueConstraint("a", "b");
