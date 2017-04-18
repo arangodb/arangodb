@@ -958,10 +958,7 @@
 
       this.uploadSetup();
 
-      $('[data-toggle=tooltip]').tooltip();
-      $('.upload-info').tooltip();
-
-      arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'top');
+      arangoHelper.fixTooltips(['.icon_arangodb', '.arangoicon', 'top', '[data-toggle=tooltip]', '.upload-info']);
       this.renderPaginationElements();
       this.selectActivePagesize();
       this.markFilterToggle();
