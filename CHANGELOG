@@ -178,6 +178,10 @@ v3.2.alpha1 (2017-02-05)
 v3.1.18 (2017-XX-XX)
 --------------------
 
+* better error messages during restore collection
+
+* Completely overhaul supervision. More detailed tests
+
 * Fixed a dead-lock situation in cluster traversers, it could happen in
   rare cases if the computation on one DBServer could be completed much earlier
   than the other server. It could also be restricted to SmartGraphs only.
