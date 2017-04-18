@@ -1,6 +1,10 @@
 v3.1.18 (XXXX-XX-XX)
 --------------------
 
+* better error messages during restore collection
+
+* Completely overhaul supervision. More detailed tests
+
 * fixed issue #2415
 
 * fixed issue #2422
