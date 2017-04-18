@@ -220,6 +220,8 @@ class RocksDBCollection final : public PhysicalCollection {
   uint64_t const _objectId;  // rocksdb-specific object id for collection
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
+
+  basics::ReadWriteLock _exclusiveLock;
 };
 }
 
