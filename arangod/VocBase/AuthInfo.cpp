@@ -166,7 +166,6 @@ void AuthInfo::insertInitial() {
   if (!_authInfo.empty()) {
     return;
   }
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "insertInitial()";
 
   try {
     VPackBuilder builder;
@@ -213,34 +212,14 @@ void AuthInfo::insertInitial() {
 bool AuthInfo::populate(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "populate()";
-
   _authInfo.clear();
   _authBasicCache.clear();
-
-/*  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"; // << authSlice.get("user").copyString();
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "slice is object?: " << slice.isObject(); // << authSlice.get("user").copyString();
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "slice as hex: " << slice.toHex(); // << authSlice.get("user").copyString();
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "slice as JSON: " << slice.toJson(); // << authSlice.get("user").copyString();
-*/
 
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice const& s = authSlice.resolveExternal();
 
-    /*
-    try {
-    if (s.hasKey("user") && s.get("user").isString()) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "user json " << s.toJson();
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "user hex " << s.toHex();
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "user " << s.get("user").copyString();
-    }
-
-    } catch(...) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cought error";
-    }*/
-
     if (s.hasKey("source") && s.get("source").isString() && s.get("source").copyString() == "LDAP") {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "jump over user: " << s.get("user").copyString();
+      LOG_TOPIC(TRACE, arangodb::Logger::CONFIG) << "LDAP: skip user in collection _users: " << s.get("user").copyString();
       continue;
     }
     AuthEntry auth = CreateAuthEntry(s, AuthSource::COLLECTION);
@@ -255,7 +234,6 @@ bool AuthInfo::populate(VPackSlice const& slice) {
 
 // private, will acquire _authInfoLock in write-mode and release it
 void AuthInfo::reload() {
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "reload()";
   auto role = ServerState::instance()->getRole();
 
   if (role != ServerState::ROLE_SINGLE
@@ -316,8 +294,6 @@ void AuthInfo::reload() {
     return;
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Done FOR user IN _users AQL query";
-
   {
     WRITE_LOCKER(writeLocker, _authInfoLock);
 
@@ -360,7 +336,7 @@ HexHashResult AuthInfo::hexHashFromData(std::string const& hashMethod, char cons
                                            cryptedLength);
     } else {
       // invalid algorithm...
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "invalid algorithm";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "invalid algorithm for hexHashFromData: " << hashMethod;
       return HexHashResult(TRI_ERROR_FAILED); // TODO: fix to correct error number
     }
   } catch (...) {
