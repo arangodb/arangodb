@@ -35,11 +35,21 @@
             <th class="collectionTh">Type:</th>
             <th class="">
               <select id="newIndexType">
-                <option value="Geo">Geo Index</option>
-                <option value="Hash">Hash Index</option>
-                <option value="Persistent">Persistent Index</option>
-                <option value="Fulltext">Fulltext Index</option>
-                <option value="Skiplist">Skip-List Index</option>
+                <% if (supported.indexOf('geo') > -1) { %> 
+                  <option value="Geo">Geo Index</option>
+                <% } %> 
+                <% if (supported.indexOf('hash') > -1) { %> 
+                  <option value="Hash">Hash Index</option>
+                <% } %> 
+                <% if (supported.indexOf('persistent') > -1) { %> 
+                  <option value="Persistent">Persistent Index</option>
+                <% } %> 
+                <% if (supported.indexOf('fulltext') > -1) { %> 
+                  <option value="Fulltext">Fulltext Index</option>
+                <% } %> 
+                <% if (supported.indexOf('skiplist') > -1) { %> 
+                  <option value="Skiplist">Skip-List Index</option>
+                <% } %> 
               </select>
             </th>
             <th class="" style="width: 18px"/>
