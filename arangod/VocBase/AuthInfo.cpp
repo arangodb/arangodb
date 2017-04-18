@@ -404,29 +404,21 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   WRITE_LOCKER(writeLocker, _authInfoLock);
   auto it = _authInfo.find(username);
 
-  if (it != _authInfo.end() ) {
-    printf("%lf\n%lf\n", it->second.created(), (TRI_microtime() - 60) );
-  }
 
   if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) { // && it->second.created() < TRI_microtime() - 60)) {
-    printf("it == _authInfo.end()\n");
     AuthenticationResult authResult = _authenticationHandler->authenticate(username, password);
 
     if (!authResult.ok()) {
-      printf("authResult not ok throw\n");
       THROW_ARANGO_EXCEPTION_MESSAGE(authResult.errorNumber(), authResult.errorMessage());
     }
 
-    if (authResult.source() == AuthSource::LDAP) { // user authed, add to _authInfo _users
+    if (authResult.source() == AuthSource::LDAP) { // user authed, add to _authInfo and _users
       if (it != _authInfo.end()) { //  && it->second.created() < TRI_microtime() - 60) {
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo timeout erase";
         _authInfo.erase(username);
         it = _authInfo.end();
       }
 
       if (it == _authInfo.end()) {
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "insert new user";
-
         TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
         if (vocbase == nullptr) {
@@ -474,7 +466,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
         std::string saltedPassword = salt + password;
         HexHashResult hex = hexHashFromData("sha256", saltedPassword.data(), saltedPassword.size());
         if (!hex.ok()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "hexcalc did not work"); // TODO: propper error message?
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "Could not calculate hex-hash from data");
         }
         binds.add("hash", VPackValue(hex.hexHash()));
 
@@ -538,14 +530,12 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   }
 
   if (it == _authInfo.end()) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo list is empty";
     return result;
   }
 
   AuthEntry const& auth = it->second;
 
   if (!auth.isActive()) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "not active";
     return result;
   }
 
@@ -559,8 +549,6 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   }
 
   result._authorized = auth.checkPasswordHash(hexHash.hexHash());
-
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "everything ok " << result._authorized << " " << result._mustChange << " " << result._username;
 
   return result;
 }
