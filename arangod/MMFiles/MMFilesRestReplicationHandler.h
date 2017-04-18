@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_REST_REPLICATION_HANDLER_H
+#define ARANGOD_MMFILES_MMFILES_REST_REPLICATION_HANDLER_H 1
 
 #include "Basics/Common.h"
 
@@ -35,21 +35,22 @@ class CollectionNameResolver;
 class LogicalCollection;
 namespace transaction {
 class Methods;
-}
-;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestReplicationHandler : public RestVocbaseBaseHandler {
+class MMFilesRestReplicationHandler : public RestVocbaseBaseHandler {
  public:
-  RestReplicationHandler(GeneralRequest*, GeneralResponse*);
-  ~RestReplicationHandler();
+  MMFilesRestReplicationHandler(GeneralRequest*, GeneralResponse*);
+  ~MMFilesRestReplicationHandler();
 
  public:
   RestStatus execute() override;
-  char const* name() const override final { return "RestReplicationHandler"; }
+  char const* name() const override final {
+    return "MMFilesRestReplicationHandler";
+  }
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -98,7 +99,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @response VPackObject describing the ServerState in a certain point
   ///           * state (server state)
   ///           * server (version / id)
-  ///           * clients (list of followers) 
+  ///           * clients (list of followers)
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerState();
@@ -229,25 +230,22 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   int applyCollectionDumpMarker(transaction::Methods&,
                                 CollectionNameResolver const&,
-                                std::string const&,
-                                TRI_replication_operation_e,
-                                VPackSlice const&,
-                                VPackSlice const&, std::string&);
+                                std::string const&, TRI_replication_operation_e,
+                                VPackSlice const&, VPackSlice const&,
+                                std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreDataBatch(transaction::Methods&,
-                              std::string const&, bool, bool,
-                              std::string&);
+  int processRestoreDataBatch(transaction::Methods&, std::string const&, bool,
+                              bool, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreData(std::string const&, bool,
-                         bool, std::string&);
+  int processRestoreData(std::string const&, bool, bool, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a restore command for a specific collection
@@ -394,14 +392,13 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// read lock has been started, the bool is changed to true once
   /// this read lock is acquired. To cancel the read lock, remove
   /// the entry here (under the protection of the mutex of
-  /// condVar) and send a broadcast to the condition variable, 
+  /// condVar) and send a broadcast to the condition variable,
   /// the job with that id is terminated. If it timeouts, then
   /// the read lock is released automatically and the entry here
   /// is deleted.
   //////////////////////////////////////////////////////////////////////////////
 
   static std::unordered_map<std::string, bool> _holdReadLockJobs;
-
 };
 }
 
