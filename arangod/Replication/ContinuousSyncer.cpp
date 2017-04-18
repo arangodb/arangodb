@@ -834,7 +834,10 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
   }
 
   else if (type == REPLICATION_COLLECTION_CREATE) {
-    return createCollection(slice.get("collection"), nullptr);
+    if (slice.get("collection").isObject()) {
+      return createCollection(slice.get("collection"), nullptr);
+    }
+    return createCollection(slice.get("data"), nullptr);
   }
 
   else if (type == REPLICATION_COLLECTION_DROP) {
