@@ -7,6 +7,7 @@ add_executable(
   arangodbtests
   main.cpp
   Agency/AddFollowerTest.cpp
+  Agency/CleanOutServerTest.cpp
   Agency/FailedFollowerTest.cpp
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
