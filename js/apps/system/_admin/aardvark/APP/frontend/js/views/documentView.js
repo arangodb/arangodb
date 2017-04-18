@@ -256,8 +256,6 @@
       }
 
       model = JSON.stringify(model);
-      console.log(model);
-      console.log(this.type);
 
       if (this.type === 'edge' || this.type._from) {
         var callbackE = function (error, data) {

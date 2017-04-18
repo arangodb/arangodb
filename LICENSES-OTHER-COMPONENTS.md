@@ -1335,3 +1335,13 @@
 
 * GitHub: https://github.com/softwaretailoring/wheelnav
 * License: [MIT License](https://github.com/softwaretailoring/wheelnav/blob/master/LICENSE)
+
+#### Moment.js
+
+* GitHub: https://github.com/moment/moment/
+* License: [MIT License](https://github.com/moment/moment/blob/develop/LICENSE)
+
+#### tippyjs.js
+
+* GitHub: https://github.com/atomiks/tippyjs
+* License: [MIT License](https://github.com/atomiks/tippyjs/blob/master/LICENSE)
