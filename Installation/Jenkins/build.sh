@@ -601,7 +601,13 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
             git checkout master;
         fi
         git fetch --tags;
-        git pull --all;
+        if git pull --all; then
+            /bin/true;
+        else
+            git checkout master;
+            git pull --tags;
+            git pull --all;
+        fi
         if test "${EP_GITARGS}" != "${GITARGS}"; then
             git checkout ${GITARGS};
         fi
