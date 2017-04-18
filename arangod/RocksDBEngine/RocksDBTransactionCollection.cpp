@@ -188,7 +188,6 @@ void RocksDBTransactionCollection::addOperation(
     TRI_voc_document_operation_e operationType, uint64_t operationSize,
     TRI_voc_rid_t revisionId) {
   switch (operationType) {
-    case TRI_VOC_NOOP_OPERATION_UPDATE_SIZE:
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:

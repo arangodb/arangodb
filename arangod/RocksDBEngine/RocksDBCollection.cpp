@@ -331,8 +331,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
         application_features::ApplicationServer::getFeature<DatabaseFeature>(
             "Database")
             ->forceSyncProperties();
-    VPackBuilder builder =
-        _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
+    VPackBuilder builder = _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true, /*forPersistence*/ false);
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
   created = true;
@@ -493,20 +492,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
         THROW_ARANGO_EXCEPTION(converted);
       }
 
-      // report index key size
-      RocksDBOperationResult result = state->addOperation(
-          cid, /*ignored revisionId*/ 0, TRI_VOC_NOOP_OPERATION_UPDATE_SIZE, 0,
-          iter->key().size());
-
-      // transaction size limit reached -- fail
-      if (result.fail()) {
-        THROW_ARANGO_EXCEPTION(result);
-      }
-
-      // force intermediate commit
-      if (result.commitRequired()) {
-        // force commit
-      }
       iter->Next();
     }
   }
@@ -516,7 +501,9 @@ int RocksDBCollection::read(transaction::Methods* trx,
                             arangodb::velocypack::Slice const key,
                             ManagedDocumentResult& result, bool) {
   TRI_ASSERT(key.isString());
+  //LOG_TOPIC(ERR, Logger::FIXME) << "############### Key Slice: " << key.toString();
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
+  //LOG_TOPIC(ERR, Logger::FIXME) << "############### TOKEN ID: " << token.revisionId();
 
   if (token.revisionId()) {
     if (readDocument(trx, token, result)) {
@@ -529,14 +516,15 @@ int RocksDBCollection::read(transaction::Methods* trx,
   return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
 }
 
+// read using a token!
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      DocumentIdentifierToken const& token,
                                      ManagedDocumentResult& result) {
   // TODO: why do we have read(), readDocument() and lookupKey()?
   auto tkn = static_cast<RocksDBToken const*>(&token);
   TRI_voc_rid_t revisionId = tkn->revisionId();
-  lookupRevisionVPack(revisionId, trx, result);
-  return !result.empty();
+  auto res = lookupRevisionVPack(revisionId, trx, result);
+  return res.ok();
 }
 
 bool RocksDBCollection::readDocumentConditional(

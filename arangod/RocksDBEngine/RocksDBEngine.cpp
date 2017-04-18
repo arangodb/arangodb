@@ -503,7 +503,7 @@ std::string RocksDBEngine::createCollection(
     TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
     arangodb::LogicalCollection const* parameters) {
   VPackBuilder builder =
-      parameters->toVelocyPackIgnore({"path", "statusString"}, true);
+      parameters->toVelocyPackIgnore({"path", "statusString"}, /*translate cid*/ true, /*for persistence*/ false);
   int res = writeCreateCollectionMarker(vocbase->id(), id, builder.slice());
 
   if (res != TRI_ERROR_NO_ERROR) {
