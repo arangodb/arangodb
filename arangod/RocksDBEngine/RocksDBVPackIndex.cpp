@@ -261,6 +261,13 @@ int RocksDBVPackIndex::fillElement(
       }
     }
     indexVals->close();
+    
+    TRI_IF_FAILURE("FillElementOOM") {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+    TRI_IF_FAILURE("FillElementOOM2") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
 
     StringRef key(doc.get(StaticStrings::KeyString));
     if (_unique) {
