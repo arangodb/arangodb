@@ -1150,37 +1150,63 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   VPackBuilder builder;
   builder.add(json);
 
-  AgencyOperation createCollection(
+  
+  std::vector<AgencyOperation> opers (
+    { AgencyOperation("Plan/Collections/" + databaseName + "/" + collectionID,
+                      AgencyValueOperationType::SET, builder.slice()),
+      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
+
+  std::vector<AgencyPrecondition> precs;
+  precs.emplace_back(
+    AgencyPrecondition(
       "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, builder.slice());
-  AgencyOperation increaseVersion("Plan/Version",
-                                  AgencySimpleOperationType::INCREMENT_OP);
-
-  AgencyPrecondition notexisting = AgencyPrecondition(
-      "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyPrecondition::Type::EMPTY, true);
-
-  AgencyWriteTransaction transaction;
-
-  transaction.operations.push_back(createCollection);
-  transaction.operations.push_back(increaseVersion);
-  transaction.preconditions.push_back(notexisting);
-
+      AgencyPrecondition::Type::EMPTY, true));
+  
   // Any of the shards locked?
   if (otherCidShardMap != nullptr) {
     for (auto const& shard : *otherCidShardMap) {
-      transaction.preconditions.push_back(
+      precs.emplace_back(
         AgencyPrecondition("Supervision/Shards/" + shard.first,
                            AgencyPrecondition::Type::EMPTY, true));
     }
   }
-
-  AgencyCommResult res = ac.sendTransactionWithFailover(transaction);
+  
+  AgencyGeneralTransaction transaction;
+  transaction.transactions.push_back(
+    AgencyGeneralTransaction::TransactionType(opers,precs));
+  
+  auto res = ac.sendTransactionWithFailover(transaction);
+  auto result = res.slice();
 
   // Only if not precondition failed
   if (!res.successful()) {
     if (res.httpCode() ==
         (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      if (result.isArray() && result.length() > 0) {
+        if (result[0].isObject()) {
+          auto tres = result[0];
+          if (tres.hasKey(
+                std::vector<std::string>(
+                  {AgencyCommManager::path(), "Plan", "Collections", databaseName,collectionID}))) {
+            errorMsg += std::string( "Preexisting collection with ID ") + collectionID;
+          } else if (
+            tres.hasKey(
+              std::vector<std::string>(
+                {AgencyCommManager::path(), "Supervision"}))) {
+            for (const auto& s :
+                   VPackObjectIterator(
+                     tres.get(
+                       std::vector<std::string>(
+                         {AgencyCommManager::path(), "Supervision","Shards"})))) {
+              errorMsg += std::string("Shard ") + s.key.copyString();
+              errorMsg += " of prototype collection is blocked by supervision job ";
+              errorMsg += s.value.copyString();
+            }
+          }
+          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+        }
+      }
+      
       AgencyCommResult ag = ac.getValues("/");
       if (ag.successful()) {
         LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"

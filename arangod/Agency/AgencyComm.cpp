@@ -279,21 +279,38 @@ std::string AgencyGeneralTransaction::toJson() const {
 }
 
 void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
-  for (auto const& operation : operations) {
-    VPackArrayBuilder guard2(&builder);
-    if (std::get<0>(operation).type().type == AgencyOperationType::Type::READ) {
-      std::get<0>(operation).toGeneralBuilder(builder);
-    } else {
-      std::get<0>(operation).toGeneralBuilder(builder);
-      std::get<1>(operation).toGeneralBuilder(builder);
-      builder.add(VPackValue(clientId));
+  //VPackArrayBuilder guard(&builder);
+  for (auto const& trx : transactions) {
+    auto opers = std::get<0>(trx);
+    auto precs = std::get<1>(trx);
+    if (!opers.empty()) {
+      if (opers[0].type().type == AgencyOperationType::Type::READ) {
+        for (auto const& op : opers) {
+          VPackArrayBuilder guard(&builder);
+          op.toGeneralBuilder(builder);
+        }
+      } else {
+          VPackArrayBuilder guard(&builder);
+        { VPackObjectBuilder o(&builder);  // Writes
+          for (AgencyOperation const& oper : opers) {
+            oper.toVelocyPack(builder);
+          }}
+        { VPackObjectBuilder p(&builder);  // Preconditions
+          if (!precs.empty()) {
+            for (AgencyPrecondition const& prec : precs) {
+              prec.toVelocyPack(builder);
+            }}}
+        builder.add(VPackValue(clientId)); // Transactions  
+      }
     }
   }
 }
 
 void AgencyGeneralTransaction::push_back(
   std::pair<AgencyOperation,AgencyPrecondition> const& oper) {
-  operations.push_back(oper);
+  transactions.emplace_back(
+    TransactionType(std::vector<AgencyOperation>(1,oper.first),
+                    std::vector<AgencyPrecondition>(1,oper.second)));
 }
 
 bool AgencyGeneralTransaction::validate(AgencyCommResult const& result) const {
