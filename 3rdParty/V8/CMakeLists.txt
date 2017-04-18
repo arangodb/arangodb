@@ -564,19 +564,30 @@ else ()
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 endif()
 
-if (WIN32)
-  set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat" PARENT_SCOPE)
-  set(ICU_DT_DEST "icudt${ICU_COMPACT_VERSION}l.dat" PARENT_SCOPE)
-  # other platforms link the file into the binary
-  install(FILES ${ICU_DT}
-    DESTINATION "share/arangodb/"
-    RENAME ${ICU_DT_DEST})
-  install(FILES ${ICU_DT}
-    DESTINATION "bin/share/arangodb/"
-    RENAME ${ICU_DT_DEST})
+set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat")
+set(ICU_DT ${ICU_DT} PARENT_SCOPE)
+set(ICU_DT_DEST "icudtl.dat" )
+set(ICU_DT_DEST ${ICU_DT_DEST} PARENT_SCOPE)
+
+
+if (MSVC)
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/${ICU_DT_DEST})
+
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/${ICU_DT_DEST})
 else()
-  # other platforms don't install ICU:
-  set(ICU_DT_DEST "" PARENT_SCOPE)
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/bin/${ICU_DT_DEST})
+
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/tests/${ICU_DT_DEST})
+endif()
+if (NOT WIN32)
   add_custom_target(nonthinV8
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../Installation/archive-de-thinner.sh ${V8_REL_TARGET_PATH}
     COMMENT de-thins V8 .a files)
