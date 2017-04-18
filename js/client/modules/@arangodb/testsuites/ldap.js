@@ -195,6 +195,11 @@ function ldap(options) {
 
   for(const t of tests) {
     const adbInstance = pu.startInstance('tcp', options, t.conf, 'ldap');
+    if (adbInstance === false) {
+      results[t.name] = {status: false,  message: 'failed to start server!'};
+      continue;
+    }
+
     const res = request.post({
       url:`${adbInstance.arangods[0].url}/_open/auth`,
       body: JSON.stringify({username: t.user.name, password: t.user.pass})
