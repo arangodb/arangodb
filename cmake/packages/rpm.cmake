@@ -62,31 +62,33 @@ include(arangod/dbg.cmake)
 add_custom_target(package-arongodb-server
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G RPM
-  COMMAND cp "${CPACK_TEMPORARY_DIRECTORY}/*.rpm" "${PROJECT_BINARY_DIR}"
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_TEMPORARY_DIRECTORY}/${CPACK_PACKAGE_FILE_NAME}.rpm        ${PROJECT_BINARY_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_TEMPORARY_DIRECTORY}/${CPACK_CLIENT_PACKAGE_FILE_NAME}.rpm ${PROJECT_BINARY_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_TEMPORARY_DIRECTORY}/${CPACK_DBG_PACKAGE_FILE_NAME}.rpm    ${PROJECT_BINARY_DIR}
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 list(APPEND PACKAGES_LIST package-arongodb-server)
 
 #################################################################################
 ## hook to build the client package
 #################################################################################
-#set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
-#configure_file(cmake/packages/client/rpm.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
-#add_custom_target(package-arongodb-client
-#  COMMAND ${CMAKE_COMMAND} .
-#  COMMAND ${CMAKE_CPACK_COMMAND} -G RPM
-#  COMMAND cp *.rpm ${PROJECT_BINARY_DIR} 
-#  WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
-#
-#
-#list(APPEND PACKAGES_LIST package-arongodb-client)
 add_custom_target(copy_rpm_packages
-  COMMAND cp *.rpm ${PACKAGE_TARGET_DIR})
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.rpm        ${PACKAGE_TARGET_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_CLIENT_PACKAGE_FILE_NAME}.rpm ${PACKAGE_TARGET_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_DBG_PACKAGE_FILE_NAME}.rpm    ${PACKAGE_TARGET_DIR})
 
 list(APPEND COPY_PACKAGES_LIST copy_rpm_packages)
 
 add_custom_target(remove_packages
-  COMMAND rm -f *.rpm
-  COMMAND rm -rf _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E remove_directory _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.rpm
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_CLIENT_PACKAGE_FILE_NAME}.rpm
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_DBG_PACKAGE_FILE_NAME}.rpm
+  COMMAND ${CMAKE_COMMAND} -E remove ${PROJECT_BINARY_DIR}/bin/strip/*
   )
 
+
+
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)
+
+
+

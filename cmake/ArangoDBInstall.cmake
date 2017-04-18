@@ -41,6 +41,8 @@ FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
 
 set(INSTALL_ICU_DT_DEST "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
 
+set(CMAKE_TEST_DIRECTORY "tests")
+
 include(InstallMacros)
 # install ----------------------------------------------------------------------
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
@@ -190,6 +192,7 @@ to_native_path("ICU_DT_DEST")
 to_native_path("CMAKE_INSTALL_SBINDIR")
 to_native_path("CMAKE_INSTALL_BINDIR")
 to_native_path("INSTALL_ICU_DT_DEST")
+to_native_path("CMAKE_TEST_DIRECTORY")
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/directories.h.in"
@@ -197,16 +200,15 @@ configure_file (
   NEWLINE_STYLE UNIX
 )
 
+install(FILES ${ICU_DT}
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME ${ICU_DT_DEST})
 
 if (MSVC)
   # so we don't need to ship dll's twice, make it one directory:
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
   set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
 
-  # other platforms link the file into the binary
-  install(FILES ${ICU_DT}
-    DESTINATION "${INSTALL_ICU_DT_DEST}"
-    RENAME ${ICU_DT_DEST})
 
   install_readme(README.windows README.windows.txt)
 
