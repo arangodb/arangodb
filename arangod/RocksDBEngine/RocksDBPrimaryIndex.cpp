@@ -267,12 +267,10 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
   if (_objectId != 0) {
     _useCache = true;
     createCache();
-    /*LOG_TOPIC(ERR, Logger::FIXME)
-        << "primary index objectId: " << _objectId << " ("
-        << static_cast<RocksDBCollection*>(collection->getPhysical())
-               ->objectId()
-        << ", " << collection->name() << ")";*/
   }
+  LOG_TOPIC(ERR, Logger::DEVEL)
+      << "OPEN ROCKS PRIMARY INDEX: " << collection->name() << " ("
+      << this->objectId() << ")";
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
