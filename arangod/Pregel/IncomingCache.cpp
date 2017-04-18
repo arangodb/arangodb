@@ -145,7 +145,7 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
         continue;
       }
 
-      // only access bucket after we aquired the lock
+      // only access bucket after we acquired the lock
       HMap& myVertexMap = _shardMap[shardId];
       for (auto& vertexMessage : it->second) {
         std::vector<M>& a = myVertexMap[vertexMessage.first];
@@ -260,7 +260,7 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
         continue;
       }
 
-      // only access bucket after we aquired the lock
+      // only access bucket after we acquired the lock
       HMap& myVertexMap = _shardMap[shardId];
       for (auto& vertexMessage : it->second) {
         auto vmsg = myVertexMap.find(vertexMessage.first);
