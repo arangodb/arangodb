@@ -624,7 +624,7 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
     THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
   */
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  //THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,
