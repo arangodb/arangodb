@@ -52,6 +52,8 @@ class RocksDBCounterManager : Thread {
 
  public:
   
+  ~RocksDBCounterManager();
+  
   struct CounterAdjustment {
     rocksdb::SequenceNumber _sequenceNum = 0;
     uint64_t _added = 0;
