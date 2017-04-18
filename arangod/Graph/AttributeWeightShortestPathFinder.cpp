@@ -22,13 +22,278 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeWeightShortestPathFinder.h"
-#include "VocBase/Traverser.h"
+
+#include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
+#include "Graph/EdgeCursor.h"
+#include "Graph/ShortestPathOptions.h"
+#include "Graph/ShortestPathResult.h"
+#include "Transaction/Helpers.h"
+#include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
+AttributeWeightShortestPathFinder::Searcher::Searcher(
+    AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
+    ThreadInfo& peerInfo, arangodb::StringRef const& start,
+    bool isBackward)
+    : _pathFinder(pathFinder),
+      _myInfo(myInfo),
+      _peerInfo(peerInfo),
+      _start(start),
+      _isBackward(isBackward) {}
+
+void AttributeWeightShortestPathFinder::Searcher::insertNeighbor(
+    Step* step, double newWeight) {
+  Step* s = _myInfo._pq.find(step->_vertex);
+
+  // Not found, so insert it:
+  if (s == nullptr) {
+    step->setWeight(newWeight);
+    _myInfo._pq.insert(step->_vertex, step);
+    return;
+  }
+  if (!s->_done && s->weight() > newWeight) {
+    s->_predecessor = step->_predecessor;
+    s->_edge = step->_edge;
+    _myInfo._pq.lowerWeight(s->_vertex, newWeight);
+  }
+  delete step;
+}
+
+void AttributeWeightShortestPathFinder::Searcher::lookupPeer(
+    arangodb::StringRef& vertex, double weight) {
+  Step* s = _peerInfo._pq.find(vertex);
+
+  if (s == nullptr) {
+    // Not found, nothing more to do
+    return;
+  }
+  double total = s->weight() + weight;
+
+  // Update the highscore:
+  if (!_pathFinder->_highscoreSet || total < _pathFinder->_highscore) {
+    _pathFinder->_highscoreSet = true;
+    _pathFinder->_highscore = total;
+    _pathFinder->_intermediate = vertex;
+    _pathFinder->_intermediateSet = true;
+  }
+
+  // Now the highscore is set!
+
+  // Did we find a solution together with the other thread?
+  if (s->_done) {
+    if (total <= _pathFinder->_highscore) {
+      _pathFinder->_intermediate = vertex;
+      _pathFinder->_intermediateSet = true;
+    }
+    // Hacki says: If the highscore was set, and even if
+    // it is better than total, then this observation here
+    // proves that it will never be better, so: BINGO.
+    _pathFinder->_bingo = true;
+    // We found a way, but somebody else found a better way,
+    // so this is not the shortest path
+    return;
+  }
+
+  // Did we find a solution on our own? This is for the
+  // single thread case and for the case that the other
+  // thread is too slow to even finish its own start vertex!
+  if (s->weight() == 0) {
+    // We have found the target, we have finished all
+    // vertices with a smaller weight than this one (and did
+    // not succeed), so this must be a best solution:
+    _pathFinder->_intermediate = vertex;
+    _pathFinder->_intermediateSet = true;
+    _pathFinder->_bingo = true;
+  }
+}
+
+bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
+  arangodb::StringRef v;
+  Step* s = nullptr;
+  bool b = _myInfo._pq.popMinimal(v, s, true);
+
+  if (_pathFinder->_bingo || !b) {
+    // We can leave this functino only under 2 conditions:
+    // 1) already bingo==true => bingo = true no effect
+    // 2) This queue is empty => if there would be a
+    //    path we would have found it here
+    //    => No path possible. Set bingo, intermediate is empty.
+    _pathFinder->_bingo = true;
+    return false;
+  }
+
+  TRI_ASSERT(s != nullptr);
+
+  std::vector<Step*> neighbors;
+  _pathFinder->expandVertex(_isBackward, v, neighbors);
+  for (Step* neighbor : neighbors) {
+    insertNeighbor(neighbor, s->weight() + neighbor->weight());
+  }
+  lookupPeer(v, s->weight());
+
+  Step* s2 = _myInfo._pq.find(v);
+  s2->_done = true;
+  return true;
+}
+
+AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(
+    ShortestPathOptions* options)
+    : _highscoreSet(false),
+      _highscore(0),
+      _bingo(false),
+      _resultCode(TRI_ERROR_NO_ERROR),
+      _intermediateSet(false),
+      _intermediate(),
+      _mmdr(new ManagedDocumentResult{}),
+      _options(options) {}
+
+AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder(){};
+
+bool AttributeWeightShortestPathFinder::shortestPath(
+    arangodb::velocypack::Slice const& st,
+    arangodb::velocypack::Slice const& ta, ShortestPathResult& result,
+    std::function<void()> const& callback) {
+  // For the result:
+  result.clear();
+  _highscoreSet = false;
+  _highscore = 0;
+  _bingo = false;
+  _intermediateSet = false;
+
+  StringRef start = _options->cache()->persistString(StringRef(st));
+  StringRef target = _options->cache()->persistString(StringRef(ta));
+
+  // Forward with initialization:
+  arangodb::StringRef emptyVertex;
+  arangodb::StringRef emptyEdge;
+  ThreadInfo forward;
+  forward._pq.insert(start, new Step(start, emptyVertex, 0, emptyEdge));
+
+  // backward with initialization:
+  ThreadInfo backward;
+  backward._pq.insert(target, new Step(target, emptyVertex, 0, emptyEdge));
+
+  // Now the searcher threads:
+  Searcher forwardSearcher(this, forward, backward, start, false);
+  std::unique_ptr<Searcher> backwardSearcher;
+  if (_options->bidirectional) {
+    backwardSearcher.reset(new Searcher(this, backward, forward, target, true));
+  }
+
+  TRI_IF_FAILURE("TraversalOOMInitialize") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  int counter = 0;
+
+  while (!_bingo) {
+    if (!forwardSearcher.oneStep()) {
+      break;
+    }
+    if (_options->bidirectional && !backwardSearcher->oneStep()) {
+      break;
+    }
+
+    if (++counter == 10) {
+      // check for abortion
+      callback();
+      counter = 0;
+    }
+  }
+
+  if (!_bingo || _intermediateSet == false) {
+    return false;
+  }
+
+  Step* s = forward._pq.find(_intermediate);
+  result._vertices.emplace_back(_intermediate);
+
+  // FORWARD Go path back from intermediate -> start.
+  // Insert all vertices and edges at front of vector
+  // Do NOT! insert the intermediate vertex
+  while (!s->_predecessor.empty()) {
+    // TODO FIXME
+    result._edges.push_front(StringRef(s->_edge));
+    result._vertices.push_front(StringRef(s->_predecessor));
+    s = forward._pq.find(s->_predecessor);
+  }
+
+  // BACKWARD Go path back from intermediate -> target.
+  // Insert all vertices and edges at back of vector
+  // Also insert the intermediate vertex
+  s = backward._pq.find(_intermediate);
+  while (!s->_predecessor.empty()) {
+    result._edges.emplace_back(StringRef(s->_edge));
+    result._vertices.emplace_back(StringRef(s->_predecessor));
+    s = backward._pq.find(s->_predecessor);
+  }
+
+  TRI_IF_FAILURE("TraversalOOMPath") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  return true;
+}
+
+void AttributeWeightShortestPathFinder::inserter(
+    std::unordered_map<StringRef, size_t>& candidates,
+    std::vector<Step*>& result, StringRef const& s,
+    StringRef const& t, double currentWeight, StringRef edge) {
+  auto cand = candidates.find(t);
+  if (cand == candidates.end()) {
+    // Add weight
+    auto step =
+        std::make_unique<Step>(t, s, currentWeight, edge);
+    result.emplace_back(step.release());
+    candidates.emplace(t, result.size() - 1);
+  } else {
+    // Compare weight
+    auto old = result[cand->second];
+    auto oldWeight = old->weight();
+    if (currentWeight < oldWeight) {
+      old->setWeight(currentWeight);
+      old->_predecessor = s;
+      old->_edge = edge;
+    }
+  }
+}
+
+void AttributeWeightShortestPathFinder::expandVertex(
+    bool isBackward,
+    arangodb::StringRef const& vertex,
+    std::vector<Step*>& result) {
+  std::unique_ptr<EdgeCursor> edgeCursor;
+  if (isBackward) {
+    edgeCursor.reset(_options->nextReverseCursor(_mmdr.get(), vertex));
+  } else {
+    edgeCursor.reset(_options->nextCursor(_mmdr.get(), vertex));
+  }
+
+  std::unordered_map<StringRef, size_t> candidates;
+  auto callback = [&] (arangodb::StringRef const& eid, VPackSlice edge, size_t cursorIdx) -> void {
+    StringRef fromTmp(transaction::helpers::extractFromFromDocument(edge));
+    StringRef toTmp(transaction::helpers::extractToFromDocument(edge));
+    StringRef from = _options->cache()->persistString(fromTmp);
+    StringRef to = _options->cache()->persistString(toTmp);
+    double currentWeight = _options->weightEdge(edge);
+    if (from == vertex) {
+      inserter(candidates, result, from, to, currentWeight, eid);
+    } else {
+      inserter(candidates, result, to, from, currentWeight, eid);
+    }
+  };
+
+  edgeCursor->readAll(callback);
+}
+
+/*
 AttributeWeightShortestPathFinder::SearcherTwoThreads::SearcherTwoThreads(
     AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
     ThreadInfo& peerInfo, arangodb::velocypack::Slice const& start,
@@ -165,210 +430,11 @@ void AttributeWeightShortestPathFinder::SearcherTwoThreads::start() {
 void AttributeWeightShortestPathFinder::SearcherTwoThreads::join() {
   _thread.join();
 }
+*/
 
-AttributeWeightShortestPathFinder::Searcher::Searcher(
-    AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-    ThreadInfo& peerInfo, arangodb::velocypack::Slice const& start,
-    ExpanderFunction expander, std::string const& id)
-    : _pathFinder(pathFinder),
-      _myInfo(myInfo),
-      _peerInfo(peerInfo),
-      _start(start),
-      _expander(expander),
-      _id(id) {}
 
-void AttributeWeightShortestPathFinder::Searcher::insertNeighbor(
-    Step* step, double newWeight) {
-  Step* s = _myInfo._pq.find(step->_vertex);
 
-  // Not found, so insert it:
-  if (s == nullptr) {
-    step->setWeight(newWeight);
-    _myInfo._pq.insert(step->_vertex, step);
-    return;
-  }
-  if (!s->_done && s->weight() > newWeight) {
-    s->_predecessor = step->_predecessor;
-    s->_edge = step->_edge;
-    _myInfo._pq.lowerWeight(s->_vertex, newWeight);
-  }
-  delete step;
-}
 
-void AttributeWeightShortestPathFinder::Searcher::lookupPeer(
-    arangodb::velocypack::Slice& vertex, double weight) {
-  Step* s = _peerInfo._pq.find(vertex);
-
-  if (s == nullptr) {
-    // Not found, nothing more to do
-    return;
-  }
-  double total = s->weight() + weight;
-
-  // Update the highscore:
-  if (!_pathFinder->_highscoreSet || total < _pathFinder->_highscore) {
-    _pathFinder->_highscoreSet = true;
-    _pathFinder->_highscore = total;
-    _pathFinder->_intermediate = vertex;
-    _pathFinder->_intermediateSet = true;
-  }
-
-  // Now the highscore is set!
-
-  // Did we find a solution together with the other thread?
-  if (s->_done) {
-    if (total <= _pathFinder->_highscore) {
-      _pathFinder->_intermediate = vertex;
-      _pathFinder->_intermediateSet = true;
-    }
-    // Hacki says: If the highscore was set, and even if
-    // it is better than total, then this observation here
-    // proves that it will never be better, so: BINGO.
-    _pathFinder->_bingo = true;
-    // We found a way, but somebody else found a better way,
-    // so this is not the shortest path
-    return;
-  }
-
-  // Did we find a solution on our own? This is for the
-  // single thread case and for the case that the other
-  // thread is too slow to even finish its own start vertex!
-  if (s->weight() == 0) {
-    // We have found the target, we have finished all
-    // vertices with a smaller weight than this one (and did
-    // not succeed), so this must be a best solution:
-    _pathFinder->_intermediate = vertex;
-    _pathFinder->_intermediateSet = true;
-    _pathFinder->_bingo = true;
-  }
-}
-
-bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
-  arangodb::velocypack::Slice v;
-  Step* s = nullptr;
-  bool b = _myInfo._pq.popMinimal(v, s, true);
-
-  if (_pathFinder->_bingo || !b) {
-    // We can leave this functino only under 2 conditions:
-    // 1) already bingo==true => bingo = true no effect
-    // 2) This queue is empty => if there would be a
-    //    path we would have found it here
-    //    => No path possible. Set bingo, intermediate is empty.
-    _pathFinder->_bingo = true;
-    return false;
-  }
-
-  TRI_ASSERT(s != nullptr);
-
-  std::vector<Step*> neighbors;
-  _expander(v, neighbors);
-  for (Step* neighbor : neighbors) {
-    insertNeighbor(neighbor, s->weight() + neighbor->weight());
-  }
-  lookupPeer(v, s->weight());
-
-  Step* s2 = _myInfo._pq.find(v);
-  s2->_done = true;
-  return true;
-}
-
-AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(
-    ExpanderFunction&& forwardExpander, ExpanderFunction&& backwardExpander,
-    bool bidirectional)
-    : _highscoreSet(false),
-      _highscore(0),
-      _bingo(false),
-      _resultCode(TRI_ERROR_NO_ERROR),
-      _intermediateSet(false),
-      _intermediate(),
-      _forwardExpander(forwardExpander),
-      _backwardExpander(backwardExpander),
-      _bidirectional(bidirectional){};
-
-bool AttributeWeightShortestPathFinder::shortestPath(
-    arangodb::velocypack::Slice const& start,
-    arangodb::velocypack::Slice const& target,
-    arangodb::traverser::ShortestPath& result,
-    std::function<void()> const& callback) {
-  // For the result:
-  result.clear();
-  _highscoreSet = false;
-  _highscore = 0;
-  _bingo = false;
-  _intermediateSet = false;
-
-  // Forward with initialization:
-  arangodb::velocypack::Slice emptyVertex;
-  arangodb::velocypack::Slice emptyEdge;
-  ThreadInfo forward;
-  forward._pq.insert(start, new Step(start, emptyVertex, 0, emptyEdge));
-
-  // backward with initialization:
-  ThreadInfo backward;
-  backward._pq.insert(target, new Step(target, emptyVertex, 0, emptyEdge));
-
-  // Now the searcher threads:
-  Searcher forwardSearcher(this, forward, backward, start, _forwardExpander,
-                           "Forward");
-  std::unique_ptr<Searcher> backwardSearcher;
-  if (_bidirectional) {
-    backwardSearcher.reset(new Searcher(this, backward, forward, target,
-                                        _backwardExpander, "Backward"));
-  }
-
-  TRI_IF_FAILURE("TraversalOOMInitialize") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  int counter = 0;
-
-  while (!_bingo) {
-    if (!forwardSearcher.oneStep()) {
-      break;
-    }
-    if (_bidirectional && !backwardSearcher->oneStep()) {
-      break;
-    }
-
-    if (++counter == 10) {
-      // check for abortion
-      callback();
-      counter = 0;
-    }
-  }
-
-  if (!_bingo || _intermediateSet == false) {
-    return false;
-  }
-
-  Step* s = forward._pq.find(_intermediate);
-  result._vertices.emplace_back(_intermediate);
-
-  // FORWARD Go path back from intermediate -> start.
-  // Insert all vertices and edges at front of vector
-  // Do NOT! insert the intermediate vertex
-  while (!s->_predecessor.isNone()) {
-    result._edges.push_front(s->_edge);
-    result._vertices.push_front(s->_predecessor);
-    s = forward._pq.find(s->_predecessor);
-  }
-
-  // BACKWARD Go path back from intermediate -> target.
-  // Insert all vertices and edges at back of vector
-  // Also insert the intermediate vertex
-  s = backward._pq.find(_intermediate);
-  while (!s->_predecessor.isNone()) {
-    result._edges.emplace_back(s->_edge);
-    result._vertices.emplace_back(s->_predecessor);
-    s = backward._pq.find(s->_predecessor);
-  }
-
-  TRI_IF_FAILURE("TraversalOOMPath") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  return true;
-}
 
 /* Here is a proof for the correctness of this algorithm:
  *
@@ -441,9 +507,11 @@ bool AttributeWeightShortestPathFinder::shortestPath(
  * algorithm is correct.
  */
 
+/* Unused code. Maybe reactivated
+
 bool AttributeWeightShortestPathFinder::shortestPathTwoThreads(
     arangodb::velocypack::Slice& start, arangodb::velocypack::Slice& target,
-    arangodb::traverser::ShortestPath& result) {
+    ShortestPathResult& result) {
   // For the result:
   result.clear();
   _highscoreSet = false;
@@ -501,8 +569,8 @@ bool AttributeWeightShortestPathFinder::shortestPathTwoThreads(
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
   while (!s->_predecessor.isNone()) {
-    result._edges.push_front(s->_edge);
-    result._vertices.push_front(s->_predecessor);
+    result._edges.push_front(StringRef(s->_edge));
+    result._vertices.push_front(StringRef(s->_predecessor));
     s = forward._pq.find(s->_predecessor);
   }
 
@@ -511,8 +579,8 @@ bool AttributeWeightShortestPathFinder::shortestPathTwoThreads(
   // Also insert the intermediate vertex
   s = backward._pq.find(_intermediate);
   while (!s->_predecessor.isNone()) {
-    result._edges.emplace_back(s->_edge);
-    result._vertices.emplace_back(s->_predecessor);
+    result._edges.emplace_back(StringRef(s->_edge));
+    result._vertices.emplace_back(StringRef(s->_predecessor));
     s = backward._pq.find(s->_predecessor);
   }
 
@@ -522,3 +590,4 @@ bool AttributeWeightShortestPathFinder::shortestPathTwoThreads(
 
   return true;
 }
+*/

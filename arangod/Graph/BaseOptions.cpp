@@ -25,8 +25,10 @@
 #include "Aql/Ast.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
+#include "Graph/SingleServerEdgeCursor.h"
 #include "Indexes/Index.h"
 #include "VocBase/TraverserCache.h"
+#include "VocBase/TraverserCacheFactory.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -118,9 +120,9 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("handle"));
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
-  result.openObject();
+  // result.openObject();
   idxHandles[0].toVelocyPack(result, false);
-  result.close();
+  // result.close();
   result.add(VPackValue("expression"));
   result.openObject();  // We need to encapsulate the expression into an
                         // expression object
@@ -154,14 +156,14 @@ BaseOptions::BaseOptions(transaction::Methods* trx)
       _trx(trx),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(std::make_unique<TraverserCache>(_trx)) {}
+      _cache(nullptr) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other)
     : _ctx(new aql::FixedVarExpressionContext()),
       _trx(other._trx),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(std::make_unique<TraverserCache>(_trx)) {
+      _cache(nullptr) {
   TRI_ASSERT(other._baseLookupInfos.empty());
   TRI_ASSERT(other._tmpVar == nullptr);
 }
@@ -172,7 +174,7 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info,
       _trx(query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(std::make_unique<TraverserCache>(_trx)) {
+      _cache(nullptr) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -297,7 +299,7 @@ void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
       builder.openObject();
-      it2.getIndex()->toVelocyPack(builder, false);
+      it2.getIndex()->toVelocyPack(builder, false, false);
       builder.close();
     }
   }
@@ -352,4 +354,55 @@ double BaseOptions::costForLookupInfoList(
     cost += li.estimateCost(createItems);
   }
   return cost;
+}
+
+EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
+                                         StringRef vid,
+                                         std::vector<LookupInfo>& list) {
+  TRI_ASSERT(mmdr != nullptr);
+  auto allCursor =
+      std::make_unique<SingleServerEdgeCursor>(mmdr, this, list.size());
+  auto& opCursors = allCursor->getCursors();
+  for (auto& info : list) {
+    auto& node = info.indexCondition;
+    TRI_ASSERT(node->numMembers() > 0);
+    if (info.conditionNeedUpdate) {
+      // We have to inject _from/_to iff the condition needs it
+      auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
+      TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+      TRI_ASSERT(dirCmp->numMembers() == 2);
+
+      auto idNode = dirCmp->getMemberUnchecked(1);
+      TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+      TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+      idNode->setStringValue(vid.data(), vid.length());
+    }
+    std::vector<OperationCursor*> csrs;
+    csrs.reserve(info.idxHandles.size());
+    for (auto const& it : info.idxHandles) {
+      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr,
+                                                    UINT64_MAX, 1000, false));
+    }
+    opCursors.emplace_back(std::move(csrs));
+  }
+  return allCursor.release();
+}
+
+TraverserCache* BaseOptions::cache() {
+  if (_cache == nullptr) {
+    // If this assert is triggered the code should
+    // have called activateCache() before
+    TRI_ASSERT(false);
+    // In production just gracefully initialize
+    // the cache without document cache, s.t. system does not crash
+    activateCache(false);
+  }
+  TRI_ASSERT(_cache != nullptr);
+  return _cache.get();
+}
+
+void BaseOptions::activateCache(bool enableDocumentCache) {
+  // Do not call this twice.
+  TRI_ASSERT(_cache == nullptr);
+  _cache.reset(cacheFactory::CreateCache(_trx, enableDocumentCache));
 }

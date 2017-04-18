@@ -39,7 +39,7 @@ RocksDBIndex::RocksDBIndex(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse, uint64_t objectId)
     : Index(id, collection, attributes, unique, sparse),
-      _objectId(objectId ? objectId : TRI_NewTickServer()),
+      _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
       _cacheManager(CacheManagerFeature::MANAGER),
       _cache(nullptr),
@@ -52,7 +52,11 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
       _cacheManager(CacheManagerFeature::MANAGER),
       _cache(nullptr),
-      _useCache(false) {}
+      _useCache(false) {
+  if (_objectId == 0) {
+    _objectId = TRI_NewTickServer();
+  }
+}
 
 RocksDBIndex::~RocksDBIndex() {
   if (_useCache && _cache != nullptr) {
@@ -65,10 +69,12 @@ RocksDBIndex::~RocksDBIndex() {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
-                                bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
-  builder.add("objectId", VPackValue(std::to_string(_objectId)));
+void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+                                bool forPersistence) const {
+  Index::toVelocyPack(builder, withFigures, forPersistence);
+  if (forPersistence) {
+    builder.add("objectId", VPackValue(std::to_string(_objectId)));
+  }
 }
 
 void RocksDBIndex::createCache() {

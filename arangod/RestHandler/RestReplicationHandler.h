@@ -76,30 +76,50 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert the applier action into an action list
+  ///        (helper in loggerFollow)
+  ///        Saves a follow as synchronous up to lastTick
+  ///        lastTick == 0 => new Server
   //////////////////////////////////////////////////////////////////////////////
 
-  void insertClient(TRI_voc_tick_t);
+  void insertClient(TRI_voc_tick_t lastTick);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine chunk size from request
+  ///        Reads chunkSize attribute from request
+  ///        Requried for ReplicationDumpContext (MMFiles)
   //////////////////////////////////////////////////////////////////////////////
 
   uint64_t determineChunkSize() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the state of the replication logger
+  /// @route GET logger-state
+  /// @caller Syncer::getMasterState
+  /// @response VPackObject describing the ServerState in a certain point
+  ///           * state (server state)
+  ///           * server (version / id)
+  ///           * clients (list of followers) 
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerState();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the available logfile range
+  /// @route GET logger-tick-ranges
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackArray, containing info about each datafile
+  ///           * filename
+  ///           * status
+  ///           * tickMin - tickMax
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerTickRanges();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the first tick available in a logfile
+  /// @route GET logger-first-tick
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackObject with minTick of LogfileManager->ranges()
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerFirstTick();

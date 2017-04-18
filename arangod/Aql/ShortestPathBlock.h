@@ -32,13 +32,13 @@ namespace arangodb {
 class ManagedDocumentResult;
 
 namespace graph {
-class ShortestPathFinder;
 class ConstantWeightShortestPathFinder;
+class ShortestPathFinder;
+class ShortestPathResult;
 }
 
 namespace traverser {
 class EdgeCollectionInfo;
-class ShortestPath;
 }
 
 namespace aql {
@@ -113,7 +113,7 @@ class ShortestPathBlock : public ExecutionBlock {
   size_t _pathLength;
 
   /// @brief current computed path.
-  std::unique_ptr<traverser::ShortestPath> _path;
+  std::unique_ptr<graph::ShortestPathResult> _path;
 
   /// @brief the shortest path finder.
   std::unique_ptr<arangodb::graph::ShortestPathFinder> _finder;

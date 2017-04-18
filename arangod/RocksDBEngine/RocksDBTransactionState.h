@@ -122,8 +122,8 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t _transactionSize;
   // a transaction may not become bigger than this value
   uint64_t _maxTransactionSize;
-  // if a transaction gets bigger than  this value and intermediate trasnations
-  // are endabled then a commit will be done
+  // if a transaction gets bigger than  this value and intermediate transactions
+  // are enabled then a commit will be done
   uint64_t _intermediateTransactionSize;
   uint64_t _intermediateTransactionNumber;
   uint64_t _numInserts;

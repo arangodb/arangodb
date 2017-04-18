@@ -171,7 +171,8 @@ SslClientConnection::SslClientConnection(Endpoint* endpoint,
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
                               connectRetries),
       _ssl(nullptr),
-      _ctx(nullptr) {
+      _ctx(nullptr),
+      _sslProtocol(sslProtocol) {
 
   TRI_invalidatesocket(&_socket);
   init(sslProtocol);
@@ -185,7 +186,8 @@ SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
                               connectRetries),
       _ssl(nullptr),
-      _ctx(nullptr) {
+      _ctx(nullptr),
+      _sslProtocol(sslProtocol) {
 
   TRI_invalidatesocket(&_socket);
   init(sslProtocol);
@@ -293,7 +295,14 @@ bool SslClientConnection::connectSocket() {
     _isConnected = false;
     return false;
   }
-    
+
+  switch (protocol_e(_sslProtocol)) {
+    case TLS_V1:
+    case TLS_V12:
+    default:
+      SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());
+  }
+
   SSL_set_connect_state(_ssl);
 
   if (SSL_set_fd(_ssl, (int)TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
@@ -629,7 +638,7 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
       case SSL_ERROR_SYSCALL:
       default: {
         char const* pErr = STR_ERROR();
-        int errorDetail = ERR_get_error();
+        unsigned long errorDetail = ERR_get_error();
         char errorBuffer[256];
         ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
         _errorDetails = std::string("SSL: while reading: error '") +

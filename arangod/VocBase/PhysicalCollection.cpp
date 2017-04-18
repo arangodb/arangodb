@@ -23,9 +23,9 @@
 
 #include "PhysicalCollection.h"
 
-#include "Basics/encoding.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/encoding.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -44,12 +44,11 @@ using namespace arangodb;
 
 PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
                                        VPackSlice const& info)
-    : _logicalCollection(collection),
-      _indexes()
-    {}
+    : _logicalCollection(collection), _indexes() {}
 
-void PhysicalCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder){
-    this->figuresSpecific(builder);
+void PhysicalCollection::figures(
+    std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+  this->figuresSpecific(builder);
 };
 
 void PhysicalCollection::drop() {
@@ -219,7 +218,8 @@ int PhysicalCollection::newObjectForInsert(
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
     newRev = TRI_HybridLogicalClock();
-    std::string keyString = _logicalCollection->keyGenerator()->generate(TRI_NewTickServer());
+    std::string keyString =
+        _logicalCollection->keyGenerator()->generate(TRI_NewTickServer());
     if (keyString.empty()) {
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
@@ -230,7 +230,8 @@ int PhysicalCollection::newObjectForInsert(
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   } else {
     std::string keyString = s.copyString();
-    int res = _logicalCollection->keyGenerator()->validate(keyString, isRestore);
+    int res =
+        _logicalCollection->keyGenerator()->validate(keyString, isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -246,10 +247,12 @@ int PhysicalCollection::newObjectForInsert(
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)
     // must not be treated as shards but as local collections
-    encoding::storeNumber<uint64_t>(p, _logicalCollection->planId(), sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _logicalCollection->planId(),
+                                    sizeof(uint64_t));
   } else {
     // local server
-    encoding::storeNumber<uint64_t>(p, _logicalCollection->cid(), sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _logicalCollection->cid(),
+                                    sizeof(uint64_t));
   }
 
   // _from and _to
@@ -308,7 +311,6 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
   builder.close();
 }
 
-
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
 void PhysicalCollection::newObjectForReplace(
@@ -364,13 +366,11 @@ PhysicalCollection::getIndexes() const {
   return _indexes;
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
-                                         bool withFigures) const {
+void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
+                                         bool forPersistence) const {
   result.openArray();
   for (auto const& idx : _indexes) {
-    result.openObject();
-    idx->toVelocyPack(result, withFigures);
-    result.close();
+    idx->toVelocyPack(result, withFigures, forPersistence);
   }
   result.close();
 }

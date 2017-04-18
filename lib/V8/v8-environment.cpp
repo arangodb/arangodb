@@ -158,7 +158,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   for (int i = 0; i < size; ++i) {
     char const* var = environ[i];
     char const* s = strchr(var, '=');
-    int const length = s ? s - var : strlen(var);
+    size_t const length = s ? s - var : strlen(var);
     v8::Local<v8::String> name = TRI_V8_PAIR_STRING(var, length);
     envarr->Set(i, name);
   }

@@ -223,6 +223,8 @@ SET(ARANGOD_SOURCES
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/ShortestPathOptions.cpp
+  Graph/ShortestPathResult.cpp
+  Graph/SingleServerEdgeCursor.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
@@ -343,6 +345,8 @@ SET(ARANGOD_SOURCES
   VocBase/TransactionManager.cpp
   VocBase/Traverser.cpp
   VocBase/TraverserCache.cpp
+  VocBase/TraverserCacheFactory.cpp
+  VocBase/TraverserDocumentCache.cpp
   VocBase/TraverserOptions.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp

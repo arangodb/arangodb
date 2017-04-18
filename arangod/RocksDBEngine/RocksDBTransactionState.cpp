@@ -177,7 +177,11 @@ Result RocksDBTransactionState::commitTransaction(
         _rocksWriteOptions.sync = true;
       }
 
+      // TODO wait for response on github issue to see how we can use the
+      // sequence number
       result = rocksutils::convertStatus(_rocksTransaction->Commit());
+      rocksdb::SequenceNumber latestSeq =
+          rocksutils::globalRocksDB()->GetLatestSequenceNumber();
       if (!result.ok()) {
         abortTransaction(activeTrx);
         return result;
@@ -209,8 +213,11 @@ Result RocksDBTransactionState::commitTransaction(
           RocksDBEngine* engine =
               static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
-          engine->counterManager()->updateCounter(
-              coll->objectId(), snap, adjustment, collection->revision());
+          RocksDBCounterManager::CounterAdjustment update(latestSeq,
+                                                      collection->numInserts(),
+                                                      collection->numRemoves(),
+                                                      collection->revision());
+          engine->counterManager()->updateCounter(coll->objectId(), update);
         }
       }
 
@@ -278,7 +285,8 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   uint64_t newSize = _transactionSize + operationSize + keySize;
   if (_maxTransactionSize < newSize) {
     // we hit the transaction size limit
-    res.reset(TRI_ERROR_RESOURCE_LIMIT, "maximal transaction limit reached");
+    std::string message = "Maximal transaction size limit of " + std::to_string(_maxTransactionSize) + " Bytes reached!";
+    res.reset(TRI_ERROR_RESOURCE_LIMIT, message);
     return res;
   }
 
@@ -286,11 +294,11 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
       static_cast<RocksDBTransactionCollection*>(findCollection(cid));
 
   if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "collection not found in transaction state");
+    std::string message = "Collection (" + collection->collectionName() + ") not found in transaction state";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
-  // sould not fail or fail with exception
+  // should not fail or fail with exception
   collection->addOperation(operationType, operationSize, revisionId);
 
   switch (operationType) {
@@ -313,8 +321,8 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   auto numOperations = _numInserts + _numUpdates + _numRemoves;
 
   // signal if intermediate commit is required
-  // this will be done if intermeadiate transactions are endabled
-  // and either the number of operations or the transaction size 
+  // this will be done if intermediate transactions are enabled
+  // and either the "number of operations" or the "transaction size"
   // has reached the limit
   if (_intermediateTransactionEnabled &&
       (_intermediateTransactionNumber <= numOperations ||

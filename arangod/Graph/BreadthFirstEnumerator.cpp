@@ -127,7 +127,6 @@ bool BreadthFirstEnumerator::next() {
             TraverserOptions::UniquenessLevel::GLOBAL) {
           if (_returnedEdges.find(eid) == _returnedEdges.end()) {
             // Edge not yet visited. Mark and continue.
-            // TODO FIXME the edge will run out of scope
             _returnedEdges.emplace(eid);
           } else {
             // Edge filtered due to unique_constraint

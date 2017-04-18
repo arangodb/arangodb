@@ -41,20 +41,22 @@ class LocalTaskQueue;
 }
 
 class MMFilesEdgeIndex;
-  
-typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleIndexElement,
-                                     uint32_t, false> TRI_MMFilesEdgeIndexHash_t;
+
+typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
+                                     MMFilesSimpleIndexElement, uint32_t, false>
+    TRI_MMFilesEdgeIndexHash_t;
 
 class MMFilesEdgeIndexIterator final : public IndexIterator {
  public:
-  MMFilesEdgeIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                    ManagedDocumentResult* mmdr,
-                    arangodb::MMFilesEdgeIndex const* index,
-                    TRI_MMFilesEdgeIndexHash_t const* indexImpl,
-                    std::unique_ptr<VPackBuilder>& keys);
+  MMFilesEdgeIndexIterator(LogicalCollection* collection,
+                           transaction::Methods* trx,
+                           ManagedDocumentResult* mmdr,
+                           arangodb::MMFilesEdgeIndex const* index,
+                           TRI_MMFilesEdgeIndexHash_t const* indexImpl,
+                           std::unique_ptr<VPackBuilder>& keys);
 
   ~MMFilesEdgeIndexIterator();
-  
+
   char const* typeName() const override { return "edge-index-iterator"; }
 
   bool next(TokenCallback const& cb, size_t limit) override;
@@ -81,7 +83,7 @@ class MMFilesEdgeIndex final : public Index {
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
-  
+
   char const* typeName() const override { return "edge"; }
 
   bool allowExpansion() const override { return false; }
@@ -97,7 +99,7 @@ class MMFilesEdgeIndex final : public Index {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
@@ -142,13 +144,11 @@ class MMFilesEdgeIndex final : public Index {
 
  private:
   /// @brief create the iterator
-  IndexIterator* createEqIterator(transaction::Methods*,
-                                  ManagedDocumentResult*,
+  IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
-  IndexIterator* createInIterator(transaction::Methods*,
-                                  ManagedDocumentResult*,
+  IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
@@ -156,8 +156,10 @@ class MMFilesEdgeIndex final : public Index {
   void handleValNode(VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode) const;
 
-  MMFilesSimpleIndexElement buildFromElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
-  MMFilesSimpleIndexElement buildToElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+  MMFilesSimpleIndexElement buildFromElement(
+      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+  MMFilesSimpleIndexElement buildToElement(
+      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
 
  private:
   /// @brief the hash table for _from

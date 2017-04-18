@@ -27,10 +27,10 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexLookupContext.h"
+#include "RocksDBCommon.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
-#include "RocksDBCommon.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -119,7 +119,8 @@ class RocksDBCollection final : public PhysicalCollection {
   std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx, ManagedDocumentResult* mdr) override;
 
-  void invokeOnAllElements(transaction::Methods* trx,
+  void invokeOnAllElements(
+      transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback) override;
 
   ////////////////////////////////////
@@ -195,19 +196,17 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBPrimaryIndex* primaryIndex() const;
 
-  arangodb::RocksDBOperationResult insertDocument(arangodb::transaction::Methods* trx,
-                                        TRI_voc_rid_t revisionId,
-                                        arangodb::velocypack::Slice const& doc,
-                                        bool& waitForSync);
+  arangodb::RocksDBOperationResult insertDocument(
+      arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
+      arangodb::velocypack::Slice const& doc, bool& waitForSync);
 
-  arangodb::RocksDBOperationResult removeDocument(arangodb::transaction::Methods* trx,
-                                        TRI_voc_rid_t revisionId,
-                                        arangodb::velocypack::Slice const& doc,
-                                        bool& waitForSync);
+  arangodb::RocksDBOperationResult removeDocument(
+      arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
+      arangodb::velocypack::Slice const& doc, bool& waitForSync);
 
-  arangodb::RocksDBOperationResult lookupDocument(transaction::Methods* trx,
-                                        arangodb::velocypack::Slice key,
-                                        ManagedDocumentResult& result);
+  arangodb::RocksDBOperationResult lookupDocument(
+      transaction::Methods* trx, arangodb::velocypack::Slice key,
+      ManagedDocumentResult& result);
 
   arangodb::RocksDBOperationResult updateDocument(
       transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,

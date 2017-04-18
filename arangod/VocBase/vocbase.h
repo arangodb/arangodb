@@ -296,9 +296,11 @@ struct TRI_vocbase_t {
   arangodb::LogicalCollection* createCollection(
       arangodb::velocypack::Slice parameters);
 
-  /// @brief drops a collection
+  /// @brief drops a collection, no timeout if timeout is < 0.0, otherwise
+  /// timeout is in seconds. Essentially, the timeout counts to acquire the
+  /// write lock for using the collection.
   int dropCollection(arangodb::LogicalCollection* collection,
-                     bool allowDropSystem);
+                     bool allowDropSystem, double timeout);
 
   /// @brief callback for collection dropping
   static bool DropCollectionCallback(arangodb::LogicalCollection* collection);
@@ -362,7 +364,7 @@ struct TRI_vocbase_t {
 
   /// @brief drops a collection, worker function
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
-                           DropState& state);
+                           DropState& state, double timeout);
 
   /// @brief creates a new view, worker function
   std::shared_ptr<arangodb::LogicalView> createViewWorker(

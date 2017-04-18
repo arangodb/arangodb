@@ -26,15 +26,20 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringRef.h"
 
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathPriorityQueue.h"
 
 #include <thread>
 
-
 namespace arangodb {
+
+class ManagedDocumentResult;
+
 namespace graph {
+
+struct ShortestPathOptions;
 
 class AttributeWeightShortestPathFinder : public ShortestPathFinder {
  public:
@@ -47,16 +52,16 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     double _weight;
 
    public:
-    arangodb::velocypack::Slice _vertex;
-    arangodb::velocypack::Slice _predecessor;
-    arangodb::velocypack::Slice _edge;
+    arangodb::StringRef _vertex;
+    arangodb::StringRef _predecessor;
+    arangodb::StringRef _edge;
     bool _done;
 
     Step() : _weight(0.0), _done(false) {}
 
-    Step(arangodb::velocypack::Slice const& vert,
-         arangodb::velocypack::Slice const& pred, double weig,
-         arangodb::velocypack::Slice const& edge)
+    Step(arangodb::StringRef const& vert,
+         arangodb::StringRef const& pred, double weig,
+         arangodb::StringRef const& edge)
         : _weight(weig),
           _vertex(vert),
           _predecessor(pred),
@@ -67,7 +72,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
     void setWeight(double w) { _weight = w; }
 
-    arangodb::velocypack::Slice const& getKey() const { return _vertex; }
+    arangodb::StringRef const& getKey() const { return _vertex; }
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -77,19 +82,11 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   typedef enum { FORWARD, BACKWARD } Direction;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief callback to find neighbors
-  //////////////////////////////////////////////////////////////////////////////
-
-  typedef std::function<void(arangodb::velocypack::Slice const&,
-                             std::vector<Step*>&)>
-      ExpanderFunction;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
   typedef arangodb::graph::ShortestPathPriorityQueue<
-      arangodb::velocypack::Slice, Step, double>
+      arangodb::StringRef, Step, double>
       PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -105,6 +102,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   /// @brief a Dijkstra searcher for the multi-threaded search
   //////////////////////////////////////////////////////////////////////////////
 
+  /*
   class SearcherTwoThreads {
     AttributeWeightShortestPathFinder* _pathFinder;
     ThreadInfo& _myInfo;
@@ -154,23 +152,24 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
    private:
     std::thread _thread;
   };
+  */
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a Dijkstra searcher for the single-threaded search
   //////////////////////////////////////////////////////////////////////////////
 
   class Searcher {
-    AttributeWeightShortestPathFinder* _pathFinder;
-    ThreadInfo& _myInfo;
-    ThreadInfo& _peerInfo;
-    arangodb::velocypack::Slice _start;
-    ExpanderFunction _expander;
-    std::string _id;
-
    public:
     Searcher(AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-             ThreadInfo& peerInfo, arangodb::velocypack::Slice const& start,
-             ExpanderFunction expander, std::string const& id);
+             ThreadInfo& peerInfo, arangodb::StringRef const& start,
+             bool isBackward);
+
+   public:
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Do one step only.
+    //////////////////////////////////////////////////////////////////////////////
+
+    bool oneStep();
 
    private:
     ////////////////////////////////////////////////////////////////////////////////
@@ -183,20 +182,22 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     /// @brief Lookup our current vertex in the data of our peer.
     ////////////////////////////////////////////////////////////////////////////////
 
-    void lookupPeer(arangodb::velocypack::Slice& vertex, double weight);
+    void lookupPeer(arangodb::StringRef& vertex, double weight);
 
-   public:
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Do one step only.
-    ////////////////////////////////////////////////////////////////////////////////
+   private:
+    AttributeWeightShortestPathFinder* _pathFinder;
+    ThreadInfo& _myInfo;
+    ThreadInfo& _peerInfo;
+    arangodb::StringRef _start;
+    bool _isBackward;
 
-    bool oneStep();
   };
 
   // -----------------------------------------------------------------------------
 
   AttributeWeightShortestPathFinder(AttributeWeightShortestPathFinder const&) =
       delete;
+
   AttributeWeightShortestPathFinder& operator=(
       AttributeWeightShortestPathFinder const&) = delete;
   AttributeWeightShortestPathFinder() = delete;
@@ -205,11 +206,9 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   /// @brief create the PathFinder
   //////////////////////////////////////////////////////////////////////////////
 
-  AttributeWeightShortestPathFinder(ExpanderFunction&& forwardExpander,
-                                    ExpanderFunction&& backwardExpander,
-                                    bool bidirectional = true);
+  AttributeWeightShortestPathFinder(ShortestPathOptions* options);
 
-  ~AttributeWeightShortestPathFinder(){};
+  ~AttributeWeightShortestPathFinder();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Find the shortest path between start and target.
@@ -222,8 +221,16 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   // path
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& target,
-                    arangodb::traverser::ShortestPath& result,
+                    arangodb::graph::ShortestPathResult& result,
                     std::function<void()> const& callback) override;
+
+  void inserter(std::unordered_map<arangodb::StringRef, size_t>& candidates,
+                std::vector<Step*>& result, arangodb::StringRef const& s,
+                arangodb::StringRef const& t, double currentWeight,
+                arangodb::StringRef edge);
+
+  void expandVertex(bool isBackward, arangodb::StringRef const& source,
+                    std::vector<Step*>& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the shortest path between the start and target vertex,
@@ -234,9 +241,11 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   // If this returns true there is a path, if this returns false there is no
   // path
 
+  /* Unused for now maybe reactived
   bool shortestPathTwoThreads(arangodb::velocypack::Slice& start,
                               arangodb::velocypack::Slice& target,
-                              arangodb::traverser::ShortestPath& result);
+                              arangodb::graph::ShortestPathResult& result);
+  */
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lowest total weight for a complete path found
@@ -276,12 +285,18 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _intermediateSet;
-  arangodb::velocypack::Slice _intermediate;
+  arangodb::StringRef _intermediate;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Reusable ManagedDocumentResult that temporarily takes
+  ///        responsibility for one document.
+  //////////////////////////////////////////////////////////////////////////////
 
  private:
-  ExpanderFunction _forwardExpander;
-  ExpanderFunction _backwardExpander;
-  bool _bidirectional;
+
+  std::unique_ptr<ManagedDocumentResult> _mmdr;
+
+  ShortestPathOptions* _options;
 };
 
 }  // namespace graph

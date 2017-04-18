@@ -99,8 +99,11 @@ void RocksDBEngine::collectOptions(
                      new UInt64Parameter(&_maxTransactionSize));
 
   // control intermediate transactions in RocksDB
-  _intermediateTransactionSize = (_maxTransactionSize / 5) * 4; // transaction size that will trigger an intermediate commit
-  _intermediateTransactionNumber = 100 * 1000; // number operation after that a commit will be tried
+  _intermediateTransactionSize =
+      (_maxTransactionSize / 5) *
+      4;  // transaction size that will trigger an intermediate commit
+  _intermediateTransactionNumber =
+      100 * 1000;  // number operation after that a commit will be tried
   _intermediateTransactionEnabled = false;
 }
 
@@ -141,7 +144,7 @@ void RocksDBEngine::start() {
   _options.comparator = _cmp.get();
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager
-  _options.WAL_ttl_seconds = 15;  //(uint64_t)(counter_sync_seconds * 2.0);
+  _options.WAL_ttl_seconds = 60;  //(uint64_t)(counter_sync_seconds * 2.0);
   // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
 
   rocksdb::Status status =

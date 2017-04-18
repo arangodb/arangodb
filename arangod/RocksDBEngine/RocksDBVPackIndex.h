@@ -115,13 +115,13 @@ class RocksDBVPackIndex : public RocksDBIndex {
       arangodb::StringRef const* = nullptr) const override {
     if (_unique) {
       return 1.0;  // only valid if unique
-    } 
-    return 0.2; // TODO: fix this hard-coded estimate
+    }
+    return 0.2;  // TODO: fix this hard-coded estimate
   }
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   bool allowExpansion() const override { return true; }

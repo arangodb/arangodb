@@ -89,6 +89,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
  private:
   bool outOfRange() const;
 
+  RocksDBPrimaryIndex const* _index;
   RocksDBComparator const* _cmp;
   bool const _reverse;
   std::unique_ptr<rocksdb::Iterator> _iterator;
@@ -156,7 +157,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   RocksDBToken lookupKey(transaction::Methods* trx, arangodb::StringRef key);

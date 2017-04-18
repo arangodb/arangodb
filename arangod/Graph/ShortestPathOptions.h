@@ -86,16 +86,16 @@ struct ShortestPathOptions : public BaseOptions {
                             std::string const& attributeName,
                             aql::AstNode* condition);
 
-  EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
+  // Compute the weight of the given edge
+  double weightEdge(arangodb::velocypack::Slice const);
 
-  EdgeCursor* nextReverseCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
+  EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid);
+
+  EdgeCursor* nextReverseCursor(ManagedDocumentResult*, StringRef vid);
 
  private:
-  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid, uint64_t,
-                              std::vector<LookupInfo>&);
-
-  EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
-  EdgeCursor* nextReverseCursorCoordinator(StringRef vid, uint64_t);
+  EdgeCursor* nextCursorCoordinator(StringRef vid);
+  EdgeCursor* nextReverseCursorCoordinator(StringRef vid);
 
  private:
   /// @brief Lookup info to find all reverse edges.

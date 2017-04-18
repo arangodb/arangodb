@@ -166,17 +166,22 @@ class LogicalCollection {
   void setDeleted(bool);
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
-  
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse);
-  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr);
 
-  void invokeOnAllElements(transaction::Methods* trx, std::function<bool(DocumentIdentifierToken const&)> callback);
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
+                                                ManagedDocumentResult* mdr,
+                                                bool reverse);
+  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx,
+                                                ManagedDocumentResult* mdr);
 
+  void invokeOnAllElements(
+      transaction::Methods* trx,
+      std::function<bool(DocumentIdentifierToken const&)> callback);
 
   // SECTION: Indexes
   std::vector<std::shared_ptr<Index>> const& getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, bool) const;
+  void getIndexesVPack(velocypack::Builder&, bool,
+                       bool forPersistence = false) const;
 
   // SECTION: Replication
   int replicationFactor() const;
@@ -189,7 +194,8 @@ class LogicalCollection {
   std::vector<std::string> const& shardKeys() const;
   std::shared_ptr<ShardMap> shardIds() const;
   // return a filtered list of the collection's shards
-  std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
+  std::shared_ptr<ShardMap> shardIds(
+      std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap>& map);
 
   /// @brief a method to skip certain documents in AQL write operations,
@@ -205,11 +211,12 @@ class LogicalCollection {
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(velocypack::Builder&, bool translateCids) const;
+  void toVelocyPack(velocypack::Builder&, bool translateCids,
+                    bool forPersistence = false) const;
 
   velocypack::Builder toVelocyPackIgnore(
-      std::unordered_set<std::string> const& ignoreKeys,
-      bool translateCids) const;
+      std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
+      bool forPersistence = false) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
                                                bool useSystem) const;
@@ -231,8 +238,8 @@ class LogicalCollection {
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description
-  virtual std::shared_ptr<Index> createIndex(
-      transaction::Methods*, velocypack::Slice const&, bool&);
+  virtual std::shared_ptr<Index> createIndex(transaction::Methods*,
+                                             velocypack::Slice const&, bool&);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
@@ -254,19 +261,17 @@ class LogicalCollection {
   void truncate(transaction::Methods* trx, OperationOptions&);
 
   int insert(transaction::Methods*, velocypack::Slice const,
-             ManagedDocumentResult& result, OperationOptions&,
-             TRI_voc_tick_t&, bool);
+             ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
+             bool);
   int update(transaction::Methods*, velocypack::Slice const,
-             ManagedDocumentResult& result, OperationOptions&,
+             ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
+             bool, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+  int replace(transaction::Methods*, velocypack::Slice const,
+              ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
+              bool, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+  int remove(transaction::Methods*, velocypack::Slice const, OperationOptions&,
              TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
              ManagedDocumentResult& previous);
-  int replace(transaction::Methods*, velocypack::Slice const,
-              ManagedDocumentResult& result, OperationOptions&,
-              TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-              ManagedDocumentResult& previous);
-  int remove(transaction::Methods*, velocypack::Slice const,
-             OperationOptions&, TRI_voc_tick_t&, bool,
-             TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
 
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
@@ -282,24 +287,21 @@ class LogicalCollection {
   ///        created and only on Sinlge/DBServer
   void persistPhysicalCollection();
 
-  basics::ReadWriteLock& lock() {
-    return _lock;
-  }
+  basics::ReadWriteLock& lock() { return _lock; }
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
-  void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback);
+  void deferDropCollection(
+      std::function<bool(arangodb::LogicalCollection*)> callback);
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
-  
+
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
-  inline KeyGenerator* keyGenerator() const {
-    return _keyGenerator.get();
-  }
+  inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
@@ -311,11 +313,9 @@ class LogicalCollection {
   void increaseInternalVersion();
 
  protected:
-
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
  protected:
-
   // SECTION: Meta Information
   //
   // @brief Internal version used for caching
@@ -381,13 +381,9 @@ class LogicalCollection {
 
   std::unique_ptr<PhysicalCollection> _physical;
 
-  mutable basics::ReadWriteLock
-      _lock;  // lock protecting the status and name
+  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
-  mutable basics::ReadWriteLock
-      _infoLock;  // lock protecting the info
-  
-
+  mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
 };
 
 }  // namespace arangodb

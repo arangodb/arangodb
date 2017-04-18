@@ -83,9 +83,7 @@ VPackSlice ShortestPathOptions::getStart() const {
 
 VPackSlice ShortestPathOptions::getEnd() const { return endBuilder.slice(); }
 
-bool ShortestPathOptions::useWeight() const {
-  return !weightAttribute.empty();
-}
+bool ShortestPathOptions::useWeight() const { return !weightAttribute.empty(); }
 
 void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
@@ -109,27 +107,34 @@ void ShortestPathOptions::addReverseLookupInfo(
                          attributeName, condition);
 }
 
+double ShortestPathOptions::weightEdge(VPackSlice edge) {
+  TRI_ASSERT(useWeight());
+  return arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+      edge, weightAttribute.c_str(), defaultWeight);
+}
+
 EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr,
-                                            StringRef vid, uint64_t depth) {
+                                            StringRef vid) {
   if (_isCoordinator) {
-    return nextCursorCoordinator(vid, depth);
+    return nextCursorCoordinator(vid);
   }
   TRI_ASSERT(mmdr != nullptr);
-  return nextCursorLocal(mmdr, vid, depth, _baseLookupInfos);
+  return nextCursorLocal(mmdr, vid, _baseLookupInfos);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
-                                                 StringRef vid, uint64_t depth,
-                                                 std::vector<LookupInfo>&) {
+EdgeCursor* ShortestPathOptions::nextReverseCursor(ManagedDocumentResult* mmdr,
+                                                   StringRef vid) {
+  if (_isCoordinator) {
+    return nextReverseCursorCoordinator(vid);
+  }
+  TRI_ASSERT(mmdr != nullptr);
+  return nextCursorLocal(mmdr, vid, _reverseLookupInfos);
+}
+
+EdgeCursor* ShortestPathOptions::nextCursorCoordinator(StringRef vid) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursorCoordinator(StringRef vid,
-                                                       uint64_t depth) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(StringRef vid,
-                                                              uint64_t depth) {
+EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(StringRef vid) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
