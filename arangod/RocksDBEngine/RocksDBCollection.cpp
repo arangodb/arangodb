@@ -76,14 +76,22 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
-      _revisionId(0) {}
+      _revisionId(0) {
+  LOG_TOPIC(ERR, Logger::DEVEL)
+      << "CREATE ROCKS COLLECTION: " << _logicalCollection->name() << " ("
+      << this->objectId() << ")";
+}
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      PhysicalCollection* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
       _numberDocuments(0),
-      _revisionId(0) {}
+      _revisionId(0) {
+  LOG_TOPIC(ERR, Logger::DEVEL)
+      << "CREATE ROCKS COLLECTION: " << _logicalCollection->name() << " ("
+      << this->objectId() << ")";
+}
 
 RocksDBCollection::~RocksDBCollection() {}
 
@@ -112,6 +120,9 @@ arangodb::Result RocksDBCollection::persistProperties() {
     RocksDBValue value(RocksDBValue::Document(infoBuilder.slice()));
     res = globalRocksDBPut(key.string(), value.string());
 
+    LOG_TOPIC(ERR, Logger::DEVEL)
+        << "PERSISTING ROCKS COLLECTION: " << _logicalCollection->name() << " ("
+        << infoBuilder.slice().toJson() << ")";
   } catch (arangodb::basics::Exception const& ex) {
     res.reset(ex.code());
   } catch (...) {
@@ -331,7 +342,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
         application_features::ApplicationServer::getFeature<DatabaseFeature>(
             "Database")
             ->forceSyncProperties();
-    VPackBuilder builder = _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true, /*forPersistence*/ false);
+    VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
+        {"path", "statusString"}, true, /*forPersistence*/ false);
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
   created = true;
@@ -501,9 +513,11 @@ int RocksDBCollection::read(transaction::Methods* trx,
                             arangodb::velocypack::Slice const key,
                             ManagedDocumentResult& result, bool) {
   TRI_ASSERT(key.isString());
-  //LOG_TOPIC(ERR, Logger::FIXME) << "############### Key Slice: " << key.toString();
+  // LOG_TOPIC(ERR, Logger::FIXME) << "############### Key Slice: " <<
+  // key.toString();
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
-  //LOG_TOPIC(ERR, Logger::FIXME) << "############### TOKEN ID: " << token.revisionId();
+  // LOG_TOPIC(ERR, Logger::FIXME) << "############### TOKEN ID: " <<
+  // token.revisionId();
 
   if (token.revisionId()) {
     if (readDocument(trx, token, result)) {
@@ -624,7 +638,6 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       // force commit
     }
   }
-
 
   return res.errorNumber();
 }
