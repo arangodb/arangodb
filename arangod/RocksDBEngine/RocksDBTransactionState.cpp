@@ -302,7 +302,6 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   collection->addOperation(operationType, operationSize, revisionId);
 
   switch (operationType) {
-    case TRI_VOC_NOOP_OPERATION_UPDATE_SIZE:
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
@@ -347,7 +346,6 @@ void RocksDBTransactionState::reset(){
   }
   _nestingLevel = 0;
 
-  // 
   updateStatus(transaction::Status::CREATED);
 
   // start new transaction
