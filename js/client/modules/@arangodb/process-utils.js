@@ -67,7 +67,6 @@ let ARANGODUMP_BIN;
 let ARANGOD_BIN;
 let ARANGOIMP_BIN;
 let ARANGORESTORE_BIN;
-let ARANGOEXPORT_BIN;
 let ARANGOSH_BIN;
 let CONFIG_ARANGODB_DIR;
 let CONFIG_RELATIVE_DIR;
@@ -121,7 +120,6 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executableExt);
   ARANGOIMP_BIN = fs.join(BIN_DIR, 'arangoimp' + executableExt);
   ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executableExt);
-  ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
 
   CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, builddir, 'etc', 'arangodb3');
@@ -139,7 +137,6 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOD_BIN,
     ARANGOIMP_BIN,
     ARANGORESTORE_BIN,
-    ARANGOEXPORT_BIN,
     ARANGOSH_BIN];
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b])) {
@@ -1178,7 +1175,6 @@ exports.getCleanupDBDirectories = getCleanupDBDirectories;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 
-Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
 Object.defineProperty(exports, 'ARANGOD_BIN', {get: () => ARANGOD_BIN});
 Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => ARANGOSH_BIN});
 Object.defineProperty(exports, 'CONFIG_DIR', {get: () => CONFIG_DIR});

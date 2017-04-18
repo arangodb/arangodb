@@ -482,19 +482,20 @@ function unitTest (cases, options) {
       print(CYAN + 'with options:', options, RESET);
     }
 
+    let status = true;
     let result = testFuncs[currentTest](options);
-    // grrr...normalize structure
-    delete result.status;
-    delete result.failed;
+    for (let i in result) {
+      if (result.hasOwnProperty(i)) {
+        if (result[i].status !== true) {
+          status = false;
+        }
+      }
+    }
+    result.status = status;
 
-    let status = Object.values(result).every(testCase => testCase.status === true);
-    let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
     if (!status) {
       globalStatus = false;
     }
-    result.failed = failed;
-    result.status = status;
-    results[currentTest] = result;
   }
 
   results.status = globalStatus;
