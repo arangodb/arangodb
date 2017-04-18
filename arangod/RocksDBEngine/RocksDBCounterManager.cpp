@@ -342,7 +342,7 @@ bool RocksDBCounterManager::parseRocksWAL() {
     iterator->Next();
   }
 
-  LOG_TOPIC(INFO, Logger::ENGINES) << "Finished WAL scan with "
+  LOG_TOPIC(TRACE, Logger::ENGINES) << "finished WAL scan with "
                                    << handler->deltas.size();
   for (std::pair<uint64_t, RocksDBCounterManager::CounterAdjustment> pair :
        handler->deltas) {
@@ -352,7 +352,7 @@ bool RocksDBCounterManager::parseRocksWAL() {
       it->second._count += pair.second.added();
       it->second._count -= pair.second.removed();
       it->second._revisionId = pair.second._revisionId;
-      LOG_TOPIC(INFO, Logger::ENGINES)
+      LOG_TOPIC(TRACE, Logger::ENGINES)
           << "WAL recovered " << pair.second.added() << " PUTs and "
           << pair.second.removed() << " DELETEs for a total of "
           << it->second._count;
