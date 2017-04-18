@@ -26,7 +26,9 @@
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/CollectionLockState.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -521,15 +523,7 @@ int RocksDBCollection::read(transaction::Methods* trx,
     if (readDocument(trx, token, result)) {
       // found
       return TRI_ERROR_NO_ERROR;
-    } else {
-      /*LOG_TOPIC(ERR, Logger::FIXME)
-          << "#" << trx->state()->id() << " failed to read revision "
-          << token.revisionId() << " for key " << key.copyString();*/
     }
-  } else {
-    /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
-                                  << " failed to find token for "
-                                  << key.copyString() << " in read";*/
   }
 
   // not found
@@ -1075,17 +1069,9 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
-  /*LOG_TOPIC(ERR, Logger::ENGINES)
-      << "#" << trx->state()->id() << " INSERT DOCUMENT. COLLECTION '"
-      << _logicalCollection->name() << "', OBJECTID: " << _objectId
-      << ", REVISIONID: " << revisionId;*/
-
   rocksdb::Status status = rtrx->Put(key.string(), value.string());
 
   if (!status.ok()) {
-    /*LOG_TOPIC(ERR, Logger::ENGINES)
-        << "#" << trx->state()->id()
-        << " INSERT DOCUMENT FAILED. REVISIONID: " << revisionId;*/
     Result converted =
         rocksutils::convertStatus(status, rocksutils::StatusHint::document);
     res = converted;
@@ -1145,16 +1131,8 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
-  /*LOG_TOPIC(ERR, Logger::ENGINES)
-      << "#" << trx->state()->id() << " REMOVE DOCUMENT. COLLECTION '"
-      << _logicalCollection->name() << "', OBJECTID: " << _objectId
-      << ", REVISIONID: " << revisionId;*/
-
   auto status = rtrx->Delete(key.string());
   if (!status.ok()) {
-    /*LOG_TOPIC(ERR, Logger::ENGINES)
-        << "#" << trx->state()->id()
-        << " REMOVE DOCUMENT FAILED. REVISIONID: " << revisionId;*/
     auto converted = rocksutils::convertStatus(status);
     return converted;
   }
@@ -1209,15 +1187,7 @@ RocksDBOperationResult RocksDBCollection::lookupDocument(
 
   if (revisionId > 0) {
     res = lookupRevisionVPack(revisionId, trx, mdr);
-    /*if (!res.ok()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
-                                    << " failed to find revision " << revisionId
-                                    << " for key " << key.copyString();
-    }*/
   } else {
-    /*LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
-                                  << " failed to find entry for key "
-                                  << key.copyString();*/
     res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
   return res;
@@ -1250,11 +1220,6 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
 
   // TODO fix as soon as we got a real primary index
   outToken = primaryIndex()->lookupKey(trx, key);
-  /*if (outToken.revisionId() == 0) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "#" << trx->state()->id()
-                                  << " failed to find token for key "
-                                  << key.toString();
-  }*/
   return outToken.revisionId() > 0
              ? Result()
              : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -1276,10 +1241,6 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   if (result.ok()) {
     mdr.setManaged(std::move(value), revisionId);
   } else {
-    /*LOG_TOPIC(ERR, Logger::ENGINES)
-        << "#" << trx->state()->id() << " LOOKUP REVISION FAILED. COLLECTION '"
-        << _logicalCollection->name() << "', OBJECTID: " << _objectId
-        << ", REVISIONID: " << revisionId << "; " << result.errorNumber();*/
     mdr.reset();
   }
   return result;
@@ -1295,4 +1256,149 @@ void RocksDBCollection::adjustNumberDocuments(int64_t adjustment) {
   } else if (adjustment > 0) {
     _numberDocuments += static_cast<uint64_t>(adjustment);
   }
+}
+
+/// @brief write locks a collection, with a timeout
+int RocksDBCollection::beginWriteTimed(bool useDeadlockDetector,
+                                       double timeout) {
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    auto it =
+        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
+    if (it != CollectionLockState::_noLockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWriteTimed blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
+  int iterations = 0;
+  bool wasBlocked = false;
+  uint64_t waitTime = 0;  // indicate that times uninitialized
+  double startTime = 0.0;
+
+  while (true) {
+    TRY_WRITE_LOCKER(locker, _exclusiveLock);
+
+    if (locker.isLocked()) {
+      // register writer
+      if (useDeadlockDetector) {
+        _logicalCollection->vocbase()->_deadlockDetector.addWriter(
+            _logicalCollection, wasBlocked);
+      }
+      // keep lock and exit loop
+      locker.steal();
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    if (useDeadlockDetector) {
+      try {
+        if (!wasBlocked) {
+          // insert writer
+          wasBlocked = true;
+          if (_logicalCollection->vocbase()->_deadlockDetector.setWriterBlocked(
+                  _logicalCollection) == TRI_ERROR_DEADLOCK) {
+            // deadlock
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+                << "deadlock detected while trying to acquire "
+                   "write-lock on collection '"
+                << _logicalCollection->name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+              << "waiting for write-lock on collection '"
+              << _logicalCollection->name() << "'";
+        } else if (++iterations >= 5) {
+          // periodically check for deadlocks
+          TRI_ASSERT(wasBlocked);
+          iterations = 0;
+          if (_logicalCollection->vocbase()->_deadlockDetector.detectDeadlock(
+                  _logicalCollection, true) == TRI_ERROR_DEADLOCK) {
+            // deadlock
+            _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
+                _logicalCollection);
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+                << "deadlock detected while trying to acquire "
+                   "write-lock on collection '"
+                << _logicalCollection->name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
+        }
+      } catch (...) {
+        // clean up!
+        if (wasBlocked) {
+          _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
+              _logicalCollection);
+        }
+        // always exit
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+
+    double now = TRI_microtime();
+
+    if (waitTime == 0) {  // initialize times
+      // set end time for lock waiting
+      if (timeout <= 0.0) {
+        timeout = defaultLockTimeout;
+      }
+      startTime = now;
+      waitTime = 1;
+    }
+
+    if (now > startTime + timeout) {
+      if (useDeadlockDetector) {
+        _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
+            _logicalCollection);
+      }
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "timed out after " << timeout
+          << " s waiting for write-lock on collection '"
+          << _logicalCollection->name() << "'";
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+
+    if (now - startTime < 0.001) {
+      std::this_thread::yield();
+    } else {
+      usleep(static_cast<TRI_usleep_t>(waitTime));
+      if (waitTime < 500000) {
+        waitTime *= 2;
+      }
+    }
+  }
+}
+
+/// @brief write unlocks a collection
+int RocksDBCollection::endWrite(bool useDeadlockDetector) {
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    auto it =
+        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
+    if (it != CollectionLockState::_noLockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndWrite blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  if (useDeadlockDetector) {
+    // unregister writer
+    try {
+      _logicalCollection->vocbase()->_deadlockDetector.unsetWriter(
+          _logicalCollection);
+    } catch (...) {
+      // must go on here to unlock the lock
+    }
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "EndWrite: " << _name << std::endl;
+  _exclusiveLock.unlockWrite();
+
+  return TRI_ERROR_NO_ERROR;
 }
