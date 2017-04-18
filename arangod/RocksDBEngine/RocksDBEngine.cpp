@@ -99,12 +99,17 @@ void RocksDBEngine::collectOptions(
                      new UInt64Parameter(&_maxTransactionSize));
 
   // control intermediate transactions in RocksDB
-  _intermediateTransactionSize =
-      (_maxTransactionSize / 5) *
-      4;  // transaction size that will trigger an intermediate commit
-  _intermediateTransactionNumber =
-      100 * 1000;  // number operation after that a commit will be tried
+  _intermediateTransactionSize = _maxTransactionSize * 0.8;
+  options->addOption("--rocksdb.intermediate-transaction-count", "an intermediate commit will be triend if this count is reached",
+                     new UInt64Parameter(&_intermediateTransactionSize));
+
+  options->addOption("--rocksdb.intermediate-transaction-count", "an intermediate commit will be triend if this count is reached",
+                     new UInt64Parameter(&_intermediateTransactionCount));
+  _intermediateTransactionCount = 100 * 1000;
+
   _intermediateTransactionEnabled = false;
+  options->addOption("--rocksdb.intermediate-transaction", "enable intermediate transactions",
+                     new BooleanParameter(&_intermediateTransactionEnabled));
 }
 
 // validate the storage engine's specific options
@@ -129,9 +134,9 @@ void RocksDBEngine::start() {
   }
 
   // set the database sub-directory for RocksDB
-  auto database =
+  auto databasePathFeature =
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _path = database->subdirectoryName("engine-rocksdb");
+  _path = databasePathFeature->subdirectoryName("engine-rocksdb");
 
   LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "initializing rocksdb, path: "
                                               << _path;
@@ -197,7 +202,7 @@ TransactionState* RocksDBEngine::createTransactionState(
     TRI_vocbase_t* vocbase) {
   return new RocksDBTransactionState(
       vocbase, _maxTransactionSize, _intermediateTransactionEnabled,
-      _intermediateTransactionSize, _intermediateTransactionNumber);
+      _intermediateTransactionSize, _intermediateTransactionCount);
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
@@ -619,6 +624,7 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
     THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
   */
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,

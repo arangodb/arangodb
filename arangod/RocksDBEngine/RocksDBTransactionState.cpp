@@ -332,3 +332,25 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
 
   return res;
 }
+  
+void RocksDBTransactionState::reset(){
+  //only rest when already commited
+  TRI_ASSERT(_status == transaction::Status::COMMITTED);
+  //reset count
+  _transactionSize = 0;
+  _numInserts = 0;
+  _numUpdates = 0;
+  _numRemoves = 0;
+  unuseCollections(_nestingLevel);
+  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    (static_cast<RocksDBTransactionCollection*>(*it))->resetCounts();
+  }
+  _nestingLevel = 0;
+
+  // 
+  updateStatus(transaction::Status::CREATED);
+
+  // start new transaction
+  beginTransaction(transaction::Hints());
+
+}

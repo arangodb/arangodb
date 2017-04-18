@@ -113,6 +113,8 @@ class RocksDBTransactionState final : public TransactionState {
 
   rocksdb::ReadOptions const& readOptions() { return _rocksReadOptions; }
 
+  void reset();
+
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   rocksdb::WriteOptions _rocksWriteOptions;

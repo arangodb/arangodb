@@ -258,17 +258,17 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBCounterManager* counterManager();
 
  private:
-  rocksdb::TransactionDB* _db;
-  rocksdb::Options _options;
-  std::unique_ptr<RocksDBComparator> _cmp;
-  std::string _path;
-  std::string _basePath;
+  rocksdb::TransactionDB* _db; // single rocksdb database used in this storage engine
+  rocksdb::Options _options; // default read options
+  std::unique_ptr<RocksDBComparator> _cmp; // arangodb comparator - requried because of vpack in keys
+  std::string _path;  // path used by rocksdb (inside _basePath)
+  std::string _basePath; // path to arangodb data dir
 
-  std::unique_ptr<RocksDBCounterManager> _counterManager;
-  uint64_t _maxTransactionSize;
-  uint64_t _intermediateTransactionSize;
-  uint64_t _intermediateTransactionNumber;
-  bool _intermediateTransactionEnabled;
+  std::unique_ptr<RocksDBCounterManager> _counterManager; // tracks the count of documents in collections
+  uint64_t _maxTransactionSize; // maximum allowed size for a transaction
+  uint64_t _intermediateTransactionSize; // maximum size for a transaction before a intermediate commit will be tried
+  uint64_t _intermediateTransactionCount; // limit of transaction count for intermediate commit
+  bool _intermediateTransactionEnabled; // allow usage of intermediate commits
 };
 }
 #endif
