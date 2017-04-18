@@ -59,7 +59,6 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
-#include "RestHandler/RestReplicationHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -363,10 +362,6 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestImportHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::REPLICATION_PATH,
-      RestHandlerCreator<RestReplicationHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>,
@@ -411,9 +406,9 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_api/query-cache",
       RestHandlerCreator<RestQueryCacheHandler>::createNoData);
-  
-  _handlerFactory->addPrefixHandler("/_api/pregel",
-                                    RestHandlerCreator<RestPregelHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
 
   if (agency->isEnabled()) {
     _handlerFactory->addPrefixHandler(
@@ -450,7 +445,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
       "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
 

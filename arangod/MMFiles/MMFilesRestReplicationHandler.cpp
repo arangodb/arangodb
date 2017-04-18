@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestReplicationHandler.h"
+#include "MMFilesRestReplicationHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
@@ -67,16 +67,16 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-uint64_t const RestReplicationHandler::defaultChunkSize = 128 * 1024;
-uint64_t const RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
+uint64_t const MMFilesRestReplicationHandler::defaultChunkSize = 128 * 1024;
+uint64_t const MMFilesRestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
-RestReplicationHandler::RestReplicationHandler(GeneralRequest* request,
-                                               GeneralResponse* response)
+MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(
+    GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-RestReplicationHandler::~RestReplicationHandler() {}
+MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() {}
 
-RestStatus RestReplicationHandler::execute() {
+RestStatus MMFilesRestReplicationHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffixes = _request->suffixes();
@@ -320,7 +320,7 @@ BAD_CALL:
 /// @brief comparator to sort collections
 /// sort order is by collection type first (vertices before edges, this is
 /// because edges depend on vertices being there), then name
-bool RestReplicationHandler::sortCollections(
+bool MMFilesRestReplicationHandler::sortCollections(
     arangodb::LogicalCollection const* l,
     arangodb::LogicalCollection const* r) {
   if (l->type() != r->type()) {
@@ -333,7 +333,7 @@ bool RestReplicationHandler::sortCollections(
 }
 
 /// @brief filter a collection based on collection attributes
-bool RestReplicationHandler::filterCollection(
+bool MMFilesRestReplicationHandler::filterCollection(
     arangodb::LogicalCollection* collection, void* data) {
   bool includeSystem = *((bool*)data);
 
@@ -357,7 +357,7 @@ bool RestReplicationHandler::filterCollection(
 /// @brief creates an error if called on a coordinator server
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestReplicationHandler::isCoordinatorError() {
+bool MMFilesRestReplicationHandler::isCoordinatorError() {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
@@ -372,7 +372,8 @@ bool RestReplicationHandler::isCoordinatorError() {
 /// @brief insert the applier action into an action list
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
+void MMFilesRestReplicationHandler::insertClient(
+    TRI_voc_tick_t lastServedTick) {
   bool found;
   std::string const& value = _request->value("serverId", found);
 
@@ -389,7 +390,7 @@ void RestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
 /// @brief determine the chunk size
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t RestReplicationHandler::determineChunkSize() const {
+uint64_t MMFilesRestReplicationHandler::determineChunkSize() const {
   // determine chunk size
   uint64_t chunkSize = defaultChunkSize;
 
@@ -413,7 +414,7 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
 /// @brief was docuBlock JSF_get_api_replication_logger_return_state
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLoggerState() {
+void MMFilesRestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Object));  // Base
 
@@ -464,7 +465,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 /// @brief was docuBlock JSF_get_api_replication_logger_tick_ranges
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLoggerTickRanges() {
+void MMFilesRestReplicationHandler::handleCommandLoggerTickRanges() {
   auto const& ranges = MMFilesLogfileManager::instance()->ranges();
   VPackBuilder b;
   b.add(VPackValue(VPackValueType::Array));
@@ -486,7 +487,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 /// @brief was docuBlock JSF_get_api_replication_logger_first_tick
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLoggerFirstTick() {
+void MMFilesRestReplicationHandler::handleCommandLoggerFirstTick() {
   auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
   VPackBuilder b;
@@ -517,7 +518,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 /// @brief was docuBlock JSF_delete_batch_replication
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandBatch() {
+void MMFilesRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffixes = _request->suffixes();
@@ -609,7 +610,7 @@ void RestReplicationHandler::handleCommandBatch() {
 /// @brief add or remove a WAL logfile barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandBarrier() {
+void MMFilesRestReplicationHandler::handleCommandBarrier() {
   // extract the request type
   auto const type = _request->requestType();
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -730,7 +731,7 @@ void RestReplicationHandler::handleCommandBarrier() {
 /// @brief forward a command in the coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleTrampolineCoordinator() {
+void MMFilesRestReplicationHandler::handleTrampolineCoordinator() {
   bool useVpp = false;
   if (_request->transportType() == Endpoint::TransportType::VPP) {
     useVpp = true;
@@ -852,7 +853,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 /// @brief was docuBlock JSF_get_api_replication_logger_returns
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLoggerFollow() {
+void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   bool useVpp = false;
   if (_request->transportType() == Endpoint::TransportType::VPP) {
     useVpp = true;
@@ -1038,7 +1039,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 /// be called by client drivers directly
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
+void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // determine start and end tick
   MMFilesLogfileManagerState const state =
       MMFilesLogfileManager::instance()->state();
@@ -1114,7 +1115,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 /// @brief was docuBlock JSF_put_api_replication_inventory
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandInventory() {
+void MMFilesRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
   // include system collections?
@@ -1130,7 +1131,7 @@ void RestReplicationHandler::handleCommandInventory() {
   std::shared_ptr<VPackBuilder> collectionsBuilder;
   collectionsBuilder =
       _vocbase->inventory(tick, &filterCollection, (void*)&includeSystem, true,
-                          RestReplicationHandler::sortCollections);
+                          MMFilesRestReplicationHandler::sortCollections);
   VPackSlice const collections = collectionsBuilder->slice();
 
   TRI_ASSERT(collections.isArray());
@@ -1166,7 +1167,7 @@ void RestReplicationHandler::handleCommandInventory() {
 /// @brief was docuBlock JSF_get_api_replication_cluster_inventory
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandClusterInventory() {
+void MMFilesRestReplicationHandler::handleCommandClusterInventory() {
   std::string const& dbName = _request->databaseName();
   bool found;
   bool includeSystem = true;
@@ -1201,9 +1202,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 /// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::createCollection(VPackSlice slice,
-                                             arangodb::LogicalCollection** dst,
-                                             bool reuseId) {
+int MMFilesRestReplicationHandler::createCollection(
+    VPackSlice slice, arangodb::LogicalCollection** dst, bool reuseId) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
@@ -1292,12 +1292,12 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandRestoreCollection() {
+void MMFilesRestReplicationHandler::handleCommandRestoreCollection() {
   std::shared_ptr<VPackBuilder> parsedRequest;
 
   try {
     parsedRequest = _request->toVelocyPackBuilderPtr();
-  } catch(arangodb::velocypack::Exception const& e) {
+  } catch (arangodb::velocypack::Exception const& e) {
     std::string errorMsg = "invalid JSON: ";
     errorMsg += e.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -1374,7 +1374,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandRestoreIndexes() {
+void MMFilesRestReplicationHandler::handleCommandRestoreIndexes() {
   std::shared_ptr<VPackBuilder> parsedRequest;
 
   try {
@@ -1417,7 +1417,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreCollection(
+int MMFilesRestReplicationHandler::processRestoreCollection(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
     std::string& errorMsg) {
   if (!collection.isObject()) {
@@ -1540,7 +1540,7 @@ int RestReplicationHandler::processRestoreCollection(
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreCollectionCoordinator(
+int MMFilesRestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
     uint64_t numberOfShards, std::string& errorMsg,
     uint64_t replicationFactor) {
@@ -1688,9 +1688,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
-                                                  bool force,
-                                                  std::string& errorMsg) {
+int MMFilesRestReplicationHandler::processRestoreIndexes(
+    VPackSlice const& collection, bool force, std::string& errorMsg) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -1798,7 +1797,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 /// @brief restores the indexes of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreIndexesCoordinator(
+int MMFilesRestReplicationHandler::processRestoreIndexesCoordinator(
     VPackSlice const& collection, bool force, std::string& errorMsg) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
@@ -1883,7 +1882,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 /// @brief apply the data from a collection dump or the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::applyCollectionDumpMarker(
+int MMFilesRestReplicationHandler::applyCollectionDumpMarker(
     transaction::Methods& trx, CollectionNameResolver const& resolver,
     std::string const& collectionName, TRI_replication_operation_e type,
     VPackSlice const& old, VPackSlice const& slice, std::string& errorMsg) {
@@ -2034,7 +2033,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreDataBatch(
+int MMFilesRestReplicationHandler::processRestoreDataBatch(
     transaction::Methods& trx, std::string const& collectionName,
     bool useRevision, bool force, std::string& errorMsg) {
   std::string const invalidMsg =
@@ -2245,9 +2244,9 @@ int RestReplicationHandler::processRestoreDataBatch(
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreData(std::string const& colName,
-                                               bool useRevision, bool force,
-                                               std::string& errorMsg) {
+int MMFilesRestReplicationHandler::processRestoreData(
+    std::string const& colName, bool useRevision, bool force,
+    std::string& errorMsg) {
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(_vocbase), colName,
       AccessMode::Type::WRITE);
@@ -2271,7 +2270,7 @@ int RestReplicationHandler::processRestoreData(std::string const& colName,
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandRestoreData() {
+void MMFilesRestReplicationHandler::handleCommandRestoreData() {
   std::string const& colName = _request->value("collection");
 
   if (colName.empty()) {
@@ -2318,7 +2317,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
 /// @brief produce list of keys for a specific collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandCreateKeys() {
+void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& collection = _request->value("collection");
 
   if (collection.empty()) {
@@ -2385,7 +2384,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
 /// @brief returns all key ranges
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandGetKeys() {
+void MMFilesRestReplicationHandler::handleCommandGetKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 2) {
@@ -2463,7 +2462,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
 /// @brief returns date for a key range
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandFetchKeys() {
+void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 2) {
@@ -2561,7 +2560,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   }
 }
 
-void RestReplicationHandler::handleCommandRemoveKeys() {
+void MMFilesRestReplicationHandler::handleCommandRemoveKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 2) {
@@ -2599,7 +2598,7 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 /// @brief was docuBlock JSF_get_api_replication_dump
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandDump() {
+void MMFilesRestReplicationHandler::handleCommandDump() {
   std::string const& collection = _request->value("collection");
 
   if (collection.empty()) {
@@ -2756,7 +2755,7 @@ void RestReplicationHandler::handleCommandDump() {
 /// @brief was docuBlock JSF_put_api_replication_makeSlave
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandMakeSlave() {
+void MMFilesRestReplicationHandler::handleCommandMakeSlave() {
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
   if (!success) {
@@ -2932,7 +2931,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 /// @brief was docuBlock JSF_put_api_replication_synchronize
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandSync() {
+void MMFilesRestReplicationHandler::handleCommandSync() {
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
   if (!success) {
@@ -3045,7 +3044,7 @@ void RestReplicationHandler::handleCommandSync() {
 /// @brief was docuBlock JSF_put_api_replication_serverID
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandServerId() {
+void MMFilesRestReplicationHandler::handleCommandServerId() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   std::string const serverId = StringUtils::itoa(ServerIdFeature::getId());
@@ -3058,7 +3057,7 @@ void RestReplicationHandler::handleCommandServerId() {
 /// @brief was docuBlock JSF_put_api_replication_applier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierGetConfig() {
+void MMFilesRestReplicationHandler::handleCommandApplierGetConfig() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   TRI_replication_applier_configuration_t config;
@@ -3075,7 +3074,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 /// @brief was docuBlock JSF_put_api_replication_applier_adjust
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierSetConfig() {
+void MMFilesRestReplicationHandler::handleCommandApplierSetConfig() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   TRI_replication_applier_configuration_t config;
@@ -3197,7 +3196,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 /// @brief was docuBlock JSF_put_api_replication_applier_start
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierStart() {
+void MMFilesRestReplicationHandler::handleCommandApplierStart() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   bool found;
@@ -3234,7 +3233,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
 /// @brief was docuBlock JSF_put_api_replication_applier_stop
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierStop() {
+void MMFilesRestReplicationHandler::handleCommandApplierStop() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   int res = _vocbase->replicationApplier()->stop(true);
@@ -3250,7 +3249,7 @@ void RestReplicationHandler::handleCommandApplierStop() {
 /// @brief was docuBlock JSF_get_api_replication_applier_state
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierGetState() {
+void MMFilesRestReplicationHandler::handleCommandApplierGetState() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   std::shared_ptr<VPackBuilder> result =
@@ -3262,7 +3261,7 @@ void RestReplicationHandler::handleCommandApplierGetState() {
 /// @brief delete the state of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplierDeleteState() {
+void MMFilesRestReplicationHandler::handleCommandApplierDeleteState() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   int res = _vocbase->replicationApplier()->forget();
@@ -3278,7 +3277,7 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 /// @brief add a follower of a shard to the list of followers
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandAddFollower() {
+void MMFilesRestReplicationHandler::handleCommandAddFollower() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
   if (!success) {
@@ -3324,7 +3323,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 /// @brief remove a follower of a shard from the list of followers
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandRemoveFollower() {
+void MMFilesRestReplicationHandler::handleCommandRemoveFollower() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
   if (!success) {
@@ -3369,7 +3368,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
 /// @brief hold a read lock on a collection to stop writes temporarily
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandHoldReadLockCollection() {
+void MMFilesRestReplicationHandler::handleCommandHoldReadLockCollection() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
   if (!success) {
@@ -3487,7 +3486,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 /// @brief check the holding of a read lock on a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
+void MMFilesRestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
   if (!success) {
@@ -3537,7 +3536,8 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
 /// @brief cancel the holding of a read lock on a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
+void MMFilesRestReplicationHandler::
+    handleCommandCancelHoldReadLockCollection() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
   if (!success) {
@@ -3588,7 +3588,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
 /// @brief get ID for a read lock job
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
+void MMFilesRestReplicationHandler::handleCommandGetIdForReadLockCollection() {
   std::string id = std::to_string(TRI_NewTickServer());
 
   VPackBuilder b;
@@ -3604,11 +3604,12 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 /// @brief condition locker to wake up holdReadLockCollection jobs
 //////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::ConditionVariable RestReplicationHandler::_condVar;
+arangodb::basics::ConditionVariable MMFilesRestReplicationHandler::_condVar;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief global table of flags to cancel holdReadLockCollection jobs, if
 /// the flag is set of the ID of a job, the job is cancelled
 //////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, bool> RestReplicationHandler::_holdReadLockJobs;
+std::unordered_map<std::string, bool>
+    MMFilesRestReplicationHandler::_holdReadLockJobs;
