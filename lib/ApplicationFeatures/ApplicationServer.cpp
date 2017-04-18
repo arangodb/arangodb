@@ -468,7 +468,7 @@ void ApplicationServer::disableDependentFeatures() {
       if (f == nullptr) {
         LOG_TOPIC(TRACE, Logger::STARTUP) << "turning off feature '" << feature->name() 
                                           << "' because it is enabled only in conjunction with non-existing feature '" 
-                                          << f->name() << "'";
+                                          << other << "'";
         feature->disable();
         break;
       } else if (!f->isEnabled()) {
