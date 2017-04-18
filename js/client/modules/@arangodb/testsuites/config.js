@@ -79,7 +79,6 @@ function config (options) {
     'arangodump',
     'arangoimp',
     'arangorestore',
-    'arangoexport',
     'arangosh',
     'arango-dfdb',
     'foxx-manager'
