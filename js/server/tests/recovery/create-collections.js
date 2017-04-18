@@ -36,59 +36,52 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  {
-    db._drop('UnitTestsRecovery1');
-    var c = db._create('UnitTestsRecovery1', {
-      waitForSync: true,
-      journalSize: 8 * 1024 * 1024,
-      doCompact: false
-    });
-    c.save({ value1: 1, value2: [ 'the',
-        'quick',
-        'brown',
-        'foxx',
-        'jumped',
-        'over',
-        'the',
-        'lazy',
-        'dog',
-      'xxxxxxxxxxx' ] });
-    c.ensureHashIndex('value1');
-    c.ensureSkiplist('value2');
-  }
+  db._drop('UnitTestsRecovery1');
+  var c = db._create('UnitTestsRecovery1', {
+    waitForSync: true,
+    journalSize: 8 * 1024 * 1024,
+    doCompact: false
+  });
+  c.save({ value1: 1, value2: [ 'the',
+      'quick',
+      'brown',
+      'foxx',
+      'jumped',
+      'over',
+      'the',
+      'lazy',
+      'dog',
+    'xxxxxxxxxxx' ] });
+  c.ensureHashIndex('value1');
+  c.ensureSkiplist('value2');
 
-  {
-    db._drop('UnitTestsRecovery2');
-    var c = db._create('UnitTestsRecovery2', {
-      waitForSync: false,
-      journalSize: 16 * 1024 * 1024,
-      doCompact: true,
-      isVolatile: true
-    });
-    c.save({ value1: { 'some': 'rubbish' } });
-    c.ensureSkiplist('value1');
-  }
+  db._drop('UnitTestsRecovery2');
+  c = db._create('UnitTestsRecovery2', {
+    waitForSync: false,
+    journalSize: 16 * 1024 * 1024,
+    doCompact: true,
+    isVolatile: true
+  });
+  c.save({ value1: { 'some': 'rubbish' } });
+  c.ensureSkiplist('value1');
 
-  {
-    db._drop('UnitTestsRecovery3');
-    var c = db._createEdgeCollection('UnitTestsRecovery3', {
-      waitForSync: false,
-      journalSize: 32 * 1024 * 1024,
-      doCompact: true
-    });
+  db._drop('UnitTestsRecovery3');
+  c = db._createEdgeCollection('UnitTestsRecovery3', {
+    waitForSync: false,
+    journalSize: 32 * 1024 * 1024,
+    doCompact: true
+  });
 
-    c.save('UnitTestsRecovery1/foo', 'UnitTestsRecovery2/bar', { value1: { 'some': 'rubbish' } });
-    c.ensureUniqueSkiplist('value1');
-  }
+  c.save('UnitTestsRecovery1/foo', 'UnitTestsRecovery2/bar', { value1: { 'some': 'rubbish' } });
+  c.ensureUniqueSkiplist('value1');
 
-  {
-    db._drop('_UnitTestsRecovery4');
-    var c = db._create('_UnitTestsRecovery4', { isSystem: true });
+  db._drop('_UnitTestsRecovery4');
+  c = db._create('_UnitTestsRecovery4', { isSystem: true });
 
-    c.save({ value42: 42 });
-    c.ensureUniqueConstraint('value42');
-    c.save({ _key: 'crashme' }, true);
-  }
+  c.save({ value42: 42 });
+  c.ensureUniqueConstraint('value42');
+  c.save({ _key: 'crashme' }, true);
+  
   internal.debugSegfault('crashing server');
 }
 
@@ -116,7 +109,7 @@ function recoverySuite () {
       prop = c.properties();
       assertTrue(prop.waitForSync);
       assertEqual(2, c.type());
-      if (db._engine().name == "mmfiles") {
+      if (db._engine().name === "mmfiles") {
         assertEqual(8 * 1024 * 1024, prop.journalSize);
         assertFalse(prop.doCompact);
         assertFalse(prop.isVolatile);
@@ -127,11 +120,11 @@ function recoverySuite () {
 
       c = db._collection('UnitTestsRecovery2');
       // isVolatile has no effect on rocksdb
-      assertEqual(db._engine().name  == "mmfiles" ? 0 : 1, c.count());
+      assertEqual(db._engine().name  === "mmfiles" ? 0 : 1, c.count());
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(2, c.type());
-      if (db._engine().name  == "mmfiles") {
+      if (db._engine().name  === "mmfiles") {
         assertEqual(16 * 1024 * 1024, prop.journalSize);
         assertTrue(prop.doCompact);
         assertTrue(prop.isVolatile);
@@ -148,7 +141,7 @@ function recoverySuite () {
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(3, c.type());
-      if (db._engine().name == "mmfiles") {
+      if (db._engine().name === "mmfiles") {
         assertEqual(32 * 1024 * 1024, prop.journalSize);
         assertTrue(prop.doCompact);
         assertFalse(prop.isVolatile);
