@@ -1295,6 +1295,12 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 
   try {
     parsedRequest = _request->toVelocyPackBuilderPtr();
+  } catch(arangodb::velocypack::Exception const& e) {
+    std::string errorMsg = "invalid JSON: ";
+    errorMsg += e.what();
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  errorMsg);
+    return;
   } catch (...) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
