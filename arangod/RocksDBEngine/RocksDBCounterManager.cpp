@@ -73,6 +73,8 @@ RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db, double interval)
   }
 }
 
+RocksDBCounterManager::~RocksDBCounterManager() { shutdown(); }
+
 void RocksDBCounterManager::beginShutdown() {
   Thread::beginShutdown();
 
