@@ -53,6 +53,9 @@
 
   <div id="graphSettingsContent" style="display: none">
   </div>
+  
+  <div id="filterSelectDiv" style="display:none">
+  </div>
 
   <div id="offlinePlaceholder" style="display:none">
     <div class="offline-div">

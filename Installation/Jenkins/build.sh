@@ -6,9 +6,11 @@ if python -c "import sys ; sys.exit(sys.platform != 'cygwin')"; then
     exit 1
 fi
 
+OSNAME=linux
 isCygwin=0
 if test "`uname -o||true`" == "Cygwin"; then
     isCygwin=1
+    OSNAME=windows
 fi
 
 SED=sed
@@ -16,6 +18,7 @@ isMac=0
 if test "`uname`" == "Darwin"; then
     isMac=1
     SED=gsed
+    OSNAME=darwin
 fi
 
 #          debian          mac
@@ -370,6 +373,10 @@ while [ $# -gt 0 ];  do
             CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DOPENSSL_USE_STATIC_LIBS=TRUE"
             ;;
 
+        --downloadStarter)
+            shift
+            DOWNLOAD_STARTER=1
+            ;;
 
         --enterprise)
             shift
@@ -602,7 +609,24 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
     )
 fi
 
-
+if test ${DOWNLOAD_STARTER} == 1; then
+    # we utilize https://developer.github.com/v3/repos/ to get the newest release:
+    STARTER_REV=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases |grep tag_name |head -n 1 |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    STARTER_URL=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases/tags/${STARTER_REV} |grep browser_download_url |grep "${OSNAME}" |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    if test -n "${STARTER_URL}"; then
+        curl -LO "${STARTER_URL}"
+        FN=`echo ${STARTER_URL} |${SED} "s;.*/;;"`
+        if test "${isCygwin}" == 1; then
+            TN=arangodb.exe
+        else
+            TN=arangodb
+        fi
+        mkdir -p ${BUILD_DIR}
+        mv ${FN} ${BUILD_DIR}/${TN}
+        chmod a+x ${BUILD_DIR}/${TN}
+    fi
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DTHIRDPARTY_BIN=${BUILD_DIR}/${TN} "
+fi
 
 test -d ${BUILD_DIR} || mkdir ${BUILD_DIR}
 cd ${BUILD_DIR}

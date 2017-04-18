@@ -19,7 +19,7 @@
             "frontend/js/lib/bootstrap-min.js",
             "frontend/js/lib/d3.min.js",
             "frontend/js/lib/nv.d3.min.js",
-            "frontend/js/lib/dygraph-combined.min.js"
+            "frontend/js/lib/dygraph-combined.min.js",
           ],
           css: [
             "frontend/css/swagger/hightlight.default.css",
@@ -34,6 +34,7 @@
             "frontend/css/highlightjs.css",
             "frontend/css/jsoneditor.css",
             "frontend/css/grids-responsive-min.css",
+            "frontend/css/tippy.css",
             "frontend/ttf/arangofont/style.css"
           ]
         },
@@ -53,6 +54,8 @@
             "frontend/js/lib/select2.min.js",
             "frontend/js/lib/typeahead.bundle.min.js",
             "frontend/js/lib/numeral.min.js",
+            "frontend/js/lib/moment.min.js",
+            "frontend/js/lib/tippy.js",
             // START SIGMA LIBRARIES
             "frontend/js/lib/sigma.min.js",
             "frontend/js/lib/sigma.renderers.halo.js",

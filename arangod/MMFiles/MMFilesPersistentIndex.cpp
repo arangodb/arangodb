@@ -342,15 +342,12 @@ int MMFilesPersistentIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revi
         auto& bound = bounds[i];
         iterator->Seek(rocksdb::Slice(bound.first.c_str(), bound.first.size()));
 
-        while (iterator->Valid()) {
+        if (iterator->Valid()) {
           int res = comparator->Compare(iterator->key(), rocksdb::Slice(bound.second.c_str(), bound.second.size()));
 
-          if (res > 0) {
-            break;
+          if (res <= 0) {
+            uniqueConstraintViolated = true;
           }
-
-          uniqueConstraintViolated = true;
-          break;
         }
 
         delete iterator;
