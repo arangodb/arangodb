@@ -607,8 +607,8 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
             fi
         else
             git checkout master;
-            git pull --tags;
             git pull --all;
+            git fetch --tags;
             git checkout ${GITARGS};
         fi
         ${FINAL_PULL}
