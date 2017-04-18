@@ -1344,10 +1344,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
 
-        if (vocbase != nullptr) {
-          // ignore any potential error returned by this call
-          state->databaseFeature->dropDatabase(databaseId, true, false);
-        }
+        // ignore any potential error returned by this call
+        state->databaseFeature->dropDatabase(databaseId, true, state->isDropped(databaseId));
 
         MMFilesPersistentIndexFeature::dropDatabase(databaseId);
         break;
