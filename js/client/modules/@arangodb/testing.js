@@ -484,6 +484,7 @@ function unitTest (cases, options) {
 
     let status = true;
     let result = testFuncs[currentTest](options);
+    results[currentTest] = result;
     for (let i in result) {
       if (result.hasOwnProperty(i)) {
         if (result[i].status !== true) {
@@ -512,13 +513,14 @@ function unitTest (cases, options) {
     print("not cleaning up since we didn't start the server ourselves\n");
   }
 
-  try {
-    yaml.safeDump(JSON.parse(JSON.stringify(results)));
-  } catch (err) {
-    print(RED + 'cannot dump results: ' + String(err) + RESET);
-    print(RED + require('internal').inspect(results) + RESET);
+  if (options.extremeVerbosity === true) {
+    try {
+      print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
+    } catch (err) {
+      print(RED + 'cannot dump results: ' + String(err) + RESET);
+      print(RED + require('internal').inspect(results) + RESET);
+    }
   }
-
   if (jsonReply === true) {
     return results;
   } else {
