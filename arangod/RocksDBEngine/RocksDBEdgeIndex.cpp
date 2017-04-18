@@ -102,20 +102,23 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     return false;
   }
 
-  // aquire rocksdb collection
+  // acquire rocksdb collection
   auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
   while (limit > 0) {
     while (_iterator->Valid() &&
            (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
       StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
 
-      // aquire the document token through the primary index
+      // acquire the document token through the primary index
       RocksDBToken token;
       Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
       _iterator->Next();
       if (res.ok()) {
         cb(token);
         --limit;
+        if (limit == 0) {
+          return true;
+        }
       }  // TODO do we need to handle failed lookups here?
     }
     if (limit > 0) {
@@ -211,7 +214,7 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
                                               primaryKey.copyString());
 
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 
@@ -233,7 +236,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
                                               primaryKey.copyString());
 
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
@@ -248,7 +251,7 @@ void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     arangodb::basics::LocalTaskQueue* queue) {
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 

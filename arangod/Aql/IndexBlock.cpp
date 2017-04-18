@@ -431,12 +431,14 @@ bool IndexBlock::readIndex(
     // All indexes exhausted
     return false;
   }
-
+    
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
       startNextCursor();
       continue;
     }
+
+    TRI_ASSERT(atMost >= _returned);
 
     if (_returned == atMost) {
       // We have returned enough, do not check if we have more
@@ -447,6 +449,8 @@ bool IndexBlock::readIndex(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
+    TRI_ASSERT(atMost >= _returned);
+  
     if (_cursor->getMore(callback, atMost - _returned)) {
       // We have returned enough.
       // And this index could return more.
@@ -585,6 +589,8 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
     curRegs = cur->getNrRegs();
+   
+    TRI_ASSERT(atMost >= found);
 
     res.reset(requestBlock(
         atMost - found,
@@ -613,6 +619,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     // Update statistics
     _engine->_stats.scannedIndex += _returned;
     found += _returned;
+    _returned = 0;
   } while (found < atMost);
 
   TRI_ASSERT(found == _collector.totalSize());
