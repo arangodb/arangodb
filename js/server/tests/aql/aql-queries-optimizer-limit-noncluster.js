@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
+var db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -472,7 +473,11 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      if (db._engine().name === "rocksdb") {
+        assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      } else {
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -490,7 +495,11 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         assertEqual(docCount - 11 - i, actual[i].value);
       }
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "LimitNode", "ReturnNode" ], explain(query));
+      if (db._engine().name === "rocksdb") {
+        assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "LimitNode", "ReturnNode" ], explain(query));
+      } else {
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "LimitNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -508,7 +517,13 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      if (db._engine().name === "rocksdb") {
+        assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode",
+                     "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      } else {
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode",
+                     "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

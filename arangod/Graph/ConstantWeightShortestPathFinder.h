@@ -58,7 +58,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   };
 
  public:
-  ConstantWeightShortestPathFinder(ShortestPathOptions* options);
+  explicit ConstantWeightShortestPathFinder(ShortestPathOptions* options);
 
   ~ConstantWeightShortestPathFinder();
 

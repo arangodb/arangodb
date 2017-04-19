@@ -32,6 +32,7 @@ var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+var db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -117,14 +118,16 @@ function optimizerRuleUseIndexRangeTester () {
 
     testRuleNoEffect : function () {
       var queries = [ 
-        "FOR i IN UTUseIndexRangeNoInd FILTER i.a >= 2 RETURN i",
-        "FOR i IN UTUseIndexRangeNoInd FILTER i.a == 2 RETURN i",
-        "FOR i IN UTUseIndexRangeHashInd FILTER i.a >= 2 RETURN i"
+        ["FOR i IN UTUseIndexRangeNoInd FILTER i.a >= 2 RETURN i", true],
+        ["FOR i IN UTUseIndexRangeNoInd FILTER i.a == 2 RETURN i", true],
+        ["FOR i IN UTUseIndexRangeHashInd FILTER i.a >= 2 RETURN i", false]
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ], removeAlwaysOnClusterRules(result.plan.rules), query);
+        var result = AQL_EXPLAIN(query[0], { }, paramEnabled);
+        if (db._engine().name !== "rocksdb" || query[1]) {
+          assertEqual([ ], removeAlwaysOnClusterRules(result.plan.rules), query);
+        }
       });
     },
 

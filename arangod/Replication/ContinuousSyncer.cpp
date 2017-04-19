@@ -834,7 +834,10 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
   }
 
   else if (type == REPLICATION_COLLECTION_CREATE) {
-    return createCollection(slice.get("collection"), nullptr);
+    if (slice.get("collection").isObject()) {
+      return createCollection(slice.get("collection"), nullptr);
+    }
+    return createCollection(slice.get("data"), nullptr);
   }
 
   else if (type == REPLICATION_COLLECTION_DROP) {
@@ -938,9 +941,9 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
       }
 
       if (ignoreCount == 0) {
-        if (lineLength > 256) {
+        if (lineLength > 1024) {
           errorMsg +=
-              ", offending marker: " + std::string(lineStart, 256) + "...";
+              ", offending marker: " + std::string(lineStart, 1024) + "...";
         } else {
           errorMsg +=
               ", offending marker: " + std::string(lineStart, lineLength);
