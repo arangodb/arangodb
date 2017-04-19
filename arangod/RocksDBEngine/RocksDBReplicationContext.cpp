@@ -33,6 +33,70 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
 
+/// WAL parser, no locking required here, because we have been locked from the
+/// outside
+class WBReader : public rocksdb::WriteBatch::Handler {
+ public:
+  explicit WBReader(TRI_vocbase_t* vocbase, uint64_t from, size_t& limit,
+                    bool includeSystem, uint64_t& lastTick)
+      : _vocbase(vocbase),
+        _from(from),
+        _limit(limit),
+        _includeSystem(includeSystem),
+        _lastTick(lastTick) {}
+
+  bool shouldHandleKey(const rocksdb::Slice& key) {
+    if (RocksDBKey::type(key) == RocksDBEntryType::Document) {
+      uint64_t objectId = RocksDBKey::collectionId(key);
+      auto mapping = mapObjectToCollection(objectId);
+      if (mapping.first == _vocbase->id()) {
+        std::string const collectionName =
+            _vocbase->collectionName(mapping.second);
+
+        if (collectionName.size() == 0) {
+          return false;
+        }
+
+        if (!_includeSystem && collectionName[0] == '_') {
+          return false;
+        }
+
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void Put(const rocksdb::Slice& key,
+           const rocksdb::Slice& /*value*/) override {
+    if (shouldHandleKey(key)) {
+      // uint64_t objectId = RocksDBKey::collectionId(key);
+      // uint64_t revisionId = RocksDBKey::revisionId(key);
+    }
+  }
+
+  void Delete(const rocksdb::Slice& key) override {
+    if (shouldHandleKey(key)) {
+      // uint64_t objectId = RocksDBKey::collectionId(key);
+      // uint64_t revisionId = RocksDBKey::revisionId(key);
+    }
+  }
+
+  void SingleDelete(const rocksdb::Slice& key) override {
+    if (shouldHandleKey(key)) {
+      // uint64_t objectId = RocksDBKey::collectionId(key);
+      // uint64_t revisionId = RocksDBKey::revisionId(key);
+    }
+  }
+
+ private:
+  TRI_vocbase_t* _vocbase;
+  uint64_t _from;
+  size_t& _limit;
+  bool _includeSystem;
+  uint64_t& _lastTick;
+};
+
 RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber,
                                                    uint64_t maxTick)
     : Result(errorNumber), _maxTick(maxTick) {}
@@ -99,7 +163,7 @@ std::pair<RocksDBReplicationResult, bool> RocksDBReplicationContext::dump(
 // iterates over WAL starting at 'from' and returns up to 'limit' documents
 // from the corresponding database
 RocksDBReplicationResult RocksDBReplicationContext::tail(
-    TRI_vocbase_t* vocbase, uint64_t from, size_t limit,
+    TRI_vocbase_t* vocbase, uint64_t from, size_t limit, bool includeSystem,
     VPackBuilder& builder) {
   return {TRI_ERROR_NOT_YET_IMPLEMENTED, 0};
 }

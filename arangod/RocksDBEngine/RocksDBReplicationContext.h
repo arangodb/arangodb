@@ -45,7 +45,6 @@ class RocksDBReplicationResult : public Result {
   uint64_t _maxTick;
 };
 
-  
 /// ttl in seconds
 double RocksDBReplicationContextTTL = 30 * 60.0;
 
@@ -72,24 +71,25 @@ class RocksDBReplicationContext {
   // iterates over WAL starting at 'from' and returns up to 'limit' documents
   // from the corresponding database
   RocksDBReplicationResult tail(TRI_vocbase_t* vocbase, uint64_t from,
-                                size_t limit, VPackBuilder& builder);
-  
+                                size_t limit, bool includeSystem,
+                                VPackBuilder& builder);
+
   double expires() const { return _expires; }
-  
+
   bool isDeleted() const { return _isDeleted; }
-  
+
   void deleted() { _isDeleted = true; }
-  
+
   bool isUsed() const { return _isUsed; }
-  
+
   void use() {
     TRI_ASSERT(!_isDeleted);
     TRI_ASSERT(!_isUsed);
-    
+
     _isUsed = true;
     _expires = TRI_microtime() + RocksDBReplicationContextTTL;
   }
-  
+
   /// remove use flag
   void release() {
     TRI_ASSERT(_isUsed);
@@ -113,7 +113,7 @@ class RocksDBReplicationContext {
   LogicalCollection* _collection;
   std::unique_ptr<IndexIterator> _iter;
   ManagedDocumentResult _mdr;
-  
+
   double _expires;
   bool _isDeleted;
   bool _isUsed;

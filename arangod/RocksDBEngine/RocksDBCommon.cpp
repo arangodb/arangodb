@@ -161,6 +161,24 @@ arangodb::Result globalRocksDBRemove(rocksdb::Slice const& key,
   return convertStatus(status);
 };
 
+void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
+                          TRI_voc_cid_t cid) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
+  TRI_ASSERT(rocks->db() != nullptr);
+  return rocks->addCollectionMapping(objectId, did, cid);
+}
+
+std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
+    uint64_t objectId) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
+  TRI_ASSERT(rocks->db() != nullptr);
+  return rocks->mapObjectToCollection(objectId);
+}
+
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
                           RocksDBKeyBounds const& bounds) {
   const rocksdb::Comparator* cmp = db->GetOptions().comparator;
