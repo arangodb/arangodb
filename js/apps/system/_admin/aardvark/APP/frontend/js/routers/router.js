@@ -39,7 +39,7 @@
       'nodes': 'nodes',
       'shards': 'shards',
       'node/:name': 'node',
-      'logs': 'logs',
+      'logs': 'logger',
       'helpus': 'helpUs',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
@@ -55,6 +55,15 @@
       if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
         // dom graph cleanup
         d3.selectAll('svg > *').remove();
+      }
+
+      if (this.lastRoute === '#logger') {
+        if (this.loggerView.logLevelView) {
+          this.loggerView.logLevelView.remove();
+        }
+        if (this.loggerView.logTopicView) {
+          this.loggerView.logTopicView.remove();
+        }
       }
 
       this.lastRoute = window.location.hash;
@@ -442,71 +451,22 @@
       xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
-    logs: function (name, initialized) {
+    logger: function (name, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.logs.bind(this), name);
+        this.waitForInit(this.logger.bind(this), name);
         return;
       }
-      if (!this.logsView) {
-        var newLogsAllCollection = new window.ArangoLogs(
+      if (!this.loggerView) {
+        var co = new window.ArangoLogs(
           {upto: true, loglevel: 4}
         );
-        var newLogsDebugCollection = new window.ArangoLogs(
-          {loglevel: 4}
-        );
-        var newLogsInfoCollection = new window.ArangoLogs(
-          {loglevel: 3}
-        );
-        var newLogsWarningCollection = new window.ArangoLogs(
-          {loglevel: 2}
-        );
-        var newLogsErrorCollection = new window.ArangoLogs(
-          {loglevel: 1}
-        );
-        this.logsView = new window.LogsView({
-          logall: newLogsAllCollection,
-          logdebug: newLogsDebugCollection,
-          loginfo: newLogsInfoCollection,
-          logwarning: newLogsWarningCollection,
-          logerror: newLogsErrorCollection
+        this.loggerView = new window.LoggerView({
+          collection: co
         });
       }
-      this.logsView.render();
+      this.loggerView.render();
     },
-
-    /*
-    nLogs: function (nodename, initialized) {
-      this.checkUser()
-      if (!initialized) {
-        this.waitForInit(this.nLogs.bind(this), nodename)
-        return
-      }
-      var newLogsAllCollection = new window.ArangoLogs(
-        {upto: true, loglevel: 4}
-      ),
-      newLogsDebugCollection = new window.ArangoLogs(
-        {loglevel: 4}
-      ),
-      newLogsInfoCollection = new window.ArangoLogs(
-        {loglevel: 3}
-      ),
-      newLogsWarningCollection = new window.ArangoLogs(
-        {loglevel: 2}
-      ),
-      newLogsErrorCollection = new window.ArangoLogs(
-        {loglevel: 1}
-      )
-      this.nLogsView = new window.LogsView({
-        logall: newLogsAllCollection,
-        logdebug: newLogsDebugCollection,
-        loginfo: newLogsInfoCollection,
-        logwarning: newLogsWarningCollection,
-        logerror: newLogsErrorCollection
-      })
-      this.nLogsView.render()
-    },
-    */
 
     applicationDetail: function (mount, initialized) {
       this.checkUser();

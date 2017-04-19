@@ -43,6 +43,8 @@ struct RocksDBToken;
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
   friend class RocksDBVPackIndex;
+  
+  constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
   static inline RocksDBCollection* toRocksDBCollection(
@@ -179,7 +181,11 @@ class RocksDBCollection final : public PhysicalCollection {
 
   Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
                              RocksDBToken& token);
-
+  
+  int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
+  
+  int endWrite(bool useDeadlockDetector);
+  
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(
@@ -220,6 +226,8 @@ class RocksDBCollection final : public PhysicalCollection {
   uint64_t const _objectId;  // rocksdb-specific object id for collection
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
+
+  basics::ReadWriteLock _exclusiveLock;
 };
 }
 

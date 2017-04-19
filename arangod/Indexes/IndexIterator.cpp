@@ -97,6 +97,8 @@ bool MultiIndexIterator::next(TokenCallback const& callback, size_t limit) {
       if (_currentIdx >= _iterators.size()) {
         _current = nullptr;
         return false;
+      } else {
+        _current = _iterators.at(_currentIdx);
       }
     }
   }

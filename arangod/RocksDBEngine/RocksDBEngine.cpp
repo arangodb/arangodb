@@ -95,16 +95,27 @@ void RocksDBEngine::collectOptions(
   // control transaction size for RocksDB engine
   _maxTransactionSize =
       std::numeric_limits<uint64_t>::max();  // set sensible default value here
-  options->addOption("--rocksdb.max-transaction-size", "transaction size limit",
+  options->addOption("--rocksdb.max-transaction-size",
+                     "transaction size limit (in bytes)",
                      new UInt64Parameter(&_maxTransactionSize));
 
   // control intermediate transactions in RocksDB
-  _intermediateTransactionSize =
-      (_maxTransactionSize / 5) *
-      4;  // transaction size that will trigger an intermediate commit
-  _intermediateTransactionNumber =
-      100 * 1000;  // number operation after that a commit will be tried
+  _intermediateTransactionSize = _maxTransactionSize * 0.8;
+  options->addOption(
+      "--rocksdb.intermediate-transaction-count",
+      "an intermediate commit will be triend if this count is reached",
+      new UInt64Parameter(&_intermediateTransactionSize));
+
+  options->addOption(
+      "--rocksdb.intermediate-transaction-count",
+      "an intermediate commit will be triend if this count is reached",
+      new UInt64Parameter(&_intermediateTransactionCount));
+  _intermediateTransactionCount = 100 * 1000;
+
   _intermediateTransactionEnabled = false;
+  options->addOption("--rocksdb.intermediate-transaction",
+                     "enable intermediate transactions",
+                     new BooleanParameter(&_intermediateTransactionEnabled));
 }
 
 // validate the storage engine's specific options
@@ -129,9 +140,9 @@ void RocksDBEngine::start() {
   }
 
   // set the database sub-directory for RocksDB
-  auto database =
+  auto databasePathFeature =
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _path = database->subdirectoryName("engine-rocksdb");
+  _path = databasePathFeature->subdirectoryName("engine-rocksdb");
 
   LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "initializing rocksdb, path: "
                                               << _path;
@@ -197,7 +208,7 @@ TransactionState* RocksDBEngine::createTransactionState(
     TRI_vocbase_t* vocbase) {
   return new RocksDBTransactionState(
       vocbase, _maxTransactionSize, _intermediateTransactionEnabled,
-      _intermediateTransactionSize, _intermediateTransactionNumber);
+      _intermediateTransactionSize, _intermediateTransactionCount);
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
@@ -330,8 +341,8 @@ int RocksDBEngine::getCollectionsAndIndexes(
 
     auto slice = VPackSlice(iter->value().data());
 
-    LOG_TOPIC(TRACE, Logger::FIXME) << "got collection slice: "
-                                    << slice.toJson();
+    LOG_TOPIC(ERR, Logger::DEVEL) << "FOUND ROCKS COLLECTION: "
+                                  << slice.toJson();
 
     if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted",
                                                              false)) {
@@ -453,6 +464,10 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   auto value = RocksDBValue::Collection(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
+  LOG_TOPIC(ERR, Logger::DEVEL)
+      << "PERSISTING ROCKS COLLECTION: " << slice.get("name").copyString()
+      << " (" << slice.toJson() << ")";
+
   rocksdb::Status res = _db->Put(options, key.string(), value.string());
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
@@ -497,8 +512,9 @@ void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
 std::string RocksDBEngine::createCollection(
     TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
     arangodb::LogicalCollection const* parameters) {
-  VPackBuilder builder =
-      parameters->toVelocyPackIgnore({"path", "statusString"}, true);
+  VPackBuilder builder = parameters->toVelocyPackIgnore(
+      {"path", "statusString"}, /*translate cid*/ true,
+      /*for persistence*/ true);
   int res = writeCreateCollectionMarker(vocbase->id(), id, builder.slice());
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -518,7 +534,7 @@ arangodb::Result RocksDBEngine::persistCollection(
     return result;
   }
   VPackBuilder builder =
-      collection->toVelocyPackIgnore({"path", "statusString"}, true);
+      collection->toVelocyPackIgnore({"path", "statusString"}, true, true);
   VPackSlice const slice = builder.slice();
 
   auto cid = collection->cid();
@@ -598,7 +614,7 @@ arangodb::Result RocksDBEngine::renameCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
     std::string const& oldName) {
   VPackBuilder builder =
-      collection->toVelocyPackIgnore({"path", "statusString"}, true);
+      collection->toVelocyPackIgnore({"path", "statusString"}, true, true);
   int res = writeCreateCollectionMarker(vocbase->id(), collection->cid(),
                                         builder.slice());
   return arangodb::Result(res);
@@ -619,6 +635,7 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
     THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
   */
+  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,

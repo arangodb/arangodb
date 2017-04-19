@@ -264,12 +264,14 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
         enhanced.add("objectId",
                      VPackValue(std::to_string(TRI_NewTickServer())));
       }
-    } else {
+    }
+    // breaks lookupIndex()
+    /*else {
       if (!definition.hasKey("objectId")) {
         // objectId missing, but must be present
         return TRI_ERROR_INTERNAL;
       }
-    }
+    }*/
 
     enhanced.add("type", VPackValue(Index::oldtypeName(type)));
 

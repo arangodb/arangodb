@@ -101,7 +101,9 @@ function transactionRevisionsSuite () {
       } catch (err) {
       }
 
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(1, c.count());
       assertEqual(1, c.toArray().length);
       assertEqual(1, c.document("test").value);
@@ -117,7 +119,9 @@ function transactionRevisionsSuite () {
       } catch (err) {
       }
 
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(1, c.count());
       assertEqual(1, c.toArray().length);
       assertEqual(1, c.document("test").value);
@@ -138,7 +142,9 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(1, c.document("test").value);
     },
     
@@ -157,7 +163,9 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(1, c.document("test").value);
     },
  
@@ -172,7 +180,9 @@ function transactionRevisionsSuite () {
       });
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(2, c.document("test").value);
     },
     
@@ -181,7 +191,9 @@ function transactionRevisionsSuite () {
       c.update("test", { _key: "test", _rev: doc._rev, value: 2 }, { isRestore: true }); 
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(2, c.document("test").value);
     },
 
@@ -195,7 +207,9 @@ function transactionRevisionsSuite () {
       });
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(2, c.document("test").value);
     },
 
@@ -214,7 +228,9 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(1, c.document("test").value);
     },
     
@@ -233,7 +249,9 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(1, c.document("test").value);
     },
 
@@ -253,7 +271,9 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(1, c.document("test").value);
     },
     
@@ -268,7 +288,9 @@ function transactionRevisionsSuite () {
       });
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(2, c.document("test").value);
     },
 
@@ -288,7 +310,9 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      assertEqual(1, c.figures().revisions.count);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1, c.figures().revisions.count);
+      }
       assertEqual(1, c.document("test").value);
     }
   
@@ -1332,6 +1356,10 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateFulltextIndex : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
+      
       c1 = db._create(cn1);
 
       var obj = {
@@ -1357,6 +1385,10 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateGeoIndex : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
+      
       c1 = db._create(cn1);
 
       var obj = {
@@ -1382,6 +1414,10 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateGeoConstraint : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
+      
       c1 = db._create(cn1);
 
       var obj = {
@@ -1939,6 +1975,10 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFulltext : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
+      
       c1 = db._create(cn1);
       var idx = c1.ensureFulltextIndex("text");
 

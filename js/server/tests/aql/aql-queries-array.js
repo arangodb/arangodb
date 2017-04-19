@@ -443,7 +443,7 @@ function arrayIndexNonArraySuite () {
     var allIndexes = col.getIndexes(true);
     assertEqual(allIndexes.length, 2, "We have more than one index!");
     var idx = allIndexes[1];
-    if (! isCluster) {
+    if (! isCluster && db._engine().name === "mmfiles") {
       switch (idx.type) {
         case "hash":
           assertEqual(idx.figures.totalUsed, count);

@@ -171,7 +171,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // so that subsequent database creation requests will not fail.
   // the WAL entry for the database creation will be written *after* the call
   // to "createDatabase" returns
-  //no way to aquire id within this function?!
+  // no way to acquire id within this function?!
   virtual Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) = 0;
   Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args ){
     int status;

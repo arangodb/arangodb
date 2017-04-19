@@ -129,10 +129,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksWriteOptions, rocksdb::TransactionOptions()));
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
-
-    /*LOG_TOPIC(ERR, Logger::FIXME)
-        << "#" << _id << " BEGIN (read-only: " << isReadOnlyTransaction()
-        << ")";*/
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -285,7 +281,7 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   uint64_t newSize = _transactionSize + operationSize + keySize;
   if (_maxTransactionSize < newSize) {
     // we hit the transaction size limit
-    std::string message = "Maximal transaction size limit of " + std::to_string(_maxTransactionSize) + " Bytes reached!";
+    std::string message = "maximal transaction size limit of " + std::to_string(_maxTransactionSize) + " bytes reached!";
     res.reset(TRI_ERROR_RESOURCE_LIMIT, message);
     return res;
   }
@@ -294,7 +290,7 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
       static_cast<RocksDBTransactionCollection*>(findCollection(cid));
 
   if (collection == nullptr) {
-    std::string message = "Collection (" + collection->collectionName() + ") not found in transaction state";
+    std::string message = "collection '" + collection->collectionName() + "' not found in transaction state";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
@@ -302,7 +298,6 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   collection->addOperation(operationType, operationSize, revisionId);
 
   switch (operationType) {
-    case TRI_VOC_NOOP_OPERATION_UPDATE_SIZE:
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
@@ -331,4 +326,24 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   }
 
   return res;
+}
+  
+void RocksDBTransactionState::reset() {
+  //only reset when already commited
+  TRI_ASSERT(_status == transaction::Status::COMMITTED);
+  //reset count
+  _transactionSize = 0;
+  _numInserts = 0;
+  _numUpdates = 0;
+  _numRemoves = 0;
+  unuseCollections(_nestingLevel);
+  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    (static_cast<RocksDBTransactionCollection*>(*it))->resetCounts();
+  }
+  _nestingLevel = 0;
+
+  updateStatus(transaction::Status::CREATED);
+
+  // start new transaction
+  beginTransaction(transaction::Hints());
 }

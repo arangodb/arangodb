@@ -31,13 +31,13 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
-var engine = db._engine()["name"]
+var engine = db._engine()["name"];
 
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  if (engine == "mmfiles") {
+  if (engine === "mmfiles") {
     internal.debugSetFailAt('CreateCollection::tempDirectory');
     try {
       db._create('UnitTestsRecovery1');
@@ -82,7 +82,7 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCreateCollectionFail: function () {
-      if (engine == "mmfiles") {
+      if (engine === "mmfiles") {
         assertNull(db._collection('UnitTestsRecovery1'));
         assertNull(db._collection('UnitTestsRecovery2'));
       }
