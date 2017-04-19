@@ -218,12 +218,8 @@ function optimizerCollectMethodsTestSuite () {
           plan.nodes.map(function(node) {
             if (node.type === "CollectNode") {
               ++aggregateNodes;
-                         if (query[2] && node.collectOptions.method !== "sorted") {
-                         internal.print(JSON.stringify(query[0]));
-                         assertTrue(false);
-                         }
               assertEqual(query[2] ? "sorted" : "hash",
-                         node.collectOptions.method);
+                         node.collectOptions.method, query[0]);
             }
             if (node.type === "SortNode") {
               ++sortNodes;
