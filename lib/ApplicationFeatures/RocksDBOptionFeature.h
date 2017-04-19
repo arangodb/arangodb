@@ -39,7 +39,7 @@ namespace arangodb {
 class RocksDBOptionFeature final : public application_features::ApplicationFeature {
  public:
   explicit RocksDBOptionFeature(application_features::ApplicationServer* server);
-  ~RocksDBOptionFeature(){};
+  ~RocksDBOptionFeature() {}
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
