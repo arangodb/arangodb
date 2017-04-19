@@ -1,9 +1,11 @@
 v3.1.18 (2017-04-18)
 --------------------
 
+* fixed spurious hangs on server shutdown
+
 * better error messages during restore collection
 
-* Completely overhaul supervision. More detailed tests
+* completely overhaul supervision. More detailed tests
 
 * fixed issue #2415
 
@@ -16,7 +18,7 @@ v3.1.17 (2017-04-04)
 --------------------
 
 * (Enterprise only) fixed a bug where replicationFactor was not correctly
-  forwarded in SmartGraph creation.
+  forwarded in SmartGraph creation
 
 * fixed issue #2404
 
