@@ -45,6 +45,10 @@ class RocksDBReplicationResult : public Result {
   uint64_t _maxTick;
 };
 
+  
+/// ttl in seconds
+double RocksDBReplicationContextTTL = 30 * 60.0;
+
 class RocksDBReplicationContext {
  private:
   typedef std::function<void(DocumentIdentifierToken const& token)>
@@ -69,6 +73,28 @@ class RocksDBReplicationContext {
   // from the corresponding database
   RocksDBReplicationResult tail(TRI_vocbase_t* vocbase, uint64_t from,
                                 size_t limit, VPackBuilder& builder);
+  
+  double expires() const { return _expires; }
+  
+  bool isDeleted() const { return _isDeleted; }
+  
+  void deleted() { _isDeleted = true; }
+  
+  bool isUsed() const { return _isUsed; }
+  
+  void use() {
+    TRI_ASSERT(!_isDeleted);
+    TRI_ASSERT(!_isUsed);
+    
+    _isUsed = true;
+    _expires = TRI_microtime() + RocksDBReplicationContextTTL;
+  }
+  
+  /// remove use flag
+  void release() {
+    TRI_ASSERT(_isUsed);
+    _isUsed = false;
+  }
 
  private:
   std::unique_ptr<transaction::Methods> createTransaction(
@@ -87,6 +113,10 @@ class RocksDBReplicationContext {
   LogicalCollection* _collection;
   std::unique_ptr<IndexIterator> _iter;
   ManagedDocumentResult _mdr;
+  
+  double _expires;
+  bool _isDeleted;
+  bool _isUsed;
 };
 
 }  // namespace arangodb

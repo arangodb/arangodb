@@ -840,6 +840,12 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
                             estimatedCost);
   }*/
+  // mmfiles failure point compat
+  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
 
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
@@ -1210,7 +1216,16 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
     SimpleAttributeEqualityMatcher matcher(_fields);
     return matcher.specializeAll(this, node, reference);
   }*/
-
+  // mmfiles failure compat
+  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+  
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
