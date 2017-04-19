@@ -69,34 +69,22 @@ class RocksDBReplicationContext {
       TokenCallback cb, size_t limit);
 
   // iterates over WAL starting at 'from' and returns up to 'limit' documents
-  // from the corresponding database
+  // from the corresponding database; releases dumping resources
   RocksDBReplicationResult tail(TRI_vocbase_t* vocbase, uint64_t from,
                                 size_t limit, bool includeSystem,
                                 VPackBuilder& builder);
 
-  double expires() const { return _expires; }
-
-  bool isDeleted() const { return _isDeleted; }
-
-  void deleted() { _isDeleted = true; }
-
-  bool isUsed() const { return _isUsed; }
-
-  void use() {
-    TRI_ASSERT(!_isDeleted);
-    TRI_ASSERT(!_isUsed);
-
-    _isUsed = true;
-    _expires = TRI_microtime() + RocksDBReplicationContextTTL;
-  }
-
+  double expires() const;
+  bool isDeleted() const;
+  void deleted();
+  bool isUsed() const;
+  void use();
   /// remove use flag
-  void release() {
-    TRI_ASSERT(_isUsed);
-    _isUsed = false;
-  }
+  void release();
 
  private:
+  void releaseDumpingResources();
+
   std::unique_ptr<transaction::Methods> createTransaction(
       TRI_vocbase_t* vocbase);
 

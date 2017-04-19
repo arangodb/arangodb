@@ -22,28 +22,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationManager.h"
-#include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::rocksutils;
 
 size_t const RocksDBReplicationManager::MaxCollectCount = 32;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a cursor repository
+/// @brief create a context repository
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationManager::RocksDBReplicationManager()
-    : _lock(), _contexts() {
+RocksDBReplicationManager::RocksDBReplicationManager() : _lock(), _contexts() {
   _contexts.reserve(64);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a cursor repository
+/// @brief destroy a context repository
 ////////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationManager::~RocksDBReplicationManager() {
@@ -52,18 +53,20 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
   } catch (...) {
   }
 
-  // wait until all used cursors have vanished
+  // wait until all used contexts have vanished
   int tries = 0;
 
   while (true) {
-    if (!containsUsedCursor()) {
+    if (!containsUsedContext()) {
       break;
     }
 
     if (tries == 0) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "waiting for used cursors to become unused";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "waiting for used contexts to become unused";
     } else if (tries == 120) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for unused cursors";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "giving up waiting for unused contexts";
     }
 
     usleep(500000);
@@ -81,29 +84,35 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a cursor in the registry
-/// the repository will take ownership of the cursor
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new context which must be later returned using release()
+/// or destroy(); guarantees that RocksDB file deletion is disabled while
+/// there are active contexts
+//////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::addCursor(std::unique_ptr<RocksDBReplicationContext> cursor) {
-  TRI_ASSERT(cursor != nullptr);
-  TRI_ASSERT(cursor->isUsed());
+RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
+  auto context = new RocksDBReplicationContext();
+  TRI_ASSERT(context != nullptr);
+  TRI_ASSERT(context->isUsed());
 
-  RocksDBReplicationId const id = cursor->id();
+  RocksDBReplicationId const id = context->id();
 
   MUTEX_LOCKER(mutexLocker, _lock);
-  _contexts.emplace(id, cursor.get());
 
-  return cursor.release();
+  if (_contexts.size() == 0) {
+    disableFileDeletions();
+  }
+  _contexts.emplace(id, context);
+
+  return context;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a cursor by id
+/// @brief remove a context by id
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
-  RocksDBReplicationContext* cursor = nullptr;
+  RocksDBReplicationContext* context = nullptr;
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
@@ -114,37 +123,42 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
       return false;
     }
 
-    cursor = (*it).second;
+    context = it->second;
+    TRI_ASSERT(context != nullptr);
 
-    if (cursor->isDeleted()) {
+    if (context->isDeleted()) {
       // already deleted
       return false;
     }
 
-    if (cursor->isUsed()) {
-      // cursor is in use by someone else. now mark as deleted
-      //cursor->deleted();
+    if (context->isUsed()) {
+      // context is in use by someone else. now mark as deleted
+      context->deleted();
       return true;
     }
 
-    // cursor not in use by someone else
+    // context not in use by someone else
     _contexts.erase(it);
+    if (_contexts.size() == 0) {
+      enableFileDeletions();
+    }
   }
 
-  TRI_ASSERT(cursor != nullptr);
+  TRI_ASSERT(context != nullptr);
 
-  delete cursor;
+  delete context;
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find an existing cursor by id
-/// if found, the cursor will be returned with the usage flag set to true.
+/// @brief find an existing context by id
+/// if found, the context will be returned with the usage flag set to true.
 /// it must be returned later using release()
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId id, bool& busy) {
-  RocksDBReplicationContext* cursor = nullptr;
+RocksDBReplicationContext* RocksDBReplicationManager::find(
+    RocksDBReplicationId id, bool& busy) {
+  RocksDBReplicationContext* context = nullptr;
   busy = false;
 
   {
@@ -156,52 +170,62 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
       return nullptr;
     }
 
-    cursor = (*it).second;
+    context = it->second;
+    TRI_ASSERT(context != nullptr);
 
-    if (cursor->isDeleted()) {
+    if (context->isDeleted()) {
       // already deleted
       return nullptr;
     }
-    
-    if (cursor->isUsed()) {
+
+    if (context->isUsed()) {
       busy = true;
       return nullptr;
     }
 
-    cursor->use();
+    context->use();
   }
 
-  return cursor;
+  return context;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a cursor
+/// @brief return a context for later use
 ////////////////////////////////////////////////////////////////////////////////
 
-void RocksDBReplicationManager::release(RocksDBReplicationContext* cursor) {
+void RocksDBReplicationManager::release(RocksDBReplicationContext* context) {
   {
     MUTEX_LOCKER(mutexLocker, _lock);
 
-    TRI_ASSERT(cursor->isUsed());
-    cursor->release();
+    TRI_ASSERT(context->isUsed());
+    context->release();
 
-    if (!cursor->isDeleted()) {
+    if (!context->isDeleted()) {
       return;
     }
 
     // remove from the list
-    _contexts.erase(cursor->id());
+    _contexts.erase(context->id());
   }
 
-  // and free the cursor
-  delete cursor;
+  // and free the context
+  delete context;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the repository contains a used cursor
+/// @brief return a context for garbage collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RocksDBReplicationManager::containsUsedCursor() {
+void RocksDBReplicationManager::destroy(RocksDBReplicationContext* context) {
+  if (context != nullptr) {
+    remove(context->id());
+  }
+}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the repository contains a used context
+////////////////////////////////////////////////////////////////////////////////
+
+bool RocksDBReplicationManager::containsUsedContext() {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   for (auto it : _contexts) {
@@ -214,7 +238,7 @@ bool RocksDBReplicationManager::containsUsedCursor() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run a garbage collection on the cursors
+/// @brief run a garbage collection on the contexts
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RocksDBReplicationManager::garbageCollect(bool force) {
@@ -226,22 +250,23 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
-    for (auto it = _contexts.begin(); it != _contexts.end(); /* no hoisting */) {
-      auto cursor = (*it).second;
+    for (auto it = _contexts.begin(); it != _contexts.end();
+         /* no hoisting */) {
+      auto context = it->second;
 
-      if (cursor->isUsed()) {
-        // must not destroy used cursors
+      if (context->isUsed()) {
+        // must not destroy used contexts
         ++it;
         continue;
       }
 
-      if (force || cursor->expires() < now) {
-        cursor->deleted();
+      if (force || context->expires() < now) {
+        context->deleted();
       }
 
-      if (cursor->isDeleted()) {
+      if (context->isDeleted()) {
         try {
-          found.emplace_back(cursor);
+          found.emplace_back(context);
           it = _contexts.erase(it);
         } catch (...) {
           // stop iteration
@@ -255,14 +280,30 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
         ++it;
       }
     }
+
+    if (_contexts.size() == 0) {
+      enableFileDeletions();
+    }
   } catch (...) {
     // go on and remove whatever we found so far
   }
 
-  // remove cursors outside the lock
+  // remove contexts outside the lock
   for (auto it : found) {
     delete it;
   }
 
   return (!found.empty());
+}
+
+void RocksDBReplicationManager::disableFileDeletions() {
+  auto rocks = globalRocksDB();
+  auto s = rocks->DisableFileDeletions();
+  TRI_ASSERT(s.ok());
+}
+
+void RocksDBReplicationManager::enableFileDeletions() {
+  auto rocks = globalRocksDB();
+  auto s = rocks->DisableFileDeletions();
+  TRI_ASSERT(s.ok());
 }

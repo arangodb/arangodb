@@ -244,7 +244,7 @@ std::pair<RocksDBReplicationResult, bool> RocksDBReplicationContext::dump(
 RocksDBReplicationResult RocksDBReplicationContext::tail(
     TRI_vocbase_t* vocbase, uint64_t from, size_t limit, bool includeSystem,
     VPackBuilder& builder) {
-  // Tell the WriteBatch reader the transaction markers to look for
+  releaseDumpingResources();
   std::unique_ptr<WBReader> handler(
       new WBReader(vocbase, from, limit, includeSystem, builder));
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
@@ -274,6 +274,37 @@ RocksDBReplicationResult RocksDBReplicationContext::tail(
   }
 
   return {TRI_ERROR_NO_ERROR, _lastTick};
+}
+
+double RocksDBReplicationContext::expires() const { return _expires; }
+
+bool RocksDBReplicationContext::isDeleted() const { return _isDeleted; }
+
+void RocksDBReplicationContext::deleted() { _isDeleted = true; }
+
+bool RocksDBReplicationContext::isUsed() const { return _isUsed; }
+
+void RocksDBReplicationContext::use() {
+  TRI_ASSERT(!_isDeleted);
+  TRI_ASSERT(!_isUsed);
+
+  _isUsed = true;
+  _expires = TRI_microtime() + RocksDBReplicationContextTTL;
+}
+
+void RocksDBReplicationContext::release() {
+  TRI_ASSERT(_isUsed);
+  _isUsed = false;
+}
+
+void RocksDBReplicationContext::releaseDumpingResources() {
+  if (_trx.get() != nullptr) {
+    _trx->abort();
+    _trx.reset();
+  }
+  if (_iter.get() != nullptr) {
+    _iter.reset();
+  }
 }
 
 std::unique_ptr<transaction::Methods>
