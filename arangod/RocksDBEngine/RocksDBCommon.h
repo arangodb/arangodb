@@ -48,34 +48,31 @@ namespace rocksdb {class TransactionDB;
 namespace arangodb {
 
 class RocksDBOperationResult : public Result {
-public:
+ public:
   RocksDBOperationResult()
-    :Result()
-    ,_keySize(0)
-    ,_commitRequired(false)
-  {}
+    : Result(),
+      _keySize(0), 
+      _commitRequired(false) {}
 
   RocksDBOperationResult(Result const& other)
-    : _keySize(0)
-    ,_commitRequired(false)
-  {
+    : _keySize(0),
+      _commitRequired(false) {
     cloneData(other);
   }
 
   RocksDBOperationResult(Result&& other)
-    : _keySize(0)
-    ,_commitRequired(false)
-  {
+    : _keySize(0),
+      _commitRequired(false) {
     cloneData(std::move(other));
   }
 
-  uint64_t keySize(){ return _keySize; }
-  uint64_t keySize(uint64_t s ) { _keySize = s; return _keySize; }
+  uint64_t keySize() const { return _keySize; }
+  void keySize(uint64_t s) { _keySize = s; }
 
-  bool commitRequired(){ return _commitRequired; }
-  bool commitRequired(bool cr ) { _commitRequired = cr; return _commitRequired; }
+  bool commitRequired() const { return _commitRequired; }
+  void commitRequired(bool cr) { _commitRequired = cr; } 
 
-protected:
+ protected:
   uint64_t _keySize;
   bool _commitRequired;
 };
