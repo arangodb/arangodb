@@ -563,6 +563,10 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
  
 set(ROCKSDB_LIBS rocksdblib;snappystatic)
 
+if (USE_JEMALLOC)
+  add_dependencies(rocksdblib jemalloc)
+endif ()
+
 ################################################################################
 ## FLAGS
 ################################################################################
