@@ -175,12 +175,16 @@ v3.2.alpha1 (2017-02-05)
 * generated Foxx services now use swagger tags
 
 
-v3.1.18 (2017-XX-XX)
+v3.1.18 (2017-04-18)
 --------------------
+
+* fixed error in continuous synchronization of collections
+
+* fixed spurious hangs on server shutdown
 
 * better error messages during restore collection
 
-* Completely overhaul supervision. More detailed tests
+* completely overhaul supervision. More detailed tests
 
 * Fixed a dead-lock situation in cluster traversers, it could happen in
   rare cases if the computation on one DBServer could be completed much earlier
@@ -191,6 +195,10 @@ v3.1.18 (2017-XX-XX)
   enough, causing the traverser to do unlimited depth searches.
 
 * fixed issue #2415
+
+* fixed issue #2422
+
+* fixed issue #1974
 
 
 v3.1.17 (2017-04-04)
