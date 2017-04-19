@@ -1,6 +1,8 @@
 v3.1.18 (2017-04-18)
 --------------------
 
+* fixed error in continuous synchronization of collections
+
 * fixed spurious hangs on server shutdown
 
 * better error messages during restore collection
