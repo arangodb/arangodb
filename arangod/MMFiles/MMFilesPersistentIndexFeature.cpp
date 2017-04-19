@@ -56,7 +56,7 @@ static MMFilesPersistentIndexFeature* Instance = nullptr;
 MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "MMFilesPersistentIndex"),
-      _db(nullptr), _comparator(nullptr), _path(), _active(true)
+      _db(nullptr), _comparator(nullptr), _path()
 {
   setOptional(true);
   requiresElevatedPrivileges(false);
@@ -76,17 +76,9 @@ MMFilesPersistentIndexFeature::~MMFilesPersistentIndexFeature() {
 }
 
 void MMFilesPersistentIndexFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("rocksdbp", "Configure the RocksDB engine for persistent index");
-  options->addOption(
-      "--rocksdbp.enabled",
-      "Whether or not the RocksDB engine is enabled for the persistent index",
-      new BooleanParameter(&_active));
 }
 
 void MMFilesPersistentIndexFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (!_active) {
-    forceDisable();
-  }
 }
 
 void MMFilesPersistentIndexFeature::start() {
