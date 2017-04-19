@@ -752,7 +752,7 @@ RESTBODYPARAM
 Attributes:
   - name - the name of the parameter
   - type - the swaggertype of the parameter
-  - required/optional - whether the user can ommit this parameter
+  - required/optional - whether the user can omit this parameter
   - subtype / format (can be empty)
     - subtype: if type is object or array, this references the enclosed variables.
                can be either a swaggertype, or a *RESTRUCT*
@@ -767,7 +767,7 @@ Attributes:
   - name - the name of the parameter
   - structure name - the **type** under which this structure can be reached (should be uniq!)
   - type - the swaggertype of the parameter (or another *RESTSTRUCT*...)
-  - required/optional - whether the user can ommit this parameter
+  - required/optional - whether the user can omit this parameter
   - subtype / format (can be empty)
     - subtype: if type is object or array, this references the enclosed variables.
                can be either a swaggertype, or a *RESTRUCT*
