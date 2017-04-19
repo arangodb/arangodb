@@ -78,7 +78,11 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
       _db(nullptr),
-      _cmp(new RocksDBComparator()) {
+      _cmp(new RocksDBComparator()),
+      _maxTransactionSize((std::numeric_limits<uint64_t>::max)()),
+      _intermediateTransactionCommitSize(32 * 1024 * 1024),
+      _intermediateTransactionCommitCount(100000),
+      _intermediateTransactionCommitEnabled(false) {
   // inherits order from StorageEngine
 }
 
@@ -93,29 +97,24 @@ void RocksDBEngine::collectOptions(
   options->addSection("rocksdb", "RocksDB engine specific configuration");
 
   // control transaction size for RocksDB engine
-  _maxTransactionSize =
-      std::numeric_limits<uint64_t>::max();  // set sensible default value here
   options->addOption("--rocksdb.max-transaction-size",
                      "transaction size limit (in bytes)",
                      new UInt64Parameter(&_maxTransactionSize));
 
-  // control intermediate transactions in RocksDB
-  _intermediateTransactionSize = _maxTransactionSize * 0.8;
   options->addOption(
       "--rocksdb.intermediate-transaction-count",
-      "an intermediate commit will be triend if this count is reached",
-      new UInt64Parameter(&_intermediateTransactionSize));
+      "an intermediate commit will be tried when a transaction has accumulated operations of this size (in bytes)",
+      new UInt64Parameter(&_intermediateTransactionCommitSize));
 
   options->addOption(
       "--rocksdb.intermediate-transaction-count",
-      "an intermediate commit will be triend if this count is reached",
-      new UInt64Parameter(&_intermediateTransactionCount));
-  _intermediateTransactionCount = 100 * 1000;
+      "an intermediate commit will be tried when this number of operations is reached in a transaction",
+      new UInt64Parameter(&_intermediateTransactionCommitCount));
+  _intermediateTransactionCommitCount = 100 * 1000;
 
-  _intermediateTransactionEnabled = false;
   options->addOption("--rocksdb.intermediate-transaction",
                      "enable intermediate transactions",
-                     new BooleanParameter(&_intermediateTransactionEnabled));
+                     new BooleanParameter(&_intermediateTransactionCommitEnabled));
 }
 
 // validate the storage engine's specific options
@@ -207,8 +206,8 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
 TransactionState* RocksDBEngine::createTransactionState(
     TRI_vocbase_t* vocbase) {
   return new RocksDBTransactionState(
-      vocbase, _maxTransactionSize, _intermediateTransactionEnabled,
-      _intermediateTransactionSize, _intermediateTransactionCount);
+      vocbase, _maxTransactionSize, _intermediateTransactionCommitEnabled,
+      _intermediateTransactionCommitSize, _intermediateTransactionCommitCount);
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
@@ -624,18 +623,6 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
                                 TRI_voc_cid_t collectionId,
                                 TRI_idx_iid_t indexId,
                                 arangodb::velocypack::Slice const& data) {
-  /*
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
-  auto key = RocksDBKey::Index(vocbase->id(), collectionId, indexId);
-  auto value = RocksDBValue::Index(data);
-
-  rocksdb::Status res = _db->Put(options, key.string(), value.string());
-  auto result = rocksutils::convertStatus(res);
-  if (!result.ok()) {
-    THROW_ARANGO_EXCEPTION(result.errorNumber());
-  }
-  */
-  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,

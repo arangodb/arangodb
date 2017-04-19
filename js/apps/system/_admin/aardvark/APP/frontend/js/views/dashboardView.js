@@ -991,6 +991,7 @@
     template: templateEngine.createTemplate('dashboardView.ejs'),
 
     render: function (modalView) {
+      this.delegateEvents(this.events);
       var callback = function (enabled, modalView) {
         if (!modalView) {
           $(this.el).html(this.template.render());

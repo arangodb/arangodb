@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -218,6 +218,7 @@ function optimizerCollectMethodsTestSuite () {
           plan.nodes.map(function(node) {
             if (node.type === "CollectNode") {
               ++aggregateNodes;
+              assertFalse(query[2] && node.collectOptions.method !== "sorted");
               assertEqual(query[2] ? "sorted" : "hash",
                          node.collectOptions.method, query[0]);
             }
