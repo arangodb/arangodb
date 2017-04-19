@@ -48,14 +48,16 @@ ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx,
       defaultWeight(1),
       bidirectional(true),
       multiThreaded(true) {
-  VPackSlice obj = info.get("shortestPathFlags");
-
-  if (obj.isObject()) {
-    weightAttribute =
-        VelocyPackHelper::getStringValue(obj, "weightAttribute", "");
-    defaultWeight =
-        VelocyPackHelper::getNumericValue<double>(obj, "defaultWeight", 1);
-  }
+  TRI_ASSERT(info.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice type = info.get("type");
+  TRI_ASSERT(type.isString());
+  TRI_ASSERT(type.isEqualString("shortestPath"));
+#endif
+  weightAttribute =
+      VelocyPackHelper::getStringValue(info, "weightAttribute", "");
+  defaultWeight =
+      VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
 }
 
 ShortestPathOptions::~ShortestPathOptions() {}
@@ -89,6 +91,7 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("weightAttribute", VPackValue(weightAttribute));
   builder.add("defaultWeight", VPackValue(defaultWeight));
+  builder.add("type", VPackValue("shortestPath"));
 }
 
 void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
@@ -96,8 +99,13 @@ void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
 }
 
 double ShortestPathOptions::estimateCost(size_t& nrItems) const {
-  // TODO Implement me
-  return 0;
+  size_t baseCreateItems = 0;
+  double baseCost = costForLookupInfoList(_baseLookupInfos, baseCreateItems);
+  // We use the "seven-degrees-of-seperation" rule.
+  // This theory asumes that the shortest path is at most 7 steps of length
+
+  nrItems = static_cast<size_t>(std::pow(baseCreateItems, 7));
+  return std::pow(baseCost, 7);
 }
 
 void ShortestPathOptions::addReverseLookupInfo(

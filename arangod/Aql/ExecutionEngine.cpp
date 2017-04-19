@@ -27,6 +27,7 @@
 #include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/CollectBlock.h"
+#include "Aql/Collection.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/EnumerateCollectionBlock.h"
@@ -852,7 +853,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   /// @brief Build traverser engines on DBServers. Coordinator still uses
   ///        traversal block.
-  void buildTraverserEnginesForNode(TraversalNode* en) {
+  void buildTraverserEnginesForNode(GraphNode* en) {
     // We have to initialize all options. After this point the node
     // is not cloneable any more.
     en->prepareOptions();
@@ -1164,8 +1165,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       engines.emplace_back(currentLocation, currentEngineId, part, en->id());
     }
 
-    if (nodeType == ExecutionNode::TRAVERSAL) {
-      buildTraverserEnginesForNode(static_cast<TraversalNode*>(en));
+    if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH) {
+      buildTraverserEnginesForNode(static_cast<GraphNode*>(en));
     }
 
     return false;

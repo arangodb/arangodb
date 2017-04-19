@@ -51,7 +51,7 @@ TraverserOptions::TraverserOptions(transaction::Methods* trx)
       uniqueEdges(UniquenessLevel::PATH) {}
 
 TraverserOptions::TraverserOptions(transaction::Methods* trx,
-                                   VPackSlice const& slice)
+                                   VPackSlice const& obj)
     : BaseOptions(trx),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
@@ -60,8 +60,13 @@ TraverserOptions::TraverserOptions(transaction::Methods* trx,
       useBreadthFirst(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {
-  VPackSlice obj = slice.get("traversalFlags");
   TRI_ASSERT(obj.isObject());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice type = obj.get("type");
+  TRI_ASSERT(type.isString());
+  TRI_ASSERT(type.isEqualString("traversal"));
+#endif
 
   minDepth = VPackHelper::getNumericValue<uint64_t>(obj, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
@@ -306,6 +311,8 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
       builder.add("uniqueEdges", VPackValue("global"));
       break;
   }
+
+  builder.add("type", VPackValue("traversal"));
 }
 
 void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {

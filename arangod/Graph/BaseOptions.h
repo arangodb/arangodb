@@ -79,6 +79,9 @@ struct BaseOptions {
   };
 
  public:
+  static std::unique_ptr<BaseOptions> createOptionsFromSlice(
+      transaction::Methods* trx, arangodb::velocypack::Slice const& definition);
+
   explicit BaseOptions(transaction::Methods* trx);
 
   /// @brief This copy constructor is only working during planning phase.
@@ -153,6 +156,7 @@ struct BaseOptions {
  protected:
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid,
                               std::vector<LookupInfo>&);
+
  protected:
   transaction::Methods* _trx;
 

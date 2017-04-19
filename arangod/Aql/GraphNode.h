@@ -49,16 +49,87 @@ class GraphNode : public ExecutionNode {
  public:
   /// @brief constructor with a vocbase and a collection name
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+            AstNode const* direction, AstNode const* graph,
             std::unique_ptr<graph::BaseOptions>& options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
+ protected:
+  /// @brief Internal constructor to clone the node.
+  GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+            std::vector<std::unique_ptr<Collection>> const& edgeColls,
+            std::vector<std::unique_ptr<Collection>> const& vertexColls,
+            std::vector<TRI_edge_direction_e> const& directions,
+            std::unique_ptr<graph::BaseOptions>& options);
+
+ public:
   virtual ~GraphNode();
+
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
+                          bool verbose) const;
+
+  /// @brief flag, if smart traversal (enterprise edition only!) is done
+  bool isSmart() const { return _isSmart; }
+
+  /// @brief return the database
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
+
+  /// @brief return the vertex out variable
+  Variable const* vertexOutVariable() const { return _vertexOutVariable; }
+
+  /// @brief checks if the vertex out variable is used
+  bool usesVertexOutVariable() const { return _vertexOutVariable != nullptr; }
+
+  /// @brief set the vertex out variable
+  void setVertexOutput(Variable const* outVar) { _vertexOutVariable = outVar; }
+
+  /// @brief return the edge out variable
+  Variable const* edgeOutVariable() const { return _edgeOutVariable; }
+
+  /// @brief checks if the edge out variable is used
+  bool usesEdgeOutVariable() const { return _edgeOutVariable != nullptr; }
+
+  /// @brief set the edge out variable
+  void setEdgeOutput(Variable const* outVar) { _edgeOutVariable = outVar; }
 
   /// @brief Compute the shortest path options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   virtual void prepareOptions() = 0;
+
+  graph::BaseOptions* options() const;
+
+  /// @brief Get the AstNode containing the temporary variable
+  AstNode* getTemporaryRefNode() const;
+
+  /// @brief Get the temporary variable
+  Variable const* getTemporaryVariable() const;
+
+  /// @brief Add a traverser engine Running on a DBServer to this node.
+  ///        The block will communicate with them (CLUSTER ONLY)
+  void addEngine(traverser::TraverserEngineID const&, ServerID const&);
+
+  /// @brief enhance the TraversalEngine with all necessary info
+  ///        to be send to DBServers (CLUSTER ONLY)
+  void enhanceEngineInfo(arangodb::velocypack::Builder&) const;
+
+  /// @brief Returns a reference to the engines. (CLUSTER ONLY)
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines()
+      const;
+
+  std::vector<std::unique_ptr<aql::Collection>> const& edgeColls() const {
+    return _edgeColls;
+  }
+
+  std::vector<std::unique_ptr<aql::Collection>> const& vertexColls() const {
+    return _vertexColls;
+  }
+
+  virtual void getConditionVariables(std::vector<Variable const*>&) const;
+
+ private:
+
+  void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);
 
  protected:
   /// @brief the database
@@ -82,9 +153,22 @@ class GraphNode : public ExecutionNode {
   /// @brief Pseudo string value node to hold the last visted vertex id.
   AstNode* _tmpIdNode;
 
+  /// @brief input graphInfo only used for serialisation & info
+  arangodb::velocypack::Builder _graphInfo;
+
+  /// @brief the edge collection names
+  std::vector<std::unique_ptr<aql::Collection>> _edgeColls;
+
+  /// @brief the vertex collection names
+  std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
+
+  /// @brief The directions edges are followed
+  std::vector<TRI_edge_direction_e> _directions;
+
   /// @brief Options for traversals
   std::unique_ptr<graph::BaseOptions> _options;
 
+  /// @brief Pseudo string value node to hold the last visted vertex id.
   /// @brief Flag if the options have been build.
   /// Afterwards this class is not copyable anymore.
   bool _optionsBuild;
@@ -96,6 +180,6 @@ class GraphNode : public ExecutionNode {
   bool _isSmart;
 };
 
-} //namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 #endif

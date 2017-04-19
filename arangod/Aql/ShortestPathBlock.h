@@ -103,9 +103,6 @@ class ShortestPathBlock : public ExecutionBlock {
   /// @brief options to compute the shortest path
   graph::ShortestPathOptions* _opts;
 
-  /// @brief list of edge collection infos used to compute the path
-  std::vector<arangodb::traverser::EdgeCollectionInfo*> _collectionInfos;
-
   /// @brief position in the current path
   size_t _posInPath;
 

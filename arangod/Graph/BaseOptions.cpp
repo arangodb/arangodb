@@ -26,9 +26,11 @@
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
 #include "Graph/SingleServerEdgeCursor.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
 #include "VocBase/TraverserCache.h"
 #include "VocBase/TraverserCacheFactory.h"
+#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -149,6 +151,16 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   // Some hard-coded value
   nrItems += 1000;
   return 1000.0;
+}
+
+
+std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
+    transaction::Methods* trx, VPackSlice const& definition) {
+  VPackSlice type = definition.get("type");
+  if (type.isString() && type.isEqualString("shortestPath")) {
+    return std::make_unique<ShortestPathOptions>(trx, definition);
+  }
+  return std::make_unique<TraverserOptions>(trx, definition);
 }
 
 BaseOptions::BaseOptions(transaction::Methods* trx)

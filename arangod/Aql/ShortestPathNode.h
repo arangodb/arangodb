@@ -48,7 +48,7 @@ class ShortestPathNode : public GraphNode {
   /// @brief constructor with a vocbase and a collection name
  public:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                uint64_t direction, AstNode const* start, AstNode const* target,
+                AstNode const* direction, AstNode const* start, AstNode const* target,
                 AstNode const* graph, std::unique_ptr<graph::BaseOptions>& options);
 
   ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -58,7 +58,8 @@ class ShortestPathNode : public GraphNode {
   /// @brief Internal constructor to clone the node.
  private:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                   std::vector<std::string> const& edgeColls,
+                   std::vector<std::unique_ptr<Collection>> const& edgeColls,
+                   std::vector<std::unique_ptr<Collection>> const& vertexColls,
                    std::vector<TRI_edge_direction_e> const& directions,
                    Variable const* inStartVariable,
                    std::string const& startVertexId,
@@ -101,32 +102,14 @@ class ShortestPathNode : public GraphNode {
 
   std::string const getTargetVertex() const { return _targetVertexId; }
 
-  /// @brief return the vertex out variable
-  Variable const* vertexOutVariable() const { return _vertexOutVariable; }
-
-  /// @brief checks if the vertex out variable is used
-  bool usesVertexOutVariable() const { return _vertexOutVariable != nullptr; }
-
-  /// @brief set the vertex out variable
-  void setVertexOutput(Variable const* outVar) { _vertexOutVariable = outVar; }
-
-  /// @brief return the edge out variable
-  Variable const* edgeOutVariable() const { return _edgeOutVariable; }
-
-  /// @brief checks if the edge out variable is used
-  bool usesEdgeOutVariable() const { return _edgeOutVariable != nullptr; }
-
-  /// @brief set the edge out variable
-  void setEdgeOutput(Variable const* outVar) { _edgeOutVariable = outVar; }
-
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> vars;
-    if (_vertexOutVariable != nullptr) {
-      vars.emplace_back(_vertexOutVariable);
+    if (usesVertexOutVariable()) {
+      vars.emplace_back(vertexOutVariable());
     }
-    if (_edgeOutVariable != nullptr) {
-      vars.emplace_back(_edgeOutVariable);
+    if (usesEdgeOutVariable()) {
+      vars.emplace_back(edgeOutVariable());
     }
     return vars;
   }
@@ -154,8 +137,6 @@ class ShortestPathNode : public GraphNode {
     }
   }
 
-  graph::ShortestPathOptions* options() const;
-
   /// @brief Compute the shortest path options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
@@ -175,21 +156,11 @@ class ShortestPathNode : public GraphNode {
   /// @brief input vertexId only used if _inVariable is unused
   std::string _targetVertexId;
 
-  /// @brief input graphInfo only used for serialisation & info
-  arangodb::velocypack::Builder _graphInfo;
-
-  /// @brief The directions edges are followed
-  std::vector<TRI_edge_direction_e> _directions;
-
-  /// @brief the edge collection names
-  std::vector<std::string> _edgeColls;
-
  /// @brief The hard coded condition on _from
   AstNode* _fromCondition;
 
   /// @brief The hard coded condition on _to
   AstNode* _toCondition;
-
 };
 
 } // namespace arangodb::aql

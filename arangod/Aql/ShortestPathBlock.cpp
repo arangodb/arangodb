@@ -40,6 +40,7 @@
 typedef arangodb::graph::AttributeWeightShortestPathFinder ArangoDBPathFinder;
 
 using namespace arangodb::aql;
+using namespace arangodb::graph;
 
 ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
                                      ShortestPathNode const* ep)
@@ -57,20 +58,8 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _targetReg(ExecutionNode::MaxRegisterId),
       _useTargetRegister(false),
       _usedConstant(false) {
-  _opts = ep->options();
+  _opts = static_cast<ShortestPathOptions*>(ep->options());
   _mmdr.reset(new ManagedDocumentResult);
-
-  size_t count = ep->_edgeColls.size();
-  TRI_ASSERT(ep->_directions.size());
-  _collectionInfos.reserve(count);
-
-  for (size_t j = 0; j < count; ++j) {
-    auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(
-        _trx, ep->_edgeColls[j], ep->_directions[j], _opts->weightAttribute,
-        _opts->defaultWeight);
-    _collectionInfos.emplace_back(info.get());
-    info.release();
-  }
 
   if (!ep->usesStartInVariable()) {
     _startVertexId = ep->getStartVertex();
@@ -119,9 +108,6 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
 }
 
 ShortestPathBlock::~ShortestPathBlock() {
-  for (auto& it : _collectionInfos) {
-    delete it;
-  }
 }
 
 int ShortestPathBlock::initialize() {
