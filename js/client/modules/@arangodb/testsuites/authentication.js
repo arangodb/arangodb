@@ -72,9 +72,8 @@ function authentication (options) {
       }
     };
   }
-
   print(CYAN + 'Authentication tests...' + RESET);
-  let testCases = tu.scanTestPath('js/client/tests/authentication');
+  let testCases = [fs.join('js', 'client', 'tests', 'auth.js')];
 
   return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
     'server.authentication': 'true',
