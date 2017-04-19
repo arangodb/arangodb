@@ -85,27 +85,15 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    TRI_vocbase_t* vocbase, uint64_t direction,
                                    AstNode const* start, AstNode const* target,
                                    AstNode const* graph,
-                                   std::unique_ptr<ShortestPathOptions>& options)
-    : ExecutionNode(plan, id),
-      _vocbase(vocbase),
-      _vertexOutVariable(nullptr),
-      _edgeOutVariable(nullptr),
+                                   std::unique_ptr<BaseOptions>& options)
+    : GraphNode(plan, id, plan->getAst()->query()->vocbase(), options),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
-      _graphObj(nullptr),
-      _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
-      _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
-      _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _fromCondition(nullptr),
-      _toCondition(nullptr),
-      _optionsBuild(false),
-      _options(nullptr) {
-  _options.swap(options);
-  TRI_ASSERT(_vocbase != nullptr);
+      _toCondition(nullptr) {
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(target != nullptr);
   TRI_ASSERT(graph != nullptr);
-  TRI_ASSERT(_options != nullptr);
 
   auto ast = _plan->getAst();
   // Let us build the conditions on _from and _to. Just in case we need them.
@@ -272,25 +260,15 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    std::string const& startVertexId,
                                    Variable const* inTargetVariable,
                                    std::string const& targetVertexId,
-                                   std::unique_ptr<ShortestPathOptions>& options)
-    : ExecutionNode(plan, id),
-      _vocbase(vocbase),
-      _vertexOutVariable(nullptr),
-      _edgeOutVariable(nullptr),
+                                   std::unique_ptr<BaseOptions>& options)
+    : GraphNode(plan, id, vocbase, options),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
       _inTargetVariable(inTargetVariable),
       _targetVertexId(targetVertexId),
       _directions(directions),
-      _graphObj(nullptr),
-      _tmpObjVariable(nullptr),
-      _tmpObjVarNode(nullptr),
-      _tmpIdNode(nullptr),
       _fromCondition(nullptr),
-      _toCondition(nullptr),
-      _optionsBuild(false),
-      _options(nullptr) {
-  _options.swap(options);
+      _toCondition(nullptr) {
   _graphInfo.openArray();
   for (auto const& it : edgeColls) {
     _edgeColls.emplace_back(it);
@@ -303,19 +281,11 @@ ShortestPathNode::~ShortestPathNode() {}
 
 ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
-      _vertexOutVariable(nullptr),
-      _edgeOutVariable(nullptr),
+    : GraphNode(plan, base),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
-      _graphObj(nullptr),
-      _tmpObjVariable(nullptr),
-      _tmpObjVarNode(nullptr),
-      _tmpIdNode(nullptr),
       _fromCondition(nullptr),
-      _toCondition(nullptr),
-      _optionsBuild(false) {
+      _toCondition(nullptr) {
   // Directions
   VPackSlice dirList = base.get("directions");
   for (auto const& it : VPackArrayIterator(dirList)) {
@@ -529,8 +499,8 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
                                        bool withDependencies,
                                        bool withProperties) const {
   TRI_ASSERT(!_optionsBuild);
-  auto tmp =
-      std::make_unique<ShortestPathOptions>(*_options.get());
+  std::unique_ptr<BaseOptions> tmp =
+      std::make_unique<ShortestPathOptions>(*options());
   auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _directions,
                                 _inStartVariable, _startVertexId,
                                 _inTargetVariable, _targetVertexId, tmp);
@@ -603,24 +573,25 @@ void ShortestPathNode::prepareOptions() {
 
   size_t numEdgeColls = _edgeColls.size();
   Ast* ast = _plan->getAst();
+  auto opts = options();
 
   // Compute Indexes.
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
     switch (dir) {
       case TRI_EDGE_IN:
-        _options->addLookupInfo(
+        opts->addLookupInfo(
             ast, _edgeColls[i], StaticStrings::ToString,
             _toCondition->clone(ast));
-        _options->addReverseLookupInfo(
+        opts->addReverseLookupInfo(
             ast, _edgeColls[i], StaticStrings::FromString,
             _fromCondition->clone(ast));
         break;
       case TRI_EDGE_OUT:
-        _options->addLookupInfo(
+        opts->addLookupInfo(
             ast, _edgeColls[i], StaticStrings::FromString,
             _fromCondition->clone(ast));
-        _options->addReverseLookupInfo(
+        opts->addReverseLookupInfo(
             ast, _edgeColls[i], StaticStrings::ToString,
             _toCondition->clone(ast));
         break;
@@ -636,5 +607,7 @@ void ShortestPathNode::prepareOptions() {
 }
 
 ShortestPathOptions* ShortestPathNode::options() const {
-  return _options.get();
+  auto tmp = static_cast<ShortestPathOptions*>(_options.get());
+  TRI_ASSERT(tmp != nullptr);
+  return tmp;
 }

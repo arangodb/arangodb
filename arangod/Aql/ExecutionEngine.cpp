@@ -234,13 +234,11 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
   virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
     {
-      if (en->getType() == ExecutionNode::TRAVERSAL) {
+      if (en->getType() == ExecutionNode::TRAVERSAL || en->getType() == ExecutionNode::SHORTEST_PATH) {
         // We have to prepare the options before we build the block
-        static_cast<TraversalNode*>(en)->prepareOptions();
-      } else if (en->getType() == ExecutionNode::SHORTEST_PATH) {
-        // We have to prepare the options before we build the block
-        static_cast<ShortestPathNode*>(en)->prepareOptions();
+        static_cast<GraphNode*>(en)->prepareOptions();
       }
+
       std::unique_ptr<ExecutionBlock> eb(CreateBlock(engine, en, cache, std::unordered_set<std::string>()));
 
       if (eb == nullptr) {

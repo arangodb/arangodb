@@ -390,9 +390,6 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
 
 TraverserCache* BaseOptions::cache() {
   if (_cache == nullptr) {
-    // If this assert is triggered the code should
-    // have called activateCache() before
-    TRI_ASSERT(false);
     // In production just gracefully initialize
     // the cache without document cache, s.t. system does not crash
     activateCache(false);
