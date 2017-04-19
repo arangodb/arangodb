@@ -66,7 +66,6 @@ class MMFilesPersistentIndexFeature final : public application_features::Applica
   rocksdb::Options _options;
   MMFilesPersistentIndexKeyComparator* _comparator;
   std::string _path;
-  bool _active;
 };
 
 }

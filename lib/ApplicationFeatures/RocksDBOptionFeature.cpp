@@ -60,7 +60,12 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 
 void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("rocksdb", "Configure the RocksDB engine");
-  
+
+  options->addObsoleteOption(
+      "--rocksdb.enabled",
+      "obsolete always active - Whether or not the RocksDB engine is enabled for the persistent index",
+      true);
+
   options->addOption(
       "--rocksdb.write-buffer-size",
       "amount of data to build up in memory before converting to a sorted on-disk file (0 = disabled)",
