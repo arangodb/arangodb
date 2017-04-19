@@ -9,6 +9,14 @@ v3.1.18 (2017-04-18)
 
 * completely overhaul supervision. More detailed tests
 
+* fixed a dead-lock situation in cluster traversers, it could happen in
+  rare cases if the computation on one DBServer could be completed much earlier
+  than the other server. It could also be restricted to SmartGraphs only.
+
+* (Enterprise only) fixed a bug in SmartGraph DepthFirstSearch. In some
+  more complicated queries, the maxDepth limit of 1 was not considered strictly
+  enough, causing the traverser to do unlimited depth searches.
+
 * fixed issue #2415
 
 * fixed issue #2422
