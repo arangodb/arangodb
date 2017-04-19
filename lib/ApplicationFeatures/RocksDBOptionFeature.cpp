@@ -51,8 +51,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     _logFileTimeToRoll(0),
     _compactionReadaheadSize(0),
     _verifyChecksumsInCompaction(true),
-    _optimizeFiltersForHits(true)
-{
+    _optimizeFiltersForHits(true) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
@@ -154,24 +153,24 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-    if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.write-buffer-size'";
-      FATAL_ERROR_EXIT();
-    }
-    if (_maxBytesForLevelMultiplier == 0) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
-      FATAL_ERROR_EXIT();
-    }
-    if (_numLevels < 1 || _numLevels > 20) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.num-levels'";
-      FATAL_ERROR_EXIT();
-    }
-    if (_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.base-background-compactions'";
-      FATAL_ERROR_EXIT();
-    }
-    if (_maxBackgroundCompactions < _baseBackgroundCompactions) {
-      _maxBackgroundCompactions = _baseBackgroundCompactions;
-    }
+  if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.write-buffer-size'";
+    FATAL_ERROR_EXIT();
+  }
+  if (_maxBytesForLevelMultiplier == 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
+    FATAL_ERROR_EXIT();
+  }
+  if (_numLevels < 1 || _numLevels > 20) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.num-levels'";
+    FATAL_ERROR_EXIT();
+  }
+  if (_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.base-background-compactions'";
+    FATAL_ERROR_EXIT();
+  }
+  if (_maxBackgroundCompactions < _baseBackgroundCompactions) {
+    _maxBackgroundCompactions = _baseBackgroundCompactions;
+  }
 }
 
