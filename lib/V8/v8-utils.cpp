@@ -27,6 +27,7 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <signal.h>
 #include <fstream>
 #include <iostream>
 
