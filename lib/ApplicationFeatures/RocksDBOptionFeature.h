@@ -18,55 +18,50 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_PERSISTENT_INDEX_FEATURE_H
-#define ARANGOD_MMFILES_MMFILES_PERSISTENT_INDEX_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_ROCKSDB_OPTION_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_ROCKSDB_OPTION_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
-#include <rocksdb/options.h>
-
-namespace rocksdb {
-class OptimisticTransactionDB;
-}
-
 namespace arangodb {
-class MMFilesPersistentIndexKeyComparator;
 
-class MMFilesPersistentIndexFeature final : public application_features::ApplicationFeature {
+// This feature is used to configure RocksDB in a central place.
+//
+// The RocksDB-Storage-Engine and the MMFiles-Persistent-Index
+// that are never activated at the same time take options set
+// in this feature
+
+class RocksDBOptionFeature final : public application_features::ApplicationFeature {
  public:
-  explicit MMFilesPersistentIndexFeature(application_features::ApplicationServer* server);
-  ~MMFilesPersistentIndexFeature();
-  
+  explicit RocksDBOptionFeature(application_features::ApplicationServer* server);
+  ~RocksDBOptionFeature(){};
+
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-  void unprepare() override final;
+  void prepare() override final {};
+  void start() override final {}
+  void unprepare() override final {}
 
-  inline rocksdb::OptimisticTransactionDB* db() const { return _db; }
-  inline MMFilesPersistentIndexKeyComparator* comparator() const { return _comparator; }
-
-  static int syncWal();
-  static int dropDatabase(TRI_voc_tick_t);
-  static int dropCollection(TRI_voc_tick_t, TRI_voc_cid_t);
-  static int dropIndex(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
-
-  static MMFilesPersistentIndexFeature* instance();
-
- private:
-
-  int dropPrefix(std::string const& prefix);
-
- private:
-  rocksdb::OptimisticTransactionDB* _db;
-  rocksdb::Options _options;
-  MMFilesPersistentIndexKeyComparator* _comparator;
-  std::string _path;
-  bool _active;
+  uint64_t _writeBufferSize;
+  uint64_t _maxWriteBufferNumber;
+  uint64_t _delayedWriteRate;
+  uint64_t _minWriteBufferNumberToMerge;
+  uint64_t _numLevels;
+  uint64_t _maxBytesForLevelBase;
+  uint64_t _maxBytesForLevelMultiplier;
+  uint64_t _baseBackgroundCompactions;
+  uint64_t _maxBackgroundCompactions;
+  uint64_t _maxLogFileSize;
+  uint64_t _keepLogFileNum;
+  uint64_t _logFileTimeToRoll;
+  uint64_t _compactionReadaheadSize;
+  bool _verifyChecksumsInCompaction;
+  bool _optimizeFiltersForHits;
 };
 
 }

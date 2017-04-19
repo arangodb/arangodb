@@ -22,6 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "RocksDBEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -83,7 +84,9 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       _intermediateTransactionCommitSize(32 * 1024 * 1024),
       _intermediateTransactionCommitCount(100000),
       _intermediateTransactionCommitEnabled(false) {
-  // inherits order from StorageEngine
+  // inherits order from StorageEngine but requires RocksDBOption that are used
+  // to configure this Engine and the MMFiles PesistentIndexFeature
+  startsAfter("RocksDBOption");
 }
 
 RocksDBEngine::~RocksDBEngine() { delete _db; }
@@ -139,16 +142,36 @@ void RocksDBEngine::start() {
   }
 
   // set the database sub-directory for RocksDB
-  auto databasePathFeature =
+  auto* databasePathFeature =
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = databasePathFeature->subdirectoryName("engine-rocksdb");
 
   LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "initializing rocksdb, path: "
                                               << _path;
 
+  double counter_sync_seconds = 2.5;
   rocksdb::TransactionDBOptions transactionOptions;
 
-  double counter_sync_seconds = 2.5;
+  //options imported set by RocksDBOptionFeature
+  auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>("RocksDBOption");
+  _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
+  _options.max_write_buffer_number = static_cast<int>(opts->_maxWriteBufferNumber);
+  _options.delayed_write_rate = opts->_delayedWriteRate;
+  _options.min_write_buffer_number_to_merge = static_cast<int>(opts->_minWriteBufferNumberToMerge);
+  _options.num_levels = static_cast<int>(opts->_numLevels);
+  _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
+  _options.max_bytes_for_level_multiplier = static_cast<int>(opts->_maxBytesForLevelMultiplier);
+  _options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
+  _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
+
+  _options.base_background_compactions = static_cast<int>(opts->_baseBackgroundCompactions);
+  _options.max_background_compactions = static_cast<int>(opts->_maxBackgroundCompactions);
+
+  _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
+  _options.keep_log_file_num = static_cast<size_t>(opts->_keepLogFileNum);
+  _options.log_file_time_to_roll = static_cast<size_t>(opts->_logFileTimeToRoll);
+  _options.compaction_readahead_size = static_cast<size_t>(opts->_compactionReadaheadSize);
+
   _options.create_if_missing = true;
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
