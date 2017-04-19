@@ -191,7 +191,9 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
     : IndexIterator(collection, trx, mmdr, index),
       _cmp(index->_cmp),
-      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
+      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
+      _total(0),
+      _returned(0) {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();

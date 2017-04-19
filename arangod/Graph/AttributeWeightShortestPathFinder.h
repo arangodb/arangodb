@@ -206,7 +206,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   /// @brief create the PathFinder
   //////////////////////////////////////////////////////////////////////////////
 
-  AttributeWeightShortestPathFinder(ShortestPathOptions* options);
+  explicit AttributeWeightShortestPathFinder(ShortestPathOptions* options);
 
   ~AttributeWeightShortestPathFinder();
 

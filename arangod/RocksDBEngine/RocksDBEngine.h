@@ -266,9 +266,9 @@ class RocksDBEngine final : public StorageEngine {
 
   std::unique_ptr<RocksDBCounterManager> _counterManager; // tracks the count of documents in collections
   uint64_t _maxTransactionSize; // maximum allowed size for a transaction
-  uint64_t _intermediateTransactionSize; // maximum size for a transaction before a intermediate commit will be tried
-  uint64_t _intermediateTransactionCount; // limit of transaction count for intermediate commit
-  bool _intermediateTransactionEnabled; // allow usage of intermediate commits
+  uint64_t _intermediateTransactionCommitSize; // maximum size for a transaction before a intermediate commit will be tried
+  uint64_t _intermediateTransactionCommitCount; // limit of transaction count for intermediate commit
+  bool _intermediateTransactionCommitEnabled; // allow usage of intermediate commits
 };
 }
 #endif

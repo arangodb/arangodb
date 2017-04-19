@@ -284,16 +284,16 @@ valgrind could look like this. Options are passed as regular long values in the
 syntax --option value --sub:option value. Using Valgrind could look like this:
 
     ./scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js \
-      --extraargs:server.threads 1 \
-      --extraargs:scheduler.threads 1 \
-      --extraargs:javascript.gc-frequency 1000000 \
-      --extraargs:javascript.gc-interval 65536 \
+      --extraArgs:server.threads 1 \
+      --extraArgs:scheduler.threads 1 \
+      --extraArgs:javascript.gc-frequency 1000000 \
+      --extraArgs:javascript.gc-interval 65536 \
       --javascript.v8-contexts 2 \
       --valgrind /usr/bin/valgrind \
       --valgrindargs:log-file /tmp/valgrindlog.%p
 
  - we specify the test to execute
- - we specify some arangod arguments via --extraargs which increase the server performance
+ - we specify some arangod arguments via --extraArgs which increase the server performance
  - we specify to run using valgrind (this is supported by all facilities)
  - we specify some valgrind commandline arguments
 

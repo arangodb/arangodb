@@ -1342,7 +1342,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
             << "found drop database marker. databaseId: " << databaseId;
 
-        TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
+        /*TRI_vocbase_t* vocbase = */ state->releaseDatabase(databaseId);
 
         // ignore any potential error returned by this call
         state->databaseFeature->dropDatabase(databaseId, true, state->isDropped(databaseId));
