@@ -835,11 +835,11 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   // HashIndex has different semantics
-  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+  /*if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     SimpleAttributeEqualityMatcher matcher(_fields);
     return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
                             estimatedCost);
-  }
+  }*/
 
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
@@ -1206,10 +1206,10 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
   // HashIndex uses slightly different semantics
-  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+  /*if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     SimpleAttributeEqualityMatcher matcher(_fields);
     return matcher.specializeAll(this, node, reference);
-  }
+  }*/
 
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
