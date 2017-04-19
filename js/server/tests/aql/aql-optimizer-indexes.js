@@ -1677,10 +1677,13 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2 ], results.json.sort(), query);
-      if (db._engine().name !== "rocksdb") {
+      if (db._engine().name === "rocksdb") {
+        assertEqual(2, results.stats.scannedIndex);
+        assertEqual(0, results.stats.scannedFull);
+      } else {
         assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
       }
-      assertTrue(results.stats.scannedFull > 0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
