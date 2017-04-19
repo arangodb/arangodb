@@ -262,6 +262,38 @@ function ReplicationSuite() {
         }
       );
     },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test collection dropping
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testDropCollection: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+        },
+
+        function(state) {
+          db._create(cn);
+          for (var i = 0; i < 100; ++i) {
+            db._collection(cn).save({
+              value: i
+            });
+          }
+          db._drop(cn);
+          internal.wal.flush(true, true);
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertNull(db._collection(cn));
+        }
+      );
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test require from present
