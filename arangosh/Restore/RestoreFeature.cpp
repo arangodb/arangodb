@@ -64,6 +64,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _overwrite(true),
       _recycleIds(false),
       _force(false),
+      _ignoreDistributeShardsLikeErrors(false),
       _clusterMode(false),
       _defaultNumberOfShards(1),
       _defaultReplicationFactor(1),
@@ -123,6 +124,11 @@ void RestoreFeature::collectOptions(
   options->addOption("--default-replication-factor",
                      "default value for replicationFactor if not specified",
                      new UInt64Parameter(&_defaultReplicationFactor));
+
+  options->addOption(
+      "--ignore-distribute-shards-like-errors",
+      "continue restore even if sharding prototype collection is missing",
+      new BooleanParameter(&_ignoreDistributeShardsLikeErrors));
 
   options->addOption(
       "--force", "continue restore even in the face of some server-side errors",
@@ -221,11 +227,12 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
                                           std::string const& name,
                                           std::string& errorMsg) {
   std::string url =
-      "/_api/replication/restore-collection"
-      "?overwrite=" +
-      std::string(_overwrite ? "true" : "false") + "&recycleIds=" +
-      std::string(_recycleIds ? "true" : "false") + "&force=" +
-      std::string(_force ? "true" : "false");
+    "/_api/replication/restore-collection"
+    "?overwrite=" + std::string(_overwrite ? "true" : "false") + "&recycleIds=" +
+    std::string(_recycleIds ? "true" : "false") + "&force=" +
+    std::string(_force ? "true" : "false") +
+    "&ignoreDistributeShardsLikeErrors=" +
+    std::string(_ignoreDistributeShardsLikeErrors ? "true":"false");
 
   if (_clusterMode) {
     if (!slice.hasKey(std::vector<std::string>({"parameters", "shards"})) &&
@@ -308,9 +315,8 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
                                     char const* buffer, size_t bufferSize,
                                     std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-data?collection=" +
-                          StringUtils::urlEncode(cname) + "&recycleIds=" +
-                          (_recycleIds ? "true" : "false") + "&force=" +
-                          (_force ? "true" : "false");
+    StringUtils::urlEncode(cname) + "&recycleIds=" +
+    (_recycleIds ? "true" : "false") + "&force=" + (_force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
       rest::RequestType::PUT, url, buffer, bufferSize));

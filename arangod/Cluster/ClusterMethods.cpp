@@ -2114,12 +2114,13 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
 std::unique_ptr<LogicalCollection>
 ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
                                               TRI_vocbase_t* vocbase,
-                                              VPackSlice parameters) {
-    auto col = std::make_unique<LogicalCollection>(vocbase, parameters, false);
+                                              VPackSlice parameters,
+                                              bool ignoreDistributeShardsLikeErrors) {
+  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, false);
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
-    return persistCollectionInAgency(col.get());
+  return persistCollectionInAgency(col.get(), ignoreDistributeShardsLikeErrors);
 }
 #endif
 
@@ -2128,7 +2129,8 @@ ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<LogicalCollection>
-ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
+ClusterMethods::persistCollectionInAgency(
+  LogicalCollection* col, bool ignoreDistributeShardsLikeErrors) {
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> dbServers;
   std::vector<std::string> avoid = col->avoidServers();
@@ -2169,7 +2171,11 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
 
       col->distributeShardsLike(otherCidString);
     } else {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE);
+      if (ignoreDistributeShardsLikeErrors) {
+        col->distributeShardsLike(std::string());
+      } else {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE);
+      }
     }
   } else if(!avoid.empty()) {
     
