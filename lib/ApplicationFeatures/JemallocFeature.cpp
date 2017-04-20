@@ -23,6 +23,7 @@
 #include "ApplicationFeatures/JemallocFeature.h"
 
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -122,6 +123,24 @@ void JemallocFeature::start() {
             << "cannot create directory '" << _staticPath
             << "' for VM files: " << strerror(errno);
         FATAL_ERROR_EXIT();
+      }
+    } else {
+      std::vector<std::string> files = FileUtils::listFiles(_staticPath);
+
+      for (auto file : files) {
+        if (StringUtils::isPrefix(file, "vm.")) {
+          std::string full = FileUtils::buildFilename(_staticPath, file);
+          int en;
+
+          if (FileUtils::remove(full, &en)) {
+            LOG_TOPIC(TRACE, Logger::MEMORY)
+                << "removed old file '" << full << "'";
+          } else {
+            LOG_TOPIC(FATAL, Logger::MEMORY)
+                << "cannot remove file '" << full << "': " << strerror(en);
+            FATAL_ERROR_EXIT();
+          }
+        }
       }
     }
 
