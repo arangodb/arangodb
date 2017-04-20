@@ -31,158 +31,9 @@
 #include "VocBase/ticks.h"
 #include "Basics/StringBuffer.h"
 
-#include <rocksdb/utilities/transaction_db.h>
-#include <rocksdb/utilities/write_batch_with_index.h>
-#include <rocksdb/write_batch.h>
-
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
-
-/// WAL parser, no locking required here, because we have been locked from the
-/// outside
-class WBReader : public rocksdb::WriteBatch::Handler {
- public:
-  explicit WBReader(TRI_vocbase_t* vocbase, uint64_t from, size_t& limit,
-                    bool includeSystem, VPackBuilder& builder)
-      : _vocbase(vocbase),
-        _from(from),
-        _limit(limit),
-        _includeSystem(includeSystem),
-        _builder(builder) {}
-
-  void Put(rocksdb::Slice const& key, rocksdb::Slice const& value) override {
-    if (shouldHandleKey(key)) {
-      int res = TRI_ERROR_NO_ERROR;
-      _builder.openObject();
-      switch (RocksDBKey::type(key)) {
-        case RocksDBEntryType::Collection: {
-          _builder.add(
-              "type",
-              VPackValue(static_cast<uint64_t>(REPLICATION_COLLECTION_CREATE)));
-        }
-        case RocksDBEntryType::Document: {
-          _builder.add(
-              "type",
-              VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_DOCUMENT)));
-          // TODO: add transaction id?
-          break;
-        }
-        default:
-          break;  // shouldn't get here?
-      }
-
-      auto containers = getContainerIds(key);
-      _builder.add("database", VPackValue(containers.first));
-      _builder.add("cid", VPackValue(containers.second));
-      _builder.add("data", RocksDBValue::data(value));
-
-      _builder.close();
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        _limit--;
-      }
-    }
-  }
-
-  void Delete(rocksdb::Slice const& key) override { handleDeletion(key); }
-
-  void SingleDelete(rocksdb::Slice const& key) override { handleDeletion(key); }
-
- private:
-  bool shouldHandleKey(rocksdb::Slice const& key) {
-    if (_limit == 0) {
-      return false;
-    }
-
-    switch (RocksDBKey::type(key)) {
-      case RocksDBEntryType::Collection:
-      case RocksDBEntryType::Document: {
-        return fromEligibleCollection(key);
-      }
-      case RocksDBEntryType::View:  // should handle these eventually?
-      default:
-        return false;
-    }
-  }
-
-  void handleDeletion(rocksdb::Slice const& key) {
-    if (shouldHandleKey(key)) {
-      int res = TRI_ERROR_NO_ERROR;
-      _builder.openObject();
-      switch (RocksDBKey::type(key)) {
-        case RocksDBEntryType::Collection: {
-          _builder.add(
-              "type",
-              VPackValue(static_cast<uint64_t>(REPLICATION_COLLECTION_DROP)));
-          auto containers = getContainerIds(key);
-          _builder.add("database", VPackValue(containers.first));
-          _builder.add("cid", VPackValue(containers.second));
-          break;
-        }
-        case RocksDBEntryType::Document: {
-          uint64_t revisionId = RocksDBKey::revisionId(key);
-          _builder.add(
-              "type",
-              VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
-          // TODO: add transaction id?
-          auto containers = getContainerIds(key);
-          _builder.add("database", VPackValue(containers.first));
-          _builder.add("cid", VPackValue(containers.second));
-          _builder.add("data", VPackValue(VPackValueType::Object));
-          _builder.add(StaticStrings::RevString,
-                       VPackValue(std::to_string(revisionId)));
-          _builder.close();
-          break;
-        }
-        default:
-          break;  // shouldn't get here?
-      }
-      _builder.close();
-      if (res == TRI_ERROR_NO_ERROR) {
-        _limit--;
-      }
-    }
-  }
-
-  std::pair<TRI_voc_tick_t, TRI_voc_cid_t> getContainerIds(
-      rocksdb::Slice const& key) {
-    uint64_t objectId = RocksDBKey::collectionId(key);
-    return mapObjectToCollection(objectId);
-  }
-
-  bool fromEligibleCollection(rocksdb::Slice const& key) {
-    auto mapping = getContainerIds(key);
-    if (mapping.first == _vocbase->id()) {
-      std::string const collectionName =
-          _vocbase->collectionName(mapping.second);
-
-      if (collectionName.size() == 0) {
-        return false;
-      }
-
-      if (!_includeSystem && collectionName[0] == '_') {
-        return false;
-      }
-
-      return true;
-    }
-    return false;
-  }
-
- private:
-  TRI_vocbase_t* _vocbase;
-  uint64_t _from;
-  size_t& _limit;
-  bool _includeSystem;
-  VPackBuilder& _builder;
-};
-
-RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber,
-                                                   uint64_t maxTick)
-    : Result(errorNumber), _maxTick(maxTick) {}
-
-uint64_t RocksDBReplicationResult::maxTick() const { return _maxTick; }
 
 RocksDBReplicationContext::RocksDBReplicationContext()
     : _id(TRI_NewTickServer()),
@@ -191,6 +42,10 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _collection(nullptr),
       _iter(),
       _hasMore(true) {}
+
+RocksDBReplicationContext::~RocksDBReplicationContext() {
+  releaseDumpingResources();
+}
 
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
 
@@ -235,11 +90,11 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     _iter = _collection->getAllIterator(_trx.get(), &_mdr, false); //_mdr is not used nor updated
   }
 
-  bool isEdge = _collection->type() == TRI_COL_TYPE_EDGE;
+  bool const isEdge = _collection->type() == TRI_COL_TYPE_EDGE;
   VPackBuilder builder;
 
 
-  auto cb = [this,isEdge,&buff,&builder](DocumentIdentifierToken const& token){
+  auto cb = [this, isEdge, &buff, &builder](DocumentIdentifierToken const& token){
     builder.clear();
 
     //set type
@@ -270,42 +125,6 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   }
 
   return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick);
-}
-
-// iterates over WAL starting at 'from' and returns up to 'limit' documents
-// from the corresponding database
-RocksDBReplicationResult RocksDBReplicationContext::tail(
-    TRI_vocbase_t* vocbase, uint64_t from, size_t limit, bool includeSystem,
-    VPackBuilder& builder) {
-  releaseDumpingResources();
-  std::unique_ptr<WBReader> handler(
-      new WBReader(vocbase, from, limit, includeSystem, builder));
-  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
-  rocksdb::Status s = static_cast<rocksdb::DB*>(globalRocksDB())
-                          ->GetUpdatesSince(from, &iterator);
-  if (!s.ok()) {  // TODO do something?
-    auto converted = convertStatus(s);
-    return {converted.errorNumber(), _lastTick};
-  }
-
-  while (iterator->Valid() && limit > 0) {
-    s = iterator->status();
-    if (s.ok()) {
-      rocksdb::BatchResult batch = iterator->GetBatch();
-      _lastTick = batch.sequence;
-      s = batch.writeBatchPtr->Iterate(handler.get());
-    }
-    if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "Error during WAL scan";
-      LOG_TOPIC(ERR, Logger::ENGINES) << iterator->status().getState();
-      auto converted = convertStatus(s);
-      return {converted.errorNumber(), _lastTick};
-    }
-
-    iterator->Next();
-  }
-
-  return {TRI_ERROR_NO_ERROR, _lastTick};
 }
 
 double RocksDBReplicationContext::expires() const { return _expires; }

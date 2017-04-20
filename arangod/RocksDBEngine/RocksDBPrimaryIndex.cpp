@@ -305,7 +305,7 @@ void RocksDBPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
-                                            arangodb::StringRef keyRef) {
+                                            arangodb::StringRef keyRef) const {
   auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
@@ -357,7 +357,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 // TODO: remove this method?
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                             VPackSlice slice,
-                                            ManagedDocumentResult& result) {
+                                            ManagedDocumentResult& result) const {
   return lookupKey(trx, StringRef(slice));
 }
 
@@ -543,9 +543,9 @@ IndexIterator* RocksDBPrimaryIndex::anyIterator(
   return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
 }
 
-void RocksDBPrimaryIndex::invokeOnAllElements(
+void RocksDBPrimaryIndex::invokeOnAllElements (
     transaction::Methods* trx,
-    std::function<bool(DocumentIdentifierToken const&)> callback) {
+    std::function<bool(DocumentIdentifierToken const&)> callback) const {
   ManagedDocumentResult mmdr;
   std::unique_ptr<IndexIterator> cursor(allIterator(trx, &mmdr, false));
   bool cnt = true;

@@ -80,6 +80,7 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
       _db(nullptr),
+      _replicationManager(nullptr),
       _cmp(new RocksDBComparator()),
       _maxTransactionSize((std::numeric_limits<uint64_t>::max)()),
       _intermediateTransactionCommitSize(32 * 1024 * 1024),

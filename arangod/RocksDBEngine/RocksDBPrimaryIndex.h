@@ -160,10 +160,11 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  RocksDBToken lookupKey(transaction::Methods* trx, arangodb::StringRef key);
+  RocksDBToken lookupKey(transaction::Methods* trx,
+                         arangodb::StringRef key) const;
   RocksDBToken lookupKey(transaction::Methods* trx,
                          arangodb::velocypack::Slice key,
-                         ManagedDocumentResult& result);
+                         ManagedDocumentResult& result) const;
 
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
@@ -196,7 +197,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   void invokeOnAllElements(
       transaction::Methods* trx,
-      std::function<bool(DocumentIdentifierToken const&)> callback);
+      std::function<bool(DocumentIdentifierToken const&)> callback) const;
 
  private:
   /// @brief create the iterator, for a single attribute, IN operator
