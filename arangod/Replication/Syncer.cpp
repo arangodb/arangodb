@@ -600,7 +600,12 @@ int Syncer::createIndex(VPackSlice const& slice) {
 int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   std::string id;
   if (slice.hasKey("data")) {
-    id = VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
+    VPackSlice idSlice = slice.get("data").get("id");
+    if (idSlice.isString()) {
+      id = VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
+    } else {
+      id = std::to_string(VelocyPackHelper::stringUInt64(idSlice));
+    }
   } else {
     id = VelocyPackHelper::getStringValue(slice, "id", "");
   }
