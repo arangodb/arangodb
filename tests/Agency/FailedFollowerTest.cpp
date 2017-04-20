@@ -570,7 +570,7 @@ SECTION("a successfully started job should finish immediately and set everything
   Verify(Method(mockAgent, transact));
 }
 
-#ifndef __APPLE__
+#ifdef __linux__
 SECTION("the job should handle distributeShardsLike") {
   std::string jobId = "1";
   TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {

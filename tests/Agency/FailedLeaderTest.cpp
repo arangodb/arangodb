@@ -535,7 +535,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
   Verify(Method(mockAgent, write));
 }
 
-#ifndef __APPLE__
+#ifdef __linux__
 SECTION("if everything is fine than the job should be written to pending, adding the toServer") {
   std::string jobId = "1";
 
