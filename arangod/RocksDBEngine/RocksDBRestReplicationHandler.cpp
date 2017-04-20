@@ -690,6 +690,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   if (!found || busy || ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
+    return;
   }
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
