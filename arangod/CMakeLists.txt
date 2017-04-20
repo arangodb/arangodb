@@ -54,26 +54,6 @@ if (MSVC)
   )
 endif ()
 
-
-option(USE_LDAP_AUTH OFF)
-
-if (USE_LDAP_AUTH)
-  add_definitions("-DUSE_LDAP_AUTH=1")
-
-  if (NOT MSVC)
-    find_library(LDAP_LIB ldap)
-
-    if(NOT LDAP_LIB)
-      message(FATAL_ERROR "LDAP library not found")
-    else ()
-      message(STATUS "FOUND LDAP LIB")
-      message(STATUS "FOUND ${LDAP_LIB}")
-    endif ()
-  endif ()
-  add_definitions("-DUSE_LDAP_AUTH=1")
-endif ()
-
-
 if (USE_ENTERPRISE)
   set(ENTERPRISE_FILES "")
 else ()
