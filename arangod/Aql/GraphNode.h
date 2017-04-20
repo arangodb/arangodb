@@ -171,7 +171,7 @@ class GraphNode : public ExecutionNode {
   /// @brief Pseudo string value node to hold the last visted vertex id.
   /// @brief Flag if the options have been build.
   /// Afterwards this class is not copyable anymore.
-  bool _optionsBuild;
+  bool _optionsBuilt;
 
   /// @brief The list of traverser engines grouped by server.
   std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
