@@ -192,9 +192,9 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder
     auto shards = _vertexShards.find(name);
     if (shards == _vertexShards.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "Collection not known to Traversal " +
-                                         name + " please add 'WITH " + name +
-                                         "' as the first line in your AQL");
+                                     "collection not known to traversal: '" +
+                                         name + "'. please add 'WITH " + name +
+                                         "' as the first line in your AQL query");
       // The collection is not known here!
       // Maybe handle differently
     }
@@ -245,9 +245,9 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     auto shards = _vertexShards.find(name);
     if (shards == _vertexShards.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "Collection not known to Traversal " +
-                                         name + " please add 'WITH " + name +
-                                         "' as the first line in your AQL");
+                                     "collection not known to traversal: '" +
+                                         name + "'. please add 'WITH " + name +
+                                         "' as the first line in your AQL query");
     }
     builder.add(v);
     for (std::string const& shard : shards->second) {

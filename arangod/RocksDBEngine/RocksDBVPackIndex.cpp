@@ -835,10 +835,16 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   // HashIndex has different semantics
-  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+  /*if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     SimpleAttributeEqualityMatcher matcher(_fields);
     return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
                             estimatedCost);
+  }*/
+  // mmfiles failure point compat
+  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
 
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
@@ -1206,11 +1212,20 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
   // HashIndex uses slightly different semantics
-  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+  /*if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     SimpleAttributeEqualityMatcher matcher(_fields);
     return matcher.specializeAll(this, node, reference);
+  }*/
+  // mmfiles failure compat
+  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
-
+  
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -147,7 +148,11 @@ function optimizerCollectMethodsTestSuite () {
 /// @brief expect hash COLLECT
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHashedWithNonSortedIndex : function () {
+    testHashedWithNonSortedIndexMMFiles : function () {
+      if (db._engine().name !== "mmfiles") {
+        return;
+      }
+      
       c.ensureIndex({ type: "hash", fields: [ "group" ] }); 
       c.ensureIndex({ type: "hash", fields: [ "group", "value" ] }); 
 
@@ -181,6 +186,53 @@ function optimizerCollectMethodsTestSuite () {
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length);
       });
+    },
+    
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief expect hash COLLECT
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testHashedWithNonSortedIndexRocksDB : function () {
+      if (db._engine().name !== "rocksdb") {
+        return;
+      }
+      
+      c.ensureIndex({ type: "hash", fields: [ "group" ] });
+      c.ensureIndex({ type: "hash", fields: [ "group", "value" ] });
+      
+      var queries = [
+                     [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500, false],
+                     [ "FOR j IN " + c.name() + " COLLECT value = j._key RETURN value", 1500, false],
+                     [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10, true],
+                     [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500, true ],
+                     [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10, true ],
+                     [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", 1500, true ]
+                     ];
+      
+      queries.forEach(function(query) {
+          var plan = AQL_EXPLAIN(query[0]).plan;
+          
+          var aggregateNodes = 0;
+          var sortNodes = 0;
+          plan.nodes.map(function(node) {
+            if (node.type === "CollectNode") {
+              ++aggregateNodes;
+              assertFalse(query[2] && node.collectOptions.method !== "sorted");
+              assertEqual(query[2] ? "sorted" : "hash",
+                         node.collectOptions.method, query[0]);
+            }
+            if (node.type === "SortNode") {
+              ++sortNodes;
+            }
+          });
+          
+          assertEqual(1, aggregateNodes);
+          assertEqual(query[2] ? 0 : 1, sortNodes);
+          
+          var results = AQL_EXECUTE(query[0]);
+          assertEqual(query[1], results.json.length);
+       });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

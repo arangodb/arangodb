@@ -31,6 +31,8 @@ in the *fields* array:
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
+**Note**: this method is not yet supported by the RocksDB storage engine.
+
 @EXAMPLES
 
 Create a geo index for an array attribute:
@@ -42,7 +44,7 @@ Create a geo index for an array attribute:
 |     for (j = -180; j <= 180; j += 10) {
 |         db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] });
 |     }
-  }	
+  }
 db.geo.count();
 db.geo.near(0, 0).limit(3).toArray();
 db.geo.near(0, 0).count();
@@ -58,8 +60,7 @@ db.geo2.ensureIndex({ type: "geo", fields: [ "location.latitude", "location.long
 |     for (j = -180; j <= 180; j += 10) {
 |         db.geo2.save({ name : "Name/" + i + "/" + j, location: { latitude : i, longitude : j } });
 |     }
-  }	
+  }
 db.geo2.near(0, 0).limit(3).toArray();
 ~db._drop("geo2")
 @END_EXAMPLE_ARANGOSH_OUTPUT
-

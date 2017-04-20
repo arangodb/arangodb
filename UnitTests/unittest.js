@@ -178,7 +178,8 @@ function main(argv) {
         options = internal.parseArgv(argv, 0); // parse option with parseArgv function
       }
     } catch (x) {
-      print("failed to parse the json options: " + x.message);
+      print("failed to parse the json options: " + x.message + "\n" + String(x.stack));
+      print("argv: ", argv);
       return -1;
     }
   }

@@ -307,12 +307,12 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
   if (ok) {
     if (0 <= _affinity) {
-      TRI_SetProcessorAffinity(&_thread, (size_t)_affinity);
+      TRI_SetProcessorAffinity(&_thread, _affinity);
     }
   } else {
     _state.store(ThreadState::STOPPED);
     LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '" << _name
-                                    << "': " << strerror(errno);
+                                    << "': " << TRI_last_error();
 
     return false;
   }

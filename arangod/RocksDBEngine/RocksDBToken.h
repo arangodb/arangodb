@@ -25,6 +25,7 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_TOKEN_H 1
 
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -41,8 +42,8 @@ struct RocksDBToken : public DocumentIdentifierToken {
   }
 };
 
-static_assert(sizeof(RocksDBToken) == sizeof(uint64_t), "invalid RocksDBToken size");
-
+static_assert(sizeof(RocksDBToken) == sizeof(uint64_t),
+              "invalid RocksDBToken size");
 }
 
 #endif

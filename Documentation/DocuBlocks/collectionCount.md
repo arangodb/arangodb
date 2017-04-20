@@ -5,6 +5,8 @@
 
 Returns the number of living documents in the collection.
 
+**Note**: this result may be slightly off when using the RocksDB storage engine.
+
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_OUTPUT{collectionCount}
@@ -12,5 +14,3 @@ Returns the number of living documents in the collection.
   db.users.count();
 ~ db._drop("users");
 @END_EXAMPLE_ARANGOSH_OUTPUT
-
-

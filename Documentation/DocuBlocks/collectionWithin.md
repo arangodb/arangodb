@@ -23,10 +23,12 @@ contains the distance between the given point and the document in meters.
 This will add an attribute *name* to all documents returned, which
 contains the distance between the given point and the document in meters.
 
-Note: the *within* simple query function is **deprecated** as of ArangoDB 2.6. 
+**Note**: this method is not yet supported by the RocksDB storage engine.
+
+Note: the *within* simple query function is **deprecated** as of ArangoDB 2.6.
 The function may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the within operator  is
-to use the AQL *WITHIN* function in an [AQL query](../../AQL/Functions/Geo.html) as follows: 
+to use the AQL *WITHIN* function in an [AQL query](../../AQL/Functions/Geo.html) as follows:
 
 ```
 FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
@@ -48,4 +50,3 @@ To find all documents within a radius of 2000 km use:
 @END_EXAMPLE_ARANGOSH_OUTPUT
 
 @endDocuBlock
-

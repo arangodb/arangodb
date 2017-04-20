@@ -189,8 +189,6 @@ Result RocksDBTransactionState::commitTransaction(
         _cacheTx = nullptr;
       }
 
-      // LOG_TOPIC(ERR, Logger::FIXME) << "#" << _id << " COMMIT";
-
       rocksdb::Snapshot const* snap = this->_rocksReadOptions.snapshot;
       TRI_ASSERT(snap != nullptr);
 
@@ -209,10 +207,9 @@ Result RocksDBTransactionState::commitTransaction(
           RocksDBEngine* engine =
               static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
-          RocksDBCounterManager::CounterAdjustment update(latestSeq,
-                                                      collection->numInserts(),
-                                                      collection->numRemoves(),
-                                                      collection->revision());
+          RocksDBCounterManager::CounterAdjustment update(
+              latestSeq, collection->numInserts(), collection->numRemoves(),
+              collection->revision());
           engine->counterManager()->updateCounter(coll->objectId(), update);
         }
       }
@@ -221,12 +218,6 @@ Result RocksDBTransactionState::commitTransaction(
     }
 
     updateStatus(transaction::Status::COMMITTED);
-
-    // if a write query, clear the query cache for the participating collections
-    if (AccessMode::isWriteOrExclusive(_type) && !_collections.empty() &&
-        arangodb::aql::QueryCache::instance()->mayBeActive()) {
-      clearQueryCache();
-    }
   }
 
   unuseCollections(_nestingLevel);
@@ -255,8 +246,6 @@ Result RocksDBTransactionState::abortTransaction(
       _cacheTx = nullptr;
     }
 
-    // LOG_TOPIC(ERR, Logger::FIXME) << "#" << _id << " ABORT";
-
     updateStatus(transaction::Status::ABORTED);
 
     if (hasOperations()) {
@@ -281,7 +270,9 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   uint64_t newSize = _transactionSize + operationSize + keySize;
   if (_maxTransactionSize < newSize) {
     // we hit the transaction size limit
-    std::string message = "maximal transaction size limit of " + std::to_string(_maxTransactionSize) + " bytes reached!";
+    std::string message =
+        "aborting transaction because maximal transaction size limit of " +
+        std::to_string(_maxTransactionSize) + " bytes is reached";
     res.reset(TRI_ERROR_RESOURCE_LIMIT, message);
     return res;
   }
@@ -290,12 +281,19 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
       static_cast<RocksDBTransactionCollection*>(findCollection(cid));
 
   if (collection == nullptr) {
-    std::string message = "collection '" + collection->collectionName() + "' not found in transaction state";
+    std::string message = "collection '" + collection->collectionName() +
+                          "' not found in transaction state";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   // should not fail or fail with exception
   collection->addOperation(operationType, operationSize, revisionId);
+
+  // clear the query cache for this collection
+  if (arangodb::aql::QueryCache::instance()->mayBeActive()) {
+    arangodb::aql::QueryCache::instance()->invalidate(
+        _vocbase, collection->collectionName());
+  }
 
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
@@ -327,11 +325,16 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
 
   return res;
 }
-  
+
+uint64_t RocksDBTransactionState::sequenceNumber() const {
+  return static_cast<uint64_t>(
+      _rocksTransaction->GetSnapshot()->GetSequenceNumber());
+}
+
 void RocksDBTransactionState::reset() {
-  //only reset when already commited
+  // only reset when already commited
   TRI_ASSERT(_status == transaction::Status::COMMITTED);
-  //reset count
+  // reset count
   _transactionSize = 0;
   _numInserts = 0;
   _numUpdates = 0;

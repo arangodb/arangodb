@@ -38,44 +38,35 @@
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 
-
-namespace rocksdb {class TransactionDB;
-  class DB;
-  struct ReadOptions;
-  class Comparator;
+namespace rocksdb {
+class TransactionDB;
+class DB;
+struct ReadOptions;
+class Comparator;
 }
 
 namespace arangodb {
 
 class RocksDBOperationResult : public Result {
-public:
-  RocksDBOperationResult()
-    :Result()
-    ,_keySize(0)
-    ,_commitRequired(false)
-  {}
+ public:
+  RocksDBOperationResult() : Result(), _keySize(0), _commitRequired(false) {}
 
   RocksDBOperationResult(Result const& other)
-    : _keySize(0)
-    ,_commitRequired(false)
-  {
+      : _keySize(0), _commitRequired(false) {
     cloneData(other);
   }
 
-  RocksDBOperationResult(Result&& other)
-    : _keySize(0)
-    ,_commitRequired(false)
-  {
+  RocksDBOperationResult(Result&& other) : _keySize(0), _commitRequired(false) {
     cloneData(std::move(other));
   }
 
-  uint64_t keySize(){ return _keySize; }
-  uint64_t keySize(uint64_t s ) { _keySize = s; return _keySize; }
+  uint64_t keySize() const { return _keySize; }
+  void keySize(uint64_t s) { _keySize = s; }
 
-  bool commitRequired(){ return _commitRequired; }
-  bool commitRequired(bool cr ) { _commitRequired = cr; return _commitRequired; }
+  bool commitRequired() const { return _commitRequired; }
+  void commitRequired(bool cr) { _commitRequired = cr; }
 
-protected:
+ protected:
   uint64_t _keySize;
   bool _commitRequired;
 };
@@ -108,24 +99,34 @@ arangodb::Result globalRocksDBRemove(
     rocksdb::Slice const& key,
     rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
+void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
+std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
+
 /// Iterator over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
                           RocksDBKeyBounds const&);
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds);
+Result removeLargeRange(rocksdb::TransactionDB* db,
+                        RocksDBKeyBounds const& bounds);
 
-std::vector<std::pair<RocksDBKey,RocksDBValue>> collectionKVPairs(TRI_voc_tick_t databaseId);
-std::vector<std::pair<RocksDBKey,RocksDBValue>> viewKVPairs(TRI_voc_tick_t databaseId);
+std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
+    TRI_voc_tick_t databaseId);
+std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
+    TRI_voc_tick_t databaseId);
 
-// optional switch to std::function to reduce amount of includes and to avoid template
+// optional switch to std::function to reduce amount of includes and to avoid
+// template
 // this helper is not meant for transactional usage!
-template<typename T> //T is a invokeable that takes a rocksdb::Iterator*
-void iterateBounds(RocksDBKeyBounds const& bounds, T callback, rocksdb::ReadOptions const& options = rocksdb::ReadOptions{}){
+template <typename T>  // T is a invokeable that takes a rocksdb::Iterator*
+void iterateBounds(
+    RocksDBKeyBounds const& bounds, T callback,
+    rocksdb::ReadOptions const& options = rocksdb::ReadOptions{}) {
   auto cmp = globalRocksEngine()->cmp();
   std::unique_ptr<rocksdb::Iterator> it(globalRocksDB()->NewIterator(options));
-  for (it->Seek(bounds.start()); it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0; it->Next()) {
+  for (it->Seek(bounds.start());
+       it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0; it->Next()) {
     callback(it.get());
   }
 }

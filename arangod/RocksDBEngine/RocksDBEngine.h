@@ -243,6 +243,9 @@ class RocksDBEngine final : public StorageEngine {
   int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
                                   VPackSlice const& slice);
 
+  void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
+  std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
+
  private:
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
@@ -258,17 +261,28 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBCounterManager* counterManager();
 
  private:
-  rocksdb::TransactionDB* _db; // single rocksdb database used in this storage engine
-  rocksdb::Options _options; // default read options
-  std::unique_ptr<RocksDBComparator> _cmp; // arangodb comparator - requried because of vpack in keys
+  rocksdb::TransactionDB*
+      _db;  // single rocksdb database used in this storage engine
+  rocksdb::Options _options;  // default read options
+  std::unique_ptr<RocksDBComparator>
+      _cmp;           // arangodb comparator - requried because of vpack in keys
   std::string _path;  // path used by rocksdb (inside _basePath)
-  std::string _basePath; // path to arangodb data dir
+  std::string _basePath;  // path to arangodb data dir
 
-  std::unique_ptr<RocksDBCounterManager> _counterManager; // tracks the count of documents in collections
-  uint64_t _maxTransactionSize; // maximum allowed size for a transaction
-  uint64_t _intermediateTransactionSize; // maximum size for a transaction before a intermediate commit will be tried
-  uint64_t _intermediateTransactionCount; // limit of transaction count for intermediate commit
-  bool _intermediateTransactionEnabled; // allow usage of intermediate commits
+  std::unique_ptr<RocksDBCounterManager>
+      _counterManager;           // tracks the count of documents in collections
+  uint64_t _maxTransactionSize;  // maximum allowed size for a transaction
+  uint64_t _intermediateTransactionCommitSize;   // maximum size for a
+                                                 // transaction before a
+                                                 // intermediate commit will be
+                                                 // tried
+  uint64_t _intermediateTransactionCommitCount;  // limit of transaction count
+                                                 // for intermediate commit
+  bool _intermediateTransactionCommitEnabled;    // allow usage of intermediate
+                                                 // commits
+
+  std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
+      _collectionMap;
 };
 }
 #endif

@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine.h"
+#include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
@@ -78,8 +79,14 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
       _db(nullptr),
-      _cmp(new RocksDBComparator()) {
-  // inherits order from StorageEngine
+      _cmp(new RocksDBComparator()),
+      _maxTransactionSize((std::numeric_limits<uint64_t>::max)()),
+      _intermediateTransactionCommitSize(32 * 1024 * 1024),
+      _intermediateTransactionCommitCount(100000),
+      _intermediateTransactionCommitEnabled(false) {
+  // inherits order from StorageEngine but requires RocksDBOption that are used
+  // to configure this Engine and the MMFiles PesistentIndexFeature
+  startsAfter("RocksDBOption");
 }
 
 RocksDBEngine::~RocksDBEngine() { delete _db; }
@@ -93,29 +100,24 @@ void RocksDBEngine::collectOptions(
   options->addSection("rocksdb", "RocksDB engine specific configuration");
 
   // control transaction size for RocksDB engine
-  _maxTransactionSize =
-      std::numeric_limits<uint64_t>::max();  // set sensible default value here
   options->addOption("--rocksdb.max-transaction-size",
                      "transaction size limit (in bytes)",
                      new UInt64Parameter(&_maxTransactionSize));
 
-  // control intermediate transactions in RocksDB
-  _intermediateTransactionSize = _maxTransactionSize * 0.8;
-  options->addOption(
-      "--rocksdb.intermediate-transaction-count",
-      "an intermediate commit will be triend if this count is reached",
-      new UInt64Parameter(&_intermediateTransactionSize));
+  options->addOption("--rocksdb.intermediate-transaction-count",
+                     "an intermediate commit will be tried when a transaction "
+                     "has accumulated operations of this size (in bytes)",
+                     new UInt64Parameter(&_intermediateTransactionCommitSize));
+
+  options->addOption("--rocksdb.intermediate-transaction-count",
+                     "an intermediate commit will be tried when this number of "
+                     "operations is reached in a transaction",
+                     new UInt64Parameter(&_intermediateTransactionCommitCount));
+  _intermediateTransactionCommitCount = 100 * 1000;
 
   options->addOption(
-      "--rocksdb.intermediate-transaction-count",
-      "an intermediate commit will be triend if this count is reached",
-      new UInt64Parameter(&_intermediateTransactionCount));
-  _intermediateTransactionCount = 100 * 1000;
-
-  _intermediateTransactionEnabled = false;
-  options->addOption("--rocksdb.intermediate-transaction",
-                     "enable intermediate transactions",
-                     new BooleanParameter(&_intermediateTransactionEnabled));
+      "--rocksdb.intermediate-transaction", "enable intermediate transactions",
+      new BooleanParameter(&_intermediateTransactionCommitEnabled));
 }
 
 // validate the storage engine's specific options
@@ -140,16 +142,44 @@ void RocksDBEngine::start() {
   }
 
   // set the database sub-directory for RocksDB
-  auto databasePathFeature =
+  auto* databasePathFeature =
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = databasePathFeature->subdirectoryName("engine-rocksdb");
 
   LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "initializing rocksdb, path: "
                                               << _path;
 
+  double counter_sync_seconds = 2.5;
   rocksdb::TransactionDBOptions transactionOptions;
 
-  double counter_sync_seconds = 2.5;
+  // options imported set by RocksDBOptionFeature
+  auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
+      "RocksDBOption");
+  _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
+  _options.max_write_buffer_number =
+      static_cast<int>(opts->_maxWriteBufferNumber);
+  _options.delayed_write_rate = opts->_delayedWriteRate;
+  _options.min_write_buffer_number_to_merge =
+      static_cast<int>(opts->_minWriteBufferNumberToMerge);
+  _options.num_levels = static_cast<int>(opts->_numLevels);
+  _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
+  _options.max_bytes_for_level_multiplier =
+      static_cast<int>(opts->_maxBytesForLevelMultiplier);
+  _options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
+  _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
+
+  _options.base_background_compactions =
+      static_cast<int>(opts->_baseBackgroundCompactions);
+  _options.max_background_compactions =
+      static_cast<int>(opts->_maxBackgroundCompactions);
+
+  _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
+  _options.keep_log_file_num = static_cast<size_t>(opts->_keepLogFileNum);
+  _options.log_file_time_to_roll =
+      static_cast<size_t>(opts->_logFileTimeToRoll);
+  _options.compaction_readahead_size =
+      static_cast<size_t>(opts->_compactionReadaheadSize);
+
   _options.create_if_missing = true;
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
@@ -207,8 +237,8 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
 TransactionState* RocksDBEngine::createTransactionState(
     TRI_vocbase_t* vocbase) {
   return new RocksDBTransactionState(
-      vocbase, _maxTransactionSize, _intermediateTransactionEnabled,
-      _intermediateTransactionSize, _intermediateTransactionCount);
+      vocbase, _maxTransactionSize, _intermediateTransactionCommitEnabled,
+      _intermediateTransactionCommitSize, _intermediateTransactionCommitCount);
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
@@ -623,20 +653,7 @@ arangodb::Result RocksDBEngine::renameCollection(
 void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
                                 TRI_voc_cid_t collectionId,
                                 TRI_idx_iid_t indexId,
-                                arangodb::velocypack::Slice const& data) {
-  /*
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
-  auto key = RocksDBKey::Index(vocbase->id(), collectionId, indexId);
-  auto value = RocksDBValue::Index(data);
-
-  rocksdb::Status res = _db->Put(options, key.string(), value.string());
-  auto result = rocksutils::convertStatus(res);
-  if (!result.ok()) {
-    THROW_ARANGO_EXCEPTION(result.errorNumber());
-  }
-  */
-  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
+                                arangodb::velocypack::Slice const& data) {}
 
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,
                               TRI_voc_cid_t collectionId, TRI_idx_iid_t iid) {
@@ -790,6 +807,25 @@ void RocksDBEngine::addV8Functions() {
 /// @brief Add engine-specific REST handlers
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory* handlerFactory) {
   RocksDBRestHandlers::registerResources(handlerFactory);
+}
+
+void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
+                                         TRI_voc_cid_t cid) {
+  if (objectId == 0) {
+    return;
+  }
+
+  _collectionMap[objectId] = std::make_pair(did, cid);
+}
+
+std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
+    uint64_t objectId) {
+  auto it = _collectionMap.find(objectId);
+  if (it == _collectionMap.end()) {
+    return {0, 0};
+  }
+
+  return it->second;
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {

@@ -80,6 +80,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
   LOG_TOPIC(ERR, Logger::DEVEL)
       << "CREATE ROCKS COLLECTION: " << _logicalCollection->name() << " ("
       << this->objectId() << ")";
+  addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
+                       _logicalCollection->cid());
 }
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
@@ -91,6 +93,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
   LOG_TOPIC(ERR, Logger::DEVEL)
       << "CREATE ROCKS COLLECTION: " << _logicalCollection->name() << " ("
       << this->objectId() << ")";
+  addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
+                       _logicalCollection->cid());
 }
 
 RocksDBCollection::~RocksDBCollection() {}
