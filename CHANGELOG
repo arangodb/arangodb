@@ -406,7 +406,7 @@ v3.1.10 (2017-02-02)
       FOR doc IN docs RETURN doc.value ? doc.value : 'not present'
 
 * fixed wrong sorting order in cluster, if an index was used to sort with many
-shards.
+  shards.
 
 * added --replication-factor, --number-of-shards and --wait-for-sync to arangobench
 
