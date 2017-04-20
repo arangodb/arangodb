@@ -235,11 +235,11 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     _iter = _collection->getAllIterator(_trx.get(), &_mdr, false); //_mdr is not used nor updated
   }
 
-  bool isEdge = _collection->type() == TRI_COL_TYPE_EDGE;
+  bool const isEdge = _collection->type() == TRI_COL_TYPE_EDGE;
   VPackBuilder builder;
 
 
-  auto cb = [this,isEdge,&buff,&builder](DocumentIdentifierToken const& token){
+  auto cb = [this, isEdge, &buff, &builder](DocumentIdentifierToken const& token){
     builder.clear();
 
     //set type
