@@ -227,8 +227,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
 
 void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
                                           bool verbose) const {
-  GraphNode::toVelocyPackHelperGeneric(nodes,
-                                       verbose);  // call base class method
+  GraphNode::toVelocyPackHelper(nodes, verbose);  // call base class method
   // In variables
   if (usesStartInVariable()) {
     nodes.add(VPackValue("startInVariable"));

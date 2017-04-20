@@ -298,8 +298,7 @@ bool TraversalNode::allDirectionsEqual() const {
 
 void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
                                        bool verbose) const {
-  GraphNode::toVelocyPackHelperGeneric(nodes,
-                                       verbose);  // call base class method
+  GraphNode::toVelocyPackHelper(nodes, verbose);  // call base class method
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
