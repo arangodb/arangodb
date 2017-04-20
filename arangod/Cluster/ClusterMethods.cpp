@@ -1663,6 +1663,101 @@ void fetchVerticesFromEngines(
   vertexIds.clear();
 }
 
+/// @brief fetch vertices from TraverserEngines
+///        Contacts all TraverserEngines placed
+///        on the DBServers for the given list
+///        of vertex _id's.
+///        If any server responds with a document
+///        it will be inserted into the result.
+///        If no server responds with a document
+///        a 'null' will be inserted into the result.
+///        ShortestPathVariant
+
+void fetchVerticesFromEngines(
+    std::string const& dbname,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+    std::unordered_set<StringRef>& vertexIds,
+    std::unordered_map<StringRef, arangodb::velocypack::Slice>& result,
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
+    VPackBuilder& builder) {
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return;
+  }
+  // TODO map id => ServerID if possible
+  // And go fast-path
+
+  // slow path, sharding not deducable from _id
+  builder.clear();
+  builder.openObject();
+  builder.add(VPackValue("keys"));
+  builder.openArray();
+  for (auto const& v : vertexIds) {
+    //TRI_ASSERT(v.isString());
+    builder.add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
+  }
+  builder.close(); // 'keys' Array
+  builder.close(); // base object
+
+  std::string const url =
+      "/_db/" + StringUtils::urlEncode(dbname) + "/_internal/traverser/vertex/";
+
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>(builder.toJson());
+  for (auto const& engine : *engines) {
+    requests.emplace_back("server:" + engine.first, RequestType::PUT,
+                          url + StringUtils::itoa(engine.second), body);
+  }
+
+  // Perform the requests
+  size_t nrDone = 0;
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+
+  // Now listen to the results:
+  for (auto const& req : requests) {
+    auto res = req.result;
+    int commError = handleGeneralCommErrors(&res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      // oh-oh cluster is in a bad state
+      THROW_ARANGO_EXCEPTION(commError);
+    }
+    TRI_ASSERT(res.answer != nullptr);
+    auto resBody = res.answer->toVelocyPackBuilderPtr();
+    VPackSlice resSlice = resBody->slice();
+    if (!resSlice.isObject()) {
+      // Response has invalid format
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
+    }
+    if (res.answer_code != ResponseCode::OK) {
+      int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          resSlice, "errorNum", TRI_ERROR_INTERNAL);
+      // We have an error case here. Throw it.
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          code, arangodb::basics::VelocyPackHelper::getStringValue(
+                    resSlice, "errorMessage", TRI_errno_string(code)));
+    }
+    bool cached = false;
+
+    for (auto const& pair : VPackObjectIterator(resSlice)) {
+      StringRef key(pair.key);
+      if (vertexIds.erase(key) == 0) {
+        // We either found the same vertex twice,
+        // or found a vertex we did not request.
+        // Anyways something somewhere went seriously wrong
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
+      }
+      TRI_ASSERT(result.find(key) == result.end());
+      if (!cached) {
+        datalake.emplace_back(resBody);
+        cached = true;
+      }
+      // Protected by datalake
+      result.emplace(key, pair.value);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all edges on coordinator using a Traverser Filter
 ////////////////////////////////////////////////////////////////////////////////

@@ -26,7 +26,10 @@
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
+#include "Cluster/ClusterMethods.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Indexes/Index.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -64,8 +67,7 @@ ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx,
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
 }
 
-ShortestPathOptions::ShortestPathOptions(aql::Query* query,
-                                         VPackSlice info,
+ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice info,
                                          VPackSlice collections)
     : BaseOptions(query, info, collections),
       direction("outbound"),
@@ -98,7 +100,6 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query,
   }
 }
 
-
 ShortestPathOptions::~ShortestPathOptions() {}
 
 void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
@@ -113,7 +114,6 @@ void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
     it.buildEngineInfo(result);
   }
   result.close();
-
 
   result.close();
 }
@@ -207,4 +207,26 @@ EdgeCursor* ShortestPathOptions::nextCursorCoordinator(StringRef vid) {
 EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(StringRef vid) {
   auto cursor = std::make_unique<ClusterEdgeCursor>(vid, true, this);
   return cursor.release();
+}
+
+void ShortestPathOptions::fetchVerticesCoordinator(
+    std::deque<StringRef> const& vertexIds) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    std::unordered_set<StringRef> fetch;
+    auto ch = static_cast<ClusterTraverserCache*>(cache());
+    // In Coordinator all caches are ClusterTraverserCache instances
+    TRI_ASSERT(ch != nullptr);
+    std::unordered_map<StringRef, VPackSlice>& found = ch->edges();
+    for (auto it : vertexIds) {
+      if (found.find(it) == found.end()) {
+        // We do not have this vertex
+        fetch.emplace(it);
+      }
+    }
+    if (!fetch.empty()) {
+      transaction::BuilderLeaser leased(trx());
+      fetchVerticesFromEngines(trx()->databaseName(), ch->engines(), fetch,
+                               found, ch->datalake(), *(leased.get()));
+    }
+  }
 }

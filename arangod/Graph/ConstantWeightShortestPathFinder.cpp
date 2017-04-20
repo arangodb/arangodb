@@ -63,6 +63,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
   // Init
   if (start == end) {
     result._vertices.emplace_back(start);
+    _options->fetchVerticesCoordinator(result._vertices);
     return true;
   }
   _leftClosure.clear();
@@ -120,6 +121,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
               TRI_IF_FAILURE("TraversalOOMPath") {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
               }
+              _options->fetchVerticesCoordinator(result._vertices);
               return true;
             }
             nextClosure.emplace_back(n);
@@ -160,6 +162,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
               TRI_IF_FAILURE("TraversalOOMPath") {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
               }
+              _options->fetchVerticesCoordinator(result._vertices);
               return true;
             }
             nextClosure.emplace_back(n);

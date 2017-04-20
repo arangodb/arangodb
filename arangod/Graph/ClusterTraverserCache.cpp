@@ -24,6 +24,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Basics/StringRef.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -32,6 +33,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 using namespace arangodb::graph;
 
 ClusterTraverserCache::ClusterTraverserCache(
@@ -42,11 +44,21 @@ ClusterTraverserCache::ClusterTraverserCache(
 ClusterTraverserCache::~ClusterTraverserCache() {}
 
 aql::AqlValue ClusterTraverserCache::fetchAqlResult(StringRef id) {
-  return AqlValue(_edges[id]);
+  auto it = _edges.find(id);
+  if (it == _edges.end()) {
+    // Document not found return NULL
+    return AqlValue(VelocyPackHelper::NullValue());
+  }
+  return AqlValue(it->second);
 }
 
 void ClusterTraverserCache::insertIntoResult(StringRef id,
                                              VPackBuilder& result) {
+  auto it = _edges.find(id);
+  if (it == _edges.end()) {
+    result.add(VelocyPackHelper::NullValue());
+    return;
+  }
   result.add(_edges[id]);
 }
 

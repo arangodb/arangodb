@@ -101,6 +101,8 @@ struct ShortestPathOptions : public BaseOptions {
 
   EdgeCursor* nextReverseCursor(ManagedDocumentResult*, StringRef vid);
 
+  void fetchVerticesCoordinator(std::deque<StringRef> const& vertexIds);
+
  private:
   EdgeCursor* nextCursorCoordinator(StringRef vid);
   EdgeCursor* nextReverseCursorCoordinator(StringRef vid);

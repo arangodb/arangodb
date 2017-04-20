@@ -239,6 +239,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  _options->fetchVerticesCoordinator(result._vertices);
   return true;
 }
 
