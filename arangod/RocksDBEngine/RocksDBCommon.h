@@ -99,6 +99,8 @@ arangodb::Result globalRocksDBRemove(
     rocksdb::Slice const& key,
     rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
+uint64_t latestSequenceNumber();
+
 void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 

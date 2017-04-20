@@ -161,6 +161,11 @@ arangodb::Result globalRocksDBRemove(rocksdb::Slice const& key,
   return convertStatus(status);
 };
 
+uint64_t latestSequenceNumber() {
+  auto seq = globalRocksDB()->GetLatestSequenceNumber();
+  return static_cast<uint64_t>(seq);
+};
+
 void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
                           TRI_voc_cid_t cid) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
