@@ -59,9 +59,17 @@ void FileDescriptorsFeature::prepare() { adjustFileDescriptors(); }
 
 #ifdef TRI_HAVE_GETRLIMIT
 template <typename T>
-static std::string StringifyLimitValue(T value) {
+static bool isUnlimited(T value) {
   auto max = std::numeric_limits<decltype(value)>::max();
   if (value == max || value == max / 2) {
+    return true;
+  }
+  return false;
+}
+
+template <typename T>
+static std::string StringifyLimitValue(T value) {
+  if (isUnlimited(value)) {
     return "unlimited";
   }
   return std::to_string(value);
@@ -113,7 +121,7 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
   uint64_t recommended = RECOMMENDED;
   uint64_t minimum = _descriptorsMinimum;
 
-  if (recommended < minimum) {
+  if (minimum < recommended && 0 < minimum) {
     recommended = minimum;
   }
 
@@ -143,7 +151,7 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
     LOG_TOPIC(DEBUG, arangodb::Logger::SYSCALL)
         << "soft limit " << rlim.rlim_cur << " is too small, trying to raise";
 
-    if (recommended < rlim.rlim_max) {
+    if (!isUnlimited(rlim.rlim_max) && recommended < rlim.rlim_max) {
       recommended = rlim.rlim_max;
     }
 
