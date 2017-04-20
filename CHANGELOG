@@ -1,6 +1,27 @@
 devel
 -----
 
+* AQL Breaking Chance in Cluster:
+  The SHORTEST_PATH statement using edge-collection names instead
+  of a graph name now requires to explicitly name the vertex-collection names 
+  within the AQL query in the cluster. It can be done by adding `WITH <name>`
+  at the beginning of the query.
+  
+  Example:
+  ```
+  FOR v,e IN OUTBOUND SHORTEST_PATH @start TO @target edges [...]
+  ```
+
+  Now has to be:
+
+  ```
+  WITH vertices
+  FOR v,e IN OUTBOUND SHORTEST_PATH @start TO @target edges [...]
+  ```
+
+  This change is due to avoid dead-lock sitations in clustered case.
+  An error stating the above is included.
+
 * issue #2413: improve logging in case of lock timeout and deadlocks
 
 * added log topic attribute to /_admin/log api
