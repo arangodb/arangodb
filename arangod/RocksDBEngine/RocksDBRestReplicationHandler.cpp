@@ -707,6 +707,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   if (!result.first.ok()) {
     generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
                   "inventory could not be created");
+    return;
   }
 
   VPackSlice const collections = result.second->slice();
@@ -932,6 +933,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - request misses batchId");
+    return;
   }
 
   // acquire context
@@ -940,6 +942,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   if (context == nullptr || isBusy) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - unable to acquire context");
+    return;
   }
 
   // print request
