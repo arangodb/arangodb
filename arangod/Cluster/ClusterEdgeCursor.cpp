@@ -25,6 +25,7 @@
 
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTraverser.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/TraverserCache.h"
@@ -32,25 +33,51 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using ClusterEdgeCursor = arangodb::traverser::ClusterEdgeCursor;
-using StringRef = arangodb::StringRef;
+using namespace arangodb;
+using namespace arangodb::graph;
+using namespace arangodb::traverser;
 
+// Traverser variant
 ClusterEdgeCursor::ClusterEdgeCursor(
     StringRef vertexId, uint64_t depth,
-    arangodb::traverser::ClusterTraverser* traverser)
+    graph::BaseOptions* opts)
     : _position(0),
-      _resolver(traverser->_trx->resolver()),
-      _traverser(traverser) {
-  transaction::BuilderLeaser leased(traverser->_trx);
+      _resolver(opts->trx()->resolver()),
+      _opts(opts),
+      _cache(static_cast<ClusterTraverserCache*>(opts->cache())) {
+  TRI_ASSERT(_cache != nullptr);
+  auto trx = _opts->trx();
+  transaction::BuilderLeaser leased(trx);
 
-  transaction::BuilderLeaser b(traverser->_trx);
+  transaction::BuilderLeaser b(trx);
   b->add(VPackValuePair(vertexId.data(), vertexId.length(),
                         VPackValueType::String));
 
-  fetchEdgesFromEngines(traverser->_dbname, traverser->_engines, b->slice(),
-                        depth, traverser->_edges, _edgeList,
-                        traverser->_datalake, *(leased.get()),
-                        traverser->_filteredPaths, traverser->_readDocuments);
+  size_t tmp = 0;
+  fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
+                        depth, _cache->edges(), _edgeList, _cache->datalake(),
+                        *(leased.get()), tmp,
+                        _cache->insertedDocuments());
+}
+
+// ShortestPath variant
+ClusterEdgeCursor::ClusterEdgeCursor(
+    StringRef vertexId, bool backward,
+    graph::BaseOptions* opts)
+    : _position(0),
+      _resolver(opts->trx()->resolver()),
+      _opts(opts),
+      _cache(static_cast<ClusterTraverserCache*>(opts->cache())) {
+  TRI_ASSERT(_cache != nullptr);
+  auto trx = _opts->trx();
+  transaction::BuilderLeaser leased(trx);
+
+  transaction::BuilderLeaser b(trx);
+  b->add(VPackValuePair(vertexId.data(), vertexId.length(),
+                        VPackValueType::String));
+  fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
+                        backward, _cache->edges(), _edgeList, _cache->datalake(),
+                        *(leased.get()), _cache->insertedDocuments());
 }
 
 bool ClusterEdgeCursor::next(
@@ -59,8 +86,7 @@ bool ClusterEdgeCursor::next(
     VPackSlice edge = _edgeList[_position];
     std::string eid =
         transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
-    StringRef persId =
-        _traverser->traverserCache()->persistString(StringRef(eid));
+    StringRef persId = _cache->persistString(StringRef(eid));
     callback(persId, edge, _position);
     ++_position;
     return true;
@@ -73,8 +99,7 @@ void ClusterEdgeCursor::readAll(
   for (auto const& edge : _edgeList) {
     std::string eid =
         transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
-    StringRef persId =
-        _traverser->traverserCache()->persistString(StringRef(eid));
+    StringRef persId = _cache->persistString(StringRef(eid));
     callback(persId, edge, _position);
   }
 }

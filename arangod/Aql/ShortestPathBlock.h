@@ -63,6 +63,8 @@ class ShortestPathBlock : public ExecutionBlock {
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
+  int shutdown(int errorCode) override;
+
   /// @brief getSome
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
 
@@ -102,9 +104,6 @@ class ShortestPathBlock : public ExecutionBlock {
 
   /// @brief options to compute the shortest path
   graph::ShortestPathOptions* _opts;
-
-  /// @brief list of edge collection infos used to compute the path
-  std::vector<arangodb::traverser::EdgeCollectionInfo*> _collectionInfos;
 
   /// @brief position in the current path
   size_t _posInPath;
@@ -149,6 +148,9 @@ class ShortestPathBlock : public ExecutionBlock {
 
   /// @brief Cache for edges send over the network
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _coordinatorCache;
+
+  /// @brief Traverser Engines
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
 };
 

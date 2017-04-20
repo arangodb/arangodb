@@ -76,7 +76,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   explicit TraverserOptions(transaction::Methods* trx);
 
-  TraverserOptions(transaction::Methods*, arangodb::velocypack::Slice const&);
+  TraverserOptions(transaction::Methods* trx, arangodb::velocypack::Slice const& definition);
 
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);

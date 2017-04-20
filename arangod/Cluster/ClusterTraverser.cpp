@@ -129,7 +129,7 @@ aql::AqlValue ClusterTraverser::fetchVertexData(StringRef idString) {
 }
 
 aql::AqlValue ClusterTraverser::fetchEdgeData(StringRef eid) {
-  return aql::AqlValue(_edges[eid]);//this->_cache->fetchAqlResult(edge);
+  return traverserCache()->fetchAqlResult(eid);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -138,7 +138,6 @@ aql::AqlValue ClusterTraverser::fetchEdgeData(StringRef eid) {
 
 void ClusterTraverser::addVertexToVelocyPack(StringRef vid,
                                              VPackBuilder& result) {
-  //TRI_ASSERT(id.isString());
   auto cached = _vertices.find(vid);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
@@ -157,5 +156,5 @@ void ClusterTraverser::addVertexToVelocyPack(StringRef vid,
 
 void ClusterTraverser::addEdgeToVelocyPack(StringRef eid,
                          arangodb::velocypack::Builder& result) {
-  result.add(_edges[eid]);
+  traverserCache()->insertIntoResult(eid, result);
 }

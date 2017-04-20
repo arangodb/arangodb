@@ -1721,6 +1721,7 @@ function ahuacatlQueryShortestPathTestSuite() {
     
     testShortestPathAtoFoutboundEdgeCollectionRestriction: function () {
       var query = `
+        WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1},${e4} RETURN {v, e}`;
@@ -1742,6 +1743,7 @@ function ahuacatlQueryShortestPathTestSuite() {
     
     testShortestPathAtoFoutboundWeightEdgeCollectionRestriction: function () {
       var query = `
+        WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1},${e3},${e4} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
@@ -1774,6 +1776,7 @@ function ahuacatlQueryShortestPathTestSuite() {
     
     testShortestPathAtoFinboundEdgeCollectionRestriction: function () {
       var query = `
+        WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN INBOUND SHORTEST_PATH source TO target ${e1},${e2} RETURN {v, e}`;
@@ -1808,6 +1811,7 @@ function ahuacatlQueryShortestPathTestSuite() {
     
     testShortestPathAtoFinboundWeightEdgeCollectionRestriction: function () {
       var query = `
+        WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN INBOUND SHORTEST_PATH source TO target ${e1},${e3} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
@@ -1838,6 +1842,7 @@ function ahuacatlQueryShortestPathTestSuite() {
     
     testShortestPathAtoFanyEdgeCollectionRestriction: function () {
       var query = `
+        WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN ANY SHORTEST_PATH source TO target ${e1} RETURN {v, e}`;
@@ -1877,6 +1882,7 @@ function ahuacatlQueryShortestPathTestSuite() {
     
     testShortestPathAtoFanyWeightEdgeCollectionRestriction: function () {
       var query = `
+        WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN ANY SHORTEST_PATH source TO target ${e1} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
@@ -1894,6 +1900,7 @@ function ahuacatlQueryShortestPathTestSuite() {
     
     testShortestPathAtoFdifferentDirections: function () {
       var query = `
+        WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1}, INBOUND ${e2},${e4} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;

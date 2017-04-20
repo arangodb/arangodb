@@ -134,6 +134,7 @@ SET(ARANGOD_SOURCES
   Aql/Function.cpp
   Aql/Functions.cpp
   Aql/Graphs.cpp
+  Aql/GraphNode.cpp
   Aql/IndexBlock.cpp
   Aql/IndexNode.cpp
   Aql/ModificationBlocks.cpp
@@ -221,6 +222,7 @@ SET(ARANGOD_SOURCES
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/ClusterTraverserCache.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
