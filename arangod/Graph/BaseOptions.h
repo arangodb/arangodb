@@ -26,7 +26,9 @@
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb {
@@ -124,7 +126,10 @@ struct BaseOptions {
 
   traverser::TraverserCache* cache();
 
-  void activateCache(bool enableDocumentCache);
+  void activateCache(
+      bool enableDocumentCache,
+      std::unordered_map<ServerID, traverser::TraverserEngineID> const*
+          engines);
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list,

@@ -63,6 +63,8 @@ class ShortestPathBlock : public ExecutionBlock {
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
+  int shutdown(int errorCode) override;
+
   /// @brief getSome
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
 
@@ -146,6 +148,9 @@ class ShortestPathBlock : public ExecutionBlock {
 
   /// @brief Cache for edges send over the network
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _coordinatorCache;
+
+  /// @brief Traverser Engines
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
 };
 

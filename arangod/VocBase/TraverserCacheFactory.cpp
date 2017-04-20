@@ -22,17 +22,24 @@
 
 #include "TraverserCacheFactory.h"
 
+#include "Cluster/ServerState.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 #include "VocBase/TraverserCache.h"
 #include "VocBase/TraverserDocumentCache.h"
 
 using namespace arangodb;
+using namespace arangodb::graph;
 using namespace arangodb::traverser;
 using namespace arangodb::traverser::cacheFactory;
 
 TraverserCache* cacheFactory::CreateCache(
-    arangodb::transaction::Methods* trx, bool activateDocumentCache) {
+    arangodb::transaction::Methods* trx, bool activateDocumentCache,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
+  if (ServerState::instance()->isCoordinator()) {
+    return new ClusterTraverserCache(trx, engines);
+  }
   if (activateDocumentCache) {
     return new TraverserDocumentCache(trx);
   }

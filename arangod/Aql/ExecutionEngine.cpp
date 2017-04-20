@@ -1073,7 +1073,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           VPackSlice resultSlice = builder->slice();
           if (!resultSlice.isNumber()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL, "got unexpected response from engine build request");
+                TRI_ERROR_INTERNAL, "got unexpected response from engine build request: '" + resultSlice.toJson() + "'");
           }
           auto engineId = resultSlice.getNumericValue<traverser::TraverserEngineID>();
           TRI_ASSERT(engineId != 0);

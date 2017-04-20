@@ -402,16 +402,20 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
 
 TraverserCache* BaseOptions::cache() {
   if (_cache == nullptr) {
+    // If the Coordinator does NOT activate the Cache
+    // the datalake is not created and cluster data cannot
+    // be persisted anywhere.
+    TRI_ASSERT(!arangodb::ServerState::instance()->isCoordinator());
     // In production just gracefully initialize
     // the cache without document cache, s.t. system does not crash
-    activateCache(false);
+    activateCache(false, nullptr);
   }
   TRI_ASSERT(_cache != nullptr);
   return _cache.get();
 }
 
-void BaseOptions::activateCache(bool enableDocumentCache) {
+void BaseOptions::activateCache(bool enableDocumentCache, std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(cacheFactory::CreateCache(_trx, enableDocumentCache));
+  _cache.reset(cacheFactory::CreateCache(_trx, enableDocumentCache, engines));
 }

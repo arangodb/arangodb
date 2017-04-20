@@ -222,6 +222,7 @@ SET(ARANGOD_SOURCES
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/ClusterTraverserCache.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp

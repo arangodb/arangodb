@@ -126,6 +126,7 @@ int getDocumentOnCoordinator(
 ///        point to content inside of this lake
 ///        only and do not run out of scope unless
 ///        the lake is cleared.
+///        TraversalVariant
 
 int fetchEdgesFromEngines(
     std::string const&,
@@ -135,6 +136,28 @@ int fetchEdgesFromEngines(
     std::vector<arangodb::velocypack::Slice>&,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>&,
     arangodb::velocypack::Builder&, size_t&, size_t&);
+
+/// @brief fetch edges from TraverserEngines
+///        Contacts all TraverserEngines placed
+///        on the DBServers for the given list
+///        of vertex _id's.
+///        All non-empty and non-cached results
+///        of DBServers will be inserted in the
+///        datalake. Slices used in the result
+///        point to content inside of this lake
+///        only and do not run out of scope unless
+///        the lake is cleared.
+///        ShortestPathVariant
+
+int fetchEdgesFromEngines(
+    std::string const& dbname,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+    arangodb::velocypack::Slice vertexId,
+    bool backward,
+    std::unordered_map<StringRef, arangodb::velocypack::Slice>& cache,
+    std::vector<arangodb::velocypack::Slice>& result,
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
+    arangodb::velocypack::Builder& builder, size_t& read);
 
 /// @brief fetch vertices from TraverserEngines
 ///        Contacts all TraverserEngines placed

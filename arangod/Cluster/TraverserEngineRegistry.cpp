@@ -36,17 +36,34 @@
 using namespace arangodb::traverser;
 
 #ifndef USE_ENTERPRISE
+std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(TRI_vocbase_t* vocbase,
+                                                    VPackSlice info) {
+  VPackSlice type = info.get(std::vector<std::string>({"options", "type"}));
+  if (!type.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The body requires an 'options.type' attribute.");
+  }
+  if (type.isEqualString("traversal")) {
+    return std::make_unique<TraverserEngine>(vocbase, info);
+  } else if (type.isEqualString("shortestPath")) {
+    return std::make_unique<ShortestPathEngine>(vocbase, info);
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "The 'options.type' attribute either has to be traversal or shortestPath");
+}
+#endif
+
 TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
                                                 VPackSlice info)
     : _isInUse(false),
       _toBeDeleted(false),
-      _engine(new TraverserEngine(vocbase, info)),
+      _engine(std::move(BaseEngine::BuildEngine(vocbase, info))),
       _timeToLive(0),
       _expires(0) {}
 
-TraverserEngineRegistry::EngineInfo::~EngineInfo() {
-}
-#endif
+TraverserEngineRegistry::EngineInfo::~EngineInfo() {}
 
 TraverserEngineRegistry::~TraverserEngineRegistry() {
   WRITE_LOCKER(writeLocker, _lock);
@@ -78,7 +95,7 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id) {
 }
 
 /// @brief Get the engine with the given id
-BaseTraverserEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
+BaseEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
   while (true) {
     {
       WRITE_LOCKER(writeLocker, _lock);
@@ -90,10 +107,10 @@ BaseTraverserEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
       }
       if (!e->second->_isInUse) {
         // We capture the engine
-        e->second->_isInUse = true; 
+        e->second->_isInUse = true;
         return e->second->_engine.get();
       }
-    // Free write lock
+      // Free write lock
     }
 
     CONDITION_LOCKER(condLocker, _cv);

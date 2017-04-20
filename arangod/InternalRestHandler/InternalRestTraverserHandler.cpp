@@ -31,14 +31,15 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 
 using namespace arangodb;
+using namespace arangodb::traverser;
 using namespace arangodb::rest;
 
 InternalRestTraverserHandler::InternalRestTraverserHandler(
     GeneralRequest* request, GeneralResponse* response,
-    traverser::TraverserEngineRegistry* engineRegistry)
+    TraverserEngineRegistry* engineRegistry)
     : RestVocbaseBaseHandler(request, response), _registry(engineRegistry) {
-      TRI_ASSERT(_registry != nullptr);
-    }
+  TRI_ASSERT(_registry != nullptr);
+}
 
 RestStatus InternalRestTraverserHandler::execute() {
   if (!ServerState::instance()->isDBServer()) {
@@ -67,14 +68,11 @@ RestStatus InternalRestTraverserHandler::execute() {
         break;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(ResponseCode(ex.code()), ex.code(),
-                  ex.what());
+    generateError(ResponseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    generateError(ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, ex.what());
+    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 
   // this handler is done
@@ -85,15 +83,13 @@ void InternalRestTraverserHandler::createEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (!suffixes.empty()) {
     // POST does not allow path parameters
-    generateError(ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected POST " + INTERNAL_TRAVERSER_PATH);
     return;
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(
@@ -101,7 +97,7 @@ void InternalRestTraverserHandler::createEngine() {
         "Expected an object with traverser information as body parameter");
     return;
   }
-  traverser::TraverserEngineID id = _registry->createNew(_vocbase, parsedBody->slice());
+  TraverserEngineID id = _registry->createNew(_vocbase, parsedBody->slice());
   TRI_ASSERT(id != 0);
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(id));
@@ -114,44 +110,42 @@ void InternalRestTraverserHandler::queryEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   size_t count = suffixes.size();
   if (count < 2 || count > 3) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected PUT " + INTERNAL_TRAVERSER_PATH + "/[vertex|edge]/<TraverserEngineId>");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected PUT " + INTERNAL_TRAVERSER_PATH +
+                      "/[vertex|edge]/<TraverserEngineId>");
     return;
   }
 
   std::string const& option = suffixes[0];
-  auto engineId = static_cast<traverser::TraverserEngineID>(basics::StringUtils::uint64(suffixes[1]));
+  auto engineId =
+      static_cast<TraverserEngineID>(basics::StringUtils::uint64(suffixes[1]));
   if (engineId == 0) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected TraveserEngineId to be an integer number");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected TraveserEngineId to be an integer number");
     return;
-  
   }
-  traverser::BaseTraverserEngine* engine = _registry->get(engineId);
+  BaseEngine* engine = _registry->get(engineId);
   if (engine == nullptr) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "invalid TraverserEngineId");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid TraverserEngineId");
     return;
   }
 
-  auto& registry = _registry; // For the guard
+  auto& registry = _registry;  // For the guard
   arangodb::basics::ScopeGuard guard{
       []() -> void {},
       [registry, &engineId]() -> void { registry->returnEngine(engineId); }};
 
   if (option == "lock") {
     if (count != 3) {
-      generateError(
-          ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-          "expected PUT " + INTERNAL_TRAVERSER_PATH + "/lock/<TraverserEngineId>/<shardId>");
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expected PUT " + INTERNAL_TRAVERSER_PATH +
+                        "/lock/<TraverserEngineId>/<shardId>");
       return;
     }
     if (!engine->lockCollection(suffixes[2])) {
-      generateError(ResponseCode::SERVER_ERROR,
-                    TRI_ERROR_HTTP_SERVER_ERROR, "lock lead to an exception");
+      generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "lock lead to an exception");
       return;
     }
     generateResult(ResponseCode::OK,
@@ -160,15 +154,14 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   if (count != 2) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected PUT " + INTERNAL_TRAVERSER_PATH + "/[vertex|edge]/<TraverserEngineId>");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected PUT " + INTERNAL_TRAVERSER_PATH +
+                      "/[vertex|edge]/<TraverserEngineId>");
     return;
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(
@@ -180,57 +173,96 @@ void InternalRestTraverserHandler::queryEngine() {
   VPackSlice body = parsedBody->slice();
   VPackBuilder result;
   if (option == "edge") {
-    VPackSlice depthSlice = body.get("depth");
-
     VPackSlice keysSlice = body.get("keys");
 
     if (!keysSlice.isString() && !keysSlice.isArray()) {
-      generateError(
-          ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-          "expecting 'keys' to be a string or an array value.");
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expecting 'keys' to be a string or an array value.");
       return;
     }
 
-    if (!depthSlice.isInteger()) {
-      generateError(
-          ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-          "expecting 'depth' to be an integer value");
-      return;
+    switch (engine->getType()) {
+      case BaseEngine::EngineType::TRAVERSER:
+        {
+          VPackSlice depthSlice = body.get("depth");
+          if (!depthSlice.isInteger()) {
+            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                          "expecting 'depth' to be an integer value");
+            return;
+          }
+          // Save Cast BaseTraverserEngines are all of type TRAVERSER
+          auto eng = static_cast<BaseTraverserEngine*>(engine);
+          TRI_ASSERT(eng != nullptr);
+          eng->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
+          break;
+        }
+      case BaseEngine::EngineType::SHORTESTPATH:
+        {
+          VPackSlice bwSlice = body.get("backward");
+          if (!bwSlice.isBool()) {
+            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                          "expecting 'backward' to be a boolean value");
+            return;
+          }
+          // Save Cast ShortestPathEngines are all of type SHORTESTPATH
+          auto eng = static_cast<ShortestPathEngine*>(engine);
+          TRI_ASSERT(eng != nullptr);
+          eng->getEdges(keysSlice, bwSlice.getBoolean(), result);
+          break;
+        }
+      default:
+        generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "this engine does not support the requested operation.");
+        return;
     }
-
-    engine->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
   } else if (option == "vertex") {
-    VPackSlice depthSlice = body.get("depth");
-
     VPackSlice keysSlice = body.get("keys");
 
     if (!keysSlice.isString() && !keysSlice.isArray()) {
-      generateError(
-          ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-          "expecting 'keys' to be a string or an array value.");
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expecting 'keys' to be a string or an array value.");
       return;
     }
 
-    if (depthSlice.isNone()) {
+    VPackSlice depthSlice = body.get("depth");
+    if (depthSlice.isNone() ||
+        engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       engine->getVertexData(keysSlice, result);
     } else {
       if (!depthSlice.isInteger()) {
-        generateError(
-            ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-            "expecting 'depth' to be an integer value");
+        generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "expecting 'depth' to be an integer value");
         return;
       }
-      engine->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
+      // Save Cast BaseTraverserEngines are all of type TRAVERSER
+      auto eng = static_cast<BaseTraverserEngine*>(engine);
+      TRI_ASSERT(eng != nullptr);
+      eng->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(),
+                         result);
     }
   } else if (option == "smartSearch") {
-    engine->smartSearch(body, result);
+    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "this engine does not support the requested operation.");
+      return;
+    }
+    // Save Cast BaseTraverserEngines are all of type TRAVERSER
+    auto eng = static_cast<BaseTraverserEngine*>(engine);
+    TRI_ASSERT(eng != nullptr);
+    eng->smartSearch(body, result);
   } else if (option == "smartSearchBFS") {
-    engine->smartSearchBFS(body, result);
+    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "this engine does not support the requested operation.");
+      return;
+    }
+    // Save Cast BaseTraverserEngines are all of type TRAVERSER
+    auto eng = static_cast<BaseTraverserEngine*>(engine);
+    TRI_ASSERT(eng != nullptr);
+    eng->smartSearchBFS(body, result);
   } else {
     // PATH Info wrong other error
-    generateError(
-        ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-        "");
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");
     return;
   }
   generateResult(ResponseCode::OK, result.slice(), engine->context());
@@ -246,7 +278,7 @@ void InternalRestTraverserHandler::destroyEngine() {
     return;
   }
 
-  traverser::TraverserEngineID id = basics::StringUtils::uint64(suffixes[0]);
+  TraverserEngineID id = basics::StringUtils::uint64(suffixes[0]);
   _registry->destroy(id);
   generateResult(ResponseCode::OK,
                  arangodb::basics::VelocyPackHelper::TrueValue());

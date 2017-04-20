@@ -23,7 +23,10 @@
 
 #include "ShortestPathOptions.h"
 
+#include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterEdgeCursor.h"
+#include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -31,6 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::graph;
+using namespace arangodb::traverser;
 
 ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx)
     : BaseOptions(trx),
@@ -60,11 +64,58 @@ ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx,
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
 }
 
+ShortestPathOptions::ShortestPathOptions(aql::Query* query,
+                                         VPackSlice info,
+                                         VPackSlice collections)
+    : BaseOptions(query, info, collections),
+      direction("outbound"),
+      weightAttribute(""),
+      defaultWeight(1),
+      bidirectional(true),
+      multiThreaded(true) {
+  TRI_ASSERT(info.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice type = info.get("type");
+  TRI_ASSERT(type.isString());
+  TRI_ASSERT(type.isEqualString("shortestPath"));
+#endif
+  weightAttribute =
+      VelocyPackHelper::getStringValue(info, "weightAttribute", "");
+  defaultWeight =
+      VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
+
+  VPackSlice read = info.get("reverseLookupInfos");
+  if (!read.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require a reverseLookupInfos");
+  }
+
+  size_t length = read.length();
+  TRI_ASSERT(read.length() == collections.length());
+  _reverseLookupInfos.reserve(length);
+  for (size_t j = 0; j < length; ++j) {
+    _reverseLookupInfos.emplace_back(query, read.at(j), collections.at(j));
+  }
+}
+
+
 ShortestPathOptions::~ShortestPathOptions() {}
 
 void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
-  // TODO Implement me!
-  BaseOptions::buildEngineInfo(result);
+  result.openObject();
+  injectEngineInfo(result);
+  result.add("type", VPackValue("shortestPath"));
+  result.add("defaultWeight", VPackValue(defaultWeight));
+  result.add("weightAttribute", VPackValue(weightAttribute));
+  result.add(VPackValue("reverseLookupInfos"));
+  result.openArray();
+  for (auto const& it : _reverseLookupInfos) {
+    it.buildEngineInfo(result);
+  }
+  result.close();
+
+
+  result.close();
 }
 
 void ShortestPathOptions::setStart(std::string const& id) {
@@ -95,7 +146,16 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
 }
 
 void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
-  // TODO Implement me
+  VPackObjectBuilder guard(&builder);
+
+  // base indexes
+  builder.add("base", VPackValue(VPackValueType::Array));
+  for (auto const& it : _baseLookupInfos) {
+    for (auto const& it2 : it.idxHandles) {
+      it2.getIndex()->toVelocyPack(builder, false, false);
+    }
+  }
+  builder.close();
 }
 
 double ShortestPathOptions::estimateCost(size_t& nrItems) const {
@@ -140,9 +200,11 @@ EdgeCursor* ShortestPathOptions::nextReverseCursor(ManagedDocumentResult* mmdr,
 }
 
 EdgeCursor* ShortestPathOptions::nextCursorCoordinator(StringRef vid) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, false, this);
+  return cursor.release();
 }
 
 EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(StringRef vid) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, true, this);
+  return cursor.release();
 }

@@ -26,12 +26,14 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterComm.h"
 #include "Graph/ShortestPathResult.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -57,7 +59,8 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _useStartRegister(false),
       _targetReg(ExecutionNode::MaxRegisterId),
       _useTargetRegister(false),
-      _usedConstant(false) {
+      _usedConstant(false),
+      _engines(nullptr) {
   _opts = static_cast<ShortestPathOptions*>(ep->options());
   _mmdr.reset(new ManagedDocumentResult);
 
@@ -105,6 +108,10 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
           new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
     }
   }
+
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    _engines = ep->engines();
+  }
 }
 
 ShortestPathBlock::~ShortestPathBlock() {
@@ -142,6 +149,43 @@ int ShortestPathBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _usedConstant = false;
   return ExecutionBlock::initializeCursor(items, pos);
 }
+
+/// @brief shutdown: Inform all traverser Engines to destroy themselves
+int ShortestPathBlock::shutdown(int errorCode) {
+  DEBUG_BEGIN_BLOCK();
+  // We have to clean up the engines in Coordinator Case.
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto cc = arangodb::ClusterComm::instance();
+    if (cc != nullptr) {
+      // nullptr only happens on controlled server shutdown
+      std::string const url(
+          "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
+          "/_internal/traverser/");
+      for (auto const& it : *_engines) {
+        arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+        std::unordered_map<std::string, std::string> headers;
+        auto res = cc->syncRequest(
+            "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+            url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
+            30.0);
+        if (res->status != CL_COMM_SENT) {
+          // Note If there was an error on server side we do not have CL_COMM_SENT
+          std::string message("Could not destroy all traversal engines");
+          if (!res->errorMessage.empty()) {
+            message += std::string(": ") + res->errorMessage;
+          }
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
+        }
+      }
+    }
+  }
+
+  return ExecutionBlock::shutdown(errorCode);
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
 
 bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   if (_usedConstant) {

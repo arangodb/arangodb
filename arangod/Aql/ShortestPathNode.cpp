@@ -344,6 +344,6 @@ void ShortestPathNode::prepareOptions() {
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
-  _options->activateCache(false);
+  _options->activateCache(false, engines());
   _optionsBuild = true;
 }
