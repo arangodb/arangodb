@@ -101,11 +101,10 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
   {
     MUTEX_LOCKER(mutexLocker, _lock);
 
-    if (_contexts.empty()) {
+    _contexts.emplace(id, context.get());
+    if (_contexts.size() == 1) {
       disableFileDeletions();
     }
-    
-    _contexts.emplace(id, context.get());
   }
   return context.release();
 }

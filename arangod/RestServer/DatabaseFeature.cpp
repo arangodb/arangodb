@@ -994,6 +994,19 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   return nullptr;
 }
 
+void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> func) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+  
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+    func(vocbase);
+  }
+}
+
 void DatabaseFeature::updateContexts() {
   TRI_ASSERT(_vocbase != nullptr);
 

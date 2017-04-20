@@ -392,7 +392,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
 
   switch (rc) {
     case CURLE_OK: {
-      long httpStatusCode = 200;
+      int httpStatusCode = 200;
       curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
 
       std::unique_ptr<GeneralResponse> response(

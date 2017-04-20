@@ -42,6 +42,7 @@ class PhysicalView;
 class RocksDBComparator;
 class RocksDBCounterManager;
 class RocksDBReplicationManager;
+class RocksDBBackgroundThread;
 class TransactionCollection;
 class TransactionState;
 
@@ -259,21 +260,27 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
-  RocksDBCounterManager* counterManager();
-  RocksDBReplicationManager* replicationManager();
+  RocksDBCounterManager* counterManager() const;
+  RocksDBReplicationManager* replicationManager() const;
 
  private:
-  rocksdb::TransactionDB*
-      _db;  // single rocksdb database used in this storage engine
-  rocksdb::Options _options;  // default read options
-  RocksDBReplicationManager* _replicationManager;
-  std::unique_ptr<RocksDBComparator>
-      _cmp;           // arangodb comparator - requried because of vpack in keys
-  std::string _path;  // path used by rocksdb (inside _basePath)
-  std::string _basePath;  // path to arangodb data dir
+  /// single rocksdb database used in this storage engine
+  rocksdb::TransactionDB* _db;
+  /// default read options
+  rocksdb::Options _options;
+  /// arangodb comparator - requried because of vpack in keys
+  std::unique_ptr<RocksDBComparator> _cmp;
+  /// path used by rocksdb (inside _basePath)
+  std::string _path;
+  /// path to arangodb data dir
+  std::string _basePath;
 
-  std::unique_ptr<RocksDBCounterManager>
-      _counterManager;           // tracks the count of documents in collections
+  /// repository for replication contexts
+  std::unique_ptr<RocksDBReplicationManager> _replicationManager;
+  /// tracks the count of documents in collections
+  std::unique_ptr<RocksDBCounterManager> _counterManager;
+  /// Background thread handling garbage collection etc
+  std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
   uint64_t _maxTransactionSize;  // maximum allowed size for a transaction
   uint64_t _intermediateTransactionCommitSize;   // maximum size for a
                                                  // transaction before a

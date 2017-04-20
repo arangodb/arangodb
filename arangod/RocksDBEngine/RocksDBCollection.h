@@ -204,7 +204,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult insertDocument(
       arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
-      arangodb::velocypack::Slice const& doc, bool& waitForSync);
+      arangodb::velocypack::Slice const& doc, bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult removeDocument(
       arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
