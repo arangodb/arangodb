@@ -93,6 +93,7 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
   auto context = std::make_unique<RocksDBReplicationContext>();
   TRI_ASSERT(context.get() != nullptr);
+  TRI_ASSERT(context->isUsed());
 
   RocksDBReplicationId const id = context->id();
 
