@@ -219,6 +219,9 @@ void RocksDBEngine::unprepare() {
   if (!isEnabled()) {
     return;
   }
+  
+  delete _replicationManager;
+  _replicationManager = nullptr;
 
   if (_db) {
     if (_counterManager && _counterManager->isRunning()) {
@@ -231,9 +234,6 @@ void RocksDBEngine::unprepare() {
     delete _db;
     _db = nullptr;
   }
-
-  delete _replicationManager;
-  _replicationManager = nullptr;
 }
 
 transaction::ContextData* RocksDBEngine::createTransactionContextData() {
@@ -249,8 +249,8 @@ TransactionState* RocksDBEngine::createTransactionState(
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
     TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-    int /*nestingLevel*/) {
-  return new RocksDBTransactionCollection(state, cid, accessType);
+    int nestingLevel) {
+  return new RocksDBTransactionCollection(state, cid, accessType, nestingLevel);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
