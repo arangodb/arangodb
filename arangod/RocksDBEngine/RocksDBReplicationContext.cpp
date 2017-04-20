@@ -41,6 +41,9 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _trx(),
       _collection(nullptr),
       _iter(),
+      _expires(0.0),
+      _isDeleted(false),
+      _isUsed(false),
       _hasMore(true) {}
 
 RocksDBReplicationContext::~RocksDBReplicationContext() {
