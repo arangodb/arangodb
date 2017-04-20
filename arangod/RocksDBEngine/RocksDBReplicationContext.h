@@ -46,7 +46,7 @@ class RocksDBReplicationResult : public Result {
 };
 
 /// ttl in seconds
-double RocksDBReplicationContextTTL = 30 * 60.0;
+const double RocksDBReplicationContextTTL = 30 * 60.0;
 
 class RocksDBReplicationContext {
  private:
