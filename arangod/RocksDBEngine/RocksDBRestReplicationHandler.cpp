@@ -71,6 +71,12 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::rocksutils;
 
+static int restoreDataParser(char const* ptr, char const* pos,
+                             std::string const& invalidMsg, bool useRevision,
+                             std::string& errorMsg, std::string& key,
+                             VPackBuilder& builder, VPackSlice& doc,
+                             TRI_replication_operation_e& type);
+
 RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response),
@@ -720,8 +726,8 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // "state"
   builder.add("state", VPackValue(VPackValueType::Object));
 
-  // MMFilesLogfileManagerState const s =
-  // MMFilesLogfileManager::instance()->state();
+  // RocksDBLogfileManagerState const s =
+  // RocksDBLogfileManager::instance()->state();
 
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));
@@ -861,15 +867,85 @@ void RocksDBRestReplicationHandler::handleCommandRestoreCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandRestoreIndexes() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "restore-indexes API is not implemented for RocksDB yet");
+  std::shared_ptr<VPackBuilder> parsedRequest;
+
+  try {
+    parsedRequest = _request->toVelocyPackBuilderPtr();
+  } catch (...) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid JSON");
+    return;
+  }
+  VPackSlice const slice = parsedRequest->slice();
+
+  bool found;
+  bool force = false;
+  std::string const& value = _request->value("force", found);
+
+  if (found) {
+    force = StringUtils::boolean(value);
+  }
+
+  std::string errorMsg;
+  int res;
+  if (ServerState::instance()->isCoordinator()) {
+    res = processRestoreIndexesCoordinator(slice, force, errorMsg);
+  } else {
+    res = processRestoreIndexes(slice, force, errorMsg);
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  VPackBuilder result;
+  result.openObject();
+  result.add("result", VPackValue(true));
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 void RocksDBRestReplicationHandler::handleCommandRestoreData() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "restore-data API is not implemented for RocksDB yet");
+  std::string const& colName = _request->value("collection");
+
+  if (colName.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter, not given");
+    return;
+  }
+
+  bool recycleIds = false;
+  std::string const& value2 = _request->value("recycleIds");
+
+  if (!value2.empty()) {
+    recycleIds = StringUtils::boolean(value2);
+  }
+
+  bool force = false;
+  std::string const& value3 = _request->value("force");
+
+  if (!value3.empty()) {
+    force = StringUtils::boolean(value3);
+  }
+
+  std::string errorMsg;
+
+  int res = processRestoreData(colName, recycleIds, force, errorMsg);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (errorMsg.empty()) {
+      generateError(GeneralResponse::responseCode(res), res);
+    } else {
+      generateError(GeneralResponse::responseCode(res), res,
+                    std::string(TRI_errno_string(res)) + ": " + errorMsg);
+    }
+  } else {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("result", VPackValue(true));
+    result.close();
+    generateResult(rest::ResponseCode::OK, result.slice());
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1486,6 +1562,524 @@ int RocksDBRestReplicationHandler::createCollection(
 
   if (dst != nullptr) {
     *dst = col;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the indexes of a collection TODO MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+int RocksDBRestReplicationHandler::processRestoreIndexes(
+    VPackSlice const& collection, bool force, std::string& errorMsg) {
+  if (!collection.isObject()) {
+    errorMsg = "collection declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  VPackSlice const parameters = collection.get("parameters");
+
+  if (!parameters.isObject()) {
+    errorMsg = "collection parameters declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  VPackSlice const indexes = collection.get("indexes");
+
+  if (!indexes.isArray()) {
+    errorMsg = "collection indexes declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  VPackValueLength const n = indexes.length();
+
+  if (n == 0) {
+    // nothing to do
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
+
+  if (name.empty()) {
+    errorMsg = "collection name is missing";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
+    // we don't care about deleted collections
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  READ_LOCKER(readLocker, _vocbase->_inventoryLock);
+
+  // look up the collection
+  try {
+    CollectionGuard guard(_vocbase, name.c_str());
+
+    LogicalCollection* collection = guard.collection();
+
+    SingleCollectionTransaction trx(
+        transaction::StandaloneContext::Create(_vocbase), collection->cid(),
+        AccessMode::Type::WRITE);
+
+    Result res = trx.begin();
+
+    if (!res.ok()) {
+      errorMsg = "unable to start transaction: " + res.errorMessage();
+      res.reset(res.errorNumber(), errorMsg);
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    auto physical = collection->getPhysical();
+    TRI_ASSERT(physical != nullptr);
+    for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
+      std::shared_ptr<arangodb::Index> idx;
+
+      // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
+
+      res = physical->restoreIndex(&trx, idxDef, idx);
+
+      if (res.errorNumber() == TRI_ERROR_NOT_IMPLEMENTED) {
+        continue;
+      }
+
+      if (res.fail()) {
+        errorMsg = "could not create index: " + res.errorMessage();
+        res.reset(res.errorNumber(), errorMsg);
+        break;
+      }
+      TRI_ASSERT(idx != nullptr);
+    }
+
+    if (res.fail()) {
+      return res.errorNumber();
+    }
+    res = trx.commit();
+
+  } catch (arangodb::basics::Exception const& ex) {
+    // fix error handling
+    errorMsg =
+        "could not create index: " + std::string(TRI_errno_string(ex.code()));
+  } catch (...) {
+    errorMsg = "could not create index: unknown error";
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the indexes of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+int RocksDBRestReplicationHandler::processRestoreIndexesCoordinator(
+    VPackSlice const& collection, bool force, std::string& errorMsg) {
+  if (!collection.isObject()) {
+    errorMsg = "collection declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+  VPackSlice const parameters = collection.get("parameters");
+
+  if (!parameters.isObject()) {
+    errorMsg = "collection parameters declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  VPackSlice indexes = collection.get("indexes");
+
+  if (!indexes.isArray()) {
+    errorMsg = "collection indexes declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  size_t const n = static_cast<size_t>(indexes.length());
+
+  if (n == 0) {
+    // nothing to do
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string name = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
+
+  if (name.empty()) {
+    errorMsg = "collection name is missing";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
+    // we don't care about deleted collections
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string dbName = _vocbase->name();
+
+  // in a cluster, we only look up by name:
+  ClusterInfo* ci = ClusterInfo::instance();
+  std::shared_ptr<LogicalCollection> col;
+  try {
+    col = ci->getCollection(dbName, name);
+  } catch (...) {
+    errorMsg = "could not find collection '" + name + "'";
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  TRI_ASSERT(col != nullptr);
+
+  int res = TRI_ERROR_NO_ERROR;
+  for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
+    VPackSlice type = idxDef.get("type");
+    if (type.isString() &&
+        (type.copyString() == "primary" || type.copyString() == "edge")) {
+      // must ignore these types of indexes during restore
+      continue;
+    }
+
+    VPackBuilder tmp;
+    res = ci->ensureIndexCoordinator(dbName, col->cid_as_string(), idxDef, true,
+                                     arangodb::Index::Compare, tmp, errorMsg,
+                                     3600.0);
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg =
+          "could not create index: " + std::string(TRI_errno_string(res));
+      break;
+    }
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the data of a collection TODO MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+int RocksDBRestReplicationHandler::processRestoreDataBatch(
+    transaction::Methods& trx, std::string const& collectionName,
+    bool useRevision, bool force, std::string& errorMsg) {
+  std::string const invalidMsg =
+      "received invalid JSON data for collection " + collectionName;
+
+  VPackBuilder builder;
+
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
+  if (httpRequest == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
+  }
+
+  std::string const& bodyStr = httpRequest->body();
+  char const* ptr = bodyStr.c_str();
+  char const* end = ptr + bodyStr.size();
+
+  VPackBuilder allMarkers;
+  VPackValueLength currentPos = 0;
+  std::unordered_map<std::string, VPackValueLength> latest;
+
+  // First parse and collect all markers, we assemble everything in one
+  // large builder holding an array. We keep for each key the latest
+  // entry.
+
+  {
+    VPackArrayBuilder guard(&allMarkers);
+    std::string key;
+    while (ptr < end) {
+      char const* pos = strchr(ptr, '\n');
+
+      if (pos == nullptr) {
+        pos = end;
+      } else {
+        *((char*)pos) = '\0';
+      }
+
+      if (pos - ptr > 1) {
+        // found something
+        key.clear();
+        VPackSlice doc;
+        TRI_replication_operation_e type = REPLICATION_INVALID;
+
+        int res = restoreDataParser(ptr, pos, invalidMsg, useRevision, errorMsg,
+                                    key, builder, doc, type);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+
+        // Put into array of all parsed markers:
+        allMarkers.add(builder.slice());
+        auto it = latest.find(key);
+        if (it != latest.end()) {
+          // Already found, overwrite:
+          it->second = currentPos;
+        } else {
+          latest.emplace(std::make_pair(key, currentPos));
+        }
+        ++currentPos;
+      }
+
+      ptr = pos + 1;
+    }
+  }
+
+  // First remove all keys of which the last marker we saw was a deletion
+  // marker:
+  VPackSlice allMarkersSlice = allMarkers.slice();
+  VPackBuilder oldBuilder;
+  {
+    VPackArrayBuilder guard(&oldBuilder);
+
+    for (auto const& p : latest) {
+      VPackSlice const marker = allMarkersSlice.at(p.second);
+      VPackSlice const typeSlice = marker.get("type");
+      TRI_replication_operation_e type = REPLICATION_INVALID;
+      if (typeSlice.isNumber()) {
+        int typeInt = typeSlice.getNumericValue<int>();
+        if (typeInt == 2301) {  // pre-3.0 type for edges
+          type = REPLICATION_MARKER_DOCUMENT;
+        } else {
+          type = static_cast<TRI_replication_operation_e>(typeInt);
+        }
+      }
+      if (type == REPLICATION_MARKER_REMOVE) {
+        oldBuilder.add(VPackValue(p.first));  // Add _key
+      } else if (type != REPLICATION_MARKER_DOCUMENT) {
+        errorMsg = "unexpected marker type " + StringUtils::itoa(type);
+        return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
+      }
+    }
+  }
+
+  // Note that we ignore individual errors here, as long as the main
+  // operation did not fail. In particular, we intentionally ignore
+  // individual "DOCUMENT NOT FOUND" errors, because they can happen!
+  try {
+    OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
+    OperationResult opRes =
+        trx.remove(collectionName, oldBuilder.slice(), options);
+    if (!opRes.successful()) {
+      return opRes.code;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // Now try to insert all keys for which the last marker was a document
+  // marker, note that these could still be replace markers!
+  builder.clear();
+  {
+    VPackArrayBuilder guard(&builder);
+
+    for (auto const& p : latest) {
+      VPackSlice const marker = allMarkersSlice.at(p.second);
+      VPackSlice const typeSlice = marker.get("type");
+      TRI_replication_operation_e type = REPLICATION_INVALID;
+      if (typeSlice.isNumber()) {
+        int typeInt = typeSlice.getNumericValue<int>();
+        if (typeInt == 2301) {  // pre-3.0 type for edges
+          type = REPLICATION_MARKER_DOCUMENT;
+        } else {
+          type = static_cast<TRI_replication_operation_e>(typeInt);
+        }
+      }
+      if (type == REPLICATION_MARKER_DOCUMENT) {
+        VPackSlice const doc = marker.get("data");
+        TRI_ASSERT(doc.isObject());
+        builder.add(doc);
+      }
+    }
+  }
+
+  VPackSlice requestSlice = builder.slice();
+  OperationResult opRes;
+  try {
+    OperationOptions options;
+    options.silent = false;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
+    opRes = trx.insert(collectionName, requestSlice, options);
+    if (!opRes.successful()) {
+      return opRes.code;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // Now go through the individual results and check each error, if it was
+  // TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, then we have to call
+  // replace on the document:
+  VPackSlice resultSlice = opRes.slice();
+  VPackBuilder replBuilder;  // documents for replace operation
+  {
+    VPackArrayBuilder guard(&oldBuilder);
+    VPackArrayBuilder guard2(&replBuilder);
+    VPackArrayIterator itRequest(requestSlice);
+    VPackArrayIterator itResult(resultSlice);
+
+    while (itRequest.valid()) {
+      VPackSlice result = *itResult;
+      VPackSlice error = result.get("error");
+      if (error.isTrue()) {
+        error = result.get("errorNum");
+        if (error.isNumber()) {
+          int code = error.getNumericValue<int>();
+          if (code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+            replBuilder.add(*itRequest);
+          } else {
+            return code;
+          }
+        } else {
+          return TRI_ERROR_INTERNAL;
+        }
+      }
+      itRequest.next();
+      itResult.next();
+    }
+  }
+  try {
+    OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
+    opRes = trx.replace(collectionName, replBuilder.slice(), options);
+    if (!opRes.successful()) {
+      return opRes.code;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the data of a collection TODO MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+int RocksDBRestReplicationHandler::processRestoreData(
+    std::string const& colName, bool useRevision, bool force,
+    std::string& errorMsg) {
+  SingleCollectionTransaction trx(
+      transaction::StandaloneContext::Create(_vocbase), colName,
+      AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    errorMsg = "unable to start transaction: " + res.errorMessage();
+    res.reset(res.errorNumber(), errorMsg);
+    return res.errorNumber();
+  }
+
+  res = processRestoreDataBatch(trx, colName, useRevision, force, errorMsg);
+  res = trx.finish(res);
+
+  return res.errorNumber();
+}
+
+int restoreDataParser(char const* ptr, char const* pos,
+                      std::string const& invalidMsg, bool useRevision,
+                      std::string& errorMsg, std::string& key,
+                      VPackBuilder& builder, VPackSlice& doc,
+                      TRI_replication_operation_e& type) {
+  builder.clear();
+
+  try {
+    VPackParser parser(builder);
+    parser.parse(ptr, static_cast<size_t>(pos - ptr));
+  } catch (VPackException const&) {
+    // Could not parse the given string
+    errorMsg = invalidMsg;
+
+    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+  } catch (std::exception const&) {
+    // Could not even build the string
+    errorMsg = invalidMsg;
+
+    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  VPackSlice const slice = builder.slice();
+
+  if (!slice.isObject()) {
+    errorMsg = invalidMsg;
+
+    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+  }
+
+  type = REPLICATION_INVALID;
+
+  for (auto const& pair : VPackObjectIterator(slice, true)) {
+    if (!pair.key.isString()) {
+      errorMsg = invalidMsg;
+
+      return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    }
+
+    std::string const attributeName = pair.key.copyString();
+
+    if (attributeName == "type") {
+      if (pair.value.isNumber()) {
+        int v = pair.value.getNumericValue<int>();
+        if (v == 2301) {
+          // pre-3.0 type for edges
+          type = REPLICATION_MARKER_DOCUMENT;
+        } else {
+          type = static_cast<TRI_replication_operation_e>(v);
+        }
+      }
+    }
+
+    else if (attributeName == "data") {
+      if (pair.value.isObject()) {
+        doc = pair.value;
+
+        if (doc.hasKey(StaticStrings::KeyString)) {
+          key = doc.get(StaticStrings::KeyString).copyString();
+        }
+      }
+    }
+
+    else if (attributeName == "key") {
+      if (key.empty()) {
+        key = pair.value.copyString();
+      }
+    }
+  }
+
+  if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
+    errorMsg = "got document marker without contents";
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (key.empty()) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT EXCEPTION 5";
+    errorMsg = invalidMsg;
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
   return TRI_ERROR_NO_ERROR;
