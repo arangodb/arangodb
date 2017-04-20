@@ -25,12 +25,12 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class RocksDBReplicationContext;
 typedef uint64_t RocksDBReplicationId;
 
 class RocksDBReplicationManager {
@@ -70,8 +70,9 @@ class RocksDBReplicationManager {
   /// not
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* find(RocksDBReplicationId, bool& isBusy,
-                                  double ttl = DefaultTTL);
+  RocksDBReplicationContext* find(
+      RocksDBReplicationId, bool& isBusy,
+      double ttl = RocksDBReplicationContext::DefaultTTL);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use
@@ -96,9 +97,6 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   bool garbageCollect(bool);
-  
-  /// default time-to-live for contexts
-  static double const DefaultTTL;
 
  private:
   void disableFileDeletions();

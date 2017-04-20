@@ -34,7 +34,6 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 size_t const RocksDBReplicationManager::MaxCollectCount = 32;
-double const RocksDBReplicationManager::DefaultTTL = 30 * 60.0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a context repository
@@ -93,8 +92,7 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 
 RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
   auto context = std::make_unique<RocksDBReplicationContext>();
-  TRI_ASSERT(context != nullptr);
-  TRI_ASSERT(context->isUsed());
+  TRI_ASSERT(context.get() != nullptr);
 
   RocksDBReplicationId const id = context->id();
 

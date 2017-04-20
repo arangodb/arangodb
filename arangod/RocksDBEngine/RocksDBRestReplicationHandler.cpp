@@ -320,7 +320,7 @@ bool RocksDBRestReplicationHandler::isCoordinatorError() {
 void RocksDBRestReplicationHandler::handleCommandLoggerState() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "logger-state API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -362,6 +362,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add(VPackValue(VPackValueType::Object));
     b.add("id", VPackValue(std::to_string(ctx->id())));
     b.close();
+
+    _manager->release(ctx);
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
@@ -669,9 +671,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+  generateError(
+      rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_YET_IMPLEMENTED,
+      "determine-open-transactions API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -777,9 +779,81 @@ void RocksDBRestReplicationHandler::handleCommandClusterInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandRestoreCollection() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+  std::shared_ptr<VPackBuilder> parsedRequest;
+
+  try {
+    parsedRequest = _request->toVelocyPackBuilderPtr();
+  } catch (arangodb::velocypack::Exception const& e) {
+    std::string errorMsg = "invalid JSON: ";
+    errorMsg += e.what();
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  errorMsg);
+    return;
+  } catch (...) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid JSON");
+    return;
+  }
+  VPackSlice const slice = parsedRequest->slice();
+
+  bool overwrite = false;
+
+  bool found;
+  std::string const& value1 = _request->value("overwrite", found);
+
+  if (found) {
+    overwrite = StringUtils::boolean(value1);
+  }
+
+  bool recycleIds = false;
+  std::string const& value2 = _request->value("recycleIds", found);
+
+  if (found) {
+    recycleIds = StringUtils::boolean(value2);
+  }
+
+  bool force = false;
+  std::string const& value3 = _request->value("force", found);
+
+  if (found) {
+    force = StringUtils::boolean(value3);
+  }
+
+  uint64_t numberOfShards = 0;
+  std::string const& value4 = _request->value("numberOfShards", found);
+
+  if (found) {
+    numberOfShards = StringUtils::uint64(value4);
+  }
+
+  uint64_t replicationFactor = 1;
+  std::string const& value5 = _request->value("replicationFactor", found);
+
+  if (found) {
+    replicationFactor = StringUtils::uint64(value5);
+  }
+
+  std::string errorMsg;
+  int res;
+
+  if (ServerState::instance()->isCoordinator()) {
+    res = processRestoreCollectionCoordinator(slice, overwrite, recycleIds,
+                                              force, numberOfShards, errorMsg,
+                                              replicationFactor);
+  } else {
+    res =
+        processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("result", VPackValue(true));
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -789,13 +863,13 @@ void RocksDBRestReplicationHandler::handleCommandRestoreCollection() {
 void RocksDBRestReplicationHandler::handleCommandRestoreIndexes() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "restore-indexes API is not implemented for RocksDB yet");
 }
 
 void RocksDBRestReplicationHandler::handleCommandRestoreData() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "restore-data API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -805,7 +879,7 @@ void RocksDBRestReplicationHandler::handleCommandRestoreData() {
 void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "create keys API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -815,7 +889,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "keys range API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -825,13 +899,13 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
 void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "fetch keys API is not implemented for RocksDB yet");
 }
 
 void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "remove keys API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -881,7 +955,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
-  context->dump(_vocbase, collection, dump, 1000);
+  auto result = context->dump(_vocbase, collection, dump, 1000);
 
   // generate the result
   if (dump.length() == 0) {
@@ -889,14 +963,15 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     response->body().reset();
   } else {
     resetResponse(rest::ResponseCode::OK);
-    response->setContentType(rest::ContentType::DUMP);
-    // set headers
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
-                           (context->more() ? "true" : "false"));
-
-    //_response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-    //                       StringUtils::itoa(dump._lastFoundTick));
   }
+
+  response->setContentType(rest::ContentType::DUMP);
+  // set headers
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+                         (context->more() ? "true" : "false"));
+
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                         StringUtils::itoa(result.maxTick()));
 
   _manager->release(context);  // release context when done
 }
@@ -908,7 +983,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 void RocksDBRestReplicationHandler::handleCommandMakeSlave() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "make-slave API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -918,7 +993,7 @@ void RocksDBRestReplicationHandler::handleCommandMakeSlave() {
 void RocksDBRestReplicationHandler::handleCommandSync() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "sync API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -941,7 +1016,7 @@ void RocksDBRestReplicationHandler::handleCommandServerId() {
 void RocksDBRestReplicationHandler::handleCommandApplierGetConfig() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "GET applier-config API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -951,7 +1026,7 @@ void RocksDBRestReplicationHandler::handleCommandApplierGetConfig() {
 void RocksDBRestReplicationHandler::handleCommandApplierSetConfig() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "set applier-config API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -961,7 +1036,7 @@ void RocksDBRestReplicationHandler::handleCommandApplierSetConfig() {
 void RocksDBRestReplicationHandler::handleCommandApplierStart() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "applier-start API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -971,7 +1046,7 @@ void RocksDBRestReplicationHandler::handleCommandApplierStart() {
 void RocksDBRestReplicationHandler::handleCommandApplierStop() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "applier-stop API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -981,7 +1056,7 @@ void RocksDBRestReplicationHandler::handleCommandApplierStop() {
 void RocksDBRestReplicationHandler::handleCommandApplierGetState() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "applier-state get API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -991,7 +1066,7 @@ void RocksDBRestReplicationHandler::handleCommandApplierGetState() {
 void RocksDBRestReplicationHandler::handleCommandApplierDeleteState() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "applier-state delete API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1001,7 +1076,7 @@ void RocksDBRestReplicationHandler::handleCommandApplierDeleteState() {
 void RocksDBRestReplicationHandler::handleCommandAddFollower() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "add follower API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1011,7 +1086,7 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
 void RocksDBRestReplicationHandler::handleCommandRemoveFollower() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "remove follower API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1021,7 +1096,7 @@ void RocksDBRestReplicationHandler::handleCommandRemoveFollower() {
 void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "hold read lock API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1031,7 +1106,7 @@ void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
 void RocksDBRestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "check hold read lock API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1042,7 +1117,7 @@ void RocksDBRestReplicationHandler::
     handleCommandCancelHoldReadLockCollection() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "cancel hold read lock API is not implemented for RocksDB yet");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1052,5 +1127,366 @@ void RocksDBRestReplicationHandler::
 void RocksDBRestReplicationHandler::handleCommandGetIdForReadLockCollection() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+                "get id for read lock API is not implemented for RocksDB yet");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the structure of a collection TODO MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+int RocksDBRestReplicationHandler::processRestoreCollection(
+    VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
+    std::string& errorMsg) {
+  if (!collection.isObject()) {
+    errorMsg = "collection declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  VPackSlice const parameters = collection.get("parameters");
+
+  if (!parameters.isObject()) {
+    errorMsg = "collection parameters declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  VPackSlice const indexes = collection.get("indexes");
+
+  if (!indexes.isArray()) {
+    errorMsg = "collection indexes declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
+
+  if (name.empty()) {
+    errorMsg = "collection name is missing";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
+    // we don't care about deleted collections
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  arangodb::LogicalCollection* col = nullptr;
+
+  if (reuseId) {
+    TRI_voc_cid_t const cid =
+        arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
+
+    if (cid == 0) {
+      errorMsg = "collection id is missing";
+
+      return TRI_ERROR_HTTP_BAD_PARAMETER;
+    }
+
+    // first look up the collection by the cid
+    col = _vocbase->lookupCollection(cid);
+  }
+
+  if (col == nullptr) {
+    // not found, try name next
+    col = _vocbase->lookupCollection(name);
+  }
+
+  // drop an existing collection if it exists
+  if (col != nullptr) {
+    if (dropExisting) {
+      Result res = _vocbase->dropCollection(col, true, -1.0);
+
+      if (res.errorNumber() == TRI_ERROR_FORBIDDEN) {
+        // some collections must not be dropped
+
+        // instead, truncate them
+        SingleCollectionTransaction trx(
+            transaction::StandaloneContext::Create(_vocbase), col->cid(),
+            AccessMode::Type::WRITE);
+        trx.addHint(
+            transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+
+        res = trx.begin();
+        if (!res.ok()) {
+          return res.errorNumber();
+        }
+
+        OperationOptions options;
+        OperationResult opRes = trx.truncate(name, options);
+
+        res = trx.finish(opRes.code);
+
+        return res.errorNumber();
+      }
+
+      if (!res.ok()) {
+        errorMsg =
+            "unable to drop collection '" + name + "': " + res.errorMessage();
+        res.reset(res.errorNumber(), errorMsg);
+        return res.errorNumber();
+      }
+    } else {
+      Result res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
+
+      errorMsg =
+          "unable to create collection '" + name + "': " + res.errorMessage();
+      res.reset(res.errorNumber(), errorMsg);
+
+      return res.errorNumber();
+    }
+  }
+
+  // now re-create the collection
+  int res = createCollection(parameters, &col, reuseId);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg =
+        "unable to create collection: " + std::string(TRI_errno_string(res));
+
+    return res;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the structure of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
+    VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
+    uint64_t numberOfShards, std::string& errorMsg,
+    uint64_t replicationFactor) {
+  if (!collection.isObject()) {
+    errorMsg = "collection declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  VPackSlice const parameters = collection.get("parameters");
+
+  if (!parameters.isObject()) {
+    errorMsg = "collection parameters declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
+
+  if (name.empty()) {
+    errorMsg = "collection name is missing";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
+    // we don't care about deleted collections
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string dbName = _vocbase->name();
+
+  ClusterInfo* ci = ClusterInfo::instance();
+
+  try {
+    // in a cluster, we only look up by name:
+    std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
+
+    // drop an existing collection if it exists
+    if (dropExisting) {
+      int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
+                                              errorMsg, 0.0);
+      if (res == TRI_ERROR_FORBIDDEN) {
+        // some collections must not be dropped
+        res = truncateCollectionOnCoordinator(dbName, name);
+        if (res != TRI_ERROR_NO_ERROR) {
+          errorMsg =
+              "unable to truncate collection (dropping is forbidden): " + name;
+          return res;
+        }
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        errorMsg = "unable to drop collection '" + name + "': " +
+                   std::string(TRI_errno_string(res));
+
+        return res;
+      }
+    } else {
+      int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
+
+      errorMsg = "unable to create collection '" + name + "': " +
+                 std::string(TRI_errno_string(res));
+
+      return res;
+    }
+  } catch (...) {
+  }
+
+  // now re-create the collection
+
+  // Build up new information that we need to merge with the given one
+  VPackBuilder toMerge;
+  toMerge.openObject();
+
+  // We always need a new id
+  TRI_voc_tick_t newIdTick = ci->uniqid(1);
+  std::string newId = StringUtils::itoa(newIdTick);
+  toMerge.add("id", VPackValue(newId));
+
+  // Number of shards. Will be overwritten if not existent
+  VPackSlice const numberOfShardsSlice = parameters.get("numberOfShards");
+  if (!numberOfShardsSlice.isInteger()) {
+    // The information does not contain numberOfShards. Overwrite it.
+    VPackSlice const shards = parameters.get("shards");
+    if (shards.isObject()) {
+      numberOfShards = static_cast<uint64_t>(shards.length());
+    } else {
+      // "shards" not specified
+      // now check if numberOfShards property was given
+      if (numberOfShards == 0) {
+        // We take one shard if no value was given
+        numberOfShards = 1;
+      }
+    }
+    TRI_ASSERT(numberOfShards > 0);
+    toMerge.add("numberOfShards", VPackValue(numberOfShards));
+  }
+
+  // Replication Factor. Will be overwritten if not existent
+  VPackSlice const replFactorSlice = parameters.get("replicationFactor");
+  if (!replFactorSlice.isInteger()) {
+    if (replicationFactor == 0) {
+      replicationFactor = 1;
+    }
+    TRI_ASSERT(replicationFactor > 0);
+    toMerge.add("replicationFactor", VPackValue(replicationFactor));
+  }
+
+  // always use current version number when restoring a collection,
+  // because the collection is effectively NEW
+  toMerge.add("version", VPackValue(LogicalCollection::VERSION_31));
+  toMerge.close();  // TopLevel
+
+  VPackSlice const type = parameters.get("type");
+  TRI_col_type_e collectionType;
+  if (type.isNumber()) {
+    collectionType = static_cast<TRI_col_type_e>(type.getNumericValue<int>());
+  } else {
+    errorMsg = "collection type not given or wrong";
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  VPackSlice const sliceToMerge = toMerge.slice();
+  VPackBuilder mergedBuilder =
+      VPackCollection::merge(parameters, sliceToMerge, false);
+  VPackSlice const merged = mergedBuilder.slice();
+
+  try {
+    auto col = ClusterMethods::createCollectionOnCoordinator(collectionType,
+                                                             _vocbase, merged);
+    TRI_ASSERT(col != nullptr);
+  } catch (basics::Exception const& e) {
+    // Error, report it.
+    errorMsg = e.message();
+    return e.code();
+  }
+  // All other errors are thrown to the outside.
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
+////////////////////////////////////////////////////////////////////////////////
+
+int RocksDBRestReplicationHandler::createCollection(
+    VPackSlice slice, arangodb::LogicalCollection** dst, bool reuseId) {
+  if (dst != nullptr) {
+    *dst = nullptr;
+  }
+
+  if (!slice.isObject()) {
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  std::string const name =
+      arangodb::basics::VelocyPackHelper::getStringValue(slice, "name", "");
+
+  if (name.empty()) {
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  TRI_voc_cid_t cid = 0;
+
+  if (reuseId) {
+    cid = arangodb::basics::VelocyPackHelper::extractIdValue(slice);
+
+    if (cid == 0) {
+      return TRI_ERROR_HTTP_BAD_PARAMETER;
+    }
+  }
+
+  TRI_col_type_e const type = static_cast<TRI_col_type_e>(
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          slice, "type", (int)TRI_COL_TYPE_DOCUMENT));
+
+  arangodb::LogicalCollection* col = nullptr;
+
+  if (cid > 0) {
+    col = _vocbase->lookupCollection(cid);
+  }
+
+  if (col != nullptr && col->type() == type) {
+    // collection already exists. TODO: compare attributes
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // always use current version number when restoring a collection,
+  // because the collection is effectively NEW
+  VPackBuilder patch;
+  patch.openObject();
+  patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+  patch.close();
+
+  VPackBuilder builder = VPackCollection::merge(slice, patch.slice(), false);
+  slice = builder.slice();
+
+  col = _vocbase->createCollection(slice);
+
+  if (col == nullptr) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  TRI_ASSERT(col != nullptr);
+
+  /* Temporary ASSERTS to prove correctness of new constructor */
+  TRI_ASSERT(col->isSystem() == (name[0] == '_'));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_voc_cid_t planId = 0;
+  VPackSlice const planIdSlice = slice.get("planId");
+  if (planIdSlice.isNumber()) {
+    planId =
+        static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
+  } else if (planIdSlice.isString()) {
+    std::string tmp = planIdSlice.copyString();
+    planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
+  } else if (planIdSlice.isNone()) {
+    // There is no plan ID it has to be equal to collection id
+    planId = col->cid();
+  }
+
+  TRI_ASSERT(col->planId() == planId);
+#endif
+
+  if (dst != nullptr) {
+    *dst = col;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }

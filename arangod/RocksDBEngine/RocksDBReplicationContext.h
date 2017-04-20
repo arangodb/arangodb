@@ -37,6 +37,10 @@
 namespace arangodb {
 
 class RocksDBReplicationContext {
+ public:
+  /// default time-to-live for contexts
+  static double const DefaultTTL;
+
  private:
   typedef std::function<void(DocumentIdentifierToken const& token)>
       TokenCallback;
@@ -54,9 +58,9 @@ class RocksDBReplicationContext {
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
-  RocksDBReplicationResult dump(
-      TRI_vocbase_t* vocbase, std::string const& collectionName,
-      basics::StringBuffer&, size_t limit);
+  RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
+                                std::string const& collectionName,
+                                basics::StringBuffer&, size_t limit);
 
   double expires() const;
   bool isDeleted() const;
