@@ -743,43 +743,66 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 void RocksDBRestReplicationHandler::handleCommandDump() {
   
   bool found = false;
-  // handle collection
+  uint64_t contextId = 0;
+
+  // get collection Name
   std::string const& collection = _request->value("collection");
   if (collection.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
-  
-  
-  bool busy; // find cursor
-  RocksDBReplicationContext *ctx = nullptr;
-  std::string batchId = _request->value("batchId", found);
+
+  // get contextId
+  std::string const& contextIdString = _request->value("batchId", found);
   if (found) {
-    ctx = _manager->find(StringUtils::uint64(batchId), busy);
-  }
-  if (!found || busy || ctx == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_CURSOR_NOT_FOUND,
-                  "batchId not specified");
+    contextId = StringUtils::uint64(contextIdString);
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "replication dump - request misses batchId");
   }
 
-  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
-  if (c == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    return;
+  // acquire context
+  bool isBusy = false;
+  RocksDBReplicationContext* context = _manager->find(contextId, isBusy);
+  if (context == nullptr || isBusy){
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "replication dump - unable to acquire context");
   }
+
 
   // print request
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "requested collection dump for collection '" << collection
-      << "' using contextId '" << ctx->id() << "'";
+      << "' using contextId '" << context->id() << "'";
 
-  // fail
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+
+  // TODO needs to generalized || velocypacks needs to support multiple slices per response!
+  auto response = dynamic_cast<HttpResponse*>(_response.get());
+  StringBuffer& dump = response->body();
+
+  if (response == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+  }
+
+  context->dump(_vocbase, collection, dump, 1000);
+
+  // generate the result
+  if (dump.length() == 0) {
+    resetResponse(rest::ResponseCode::NO_CONTENT);
+    response->body().reset();
+  } else {
+    resetResponse(rest::ResponseCode::OK);
+    response->setContentType(rest::ContentType::DUMP);
+     // set headers
+     _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+                            (context->more() ? "true" : "false"));
+
+     //_response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+     //                       StringUtils::itoa(dump._lastFoundTick));
+  }
+
+  _manager->release(context); //release context when done
 }
 
 ////////////////////////////////////////////////////////////////////////////////
