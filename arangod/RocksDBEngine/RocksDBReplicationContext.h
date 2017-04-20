@@ -25,8 +25,8 @@
 #define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Result.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
@@ -36,15 +36,6 @@
 
 namespace arangodb {
 
-class RocksDBReplicationResult : public Result {
- public:
-  RocksDBReplicationResult(int, uint64_t);
-  uint64_t maxTick() const;
-
- private:
-  uint64_t _maxTick;
-};
-
 class RocksDBReplicationContext {
  private:
   typedef std::function<void(DocumentIdentifierToken const& token)>
@@ -52,6 +43,7 @@ class RocksDBReplicationContext {
 
  public:
   RocksDBReplicationContext();
+  ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;
   uint64_t lastTick() const;
@@ -65,12 +57,6 @@ class RocksDBReplicationContext {
   RocksDBReplicationResult dump(
       TRI_vocbase_t* vocbase, std::string const& collectionName,
       basics::StringBuffer&, size_t limit);
-
-  // iterates over WAL starting at 'from' and returns up to 'limit' documents
-  // from the corresponding database; releases dumping resources
-  RocksDBReplicationResult tail(TRI_vocbase_t* vocbase, uint64_t from,
-                                size_t limit, bool includeSystem,
-                                VPackBuilder& builder);
 
   double expires() const;
   bool isDeleted() const;
