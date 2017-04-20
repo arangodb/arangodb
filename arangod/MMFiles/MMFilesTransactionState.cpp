@@ -172,6 +172,7 @@ Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTr
     // if a write query, clear the query cache for the participating collections
     if (AccessMode::isWriteOrExclusive(_type) &&
         !_collections.empty() &&
+        !isSingleOperation() && 
         arangodb::aql::QueryCache::instance()->mayBeActive()) {
       clearQueryCache();
     }

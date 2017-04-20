@@ -298,6 +298,7 @@ void DumpFeature::endBatch(std::string DBserver) {
 
 /// @brief dump a single collection
 int DumpFeature::dumpCollection(int fd, std::string const& cid,
+                                std::string const& contextIdString,
                                 std::string const& name, uint64_t maxTick,
                                 std::string& errorMsg) {
   uint64_t chunkSize = _chunkSize;
@@ -317,6 +318,11 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     if (_compat28) {
       url += "&compat28=true";
+    }
+
+    if (!contextIdString.empty()) {
+      url += "&contextId=";
+      url += contextIdString;
     }
 
     _stats._totalBatches++;
@@ -487,6 +493,20 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
     maxTick = _tickEnd;
   }
 
+  // read the server's contextId
+  std::string const contextIdString =
+      arangodb::basics::VelocyPackHelper::getStringValue(body, "contextId", "");
+
+  // if (contextIdString == "") {
+  //  errorMsg = "got malformed JSON response from server - contextId is
+  //  missing";
+  //  return TRI_ERROR_INTERNAL;
+  //}
+
+  std::cout << "contextId provided by server is: " << contextIdString
+            << std::endl;
+  // uint64_t contextId = StringUtils::uint64(contextIdString);
+
   try {
     VPackBuilder meta;
     meta.openObject();
@@ -504,8 +524,9 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       TRI_UnlinkFile(fileName.c_str());
     }
 
-    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                    S_IRUSR | S_IWUSR);
+    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
+                                 O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                 S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
       errorMsg = "cannot write to file '" + fileName + "'";
@@ -605,8 +626,8 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                      O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                      S_IRUSR | S_IWUSR);
+                                   O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -641,8 +662,8 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                      O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                      S_IRUSR | S_IWUSR);
+                                   O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -651,8 +672,8 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       extendBatch("");
-      int res =
-          dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
+      int res = dumpCollection(fd, std::to_string(cid), contextIdString, name,
+                               maxTick, errorMsg);
 
       TRI_TRACKED_CLOSE_FILE(fd);
 
@@ -879,9 +900,9 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                          O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                          S_IRUSR | S_IWUSR);
+      int fd = TRI_TRACKED_CREATE_FILE(
+          fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+          S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -915,9 +936,9 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                          O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                          S_IRUSR | S_IWUSR);
+      int fd = TRI_TRACKED_CREATE_FILE(
+          fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+          S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";

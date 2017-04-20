@@ -19,10 +19,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
@@ -64,10 +69,12 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb::rocksutils;
 
 RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response),
+      _manager(globalRocksEngine()->replicationManager()) {}
 
 RocksDBRestReplicationHandler::~RocksDBRestReplicationHandler() {}
 
@@ -476,9 +483,7 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
   
   // include system collections?
@@ -490,24 +495,24 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     includeSystem = StringUtils::boolean(value);
   }
   
-  std::unique_ptr<RocksDBReplicationContext> ctx(new RocksDBReplicationContext());
-  
-  auto result = ctx->getInventory(this->_vocbase, true);
-  
-  // collections and indexes
-  std::shared_ptr<VPackBuilder> collectionsBuilder;
-  //collectionsBuilder =
-  //_vocbase->inventory(tick, &filterCollection, (void*)&includeSystem, true,
-  //                   sortCollections);
-  VPackSlice const collections = collectionsBuilder->slice();
-  
+  RocksDBReplicationContext* ctx = _manager->createContext();
+  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
+    ctx->getInventory(this->_vocbase, true);
+  if (!result.first.ok()) {
+    generateError(rest::ResponseCode::BAD,
+                  result.first.errorNumber(),
+                  "inventory could not be created");
+  }
+
+  VPackSlice const collections = result.second->slice();
   TRI_ASSERT(collections.isArray());
   
   VPackBuilder builder;
   builder.openObject();
   
   // add context id
-  builder.add("contextId", ctx->id());
+  builder.add("contextId", VPackValue(ctx->id()));
+
   // add collections data
   builder.add("collections", collections);
   
@@ -518,10 +523,10 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   //MMFilesLogfileManager::instance()->state();
   
   builder.add("running", VPackValue(true));
-  builder.add("lastLogTick", VPackValue(std::to_string(ctx->t s.lastCommittedTick)));
+  builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));
   builder.add("lastUncommittedLogTick",
-              VPackValue(std::to_string(s.lastAssignedTick)));
-  builder.add("totalEvents", VPackValue(s.numEvents + s.numEventsSync));
+              VPackValue(std::to_string(0)));//s.lastAssignedTick
+  builder.add("totalEvents", VPackValue(0));// s.numEvents + s.numEventsSync
   builder.add("time", VPackValue(utilities::timeString()));
   builder.close();  // state
   
@@ -529,8 +534,8 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   builder.add("tick", VPackValue(tickString));
   builder.close();  // Toplevel
   
+  _manager->release(ctx);
   generateResult(rest::ResponseCode::OK, builder.slice());
-  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,6 +640,43 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDump() {
+  bool found = false;
+  uint64_t contextId = 0;
+
+  // handle collection
+  std::string const& collection = _request->value("collection");
+  if (collection.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return;
+  }
+
+  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
+  if (c == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  // get contextId
+  std::string const& contextIdString = _request->value("contextId", found);
+  if (found) {
+    contextId = StringUtils::uint64(contextIdString);
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "replication dump request misses contextId");
+  }
+
+  bool isBusy = false;
+  _manager->find(contextId, isBusy);
+  // lock context id || die
+
+  // print request
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "requested collection dump for collection '" << collection
+      << "' using contextId '" << contextId << "'";
+
+  // fail
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
                 "replication API is not fully implemented for RocksDB yet");
