@@ -212,7 +212,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice key,
-      ManagedDocumentResult& result);
+      ManagedDocumentResult& result) const;
 
   arangodb::RocksDBOperationResult updateDocument(
       transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
@@ -220,7 +220,7 @@ class RocksDBCollection final : public PhysicalCollection {
       arangodb::velocypack::Slice const& newDoc, bool& waitForSync);
 
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
-                                       arangodb::ManagedDocumentResult&);
+                                       arangodb::ManagedDocumentResult&) const;
 
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection
