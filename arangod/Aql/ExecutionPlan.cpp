@@ -143,7 +143,9 @@ static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
                                    "supported, with bfs: true due to "
                                    "unpredictable results.");
   }
-  return options;
+  std::unique_ptr<graph::BaseOptions> ret(options.get());
+  options.release();
+  return ret;
 }
 
 static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(
@@ -171,7 +173,9 @@ static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(
       }
     }
   }
-  return options;
+  std::unique_ptr<graph::BaseOptions> ret(options.get());
+  options.release();
+  return ret;
 }
 
 /// @brief create the plan

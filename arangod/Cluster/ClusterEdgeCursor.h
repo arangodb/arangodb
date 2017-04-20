@@ -31,7 +31,7 @@ namespace arangodb {
 class CollectionNameResolver;
 
 namespace graph {
-class BaseOptions;
+struct BaseOptions;
 class ClusterTraverserCache;
 }
 

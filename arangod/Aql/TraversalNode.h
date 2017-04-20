@@ -32,15 +32,15 @@
 namespace arangodb {
 
 namespace aql {
-class Collection;
+struct Collection;
 }
 
 namespace graph {
-class BaseOptions;
+struct BaseOptions;
 }
 
 namespace traverser {
-class TraverserOptions;
+struct TraverserOptions;
 }
 
 namespace aql {

@@ -31,7 +31,7 @@
 namespace arangodb {
 
 namespace graph {
-class BaseOptions;
+struct BaseOptions;
 }
 
 namespace aql {

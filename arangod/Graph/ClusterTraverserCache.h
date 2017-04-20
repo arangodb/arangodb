@@ -32,7 +32,7 @@ namespace arangodb {
 class StringRef;
 
 namespace aql {
-class AqlValue;
+struct AqlValue;
 }
 
 namespace transaction {
