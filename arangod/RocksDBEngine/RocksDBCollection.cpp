@@ -1176,7 +1176,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 /// @brief looks up a document by key, low level worker
 /// the key must be a string slice, no revision check is performed
 RocksDBOperationResult RocksDBCollection::lookupDocument(
-    transaction::Methods* trx, VPackSlice key, ManagedDocumentResult& mdr) {
+    transaction::Methods* trx, VPackSlice key, ManagedDocumentResult& mdr) const {
   RocksDBOperationResult res;
   if (!key.isString()) {
     res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
@@ -1228,7 +1228,7 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
 
 arangodb::Result RocksDBCollection::lookupRevisionVPack(
     TRI_voc_rid_t revisionId, transaction::Methods* trx,
-    arangodb::ManagedDocumentResult& mdr) {
+    arangodb::ManagedDocumentResult& mdr) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
 

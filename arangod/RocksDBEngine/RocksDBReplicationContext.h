@@ -54,15 +54,16 @@ class RocksDBReplicationContext {
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
-  std::pair<RocksDBReplicationResult, bool> dump(
+  RocksDBReplicationResult dump(
       TRI_vocbase_t* vocbase, std::string const& collectionName,
-      TokenCallback cb, size_t limit);
+      basics::StringBuffer&, size_t limit);
 
   double expires() const;
   bool isDeleted() const;
   void deleted();
   bool isUsed() const;
   void use(double ttl);
+  bool more() const;
   /// remove use flag
   void release();
 
@@ -89,6 +90,7 @@ class RocksDBReplicationContext {
   double _expires;
   bool _isDeleted;
   bool _isUsed;
+  bool _hasMore;
 };
 
 }  // namespace arangodb

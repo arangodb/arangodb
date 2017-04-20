@@ -1,6 +1,8 @@
 devel
 -----
 
+* add implicit use of geo index when using SORT/FILTER in AQL
+
 * added KB, MB, GB prefix for integer parameter, % for integer parameter
   with a base value
 

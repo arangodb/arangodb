@@ -81,7 +81,7 @@ class RocksDBIndex : public Index {
   RocksDBComparator* _cmp;
 
   cache::Manager* _cacheManager;
-  std::shared_ptr<cache::Cache> _cache;
+  mutable std::shared_ptr<cache::Cache> _cache;
   bool _useCache;
 };
 }
