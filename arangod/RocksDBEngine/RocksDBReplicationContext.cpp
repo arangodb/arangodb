@@ -23,17 +23,19 @@
 
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
-#include "Basics/StringBuffer.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
+
+double const RocksDBReplicationContext::DefaultTTL = 30 * 60.0;
 
 RocksDBReplicationContext::RocksDBReplicationContext()
     : _id(TRI_NewTickServer()),
@@ -41,9 +43,9 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _trx(),
       _collection(nullptr),
       _iter(),
-      _expires(0.0),
+      _expires(TRI_microtime() + DefaultTTL),
       _isDeleted(false),
-      _isUsed(false),
+      _isUsed(true),
       _hasMore(true) {}
 
 RocksDBReplicationContext::~RocksDBReplicationContext() {
@@ -90,29 +92,30 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     if (_collection == nullptr) {
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
-    _iter = _collection->getAllIterator(_trx.get(), &_mdr, false); //_mdr is not used nor updated
+    _iter = _collection->getAllIterator(_trx.get(), &_mdr,
+                                        false);  //_mdr is not used nor updated
   }
 
-  //set type
-  int type = 2300; // documents
+  // set type
+  int type = 2300;  // documents
   if (_collection->type() == TRI_COL_TYPE_EDGE) {
-    type = 2301; // edge documents
+    type = 2301;  // edge documents
   }
 
   VPackBuilder builder;
 
-  auto cb = [this, &type, &buff, &builder](DocumentIdentifierToken const& token) {
+  auto cb = [this, &type, &buff,
+             &builder](DocumentIdentifierToken const& token) {
     builder.clear();
 
     builder.openObject();
-    //set type
+    // set type
     builder.add("type", VPackValue(type));
 
-    //set data
+    // set data
     int res = _collection->readDocument(_trx.get(), token, _mdr);
-
     if (res != TRI_ERROR_NO_ERROR) {
-      //fail
+      // fail
     }
 
     builder.add(VPackValue("data"));

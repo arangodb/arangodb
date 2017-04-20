@@ -33,9 +33,13 @@ class RocksDBReplicationResult : public Result {
  public:
   RocksDBReplicationResult(int, uint64_t);
   uint64_t maxTick() const;
+  bool fromTickIncluded() const;
+
+  void includeFromTick();
 
  private:
   uint64_t _maxTick;
+  bool _fromTickIncluded;
 };
 
 }  // namespace arangodb

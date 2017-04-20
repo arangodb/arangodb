@@ -27,8 +27,8 @@
 
 #include "Basics/Common.h"
 
-#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "VocBase/replication-common.h"
 
 namespace arangodb {
@@ -247,6 +247,26 @@ class RocksDBRestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandGetIdForReadLockCollection();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief restores the structure of a collection TODO MOVE
+  //////////////////////////////////////////////////////////////////////////////
+
+  int processRestoreCollection(VPackSlice const&, bool, bool, bool,
+                               std::string&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief restores the structure of a collection, coordinator case
+  //////////////////////////////////////////////////////////////////////////////
+
+  int processRestoreCollectionCoordinator(VPackSlice const&, bool, bool, bool,
+                                          uint64_t, std::string&, uint64_t);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
+  //////////////////////////////////////////////////////////////////////////////
+
+  int createCollection(VPackSlice, arangodb::LogicalCollection**, bool);
 
   RocksDBReplicationManager* _manager;
 };

@@ -76,7 +76,7 @@ class WBReader : public rocksdb::WriteBatch::Handler {
 
       _builder.close();
 
-      if (res == TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_NO_ERROR && _limit > 0) {
         _limit--;
       }
     }
@@ -192,22 +192,35 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
     return {converted.errorNumber(), lastTick};
   }
 
+  bool fromTickIncluded = false;
   while (iterator->Valid() && limit > 0) {
     s = iterator->status();
     if (s.ok()) {
       rocksdb::BatchResult batch = iterator->GetBatch();
       lastTick = batch.sequence;
+      if (lastTick == from) {
+        fromTickIncluded = true;
+      }
       s = batch.writeBatchPtr->Iterate(handler.get());
     }
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ENGINES) << "Error during WAL scan";
       LOG_TOPIC(ERR, Logger::ENGINES) << iterator->status().getState();
       auto converted = convertStatus(s);
-      return {converted.errorNumber(), lastTick};
+      auto result = RocksDBReplicationResult(converted.errorNumber(), lastTick);
+      if (fromTickIncluded) {
+        result.includeFromTick();
+      }
+      return result;
     }
 
     iterator->Next();
   }
 
-  return {TRI_ERROR_NO_ERROR, lastTick};
+  auto result = RocksDBReplicationResult(TRI_ERROR_NO_ERROR, lastTick);
+  if (fromTickIncluded) {
+    result.includeFromTick();
+  }
+
+  return result;
 }
