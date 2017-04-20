@@ -45,9 +45,6 @@ class RocksDBReplicationResult : public Result {
   uint64_t _maxTick;
 };
 
-/// ttl in seconds
-const double RocksDBReplicationContextTTL = 30 * 60.0;
-
 class RocksDBReplicationContext {
  private:
   typedef std::function<void(DocumentIdentifierToken const& token)>
@@ -79,7 +76,7 @@ class RocksDBReplicationContext {
   bool isDeleted() const;
   void deleted();
   bool isUsed() const;
-  void use();
+  void use(double ttl);
   /// remove use flag
   void release();
 

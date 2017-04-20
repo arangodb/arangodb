@@ -285,12 +285,12 @@ void RocksDBReplicationContext::deleted() { _isDeleted = true; }
 
 bool RocksDBReplicationContext::isUsed() const { return _isUsed; }
 
-void RocksDBReplicationContext::use() {
+void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isDeleted);
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
-  _expires = TRI_microtime() + RocksDBReplicationContextTTL;
+  _expires = TRI_microtime() + ttl;
 }
 
 void RocksDBReplicationContext::release() {

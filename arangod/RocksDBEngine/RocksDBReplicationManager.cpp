@@ -34,6 +34,7 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 size_t const RocksDBReplicationManager::MaxCollectCount = 32;
+double const RocksDBReplicationManager::DefaultTTL = 30 * 60.0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a context repository
@@ -103,10 +104,9 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
     if (_contexts.empty()) {
       disableFileDeletions();
     }
-
+    
     _contexts.emplace(id, context.get());
   }
-
   return context.release();
 }
 
@@ -160,7 +160,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::find(
-    RocksDBReplicationId id, bool& busy) {
+    RocksDBReplicationId id, bool& busy, double ttl) {
   RocksDBReplicationContext* context = nullptr;
   busy = false;
 
@@ -186,7 +186,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
       return nullptr;
     }
 
-    context->use();
+    context->use(ttl);
   }
 
   return context;
