@@ -28,7 +28,9 @@ Returns a geo index object if an index was found. The `near` or
 `within` operators can then be used to execute a geo-spatial query on
 this particular index.
 
-Note: the *geo* simple query helper function is **deprecated** as of ArangoDB 
+**Note**: this method is not yet supported by the RocksDB storage engine.
+
+Note: the *geo* simple query helper function is **deprecated** as of ArangoDB
 2.6. The function may be removed in future versions of ArangoDB. The preferred
 way for running geo queries is to use their AQL equivalents.
 
@@ -60,4 +62,3 @@ index) to use in a `near` query.
 
 
 @endDocuBlock
-

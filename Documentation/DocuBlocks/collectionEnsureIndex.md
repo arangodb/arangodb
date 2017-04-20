@@ -16,6 +16,8 @@ Other attributes may be necessary, depending on the index type.
 - *geo1*: geo index, with one attribute
 - *geo2*: geo index, with two attributes
 
+**Note**: *fulltext*, *geo1*, and *geo2* are not yet supported by the RocksDB storage engine and will be rejected as invalid input.
+
 **sparse** can be *true* or *false*.
 
 For *hash*, and *skiplist* the sparsity can be controlled, *fulltext* and *geo*
@@ -35,5 +37,3 @@ db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
 db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
 ~db._drop("test");
 @END_EXAMPLE_ARANGOSH_OUTPUT
-
-
