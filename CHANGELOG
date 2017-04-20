@@ -185,6 +185,12 @@ v3.2.alpha1 (2017-02-05)
 * generated Foxx services now use swagger tags
 
 
+v3.1.19 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #2440
+
+
 v3.1.18 (2017-04-18)
 --------------------
 

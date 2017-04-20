@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused: false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -50,10 +50,12 @@ function ReplicationSuite() {
 
   var connectToMaster = function() {
     arango.reconnect(masterEndpoint, db._name(), "root", "");
+    db._flushCache();
   };
 
   var connectToSlave = function() {
     arango.reconnect(slaveEndpoint, db._name(), "root", "");
+    db._flushCache();
   };
 
   var collectionChecksum = function(name) {
@@ -291,6 +293,119 @@ function ReplicationSuite() {
 
         function(state) {
           assertNull(db._collection(cn));
+        }
+      );
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test index creation
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testCreateIndex: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+        },
+
+        function(state) {
+          db._create(cn);
+          db._collection(cn).ensureIndex({ type: "hash", fields: ["value"] });
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          var idx = db._collection(cn).getIndexes();
+          assertEqual(2, idx.length);
+          assertEqual("primary", idx[0].type);
+          assertEqual("hash", idx[1].type);
+          assertEqual(["value"], idx[1].fields);
+        }
+      );
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test index dropping
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testDropIndex: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+        },
+
+        function(state) {
+          db._create(cn);
+          var idx = db._collection(cn).ensureIndex({ type: "hash", fields: ["value"] });
+          db._collection(cn).dropIndex(idx);
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          var idx = db._collection(cn).getIndexes();
+          assertEqual(1, idx.length);
+          assertEqual("primary", idx[0].type);
+        }
+      );
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test renaming
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testRenameCollection: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+        },
+
+        function(state) {
+          db._create(cn);
+          db._collection(cn).rename(cn + "Renamed");
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertNull(db._collection(cn));
+          assertNotNull(db._collection(cn + "Renamed"));
+        }
+      );
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test renaming
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testChangeCollection: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+        },
+
+        function(state) {
+          db._create(cn);
+          assertFalse(db._collection(cn).properties().waitForSync);
+          db._collection(cn).properties({ waitForSync: true });
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertTrue(db._collection(cn).properties().waitForSync);
         }
       );
     },
@@ -561,6 +676,7 @@ function ReplicationSuite() {
         },
 
         function(state) {
+          assertTrue(state.hasOwnProperty("count"));
           assertEqual(state.count, collectionCount(cn));
         }
       );
