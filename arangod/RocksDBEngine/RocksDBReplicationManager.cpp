@@ -283,7 +283,9 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
       }
     }
 
-    if (_contexts.size() == 0) {
+    // FIXME effectively force should only be called on shutdown
+    // nevertheless this is quite ugly
+    if (_contexts.size() == 0 && !force) {
       enableFileDeletions();
     }
   } catch (...) {

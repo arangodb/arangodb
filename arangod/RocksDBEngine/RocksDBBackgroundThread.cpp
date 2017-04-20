@@ -56,8 +56,10 @@ void RocksDBBackgroundThread::run() {
     bool force = isStopping();
     _engine->replicationManager()->garbageCollect(force);
     
-    DatabaseFeature::DATABASE->enumerateDatabases([force] (TRI_vocbase_t *vocbase) {
-      vocbase->cursorRepository()->garbageCollect(force);
-    });
+    if (!isStopping()) {
+      DatabaseFeature::DATABASE->enumerateDatabases([force] (TRI_vocbase_t *vocbase) {
+        vocbase->cursorRepository()->garbageCollect(force);
+      });
+    }
   }
 }
