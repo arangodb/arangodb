@@ -29,6 +29,7 @@
 #include "Transaction/UserTransaction.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
+#include "Basics/StringBuffer.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -188,7 +189,8 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _lastTick(0),
       _trx(),
       _collection(nullptr),
-      _iter() {}
+      _iter(),
+      _hasMore(true) {}
 
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
 
@@ -217,29 +219,57 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
 
 // iterates over at most 'limit' documents in the collection specified,
 // creating a new iterator if one does not exist for this collection
-std::pair<RocksDBReplicationResult, bool> RocksDBReplicationContext::dump(
-    TRI_vocbase_t* vocbase, std::string const& collectionName, TokenCallback cb,
-    size_t limit) {
+RocksDBReplicationResult RocksDBReplicationContext::dump(
+    TRI_vocbase_t* vocbase, std::string const& collectionName,
+    basics::StringBuffer& buff, size_t limit) {
   TRI_ASSERT(vocbase != nullptr);
   if (_trx.get() == nullptr) {
-    return std::make_pair(
-        RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick), false);
+    return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
 
   if ((_collection == nullptr) || _collection->name() != collectionName) {
     _collection = vocbase->lookupCollection(collectionName);
     if (_collection == nullptr) {
-      return std::make_pair(
-          RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick), false);
+      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
-    _iter = _collection->getAllIterator(_trx.get(), &_mdr, false);
+    _iter = _collection->getAllIterator(_trx.get(), &_mdr, false); //_mdr is not used nor updated
   }
 
-  bool hasMore = _iter->next(cb, limit);
+  bool isEdge = _collection->type() == TRI_COL_TYPE_EDGE;
+  VPackBuilder builder;
 
-  return std::make_pair(
-      RocksDBReplicationResult(TRI_ERROR_NOT_YET_IMPLEMENTED, _lastTick),
-      hasMore);
+
+  auto cb = [this,isEdge,&buff,&builder](DocumentIdentifierToken const& token){
+    builder.clear();
+
+    //set type
+    int type = 2300; // documents
+    builder.openObject();
+    if (isEdge) {
+      type = 2301; // edge documents
+    }
+    builder.add("type", VPackValue(type));
+
+    //set data
+    int res = _collection->readDocument(_trx.get(), token, _mdr);
+    if (res != TRI_ERROR_NO_ERROR){
+      //fail
+    }
+    builder.add("data", VPackSlice(_mdr.vpack()));
+    builder.close();
+    buff.appendText(builder.toJson());
+  };
+
+  while(_hasMore && true /*sizelimit*/) {
+    try {
+      _hasMore = _iter->next(cb, limit);
+    }
+    catch (std::exception const& e) {
+        return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
+    }
+  }
+
+  return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick);
 }
 
 // iterates over WAL starting at 'from' and returns up to 'limit' documents
@@ -285,6 +315,7 @@ bool RocksDBReplicationContext::isDeleted() const { return _isDeleted; }
 void RocksDBReplicationContext::deleted() { _isDeleted = true; }
 
 bool RocksDBReplicationContext::isUsed() const { return _isUsed; }
+bool RocksDBReplicationContext::more() const { return _hasMore; }
 
 void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isDeleted);
