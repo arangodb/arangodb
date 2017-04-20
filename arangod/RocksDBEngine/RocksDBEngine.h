@@ -37,10 +37,11 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class RocksDBComparator;
-class RocksDBCounterManager;
 class PhysicalCollection;
 class PhysicalView;
+class RocksDBComparator;
+class RocksDBCounterManager;
+class RocksDBReplicationManager;
 class TransactionCollection;
 class TransactionState;
 
@@ -259,11 +260,13 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const EngineName;
   static std::string const FeatureName;
   RocksDBCounterManager* counterManager();
+  RocksDBReplicationManager* replicationManager();
 
  private:
   rocksdb::TransactionDB*
       _db;  // single rocksdb database used in this storage engine
   rocksdb::Options _options;  // default read options
+  RocksDBReplicationManager* _replicationManager;
   std::unique_ptr<RocksDBComparator>
       _cmp;           // arangodb comparator - requried because of vpack in keys
   std::string _path;  // path used by rocksdb (inside _basePath)

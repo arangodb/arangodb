@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "VocBase/replication-common.h"
 
@@ -246,6 +247,8 @@ class RocksDBRestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandGetIdForReadLockCollection();
+
+  RocksDBReplicationManager* _manager;
 };
 }
 

@@ -44,6 +44,7 @@
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionContextData.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
@@ -205,6 +206,8 @@ void RocksDBEngine::start() {
     TRI_ASSERT(false);
   }
 
+  _replicationManager = new RocksDBReplicationManager{};
+
   if (!systemDatabaseExists()) {
     addSystemDatabase();
   }
@@ -228,6 +231,9 @@ void RocksDBEngine::unprepare() {
     delete _db;
     _db = nullptr;
   }
+
+  delete _replicationManager;
+  _replicationManager = nullptr;
 }
 
 transaction::ContextData* RocksDBEngine::createTransactionContextData() {
@@ -1024,6 +1030,11 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
 RocksDBCounterManager* RocksDBEngine::counterManager() {
   return _counterManager.get();
+}
+
+RocksDBReplicationManager  * RocksDBEngine::replicationManager() {
+  TRI_ASSERT(_replicationManager);
+  return _replicationManager;
 }
 
 }  // namespace

@@ -35,9 +35,13 @@
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesCollectionKeys.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/mmfiles-replication-dump.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
+//#include "MMFiles/MMFilesCollectionKeys.h"
+//#include "MMFiles/MMFilesLogfileManager.h"
+//#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -67,10 +71,12 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb::rocksutils;
 
 RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response),
+      _manager(globalRocksEngine()->replicationManager()) {}
 
 RocksDBRestReplicationHandler::~RocksDBRestReplicationHandler() {}
 
@@ -479,19 +485,21 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {
-  uint64_t contextId = TRI_CurrentTickServer();
+  RocksDBReplicationContext* context = _manager->createContext();
+
   // add context id to store
   // TODO - add context id to store
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add("contextId", VPackValue(std::to_string(contextId)));
+  builder.add("contextId", VPackValue(std::to_string(context->id())));
   builder.close();
+  _manager->release(context);
 
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
                 "replication API is not fully implemented for RocksDB yet");
-  //generateResult(rest::ResponseCode::OK, builder.slice());
+  // generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -589,22 +597,23 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  //get contextId
+  // get contextId
   std::string const& contextIdString = _request->value("contextId", found);
   if (found) {
     contextId = StringUtils::uint64(contextIdString);
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                TRI_ERROR_HTTP_BAD_PARAMETER,
-                "replication dump request misses contextId");
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "replication dump request misses contextId");
   }
+
+  bool isBusy = false;
+  _manager->find(contextId, isBusy);
   // lock context id || die
 
   // print request
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "requested collection dump for collection '" << collection
-      << "' using contextId '" << contextId
-      << "'";
+      << "' using contextId '" << contextId << "'";
 
   // fail
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,

@@ -24,6 +24,7 @@
 #include "RocksDBReplicationManager.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 

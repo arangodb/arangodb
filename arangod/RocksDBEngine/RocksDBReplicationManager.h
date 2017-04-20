@@ -64,11 +64,12 @@ class RocksDBReplicationManager {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find an existing context by id
-  /// if found, the context will be returned with the usage flag set to true.
+  /// if found, the context will be returned with the isUsed() flag set to true.
   /// it must be returned later using release() or destroy()
+  /// the second parameter shows if the context you are looking for is busy or not
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* find(RocksDBReplicationId, bool&);
+  RocksDBReplicationContext* find(RocksDBReplicationId, bool& isBusy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use
