@@ -46,19 +46,36 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
   int64_t m = 1;
   int64_t d = 1;
   bool seen = false;
-  if (n > 2) {
-    std::string suffix = value.substr(n - 2);
+  if (n > 3) {
+    std::string suffix = value.substr(n - 3);
 
-    if (suffix == "kb" || suffix == "KB") {
+    if (suffix == "kib" || suffix == "KiB") {
       m = 1024;
       value = value.substr(0, n - 2);
       seen = true;
-    } else if (suffix == "mb" || suffix == "MB") {
+    } else if (suffix == "mib" || suffix == "MiB") {
       m = 1024 * 1024;
       value = value.substr(0, n - 2);
       seen = true;
-    } else if (suffix == "gb" || suffix == "GB") {
+    } else if (suffix == "gib" || suffix == "GiB") {
       m = 1024 * 1024 * 1024;
+      value = value.substr(0, n - 2);
+      seen = true;
+    }
+  }
+  if (!seen && n > 2) {
+    std::string suffix = value.substr(n - 2);
+
+    if (suffix == "kb" || suffix == "KB") {
+      m = 1000;
+      value = value.substr(0, n - 2);
+      seen = true;
+    } else if (suffix == "mb" || suffix == "MB") {
+      m = 1000 * 1000;
+      value = value.substr(0, n - 2);
+      seen = true;
+    } else if (suffix == "gb" || suffix == "GB") {
+      m = 1000 * 1000 * 1000;
       value = value.substr(0, n - 2);
       seen = true;
     }
@@ -67,13 +84,13 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
     std::string suffix = value.substr(n - 1);
 
     if (suffix == "k" || suffix == "K") {
-      m = 1024;
+      m = 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "m" || suffix == "M") {
-      m = 1024 * 1024;
+      m = 1000 * 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "g" || suffix == "G") {
-      m = 1024 * 1024 * 1024;
+      m = 1000 * 1000 * 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "%") {
       m = static_cast<int64_t>(base);
@@ -97,19 +114,36 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
   uint64_t m = 1;
   uint64_t d = 1;
   bool seen = false;
-  if (n > 2) {
-    std::string suffix = value.substr(n - 2);
+  if (n > 3) {
+    std::string suffix = value.substr(n - 3);
 
-    if (suffix == "kb" || suffix == "KB") {
+    if (suffix == "kib" || suffix == "KiB") {
       m = 1024;
       value = value.substr(0, n - 2);
       seen = true;
-    } else if (suffix == "mb" || suffix == "MB") {
+    } else if (suffix == "mib" || suffix == "MiB") {
       m = 1024 * 1024;
       value = value.substr(0, n - 2);
       seen = true;
-    } else if (suffix == "gb" || suffix == "GB") {
+    } else if (suffix == "gib" || suffix == "GiB") {
       m = 1024 * 1024 * 1024;
+      value = value.substr(0, n - 2);
+      seen = true;
+    }
+  }
+  if (!seen && n > 2) {
+    std::string suffix = value.substr(n - 2);
+
+    if (suffix == "kb" || suffix == "KB") {
+      m = 1000;
+      value = value.substr(0, n - 2);
+      seen = true;
+    } else if (suffix == "mb" || suffix == "MB") {
+      m = 1000 * 1000;
+      value = value.substr(0, n - 2);
+      seen = true;
+    } else if (suffix == "gb" || suffix == "GB") {
+      m = 1000 * 1000 * 1000;
       value = value.substr(0, n - 2);
       seen = true;
     }
@@ -118,13 +152,13 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
     std::string suffix = value.substr(n - 1);
 
     if (suffix == "k" || suffix == "K") {
-      m = 1024;
+      m = 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "m" || suffix == "M") {
-      m = 1024 * 1024;
+      m = 1000 * 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "g" || suffix == "G") {
-      m = 1024 * 1024 * 1024;
+      m = 1000 * 1000 * 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "%") {
       m = static_cast<uint64_t>(base);
