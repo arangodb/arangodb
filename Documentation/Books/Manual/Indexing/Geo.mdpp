@@ -104,7 +104,7 @@ Use GeoIndex with AQL SORT statement:
     |         db.geoSort.save({ name : "Name/" + i + "/" + j, latitude : i, longitude : j });
     |     }
       }
-    var query = "FOR doc in geoSort SORT distance(doc.latitude, doc.longitude, 0, 0) LIMIT 5 RETURN doc"
+    var query = "FOR doc in geoSort SORT DISTANCE(doc.latitude, doc.longitude, 0, 0) LIMIT 5 RETURN doc"
     db._explain(query, {}, {colors: false});
     db._query(query);
     ~db._drop("geoSort")
@@ -122,7 +122,7 @@ Use GeoIndex with AQL FILTER statement:
     |         db.geoFilter.save({ name : "Name/" + i + "/" + j, latitude : i, longitude : j });
     |     }
       }
-    var query = "FOR doc in geoFilter FILTER distance(doc.latitude, doc.longitude, 0, 0) < 2000 RETURN doc"
+    var query = "FOR doc in geoFilter FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000 RETURN doc"
     db._explain(query, {}, {colors: false});
     db._query(query);
     ~db._drop("geoFilter")

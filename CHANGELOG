@@ -1,14 +1,35 @@
 devel
 -----
 
-* add implicit use of geo index when using SORT/FILTER in AQL
+* add implicit use of geo indexes when using SORT/FILTER in AQL, without
+  the need to use the special-purpose geo AQL functions `NEAR` or `WITHIN`.
 
-* added KB, MB, GB prefix for integer parameter, % for integer parameter
+  the special purpose `NEAR` AQL function can now be substituted with the
+  following AQL (provided there is a geo index present on the `doc.latitude`
+  and `doc.longitude` attributes):
+
+      FOR doc in geoSort 
+        SORT DISTANCE(doc.latitude, doc.longitude, 0, 0) 
+        LIMIT 5 
+        RETURN doc
+
+  `WITHIN` can be substituted with the following AQL:
+
+      FOR doc in geoFilter 
+        FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000 
+        RETURN doc
+
+  Compared to using the special purpose AQL functions this approach has the
+  advantage that it is more composable, and will also honor any `LIMIT` values
+  used in the AQL query.
+
+* added KB, MB, GB prefix for integer parameters, % for integer parameters
   with a base value
 
 * added JEMALLOC 4.5.0
 
-* added --vm.resident-limit and --vm.path for mmap after a limit
+* added `--vm.resident-limit` and `--vm.path` for file-backed memory mapping
+  after reaching a configurable maximum RAM size
 
 * try recommended limit for file descriptors in case of unlimited
   hard limit
