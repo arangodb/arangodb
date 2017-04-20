@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/JemallocFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
@@ -146,6 +147,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new GeneralServerFeature(&server));
     server.addFeature(new GreetingsFeature(&server));
     server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
+    server.addFeature(new JemallocFeature(&server));
     server.addFeature(new LanguageFeature(&server));
     server.addFeature(new LockfileFeature(&server));
     server.addFeature(new LoggerBufferFeature(&server));

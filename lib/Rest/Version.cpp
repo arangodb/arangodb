@@ -166,12 +166,6 @@ void Version::initialize() {
   Values["failure-tests"] = "false";
 #endif
 
-#ifdef ARANGODB_HAVE_TCMALLOC
-  Values["tcmalloc"] = "true";
-#else
-  Values["tcmalloc"] = "false";
-#endif
-
 #ifdef ARANGODB_HAVE_JEMALLOC
   Values["jemalloc"] = "true";
 #else

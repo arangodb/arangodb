@@ -1,6 +1,16 @@
 devel
 -----
 
+* added KB, MB, GB prefix for integer parameter, % for integer parameter
+  with a base value
+
+* added JEMALLOC 4.5.0
+
+* added --vm.resident-limit and --vm.path for mmap after a limit
+
+* try recommended limit for file descriptors in case of unlimited
+  hard limit
+
 * issue #2413: improve logging in case of lock timeout and deadlocks
 
 * added log topic attribute to /_admin/log api
@@ -175,12 +185,16 @@ v3.2.alpha1 (2017-02-05)
 * generated Foxx services now use swagger tags
 
 
-v3.1.18 (2017-XX-XX)
+v3.1.18 (2017-04-18)
 --------------------
+
+* fixed error in continuous synchronization of collections
+
+* fixed spurious hangs on server shutdown
 
 * better error messages during restore collection
 
-* Completely overhaul supervision. More detailed tests
+* completely overhaul supervision. More detailed tests
 
 * Fixed a dead-lock situation in cluster traversers, it could happen in
   rare cases if the computation on one DBServer could be completed much earlier
@@ -191,6 +205,10 @@ v3.1.18 (2017-XX-XX)
   enough, causing the traverser to do unlimited depth searches.
 
 * fixed issue #2415
+
+* fixed issue #2422
+
+* fixed issue #1974
 
 
 v3.1.17 (2017-04-04)

@@ -49,7 +49,7 @@ LogTopic Logger::CONFIG("config");
 LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::DEVEL("development", LogLevel::FATAL);
 LogTopic Logger::ENGINES("engines", LogLevel::INFO);
-LogTopic Logger::FIXME("fixme", LogLevel::INFO);
+LogTopic Logger::FIXME("general", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
 LogTopic Logger::MEMORY("memory", LogLevel::FATAL);  // suppress
@@ -136,7 +136,7 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
     : _id(NEXT_TOPIC_ID.fetch_add(1, std::memory_order_seq_cst)),
       _name(name),
       _level(level) {
-  if (name != "fixme") {
+  if (name != "fixme" && name != "general") {
     // "fixme" is a remainder from ArangoDB < 3.2, when it was
     // allowed to log messages without a topic. From 3.2 onwards,
     // logging is always topic-based, and all previously topicless

@@ -1,0 +1,6 @@
+#ifndef JEMALLOC_INTERNAL_EXTENT_DSS_STRUCTS_H
+#define JEMALLOC_INTERNAL_EXTENT_DSS_STRUCTS_H
+
+extern const char *dss_prec_names[];
+
+#endif /* JEMALLOC_INTERNAL_EXTENT_DSS_STRUCTS_H */
