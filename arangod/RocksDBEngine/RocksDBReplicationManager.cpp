@@ -92,20 +92,23 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 //////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
-  auto context = new RocksDBReplicationContext();
+  auto context = std::make_unique<RocksDBReplicationContext>();
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 
   RocksDBReplicationId const id = context->id();
 
-  MUTEX_LOCKER(mutexLocker, _lock);
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
 
-  if (_contexts.size() == 0) {
-    disableFileDeletions();
+    if (_contexts.empty()) {
+      disableFileDeletions();
+    }
+
+    _contexts.emplace(id, context.get());
   }
-  _contexts.emplace(id, context);
 
-  return context;
+  return context.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +143,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 
     // context not in use by someone else
     _contexts.erase(it);
-    if (_contexts.size() == 0) {
+    if (_contexts.empty()) {
       enableFileDeletions();
     }
   }

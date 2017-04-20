@@ -93,8 +93,10 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 
   CursorId const id = cursor->id();
 
-  MUTEX_LOCKER(mutexLocker, _lock);
-  _cursors.emplace(id, cursor.get());
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
+    _cursors.emplace(id, cursor.get());
+  }
 
   return cursor.release();
 }
