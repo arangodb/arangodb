@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
@@ -478,9 +479,19 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {
+  uint64_t contextId = TRI_CurrentTickServer();
+  // add context id to store
+  // TODO - add context id to store
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("contextId", VPackValue(std::to_string(contextId)));
+  builder.close();
+
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
                 "replication API is not fully implemented for RocksDB yet");
+  //generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -560,6 +571,42 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDump() {
+  bool found = false;
+  uint64_t contextId = 0;
+
+  // handle collection
+  std::string const& collection = _request->value("collection");
+  if (collection.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return;
+  }
+
+  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
+  if (c == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  //get contextId
+  std::string const& contextIdString = _request->value("contextId", found);
+  if (found) {
+    contextId = StringUtils::uint64(contextIdString);
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                TRI_ERROR_HTTP_BAD_PARAMETER,
+                "replication dump request misses contextId");
+  }
+  // lock context id || die
+
+  // print request
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "requested collection dump for collection '" << collection
+      << "' using contextId '" << contextId
+      << "'";
+
+  // fail
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
                 "replication API is not fully implemented for RocksDB yet");
