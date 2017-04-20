@@ -20,6 +20,7 @@ R"=(
       "Collections": {
         "database": {
           "collection": {
+            "replicationFactor": 3,
             "shards": {
               "shard": [
                 "leader",
@@ -34,7 +35,6 @@ R"=(
         "follower1": "none",
         "follower2": "none",
         "free": "none",
-        "free2": "none",
         "leader": "none"
       }
     },
@@ -49,11 +49,16 @@ R"=(
         },
         "leader": {
           "Status": "GOOD"
+        },
+        "free": {
+          "Status": "GOOD"
         }
       },
       "Shards": {}
     },
     "Target": {
+      "CleanedServers": [],
+      "FailedServers": {},
       "MapUniqueToShortID": {
         "follower1": {
           "ShortName": "follower1"
@@ -63,9 +68,6 @@ R"=(
         },
         "free": {
           "ShortName": "free"
-        },
-        "free2": {
-          "ShortName": "free2"
         },
         "leader": {
           "ShortName": "leader"

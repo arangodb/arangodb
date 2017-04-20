@@ -92,6 +92,19 @@ JOB_STATUS CleanOutServer::status() {
     }
     return PENDING;
   }
+
+  Node::Children const failed = _snapshot.get(failedPrefix).children();
+  size_t failedFound = 0;
+  for (auto const& subJob : failed) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      failedFound++;
+    }
+  }
+
+  if (failedFound > 0) {
+    abort();
+    return FAILED;
+  }
   
   // all subjobs done:
 
@@ -475,7 +488,7 @@ arangodb::Result CleanOutServer::abort() {
   }
   for (auto const& subJob : pends) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
-      JobContext(TODO, subJob.first, _snapshot, _agent).abort();
+      JobContext(PENDING, subJob.first, _snapshot, _agent).abort();
     }
   }
 
