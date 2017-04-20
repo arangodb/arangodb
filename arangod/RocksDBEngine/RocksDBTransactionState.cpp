@@ -51,26 +51,35 @@
 
 using namespace arangodb;
 
+// for the RocksDB engine we do not need any additional data 
 struct RocksDBTransactionData final : public TransactionData {};
 
 RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx)
-    : _trx(trx), _committed(false) {
-  _trx->SetSavePoint();
+    : RocksDBSavePoint(trx, false) {}
+
+RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx, bool handled)
+    : _trx(trx), _handled(handled) {
+  TRI_ASSERT(trx != nullptr);
+  if (!_handled) {
+    _trx->SetSavePoint();
+  }
 }
 
 RocksDBSavePoint::~RocksDBSavePoint() {
-  if (!_committed) {
+  if (!_handled) {
     rollback();
   }
 }
 
 void RocksDBSavePoint::commit() {
-  _committed = true;  // this will prevent the rollback
+  // note: _handled may already be true here
+  _handled = true;  // this will prevent the rollback
 }
 
 void RocksDBSavePoint::rollback() {
+  TRI_ASSERT(!_handled);
   _trx->RollbackToSavePoint();
-  _committed = true;  // in order to not roll back again by accident
+  _handled = true;  // in order to not roll back again by accident
 }
 
 /// @brief transaction type

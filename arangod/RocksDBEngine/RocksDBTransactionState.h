@@ -58,14 +58,16 @@ class TransactionCollection;
 class RocksDBSavePoint {
  public:
   explicit RocksDBSavePoint(rocksdb::Transaction* trx);
+  RocksDBSavePoint(rocksdb::Transaction* trx, bool handled);
   ~RocksDBSavePoint();
 
   void commit();
+ private:
   void rollback();
 
  private:
   rocksdb::Transaction* _trx;
-  bool _committed;
+  bool _handled;
 };
 
 /// @brief transaction type

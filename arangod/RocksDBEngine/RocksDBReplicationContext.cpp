@@ -96,19 +96,20 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
                                         false);  //_mdr is not used nor updated
   }
 
-  bool const isEdge = _collection->type() == TRI_COL_TYPE_EDGE;
+  // set type
+  int type = 2300;  // documents
+  if (_collection->type() == TRI_COL_TYPE_EDGE) {
+    type = 2301;  // edge documents
+  }
+
   VPackBuilder builder;
 
-  auto cb = [this, isEdge, &buff,
+  auto cb = [this, &type, &buff,
              &builder](DocumentIdentifierToken const& token) {
     builder.clear();
 
-    // set type
-    int type = 2300;  // documents
     builder.openObject();
-    if (isEdge) {
-      type = 2301;  // edge documents
-    }
+    // set type
     builder.add("type", VPackValue(type));
 
     // set data
@@ -116,7 +117,9 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     if (res != TRI_ERROR_NO_ERROR) {
       // fail
     }
-    builder.add("data", VPackSlice(_mdr.vpack()));
+
+    builder.add(VPackValue("data"));
+    _mdr.addToBuilder(builder, false);
     builder.close();
     buff.appendText(builder.toJson());
   };

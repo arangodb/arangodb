@@ -71,7 +71,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _options(std::move(options)),
-      _optionsBuild(false),
+      _optionsBuilt(false),
       _isSmart(false) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_options != nullptr);
@@ -263,7 +263,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _tmpObjVarNode(nullptr),
       _tmpIdNode(nullptr),
       _options(nullptr),
-      _optionsBuild(false),
+      _optionsBuilt(false),
       _isSmart(false) {
   // Directions
   VPackSlice dirList = base.get("directions");
@@ -387,7 +387,7 @@ GraphNode::GraphNode(
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _directions(directions),
       _options(std::move(options)),
-      _optionsBuild(false),
+      _optionsBuilt(false),
       _isSmart(false) {
   _graphInfo.openArray();
   for (auto& it : edgeColls) {

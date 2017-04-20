@@ -259,7 +259,7 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
                                        bool withDependencies,
                                        bool withProperties) const {
-  TRI_ASSERT(!_optionsBuild);
+  TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<ShortestPathOptions>(*oldOpts);
@@ -307,10 +307,10 @@ double ShortestPathNode::estimateCost(size_t& nrItems) const {
 }
 
 void ShortestPathNode::prepareOptions() {
-  if (_optionsBuild) {
+  if (_optionsBuilt) {
     return;
   }
-  TRI_ASSERT(!_optionsBuild);
+  TRI_ASSERT(!_optionsBuilt);
 
   size_t numEdgeColls = _edgeColls.size();
   Ast* ast = _plan->getAst();
@@ -343,6 +343,10 @@ void ShortestPathNode::prepareOptions() {
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
-  _options->activateCache(false, engines());
-  _optionsBuild = true;
+  if (ServerState::instance()->isCoordinator()) {
+    _options->activateCache(false, engines());
+  } else {
+    _options->activateCache(false, nullptr);
+  }
+  _optionsBuilt = true;
 }

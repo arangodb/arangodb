@@ -386,7 +386,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
 /// @brief clone ExecutionNode recursively
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
-  TRI_ASSERT(!_optionsBuild);
+  TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<TraverserOptions>(*oldOpts);
@@ -475,10 +475,10 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 }
 
 void TraversalNode::prepareOptions() {
-  if (_optionsBuild) {
+  if (_optionsBuilt) {
     return;
   }
-  TRI_ASSERT(!_optionsBuild);
+  TRI_ASSERT(!_optionsBuilt);
   _options->setVariable(_tmpObjVariable);
 
   size_t numEdgeColls = _edgeColls.size();
@@ -563,8 +563,12 @@ void TraversalNode::prepareOptions() {
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
-  _options->activateCache(false, engines());
-  _optionsBuild = true;
+  if (ServerState::instance()->isCoordinator()) {
+    _options->activateCache(false, engines());
+  } else {
+    _options->activateCache(false, nullptr);
+  }
+  _optionsBuilt = true;
 }
 
 /// @brief remember the condition to execute for early traversal abortion.
