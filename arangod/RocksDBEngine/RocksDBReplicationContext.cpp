@@ -267,7 +267,6 @@ RocksDBReplicationResult RocksDBReplicationContext::tail(
       LOG_TOPIC(ERR, Logger::ENGINES) << iterator->status().getState();
       auto converted = convertStatus(s);
       return {converted.errorNumber(), _lastTick};
-      break;
     }
 
     iterator->Next();
