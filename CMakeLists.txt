@@ -67,7 +67,6 @@ if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
 
-
 # ------------------------------------------------------------------------------
 # VERSION information
 # ------------------------------------------------------------------------------
@@ -235,17 +234,24 @@ elseif (APPLE)
   if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
     set(DARWIN TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
-    set(MACOSX TRUE)
+    set(DARWIN TRUE)
   endif ()
   find_program(BREW brew)
 endif ()
 
-################################################################################
-## ROCKSDB
-################################################################################
+# ------------------------------------------------------------------------------
+# user options
+# ------------------------------------------------------------------------------
 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-include_directories(${ROCKSDB_INCLUDE_DIR})
+if (WINDOWS)
+  SET(USE_JEMALLOC OFF)
+else ()
+  option(
+    USE_JEMALLOC
+    "use jemalloc memory allocator"
+    ON
+  )
+endif ()
 
 ################################################################################
 ## EXTERNAL PROGRAMS
@@ -528,80 +534,38 @@ if (NOT WINDOWS)
   endif ()
 endif ()
 
-################################################################################
-## JEMALLOC
-################################################################################
-if (WINDOWS OR SOLARIS OR USE_TCMALLOC)
-  set(JEMALLOC_DEFAULT_VALUE OFF)
-endif ()
-option(USE_JEMALLOC
-  "use JEMALLOC if the library is available"
-  ${JEMALLOC_DEFAULT_VALUE}
-)
+# ------------------------------------------------------------------------------
+# JEMALLOC
+# ------------------------------------------------------------------------------
 
-# try to detect a static libjemalloc.a:
-set(_DEFAULT_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
-set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
-find_package(jemalloc)
-set(CMAKE_FIND_LIBRARY_SUFFIXES ${_DEFAULT_LIBRARY_SUFFIXES})
-
-
-# check whether we can use the static jemalloc on the system (if):
-if (JEMALLOC_FOUND)
-  set(HAS_PROPER_STATIC_JEMALLOC TRUE)
-  set(SOURCE "#include <stdlib.h>
-#include <jemalloc/jemalloc.h>
-int main() {
-malloc_stats_print(NULL, NULL, NULL);
-return 0; }"
-    )
-  set(TSTSRC "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/jemalloc.cxx")
-  file(WRITE ${TSTSRC} "${SOURCE}\n")
-
-  try_compile(HAS_PROPER_STATIC_JEMALLOC
-    ${CMAKE_BINARY_DIR}
-    ${TSTSRC}
-    LINK_LIBRARIES "jemalloc.a" "pthread" ${SYS_LIBS} ${CMAKE_DL_LIBS}
-    )
-  if (USE_JEMALLOC AND NOT HAS_PROPER_STATIC_JEMALLOC)
-    message(FATAL_ERROR "the static system jemalloc isn't suitable! Recompile with the current compiler or disable using `-DCMAKE_CXX_FLAGS=-no-pie -DCMAKE_C_FLAGS=-no-pie`")
-  elseif (NOT USE_JEMALLOC AND NOT HAS_PROPER_STATIC_JEMALLOC)
-    # the user didn't force the use, so if its broken, ignore its existance:
-    set(JEMALLOC_FOUND FALSE)
-  endif ()
-endif()
-
-if (USE_JEMALLOC AND NOT JEMALLOC_FOUND)
-  message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
-elseif (USE_JEMALLOC AND JEMALLOC_FOUND)
+if (USE_JEMALLOC)
+  add_subdirectory(3rdParty/jemalloc)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
-endif ()
 
-################################################################################
-## TCMALLOC
-################################################################################
+  include_directories("${JEMALLOC_HOME}/include")
+  link_directories("${JEMALLOC_HOME}/lib")
 
-option(USE_TCMALLOC
-  "use TCMALLOC if the library is available"
-  OFF
-)
+  set(SYS_LIBS ${SYS_LIBS} jemalloc.a)
 
-if (USE_TCMALLOC)
-  find_package(tcmalloc)
-
-  if (TCMALLOC_FOUND)
-    add_definitions("-DARANGODB_HAVE_TCMALLOC=1")
-    set(SYS_LIBS ${SYS_LIBS} ${TCMALLOC_tcmalloc_LIBRARY})
-    message(STATUS "Found TCMALLOC")
-  else ()
-    message(STATUS "Missing TCMALLOC")
+  if (LINUX OR DARWIN)
+    add_definitions("-DARANGODB_MMAP_JEMALLOC=1")
   endif ()
 endif ()
 
-if (${USE_JEMALLOC} AND ${USE_TCMALLOC})
-  MESSAGE(FATAL_ERROR " you mustn't demand for tcmalloc and jemalloc at the same time!")
-endif()
+# ------------------------------------------------------------------------------
+# RocksDB
+# ------------------------------------------------------------------------------
+
+add_subdirectory(3rdParty/rocksdb)
+ 
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+include_directories(${ROCKSDB_INCLUDE_DIR})
+ 
+set(ROCKSDB_LIBS rocksdblib;snappystatic)
+
+if (USE_JEMALLOC)
+  add_dependencies(rocksdblib jemalloc)
+endif ()
 
 ################################################################################
 ## FLAGS

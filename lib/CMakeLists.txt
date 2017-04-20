@@ -82,15 +82,12 @@ set(LIB_ARANGO_VPACK
 )
 
 if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
-  if (MACOSX OR DARWIN)
-    SET(LIB_ASM_SOURCES
-      Basics/crc1.S
-      )
+  if (DARWIN)
+    set(LIB_ASM_SOURCES Basics/crc1.S)
   else()
-    SET(LIB_ASM_SOURCES
-      Basics/crc4.S
-      )
+    set(LIB_ASM_SOURCES Basics/crc4.S)
   endif()
+
   add_definitions("-DENABLE_ASM_CRC32=1")
   message(STATUS "-- Will compile in hand-optimized assembler code for CRC32.")
 else()
@@ -99,9 +96,7 @@ else()
 endif()
 
 if (USE_LOCAL_CLOCK_GETTIME)
-  SET(LIB_CLOCK_GETTIME
-    Utilities/clock_gettime.cpp
-  )
+  set(LIB_CLOCK_GETTIME Utilities/clock_gettime.cpp)
 endif ()
 
 add_library(${LIB_ARANGO} STATIC
@@ -116,6 +111,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
+  ApplicationFeatures/JemallocFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PageSizeFeature.cpp

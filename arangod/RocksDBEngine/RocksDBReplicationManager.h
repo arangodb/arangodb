@@ -64,11 +64,14 @@ class RocksDBReplicationManager {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find an existing context by id
-  /// if found, the context will be returned with the usage flag set to true.
+  /// if found, the context will be returned with the isUsed() flag set to true.
   /// it must be returned later using release() or destroy()
+  /// the second parameter shows if the context you are looking for is busy or
+  /// not
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* find(RocksDBReplicationId, bool&);
+  RocksDBReplicationContext* find(RocksDBReplicationId, bool& isBusy,
+                                  double ttl = DefaultTTL);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use
@@ -93,6 +96,9 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   bool garbageCollect(bool);
+  
+  /// default time-to-live for contexts
+  static double const DefaultTTL;
 
  private:
   void disableFileDeletions();

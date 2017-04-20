@@ -44,6 +44,7 @@
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionContextData.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
@@ -184,7 +185,7 @@ void RocksDBEngine::start() {
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
-  // manager
+  // manager. Should be several times bigger counter_sync_seconds
   _options.WAL_ttl_seconds = 60;  //(uint64_t)(counter_sync_seconds * 2.0);
   // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
 
@@ -205,6 +206,8 @@ void RocksDBEngine::start() {
     TRI_ASSERT(false);
   }
 
+  _replicationManager = new RocksDBReplicationManager{};
+
   if (!systemDatabaseExists()) {
     addSystemDatabase();
   }
@@ -216,6 +219,9 @@ void RocksDBEngine::unprepare() {
   if (!isEnabled()) {
     return;
   }
+  
+  delete _replicationManager;
+  _replicationManager = nullptr;
 
   if (_db) {
     if (_counterManager && _counterManager->isRunning()) {
@@ -243,8 +249,8 @@ TransactionState* RocksDBEngine::createTransactionState(
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
     TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-    int /*nestingLevel*/) {
-  return new RocksDBTransactionCollection(state, cid, accessType);
+    int nestingLevel) {
+  return new RocksDBTransactionCollection(state, cid, accessType, nestingLevel);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
@@ -1024,6 +1030,11 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
 RocksDBCounterManager* RocksDBEngine::counterManager() {
   return _counterManager.get();
+}
+
+RocksDBReplicationManager  * RocksDBEngine::replicationManager() {
+  TRI_ASSERT(_replicationManager);
+  return _replicationManager;
 }
 
 }  // namespace

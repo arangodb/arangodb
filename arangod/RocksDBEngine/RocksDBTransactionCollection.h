@@ -40,7 +40,7 @@ class TransactionState;
 class RocksDBTransactionCollection final : public TransactionCollection {
  public:
 
-  RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType);
+  RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel);
   ~RocksDBTransactionCollection();
 
   /// @brief request a main-level lock for a collection
@@ -78,9 +78,18 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief add an operation for a transaction collection
   void addOperation(TRI_voc_document_operation_e operationType, uint64_t operationSize, TRI_voc_rid_t revisionId) ;
   void resetCounts();
+ 
+ private:
+  /// @brief request a lock for a collection
+  int doLock(AccessMode::Type, int nestingLevel);
+
+  /// @brief request an unlock for a collection
+  int doUnlock(AccessMode::Type, int nestingLevel);
 
  private:
   AccessMode::Type _accessType;  // access type (read|write)
+  AccessMode::Type _lockType;  // collection lock type, used for exclusive locks
+  int _nestingLevel;  // the transaction level that added this collection
   uint64_t _initialNumberDocuments;
   TRI_voc_rid_t _revision;
   uint64_t _operationSize;

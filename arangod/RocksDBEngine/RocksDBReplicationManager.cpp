@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,13 +17,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationManager.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 
 #include <velocypack/Builder.h>
@@ -34,6 +34,7 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 size_t const RocksDBReplicationManager::MaxCollectCount = 32;
+double const RocksDBReplicationManager::DefaultTTL = 30 * 60.0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a context repository
@@ -91,20 +92,22 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 //////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
-  auto context = new RocksDBReplicationContext();
+  auto context = std::make_unique<RocksDBReplicationContext>();
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 
   RocksDBReplicationId const id = context->id();
 
-  MUTEX_LOCKER(mutexLocker, _lock);
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
 
-  if (_contexts.size() == 0) {
-    disableFileDeletions();
+    if (_contexts.empty()) {
+      disableFileDeletions();
+    }
+    
+    _contexts.emplace(id, context.get());
   }
-  _contexts.emplace(id, context);
-
-  return context;
+  return context.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,7 +142,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 
     // context not in use by someone else
     _contexts.erase(it);
-    if (_contexts.size() == 0) {
+    if (_contexts.empty()) {
       enableFileDeletions();
     }
   }
@@ -157,7 +160,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::find(
-    RocksDBReplicationId id, bool& busy) {
+    RocksDBReplicationId id, bool& busy, double ttl) {
   RocksDBReplicationContext* context = nullptr;
   busy = false;
 
@@ -183,7 +186,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
       return nullptr;
     }
 
-    context->use();
+    context->use(ttl);
   }
 
   return context;

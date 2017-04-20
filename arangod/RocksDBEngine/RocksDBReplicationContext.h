@@ -45,9 +45,6 @@ class RocksDBReplicationResult : public Result {
   uint64_t _maxTick;
 };
 
-/// ttl in seconds
-double RocksDBReplicationContextTTL = 30 * 60.0;
-
 class RocksDBReplicationContext {
  private:
   typedef std::function<void(DocumentIdentifierToken const& token)>
@@ -57,6 +54,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;
+  uint64_t lastTick() const;
 
   // creates new transaction/snapshot, returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
@@ -78,7 +76,7 @@ class RocksDBReplicationContext {
   bool isDeleted() const;
   void deleted();
   bool isUsed() const;
-  void use();
+  void use(double ttl);
   /// remove use flag
   void release();
 

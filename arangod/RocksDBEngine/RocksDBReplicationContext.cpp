@@ -166,6 +166,7 @@ class WBReader : public rocksdb::WriteBatch::Handler {
 
       return true;
     }
+    return false;
   }
 
  private:
@@ -190,6 +191,8 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _iter() {}
 
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
+
+uint64_t RocksDBReplicationContext::lastTick() const { return _lastTick; }
 
 // creates new transaction/snapshot, returns inventory
 std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
@@ -267,7 +270,6 @@ RocksDBReplicationResult RocksDBReplicationContext::tail(
       LOG_TOPIC(ERR, Logger::ENGINES) << iterator->status().getState();
       auto converted = convertStatus(s);
       return {converted.errorNumber(), _lastTick};
-      break;
     }
 
     iterator->Next();
@@ -284,12 +286,12 @@ void RocksDBReplicationContext::deleted() { _isDeleted = true; }
 
 bool RocksDBReplicationContext::isUsed() const { return _isUsed; }
 
-void RocksDBReplicationContext::use() {
+void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isDeleted);
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
-  _expires = TRI_microtime() + RocksDBReplicationContextTTL;
+  _expires = TRI_microtime() + ttl;
 }
 
 void RocksDBReplicationContext::release() {

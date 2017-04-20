@@ -19,9 +19,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
@@ -34,9 +40,6 @@
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesCollectionKeys.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -66,10 +69,12 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb::rocksutils;
 
 RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response),
+      _manager(globalRocksEngine()->replicationManager()) {}
 
 RocksDBRestReplicationHandler::~RocksDBRestReplicationHandler() {}
 
@@ -323,9 +328,105 @@ void RocksDBRestReplicationHandler::handleCommandLoggerState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+  // extract the request type
+  auto const type = _request->requestType();
+  auto const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
+  
+  TRI_ASSERT(len >= 1);
+  
+  if (type == rest::RequestType::POST) {
+    // create a new blocker
+    std::shared_ptr<VPackBuilder> input = _request->toVelocyPackBuilderPtr();
+    
+    if (input == nullptr || !input->slice().isObject()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+    
+    // extract ttl
+    //double expires =
+    //VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    
+    //TRI_voc_tick_t id;
+    //StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    //int res = engine->insertCompactionBlocker(_vocbase, expires, id);
+    
+    RocksDBReplicationContext *ctx = _manager->createContext();
+    if (ctx == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+    }
+    
+    VPackBuilder b;
+    b.add(VPackValue(VPackValueType::Object));
+    b.add("id", VPackValue(std::to_string(ctx->id())));
+    b.close();
+    generateResult(rest::ResponseCode::OK, b.slice());
+    return;
+  }
+  
+  if (type == rest::RequestType::PUT && len >= 2) {
+    // extend an existing blocker
+    TRI_voc_tick_t id =
+    static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    
+    auto input = _request->toVelocyPackBuilderPtr();
+    
+    if (input == nullptr || !input->slice().isObject()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+    
+    // extract ttl
+    double expires =
+    VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+   
+    int res = TRI_ERROR_NO_ERROR;
+    bool busy;
+    RocksDBReplicationContext *ctx = _manager->find(id, busy, expires);
+    if (busy) {
+      res = TRI_ERROR_CURSOR_BUSY;
+    } else if (ctx == nullptr) {
+      res = TRI_ERROR_CURSOR_NOT_FOUND;
+    } else {
+      _manager->release(ctx);
+    }
+    
+    // now extend the blocker
+    //StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    // res = engine->extendCompactionBlocker(_vocbase, id, expires);
+    
+    if (res == TRI_ERROR_NO_ERROR) {
+      resetResponse(rest::ResponseCode::NO_CONTENT);
+    } else {
+      generateError(GeneralResponse::responseCode(res), res);
+    }
+    return;
+  }
+  
+  if (type == rest::RequestType::DELETE_REQ && len >= 2) {
+    // delete an existing blocker
+    TRI_voc_tick_t id =
+    static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    
+    bool found = _manager->remove(id);
+    //StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    //int res = engine->removeCompactionBlocker(_vocbase, id);
+    
+    if (found) {
+      resetResponse(rest::ResponseCode::NO_CONTENT);
+    } else {
+      int res = TRI_ERROR_CURSOR_NOT_FOUND;
+      generateError(GeneralResponse::responseCode(res), res);
+    }
+    return;
+  }
+  
+  // we get here if anything above is invalid
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -478,9 +579,64 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+  RocksDBReplicationContext *ctx = nullptr;
+  bool found, busy;
+  std::string batchId = _request->value("batchId", found);
+  if (found) {
+    ctx = _manager->find(StringUtils::uint64(batchId), busy);
+  }
+  if (!found || busy || ctx == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_CURSOR_NOT_FOUND,
+                  "batchId not specified");
+  }
+
+  TRI_voc_tick_t tick = TRI_CurrentTickServer();
+  
+  // include system collections?
+  bool includeSystem = true;
+  std::string const& value = _request->value("includeSystem", found);
+  if (found) {
+    includeSystem = StringUtils::boolean(value);
+  }
+  
+  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
+    ctx->getInventory(this->_vocbase, includeSystem);
+  if (!result.first.ok()) {
+    generateError(rest::ResponseCode::BAD,
+                  result.first.errorNumber(),
+                  "inventory could not be created");
+  }
+
+  VPackSlice const collections = result.second->slice();
+  TRI_ASSERT(collections.isArray());
+  
+  VPackBuilder builder;
+  builder.openObject();
+
+  // add collections data
+  builder.add("collections", collections);
+  
+  // "state"
+  builder.add("state", VPackValue(VPackValueType::Object));
+  
+  //MMFilesLogfileManagerState const s =
+  //MMFilesLogfileManager::instance()->state();
+  
+  builder.add("running", VPackValue(true));
+  builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));
+  builder.add("lastUncommittedLogTick",
+              VPackValue(std::to_string(0)));//s.lastAssignedTick
+  builder.add("totalEvents", VPackValue(0));// s.numEvents + s.numEventsSync
+  builder.add("time", VPackValue(utilities::timeString()));
+  builder.close();  // state
+  
+  std::string const tickString(std::to_string(tick));
+  builder.add("tick", VPackValue(tickString));
+  builder.close();  // Toplevel
+  
+  _manager->release(ctx);
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,9 +644,34 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandClusterInventory() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+  std::string const& dbName = _request->databaseName();
+  bool found;
+  bool includeSystem = true;
+  
+  std::string const& value = _request->value("includeSystem", found);
+  
+  if (found) {
+    includeSystem = StringUtils::boolean(value);
+  }
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+  std::vector<std::shared_ptr<LogicalCollection>> cols =
+  ci->getCollections(dbName);
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  resultBuilder.add(VPackValue("collections"));
+  resultBuilder.openArray();
+  for (auto const& c : cols) {
+    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem);
+  }
+  resultBuilder.close();  // collections
+  TRI_voc_tick_t tick = TRI_CurrentTickServer();
+  auto tickString = std::to_string(tick);
+  resultBuilder.add("tick", VPackValue(tickString));
+  resultBuilder.add("state", VPackValue("unused"));
+  resultBuilder.close();  // base
+  generateResult(rest::ResponseCode::OK, resultBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -560,6 +741,42 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDump() {
+  
+  bool found = false;
+  // handle collection
+  std::string const& collection = _request->value("collection");
+  if (collection.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return;
+  }
+  
+  
+  bool busy; // find cursor
+  RocksDBReplicationContext *ctx = nullptr;
+  std::string batchId = _request->value("batchId", found);
+  if (found) {
+    ctx = _manager->find(StringUtils::uint64(batchId), busy);
+  }
+  if (!found || busy || ctx == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_CURSOR_NOT_FOUND,
+                  "batchId not specified");
+  }
+
+  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
+  if (c == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  // print request
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "requested collection dump for collection '" << collection
+      << "' using contextId '" << ctx->id() << "'";
+
+  // fail
   generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_YET_IMPLEMENTED,
                 "replication API is not fully implemented for RocksDB yet");

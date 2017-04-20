@@ -734,7 +734,11 @@ int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  VPackSlice const collection = slice.get("collection");
+  VPackSlice collection = slice.get("collection");
+  if (!collection.isObject()) {
+    collection = slice.get("data");
+  }
+
   if (!collection.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -774,7 +778,11 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  VPackSlice const data = slice.get("collection");
+  VPackSlice data = slice.get("collection");
+  if (!data.isObject()) {
+    data = slice.get("data");
+  }
+
   if (!data.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }

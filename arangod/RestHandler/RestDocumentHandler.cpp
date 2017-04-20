@@ -135,18 +135,12 @@ bool RestDocumentHandler::createDocument() {
   Result res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "trx: " << res.errorMessage();
-
     generateTransactionError(collectionName, res, "");
     return false;
   }
 
   arangodb::OperationResult result =
       trx.insert(collectionName, body, opOptions);
-
-  if (result.code != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "trx.insert: " << result.code;
-  }
 
   // Will commit if no error occured.
   // or abort if an error occured.
@@ -159,8 +153,6 @@ bool RestDocumentHandler::createDocument() {
   }
 
   if (!res.ok()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "trx.finish: " << res.errorMessage();
-
     generateTransactionError(collectionName, res, "");
     return false;
   }

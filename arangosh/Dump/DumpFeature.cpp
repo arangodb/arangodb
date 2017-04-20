@@ -309,7 +309,8 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
   while (true) {
     std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
-                      "&chunkSize=" + StringUtils::itoa(chunkSize);
+                      "&chunkSize=" + StringUtils::itoa(chunkSize) +
+                      "&batchId=" + StringUtils::itoa(_batchId);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -425,7 +426,8 @@ void DumpFeature::flushWal() {
 int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   std::string const url =
       "/_api/replication/inventory?includeSystem=" +
-      std::string(_includeSystemCollections ? "true" : "false");
+      std::string(_includeSystemCollections ? "true" : "false") + "&batchId=" +
+      StringUtils::itoa(_batchId);
 
   std::unique_ptr<SimpleHttpResult> response(
       _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
@@ -504,8 +506,9 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       TRI_UnlinkFile(fileName.c_str());
     }
 
-    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                    S_IRUSR | S_IWUSR);
+    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
+                                 O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                 S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
       errorMsg = "cannot write to file '" + fileName + "'";
@@ -605,8 +608,8 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                      O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                      S_IRUSR | S_IWUSR);
+                                   O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -641,8 +644,8 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                      O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                      S_IRUSR | S_IWUSR);
+                                   O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -879,9 +882,9 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                          O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                          S_IRUSR | S_IWUSR);
+      int fd = TRI_TRACKED_CREATE_FILE(
+          fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+          S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -915,9 +918,9 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                          O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                          S_IRUSR | S_IWUSR);
+      int fd = TRI_TRACKED_CREATE_FILE(
+          fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+          S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
