@@ -62,8 +62,8 @@ class DumpFeature final : public application_features::ApplicationFeature,
   void extendBatch(std::string DBserver);
   void endBatch(std::string DBserver);
   int dumpCollection(int fd, std::string const& collectionId,
-                     std::string const& contextId, std::string const& name,
-                     uint64_t maxTick, std::string& errorMsg);
+                     std::string const& name, uint64_t maxTick,
+                     std::string& errorMsg);
   void flushWal();
   int runDump(std::string& dbName, std::string& errorMsg);
   int dumpShard(int fd, std::string const& DBserver, std::string const& name,

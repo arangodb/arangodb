@@ -298,7 +298,6 @@ void DumpFeature::endBatch(std::string DBserver) {
 
 /// @brief dump a single collection
 int DumpFeature::dumpCollection(int fd, std::string const& cid,
-                                std::string const& contextIdString,
                                 std::string const& name, uint64_t maxTick,
                                 std::string& errorMsg) {
   uint64_t chunkSize = _chunkSize;
@@ -310,7 +309,8 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
   while (true) {
     std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
-                      "&chunkSize=" + StringUtils::itoa(chunkSize);
+                      "&chunkSize=" + StringUtils::itoa(chunkSize) +
+                      "&batchId=" + StringUtils::itoa(_batchId);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -318,11 +318,6 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     if (_compat28) {
       url += "&compat28=true";
-    }
-
-    if (!contextIdString.empty()) {
-      url += "&contextId=";
-      url += contextIdString;
     }
 
     _stats._totalBatches++;
@@ -431,7 +426,8 @@ void DumpFeature::flushWal() {
 int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   std::string const url =
       "/_api/replication/inventory?includeSystem=" +
-      std::string(_includeSystemCollections ? "true" : "false");
+      std::string(_includeSystemCollections ? "true" : "false") + "&batchId=" +
+      StringUtils::itoa(_batchId);
 
   std::unique_ptr<SimpleHttpResult> response(
       _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
@@ -492,20 +488,6 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   if (_tickEnd > 0 && maxTick > _tickEnd) {
     maxTick = _tickEnd;
   }
-
-  // read the server's contextId
-  std::string const contextIdString =
-      arangodb::basics::VelocyPackHelper::getStringValue(body, "contextId", "");
-
-  // if (contextIdString == "") {
-  //  errorMsg = "got malformed JSON response from server - contextId is
-  //  missing";
-  //  return TRI_ERROR_INTERNAL;
-  //}
-
-  std::cout << "contextId provided by server is: " << contextIdString
-            << std::endl;
-  // uint64_t contextId = StringUtils::uint64(contextIdString);
 
   try {
     VPackBuilder meta;
@@ -672,8 +654,8 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       extendBatch("");
-      int res = dumpCollection(fd, std::to_string(cid), contextIdString, name,
-                               maxTick, errorMsg);
+      int res =
+          dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
 
       TRI_TRACKED_CLOSE_FILE(fd);
 
