@@ -497,7 +497,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   
   RocksDBReplicationContext* ctx = _manager->createContext();
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-    ctx->getInventory(this->_vocbase, true);
+    ctx->getInventory(this->_vocbase, includeSystem);
   if (!result.first.ok()) {
     generateError(rest::ResponseCode::BAD,
                   result.first.errorNumber(),
