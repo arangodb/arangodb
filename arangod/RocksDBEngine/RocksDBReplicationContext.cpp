@@ -166,6 +166,7 @@ class WBReader : public rocksdb::WriteBatch::Handler {
 
       return true;
     }
+    return false;
   }
 
  private:
