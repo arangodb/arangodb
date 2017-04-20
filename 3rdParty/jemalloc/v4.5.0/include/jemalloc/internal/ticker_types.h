@@ -1,0 +1,6 @@
+#ifndef JEMALLOC_INTERNAL_TICKER_TYPES_H
+#define JEMALLOC_INTERNAL_TICKER_TYPES_H
+
+typedef struct ticker_s ticker_t;
+
+#endif /* JEMALLOC_INTERNAL_TICKER_TYPES_H */

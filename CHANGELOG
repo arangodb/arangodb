@@ -1,6 +1,16 @@
 devel
 -----
 
+* added KB, MB, GB prefix for integer parameter, % for integer parameter
+  with a base value
+
+* added JEMALLOC 4.5.0
+
+* added --vm.resident-limit and --vm.path for mmap after a limit
+
+* try recommended limit for file descriptors in case of unlimited
+  hard limit
+
 * issue #2413: improve logging in case of lock timeout and deadlocks
 
 * added log topic attribute to /_admin/log api
