@@ -191,6 +191,8 @@ RocksDBReplicationContext::RocksDBReplicationContext()
 
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
 
+uint64_t RocksDBReplicationContext::lastTick() const { return _lastTick; }
+
 // creates new transaction/snapshot, returns inventory
 std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
 RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
