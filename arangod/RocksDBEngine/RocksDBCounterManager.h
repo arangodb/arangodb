@@ -26,10 +26,8 @@
 
 #include <rocksdb/types.h>
 #include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "Basics/Thread.h"
 #include "VocBase/voc-types.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
@@ -43,17 +41,15 @@ class Transaction;
 
 namespace arangodb {
   
-class RocksDBCounterManager : Thread {
+class RocksDBCounterManager {
   friend class RocksDBEngine;
   
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
-  RocksDBCounterManager(rocksdb::DB* db, double interval);
+  RocksDBCounterManager(rocksdb::DB* db);
 
  public:
-  
-  ~RocksDBCounterManager();
-  
+    
   struct CounterAdjustment {
     rocksdb::SequenceNumber _sequenceNum = 0;
     uint64_t _added = 0;
@@ -87,10 +83,7 @@ class RocksDBCounterManager : Thread {
   /// Thread-Safe force sync
   arangodb::Result sync();
 
-  void beginShutdown() override;
-
  protected:
-  void run() override;
   
   struct CMValue {
     /// ArangoDB transaction ID
@@ -101,12 +94,11 @@ class RocksDBCounterManager : Thread {
     TRI_voc_rid_t _revisionId;
     
     CMValue(rocksdb::SequenceNumber sq, uint64_t cc, TRI_voc_rid_t rid)
-      : _sequenceNum(sq), _count(cc), _revisionId(rid) {}
+    : _sequenceNum(sq), _count(cc), _revisionId(rid) {}
     explicit CMValue(arangodb::velocypack::Slice const&);
     void serialize(arangodb::velocypack::Builder&) const;
   };
 
- private:
   
   void readCounterValues();
   bool parseRocksWAL();
@@ -130,16 +122,6 @@ class RocksDBCounterManager : Thread {
   /// @brief rocsdb instance
   //////////////////////////////////////////////////////////////////////////////
   rocksdb::DB* _db;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief interval i which we will sync
-  //////////////////////////////////////////////////////////////////////////////
-  double const _interval;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief condition variable for heartbeat
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::basics::ConditionVariable _condition;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief protect _syncing and _counters

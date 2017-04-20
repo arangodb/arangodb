@@ -26,7 +26,9 @@
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb {
@@ -79,6 +81,9 @@ struct BaseOptions {
   };
 
  public:
+  static std::unique_ptr<BaseOptions> createOptionsFromSlice(
+      transaction::Methods* trx, arangodb::velocypack::Slice const& definition);
+
   explicit BaseOptions(transaction::Methods* trx);
 
   /// @brief This copy constructor is only working during planning phase.
@@ -121,7 +126,10 @@ struct BaseOptions {
 
   traverser::TraverserCache* cache();
 
-  void activateCache(bool enableDocumentCache);
+  void activateCache(
+      bool enableDocumentCache,
+      std::unordered_map<ServerID, traverser::TraverserEngineID> const*
+          engines);
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list,
@@ -153,6 +161,7 @@ struct BaseOptions {
  protected:
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid,
                               std::vector<LookupInfo>&);
+
  protected:
   transaction::Methods* _trx;
 

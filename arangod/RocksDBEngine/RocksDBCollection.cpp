@@ -1056,7 +1056,7 @@ arangodb::RocksDBPrimaryIndex* RocksDBCollection::primaryIndex() const {
 
 RocksDBOperationResult RocksDBCollection::insertDocument(
     arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
-    VPackSlice const& doc, bool& waitForSync) {
+    VPackSlice const& doc, bool& waitForSync) const {
   RocksDBOperationResult res;
   // Coordinator doesn't know index internals
   LOG_TOPIC(ERR, Logger::DEVEL)

@@ -31,7 +31,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
-#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -834,12 +833,6 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  // HashIndex has different semantics
-  /*if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    SimpleAttributeEqualityMatcher matcher(_fields);
-    return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
-                            estimatedCost);
-  }*/
   // mmfiles failure point compat
   if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
@@ -1211,11 +1204,6 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
 arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
-  // HashIndex uses slightly different semantics
-  /*if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    SimpleAttributeEqualityMatcher matcher(_fields);
-    return matcher.specializeAll(this, node, reference);
-  }*/
   // mmfiles failure compat
   if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {

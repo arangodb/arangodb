@@ -265,7 +265,7 @@ bool ServerState::registerShortName(std::string const& id, ServerState::RoleEnum
 
   uint32_t shortNum(0);
   try {
-    shortNum = std::stoul(id.substr(roleName.size(), 3));
+    shortNum = StringUtils::uint32(id.substr(roleName.size(), 3));
   } catch (...) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
       "Old id cannot be parsed for number.";

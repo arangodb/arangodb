@@ -26,9 +26,11 @@
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
 #include "Graph/SingleServerEdgeCursor.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
 #include "VocBase/TraverserCache.h"
 #include "VocBase/TraverserCacheFactory.h"
+#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -149,6 +151,16 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   // Some hard-coded value
   nrItems += 1000;
   return 1000.0;
+}
+
+
+std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
+    transaction::Methods* trx, VPackSlice const& definition) {
+  VPackSlice type = definition.get("type");
+  if (type.isString() && type.isEqualString("shortestPath")) {
+    return std::make_unique<ShortestPathOptions>(trx, definition);
+  }
+  return std::make_unique<TraverserOptions>(trx, definition);
 }
 
 BaseOptions::BaseOptions(transaction::Methods* trx)
@@ -390,19 +402,20 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
 
 TraverserCache* BaseOptions::cache() {
   if (_cache == nullptr) {
-    // If this assert is triggered the code should
-    // have called activateCache() before
-    TRI_ASSERT(false);
+    // If the Coordinator does NOT activate the Cache
+    // the datalake is not created and cluster data cannot
+    // be persisted anywhere.
+    TRI_ASSERT(!arangodb::ServerState::instance()->isCoordinator());
     // In production just gracefully initialize
     // the cache without document cache, s.t. system does not crash
-    activateCache(false);
+    activateCache(false, nullptr);
   }
   TRI_ASSERT(_cache != nullptr);
   return _cache.get();
 }
 
-void BaseOptions::activateCache(bool enableDocumentCache) {
+void BaseOptions::activateCache(bool enableDocumentCache, std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(cacheFactory::CreateCache(_trx, enableDocumentCache));
+  _cache.reset(cacheFactory::CreateCache(_trx, enableDocumentCache, engines));
 }

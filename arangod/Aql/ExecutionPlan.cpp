@@ -45,6 +45,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/ShortestPathOptions.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
@@ -68,7 +69,7 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
+static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
     transaction::Methods* trx, AstNode const* direction,
     AstNode const* optionsNode) {
   auto options = std::make_unique<traverser::TraverserOptions>(trx);
@@ -142,10 +143,12 @@ static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
                                    "supported, with bfs: true due to "
                                    "unpredictable results.");
   }
-  return options;
+  std::unique_ptr<graph::BaseOptions> ret(options.get());
+  options.release();
+  return ret;
 }
 
-static std::unique_ptr<graph::ShortestPathOptions> CreateShortestPathOptions(
+static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(
     arangodb::transaction::Methods* trx, AstNode const* node) {
   auto options = std::make_unique<graph::ShortestPathOptions>(trx);
 
@@ -170,7 +173,9 @@ static std::unique_ptr<graph::ShortestPathOptions> CreateShortestPathOptions(
       }
     }
   }
-  return options;
+  std::unique_ptr<graph::BaseOptions> ret(options.get());
+  options.release();
+  return ret;
 }
 
 /// @brief create the plan
@@ -722,6 +727,11 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   auto options = CreateTraversalOptions(getAst()->query()->trx(), direction,
                                         node->getMember(3));
 
+  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
+  TRI_ASSERT(direction->numMembers() == 2);
+  direction = direction->getMember(0);
+  TRI_ASSERT(direction->isIntValue());
+
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),
                                     direction, start, graph, options);
@@ -800,7 +810,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),
-                                     direction->getIntValue(), start, target,
+                                     direction, start, target,
                                      graph, options);
 
   auto variable = node->getMember(5);

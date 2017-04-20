@@ -23,6 +23,10 @@
 #ifndef ARANGOD_VOC_BASE_TRAVERSER_CACHE_FACTORY_H
 #define ARANGOD_VOC_BASE_TRAVERSER_CACHE_FACTORY_H 1
 
+#include "Basics/Common.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/TraverserEngineRegistry.h"
+
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -31,8 +35,10 @@ namespace traverser {
 class TraverserCache;
 
 namespace cacheFactory {
-TraverserCache* CreateCache(arangodb::transaction::Methods* trx,
-                            bool activateDocumentCache);
+TraverserCache* CreateCache(
+    arangodb::transaction::Methods* trx, bool activateDocumentCache,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
+
 }  // namespace cacheFactory
 }  // namespace traverser
 }  // namespace arangodb

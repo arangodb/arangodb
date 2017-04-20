@@ -23,7 +23,6 @@
 
 #include "RocksDBCounterManager.h"
 
-#include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
@@ -63,33 +62,12 @@ void RocksDBCounterManager::CMValue::serialize(VPackBuilder& b) const {
 
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
-RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db, double interval)
-    : Thread("RocksDBCounters"), _db(db), _interval(interval) {
+RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
+    : _db(db) {
   readCounterValues();
   if (_counters.size() > 0) {
     if (parseRocksWAL()) {
       sync();
-    }
-  }
-}
-
-RocksDBCounterManager::~RocksDBCounterManager() { shutdown(); }
-
-void RocksDBCounterManager::beginShutdown() {
-  Thread::beginShutdown();
-
-  // wake up the thread that may be waiting in run()
-  CONDITION_LOCKER(guard, _condition);
-  guard.broadcast();
-}
-
-void RocksDBCounterManager::run() {
-  while (!isStopping()) {
-    CONDITION_LOCKER(guard, _condition);
-    guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
-
-    if (!isStopping()) {
-      this->sync();
     }
   }
 }

@@ -28,6 +28,10 @@
 
 namespace arangodb {
 
+namespace aql {
+class Query;
+}
+
 namespace transaction {
 class Methods;
 }
@@ -55,6 +59,10 @@ struct ShortestPathOptions : public BaseOptions {
   ShortestPathOptions(transaction::Methods* trx,
                       arangodb::velocypack::Slice const& info);
 
+  // @brief DBServer-constructor used by TraverserEngines
+  ShortestPathOptions(aql::Query* query,
+                      arangodb::velocypack::Slice info,
+                      arangodb::velocypack::Slice collections);
   ~ShortestPathOptions();
 
   // Creates a complete Object containing all EngineInfo
@@ -92,6 +100,8 @@ struct ShortestPathOptions : public BaseOptions {
   EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid);
 
   EdgeCursor* nextReverseCursor(ManagedDocumentResult*, StringRef vid);
+
+  void fetchVerticesCoordinator(std::deque<StringRef> const& vertexIds);
 
  private:
   EdgeCursor* nextCursorCoordinator(StringRef vid);

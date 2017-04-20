@@ -51,7 +51,7 @@ TraverserOptions::TraverserOptions(transaction::Methods* trx)
       uniqueEdges(UniquenessLevel::PATH) {}
 
 TraverserOptions::TraverserOptions(transaction::Methods* trx,
-                                   VPackSlice const& slice)
+                                   VPackSlice const& obj)
     : BaseOptions(trx),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
@@ -60,8 +60,13 @@ TraverserOptions::TraverserOptions(transaction::Methods* trx,
       useBreadthFirst(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {
-  VPackSlice obj = slice.get("traversalFlags");
   TRI_ASSERT(obj.isObject());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice type = obj.get("type");
+  TRI_ASSERT(type.isString());
+  TRI_ASSERT(type.isEqualString("traversal"));
+#endif
 
   minDepth = VPackHelper::getNumericValue<uint64_t>(obj, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
@@ -97,7 +102,7 @@ TraverserOptions::TraverserOptions(transaction::Methods* trx,
 
 arangodb::traverser::TraverserOptions::TraverserOptions(
     arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
-    : BaseOptions(query->trx()),
+    : BaseOptions(query, info, collections),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
       minDepth(1),
@@ -105,6 +110,14 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       useBreadthFirst(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice type = info.get("type");
+  TRI_ASSERT(type.isString());
+  TRI_ASSERT(type.isEqualString("traversal"));
+#endif
+
+
   // NOTE collections is an array of arrays of strings
   VPackSlice read = info.get("minDepth");
   if (!read.isInteger()) {
@@ -126,13 +139,6 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
                                    "The options require a bfs");
   }
   useBreadthFirst = read.getBool();
-
-  read = info.get("tmpVar");
-  if (!read.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The options require a tmpVar");
-  }
-  _tmpVar = query->ast()->variables()->createVariable(read);
 
   read = info.get("uniqueVertices");
   if (!read.isInteger()) {
@@ -176,19 +182,6 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
                                      "The options require a uniqueEdges");
   }
 
-  read = info.get("baseLookupInfos");
-  if (!read.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The options require a baseLookupInfos");
-  }
-
-  size_t length = read.length();
-  TRI_ASSERT(read.length() == collections.length());
-  _baseLookupInfos.reserve(length);
-  for (size_t j = 0; j < length; ++j) {
-    _baseLookupInfos.emplace_back(query, read.at(j), collections.at(j));
-  }
-
   read = info.get("depthLookupInfo");
   if (!read.isNone()) {
     if (!read.isObject()) {
@@ -197,6 +190,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
           "The options require depthLookupInfo to be an object");
     }
     _depthLookupInfo.reserve(read.length());
+    size_t length = collections.length();
     for (auto const& depth : VPackObjectIterator(read)) {
       uint64_t d = basics::StringUtils::uint64(depth.key.copyString());
       auto it = _depthLookupInfo.emplace(d, std::vector<LookupInfo>());
@@ -306,6 +300,8 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
       builder.add("uniqueEdges", VPackValue("global"));
       break;
   }
+
+  builder.add("type", VPackValue("traversal"));
 }
 
 void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
@@ -337,6 +333,8 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
 
 void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
+  injectEngineInfo(result);
+  result.add("type", VPackValue("traversal"));
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
   result.add("bfs", VPackValue(useBreadthFirst));
@@ -366,13 +364,6 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
       result.add(VPackValue(2));
       break;
   }
-
-  result.add(VPackValue("baseLookupInfos"));
-  result.openArray();
-  for (auto const& it : _baseLookupInfos) {
-    it.buildEngineInfo(result);
-  }
-  result.close();
 
   if (!_depthLookupInfo.empty()) {
     result.add(VPackValue("depthLookupInfo"));
@@ -408,9 +399,6 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
     _baseVertexExpression->toVelocyPack(result, true);
     result.close();
   }
-
-  result.add(VPackValue("tmpVar"));
-  _tmpVar->toVelocyPack(result);
 
   result.close();
 }
@@ -508,7 +496,7 @@ EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
 EdgeCursor* TraverserOptions::nextCursorCoordinator(StringRef vid,
                                                     uint64_t depth) {
   TRI_ASSERT(_traverser != nullptr);
-  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, depth, _traverser);
+  auto cursor = std::make_unique<ClusterEdgeCursor>(vid, depth, this);
   return cursor.release();
 }
 

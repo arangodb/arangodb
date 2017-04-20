@@ -28,6 +28,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
@@ -36,6 +37,7 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -72,7 +74,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
-
+  
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
@@ -80,7 +82,6 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
       _db(nullptr),
-      _replicationManager(nullptr),
       _cmp(new RocksDBComparator()),
       _maxTransactionSize((std::numeric_limits<uint64_t>::max)()),
       _intermediateTransactionCommitSize(32 * 1024 * 1024),
@@ -200,14 +201,15 @@ void RocksDBEngine::start() {
   }
 
   TRI_ASSERT(_db != nullptr);
-  _counterManager.reset(new RocksDBCounterManager(_db, counter_sync_seconds));
-  if (!_counterManager->start()) {
+  _counterManager.reset(new RocksDBCounterManager(_db));
+  _replicationManager.reset(new RocksDBReplicationManager());
+  
+  _backgroundThread.reset(new RocksDBBackgroundThread(this, counter_sync_seconds));
+  if (!_backgroundThread->start()) {
     LOG_TOPIC(ERR, Logger::ENGINES)
         << "Could not start rocksdb counter manager";
     TRI_ASSERT(false);
   }
-
-  _replicationManager = new RocksDBReplicationManager{};
 
   if (!systemDatabaseExists()) {
     addSystemDatabase();
@@ -220,16 +222,15 @@ void RocksDBEngine::unprepare() {
   if (!isEnabled()) {
     return;
   }
-  
-  delete _replicationManager;
-  _replicationManager = nullptr;
 
   if (_db) {
-    if (_counterManager && _counterManager->isRunning()) {
+    if (_backgroundThread && _backgroundThread->isRunning()) {
       // stop the press
-      _counterManager->beginShutdown();
+      _backgroundThread->beginShutdown();
+      _backgroundThread.reset();
+    }
+    if (_counterManager) {
       _counterManager->sync();
-      _counterManager.reset();
     }
 
     delete _db;
@@ -1029,13 +1030,14 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
   }
 }
 
-RocksDBCounterManager* RocksDBEngine::counterManager() {
+RocksDBCounterManager* RocksDBEngine::counterManager() const {
+  TRI_ASSERT(_counterManager);
   return _counterManager.get();
 }
 
-RocksDBReplicationManager  * RocksDBEngine::replicationManager() {
+RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
   TRI_ASSERT(_replicationManager);
-  return _replicationManager;
+  return _replicationManager.get();
 }
 
 }  // namespace

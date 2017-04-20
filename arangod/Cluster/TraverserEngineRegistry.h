@@ -33,7 +33,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace traverser {
 
-class BaseTraverserEngine;
+class BaseEngine;
 
 /// @brief type of a Traverser Engine Id
 typedef TRI_voc_tick_t TraverserEngineID;
@@ -55,7 +55,7 @@ class TraverserEngineRegistry {
   /// @brief Get the engine with the given ID.
   ///        TODO Test what happens if this pointer
   ///        is requested twice in parallel?
-  BaseTraverserEngine* get(TraverserEngineID);
+  BaseEngine* get(TraverserEngineID);
 
   /// @brief Destroys the engine with the given id.
   void destroy(TraverserEngineID);
@@ -84,7 +84,7 @@ class TraverserEngineRegistry {
     bool _isInUse;                                 // Flag if this engine is in use
     bool _toBeDeleted;                             // Should be deleted after
                                                    // next return
-    std::unique_ptr<BaseTraverserEngine> _engine;  // The real engine
+    std::unique_ptr<BaseEngine> _engine;           // The real engine
 
     double _timeToLive;                            // in seconds
     double _expires;                               // UNIX UTC timestamp for expiration

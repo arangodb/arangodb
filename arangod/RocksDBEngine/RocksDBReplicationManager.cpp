@@ -101,11 +101,10 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
   {
     MUTEX_LOCKER(mutexLocker, _lock);
 
-    if (_contexts.empty()) {
+    _contexts.emplace(id, context.get());
+    if (_contexts.size() == 1) {
       disableFileDeletions();
     }
-    
-    _contexts.emplace(id, context.get());
   }
   return context.release();
 }
@@ -284,7 +283,9 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
       }
     }
 
-    if (_contexts.size() == 0) {
+    // FIXME effectively force should only be called on shutdown
+    // nevertheless this is quite ugly
+    if (_contexts.size() == 0 && !force) {
       enableFileDeletions();
     }
   } catch (...) {

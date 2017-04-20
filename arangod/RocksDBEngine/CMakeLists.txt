@@ -2,6 +2,7 @@
 
 # add sources for rocksdb engine
 set(ROCKSDB_SOURCES
+  RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBCollection.cpp
   RocksDBEngine/RocksDBCollectionExport.cpp
   RocksDBEngine/RocksDBCommon.cpp
