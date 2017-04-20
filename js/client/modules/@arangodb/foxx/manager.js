@@ -173,7 +173,7 @@ var help = function () {
   arangodb.print();
   arangodb.print('Use  foxx-manager --help  to show a list of global options\n');
   arangodb.print('There is also an online manual available at:');
-  arangodb.print('https://docs.arangodb.com/Foxx/Install/');
+  arangodb.print('https://docs.arangodb.com/3.1/Manual/Foxx/');
 
   // additional newline
   arangodb.print();
