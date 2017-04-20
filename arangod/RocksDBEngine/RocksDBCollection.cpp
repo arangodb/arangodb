@@ -201,9 +201,6 @@ void RocksDBCollection::open(bool ignoreErrors) {
       << "OPEN ROCKS COLLECTION: " << _logicalCollection->name() << " ("
       << this->objectId() << ")";
   // set the initial number of documents
-  // rocksdb::ReadOptions readOptions;
-  // rocksdb::TransactionDB* db =
-  // static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   auto counterValue = engine->counterManager()->loadCounter(this->objectId());

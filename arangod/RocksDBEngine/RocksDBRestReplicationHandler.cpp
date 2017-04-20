@@ -23,6 +23,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
@@ -35,13 +40,6 @@
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBReplicationContext.h"
-#include "RocksDBEngine/RocksDBReplicationManager.h"
-//#include "MMFiles/MMFilesCollectionKeys.h"
-//#include "MMFiles/MMFilesLogfileManager.h"
-//#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -485,21 +483,59 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {
-  RocksDBReplicationContext* context = _manager->createContext();
 
-  // add context id to store
-  // TODO - add context id to store
+  TRI_voc_tick_t tick = TRI_CurrentTickServer();
+  
+  // include system collections?
+  bool includeSystem = true;
+  bool found;
+  std::string const& value = _request->value("includeSystem", found);
+  
+  if (found) {
+    includeSystem = StringUtils::boolean(value);
+  }
+  
+  RocksDBReplicationContext* ctx = _manager->createContext();
+  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
+    ctx->getInventory(this->_vocbase, true);
+  if (!result.first.ok()) {
+    generateError(rest::ResponseCode::BAD,
+                  result.first.errorNumber(),
+                  "inventory could not be created");
+  }
 
+  VPackSlice const collections = result.second->slice();
+  TRI_ASSERT(collections.isArray());
+  
   VPackBuilder builder;
   builder.openObject();
-  builder.add("contextId", VPackValue(std::to_string(context->id())));
-  builder.close();
-  _manager->release(context);
+  
+  // add context id
+  builder.add("contextId", VPackValue(ctx->id()));
 
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
-  // generateResult(rest::ResponseCode::OK, builder.slice());
+  // add collections data
+  builder.add("collections", collections);
+  
+  // "state"
+  builder.add("state", VPackValue(VPackValueType::Object));
+  
+  //MMFilesLogfileManagerState const s =
+  //MMFilesLogfileManager::instance()->state();
+  
+  builder.add("running", VPackValue(true));
+  builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));
+  builder.add("lastUncommittedLogTick",
+              VPackValue(std::to_string(0)));//s.lastAssignedTick
+  builder.add("totalEvents", VPackValue(0));// s.numEvents + s.numEventsSync
+  builder.add("time", VPackValue(utilities::timeString()));
+  builder.close();  // state
+  
+  std::string const tickString(std::to_string(tick));
+  builder.add("tick", VPackValue(tickString));
+  builder.close();  // Toplevel
+  
+  _manager->release(ctx);
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,9 +543,34 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandClusterInventory() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "replication API is not fully implemented for RocksDB yet");
+  std::string const& dbName = _request->databaseName();
+  bool found;
+  bool includeSystem = true;
+  
+  std::string const& value = _request->value("includeSystem", found);
+  
+  if (found) {
+    includeSystem = StringUtils::boolean(value);
+  }
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+  std::vector<std::shared_ptr<LogicalCollection>> cols =
+  ci->getCollections(dbName);
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  resultBuilder.add(VPackValue("collections"));
+  resultBuilder.openArray();
+  for (auto const& c : cols) {
+    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem);
+  }
+  resultBuilder.close();  // collections
+  TRI_voc_tick_t tick = TRI_CurrentTickServer();
+  auto tickString = std::to_string(tick);
+  resultBuilder.add("tick", VPackValue(tickString));
+  resultBuilder.add("state", VPackValue("unused"));
+  resultBuilder.close();  // base
+  generateResult(rest::ResponseCode::OK, resultBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

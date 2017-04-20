@@ -57,6 +57,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;
+  uint64_t lastTick() const;
 
   // creates new transaction/snapshot, returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
