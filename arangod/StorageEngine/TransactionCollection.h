@@ -82,6 +82,10 @@ class TransactionCollection {
   virtual void release() = 0;
 
  protected:
+  inline bool isExclusive(AccessMode::Type type) const {
+    return (type == AccessMode::Type::EXCLUSIVE);
+  }
+  
   inline bool isWrite(AccessMode::Type type) const {
     return (type == AccessMode::Type::WRITE || type == AccessMode::Type::EXCLUSIVE);
   }

@@ -243,8 +243,8 @@ TransactionState* RocksDBEngine::createTransactionState(
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
     TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-    int /*nestingLevel*/) {
-  return new RocksDBTransactionCollection(state, cid, accessType);
+    int nestingLevel) {
+  return new RocksDBTransactionCollection(state, cid, accessType, nestingLevel);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,

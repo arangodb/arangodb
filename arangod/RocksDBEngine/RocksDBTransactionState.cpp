@@ -103,9 +103,27 @@ RocksDBTransactionState::~RocksDBTransactionState() {
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type)
                                << " transaction";
-  if (_nestingLevel == 0) {
-    TRI_ASSERT(_status == transaction::Status::CREATED);
+  
+  Result result = useCollections(_nestingLevel);
 
+  if (result.ok()) {
+    // all valid
+    if (_nestingLevel == 0) {
+      updateStatus(transaction::Status::RUNNING);
+    }
+  } else {
+    // something is wrong
+    if (_nestingLevel == 0) {
+      updateStatus(transaction::Status::ABORTED);
+    }
+
+    // free what we have got so far
+    unuseCollections(_nestingLevel);
+
+    return result;
+  }
+
+  if (_nestingLevel == 0) {
     // get a new id
     _id = TRI_NewTickServer();
 
@@ -132,24 +150,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
-
-  Result result = useCollections(_nestingLevel);
-
-  if (result.ok()) {
-    // all valid
-    if (_nestingLevel == 0) {
-      updateStatus(transaction::Status::RUNNING);
-    }
-  } else {
-    // something is wrong
-    if (_nestingLevel == 0) {
-      updateStatus(transaction::Status::ABORTED);
-    }
-
-    // free what we have got so far
-    unuseCollections(_nestingLevel);
-  }
-
+  
   return result;
 }
 
