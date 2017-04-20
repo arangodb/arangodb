@@ -70,7 +70,8 @@ class RocksDBReplicationManager {
   /// not
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* find(RocksDBReplicationId, bool& isBusy);
+  RocksDBReplicationContext* find(RocksDBReplicationId, bool& isBusy,
+                                  double ttl = DefaultTTL);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use
@@ -95,6 +96,9 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   bool garbageCollect(bool);
+  
+  /// default time-to-live for contexts
+  static double const DefaultTTL;
 
  private:
   void disableFileDeletions();
