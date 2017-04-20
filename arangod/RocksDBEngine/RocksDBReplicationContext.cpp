@@ -90,37 +90,39 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     _iter = _collection->getAllIterator(_trx.get(), &_mdr, false); //_mdr is not used nor updated
   }
 
-  bool const isEdge = _collection->type() == TRI_COL_TYPE_EDGE;
+  //set type
+  int type = 2300; // documents
+  if (_collection->type() == TRI_COL_TYPE_EDGE) {
+    type = 2301; // edge documents
+  }
+
   VPackBuilder builder;
 
-
-  auto cb = [this, isEdge, &buff, &builder](DocumentIdentifierToken const& token){
+  auto cb = [this, &type, &buff, &builder](DocumentIdentifierToken const& token) {
     builder.clear();
 
-    //set type
-    int type = 2300; // documents
     builder.openObject();
-    if (isEdge) {
-      type = 2301; // edge documents
-    }
+    //set type
     builder.add("type", VPackValue(type));
 
     //set data
     int res = _collection->readDocument(_trx.get(), token, _mdr);
-    if (res != TRI_ERROR_NO_ERROR){
+
+    if (res != TRI_ERROR_NO_ERROR) {
       //fail
     }
-    builder.add("data", VPackSlice(_mdr.vpack()));
+
+    builder.add(VPackValue("data"));
+    _mdr.addToBuilder(builder, false);
     builder.close();
     buff.appendText(builder.toJson());
   };
 
-  while(_hasMore && true /*sizelimit*/) {
+  while (_hasMore && true /*sizelimit*/) {
     try {
       _hasMore = _iter->next(cb, limit);
-    }
-    catch (std::exception const& e) {
-        return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
+    } catch (std::exception const& e) {
+      return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     }
   }
 

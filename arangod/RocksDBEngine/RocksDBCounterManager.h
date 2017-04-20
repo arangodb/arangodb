@@ -46,7 +46,7 @@ class RocksDBCounterManager {
   
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
-  RocksDBCounterManager(rocksdb::DB* db);
+  explicit RocksDBCounterManager(rocksdb::DB* db);
 
  public:
     
