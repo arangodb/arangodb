@@ -37,7 +37,7 @@ void RocksDBRestHandlers::registerResources(
       RestHandlerCreator<RocksDBRestExportHandler>::createNoData);
 
   handlerFactory->addPrefixHandler(
-      "/_admin/replication",
+      "/_api/replication",
       RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
 
   handlerFactory->addPrefixHandler(
