@@ -33,6 +33,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "lib/Basics/StringUtils.h"
+#include "lib/Random/RandomGenerator.h"
 
 #include <iostream>
 #include <velocypack/Parser.h>
@@ -105,6 +106,7 @@ typedef std::function<std::unique_ptr<Builder>(
   Slice const&, std::string const&)>TestStructureType;
 
 TEST_CASE("FailedLeader", "[agency][supervision]") {
+  RandomGenerator::seed(3);
 
   auto baseStructure = createRootNode();
 

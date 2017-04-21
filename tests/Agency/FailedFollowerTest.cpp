@@ -33,6 +33,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "lib/Basics/StringUtils.h"
+#include "lib/Random/RandomGenerator.h"
 
 #include <iostream>
 #include <velocypack/Parser.h>
@@ -117,7 +118,7 @@ Node createRootNode() {
 
 
 TEST_CASE("FailedFollower", "[agency][supervision]") {
-
+  RandomGenerator::seed(3);
   auto transBuilder = std::make_shared<Builder>();
   { VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1)); }

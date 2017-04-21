@@ -60,6 +60,7 @@ class RandomDevice {
   int32_t other(int32_t left, uint32_t right);
 };
 
+
 // -----------------------------------------------------------------------------
 // RandomGenerator
 // -----------------------------------------------------------------------------
@@ -81,6 +82,8 @@ class RandomGenerator {
  public:
   static void initialize(RandomType);
   static void shutdown();
+
+  static void seed(uint64_t);
 
   static int16_t interval(int16_t, int16_t);
   static int32_t interval(int32_t, int32_t);
