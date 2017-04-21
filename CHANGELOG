@@ -1,6 +1,8 @@
 devel
 -----
 
+* potential fix for shutdown hangs on OSX
+
 * added KB, MB, GB prefix for integer parameter, % for integer parameter
   with a base value
 

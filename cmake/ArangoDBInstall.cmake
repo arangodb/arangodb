@@ -157,6 +157,9 @@ if (UNIX)
       ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
       ${PROJECT_BINARY_DIR}/arangodb3.service
       NEWLINE_STYLE UNIX)
+    if (CMAKE_INSTALL_PREFIX AND NOT "${CMAKE_INSTALL_PREFIX}" STREQUAL "/")
+      set(SYSTEMD_UNIT_DIR "${CMAKE_INSTALL_PREFIX}/${SYSTEMD_UNIT_DIR}/")
+    endif()
     install(FILES ${PROJECT_BINARY_DIR}/arangodb3.service
       DESTINATION ${SYSTEMD_UNIT_DIR}/
       RENAME ${SERVICE_NAME}.service)
