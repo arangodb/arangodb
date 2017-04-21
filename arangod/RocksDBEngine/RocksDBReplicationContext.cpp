@@ -114,12 +114,15 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   if (_collection->type() == TRI_COL_TYPE_EDGE) {
     type = 2301;  // edge documents
   }
+    
+  arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
 
   VPackBuilder builder(&_vpackOptions);
-  builder.openArray();
 
-  auto cb = [this, &type, &buff,
+  auto cb = [this, &type, &buff, &adapter,
              &builder](DocumentIdentifierToken const& token) {
+    builder.clear();
+
     builder.openObject();
     // set type
     builder.add("type", VPackValue(type));
@@ -133,6 +136,12 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     builder.add(VPackValue("data"));
     _mdr.addToBuilder(builder, false);
     builder.close();
+    
+    VPackDumper dumper(
+        &adapter,
+        &_vpackOptions);  // note: we need the CustomTypeHandler here
+    dumper.dump(builder.slice());
+    buff.appendChar('\n');
   };
 
   while (_hasMore && true /*sizelimit*/) {
@@ -141,15 +150,6 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     } catch (std::exception const& ex) {
       return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     }
-  }
-
-  builder.close();
-  if (builder.slice().length() > 0) {
-    arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
-    VPackDumper dumper(
-        &adapter,
-        &_vpackOptions);  // note: we need the CustomTypeHandler here
-    dumper.dump(builder.slice());
   }
 
   return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick);
