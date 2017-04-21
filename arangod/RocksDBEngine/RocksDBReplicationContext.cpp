@@ -93,7 +93,7 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationResult RocksDBReplicationContext::dump(
     TRI_vocbase_t* vocbase, std::string const& collectionName,
-    basics::StringBuffer& buff, size_t limit) {
+    basics::StringBuffer& buff, uint64_t chunkSize) {
   TRI_ASSERT(vocbase != nullptr);
   if (_trx.get() == nullptr) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
@@ -114,12 +114,13 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   if (_collection->type() == TRI_COL_TYPE_EDGE) {
     type = 2301;  // edge documents
   }
-    
+
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
 
   VPackBuilder builder(&_vpackOptions);
 
-  auto cb = [this, &type, &buff, &adapter,
+  uint64_t size = 0;
+  auto cb = [this, &type, &buff, &adapter, &size,
              &builder](DocumentIdentifierToken const& token) {
     builder.clear();
 
@@ -136,17 +137,19 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     builder.add(VPackValue("data"));
     _mdr.addToBuilder(builder, false);
     builder.close();
-    
+
     VPackDumper dumper(
         &adapter,
         &_vpackOptions);  // note: we need the CustomTypeHandler here
-    dumper.dump(builder.slice());
+    VPackSlice slice = builder.slice();
+    dumper.dump(slice);
     buff.appendChar('\n');
+    size += (slice.byteSize() + 1);
   };
 
-  while (_hasMore && true /*sizelimit*/) {
+  while (_hasMore && (size < chunkSize)) {
     try {
-      _hasMore = _iter->next(cb, limit);
+      _hasMore = _iter->next(cb, 10);  // TODO: adjust limit?
     } catch (std::exception const& ex) {
       return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     }
