@@ -50,6 +50,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
   uint64_t _maxChunkSize;
   bool _dumpData;
   bool _force;
+  bool _ignoreDistributeShardsLikeErrors;
   bool _includeSystemCollections;
   std::string _outputDirectory;
   bool _overwrite;
