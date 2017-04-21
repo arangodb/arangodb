@@ -75,7 +75,7 @@ macro (install_readme input output)
     set(CRLFSTYLE "CRLF")
   endif ()
   install(
-    CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${where}${PKG_VERSION}/${output} NEWLINE_STYLE ${CRLFSTYLE})"
+    CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \$ENV{DESTDIR}\/${where}${PKG_VERSION}/${output} NEWLINE_STYLE ${CRLFSTYLE})"
     )
 endmacro ()
 
