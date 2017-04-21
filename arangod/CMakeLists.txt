@@ -230,6 +230,30 @@ SET(ARANGOD_SOURCES
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
+  Pregel/AggregatorHandler.cpp
+  Pregel/AlgoRegistry.cpp
+  Pregel/Algos/SSSP.cpp
+  Pregel/Algos/ShortestPath.cpp
+  Pregel/Algos/PageRank.cpp
+  Pregel/Algos/RecoveringPageRank.cpp
+  Pregel/Algos/LineRank.cpp
+  Pregel/Algos/ConnectedComponents.cpp
+  Pregel/Algos/SCC.cpp
+  Pregel/Algos/AsyncSCC.cpp
+  Pregel/Algos/HITS.cpp
+  Pregel/Algos/LabelPropagation.cpp
+  Pregel/Algos/DMID/DMID.cpp
+  Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
+  Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
+  Pregel/Conductor.cpp
+  Pregel/GraphStore.cpp
+  Pregel/IncomingCache.cpp
+  Pregel/OutgoingCache.cpp
+  Pregel/PregelFeature.cpp
+  Pregel/Recovery.cpp
+  Pregel/Utils.cpp
+  Pregel/Worker.cpp
+  Pregel/WorkerConfig.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
@@ -353,30 +377,6 @@ SET(ARANGOD_SOURCES
   VocBase/replication-common.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
-  Pregel/AggregatorHandler.cpp
-  Pregel/AlgoRegistry.cpp
-  Pregel/Algos/SSSP.cpp
-  Pregel/Algos/ShortestPath.cpp
-  Pregel/Algos/PageRank.cpp
-  Pregel/Algos/RecoveringPageRank.cpp
-  Pregel/Algos/LineRank.cpp
-  Pregel/Algos/ConnectedComponents.cpp
-  Pregel/Algos/SCC.cpp
-  Pregel/Algos/AsyncSCC.cpp
-  Pregel/Algos/HITS.cpp
-  Pregel/Algos/LabelPropagation.cpp
-  Pregel/Algos/DMID/DMID.cpp
-  Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
-  Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
-  Pregel/Conductor.cpp
-  Pregel/GraphStore.cpp
-  Pregel/IncomingCache.cpp
-  Pregel/OutgoingCache.cpp
-  Pregel/PregelFeature.cpp
-  Pregel/Utils.cpp
-  Pregel/Recovery.cpp
-  Pregel/Worker.cpp
-  Pregel/WorkerConfig.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 
