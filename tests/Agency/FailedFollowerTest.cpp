@@ -33,6 +33,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "lib/Basics/StringUtils.h"
+#include "lib/Random/RandomGenerator.h"
 
 #include <iostream>
 #include <velocypack/Parser.h>
@@ -117,7 +118,7 @@ Node createRootNode() {
 
 
 TEST_CASE("FailedFollower", "[agency][supervision]") {
-
+  RandomGenerator::seed(3);
   auto transBuilder = std::make_shared<Builder>();
   { VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1)); }
@@ -570,7 +571,6 @@ SECTION("a successfully started job should finish immediately and set everything
   Verify(Method(mockAgent, transact));
 }
 
-#ifdef __linux__
 SECTION("the job should handle distributeShardsLike") {
   std::string jobId = "1";
   TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
@@ -668,7 +668,6 @@ SECTION("the job should handle distributeShardsLike") {
   failedFollower.start();
   Verify(Method(mockAgent, transact));
 }
-#endif
 
 SECTION("the job should timeout after a while") {
   std::string jobId = "1";
