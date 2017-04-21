@@ -76,7 +76,7 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, std::vector<Strin
   // First check if we visited it. If not, then mark
   if (_returnedVertices.find(toAddStr) != _returnedVertices.end()) {
     // This vertex is not unique.
-    ++_traverser->_filteredPaths;
+    _traverser->traverserCache()->increaseFilterCounter();
     return false;
   } else {
     _returnedVertices.emplace(toAddStr);
@@ -103,7 +103,7 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice 
   // First check if we visited it. If not, then mark
   if (_returnedVertices.find(result) != _returnedVertices.end()) {
     // This vertex is not unique.
-    ++_traverser->_filteredPaths;
+    _traverser->traverserCache()->increaseFilterCounter();
     return false;
   } else {
     _returnedVertices.emplace(result);
@@ -123,8 +123,6 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
     : _trx(trx),
       _mmdr(mmdr),
       _startIdBuilder(trx),
-      _readDocuments(0),
-      _filteredPaths(0),
       _pruneNext(false),
       _done(true),
       _opts(opts),
@@ -143,7 +141,7 @@ bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
                                                            uint64_t depth,
                                                            size_t cursorId) {
   if (!_opts->evaluateEdgeExpression(e, vid, depth, cursorId)) {
-    ++_filteredPaths;
+    _opts->cache()->increaseFilterCounter();
     return false;
   }
   return true;
@@ -155,7 +153,7 @@ bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, uint6
     // We always need to destroy this vertex
     aql::AqlValue vertex = fetchVertexData(StringRef(v));
     if (!_opts->evaluateVertexExpression(vertex.slice(), depth)) {
-      ++_filteredPaths;
+      _opts->cache()->increaseFilterCounter();
       vertex.destroy();
       return false;
     }
@@ -188,6 +186,14 @@ arangodb::aql::AqlValue arangodb::traverser::Traverser::lastEdgeToAqlValue() {
 arangodb::aql::AqlValue arangodb::traverser::Traverser::pathToAqlValue(
     VPackBuilder& builder) {
   return _enumerator->pathToAqlValue(builder);
+}
+
+size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
+  return traverserCache()->getAndResetInsertedDocuments();
+}
+
+size_t arangodb::traverser::Traverser::getAndResetFilteredPaths() {
+  return traverserCache()->getAndResetFilteredDocuments();
 }
 
 void arangodb::traverser::Traverser::allowOptimizedNeighbors() {

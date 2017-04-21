@@ -54,8 +54,6 @@ class SingleServerTraverser final : public Traverser {
 
   void setStartVertex(std::string const& v) override;
   
-  size_t getAndResetReadDocuments() override;
-
  protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
