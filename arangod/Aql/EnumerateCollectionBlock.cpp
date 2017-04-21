@@ -200,10 +200,11 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
             res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
                           AqlValue(vpack, AqlValueFromManagedDocument()));
           } else {
-            res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
-                          AqlValue(VPackSlice(vpack)));
+            AqlValue a(_mmdr->createAqlValue());
+            AqlValueGuard guard(a, true);
+            res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs), a);
+            guard.steal();
           }
-          // No harm done, if the setValue throws!
         }
 
         if (send > 0) {
@@ -223,7 +224,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     }
 
     throwIfKilled();  // check if we were aborted
-
+    
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
