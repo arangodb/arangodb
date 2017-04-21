@@ -87,17 +87,14 @@ bool DepthFirstEnumerator::next() {
       bool exitInnerLoop = false;
       auto callback = [&](StringRef const& eid, VPackSlice const& edge,
                           size_t cursorId) {
-        ++_traverser->_readDocuments;
         _enumeratedPath.edges.push_back(eid);
-        _opts->cache()->insertDocument(
-            StringRef(eid), edge);  // TODO handle in cursor directly?
 
         if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
           if (_returnedEdges.find(eid) == _returnedEdges.end()) {
             // Edge not yet visited. Mark and continue.
             _returnedEdges.emplace(eid);
           } else {
-            _traverser->_filteredPaths++;
+            _opts->cache()->increaseFilterCounter();
             TRI_ASSERT(!_enumeratedPath.edges.empty());
             _enumeratedPath.edges.pop_back();
             return;

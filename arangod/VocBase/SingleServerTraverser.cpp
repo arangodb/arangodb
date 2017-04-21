@@ -86,10 +86,6 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
   _done = false;
 }
 
-size_t SingleServerTraverser::getAndResetReadDocuments() {
-  return _opts->cache()->getAndResetInsertedDocuments();
-}
-
 bool SingleServerTraverser::getVertex(VPackSlice edge,
                                       std::vector<StringRef>& result) {
   return _vertexGetter->getVertex(edge, result);

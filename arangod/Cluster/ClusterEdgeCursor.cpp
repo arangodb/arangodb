@@ -38,9 +38,8 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 // Traverser variant
-ClusterEdgeCursor::ClusterEdgeCursor(
-    StringRef vertexId, uint64_t depth,
-    graph::BaseOptions* opts)
+ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
+                                     graph::BaseOptions* opts)
     : _position(0),
       _resolver(opts->trx()->resolver()),
       _opts(opts),
@@ -53,17 +52,15 @@ ClusterEdgeCursor::ClusterEdgeCursor(
   b->add(VPackValuePair(vertexId.data(), vertexId.length(),
                         VPackValueType::String));
 
-  size_t tmp = 0;
   fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
                         depth, _cache->edges(), _edgeList, _cache->datalake(),
-                        *(leased.get()), tmp,
+                        *(leased.get()), _cache->filteredDocuments(),
                         _cache->insertedDocuments());
 }
 
 // ShortestPath variant
-ClusterEdgeCursor::ClusterEdgeCursor(
-    StringRef vertexId, bool backward,
-    graph::BaseOptions* opts)
+ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward,
+                                     graph::BaseOptions* opts)
     : _position(0),
       _resolver(opts->trx()->resolver()),
       _opts(opts),
@@ -76,8 +73,9 @@ ClusterEdgeCursor::ClusterEdgeCursor(
   b->add(VPackValuePair(vertexId.data(), vertexId.length(),
                         VPackValueType::String));
   fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
-                        backward, _cache->edges(), _edgeList, _cache->datalake(),
-                        *(leased.get()), _cache->insertedDocuments());
+                        backward, _cache->edges(), _edgeList,
+                        _cache->datalake(), *(leased.get()),
+                        _cache->insertedDocuments());
 }
 
 bool ClusterEdgeCursor::next(
