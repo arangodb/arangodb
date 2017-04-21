@@ -537,7 +537,6 @@ SECTION("abort any moveShard job blocking the shard and start") {
   Verify(Method(mockAgent, write));
 }
 
-#ifdef __linux__
 SECTION("if everything is fine than the job should be written to pending, adding the toServer") {
   std::string jobId = "1";
 
@@ -639,7 +638,6 @@ SECTION("if everything is fine than the job should be written to pending, adding
   );
   failedLeader.start();
 }
-#endif
 
 SECTION("if we want are working and our collection went missing from plan the job should just finish") {
   std::string jobId = "1";
