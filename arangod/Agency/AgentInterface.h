@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,35 +21,33 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_REMOVESERVER_SERVER_H
-#define ARANGOD_CONSENSUS_REMOVESERVER_SERVER_H 1
+#ifndef ARANGOD_CONSENSUS_AGENT_INTERFACE_H
+#define ARANGOD_CONSENSUS_AGENT_INTERFACE_H 1
 
-#include "Job.h"
-#include "Supervision.h"
+#include "Agency/AgencyCommon.h"
 
 namespace arangodb {
 namespace consensus {
+class AgentInterface {
+ public:
+  /// @brief Possible outcome of write process
+  enum raft_commit_t {OK, UNKNOWN, TIMEOUT};
+ 
+  /// @brief Attempt write
+  virtual write_ret_t write(query_t const&) = 0;
 
-struct RemoveServer : public Job {
-  
-  RemoveServer(Node const& snapshot, Agent* agent, std::string const& jobId,
-                 std::string const& creator, std::string const& prefix,
-                 std::string const& server = std::string());
-  
-  virtual ~RemoveServer();
-  
-  virtual JOB_STATUS status() override;
-  virtual bool create() override;
-  virtual bool start() override;
-  
-  // Check if all shards' replication factors can be satisfied after clean out.
-  bool checkFeasibility() ;
-  bool scheduleAddFollowers() ;
+  /// @brief Attempt write
+  virtual trans_ret_t transient(query_t const&) = 0;
 
-  std::string _server;
-  
+  /// @brief Attempt write
+  virtual trans_ret_t transact(query_t const&) = 0;
+
+  /// @brief Wait for slaves to confirm appended entries
+  virtual raft_commit_t waitFor(index_t last_entry, double timeout = 2.0) = 0;
+
+  // Suffice warnings
+  virtual ~AgentInterface() {};
 };
-
-}}
-
+}
+}
 #endif

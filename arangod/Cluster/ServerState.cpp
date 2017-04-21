@@ -532,12 +532,12 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     std::string currentUrl = "Current/" + agencyKey + "/" + id;
 
     AgencyGeneralTransaction reg;
-    reg.operations.push_back( // Plan entry if not exists
+    reg.push_back( // Plan entry if not exists
         operationType(
           AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
           AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true)));
 
-    reg.operations.push_back( // Current entry if not exists
+    reg.push_back( // Current entry if not exists
         operationType(
           AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
           AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true)));

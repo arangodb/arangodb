@@ -47,6 +47,9 @@ void TRI_localtime(time_t, struct tm*);
 // safe gmtime
 void TRI_gmtime(time_t, struct tm*);
 
+// safe timegm
+time_t TRI_timegm(struct tm*);
+
 // seconds with microsecond resolution
 double TRI_microtime();
 

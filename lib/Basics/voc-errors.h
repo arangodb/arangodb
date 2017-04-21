@@ -668,6 +668,8 @@
 ///   The inform message in the agency must contain an object 'pool'.
 /// - 20020: @LIT{Inquiry failed}
 ///   Inquiry by clientId failed
+/// - 20501: @LIT{general supervision failure}
+///   General supervision failure.
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -3537,6 +3539,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING                 (20020)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20501: ERROR_SUPERVISION_GENERAL_FAILURE
+///
+/// general supervision failure
+///
+/// General supervision failure.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             (20501)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING

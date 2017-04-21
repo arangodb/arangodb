@@ -21,39 +21,48 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_UNASSUMED_LEADERSHIP_H
-#define ARANGOD_CONSENSUS_UNASSUMED_LEADERSHIP_H 1
+#ifndef ARANGOD_CONSENSUS_JOB_CONTEXT_H
+#define ARANGOD_CONSENSUS_JOB_CONTEXT_H 1
 
 #include "Job.h"
-#include "Supervision.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <string>
 
 namespace arangodb {
 namespace consensus {
 
-struct UnassumedLeadership : public Job {
-  UnassumedLeadership(Node const& snapshot, Agent* agent,
-                      std::string const& jobId, std::string const& creator,
-                      std::string const& agencyPrefix,
-                      std::string const& database = std::string(),
-                      std::string const& collection = std::string(),
-                      std::string const& shard = std::string(),
-                      std::string const& server = std::string());
 
-  virtual ~UnassumedLeadership();
+class JobContext {
 
-  bool reassignShard();
+public:
 
-  virtual bool create() override;
-  virtual bool start() override;
-  virtual JOB_STATUS status() override;
+  /// @brief Contextualize arbitrary Job
+  JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
+             AgentInterface* agent);
 
-  std::string _database;
-  std::string _collection;
-  std::string _shard;
-  std::string _from;
-  std::string _to;
+  /// @brief Create job
+  void create(std::shared_ptr<VPackBuilder> b = nullptr);
+
+  /// @brief Start job
+  void start();
+
+  /// @brief Run job
+  void run();
+  
+  /// @brief Abort job
+  void abort();
+
+private:
+  
+  /// @brief Actual job context
+  std::unique_ptr<Job> _job;
+
 };
-}
-}  // namespaces
+
+}}
 
 #endif
