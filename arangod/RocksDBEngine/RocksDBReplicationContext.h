@@ -31,6 +31,7 @@
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -52,7 +53,10 @@ class RocksDBReplicationContext {
   TRI_voc_tick_t id() const;
   uint64_t lastTick() const;
 
-  // creates new transaction/snapshot, returns inventory
+  // creates new transaction/snapshot
+  void bind(TRI_vocbase_t*);
+
+  // returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
   getInventory(TRI_vocbase_t* vocbase, bool includeSystem);
 
@@ -90,6 +94,8 @@ class RocksDBReplicationContext {
   LogicalCollection* _collection;
   std::unique_ptr<IndexIterator> _iter;
   ManagedDocumentResult _mdr;
+  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
+  arangodb::velocypack::Options _vpackOptions;
 
   double _expires;
   bool _isDeleted;

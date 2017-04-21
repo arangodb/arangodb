@@ -122,6 +122,17 @@ class RocksDBReplicationManager {
 
   static size_t const MaxCollectCount;
 };
+
+class RocksDBReplicationContextGuard {
+ public:
+  RocksDBReplicationContextGuard(RocksDBReplicationManager*,
+                                 RocksDBReplicationContext*);
+  ~RocksDBReplicationContextGuard();
+
+ private:
+  RocksDBReplicationManager* _manager;
+  RocksDBReplicationContext* _ctx;
+};
 }
 
 #endif

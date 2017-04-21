@@ -24,12 +24,16 @@
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -43,6 +47,9 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _trx(),
       _collection(nullptr),
       _iter(),
+      _mdr(),
+      _customTypeHandler(),
+      _vpackOptions(Options::Defaults),
       _expires(TRI_microtime() + DefaultTTL),
       _isDeleted(false),
       _isUsed(true),
@@ -56,25 +63,30 @@ TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
 
 uint64_t RocksDBReplicationContext::lastTick() const { return _lastTick; }
 
-// creates new transaction/snapshot, returns inventory
+// creates new transaction/snapshot
+void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
+  releaseDumpingResources();
+  _trx = createTransaction(vocbase);
+}
+
+// returns inventory
 std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
 RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
                                         bool includeSystem) {
   TRI_ASSERT(vocbase != nullptr);
-  if (_trx.get() != nullptr) {
+  if (_trx.get() == nullptr) {
     return std::make_pair(
-        RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick), nullptr);
+        RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick),
+        std::shared_ptr<VPackBuilder>(nullptr));
   }
 
-  _trx = createTransaction(vocbase);
   auto tick = TRI_CurrentTickServer();
   _lastTick = toRocksTransactionState(_trx.get())->sequenceNumber();
   std::shared_ptr<VPackBuilder> inventory = vocbase->inventory(
       tick, filterCollection, &includeSystem, true, sortCollections);
 
-  return std::make_pair(
-      RocksDBReplicationResult(TRI_ERROR_NOT_YET_IMPLEMENTED, _lastTick),
-      inventory);
+  return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
+                        inventory);
 }
 
 // iterates over at most 'limit' documents in the collection specified,
@@ -84,16 +96,20 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     basics::StringBuffer& buff, size_t limit) {
   TRI_ASSERT(vocbase != nullptr);
   if (_trx.get() == nullptr) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "NO TRANSACTION";
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
 
   if ((_collection == nullptr) || _collection->name() != collectionName) {
     _collection = vocbase->lookupCollection(collectionName);
     if (_collection == nullptr) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "COULD NOT FIND COLLECTION "
+                                    << collectionName;
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
     _iter = _collection->getAllIterator(_trx.get(), &_mdr,
                                         false);  //_mdr is not used nor updated
+    _hasMore = true;
   }
 
   // set type
@@ -102,34 +118,41 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     type = 2301;  // edge documents
   }
 
-  VPackBuilder builder;
+  VPackBuilder builder(&_vpackOptions);
+  builder.openArray();
 
   auto cb = [this, &type, &buff,
              &builder](DocumentIdentifierToken const& token) {
-    builder.clear();
-
     builder.openObject();
     // set type
     builder.add("type", VPackValue(type));
 
     // set data
-    int res = _collection->readDocument(_trx.get(), token, _mdr);
-    if (res != TRI_ERROR_NO_ERROR) {
-      // fail
+    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
+    if (!ok) {
+      // TODO: do something here?
     }
 
     builder.add(VPackValue("data"));
     _mdr.addToBuilder(builder, false);
     builder.close();
-    buff.appendText(builder.toJson());
   };
 
   while (_hasMore && true /*sizelimit*/) {
     try {
       _hasMore = _iter->next(cb, limit);
-    } catch (std::exception const& e) {
+    } catch (std::exception const& ex) {
       return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     }
+  }
+
+  builder.close();
+  if (builder.slice().length() > 0) {
+    arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
+    VPackDumper dumper(
+        &adapter,
+        &_vpackOptions);  // note: we need the CustomTypeHandler here
+    dumper.dump(builder.slice());
   }
 
   return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick);
@@ -177,6 +200,9 @@ RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  _customTypeHandler = ctx->orderCustomTypeHandler();
+  _vpackOptions.customTypeHandler = _customTypeHandler.get();
+
   return trx;
 }
 

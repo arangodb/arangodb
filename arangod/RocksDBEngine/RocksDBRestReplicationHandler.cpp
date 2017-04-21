@@ -360,16 +360,17 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // int res = engine->insertCompactionBlocker(_vocbase, expires, id);
 
     RocksDBReplicationContext* ctx = _manager->createContext();
+    RocksDBReplicationContextGuard(_manager, ctx);
     if (ctx == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
     }
+    ctx->bind(_vocbase);  // create transaction+snapshot
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
     b.add("id", VPackValue(std::to_string(ctx->id())));
     b.close();
 
-    _manager->release(ctx);
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
@@ -394,12 +395,11 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
     RocksDBReplicationContext* ctx = _manager->find(id, busy, expires);
+    RocksDBReplicationContextGuard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
     } else if (ctx == nullptr) {
       res = TRI_ERROR_CURSOR_NOT_FOUND;
-    } else {
-      _manager->release(ctx);
     }
 
     // now extend the blocker
@@ -698,6 +698,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
                   "batchId not specified");
     return;
   }
+  RocksDBReplicationContextGuard(_manager, ctx);
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
@@ -743,7 +744,6 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   builder.add("tick", VPackValue(tickString));
   builder.close();  // Toplevel
 
-  _manager->release(ctx);
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
@@ -1015,6 +1015,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // acquire context
   bool isBusy = false;
   RocksDBReplicationContext* context = _manager->find(contextId, isBusy);
+  RocksDBReplicationContextGuard(_manager, context);
   if (context == nullptr || isBusy) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - unable to acquire context");
@@ -1029,7 +1030,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // TODO needs to generalized || velocypacks needs to support multiple slices
   // per response!
   auto response = dynamic_cast<HttpResponse*>(_response.get());
-  StringBuffer& dump = response->body();
+  StringBuffer dump(TRI_UNKNOWN_MEM_ZONE);
 
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
@@ -1040,7 +1041,6 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // generate the result
   if (dump.length() == 0) {
     resetResponse(rest::ResponseCode::NO_CONTENT);
-    response->body().reset();
   } else {
     resetResponse(rest::ResponseCode::OK);
   }
@@ -1053,7 +1053,11 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
                          StringUtils::itoa(result.maxTick()));
 
-  _manager->release(context);  // release context when done
+  // transfer ownership of the buffer contents
+  response->body().set(dump.stringBuffer());
+
+  // avoid double freeing
+  TRI_StealStringBuffer(dump.stringBuffer());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
