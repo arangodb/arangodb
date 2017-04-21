@@ -2020,7 +2020,6 @@ static int restoreDataParser(char const* ptr, char const* pos,
   }
 
   if (key.empty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT EXCEPTION 5";
     errorMsg = invalidMsg;
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;

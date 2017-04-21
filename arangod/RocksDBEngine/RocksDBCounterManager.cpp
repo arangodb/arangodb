@@ -132,7 +132,7 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
     rocksdb::WriteOptions options;
     rocksdb::Status s = _db->Delete(options, key.string());
     if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "Delete counter failed";
+      LOG_TOPIC(ERR, Logger::ENGINES) << "deleting counter failed";
     }
     _counters.erase(it);
   }
@@ -140,7 +140,6 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
 
 /// Thread-Safe force sync
 Result RocksDBCounterManager::sync() {
-  LOG_TOPIC(ERR, Logger::DEVEL) << "ENTER SYNC";
   if (_syncing) {
     return Result();
   }
@@ -170,8 +169,6 @@ Result RocksDBCounterManager::sync() {
 
     b.clear();
     pair.second.serialize(b);
-    LOG_TOPIC(ERR, Logger::DEVEL) << "Writing counter " << b.toJson() << " for "
-                                  << pair.first;
 
     RocksDBKey key = RocksDBKey::CounterValue(pair.first);
     rocksdb::Slice value((char*)b.start(), b.size());
@@ -312,8 +309,7 @@ bool RocksDBCounterManager::parseRocksWAL() {
       s = batch.writeBatchPtr->Iterate(handler.get());
     }
     if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "Error during WAL scan";
-      LOG_TOPIC(ERR, Logger::ENGINES) << iterator->status().getState();
+      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
       break;
     }
 

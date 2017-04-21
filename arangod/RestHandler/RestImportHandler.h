@@ -118,7 +118,6 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
   bool createFromKeyValueList();
   bool createFromKeyValueListVPack() {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << " not implemented";
     return false;
   }
 

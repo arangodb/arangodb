@@ -158,6 +158,7 @@ void RocksDBEngine::start() {
   // options imported set by RocksDBOptionFeature
   auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
       "RocksDBOption");
+  /*
   _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
   _options.max_write_buffer_number =
       static_cast<int>(opts->_maxWriteBufferNumber);
@@ -182,7 +183,7 @@ void RocksDBEngine::start() {
       static_cast<size_t>(opts->_logFileTimeToRoll);
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
-
+*/
   _options.create_if_missing = true;
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
@@ -207,7 +208,7 @@ void RocksDBEngine::start() {
   _backgroundThread.reset(new RocksDBBackgroundThread(this, counter_sync_seconds));
   if (!_backgroundThread->start()) {
     LOG_TOPIC(ERR, Logger::ENGINES)
-        << "Could not start rocksdb counter manager";
+        << "could not start rocksdb counter manager";
     TRI_ASSERT(false);
   }
 
@@ -379,9 +380,6 @@ int RocksDBEngine::getCollectionsAndIndexes(
 
     auto slice = VPackSlice(iter->value().data());
 
-    LOG_TOPIC(ERR, Logger::DEVEL) << "FOUND ROCKS COLLECTION: "
-                                  << slice.toJson();
-
     if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted",
                                                              false)) {
       continue;
@@ -501,10 +499,6 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   auto key = RocksDBKey::Collection(databaseId, cid);
   auto value = RocksDBValue::Collection(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
-
-  LOG_TOPIC(ERR, Logger::DEVEL)
-      << "PERSISTING ROCKS COLLECTION: " << slice.get("name").copyString()
-      << " (" << slice.toJson() << ")";
 
   rocksdb::Status res = _db->Put(options, key.string(), value.string());
   auto result = rocksutils::convertStatus(res);

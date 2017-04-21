@@ -1,7 +1,9 @@
 devel
 -----
 
-* AQL Breaking Change in Cluster:
+* set default value for `--ssl.protocol` from TLSv1 to TLSv1.2.
+
+* AQL breaking change in cluster:
   The SHORTEST_PATH statement using edge-collection names instead
   of a graph name now requires to explicitly name the vertex-collection names 
   within the AQL query in the cluster. It can be done by adding `WITH <name>`
@@ -44,8 +46,9 @@ devel
   advantage that it is more composable, and will also honor any `LIMIT` values
   used in the AQL query.
 
-* added KB, MB, GB prefix for integer parameters, % for integer parameters
+* potential fix for shutdown hangs on OSX
 
+* added KB, MB, GB prefix for integer parameters, % for integer parameters
   with a base value
 
 * added JEMALLOC 4.5.0
@@ -229,6 +232,12 @@ v3.2.alpha1 (2017-02-05)
 
 * generated Foxx services now use swagger tags
 
+v3.1.19 (XXXX-XX-XX)
+--------------------
+
+
+* Fixed a StackOverflow issue in Traversal and ShortestPath. Occured if many (>1000) input
+  values in a row do not return any result. Fixes issue: #2445
 
 v3.1.19 (XXXX-XX-XX)
 --------------------
