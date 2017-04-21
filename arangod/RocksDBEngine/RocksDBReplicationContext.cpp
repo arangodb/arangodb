@@ -96,15 +96,12 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     basics::StringBuffer& buff, size_t limit) {
   TRI_ASSERT(vocbase != nullptr);
   if (_trx.get() == nullptr) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "NO TRANSACTION";
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
 
   if ((_collection == nullptr) || _collection->name() != collectionName) {
     _collection = vocbase->lookupCollection(collectionName);
     if (_collection == nullptr) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "COULD NOT FIND COLLECTION "
-                                    << collectionName;
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
     _iter = _collection->getAllIterator(_trx.get(), &_mdr,
