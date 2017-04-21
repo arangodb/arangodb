@@ -260,21 +260,13 @@ class Traverser {
   /// @brief Get the number of filtered paths
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getAndResetFilteredPaths() {
-    size_t tmp = _filteredPaths;
-    _filteredPaths = 0;
-    return tmp;
-  }
+  size_t getAndResetFilteredPaths();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of documents loaded
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual size_t getAndResetReadDocuments() {
-    size_t tmp = _readDocuments;
-    _readDocuments = 0;
-    return tmp;
-  }
+  size_t getAndResetReadDocuments();
   
   TraverserOptions* options() { return _opts; }
   
@@ -310,12 +302,6 @@ class Traverser {
 
   /// @brief Builder for the start value slice. Leased from transaction
   transaction::BuilderLeaser _startIdBuilder;
-
-  /// @brief counter for all read documents
-  size_t _readDocuments;
-
-  /// @brief counter for all filtered paths
-  size_t _filteredPaths;
 
   /// @brief toggle if this path should be pruned on next step
   bool _pruneNext;

@@ -41,7 +41,8 @@ using namespace arangodb::traverser;
 TraverserCache::TraverserCache(transaction::Methods* trx)
     : _mmdr(new ManagedDocumentResult{}),
       _trx(trx), _insertedDocuments(0),
-      _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for perforamnce */ {
+      _filteredDocuments(0),
+      _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for performance */ {
 }
 
 TraverserCache::~TraverserCache() {}

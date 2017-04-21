@@ -89,11 +89,21 @@ class TraverserCache {
      return tmp;
    }
 
+   size_t getAndResetFilteredDocuments() {
+     size_t tmp = _filteredDocuments;
+     _filteredDocuments = 0;
+     return tmp;
+   }
+
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Persist the given id string. The return value is guaranteed to
    ///        stay valid as long as this cache is valid
    //////////////////////////////////////////////////////////////////////////////
    StringRef persistString(StringRef const idString);
+
+   void increaseFilterCounter() {
+     _filteredDocuments++;
+   }
 
   protected:
 
@@ -123,6 +133,11 @@ class TraverserCache {
    /// @brief Documents inserted in this cache
    //////////////////////////////////////////////////////////////////////////////
    size_t _insertedDocuments;
+
+   //////////////////////////////////////////////////////////////////////////////
+   /// @brief Documents filtered
+   //////////////////////////////////////////////////////////////////////////////
+   size_t _filteredDocuments;
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Stringheap to take care of _id strings, s.t. they stay valid

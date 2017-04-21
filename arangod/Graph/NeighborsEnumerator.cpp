@@ -65,7 +65,6 @@ bool NeighborsEnumerator::next() {
       for (auto const& nextVertex : _lastDepth) {
         auto callback = [&](StringRef const& edgeId, VPackSlice e, size_t& cursorId) {
           // Counting should be done in readAll
-          _traverser->_readDocuments++;
           if (_traverser->getSingleVertex(e, nextVertex, _searchDepth, v)) {
             StringRef otherId = _traverser->traverserCache()->persistString(v);
             if (_allFound.find(otherId) == _allFound.end()) {

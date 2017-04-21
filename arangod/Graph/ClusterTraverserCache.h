@@ -79,6 +79,8 @@ class ClusterTraverserCache : public traverser::TraverserCache {
 
   size_t& insertedDocuments();
 
+  size_t& filteredDocuments();
+
  private:
   std::unordered_map<StringRef, arangodb::velocypack::Slice> _edges;
 

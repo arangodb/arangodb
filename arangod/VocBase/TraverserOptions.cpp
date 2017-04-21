@@ -408,11 +408,8 @@ void TraverserOptions::addDepthLookupInfo(aql::Ast* ast,
                                           std::string const& attributeName,
                                           aql::AstNode* condition,
                                           uint64_t depth) {
-  TRI_ASSERT(_depthLookupInfo.find(depth) == _depthLookupInfo.end());
-  auto ins = _depthLookupInfo.emplace(depth, std::vector<LookupInfo>());
-  TRI_ASSERT(ins.second);  // The insert should always work
-  injectLookupInfoInList(ins.first->second, ast, collectionName, attributeName,
-                         condition);
+  auto& list = _depthLookupInfo[depth];
+  injectLookupInfoInList(list, ast, collectionName, attributeName, condition);
 }
 
 bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
