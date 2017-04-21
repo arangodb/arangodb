@@ -33,7 +33,7 @@
 
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 
@@ -52,12 +52,14 @@ class RocksDBReplicationContext {
 
   TRI_voc_tick_t id() const;
   uint64_t lastTick() const;
+  uint64_t count() const;
 
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
+  int bindCollection(std::string const& collectionName);
 
   // returns inventory
-  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
+  std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
   getInventory(TRI_vocbase_t* vocbase, bool includeSystem);
 
   // iterates over at most 'limit' documents in the collection specified,
@@ -65,6 +67,20 @@ class RocksDBReplicationContext {
   RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
                                 std::string const& collectionName,
                                 basics::StringBuffer&, size_t limit);
+  
+  // iterates over all documents in a collection, previously bound with
+  // bindCollection. Generates array of objects with minKey, maxKey and hash
+  // per chunk. Distance between min and maxKey should be chunkSize
+  arangodb::Result dumpKeyChunks(velocypack::Builder &outBuilder,
+                                 uint64_t chunkSize);
+  
+  /// dump all keys from collection
+  arangodb::Result dumpKeys(velocypack::Builder &outBuilder, size_t chunk, size_t chunkSize);
+  /// dump keys and document
+  arangodb::Result dumpDocuments(velocypack::Builder &b,
+                                 size_t chunk,
+                                 size_t chunkSize,
+                                 velocypack::Slice const& ids);
 
   double expires() const;
   bool isDeleted() const;
@@ -96,6 +112,7 @@ class RocksDBReplicationContext {
   ManagedDocumentResult _mdr;
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
   arangodb::velocypack::Options _vpackOptions;
+  uint64_t _lastChunkOffset = 0;
 
   double _expires;
   bool _isDeleted;

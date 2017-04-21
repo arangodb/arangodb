@@ -160,6 +160,33 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
+/// special method to expose the document key for incremental replication
+bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb, size_t limit) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  while (limit > 0) {
+    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
+    StringRef key = RocksDBKey::primaryKey(_iterator->key());
+    cb(token, key);
+    --limit;
+    
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void RocksDBAllIndexIterator::reset() {
   if (_reverse) {
     _iterator->SeekForPrev(_bounds.end());

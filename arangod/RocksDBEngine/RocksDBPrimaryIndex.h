@@ -73,6 +73,7 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
 
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
+  typedef std::function<void(DocumentIdentifierToken const& token, StringRef const& key)> TokenKeyCallback;
   RocksDBAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
                           ManagedDocumentResult* mmdr,
@@ -83,6 +84,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "all-index-iterator"; }
 
   bool next(TokenCallback const& cb, size_t limit) override;
+  bool nextWithKey(TokenKeyCallback const& cb, size_t limit);
 
   void reset() override;
 
