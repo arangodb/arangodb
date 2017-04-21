@@ -40,7 +40,7 @@ struct check_ret_t {
   
   check_ret_t() : success(true), failed(nullptr) {}
   
-  check_ret_t(bool s) : success(s) {}
+  explicit check_ret_t(bool s) : success(s) {}
   
   inline bool successful() const { return success; }
   
