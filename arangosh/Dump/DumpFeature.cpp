@@ -57,6 +57,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _maxChunkSize(1024 * 1024 * 12),
       _dumpData(true),
       _force(false),
+      _ignoreDistributeShardsLikeErrors(false),
       _includeSystemCollections(false),
       _outputDirectory(),
       _overwrite(false),
@@ -99,6 +100,11 @@ void DumpFeature::collectOptions(
       "--force", "continue dumping even in the face of some server-side errors",
       new BooleanParameter(&_force));
 
+  options->addOption(
+      "--ignore-distribute-shards-like-errors",
+      "continue dump even if sharding prototype collection is not backed up along",
+      new BooleanParameter(&_ignoreDistributeShardsLikeErrors));
+  
   options->addOption("--include-system-collections",
                      "include system collections",
                      new BooleanParameter(&_includeSystemCollections));
@@ -805,11 +811,11 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
   }
 
   // create a lookup table for collections
-  std::map<std::string, bool> restrictList;
-  for (size_t i = 0; i < _collections.size(); ++i) {
-    restrictList.insert(std::pair<std::string, bool>(_collections[i], true));
+  std::set<std::string> restrictList;
+  for (const auto & c : _collections) {
+    restrictList.insert(c);
   }
-
+  
   // iterate over collections
   for (auto const& collection : VPackArrayIterator(collections)) {
     if (!collection.isObject()) {
@@ -849,6 +855,25 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         restrictList.find(name) == restrictList.end()) {
       // collection name not in list
       continue;
+    }
+
+    if (!_ignoreDistributeShardsLikeErrors) {
+      std::string prototypeCollection =
+        arangodb::basics::VelocyPackHelper::getStringValue(
+          parameters, "distributeShardsLike", "");
+
+      if (!prototypeCollection.empty() && !restrictList.empty()) {
+        if (std::find(
+              _collections.begin(), _collections.end(), prototypeCollection) ==
+            _collections.end()) {
+          errorMsg = std::string("Collection ") + name
+            + "'s shard distribution is based on a that of collection " +
+            prototypeCollection + ", which is not dumped along. You may "
+            "dump the collection regardless of the missing prototype collection "
+            "by using the --ignore-distribute-shards-like-errors parameter.";
+          return TRI_ERROR_INTERNAL;
+        }
+      }
     }
 
     // found a collection!

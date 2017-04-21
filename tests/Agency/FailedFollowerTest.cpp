@@ -570,6 +570,7 @@ SECTION("a successfully started job should finish immediately and set everything
   Verify(Method(mockAgent, transact));
 }
 
+#ifdef __linux__
 SECTION("the job should handle distributeShardsLike") {
   std::string jobId = "1";
   TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
@@ -667,6 +668,7 @@ SECTION("the job should handle distributeShardsLike") {
   failedFollower.start();
   Verify(Method(mockAgent, transact));
 }
+#endif
 
 SECTION("the job should timeout after a while") {
   std::string jobId = "1";

@@ -27,6 +27,7 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <signal.h>
 #include <fstream>
 #include <iostream>
 
@@ -3570,10 +3571,14 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>)");
+  if (args.Length() < 1 || args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "killExternal(<external-identifier>, <signal>)");
   }
-
+  int signal = SIGTERM;
+  if (args.Length() == 2) {
+    signal = static_cast<int>(TRI_ObjectToInt64(args[1]));
+  }
   TRI_external_id_t pid;
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
@@ -3584,7 +3589,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
   // return the result
-  if (TRI_KillExternalProcess(pid)) {
+  if (TRI_KillExternalProcess(pid, signal)) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();

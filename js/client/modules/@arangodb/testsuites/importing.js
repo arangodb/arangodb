@@ -111,15 +111,6 @@ const impTodos = [{
   separator: ';',
   backslash: true
 }, {
-  id: 'csvnoconvert',
-  data: tu.makePathUnix('js/common/test-data/import/import-noconvert.csv'),
-  coll: 'UnitTestsImportCsvNoConvert',
-  type: 'csv',
-  create: 'true',
-  separator: ',',
-  convert: false,
-  backslash: true
-}, {
   id: 'csvnoeol',
   data: tu.makePathUnix('js/common/test-data/import/import-noeol.csv'),
   coll: 'UnitTestsImportCsvNoEol',

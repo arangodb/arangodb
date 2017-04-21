@@ -32,6 +32,8 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 
+#include "Random/RandomGenerator.h"
+
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -45,7 +47,7 @@ namespace tests {
 namespace cleanout_server_test {
 
 const std::string PREFIX = "arango";
-const std::string SERVER = "server";
+const std::string SERVER = "leader";
 const std::string JOBID = "1";
 
 typedef std::function<std::unique_ptr<Builder>(
@@ -54,6 +56,44 @@ typedef std::function<std::unique_ptr<Builder>(
 const char *agency =
 #include "CleanOutServerTest.json"
 ;
+
+VPackBuilder createMoveShardJob() {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder b(&builder);
+    // fake a moveshard job
+    builder.add("type", VPackValue("moveShard"));
+    builder.add("fromServer", VPackValue("test"));
+    builder.add("toServer", VPackValue("test2"));
+    builder.add("isLeader", VPackValue(true));
+    builder.add("collection", VPackValue("test"));
+    builder.add("shard", VPackValue("test"));
+    builder.add("creator", VPackValue("unittest"));
+    builder.add("jobId", VPackValue(JOBID + "-0"));
+    builder.add("database", VPackValue("test"));
+  }
+  return builder;
+}
+
+void checkFailed(JOB_STATUS status, query_t const& q) {
+  INFO("WRITE: " << q->toJson());
+  
+  REQUIRE(std::string(q->slice().typeName()) == "array" );
+  REQUIRE(q->slice().length() == 1);
+  REQUIRE(std::string(q->slice()[0].typeName()) == "array");
+  REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+  REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
+
+  auto writes = q->slice()[0][0];
+  if (status == JOB_STATUS::PENDING) {
+    REQUIRE(std::string(writes.get("/arango/Supervision/DBServers/leader").get("op").typeName()) == "string");
+    REQUIRE(writes.get("/arango/Supervision/DBServers/leader").get("op").copyString() == "delete");
+  }
+  REQUIRE(std::string(writes.get("/arango" + pos[status] + "1").typeName()) == "object");
+  REQUIRE(std::string(writes.get("/arango" + pos[status] + "1").get("op").typeName()) == "string");
+  CHECK(writes.get("/arango" + pos[status] + "1").get("op").copyString() == "delete");
+  CHECK(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
+}
 
 Node createNodeFromBuilder(VPackBuilder const& builder) {
 
@@ -114,6 +154,7 @@ VPackBuilder createJob(std::string const& server) {
 }
 
 TEST_CASE("CleanOutServer", "[agency][supervision]") {
+  RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   auto baseStructure = createRootNode();
     
   write_ret_t fakeWriteResult {true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
@@ -163,20 +204,8 @@ SECTION("cleanout server should fail if the server does not exist") {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).Do([&](query_t const& q) -> write_ret_t {
-    INFO("WRITE: " << q->toJson());
-    
-    REQUIRE(std::string(q->slice().typeName()) == "array" );
-    REQUIRE(q->slice().length() == 1);
-    REQUIRE(std::string(q->slice()[0].typeName()) == "array");
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
-    REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
-
-    auto writes = q->slice()[0][0];
-    REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").typeName()) == "object");
-    REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string");
-    CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
-    CHECK(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
-   return fakeWriteResult;
+    checkFailed(JOB_STATUS::TODO, q);
+    return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
@@ -195,8 +224,643 @@ SECTION("cleanout server should fail if the server does not exist") {
   Verify(Method(mockAgent, waitFor));
 }
 
+SECTION("cleanout server should wait if the server is currently blocked") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      } else if (path == "/arango/Supervision/DBServers") {
+        builder->add(SERVER, VPackValue("1"));
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+
+  Mock<AgentInterface> mockAgent;
+  AgentInterface &agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::TODO,
+    JOBID
+  );
+  cleanOutServer.start();
+  REQUIRE(true);
+}
+
+SECTION("cleanout server should wait if the server is not healthy right now") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      } else if (path == "/arango/Supervision/DBServers") {
+        builder->add(SERVER, VPackValue("1"));
+      }
+      builder->close();
+    } else {
+      if (path == "/arango/Supervision/Health/" + SERVER +"/Status") {
+        builder->add(VPackValue("BAD"));
+      } else {
+        builder->add(s);
+      }
+    }
+    return builder;
+  };
+
+  Mock<AgentInterface> mockAgent;
+  AgentInterface &agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::TODO,
+    JOBID
+  );
+  cleanOutServer.start();
+  REQUIRE(true);
+}
+
+SECTION("cleanout server should fail if the server is already cleaned") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      }
+      builder->close();
+    } else {
+      if (path == "/arango/Target/CleanedServers") {
+        builder->add(VPackValue(VPackValueType::Array));
+        builder->add(VPackValue(SERVER));
+        builder->close();
+      } else {
+        builder->add(s);
+      }
+    }
+    return builder;
+  };
+  
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q) -> write_ret_t {
+    checkFailed(JOB_STATUS::TODO, q);
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface &agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::TODO,
+    JOBID
+  );
+  cleanOutServer.start();
+  Verify(Method(mockAgent, write));
+  Verify(Method(mockAgent, waitFor));
+}
+
+SECTION("cleanout server should fail if the server is failed") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      } else if (path == "/arango/Target/FailedServers") {
+        builder->add(SERVER, VPackValue("shard"));
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+  
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q) -> write_ret_t {
+    checkFailed(JOB_STATUS::TODO, q);
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface &agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::TODO,
+    JOBID
+  );
+  cleanOutServer.start();
+  Verify(Method(mockAgent, write));
+  Verify(Method(mockAgent, waitFor));
+}
+
+SECTION("cleanout server should fail if the replicationFactor is too big for any shard after counting in failedservers") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      } else if (path == "/arango/Target/FailedServers") {
+        builder->add("follower1", VPackValue("shard"));
+        builder->add("follower2", VPackValue("shard"));
+        builder->add("free", VPackValue("shard"));
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+  
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q) -> write_ret_t {
+    checkFailed(JOB_STATUS::TODO, q);
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface &agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::TODO,
+    JOBID
+  );
+  cleanOutServer.start();
+  Verify(Method(mockAgent, write));
+  Verify(Method(mockAgent, waitFor));
+}
+
+SECTION("cleanout server should fail if the replicationFactor is too big for any shard after counting in cleanedoutservers") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      }
+      builder->close();
+    } else {
+      if (path == "/arango/Target/CleanedServers") {
+        builder->add(VPackValue(VPackValueType::Array));
+        builder->add(VPackValue("free"));
+        builder->close();
+      }
+      builder->add(s);
+    }
+    return builder;
+  };
+  
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q) -> write_ret_t {
+    checkFailed(JOB_STATUS::TODO, q);
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface &agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::TODO,
+    JOBID
+  );
+  cleanOutServer.start();
+  Verify(Method(mockAgent, write));
+  Verify(Method(mockAgent, waitFor));
+}
+
+SECTION("a cleanout server job should move into pending when everything is ok") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+  
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q) -> write_ret_t {
+    INFO("WRITE: " << q->toJson());
+    
+    REQUIRE(std::string(q->slice().typeName()) == "array" );
+    REQUIRE(q->slice().length() == 1);
+    REQUIRE(std::string(q->slice()[0].typeName()) == "array");
+    REQUIRE(q->slice()[0].length() == 2); // we have preconditions
+    REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
+
+    auto writes = q->slice()[0][0];
+    REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").typeName()) == "object");
+    REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string");
+    CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
+    REQUIRE(std::string(writes.get("/arango/Target/Pending/1").typeName()) == "object");
+    CHECK(std::string(writes.get("/arango/Target/Pending/1").get("timeStarted").typeName()) == "string");
+    REQUIRE(std::string(writes.get("/arango/Supervision/DBServers/" + SERVER).typeName()) == "string");
+    REQUIRE(writes.get("/arango/Supervision/DBServers/" + SERVER).copyString() == JOBID);
+    REQUIRE(writes.get("/arango/Target/ToDo/1-0").get("toServer").copyString() == "free");
+
+    auto preconditions = q->slice()[0][1];
+    REQUIRE(preconditions.get("/arango/Supervision/DBServers/leader").get("oldEmpty").getBool() == true);
+    REQUIRE(preconditions.get("/arango/Supervision/Health/leader/Status").get("old").copyString() == "GOOD");
+    REQUIRE(preconditions.get("/arango/Target/CleanedServers").get("old").toJson() == "[]");
+    REQUIRE(preconditions.get("/arango/Target/FailedServers").get("old").toJson() == "{}");
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface &agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::TODO,
+    JOBID
+  );
+  cleanOutServer.start();
+  Verify(Method(mockAgent, write));
+  Verify(Method(mockAgent, waitFor));
+}
+
+SECTION("a cleanout server job should abort after a long timeout") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/Pending") {
+        auto job = createJob(SERVER);
+        builder->add(VPackValue(JOBID));
+        builder->add(VPackValue(VPackValueType::Object));
+        for (auto const& jobIt: VPackObjectIterator(job.slice())) {
+          if (jobIt.key.copyString() == "timeCreated") {
+            builder->add(jobIt.key.copyString(), VPackValue("2015-01-03T20:00:00Z"));
+          } else {
+            builder->add(jobIt.key.copyString(), jobIt.value);
+          }
+        }
+        builder->close();
+      } else if (path == "/arango/Target/ToDo") {
+        VPackBuilder moveBuilder = createMoveShardJob();
+        builder->add("1-0", moveBuilder.slice());
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+  
+  int qCount = 0;
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q) -> write_ret_t {
+    if (qCount++ == 0) {
+      // first the moveShard job should be aborted
+      INFO("WRITE FIRST: " << q->toJson());
+      
+      REQUIRE(std::string(q->slice().typeName()) == "array" );
+      REQUIRE(q->slice().length() == 1);
+      REQUIRE(std::string(q->slice()[0].typeName()) == "array");
+      REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+      REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
+
+      auto writes = q->slice()[0][0];
+      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1-0").typeName()) == "object");
+      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1-0").get("op").typeName()) == "string");
+      CHECK(writes.get("/arango/Target/ToDo/1-0").get("op").copyString() == "delete");
+      // a not yet started job will be moved to finished
+      CHECK(std::string(writes.get("/arango/Target/Finished/1-0").typeName()) == "object");
+    } else {
+      // finally cleanout should be failed
+      checkFailed(JOB_STATUS::PENDING, q);
+    }
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface &agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::PENDING,
+    JOBID
+  );
+  cleanOutServer.run();
+  Verify(Method(mockAgent, write));
+  Verify(Method(mockAgent, waitFor));
+}
+
+SECTION("when there are still subjobs to be done it should wait") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/Pending") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      } else if (path == "/arango/Target/ToDo") {
+        VPackBuilder moveBuilder = createMoveShardJob();
+        builder->add("1-0", moveBuilder.slice());
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+  Mock<AgentInterface> mockAgent;
+  AgentInterface &agent = mockAgent.get();
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::PENDING,
+    JOBID
+  );
+  cleanOutServer.run();
+  REQUIRE(true);
 };
 
+SECTION("once all subjobs were successful then the job should be finished") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/Pending") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      } else if (path == "/arango/Target/Finished") {
+        VPackBuilder moveBuilder = createMoveShardJob();
+        builder->add("1-0", moveBuilder.slice());
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q) -> write_ret_t {
+    INFO("WRITE: " << q->toJson());
+    
+    REQUIRE(std::string(q->slice().typeName()) == "array" );
+    REQUIRE(q->slice().length() == 1);
+    REQUIRE(std::string(q->slice()[0].typeName()) == "array");
+    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
+
+    auto writes = q->slice()[0][0];
+    REQUIRE(std::string(writes.get("/arango/Supervision/DBServers/leader").get("op").typeName()) == "string");
+    REQUIRE(writes.get("/arango/Supervision/DBServers/leader").get("op").copyString() == "delete");
+    REQUIRE(std::string(writes.get("/arango/Target/Pending/1").typeName()) == "object");
+    REQUIRE(std::string(writes.get("/arango/Target/Pending/1").get("op").typeName()) == "string");
+    CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
+    CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface &agent = mockAgent.get();
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::PENDING,
+    JOBID
+  );
+  cleanOutServer.run();
+  REQUIRE(true);
+}
+
+SECTION("if there was a failed subjob then the job should also fail") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/Pending") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      } else if (path == "/arango/Target/Failed") {
+        VPackBuilder moveBuilder = createMoveShardJob();
+        builder->add("1-0", moveBuilder.slice());
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q) -> write_ret_t {
+    checkFailed(JOB_STATUS::PENDING, q);
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface &agent = mockAgent.get();
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::PENDING,
+    JOBID
+  );
+  cleanOutServer.run();
+  REQUIRE(true);
+}
+
+SECTION("when the cleanout server job is aborted all subjobs should be aborted too") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/Pending") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      } else if (path == "/arango/Target/ToDo") {
+        VPackBuilder moveBuilder = createMoveShardJob();
+        builder->add("1-0", moveBuilder.slice());
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+  Mock<AgentInterface> mockAgent;
+  int qCount = 0;
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q) -> write_ret_t {
+    if (qCount++ == 0) {
+      // first the moveShard job should be aborted
+      INFO("WRITE FIRST: " << q->toJson());
+      
+      REQUIRE(std::string(q->slice().typeName()) == "array" );
+      REQUIRE(q->slice().length() == 1);
+      REQUIRE(std::string(q->slice()[0].typeName()) == "array");
+      REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+      REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
+
+      auto writes = q->slice()[0][0];
+      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1-0").typeName()) == "object");
+      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1-0").get("op").typeName()) == "string");
+      CHECK(writes.get("/arango/Target/ToDo/1-0").get("op").copyString() == "delete");
+      // a not yet started job will be moved to finished
+      CHECK(std::string(writes.get("/arango/Target/Finished/1-0").typeName()) == "object");
+    } else {
+      checkFailed(JOB_STATUS::PENDING, q);
+    }
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface &agent = mockAgent.get();
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::PENDING,
+    JOBID
+  );
+  cleanOutServer.abort();
+  REQUIRE(true);
+}
+
+}
 }
 }
 }
