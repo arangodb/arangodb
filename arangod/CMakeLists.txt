@@ -403,17 +403,18 @@ target_link_libraries(arangoserver
   ${SYSTEM_LIBRARIES}
 )
 
-if (MSVC)
-  target_link_libraries(arangoserver
-    Wldap32.lib
-  )
-else ()
-  target_link_libraries(arangoserver
-    ldap
-    lber
-  )
-endif ()
-
+if (USE_ENTERPRISE)
+  if (MSVC)
+    target_link_libraries(arangoserver
+      Wldap32.lib
+    )
+  else()
+    target_link_libraries(arangoserver
+      ldap
+      lber
+    )
+  endif()
+endif()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
