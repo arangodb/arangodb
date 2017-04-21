@@ -114,10 +114,16 @@ class State {
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
-    for (auto const& i : s._log)
-      LOG_TOPIC(INFO, Logger::AGENCY)
-          << "index(" << i.index << ") term(" << i.term << ") query("
-          << VPackSlice(i.entry->data()).toJson() << ")";
+    VPackBuilder b;
+    { VPackArrayBuilder a(&b);
+      for (auto const& i : s._log) {
+        VPackObjectBuilder bb(&b);
+        b.add("index", VPackValue(i.index));
+        b.add("term", VPackValue(i.term));
+        b.add("item", VPackSlice(i.entry->data()));
+      }
+    }
+    os << b.toJson();
     return os;
   }
 
@@ -200,6 +206,7 @@ class State {
   static log_t emptyLog;
   
 };
+
 }
 }
 

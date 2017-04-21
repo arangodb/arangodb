@@ -355,6 +355,7 @@ class RandomDeviceMersenne : public RandomDevice {
       : engine(RandomDevice::seed()) {}
 
   uint32_t random() { return engine(); }
+  void seed(uint64_t seed) { engine.seed(seed); }
 
   std::mt19937 engine;
 };
@@ -582,4 +583,16 @@ uint64_t RandomGenerator::interval(uint64_t right) {
   }
   TRI_ASSERT(value <= right);
   return value;
+}
+
+void RandomGenerator::seed(uint64_t seed) {
+  MUTEX_LOCKER(locker, _lock);
+  if (!_device) {
+    throw std::runtime_error("Random device not yet initialized!");
+  }
+  if(RandomDeviceMersenne* dev = dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
+    dev->seed(seed);
+    return;
+  }
+  throw std::runtime_error("Random device is not mersenne and cannot be seeded!");
 }

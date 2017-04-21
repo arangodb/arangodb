@@ -425,7 +425,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed.length, 4);
       assertEqual(res.bodyParsed[0] > 0, true);
       assertEqual(res.bodyParsed[1] > 0, true);
-      assertEqual(res.bodyParsed[2], 0);
+      assertEqual(res.bodyParsed[2], {a : 13});
       assertEqual(res.bodyParsed[3], query[1]);
 
       res = accessAgency("inquire",[id[13]]).bodyParsed;
