@@ -1216,7 +1216,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
 
 Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
                                               arangodb::StringRef key,
-                                              RocksDBToken& outToken) {
+                                              RocksDBToken& outToken) const {
   TRI_ASSERT(_objectId != 0);
 
   // TODO fix as soon as we got a real primary index

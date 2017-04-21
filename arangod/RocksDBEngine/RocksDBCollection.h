@@ -180,7 +180,7 @@ class RocksDBCollection final : public PhysicalCollection {
   uint64_t objectId() const { return _objectId; }
 
   Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
-                             RocksDBToken& token);
+                             RocksDBToken& token) const;
   
   int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
   
