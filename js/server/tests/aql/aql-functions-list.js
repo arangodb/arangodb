@@ -761,7 +761,7 @@ function ahuacatlListTestSuite () {
         assertEqual(actual[i]._key, "test" + i);
       }
 
-      actual = getQueryResults("LET doc = DOCUMENT('nonexistantCollection/nonexistantDocument') RETURN append(doc.t,[1,2,2],True)")
+      actual = getQueryResults("LET doc = DOCUMENT('nonexistantCollection/nonexistantDocument') RETURN append(doc.t,[1,2,2], true)");
       assertEqual(actual[0], [1,2,2]);
     },
 
