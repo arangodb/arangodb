@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_CLEAN_OUT_SERVER_H
-#define ARANGOD_CONSENSUS_CLEAN_OUT_SERVER_H 1
+#ifndef ARANGOD_CONSENSUS_REMOVEFOLLOWER_H
+#define ARANGOD_CONSENSUS_REMOVEFOLLOWER_H 1
 
 #include "Job.h"
 #include "Supervision.h"
@@ -30,30 +30,34 @@
 namespace arangodb {
 namespace consensus {
 
-struct CleanOutServer : public Job {
-  CleanOutServer(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-                 std::string const& creator = std::string(),
-                 std::string const& server = std::string());
+struct RemoveFollower : public Job {
+  
+  RemoveFollower (Node const& snapshot,
+               AgentInterface* agent,
+               std::string const& jobId,
+               std::string const& creator,
+               std::string const& database,
+               std::string const& collection,
+               std::string const& shard);
 
-  CleanOutServer(Node const& snapshot, AgentInterface* agent,
-                 JOB_STATUS status, std::string const& jobId);
-
-  virtual ~CleanOutServer();
-
-  virtual JOB_STATUS status() override final;
+  
+  RemoveFollower (Node const& snapshot, AgentInterface* agent,
+               JOB_STATUS status, std::string const& jobId);
+  
+  virtual ~RemoveFollower ();
+  
+  virtual JOB_STATUS status () override final;
   virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr)
     override final;
   virtual void run() override final;
   virtual bool start() override final;
   virtual Result abort() override final;
 
-  // Check if all shards' replication factors can be satisfied after clean out.
-  bool checkFeasibility();
-  bool scheduleMoveShards(std::shared_ptr<Builder>& trx);
-
-  std::string _server;
+  std::string _database;
+  std::string _collection;
+  std::string _shard;
 };
-}
-}
+
+}}
 
 #endif

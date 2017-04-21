@@ -315,15 +315,15 @@ std::vector<log_t> State::get(arangodb::consensus::index_t start,
     return entries;
   }
 
-  if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.size() - 1) {
-    end = _log.size() - 1;
+  if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
+    end = _log.back().index;
   }
 
   if (start < _log[0].index) {
     start = _log[0].index;
   }
 
-  for (size_t i = start - _cur; i <= end; ++i) {
+  for (size_t i = start - _cur; i <= end - _cur; ++i) {
     entries.push_back(_log[i]);
   }
 
@@ -461,11 +461,11 @@ bool State::checkCollection(std::string const& name) {
 /// Create collection by name
 bool State::createCollection(std::string const& name) {
   Builder body;
-  body.add(VPackValue(VPackValueType::Object));
-  body.add("type", VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT))); 
-  body.add("name", VPackValue(name));
-  body.add("isSystem", VPackValue(LogicalCollection::IsSystemName(name)));
-  body.close();
+  { VPackObjectBuilder b(&body);
+    body.add("type", VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT))); 
+    body.add("name", VPackValue(name));
+    body.add("isSystem", VPackValue(LogicalCollection::IsSystemName(name)));
+  }
 
   arangodb::LogicalCollection const* collection =
       _vocbase->createCollection(body.slice());
@@ -612,31 +612,31 @@ bool State::loadOrPersistConfiguration() {
 
     auto transactionContext =
         std::make_shared<transaction::StandaloneContext>(_vocbase);
-    SingleCollectionTransaction trx(transactionContext, "configuration",
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(
+      transactionContext, "configuration", AccessMode::Type::WRITE);
 
     Result res = trx.begin();
+    OperationResult result;
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
     Builder doc;
-    doc.openObject();
-    doc.add("_key", VPackValue("0"));
-    doc.add("cfg", _agent->config().toBuilder()->slice());
-    doc.close();
+    { VPackObjectBuilder d(&doc);
+      doc.add("_key", VPackValue("0"));
+      doc.add("cfg", _agent->config().toBuilder()->slice()); }
 
-    OperationResult result;
     try {
       result = trx.insert("configuration", doc.slice(), _options);
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist configuration entry:"
-                                     << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "Failed to persist configuration entry:" << e.what();
       FATAL_ERROR_EXIT();
     }
 
     res = trx.finish(result.code);
+
     return res.ok();
   }
 
@@ -798,21 +798,21 @@ bool State::removeObsolete(arangodb::consensus::index_t cind) {
 /// Persist the globally commited truth
 bool State::persistReadDB(arangodb::consensus::index_t cind) {
   if (checkCollection("compact")) {
-    Builder store;
-    store.openObject();
-    store.add("readDB", VPackValue(VPackValueType::Array));
-    _agent->readDB().dumpToBuilder(store);
-    store.close();
     std::stringstream i_str;
     i_str << std::setw(20) << std::setfill('0') << cind;
-    store.add("_key", VPackValue(i_str.str()));
-    store.close();
+
+    Builder store;
+    { VPackObjectBuilder s(&store);
+      store.add(VPackValue("readDB"));
+      { VPackArrayBuilder a(&store); 
+        _agent->readDB().dumpToBuilder(store); }
+      store.add("_key", VPackValue(i_str.str())); }
 
     TRI_ASSERT(_vocbase != nullptr);
     auto transactionContext =
         std::make_shared<transaction::StandaloneContext>(_vocbase);
-    SingleCollectionTransaction trx(transactionContext, "compact",
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(
+      transactionContext, "compact", AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
@@ -858,8 +858,7 @@ query_t State::allLogs() const {
   MUTEX_LOCKER(mutexLocker, _logLock);
 
   auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
+  { VPackObjectBuilder(bindVars.get()); }
   
   std::string const comp("FOR c IN compact SORT c._key RETURN c");
   std::string const logs("FOR l IN log SORT l._key RETURN l");
@@ -879,25 +878,20 @@ query_t State::allLogs() const {
   }
 
   auto everything = std::make_shared<VPackBuilder>();
-
-  everything->openObject();
-
-  try {
-    everything->add("compact", compqResult.result->slice());
-  } catch (std::exception const&) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Failed to assemble compaction part of everything package";
+  { VPackObjectBuilder(everything.get());
+    try {
+      everything->add("compact", compqResult.result->slice());
+    } catch (std::exception const&) {
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "Failed to assemble compaction part of everything package";
+    }
+    try{
+      everything->add("logs", logsqResult.result->slice());
+    } catch (std::exception const&) {
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "Failed to assemble remaining part of everything package";
+    }
   }
-
-  try{
-    everything->add("logs", logsqResult.result->slice());
-  } catch (std::exception const&) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Failed to assemble remaining part of everything package";
-  }
-
-  everything->close();
-
   return everything;
   
 }

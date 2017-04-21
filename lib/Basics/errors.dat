@@ -404,6 +404,12 @@ ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL,20015,"Inform message must contain object 
 ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING,20020,"Inquiry failed","Inquiry by clientId failed"
 
 ################################################################################
+## Supervision errors
+################################################################################
+
+ERROR_SUPERVISION_GENERAL_FAILURE,20501,"general supervision failure","General supervision failure."
+
+################################################################################
 ## Dispatcher errors
 ################################################################################
 
