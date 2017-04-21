@@ -204,8 +204,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
       s = batch.writeBatchPtr->Iterate(handler.get());
     }
     if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "Error during WAL scan";
-      LOG_TOPIC(ERR, Logger::ENGINES) << iterator->status().getState();
+      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
       auto converted = convertStatus(s);
       auto result = RocksDBReplicationResult(converted.errorNumber(), lastTick);
       if (fromTickIncluded) {

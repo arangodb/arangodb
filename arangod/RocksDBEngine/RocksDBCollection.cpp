@@ -77,9 +77,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
       _revisionId(0) {
-  LOG_TOPIC(ERR, Logger::DEVEL)
-      << "CREATE ROCKS COLLECTION: " << _logicalCollection->name() << " ("
-      << this->objectId() << ")";
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
@@ -90,9 +87,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
       _numberDocuments(0),
       _revisionId(0) {
-  LOG_TOPIC(ERR, Logger::DEVEL)
-      << "CREATE ROCKS COLLECTION: " << _logicalCollection->name() << " ("
-      << this->objectId() << ")";
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
@@ -124,9 +118,6 @@ arangodb::Result RocksDBCollection::persistProperties() {
     RocksDBValue value(RocksDBValue::Document(infoBuilder.slice()));
     res = globalRocksDBPut(key.string(), value.string());
 
-    LOG_TOPIC(ERR, Logger::DEVEL)
-        << "PERSISTING ROCKS COLLECTION: " << _logicalCollection->name() << " ("
-        << infoBuilder.slice().toJson() << ")";
   } catch (arangodb::basics::Exception const& ex) {
     res.reset(ex.code());
   } catch (...) {
@@ -197,9 +188,6 @@ size_t RocksDBCollection::memory() const { return 0; }
 void RocksDBCollection::open(bool ignoreErrors) {
   TRI_ASSERT(_objectId != 0);
 
-  LOG_TOPIC(ERR, Logger::DEVEL)
-      << "OPEN ROCKS COLLECTION: " << _logicalCollection->name() << " ("
-      << this->objectId() << ")";
   // set the initial number of documents
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
@@ -514,11 +502,7 @@ int RocksDBCollection::read(transaction::Methods* trx,
                             arangodb::velocypack::Slice const key,
                             ManagedDocumentResult& result, bool) {
   TRI_ASSERT(key.isString());
-  // LOG_TOPIC(ERR, Logger::FIXME) << "############### Key Slice: " <<
-  // key.toString();
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
-  // LOG_TOPIC(ERR, Logger::FIXME) << "############### TOKEN ID: " <<
-  // token.revisionId();
 
   if (token.revisionId()) {
     if (readDocument(trx, token, result)) {
@@ -1059,9 +1043,6 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
     VPackSlice const& doc, bool& waitForSync) const {
   RocksDBOperationResult res;
   // Coordinator doesn't know index internals
-  LOG_TOPIC(ERR, Logger::DEVEL)
-      << std::boolalpha
-      << "insert enter waitForSync during insert: " << waitForSync;
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
 
