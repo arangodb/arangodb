@@ -17,7 +17,7 @@ There are two modes of operation: *simple auth* and *bind+search*.
 
 ArangoDB connects to the ldap server and authenticates with the username and password provided by the 
 api authentication request and searches for the database permissions using the attribute name 
-provided by `--ldap.permissions-attribute-name.
+provided by `--ldap.permissions-attribute-name`.
 
 Example:
 
@@ -72,7 +72,9 @@ The ldap url consists of the ldap *server* and *port*, a *basedn*, a *search att
 
 ### TLS options
 
-A encrypted connection can be established with `--ldap.tls true`.
+A encrypted connection can be established with `--ldap.tls true` under all platforms.
+
+All following options are not availbe under Windows.
 
     --ldap.tls-version
 
@@ -86,6 +88,8 @@ The default is `hard`. Available strategies are `never`, `hard`, `demand`, `allo
 
 A file path to one or more (concatenated) certificate authority certificates in pem format.
 As default no file path is configured.
+
+Following option has no effect / does not work under macOS.
 
     --ldap.tls-cacert-dir
 
