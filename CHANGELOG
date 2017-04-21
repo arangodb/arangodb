@@ -5,6 +5,7 @@ v3.1.19 (XXXX-XX-XX)
 
 * fixed issue #2440
 
+* fix occasional hanging shutdowns on OS X
 
 v3.1.18 (2017-04-18)
 --------------------
