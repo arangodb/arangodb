@@ -831,10 +831,12 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       return TRI_ERROR_INTERNAL;
     }
 
-    uint64_t const cid = arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
-    std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
-        parameters, "name", "");
-    bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
+    uint64_t const cid =
+      arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
+    std::string const name =
+      arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+    bool const deleted =
+      arangodb::basics::VelocyPackHelper::getBooleanValue(
         parameters, "deleted", false);
 
     if (cid == 0 || name == "") {

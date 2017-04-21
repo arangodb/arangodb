@@ -5,12 +5,10 @@ v3.1.19 (XXXX-XX-XX)
 
 * fixed issue #2440
 
-v3.1.19 (XXXX-XX-XX)
---------------------
-
-
 * Fixed a StackOverflow issue in Traversal and ShortestPath. Occured if many (>1000) input
   values in a row do not return any result. Fixes issue: #2445
+
+* fix occasional hanging shutdowns on OS X
 
 v3.1.18 (2017-04-18)
 --------------------
