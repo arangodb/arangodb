@@ -104,6 +104,16 @@ if (USE_LOCAL_CLOCK_GETTIME)
   )
 endif ()
 
+if (USE_CPP11_LOCKS)
+  SET(RWLOCK_IMPLEMENTATION
+    Basics/ReadWriteLockCPP11.cpp
+  )
+else()
+  SET(RWLOCK_IMPLEMENTATION
+    Basics/ReadWriteLock.cpp
+  )
+endif()
+
 add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
@@ -136,8 +146,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Mutex.cpp
   Basics/MutexLocker.cpp
   Basics/Nonce.cpp
-  Basics/ReadWriteLock.cpp
-  Basics/ReadWriteLockCPP11.cpp
+  ${RWLOCK_IMPLEMENTATION}
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp

@@ -1309,6 +1309,12 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 
   try {
     parsedRequest = _request->toVelocyPackBuilderPtr(&options);
+  } catch(arangodb::velocypack::Exception const& e) {
+    std::string errorMsg = "invalid JSON: ";
+    errorMsg += e.what();
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  errorMsg);
+    return;
   } catch (...) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
@@ -1339,6 +1345,11 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
     force = StringUtils::boolean(value3);
   }
 
+  std::string const& value9 =
+    _request->value("ignoreDistributeShardsLikeErrors", found);
+  bool ignoreDistributeShardsLikeErrors =
+    found ? StringUtils::boolean(value9) : false;
+
   uint64_t numberOfShards = 0;
   std::string const& value4 = _request->value("numberOfShards", found);
 
@@ -1356,15 +1367,12 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   std::string errorMsg;
   int res;
 
-  if (ServerState::instance()->isCoordinator()) {
-    res = processRestoreCollectionCoordinator(slice, overwrite, recycleIds,
-                                              force, numberOfShards, errorMsg,
-                                              replicationFactor);
-  } else {
-    res =
-        processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
-  }
-
+  res = (ServerState::instance()->isCoordinator()) ?
+    processRestoreCollectionCoordinator(
+      slice, overwrite, recycleIds, force, numberOfShards, errorMsg,
+      replicationFactor, ignoreDistributeShardsLikeErrors) : 
+    processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
+  
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1491,7 +1499,7 @@ int RestReplicationHandler::processRestoreCollection(
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      int res = _vocbase->dropCollection(col, true, true);
+      int res = _vocbase->dropCollection(col, true, true, -1.0);
 
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
@@ -1552,7 +1560,7 @@ int RestReplicationHandler::processRestoreCollection(
 int RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
     uint64_t numberOfShards, std::string& errorMsg,
-    uint64_t replicationFactor) {
+    uint64_t replicationFactor, bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -1594,14 +1602,15 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     if (dropExisting) {
       int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
-      if (res == TRI_ERROR_FORBIDDEN) {
+      if (res == TRI_ERROR_FORBIDDEN ||
+          res == TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
         // some collections must not be dropped
         res = truncateCollectionOnCoordinator(dbName, name);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg =
               "unable to truncate collection (dropping is forbidden): " + name;
-          return res;
         }
+        return res;
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1681,8 +1690,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   VPackSlice const merged = mergedBuilder.slice();
 
   try {
-    auto col = ClusterMethods::createCollectionOnCoordinator(collectionType,
-                                                             _vocbase, merged);
+    auto col = ClusterMethods::createCollectionOnCoordinator(
+      collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors);
     TRI_ASSERT(col != nullptr);
   } catch (basics::Exception const& e) {
     // Error, report it.

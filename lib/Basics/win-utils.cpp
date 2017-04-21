@@ -311,43 +311,6 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fixes the ICU_DATA environment path
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FixIcuDataEnv(char const* binaryPath) {
-  if (getenv("ICU_DATA") != nullptr) {
-    return;
-  }
-
-  std::string p = TRI_LocateInstallDirectory(binaryPath);
-
-  if (!p.empty()) {
-    std::string e = "ICU_DATA=" + p + ICU_DESTINATION_DIRECTORY;
-    e = StringUtils::replace(e, "\\", "\\\\");
-    putenv(e.c_str());
-  } else {
-#ifdef _SYSCONFDIR_
-    std::string SCDIR(_SYSCONFDIR_);
-    SCDIR = StringUtils::replace(SCDIR, "/", "\\\\");
-    std::string e = "ICU_DATA=" + SCDIR + "..\\..\\bin";
-    e = StringUtils::replace(e, "\\", "\\\\");
-    putenv(e.c_str());
-#else
-
-    p = TRI_LocateBinaryPath(nullptr);
-
-    if (!p.empty()) {
-      std::string e = "ICU_DATA=" + p + "\\";
-      e = StringUtils::replace(e, "\\", "\\\\");
-      putenv(e.c_str());
-    } else {
-      putenv("ICU_DATA=.\\\\");
-    }
-#endif
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -641,4 +604,100 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
   }
 
   exit(exitCode);
+}
+
+// Detect cygwin ssh / terminals
+int
+_cyg_isatty (int fd)
+{
+  // detect standard windows ttys:
+  if (_isatty (fd)) {
+    return 1;
+  }
+  
+  HANDLE fh;
+
+  char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
+  FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
+
+  /* get the HANDLE for the filedescriptor. */
+  fh = (HANDLE) _get_osfhandle (fd);
+  if (!fh || fh == INVALID_HANDLE_VALUE) {
+    return 0;
+  }
+
+  /* Cygwin consoles are pipes. If its not, no reason to continue: */
+  if (GetFileType (fh) != FILE_TYPE_PIPE) {
+    return 0;
+  }
+
+  if (!GetFileInformationByHandleEx(fh, FileNameInfo,
+                                    FileInformation, sizeof(buff))) {
+    return 0;
+  }
+
+  // we expect something along the lines of: \cygwin-0eb90a57d5759b7b-pty3-to-master?? - if we find it its a tty.
+  PWCHAR cp = (PWCHAR) FileInformation->FileName;
+  if (!wcsncmp (cp, L"\\cygwin-", 8)
+      && !wcsncmp (cp + 24, L"-pty", 4)) {
+    cp = wcschr (cp + 28, '-');
+    if (!cp) {
+      return 0;
+    }
+
+    if (!wcsncmp (cp, L"-from-master", sizeof("-from-master") - 1) ||
+        !wcsncmp (cp, L"-to-master", sizeof("-to-master") -1)) {
+      return 1;
+    }
+  }
+  errno = EINVAL;
+  return 0;
+}
+
+// Detect cygwin ssh / terminals
+int
+_is_cyg_tty (int fd)
+{
+  // detect standard windows ttys:
+  if (_isatty (fd)) {
+    return 0;
+  }
+  
+  HANDLE fh;
+
+  char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
+  FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
+
+  /* get the HANDLE for the filedescriptor. */
+  fh = (HANDLE) _get_osfhandle (fd);
+  if (!fh || fh == INVALID_HANDLE_VALUE) {
+    return 0;
+  }
+
+  /* Cygwin consoles are pipes. If its not, no reason to continue: */
+  if (GetFileType (fh) != FILE_TYPE_PIPE) {
+    return 0;
+  }
+
+  if (!GetFileInformationByHandleEx(fh, FileNameInfo,
+                                    FileInformation, sizeof(buff))) {
+    return 0;
+  }
+
+  // we expect something along the lines of: \cygwin-0eb90a57d5759b7b-pty3-to-master?? - if we find it its a tty.
+  PWCHAR cp = (PWCHAR) FileInformation->FileName;
+  if (!wcsncmp (cp, L"\\cygwin-", 8)
+      && !wcsncmp (cp + 24, L"-pty", 4)) {
+    cp = wcschr (cp + 28, '-');
+    if (!cp) {
+      return 0;
+    }
+
+    if (!wcsncmp (cp, L"-from-master", sizeof("-from-master") - 1) ||
+        !wcsncmp (cp, L"-to-master", sizeof("-to-master") -1)) {
+      return 1;
+    }
+  }
+  errno = EINVAL;
+  return 0;
 }

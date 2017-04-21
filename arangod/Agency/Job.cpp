@@ -23,6 +23,8 @@
 
 #include "Job.h"
 
+static std::string const DBServer = "DBServer";
+
 using namespace arangodb::consensus;
 
 bool arangodb::consensus::compareServerLists(Slice plan, Slice current) {
@@ -47,53 +49,41 @@ bool arangodb::consensus::compareServerLists(Slice plan, Slice current) {
   return equalLeader && currv == planv;
 }
 
-Job::Job(Node const& snapshot, Agent* agent, std::string const& jobId,
-         std::string const& creator, std::string const& agencyPrefix) :
-  _snapshot(snapshot),
-  _agent(agent),
-  _jobId(jobId),
-  _creator(creator),
-  _agencyPrefix(agencyPrefix),
-  _jb(nullptr) {}
+Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
+         std::string const& jobId, std::string const& creator)
+  : _status(status),
+    _snapshot(snapshot),
+    _agent(agent),
+    _jobId(jobId),
+    _creator(creator),
+    _jb(nullptr) {
+}
 
 Job::~Job() {}
 
-JOB_STATUS Job::exists() const {
+// this will be initialized in the AgencyFeature
+std::string Job::agencyPrefix = "/arango";
 
-  Node const& target = _snapshot("/Target");
-  
-  if (target.exists(std::string("/ToDo/") + _jobId).size() == 2) {
-    return TODO;
-  } else if (target.exists(std::string("/Pending/") + _jobId).size() == 2) {
-    return PENDING;
-  } else if (target.exists(std::string("/Finished/") + _jobId).size() == 2) {
-    return FINISHED;
-  } else if (target.exists(std::string("/Failed/") + _jobId).size() == 2) {
-    return FAILED;
-  }
-  
-  return NOTFOUND;
-  
-}
-
-
-bool Job::finish(std::string const& type, bool success,
-                 std::string const& reason) const {
+bool Job::finish(
+  std::string const& server, std::string const& shard,
+  bool success, std::string const& reason, query_t const payload) {
   
   Builder pending, finished;
   
   // Get todo entry
-  pending.openArray();
-  if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
-    _snapshot(pendingPrefix + _jobId).toBuilder(pending);
-  } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
-    _snapshot(toDoPrefix + _jobId).toBuilder(pending);
-  } else {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Nothing in pending to finish up for job " << _jobId;
-    return false;
+  bool started = false;
+  { VPackArrayBuilder guard(&pending);
+    if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
+      _snapshot(pendingPrefix + _jobId).toBuilder(pending);
+      started = true;
+    } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
+      _snapshot(toDoPrefix + _jobId).toBuilder(pending);
+    } else {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Nothing in pending to finish up for job " << _jobId;
+      return false;
+    }
   }
-  pending.close();
 
   std::string jobType;
   try {
@@ -103,65 +93,109 @@ bool Job::finish(std::string const& type, bool success,
       << "Failed to obtain type of job " << _jobId;
   }
   
-  // Prepare peding entry, block toserver
-  finished.openArray();
-  
-  // --- Add finished
-  finished.openObject();
-  finished.add(
-    _agencyPrefix + (success ? finishedPrefix : failedPrefix) + _jobId,
-    VPackValue(VPackValueType::Object));
-  finished.add(
-    "timeFinished",
-    VPackValue(timepointToString(std::chrono::system_clock::now())));
-  for (auto const& obj : VPackObjectIterator(pending.slice()[0])) {
-    finished.add(obj.key.copyString(), obj.value);
-  }
-  if (!reason.empty()) {
-    finished.add("reason", VPackValue(reason));
-  }
-  finished.close();
+  // Prepare pending entry, block toserver
+  { VPackArrayBuilder guard(&finished);
+    VPackObjectBuilder guard2(&finished);
 
-  // --- Delete pending
-  finished.add(_agencyPrefix + pendingPrefix + _jobId,
-               VPackValue(VPackValueType::Object));
-  finished.add("op", VPackValue("delete"));
-  finished.close();
+    addPutJobIntoSomewhere(finished, success ? "Finished" : "Failed",
+                           pending.slice()[0], reason);
 
-  // --- Delete todo
-  finished.add(_agencyPrefix + toDoPrefix + _jobId,
-               VPackValue(VPackValueType::Object));
-  finished.add("op", VPackValue("delete"));
-  finished.close();
+    addRemoveJobFromSomewhere(finished, "ToDo", _jobId);
+    addRemoveJobFromSomewhere(finished, "Pending", _jobId);
 
-  // --- Remove block if specified
-  if (jobType == "moveShard") {
-    for (auto const& shard :
-           VPackArrayIterator(pending.slice()[0].get("shards"))) {
-      finished.add(_agencyPrefix + "/Supervision/Shards/" + shard.copyString(),
-                   VPackValue(VPackValueType::Object));
-      finished.add("op", VPackValue("delete"));
-      finished.close();
+    // Additional payload, which is to be executed in the finish transaction
+    if (payload != nullptr) {
+      Slice slice = payload->slice();
+      TRI_ASSERT(slice.isObject());
+      if (slice.length() > 0) {
+        for (auto const& oper : VPackObjectIterator(slice)) {
+          finished.add(oper.key.copyString(), oper.value);
+        }
+      }
     }
-  } else if (type != "") {
-    finished.add(_agencyPrefix + "/Supervision/" + type,
-                 VPackValue(VPackValueType::Object));
-    finished.add("op", VPackValue("delete"));
-    finished.close();
-  }
 
-  // --- Need precond?
-  finished.close();
-  finished.close();
+    // --- Remove blocks if specified:
+    if (started && !server.empty()) {
+      addReleaseServer(finished, server);
+    }
+    if (started && !shard.empty()) {
+      addReleaseShard(finished, shard);
+    }
+    
+  }  // close object and array
 
-  write_ret_t res = transact(_agent, finished);
+  write_ret_t res = singleWriteTransaction(_agent, finished);
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Successfully finished job " << type << "(" << _jobId << ")";
+      << "Successfully finished job " << jobType << "(" << _jobId << ")";
+    _status = (success ? FINISHED : FAILED);
     return true;
   }
 
   return false;
+}
+
+
+
+std::string Job::randomIdleGoodAvailableServer(
+  Node const& snap, std::vector<std::string> const& exclude) {
+
+  std::vector<std::string> as = availableServers(snap);
+  std::string ret;
+  auto ex(exclude);
+
+  // ungood;
+  try {
+    for (auto const& srv : snap(healthPrefix).children()) {
+      if ((*srv.second)("Status").toJson() != "GOOD") {
+        ex.push_back(srv.first);
+      }
+    }
+  } catch (...) {}
+  
+  // blocked;
+  try {
+    for (auto const& srv : snap(blockedServersPrefix).children()) {
+      ex.push_back(srv.first);
+    }
+  } catch (...) {}
+ 
+
+  // Remove excluded servers
+  std::sort(std::begin(ex), std::end(ex));
+  as.erase(
+    std::remove_if(
+      std::begin(as),std::end(as),
+      [&](std::string const& s){
+        return std::binary_search(
+          std::begin(ex), std::end(ex), s);}), std::end(as));
+  
+  // Choose random server from rest
+  if (!as.empty()) {
+    if (as.size() > 1) {
+      std::random_shuffle(as.begin(), as.end());
+    }
+    ret = as.front();
+  }
+
+  return ret;
+  
+}
+
+
+std::string Job::randomIdleGoodAvailableServer(Node const& snap,
+                                               Slice const& exclude) {
+
+  std::vector<std::string> ev;
+  if (exclude.isArray()) {
+    for (const auto& s : VPackArrayIterator(exclude)) {
+      if (s.isString()) {
+        ev.push_back(s.copyString());
+      }
+    }
+  }
+  return randomIdleGoodAvailableServer(snap,ev);
+
 }
 
 
@@ -185,14 +219,11 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
     }
   } catch (...) {}
 
-  
   // Remove failed servers from list
   try {
-    for (auto const& srv :
-           VPackArrayIterator(snapshot(failedServersPrefix).slice())) {
+    for (auto const& srv : snapshot(failedServersPrefix).children()) {
       ret.erase(
-        std::remove(ret.begin(), ret.end(), srv.copyString()),
-        ret.end());
+        std::remove(ret.begin(), ret.end(), srv.first), ret.end());
     }
   } catch (...) {}
   
@@ -205,38 +236,109 @@ std::vector<Job::shard_t> Job::clones(
   std::string const& collection, std::string const& shard) {
 
   std::vector<shard_t> ret;
+  ret.emplace_back(collection, shard);  // add (collection, shard) as first item
 
-  std::string databasePath = planColPrefix + database,
-    planPath = databasePath + "/" + collection + "/shards";
+  try {
+    std::string databasePath = planColPrefix + database,
+      planPath = databasePath + "/" + collection + "/shards";
 
-  auto myshards = snapshot(planPath).children();
-  auto steps = std::distance(myshards.begin(), myshards.find(shard));
+    auto myshards = snapshot(planPath).children();
+    auto steps = std::distance(myshards.begin(), myshards.find(shard));
 
-  for (const auto& colptr : snapshot(databasePath).children()) { // collections
+    for (const auto& colptr : snapshot(databasePath).children()) { // collections
 
-    auto const col = *colptr.second;
-    auto const otherCollection = colptr.first;
+      auto const col = *colptr.second;
+      auto const otherCollection = colptr.first;
 
-    try {
-      std::string const& prototype =
-        col("distributeShardsLike").slice().copyString();
-      if (otherCollection != collection && prototype == collection) {
-        auto othershards = col("shards").children();
-        auto opos = othershards.begin();
-        std::advance(opos, steps);
-        auto const& otherShard = opos->first;
-        ret.push_back(shard_t(otherCollection, otherShard));
-      }
-    } catch(...) {}
-    
+      try {
+        std::string const& prototype =
+          col("distributeShardsLike").slice().copyString();
+        if (otherCollection != collection && prototype == collection) {
+          auto othershards = col("shards").children();
+          auto opos = othershards.begin();
+          std::advance(opos, steps);
+          auto const& otherShard = opos->first;
+          ret.emplace_back(otherCollection, otherShard);
+        }
+      } catch(...) {}
+      
+    }
+  } catch (...) {
+    ret.clear();
+    ret.emplace_back(collection, shard);
   }
   
   return ret;
+}
+
+
+std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD" health
+  Node const& snap, std::string const& db, std::string const& col,
+  std::string const& shrd) {
+
+  auto cs = clones(snap, db, col, shrd);       // clones
+  auto nclones = cs.size();                    // #clones
+  std::map<std::string,bool> good;
+
+  for (const auto& i : snap(healthPrefix).children()) {
+    good[i.first] = ((*i.second)("Status").toJson() == "GOOD");
+  }
+
+  std::map<std::string,size_t> currentServers;
+  for (const auto& clone : cs) {
+    auto currentShardPath =
+      curColPrefix + db + "/" + clone.collection + "/"
+      + clone.shard + "/servers";
+    auto plannedShardPath =
+      planColPrefix + db + "/" + clone.collection + "/shards/"
+      + clone.shard;
+    size_t i = 0;
+    for (const auto& server : VPackArrayIterator(snap(currentShardPath).getArray())) {
+      auto id = server.copyString();
+      if (i++ == 0) {
+        // Skip leader
+        continue;
+      }
+
+      if (!good[id]) {
+        // Skip unhealthy servers
+        continue;
+      }
+
+      if (snap.has(blockedServersPrefix + id)) {
+        // server is blocked
+        continue;
+      }
+
+      // check if it is also part of the plan...because if not the soon to be leader
+      // will drop the collection
+      bool found = false;
+      for (const auto& plannedServer : VPackArrayIterator(snap(plannedShardPath).getArray())) {
+        if (plannedServer == server) {
+          found = true;
+          continue;
+        }
+      }
+
+      if (!found) {
+        continue;
+      }
+
+      // increment a counter for this server
+      // and in case it is applicable for ALL our distributeLikeShards
+      // finally return it :)
+      if (++currentServers[id] == nclones) {
+        return id;
+      }
+    }
+  }
+  
+  return std::string();
   
 }
 
-std::string Job::uuidLookup (Node const& snapshot, std::string const& shortID) {
-  for (auto const& uuid : snapshot(mapUniqueToShortID).children()) {
+std::string Job::uuidLookup (std::string const& shortID) {
+  for (auto const& uuid : _snapshot(mapUniqueToShortID).children()) {
     if ((*uuid.second)("ShortName").getString() == shortID) {
       return uuid.first;
     }
@@ -244,4 +346,165 @@ std::string Job::uuidLookup (Node const& snapshot, std::string const& shortID) {
   return std::string();
 }
 
+
+std::string Job::id(std::string const& idOrShortName) {
+  std::string id = uuidLookup(idOrShortName);
+  if (!id.empty()) {
+    return id;
+  }
+  return idOrShortName;
+}
+
+bool Job::abortable(Node const& snapshot, std::string const& jobId) {
+
+  if (!snapshot.has(pendingPrefix + jobId)) {
+    return false;
+  }
+  auto const& job = snapshot(pendingPrefix + jobId);
+  if (!job.has("type")) {
+    return false;
+  }
+  auto const& type = job("type").getString();
+
+  if (type == "failedServer" || type == "failedLeader") {
+    return false;
+  } else if (type == "addFollower" || type == "moveShard" ||
+             type == "cleanOutServer") {
+    return true;
+  }
+
+  // We should never get here
+  TRI_ASSERT(false);
+  return false;  
+}
+
+void Job::doForAllShards(Node const& snapshot,
+	std::string& database,
+	std::vector<shard_t>& shards,
+  std::function<void(Slice plan, Slice current, std::string& planPath)> worker) {
+	for (auto const& collShard : shards) {
+		std::string shard = collShard.shard;
+		std::string collection = collShard.collection;
+
+    std::string planPath =
+      planColPrefix + database + "/" + collection + "/shards/" + shard;
+    std::string curPath = curColPrefix + database + "/" + collection
+                          + "/" + shard + "/servers";
+
+		Slice plan = snapshot(planPath).slice();
+		Slice current = snapshot(curPath).slice();
+
+    worker(plan, current, planPath);
+  }
+}
+
+void Job::addIncreasePlanVersion(Builder& trx) {
+  trx.add(VPackValue(planVersion));
+  { VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("increment"));
+  }
+}
+
+void Job::addRemoveJobFromSomewhere(Builder& trx, std::string where,
+  std::string jobId) {
+  trx.add(VPackValue("/Target/" + where + "/" + jobId));
+  { VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("delete"));
+  }
+}
+
+void Job::addPutJobIntoSomewhere(Builder& trx, std::string where, Slice job,
+    std::string reason) {
+  Slice jobIdSlice = job.get("jobId");
+  TRI_ASSERT(jobIdSlice.isString());
+  std::string jobId = jobIdSlice.copyString();
+  trx.add(VPackValue("/Target/" + where + "/" + jobId));
+  { VPackObjectBuilder guard(&trx);
+    if (where == "Pending") {
+      trx.add("timeStarted",
+        VPackValue(timepointToString(std::chrono::system_clock::now())));
+    } else {
+      trx.add("timeFinished",
+        VPackValue(timepointToString(std::chrono::system_clock::now())));
+    }
+    for (auto const& obj : VPackObjectIterator(job)) {
+      trx.add(obj.key.copyString(), obj.value);
+    }
+    if (!reason.empty()) {
+      trx.add("reason", VPackValue(reason));
+    }
+  }
+}
+
+void Job::addPreconditionCollectionStillThere(Builder& pre,
+    std::string database, std::string collection) {
+  std::string planPath
+      = planColPrefix + database + "/" + collection;
+  pre.add(VPackValue(planPath));
+  { VPackObjectBuilder guard(&pre);
+    pre.add("oldEmpty", VPackValue(false));
+  }
+}
+
+void Job::addPreconditionServerNotBlocked(Builder& pre, std::string server) {
+	pre.add(VPackValue(blockedServersPrefix + server));
+	{ VPackObjectBuilder serverLockEmpty(&pre);
+		pre.add("oldEmpty", VPackValue(true));
+	}
+}
+
+void Job::addPreconditionServerGood(Builder& pre, std::string server) {
+	pre.add(VPackValue(healthPrefix + server + "/Status"));
+	{ VPackObjectBuilder serverGood(&pre);
+		pre.add("old", VPackValue("GOOD"));
+	}
+}
+
+void Job::addPreconditionShardNotBlocked(Builder& pre, std::string shard) {
+	pre.add(VPackValue(blockedShardsPrefix + shard));
+	{ VPackObjectBuilder shardLockEmpty(&pre);
+		pre.add("oldEmpty", VPackValue(true));
+	}
+}
+
+void Job::addPreconditionUnchanged(Builder& pre,
+    std::string key, Slice value) {
+  pre.add(VPackValue(key));
+  { VPackObjectBuilder guard(&pre);
+    pre.add("old", value);
+  }
+}
+
+void Job::addBlockServer(Builder& trx, std::string server, std::string jobId) {
+  trx.add(blockedServersPrefix + server, VPackValue(jobId));
+}
+
+void Job::addBlockShard(Builder& trx, std::string shard, std::string jobId) {
+  trx.add(blockedShardsPrefix + shard, VPackValue(jobId));
+}
+
+void Job::addReleaseServer(Builder& trx, std::string server) {
+  trx.add(VPackValue(blockedServersPrefix + server));
+  { VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("delete"));
+  }
+}
+
+void Job::addReleaseShard(Builder& trx, std::string shard) {
+  trx.add(VPackValue(blockedShardsPrefix + shard));
+  { VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("delete"));
+  }
+}
+
+std::string Job::checkServerGood(Node const& snapshot,
+                                 std::string const& server) {
+  if (!snapshot.has(healthPrefix + server + "/Status")) {
+    return "UNCLEAR";
+  }
+  if (snapshot(healthPrefix + server + "/Status").getString() != "GOOD") {
+    return "UNHEALTHY";
+  }
+  return "GOOD";
+}
 

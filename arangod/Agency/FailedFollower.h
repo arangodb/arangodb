@@ -31,25 +31,31 @@ namespace arangodb {
 namespace consensus {
 
 struct FailedFollower : public Job {
-  FailedFollower(Node const& snapshot, Agent* agent, std::string const& jobId,
-               std::string const& creator, std::string const& agencyPrefix,
-               std::string const& database = std::string(),
-               std::string const& collection = std::string(),
-               std::string const& shard = std::string(),
-               std::string const& from = std::string(),
-               std::string const& to = std::string());
+  FailedFollower(Node const& snapshot, AgentInterface* agent,
+                 std::string const& jobId,
+                 std::string const& creator = std::string(),
+                 std::string const& database = std::string(),
+                 std::string const& collection = std::string(),
+                 std::string const& shard = std::string(),
+                 std::string const& from = std::string());
+
+  FailedFollower(Node const& snapshot, AgentInterface* agent,
+                 JOB_STATUS status, std::string const& jobId);
 
   virtual ~FailedFollower();
 
-  virtual bool create() override;
-  virtual bool start() override;
-  virtual JOB_STATUS status() override;
+  virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;
+  virtual void run() override final;
+  virtual bool start() override final;
+  virtual JOB_STATUS status() override final;
+  virtual Result abort() override final;
 
   std::string _database;
   std::string _collection;
   std::string _shard;
   std::string _from;
   std::string _to;
+  std::chrono::system_clock::time_point _created;
 };
 }
 }  // namespaces

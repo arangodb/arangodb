@@ -67,7 +67,8 @@ SslClientConnection::SslClientConnection(Endpoint* endpoint,
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
                               connectRetries),
       _ssl(nullptr),
-      _ctx(nullptr) {
+      _ctx(nullptr),
+      _sslProtocol(sslProtocol) {
 
   TRI_invalidatesocket(&_socket);
   init(sslProtocol);
@@ -81,7 +82,8 @@ SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
                               connectRetries),
       _ssl(nullptr),
-      _ctx(nullptr) {
+      _ctx(nullptr),
+      _sslProtocol(sslProtocol) {
 
   TRI_invalidatesocket(&_socket);
   init(sslProtocol);
@@ -186,6 +188,13 @@ bool SslClientConnection::connectSocket() {
     disconnectSocket();
     _isConnected = false;
     return false;
+  }
+
+  switch (protocol_e(_sslProtocol)) {
+    case TLS_V1:
+    case TLS_V12:
+    default:
+      SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());
   }
 
   if (SSL_set_fd(_ssl, (int)TRI_get_fd_or_handle_of_socket(_socket)) != 1) {

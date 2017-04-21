@@ -538,10 +538,13 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
 
 /// @brief drops a collection, worker function
 int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
-                                        bool writeMarker, DropState& state) {
+                                        bool writeMarker, DropState& state,
+                                        double timeout) {
   state = DROP_EXIT;
   std::string const colName(collection->name());
     
+  double startTime = TRI_microtime();
+
   // do not acquire these locks instantly
   CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, false);
   CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false);
@@ -566,6 +569,11 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
+
+    if (timeout >= 0.0 && TRI_microtime() > startTime + timeout) {
+      events::DropCollection(colName, TRI_ERROR_LOCK_TIMEOUT);
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
 
     // sleep for a while
     std::this_thread::yield();
@@ -1009,7 +1017,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
 }
 
 /// @brief drops a collection
-int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem, bool writeMarker) {
+int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem, bool writeMarker, double timeout) {
   TRI_ASSERT(collection != nullptr);
 
   if (!allowDropSystem && 
@@ -1025,7 +1033,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
     {
       READ_LOCKER(readLocker, _inventoryLock);
 
-      res = dropCollectionWorker(collection, writeMarker, state);
+      res = dropCollectionWorker(collection, writeMarker, state, timeout);
     }
 
     if (state == DROP_PERFORM) {

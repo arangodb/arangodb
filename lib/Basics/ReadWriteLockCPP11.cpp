@@ -172,3 +172,13 @@ void ReadWriteLockCPP11::unlock() {
   _threadLocks.erase(this);
 #endif
 }
+
+/// @brief releases the read-lock
+void ReadWriteLockCPP11::unlockRead() {
+  unlock();
+}
+  
+/// @brief releases the write-lock
+void ReadWriteLockCPP11::unlockWrite() {
+  unlock();
+}

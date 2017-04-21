@@ -45,6 +45,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void start() override final;
   void unprepare() override final;
 
+  std::string agencyPrefix() {
+    return _agencyPrefix;
+  }
+
  private:
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;

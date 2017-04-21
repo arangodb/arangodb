@@ -27,6 +27,7 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <signal.h>
 #include <fstream>
 #include <iostream>
 
@@ -490,7 +491,10 @@ static std::string GetEndpointFromUrl(std::string const& url) {
   size_t slashes = 0;
 
   while (p < e) {
-    if (*p == '/') {
+    if (*p == '?') {
+      // http(s)://example.com?foo=bar
+      return url.substr(0, p - url.c_str());
+    } else if (*p == '/') {
       if (++slashes == 3) {
         return url.substr(0, p - url.c_str());
       }
@@ -741,33 +745,25 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::string relative;
 
     if (url.substr(0, 7) == "http://") {
-      size_t found = url.find('/', 7);
+      endpoint = GetEndpointFromUrl(url).substr(7);
+      relative = url.substr(7 + endpoint.length());
 
-      relative = "/";
-      if (found != std::string::npos) {
-        relative.append(url.substr(found + 1));
-        endpoint = url.substr(7, found - 7);
-      } else {
-        endpoint = url.substr(7);
+      if (relative.empty() || relative[0] != '/') {
+        relative = "/" + relative;
       }
-      found = endpoint.find(":");
-      if (found == std::string::npos) {
-        endpoint = endpoint + ":80";
+      if (endpoint.find(':') == std::string::npos) {
+        endpoint.append(":80");
       }
       endpoint = "tcp://" + endpoint;
     } else if (url.substr(0, 8) == "https://") {
-      size_t found = url.find('/', 8);
+      endpoint = GetEndpointFromUrl(url).substr(8);
+      relative = url.substr(8 + endpoint.length());
 
-      relative = "/";
-      if (found != std::string::npos) {
-        relative.append(url.substr(found + 1));
-        endpoint = url.substr(8, found - 8);
-      } else {
-        endpoint = url.substr(8);
+      if (relative.empty() || relative[0] != '/') {
+        relative = "/" + relative;
       }
-      found = endpoint.find(":");
-      if (found == std::string::npos) {
-        endpoint = endpoint + ":443";
+      if (endpoint.find(':') == std::string::npos) {
+        endpoint.append(":443");
       }
       endpoint = "ssl://" + endpoint;
     } else if (url.substr(0, 6) == "srv://") {
@@ -782,14 +778,25 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
       endpoint = "srv://" + endpoint;
     } else if (!url.empty() && url[0] == '/') {
+      size_t found;
       // relative URL. prefix it with last endpoint
       relative = url;
       url = lastEndpoint + url;
       endpoint = lastEndpoint;
       if (endpoint.substr(0, 5) == "http:") {
-        endpoint = "tcp:" + endpoint.substr(5);
+        endpoint = endpoint.substr(5);
+        found = endpoint.find(":");
+        if (found == std::string::npos) {
+          endpoint = endpoint + ":80";
+        }
+        endpoint = "tcp:" + endpoint;
       } else if (endpoint.substr(0, 6) == "https:") {
-        endpoint = "ssl:" + endpoint.substr(6);
+        endpoint = endpoint.substr(6);
+        found = endpoint.find(":");
+        if (found == std::string::npos) {
+          endpoint = endpoint + ":443";
+        }
+        endpoint = "ssl:" + endpoint;
       }
     } else {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
@@ -3564,10 +3571,14 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>)");
+  if (args.Length() < 1 || args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "killExternal(<external-identifier>, <signal>)");
   }
-
+  int signal = SIGTERM;
+  if (args.Length() == 2) {
+    signal = static_cast<int>(TRI_ObjectToInt64(args[1]));
+  }
   TRI_external_id_t pid;
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
@@ -3578,7 +3589,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
   // return the result
-  if (TRI_KillExternalProcess(pid)) {
+  if (TRI_KillExternalProcess(pid, signal)) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();

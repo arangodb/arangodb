@@ -978,12 +978,25 @@ actions.defineHttp({
         "body must be an object with a string attribute 'server'");
       return;
     }
+
+    // First translate the server name from short name to long name:
+    var server = body.server;
+    var servers = global.ArangoClusterInfo.getDBServers();
+    for (let i = 0; i < servers.length; i++) {
+      if (servers[i].serverId !== server) {
+        if (servers[i].serverName === server) {
+          server = servers[i].serverId;
+          break;
+        }
+      }
+    }
+
     var ok = true;
     var id;
     try {
       id = ArangoClusterInfo.uniqid();
       var todo = { 'type': 'cleanOutServer',
-        'server': body.server,
+        'server': server,
         'jobId': id,
         'timeCreated': (new Date()).toISOString(),
       'creator': ArangoServerState.id() };

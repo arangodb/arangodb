@@ -269,8 +269,9 @@ struct TRI_vocbase_t {
       arangodb::velocypack::Slice parameters, TRI_voc_cid_t cid,
       bool writeMarker);
 
-  /// @brief drops a collection
-  int dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem, bool writeMarker);
+  /// @brief drops a collection, no timeout if timeout is < 0.0, otherwise
+  /// timeout is in seconds
+  int dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem, bool writeMarker, double timeout);
 
   /// @brief callback for collection dropping
   static bool DropCollectionCallback(arangodb::LogicalCollection* collection);
@@ -325,7 +326,7 @@ struct TRI_vocbase_t {
 
   /// @brief drops a collection, worker function
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
-                           bool writeMarker, DropState& state);
+                           bool writeMarker, DropState& state, double timeout);
 
   /// @brief write a drop collection marker into the log
   int writeDropCollectionMarker(TRI_voc_cid_t collectionId,

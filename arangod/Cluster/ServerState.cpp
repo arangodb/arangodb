@@ -219,12 +219,12 @@ bool ServerState::unregister() {
   TRI_ASSERT(!getId().empty());
 
   std::string const& id = getId();
-
+  std::vector<AgencyOperation> operations = {};
   std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
-  AgencyOperation deleteLocalIdMap("Target/MapLocalToID/" + localInfoEncoded,
-                                   AgencySimpleOperationType::DELETE_OP);
-
-  std::vector<AgencyOperation> operations = {deleteLocalIdMap};
+  if (!localInfoEncoded.empty()) {
+    operations.push_back(AgencyOperation("Target/MapLocalToID/" + localInfoEncoded,
+                                         AgencySimpleOperationType::DELETE_OP));
+  }
 
   auto role = loadRole();
   const std::string agencyKey = roleToAgencyKey(role);
@@ -264,15 +264,22 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
     (_id.empty() ? "bogus_hass_hund" : _id);
 
   typedef std::pair<AgencyOperation,AgencyPrecondition> operationType;
+
   AgencyGeneralTransaction reg;
-  reg.operations.push_back( // my-local-info
+  reg.push_back( // my-local-info
     operationType(AgencyOperation(locinf), AgencyPrecondition()));
-  reg.operations.push_back( // db my-id
+  reg.push_back( // db my-id
     operationType(AgencyOperation(dbidinf), AgencyPrecondition()));
-  reg.operations.push_back( // cooord my-id
+  reg.push_back( // cooord my-id
     operationType(AgencyOperation(coidinf), AgencyPrecondition()));
+  LOG_TOPIC(INFO, Logger::AGENCY) << reg.toJson();
+  
   result = comm.sendTransactionWithFailover(reg, 0.0);
 
+
+
+  
+  
   std::string id;
   if (result.slice().isArray()) {
     
@@ -471,15 +478,15 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   { VPackObjectBuilder preconditionDefinition(&empty); }
   
   AgencyGeneralTransaction reg;
-  reg.operations.push_back( // Plan entry if not exists
+  reg.push_back( // Plan entry if not exists
     operationType(
       AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
       AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true)));
-  reg.operations.push_back( // ShortID incrementif not already got one
+  reg.push_back( // ShortID incrementif not already got one
     operationType(
       AgencyOperation(targetIdStr, AgencySimpleOperationType::INCREMENT_OP),
       AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY, true)));
-  reg.operations.push_back( // Get shortID
+  reg.push_back( // Get shortID
     operationType(AgencyOperation(targetIdStr), AgencyPrecondition()));
   result = comm.sendTransactionWithFailover(reg, 0.0);
   

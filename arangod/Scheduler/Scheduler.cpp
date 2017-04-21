@@ -365,6 +365,11 @@ void Scheduler::rebalanceThreads() {
   }
 
   while (_nrRunning < _nrWorking + _nrQueued + _nrMinimum) {
+    if (_stopping) {
+      // do not start any new threads in case we are already shutting down
+      break;
+    }
+
     startNewThread();
     usleep(5000);
   }

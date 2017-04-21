@@ -5,7 +5,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products/figures
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9342"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9448"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
@@ -23,22 +23,22 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">32128</span> 
     }, 
-    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">9347</span>, 
-    <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">9453</span>, 
+    <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-04-04T10:01:13Z"</span> 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-04-18T15:52:37Z"</span> 
     }, 
     <span class="hljs-string">"readCache"</span> : { 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">48192</span>, 
       <span class="hljs-string">"total"</span> : <span class="hljs-number">13107200</span> 
     }, 
-    <span class="hljs-string">"documentReferences"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"document-reference"</span>, 
+    <span class="hljs-string">"documentReferences"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"-"</span>, 
     <span class="hljs-string">"alive"</span> : { 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"size"</span> : <span class="hljs-number">0</span> 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">72</span> 
     }, 
     <span class="hljs-string">"dead"</span> : { 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 

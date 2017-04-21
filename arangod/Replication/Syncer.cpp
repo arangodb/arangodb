@@ -527,7 +527,7 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _vocbase->dropCollection(col, true, true);
+  return _vocbase->dropCollection(col, true, true, -1.0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -535,7 +535,11 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::createIndex(VPackSlice const& slice) {
-  VPackSlice const indexSlice = slice.get("index");
+  VPackSlice indexSlice = slice.get("index");
+  if (!indexSlice.isObject()) {
+    indexSlice = slice.get("data");
+  }
+
   if (!indexSlice.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -582,7 +586,12 @@ int Syncer::createIndex(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
-  std::string const id = VelocyPackHelper::getStringValue(slice, "id", "");
+  std::string id;
+  if (slice.hasKey("data")) {
+    id = VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
+  } else {
+    id = VelocyPackHelper::getStringValue(slice, "id", "");
+  }
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;

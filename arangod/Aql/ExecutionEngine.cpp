@@ -1166,6 +1166,29 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines[currentEngineId].nodes.emplace_back(en);
   }
 };
+  
+/// @brief shutdown, will be called exactly once for the whole query
+int ExecutionEngine::shutdown(int errorCode) {
+  int res = TRI_ERROR_NO_ERROR;
+  if (_root != nullptr && !_wasShutdown) {
+    // Take care of locking prevention measures in the cluster:
+    if (_lockedShards != nullptr) {
+      if (arangodb::Transaction::_makeNolockHeaders == _lockedShards) {
+        arangodb::Transaction::_makeNolockHeaders = _previouslyLockedShards;
+      }
+      delete _lockedShards;
+      _lockedShards = nullptr;
+      _previouslyLockedShards = nullptr;
+    }
+    
+    res = _root->shutdown(errorCode);
+ 
+    // prevent a duplicate shutdown
+    _wasShutdown = true;
+  }
+
+  return res;
+}
 
 /// @brief create an execution engine from a plan
 ExecutionEngine* ExecutionEngine::instantiateFromPlan(
@@ -1194,9 +1217,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       // instantiate the engine on the coordinator
       auto inst =
           std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
-      plan->root()->walk(inst.get());
 
       try {
+        plan->root()->walk(inst.get());  // if this throws, we need to
+                                         // clean up as well
         engine = inst.get()->buildEngines();
         root = engine->root();
         // Now find all shards that take part:

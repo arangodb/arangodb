@@ -598,7 +598,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* d
         if (other != nullptr) {
           TRI_voc_cid_t otherCid = other->cid();
           state->releaseCollection(otherCid);
-          vocbase->dropCollection(other, true, false);
+          vocbase->dropCollection(other, true, false, -1.0);
         }
 
         int res = vocbase->renameCollection(collection, name, true, false);
@@ -760,7 +760,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* d
         
         if (collection != nullptr) {
           // drop an existing collection
-          vocbase->dropCollection(collection, true, false);
+          vocbase->dropCollection(collection, true, false, -1.0);
         }
 
         RocksDBFeature::dropCollection(databaseId, collectionId);
@@ -778,7 +778,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* d
             TRI_voc_cid_t otherCid = collection->cid();
 
             state->releaseCollection(otherCid);
-            vocbase->dropCollection(collection, true, false);
+            vocbase->dropCollection(collection, true, false, -1.0);
           }
         } else {
           LOG(WARN) << "empty name attribute in create collection marker for collection " << collectionId << " and database " << databaseId;
@@ -959,7 +959,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* d
         }
 
         if (collection != nullptr) {
-          vocbase->dropCollection(collection, true, false);
+          vocbase->dropCollection(collection, true, false, -1.0);
         }
         RocksDBFeature::dropCollection(databaseId, collectionId);
         break;

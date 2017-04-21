@@ -33,38 +33,29 @@ namespace consensus {
 struct AddFollower : public Job {
   
   AddFollower (Node const& snapshot,
-               Agent* agent,
+               AgentInterface* agent,
                std::string const& jobId,
                std::string const& creator,
-               std::string const& prefix,
                std::string const& database,
                std::string const& collection,
-               std::string const& shard,
-               std::initializer_list<std::string> const&);
+               std::string const& shard);
 
   
-  AddFollower (Node const& snapshot,
-               Agent* agent,
-               std::string const& jobId,
-               std::string const& creator,
-               std::string const& prefix,
-               std::string const& database = std::string(),
-               std::string const& collection = std::string(),
-               std::string const& shard = std::string(),
-               std::vector<std::string> const& newFollowers = {});
-
+  AddFollower (Node const& snapshot, AgentInterface* agent,
+               JOB_STATUS status, std::string const& jobId);
   
   virtual ~AddFollower ();
   
-  virtual JOB_STATUS status () override;
-  virtual bool create () override;
-  virtual bool start() override;
+  virtual JOB_STATUS status () override final;
+  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr)
+    override final;
+  virtual void run() override final;
+  virtual bool start() override final;
+  virtual Result abort() override final;
 
   std::string _database;
   std::string _collection;
   std::string _shard;
-  std::vector<std::string> _newFollower;
-
 };
 
 }}

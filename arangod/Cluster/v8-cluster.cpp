@@ -734,6 +734,15 @@ static void JS_GetCollectionInfoClusterInfo(
               v8::Number::New(isolate, static_cast<double>(ci->journalSize())));
   result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
               v8::Number::New(isolate, ci->replicationFactor()));
+  std::string const dsl = ci->distributeShardsLike();
+  if (!dsl.empty()) {
+    auto ci2 = ClusterInfo::instance()->getCollection(
+      TRI_ObjectToString(args[0]), dsl);
+    if (ci2 != nullptr) {
+      result->Set(TRI_V8_ASCII_STRING("distributeShardsLike"),
+                  TRI_V8_STD_STRING(ci2->name()));
+    }
+  }
   result->Set(TRI_V8_ASCII_STRING("isSmart"),
               v8::Boolean::New(isolate, ci->isSmart()));
 

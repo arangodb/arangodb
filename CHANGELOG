@@ -1,19 +1,41 @@
-v3.1.18 (2017-XX-XX)
+v3.1.19 (XXXX-XX-XX)
 --------------------
 
-* Fixed a dead-lock situation in cluster traversers, it could happen in
+* fixed issue #2441
+
+* fixed issue #2440
+
+
+v3.1.18 (2017-04-18)
+--------------------
+
+* fixed error in continuous synchronization of collections
+
+* fixed spurious hangs on server shutdown
+
+* better error messages during restore collection
+
+* completely overhaul supervision. More detailed tests
+
+* fixed a dead-lock situation in cluster traversers, it could happen in
   rare cases if the computation on one DBServer could be completed much earlier
   than the other server. It could also be restricted to SmartGraphs only.
 
-* (Enterprise only) Fixed a bug in SmartGraph DepthFirstSearch. In some
+* (Enterprise only) fixed a bug in SmartGraph DepthFirstSearch. In some
   more complicated queries, the maxDepth limit of 1 was not considered strictly
   enough, causing the traverser to do unlimited depth searches.
+
+* fixed issue #2415
+
+* fixed issue #2422
+
+* fixed issue #1974
 
 v3.1.17 (2017-04-04)
 --------------------
 
 * (Enterprise only) fixed a bug where replicationFactor was not correctly
-  forwarded in SmartGraph creation.
+  forwarded in SmartGraph creation
 
 * fixed issue #2404
 
@@ -62,7 +84,6 @@ v3.1.16 (2017-03-27)
 
 * fixed a bug with restarted servers indicating status as "STARTUP"
   rather that "SERVING" in Nodes UI.
-
 
 v3.1.15 (2017-03-20)
 --------------------

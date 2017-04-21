@@ -55,9 +55,6 @@ public:
   /// @brief Defualt dtor
   virtual ~Inception();
 
-  /// @brief Report in from callbacks
-  void reportIn(std::string const&, uint64_t);
-
   /// @brief Report in from other agents measurements
   void reportIn(query_t const&);
 
@@ -72,9 +69,6 @@ public:
   /// @brief We are a restarting active RAFT agent
   bool restartingActiveAgent();
   
-  /// @brief Try to estimate good RAFT min/max timeouts
-  bool estimateRAFTInterval();
-
   /// @brief Gossip your way into the agency
   void gossip();
 

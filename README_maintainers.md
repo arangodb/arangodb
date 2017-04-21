@@ -29,6 +29,7 @@ CMake flags
  * *-DUSE_MAINTAINER_MODE=1* - generate lex/yacc and errors files
  * *-DUSE_BACKTRACE=1* - add backtraces to native code asserts & exceptions
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
+ * *-DUSE_CATCH_TESTS=On (default is On so this is set unless you explicitly disable it)
 
 CFLAGS
 ------
@@ -166,8 +167,7 @@ Test frameworks used
 ====================
 There are several major places where unittests live: 
  - *UnitTests/HttpInterface*        - rspec tests
- - *UnitTests/Basics*               - boost unittests
- - *UnitTests/Geo*                  - boost unittests
+ - tests/*                          - catch unittests
  - *js/server/tests*                - runneable on the server
  - *js/common/tests*                - runneable on the server & via arangosh
  - *js/common/test-data*

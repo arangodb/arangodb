@@ -31,15 +31,20 @@ namespace arangodb {
 namespace consensus {
 
 struct FailedServer : public Job {
-  FailedServer(Node const& snapshot, Agent* agent, std::string const& jobId,
-               std::string const& creator, std::string const& agencyPrefix,
+  FailedServer(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+               std::string const& creator = std::string(),
                std::string const& failed = std::string());
+
+  FailedServer(Node const& snapshot, AgentInterface* agent,
+               JOB_STATUS status, std::string const& jobId);
 
   virtual ~FailedServer();
 
-  virtual bool start() override;
-  virtual bool create() override;
-  virtual JOB_STATUS status() override;
+  virtual bool start() override final;
+  virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;
+  virtual JOB_STATUS status() override final;
+  virtual void run() override final;
+  virtual Result abort() override final;
 
   std::string _server;
 };

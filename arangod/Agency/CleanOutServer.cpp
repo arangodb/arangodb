@@ -23,246 +23,327 @@
 
 #include "CleanOutServer.h"
 
-#include "Agency/Agent.h"
+#include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
 
-CleanOutServer::CleanOutServer(Node const& snapshot, Agent* agent,
+CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,
                                std::string const& creator,
-                               std::string const& prefix,
                                std::string const& server)
-    : Job(snapshot, agent, jobId, creator, prefix), _server(server) {
+    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(id(server)) {}
+
+CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
+                               JOB_STATUS status, std::string const& jobId)
+    : Job(status, snapshot, agent, jobId) {
+  // Get job details from agency:
   try {
-    JOB_STATUS js = status();
-    if (js == TODO) {
-      start();
-    } else if (js == NOTFOUND) {
-      if (create()) {
-        start();
-      }
-    }
+    std::string path = pos[status] + _jobId + "/";
+    _server = _snapshot.get(path + "server").getString();
+    _creator = _snapshot.get(path + "creator").getString();
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-    finish("DBServers/" + _server, false, e.what());
+    std::stringstream err;
+    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    finish(_server, "", false, err.str());
+    _status = FAILED;
   }
 }
 
 CleanOutServer::~CleanOutServer() {}
 
-JOB_STATUS CleanOutServer::status() {
-  auto status = exists();
-
-  if (status != NOTFOUND) {  // Get job details from agency
-
-    try {
-      _server = _snapshot(pos[status] + _jobId + "/server").getString();
-    } catch (std::exception const& e) {
-      std::stringstream err;
-      err << "Failed to find job " << _jobId << " in agency: " << e.what();
-      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
-      finish("DBServers/" + _server, false, err.str());
-      return FAILED;
-    }
-  }
-
-  if (status == PENDING) {
-    Node::Children const todos = _snapshot(toDoPrefix).children();
-    Node::Children const pends = _snapshot(pendingPrefix).children();
-    size_t found = 0;
-
-    for (auto const& subJob : todos) {
-      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
-        found++;
-      }
-    }
-    for (auto const& subJob : pends) {
-      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
-        found++;
-      }
-    }
-
-    if (found == 0) {
-      // Put server in /Target/CleanedServers:
-      Builder reportTrx;
-      {
-        VPackArrayBuilder guard(&reportTrx);
-        {
-          VPackObjectBuilder guard3(&reportTrx);
-          reportTrx.add(VPackValue(_agencyPrefix + "/Target/CleanedServers"));
-          {
-            VPackObjectBuilder guard4(&reportTrx);
-            reportTrx.add("op", VPackValue("push"));
-            reportTrx.add("new", VPackValue(_server));
-          }
-        }
-      }
-      // Transact to agency
-      write_ret_t res = transact(_agent, reportTrx);
-
-      if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Have reported " << _server
-                                        << " in /Target/CleanedServers";
-      } else {
-        LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to report " << _server
-                                       << " in /Target/CleanedServers";
-      }
-
-      if (finish("DBServers/" + _server)) {
-        return FINISHED;
-      }
-    }
-  }
-
-  return status;
+void CleanOutServer::run() {
+  runHelper(_server, "");
 }
 
-bool CleanOutServer::create() {  // Only through shrink cluster
+JOB_STATUS CleanOutServer::status() {
+  if (_status != PENDING) {
+    return _status;
+  }
 
-  // Lookup server
-  if (_server.compare("DBServer") == 0) {
-    try {
-      _server = uuidLookup(_snapshot, _server);
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "MoveShard: To server " << _server << " does not exist";
+  Node::Children const todos = _snapshot.get(toDoPrefix).children();
+  Node::Children const pends = _snapshot.get(pendingPrefix).children();
+  size_t found = 0;
+
+  for (auto const& subJob : todos) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      found++;
+    }
+  }
+  for (auto const& subJob : pends) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      found++;
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  if (found > 0) {  // some subjob still running
+    // timeout here:
+    std::string timeCreatedString
+      = _snapshot.get(pendingPrefix + _jobId + "/timeCreated").getString();
+    Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
+    Supervision::TimePoint now(std::chrono::system_clock::now());
+    if (now - timeCreated > std::chrono::duration<double>(7200.0)) {
+      abort();
+      return FAILED;
+    }
+    return PENDING;
+  }
+
+  Node::Children const failed = _snapshot.get(failedPrefix).children();
+  size_t failedFound = 0;
+  for (auto const& subJob : failed) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      failedFound++;
+    }
+  }
+
+  if (failedFound > 0) {
+    abort();
+    return FAILED;
+  }
+  
+  // all subjobs done:
+
+  // Put server in /Target/CleanedServers:
+  Builder reportTrx;
+  {
+    VPackArrayBuilder arrayGuard(&reportTrx);
+    {
+      VPackObjectBuilder objectGuard(&reportTrx);
+      reportTrx.add(VPackValue("/Target/CleanedServers"));
+      {
+        VPackObjectBuilder guard4(&reportTrx);
+        reportTrx.add("op", VPackValue("push"));
+        reportTrx.add("new", VPackValue(_server));
+      }
+      addRemoveJobFromSomewhere(reportTrx, "Pending", _jobId);
+      Builder job;
+      _snapshot.get(pendingPrefix + _jobId).toBuilder(job);
+      addPutJobIntoSomewhere(reportTrx, "Finished", job.slice(), "");
+      addReleaseServer(reportTrx, _server);
+    }
+  }
+
+  // Transact to agency
+  write_ret_t res = singleWriteTransaction(_agent, reportTrx);
+
+  if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Have reported " << _server
+                                    << " in /Target/CleanedServers";
+    return FINISHED;
+  }
+
+  LOG_TOPIC(ERR, Logger::SUPERVISION) << "Failed to report " << _server
+                                 << " in /Target/CleanedServers";
+  return FAILED;
+}
+
+bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
+
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "Todo: Clean out server " + _server + " for shrinkage";
 
-  std::string path = _agencyPrefix + toDoPrefix + _jobId;
+  bool selfCreate = (envelope == nullptr); // Do we create ourselves?
 
-  _jb = std::make_shared<Builder>();
-  _jb->openArray();
-  _jb->openObject();
-  _jb->add(path, VPackValue(VPackValueType::Object));
-  _jb->add("type", VPackValue("cleanOutServer"));
-  _jb->add("server", VPackValue(_server));
-  _jb->add("jobId", VPackValue(_jobId));
-  _jb->add("creator", VPackValue(_creator));
-  _jb->add("timeCreated",
-           VPackValue(timepointToString(std::chrono::system_clock::now())));
-  _jb->close();
-  _jb->close();
-  _jb->close();
+  if (selfCreate) {
+    _jb = std::make_shared<Builder>();
+  } else {
+    _jb = envelope;
+  }
 
-  write_ret_t res = transact(_agent, *_jb);
+  std::string path = toDoPrefix + _jobId;
+
+  { VPackArrayBuilder guard(_jb.get());
+    VPackObjectBuilder guard2(_jb.get());
+    _jb->add(VPackValue(path));
+    { VPackObjectBuilder guard3(_jb.get());
+      _jb->add("type", VPackValue("cleanOutServer"));
+      _jb->add("server", VPackValue(_server));
+      _jb->add("jobId", VPackValue(_jobId));
+      _jb->add("creator", VPackValue(_creator));
+      _jb->add("timeCreated",
+             VPackValue(timepointToString(std::chrono::system_clock::now())));
+    }
+  }
+
+  _status = TODO;
+
+  if (!selfCreate) {
+    return true;
+  }
+
+  write_ret_t res = singleWriteTransaction(_agent, *_jb);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
+  _status = NOTFOUND;
+
+  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
   return false;
 }
 
 bool CleanOutServer::start() {
+  // If anything throws here, the run() method catches it and finishes
+  // the job.
+ 
+  // Check if the server exists:
+  if (!_snapshot.has(plannedServers + "/" + _server)) {
+    finish("", "", false, "server does not exist as DBServer in Plan");
+    return false;
+  }
+
+  // Check that the server is not locked:
+  if (_snapshot.has(blockedServersPrefix + _server)) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "server " << _server
+      << " is currently locked, not starting CleanOutServer job " << _jobId;
+    return false;
+  }
+
+  // Check that the server is in state "GOOD":
+  std::string health = checkServerGood(_snapshot, _server);
+  if (health != "GOOD") {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "server " << _server
+      << " is currently " << health << ", not starting CleanOutServer job "
+      << _jobId;
+      return false;
+  }
+
+  // Check that _to is not in `Target/CleanedServers`:
+  VPackBuilder cleanedServersBuilder;
+  try {
+    auto cleanedServersNode = _snapshot.get(cleanedPrefix);
+    cleanedServersNode.toBuilder(cleanedServersBuilder);
+  }
+  catch (...) {
+    // ignore this check
+    cleanedServersBuilder.clear();
+    {
+      VPackArrayBuilder guard(&cleanedServersBuilder); 
+    }
+  }
+  VPackSlice cleanedServers = cleanedServersBuilder.slice();
+  if (cleanedServers.isArray()) {
+    for (auto const& x : VPackArrayIterator(cleanedServers)) {
+      if (x.isString() && x.copyString() == _server) {
+        finish("", "", false, "server must not be in `Target/CleanedServers`");
+        return false;
+      }
+    }
+  }
+
+  // Check that _to is not in `Target/FailedServers`:
+  VPackBuilder failedServersBuilder;
+  try {
+    auto failedServersNode = _snapshot.get(failedServersPrefix);
+    failedServersNode.toBuilder(failedServersBuilder);
+  }
+  catch (...) {
+    // ignore this check
+    failedServersBuilder.clear();
+    { VPackObjectBuilder guard(&failedServersBuilder); 
+    }
+  }
+  VPackSlice failedServers = failedServersBuilder.slice();
+  if (failedServers.isObject()) {
+    Slice found = failedServers.get(_server);
+    if (!found.isNone()) {
+      finish("", "", false, "server must not be in `Target/FailedServers`");
+      return false;
+    }
+  }
+
+  // Check if we can get things done in the first place
+  if (!checkFeasibility()) {
+    finish("", "", false, "server " + _server + " cannot be cleaned out");
+    return false;
+  }
+
   // Copy todo to pending
-  Builder todo, pending;
+  auto pending = std::make_shared<Builder>();
+  Builder todo;
 
   // Get todo entry
-  todo.openArray();
-  if (_jb == nullptr) {
-    try {
-      _snapshot(toDoPrefix + _jobId).toBuilder(todo);
-    } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to get key " + toDoPrefix +
-                                             _jobId + " from agency snapshot";
-      return false;
+  { VPackArrayBuilder guard(&todo);
+    // When create() was done with the current snapshot, then the job object
+    // will not be in the snapshot under ToDo, but in this case we find it
+    // in _jb:
+    if (_jb == nullptr) {
+      try {
+        _snapshot.get(toDoPrefix + _jobId).toBuilder(todo);
+      } catch (std::exception const&) {
+        // Just in case, this is never going to happen, since we will only
+        // call the start() method if the job is already in ToDo.
+        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " +
+          toDoPrefix + _jobId + " from agency snapshot";
+        return false;
+      }
+    } else {
+      try {
+        todo.add(_jb->slice()[0].get(toDoPrefix + _jobId));
+      } catch (std::exception const& e) {
+        // Just in case, this is never going to happen, since when _jb is
+        // set, then the current job is stored under ToDo.
+        LOG_TOPIC(WARN, Logger::SUPERVISION) << e.what() << ": " 
+          << __FILE__ << ":" << __LINE__;
+        return false;
+      }
     }
-  } else {
-    todo.add(_jb->slice()[0].valueAt(0));
   }
-  todo.close();
 
   // Enter pending, remove todo, block toserver
-  pending.openArray();
+  { VPackArrayBuilder listOfTransactions(pending.get());
 
-  // --- Add pending
-  pending.openObject();
-  pending.add(_agencyPrefix + pendingPrefix + _jobId,
-              VPackValue(VPackValueType::Object));
-  pending.add("timeStarted",
-              VPackValue(timepointToString(std::chrono::system_clock::now())));
-  for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
-    pending.add(obj.key.copyString(), obj.value);
-  }
-  pending.close();
+    { VPackObjectBuilder objectForMutation(pending.get());
 
-  // --- Delete todo
-  pending.add(_agencyPrefix + toDoPrefix + _jobId,
-              VPackValue(VPackValueType::Object));
-  pending.add("op", VPackValue("delete"));
-  pending.close();
+      addPutJobIntoSomewhere(*pending, "Pending", todo.slice()[0]);
+      addRemoveJobFromSomewhere(*pending, "ToDo", _jobId);
 
-  // --- Block toServer
-  pending.add(_agencyPrefix + blockedServersPrefix + _server,
-              VPackValue(VPackValueType::Object));
-  pending.add("jobId", VPackValue(_jobId));
-  pending.close();
+      addBlockServer(*pending, _server, _jobId);
 
-  // --- Announce in Sync that server is cleaning out
-  /*  pending.add(_agencyPrefix + serverStatePrefix + _server,
-                VPackValue(VPackValueType::Object));
-    pending.add("cleaning", VPackValue(true));
-    pending.close();*/
+      // Schedule shard relocations
+      if (!scheduleMoveShards(pending)) {
+        finish("", "", false, "Could not schedule MoveShard.");
+        return false;
+      }
 
-  pending.close();
+    }  // mutation part of transaction done
 
-  // Preconditions
-  // --- Check that toServer not blocked
-  pending.openObject();
-  pending.add(_agencyPrefix + blockedServersPrefix + _server,
-              VPackValue(VPackValueType::Object));
-  pending.add("oldEmpty", VPackValue(true));
-  pending.close();
-
-  pending.close();
-  pending.close();
+    // Preconditions
+    { VPackObjectBuilder objectForPrecondition(pending.get());
+      addPreconditionServerNotBlocked(*pending, _server);
+      addPreconditionServerGood(*pending, _server);
+      addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
+      addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
+    }
+  }  // array for transaction done
 
   // Transact to agency
-  write_ret_t res = transact(_agent, pending);
+  write_ret_t res = singleWriteTransaction(_agent, *pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Pending: Clean out server " + _server;
-
-    // Check if we can get things done in the first place
-    if (!checkFeasibility()) {
-      finish("DBServers/" + _server, false);
-      return false;
-    }
-
-    // Schedule shard relocations
-    if (!scheduleMoveShards()) {
-      finish("DBServers/" + _server, false, "Could not schedule MoveShard.");
-      return false;
-    }
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Pending: Clean out server "
+      + _server;
 
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY)
+  LOG_TOPIC(INFO, Logger::SUPERVISION)
       << "Precondition failed for starting job " + _jobId;
 
   return false;
 }
 
-bool CleanOutServer::scheduleMoveShards() {
+bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
   std::vector<std::string> servers = availableServers(_snapshot);
 
-  // Minimum 1 DB server must remain
-  if (servers.size() == 1) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "DB server " << _server
-                                   << " is the last standing db server.";
-    return false;
-  }
-
-  Node::Children const& databases = _snapshot("/Plan/Collections").children();
+  Node::Children const& databases = _snapshot.get("/Plan/Collections").children();
   size_t sub = 0;
 
   for (auto const& database : databases) {
@@ -272,130 +353,77 @@ bool CleanOutServer::scheduleMoveShards() {
       
       auto const& collection = *(collptr.second);
       
-      try { // distributeShardsLike entry means we only follow
-        if (collection("distributeShardsLike").slice().copyString() != "") {
-          continue;
-        }
-      } catch (...) {}
+      if (collection.has("distributeShardsLike")) {
+        continue;
+      }
 
       for (auto const& shard : collection("shards").children()) {
         
-        bool found = false;
-        VPackArrayIterator dbsit(shard.second->slice());
-
         // Only shards, which are affected
-        for (auto const& dbserver : dbsit) {
+        int found = -1;
+        int count = 0;
+        for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
           if (dbserver.copyString() == _server) {
-            found = true;
+            found = count;
             break;
           }
+          count++;
         }
-        if (!found) {
+        if (found == -1) {
           continue;
         }
 
+        decltype(servers) serversCopy(servers);  // a copy
+
         // Only destinations, which are not already holding this shard
-        for (auto const& dbserver : dbsit) {
-          servers.erase(
-            std::remove(servers.begin(), servers.end(), dbserver.copyString()),
-            servers.end());
+        for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
+          serversCopy.erase(
+            std::remove(serversCopy.begin(), serversCopy.end(),
+                        dbserver.copyString()),
+            serversCopy.end());
         }
 
-        // Among those a random destination
+        // Among those a random destination:
         std::string toServer;
-        if (servers.empty()) {
-          LOG_TOPIC(DEBUG, Logger::AGENCY)
+        if (serversCopy.empty()) {
+          LOG_TOPIC(DEBUG, Logger::SUPERVISION)
             << "No servers remain as target for MoveShard";
           return false;
         }
 
-        try {
-          toServer = servers.at(rand() % servers.size());
-        } catch (...) {
-          LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Range error picking destination for shard " + shard.first;
-        }
+        toServer = serversCopy.at(arangodb::RandomGenerator::interval(
+            0, serversCopy.size()-1));
 
-        // Schedule move
+        // Schedule move into trx:
         MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, _agencyPrefix, database.first, collptr.first,
-                  shard.first, _server, toServer);
-        
+                  _jobId, database.first, collptr.first,
+                  shard.first, _server, toServer, found == 0)
+          .create(trx);
       }
     }
   }
 
   return true;
-  
 }
 
 bool CleanOutServer::checkFeasibility() {
-  // Server exists
-  if (_snapshot.exists("/Plan/DBServers/" + _server).size() != 3) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "No db server with id " << _server << " in plan.";
-    return false;
-  }
+  std::vector<std::string> availServers = availableServers(_snapshot);
 
-  // Server has not been cleaned already
-  for (auto const& srv :
-         VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
-    if (srv.copyString() == _server) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << _server << " has been cleaned out already!";
-      return false;
-    }
-  }
-
-  // Server has not failed already
-  for (auto const& srv :
-         VPackObjectIterator(_snapshot("/Target/FailedServers").slice())) {
-    if (srv.key.copyString() == _server) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << _server << " has failed!";
-      return false;
-    }
-  }
-  
-  if (_snapshot.exists(serverStatePrefix + _server + "/cleaning").size() == 4) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << _server << " has been cleaned out already!";
-    return false;
-  }
-
-  std::vector<std::string> availServers;
-
-  // Get servers from plan
-  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
-  for (auto const& srv : dbservers) {
-    availServers.push_back(srv.first);
-  }
-
-  // Remove cleaned from ist
-  if (_snapshot.exists("/Target/CleanedServers").size() == 2) {
-    for (auto const& srv :
-           VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
-      availServers.erase(
-        std::remove(
-          availServers.begin(), availServers.end(), srv.copyString()),
-        availServers.end());
-    }
-  }
-
-  // Minimum 1 DB server must remain
+  // Minimum 1 DB server must remain:
   if (availServers.size() == 1) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
+    LOG_TOPIC(ERR, Logger::SUPERVISION)
       << "DB server " << _server << " is the last standing db server.";
     return false;
   }
 
-  // Remaning after clean out
+  // Remaining after clean out:
   uint64_t numRemaining = availServers.size() - 1;
 
-  // Find conflictings collections
+  // Find conflicting collections:
   uint64_t maxReplFact = 1;
   std::vector<std::string> tooLargeCollections;
   std::vector<uint64_t> tooLargeFactors;
-  Node::Children const& databases = _snapshot("/Plan/Collections").children();
+  Node::Children const& databases = _snapshot.get("/Plan/Collections").children();
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       try {
@@ -424,7 +452,7 @@ bool CleanOutServer::checkFeasibility() {
       factors << std::to_string(factor) << " ";
     }
 
-    LOG_TOPIC(ERR, Logger::AGENCY)
+    LOG_TOPIC(ERR, Logger::SUPERVISION)
         << "Cannot accomodate shards " << collections.str()
         << "with replication factors " << factors.str()
         << "after cleaning out server " << _server;
@@ -433,3 +461,40 @@ bool CleanOutServer::checkFeasibility() {
 
   return true;
 }
+
+arangodb::Result CleanOutServer::abort() {
+  // We can assume that the job is either in ToDo or in Pending.
+  Result result;
+
+  if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
+    result = Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE, "Failed aborting failedServer beyond pending stage");
+    return result;
+  }
+
+  // Can now only be TODO or PENDING
+  if (_status == TODO) {
+    finish("", "", false, "job aborted");
+    return result;
+  }
+
+  // Abort all our subjobs:
+  Node::Children const todos = _snapshot.get(toDoPrefix).children();
+  Node::Children const pends = _snapshot.get(pendingPrefix).children();
+
+  for (auto const& subJob : todos) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      JobContext(TODO, subJob.first, _snapshot, _agent).abort();
+    }
+  }
+  for (auto const& subJob : pends) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      JobContext(PENDING, subJob.first, _snapshot, _agent).abort();
+    }
+  }
+
+  finish(_server, "", false, "job aborted");
+
+  return result;
+  
+}
+

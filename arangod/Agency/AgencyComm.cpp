@@ -262,9 +262,10 @@ void AgencyTransientTransaction::toVelocyPack(VPackBuilder& builder) const {
 }
 
 bool AgencyTransientTransaction::validate(AgencyCommResult const& result) const {
-  return (result.slice().isObject() &&
-          result.slice().hasKey("results") &&
-          result.slice().get("results").isArray());
+  return (result.slice().isArray() &&
+          result.slice().length() > 0 && 
+          result.slice()[0].isBool() &&
+          result.slice()[0].getBool() == true);
 }
 
 // -----------------------------------------------------------------------------
@@ -278,21 +279,38 @@ std::string AgencyGeneralTransaction::toJson() const {
 }
 
 void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
-  for (auto const& operation : operations) {
-    VPackArrayBuilder guard2(&builder);
-    if (std::get<0>(operation).type().type == AgencyOperationType::Type::READ) {
-      std::get<0>(operation).toGeneralBuilder(builder);
-    } else {
-      std::get<0>(operation).toGeneralBuilder(builder);
-      std::get<1>(operation).toGeneralBuilder(builder);
-      builder.add(VPackValue(clientId));
+  //VPackArrayBuilder guard(&builder);
+  for (auto const& trx : transactions) {
+    auto opers = std::get<0>(trx);
+    auto precs = std::get<1>(trx);
+    if (!opers.empty()) {
+      if (opers[0].type().type == AgencyOperationType::Type::READ) {
+        for (auto const& op : opers) {
+          VPackArrayBuilder guard(&builder);
+          op.toGeneralBuilder(builder);
+        }
+      } else {
+          VPackArrayBuilder guard(&builder);
+        { VPackObjectBuilder o(&builder);  // Writes
+          for (AgencyOperation const& oper : opers) {
+            oper.toVelocyPack(builder);
+          }}
+        { VPackObjectBuilder p(&builder);  // Preconditions
+          if (!precs.empty()) {
+            for (AgencyPrecondition const& prec : precs) {
+              prec.toVelocyPack(builder);
+            }}}
+        builder.add(VPackValue(clientId)); // Transactions  
+      }
     }
   }
 }
 
 void AgencyGeneralTransaction::push_back(
   std::pair<AgencyOperation,AgencyPrecondition> const& oper) {
-  operations.push_back(oper);
+  transactions.emplace_back(
+    TransactionType(std::vector<AgencyOperation>(1,oper.first),
+                    std::vector<AgencyPrecondition>(1,oper.second)));
 }
 
 bool AgencyGeneralTransaction::validate(AgencyCommResult const& result) const {
@@ -1591,20 +1609,14 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
 
   try {
     VPackObjectBuilder b(&builder);
-    builder.add(VPackValue("Sync"));
 
+    builder.add(VPackValue("Agency"));
     {
-      VPackObjectBuilder c(&builder);
-      builder.add("LatestID", VPackValue(1));
-      addEmptyVPackObject("Problems", builder);
-      builder.add("UserVersion", VPackValue(1));
-      addEmptyVPackObject("ServerStates", builder);
-      builder.add("HeartbeatIntervalMs", VPackValue(1000));
-      addEmptyVPackObject("Commands", builder);
+      VPackObjectBuilder a(&builder);
+      builder.add("Definition", VPackValue(1));
     }
 
-    builder.add(VPackValue("Current"));
-
+    builder.add(VPackValue("Current")); // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
       builder.add(VPackValue("Collections"));
@@ -1626,8 +1638,9 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       addEmptyVPackObject("Databases", builder);
     }
 
-    builder.add(VPackValue("Plan"));
+    builder.add("InitDone", VPackValue(true)); // InitDone
 
+    builder.add(VPackValue("Plan")); // Plan ----------------------------------
     {
       VPackObjectBuilder c(&builder);
       addEmptyVPackObject("Coordinators", builder);
@@ -1651,8 +1664,28 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       }
     }
 
-    builder.add(VPackValue("Target"));
+    builder.add("Secret", VPackValue(jwtSecret)); // Secret
 
+    builder.add(VPackValue("Sync")); // Sync ----------------------------------
+    {
+      VPackObjectBuilder c(&builder);
+      builder.add("LatestID", VPackValue(1));
+      addEmptyVPackObject("Problems", builder);
+      builder.add("UserVersion", VPackValue(1));
+      addEmptyVPackObject("ServerStates", builder);
+      builder.add("HeartbeatIntervalMs", VPackValue(1000));
+      addEmptyVPackObject("Commands", builder);
+    }
+
+    builder.add(VPackValue("Supervision")); // Supervision --------------------
+    {
+      VPackObjectBuilder c(&builder);
+      addEmptyVPackObject("Health", builder);
+      addEmptyVPackObject("Shards", builder);
+      addEmptyVPackObject("DBServers", builder);
+    }
+
+    builder.add(VPackValue("Target")); // Target ------------------------------
     {
       VPackObjectBuilder c(&builder);
       builder.add(VPackValue("Collections"));
@@ -1687,17 +1720,6 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       builder.add("Version", VPackValue(1));
     }
 
-    builder.add(VPackValue("Supervision"));
-
-    {
-      VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("Health", builder);
-      addEmptyVPackObject("Shards", builder);
-      addEmptyVPackObject("DBServers", builder);
-    }
-
-    builder.add("InitDone", VPackValue(true));
-    builder.add("Secret", VPackValue(jwtSecret));
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
         << "Couldn't create initializing structure " << e.what();

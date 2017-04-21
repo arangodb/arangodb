@@ -869,6 +869,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   bool allowDropSystem = false;
+  double timeout = -1.0;   // wait forever
   if (args.Length() > 0) {
     // options
     if (args[0]->IsObject()) {
@@ -878,12 +879,16 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       if (optionsObject->Has(IsSystemKey)) {
         allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
       }
+      TRI_GET_GLOBAL_STRING(TimeoutKey);
+      if (optionsObject->Has(TimeoutKey)) {
+        timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
+      }
     } else {
       allowDropSystem = TRI_ObjectToBoolean(args[0]);
     }
   }
 
-  int res = collection->vocbase()->dropCollection(collection, allowDropSystem, true);
+  int res = collection->vocbase()->dropCollection(collection, allowDropSystem, true, timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");
@@ -1068,6 +1073,102 @@ static void JS_IsLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else {
     TRI_V8_RETURN_FALSE();
   }
+  TRI_V8_TRY_CATCH_END
+}
+
+#ifdef DEBUG_SYNC_REPLICATION
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock getFollowers
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_AddFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("addFollower(<name>)");
+  }
+
+  ServerID const serverId = TRI_ObjectToString(args[0]);
+
+  if (ServerState::instance()->isDBServer()) {
+    arangodb::LogicalCollection const* v8Collection =
+        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                                     WRP_VOCBASE_COL_TYPE);
+
+    if (v8Collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+    }
+
+    TRI_vocbase_t* vocbase = v8Collection->vocbase();
+    if (vocbase == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+
+    std::string collectionName = v8Collection->name();
+    auto collection = vocbase->lookupCollection(collectionName);
+    if (collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+    collection->followers()->add(serverId);
+  }
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock removeFollower
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_RemoveFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("removeFollower(<name>)");
+  }
+
+  ServerID const serverId = TRI_ObjectToString(args[0]);
+
+  if (ServerState::instance()->isDBServer()) {
+    arangodb::LogicalCollection const* v8Collection =
+        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                                     WRP_VOCBASE_COL_TYPE);
+
+    if (v8Collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+    }
+
+    TRI_vocbase_t* vocbase = v8Collection->vocbase();
+    if (vocbase == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+
+    std::string collectionName = v8Collection->name();
+    auto collection = vocbase->lookupCollection(collectionName);
+    if (collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+    collection->followers()->remove(serverId);
+  }
+
+  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3187,6 +3288,12 @@ void TRI_InitV8Collection(v8::Handle<v8::Context> context,
                        JS_AssumeLeadership, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isLeader"),
                        JS_IsLeader, true);
+#ifdef DEBUG_SYNC_REPLICATION
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("addFollower"),
+                       JS_AddFollower, true);
+#endif
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("removeFollower"),
+                       JS_RemoveFollower, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getFollowers"),
                        JS_GetFollowers, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("load"),
