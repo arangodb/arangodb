@@ -540,9 +540,6 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                               arangodb::ManagedDocumentResult& mdr,
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool /*lock*/) {
-  // TODO FIXME -- limit transaction size
-  // TODO FIXME -- intermediate commit
-
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -594,7 +591,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   TRI_voc_rid_t revisionId =
       transaction::helpers::extractRevFromDocument(newSlice);
 
-  RocksDBSavePoint guard(rocksTransaction(trx));
+  RocksDBSavePoint guard(rocksTransaction(trx), trx->isSingleOperationTransaction());
 
   res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
   if (res.ok()) {
@@ -636,8 +633,6 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
                               ManagedDocumentResult& previous,
                               TRI_voc_rid_t const& revisionId,
                               arangodb::velocypack::Slice const key) {
-  // TODO FIXME -- intermediate commit
-
   resultMarkerTick = 0;
   RocksDBOperationResult res;
 
@@ -697,7 +692,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     }
   }
 
-  RocksDBSavePoint guard(rocksTransaction(trx));
+  RocksDBSavePoint guard(rocksTransaction(trx), trx->isSingleOperationTransaction());
 
   VPackSlice const newDoc(builder->slice());
 
@@ -742,9 +737,6 @@ int RocksDBCollection::replace(
     arangodb::velocypack::Slice const fromSlice,
     arangodb::velocypack::Slice const toSlice) {
   resultMarkerTick = 0;
-
-  // TODO FIXME -- improve transaction size
-  // TODO FIXME -- intermediate commit
 
   Result res;
   bool const isEdgeCollection =
@@ -798,7 +790,7 @@ int RocksDBCollection::replace(
     }
   }
 
-  RocksDBSavePoint guard(rocksTransaction(trx));
+  RocksDBSavePoint guard(rocksTransaction(trx), trx->isSingleOperationTransaction());
 
   RocksDBOperationResult opResult =
       updateDocument(trx, oldRevisionId, oldDoc, revisionId,
@@ -842,9 +834,6 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
                               TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
                               TRI_voc_rid_t const& revisionId,
                               TRI_voc_rid_t& prevRev) {
-  // TODO FIXME -- improve transaction size
-  // TODO FIXME -- intermediate commit
-
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -885,7 +874,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
     }
   }
 
-  RocksDBSavePoint guard(rocksTransaction(trx));
+  RocksDBSavePoint guard(rocksTransaction(trx), trx->isSingleOperationTransaction());
 
   res = removeDocument(trx, oldRevisionId, oldDoc, options.waitForSync);
   if (res.ok()) {
