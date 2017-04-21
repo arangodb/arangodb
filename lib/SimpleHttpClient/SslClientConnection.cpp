@@ -243,9 +243,11 @@ void SslClientConnection::init(uint64_t sslProtocol) {
       meth = TLSv1_2_method();
       break;
 
+    case SSL_UNKNOWN:
     default:
-      // fallback is to use tlsv1
-      meth = TLSv1_method();
+      // default is to use TLSv12
+      meth = TLSv1_2_method();
+      break;
   }
 
   _ctx = SSL_CTX_new(meth);
