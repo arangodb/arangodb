@@ -158,7 +158,7 @@ void RocksDBEngine::start() {
   // options imported set by RocksDBOptionFeature
   auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
       "RocksDBOption");
-  /*
+  
   _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
   _options.max_write_buffer_number =
       static_cast<int>(opts->_maxWriteBufferNumber);
@@ -183,7 +183,7 @@ void RocksDBEngine::start() {
       static_cast<size_t>(opts->_logFileTimeToRoll);
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
-*/
+
   _options.create_if_missing = true;
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();

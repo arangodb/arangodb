@@ -30,28 +30,34 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
 
+#include <rocksdb/options.h>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
+  
+namespace {
+rocksdb::Options rocksDBDefaults;
+}
 
 RocksDBOptionFeature::RocksDBOptionFeature(
   application_features::ApplicationServer* server)
   : application_features::ApplicationFeature(server, "RocksDBOption"),
-    _writeBufferSize(0),
-    _maxWriteBufferNumber(2),
-    _delayedWriteRate(2 * 1024 * 1024),
-    _minWriteBufferNumberToMerge(1),
-    _numLevels(4),
-    _maxBytesForLevelBase(256 * 1024 * 1024),
-    _maxBytesForLevelMultiplier(10),
-    _baseBackgroundCompactions(1),
-    _maxBackgroundCompactions(1),
-    _maxLogFileSize(0),
-    _keepLogFileNum(1000),
-    _logFileTimeToRoll(0),
-    _compactionReadaheadSize(0),
-    _verifyChecksumsInCompaction(true),
-    _optimizeFiltersForHits(true) {
+    _writeBufferSize(rocksDBDefaults.write_buffer_size),
+    _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
+    _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
+    _minWriteBufferNumberToMerge(rocksDBDefaults.min_write_buffer_number_to_merge),
+    _numLevels(rocksDBDefaults.num_levels),
+    _maxBytesForLevelBase(rocksDBDefaults.max_bytes_for_level_base),
+    _maxBytesForLevelMultiplier(rocksDBDefaults.max_bytes_for_level_multiplier),
+    _baseBackgroundCompactions(rocksDBDefaults.base_background_compactions),
+    _maxBackgroundCompactions(rocksDBDefaults.max_background_compactions),
+    _maxLogFileSize(rocksDBDefaults.max_log_file_size),
+    _keepLogFileNum(rocksDBDefaults.keep_log_file_num),
+    _logFileTimeToRoll(rocksDBDefaults.log_file_time_to_roll),
+    _compactionReadaheadSize(rocksDBDefaults.compaction_readahead_size),
+    _verifyChecksumsInCompaction(rocksDBDefaults.verify_checksums_in_compaction),
+    _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
