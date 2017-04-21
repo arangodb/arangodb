@@ -77,6 +77,9 @@ static int restoreDataParser(char const* ptr, char const* pos,
                              VPackBuilder& builder, VPackSlice& doc,
                              TRI_replication_operation_e& type);
 
+uint64_t const RocksDBRestReplicationHandler::_defaultChunkSize = 128 * 1024;
+uint64_t const RocksDBRestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
+
 RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response),
@@ -1036,7 +1039,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
-  auto result = context->dump(_vocbase, collection, dump, 1000);
+  auto result = context->dump(_vocbase, collection, dump, determineChunkSize());
 
   // generate the result
   if (dump.length() == 0) {
@@ -2090,4 +2093,28 @@ int restoreDataParser(char const* ptr, char const* pos,
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the chunk size
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t RocksDBRestReplicationHandler::determineChunkSize() const {
+  // determine chunk size
+  uint64_t chunkSize = _defaultChunkSize;
+
+  bool found;
+  std::string const& value = _request->value("chunkSize", found);
+
+  if (found) {
+    // query parameter "chunkSize" was specified
+    chunkSize = StringUtils::uint64(value);
+
+    // don't allow overly big allocations
+    if (chunkSize > _maxChunkSize) {
+      chunkSize = _maxChunkSize;
+    }
+  }
+
+  return chunkSize;
 }

@@ -80,3 +80,7 @@ ClusterTraverserCache::engines() {
 size_t& ClusterTraverserCache::insertedDocuments() {
   return _insertedDocuments;
 }
+
+size_t& ClusterTraverserCache::filteredDocuments() {
+  return _filteredDocuments;
+}

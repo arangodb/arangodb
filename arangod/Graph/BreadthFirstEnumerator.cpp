@@ -130,7 +130,7 @@ bool BreadthFirstEnumerator::next() {
             _returnedEdges.emplace(eid);
           } else {
             // Edge filtered due to unique_constraint
-            _traverser->_filteredPaths++;
+            _opts->cache()->increaseFilterCounter();
             return;
           }
         }
