@@ -1514,6 +1514,22 @@ function complexInternaSuite () {
       assertEqual(found, amount);
     },
 
+    testTailRecursion: function () {
+      // This test is to make sure their is no
+      // inifinite callstack in getSome() API
+      let query = `
+        WITH ${vn}
+        FOR id IN 0..100000
+        FOR v IN OUTBOUND CONCAT('${vn}/foobar', id) ${en}
+        RETURN v
+      `;
+
+      let res = db._query(query);
+      assertEqual(res.count(), 0);
+      // With inifinit callstack in getSome this
+      // test will segfault
+    },
+
   };
 
 }

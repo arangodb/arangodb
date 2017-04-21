@@ -30,6 +30,7 @@
 #include "Shell/ConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
+#include "Ssl/ssl-helper.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -47,7 +48,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _connectionTimeout(connectionTimeout),
       _requestTimeout(requestTimeout),
       _maxPacketSize(128 * 1024 * 1024),
-      _sslProtocol(4),
+      _sslProtocol(TLS_V12),
       _retries(DEFAULT_RETRIES),
       _warn(false),
       _haveServerPassword(false){
@@ -98,8 +99,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("ssl", "Configure SSL communication");
   options->addOption("--ssl.protocol",
-                     "ssl protocol (1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = "
-                     "TLSv1, 5 = TLSV1.2 (recommended)",
+                     "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = "
+                     "TLSv1, 5 = TLSV1.2)",
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 }

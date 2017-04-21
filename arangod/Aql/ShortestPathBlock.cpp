@@ -287,82 +287,82 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
 AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
-  if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
-  }
-
-  if (_buffer.empty()) {
-    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-    if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-      _done = true;
+  while (true) {
+    if (_done) {
       traceGetSomeEnd(nullptr);
       return nullptr;
     }
-    _pos = 0;  // this is in the first block
-  }
 
-  // If we get here, we do have _buffer.front()
-  AqlItemBlock* cur = _buffer.front();
-  size_t const curRegs = cur->getNrRegs();
+    if (_buffer.empty()) {
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+        _done = true;
+        traceGetSomeEnd(nullptr);
+        return nullptr;
+      }
+      _pos = 0;  // this is in the first block
+    }
 
-  // Collect the next path:
-  if (_posInPath >= _pathLength) {
-    if (!nextPath(cur)) {
-      // This input does not have any path. maybe the next one has.
-      // we can only return nullptr iff the buffer is empty.
+    // If we get here, we do have _buffer.front()
+    AqlItemBlock* cur = _buffer.front();
+    size_t const curRegs = cur->getNrRegs();
+
+    // Collect the next path:
+    if (_posInPath >= _pathLength) {
+      if (!nextPath(cur)) {
+        // This input does not have any path. maybe the next one has.
+        // we can only return nullptr iff the buffer is empty.
+        if (++_pos >= cur->size()) {
+          _buffer.pop_front();  // does not throw
+          returnBlock(cur);
+          _pos = 0;
+        }
+        continue;
+      }
+    }
+
+    size_t available = _pathLength - _posInPath;
+    size_t toSend = (std::min)(atMost, available);
+
+    RegisterId nrRegs =
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+    std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
+    // automatically freed if we throw
+    TRI_ASSERT(curRegs <= res->getNrRegs());
+
+    // only copy 1st row of registers inherited from previous frame(s)
+    inheritRegisters(cur, res.get(), _pos);
+
+    for (size_t j = 0; j < toSend; j++) {
+      if (usesVertexOutput()) {
+        res->setValue(j, _vertexReg,
+            _path->vertexToAqlValue(_opts->cache(), _posInPath));
+      }
+      if (usesEdgeOutput()) {
+        res->setValue(j, _edgeReg,
+            _path->edgeToAqlValue(_opts->cache(), _posInPath));
+      }
+      if (j > 0) {
+        // re-use already copied aqlvalues
+        res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
+      }
+      ++_posInPath;
+    }
+
+    if (_posInPath >= _pathLength) {
+      // Advance read position for next call
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
         returnBlock(cur);
         _pos = 0;
       }
-      auto r = getSome(atMost, atMost);
-      traceGetSomeEnd(r);
-      return r;
     }
+
+    // Clear out registers no longer needed later:
+    clearRegisters(res.get());
+    traceGetSomeEnd(res.get());
+    return res.release();
   }
-
-  size_t available = _pathLength - _posInPath;
-  size_t toSend = (std::min)(atMost, available);
-
-  RegisterId nrRegs =
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-  std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
-  // automatically freed if we throw
-  TRI_ASSERT(curRegs <= res->getNrRegs());
-
-  // only copy 1st row of registers inherited from previous frame(s)
-  inheritRegisters(cur, res.get(), _pos);
-
-  for (size_t j = 0; j < toSend; j++) {
-    if (usesVertexOutput()) {
-      res->setValue(j, _vertexReg,
-                    _path->vertexToAqlValue(_opts->cache(), _posInPath));
-    }
-    if (usesEdgeOutput()) {
-      res->setValue(j, _edgeReg,
-                    _path->edgeToAqlValue(_opts->cache(), _posInPath));
-    }
-    if (j > 0) {
-      // re-use already copied aqlvalues
-      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
-    }
-    ++_posInPath;
-  }
-
-  if (_posInPath >= _pathLength) {
-    // Advance read position for next call
-    if (++_pos >= cur->size()) {
-      _buffer.pop_front();  // does not throw
-      returnBlock(cur);
-      _pos = 0;
-    }
-  }
-
-  // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
-  return res.release();
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

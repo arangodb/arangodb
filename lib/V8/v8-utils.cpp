@@ -661,7 +661,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   rest::RequestType method = rest::RequestType::GET;
   bool returnBodyOnError = false;
   int maxRedirects = 5;
-  uint64_t sslProtocol = TLS_V1;
+  uint64_t sslProtocol = TLS_V12;
 
   if (args.Length() > 2) {
     if (!args[2]->IsObject()) {
