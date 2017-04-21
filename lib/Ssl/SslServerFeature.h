@@ -55,7 +55,7 @@ class SslServerFeature : public application_features::ApplicationFeature {
   std::string _keyfile;
   bool _sessionCache = false;
   std::string _cipherList;
-  uint64_t _sslProtocol = TLS_V1;
+  uint64_t _sslProtocol = TLS_V12;
   uint64_t _sslOptions =
       (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE);
   std::string _ecdhCurve;

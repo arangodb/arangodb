@@ -1,6 +1,8 @@
 devel
 -----
 
+* set default value for `--ssl.protocol` from TLSv1 to TLSv1.2.
+
 * AQL breaking change in cluster:
   The SHORTEST_PATH statement using edge-collection names instead
   of a graph name now requires to explicitly name the vertex-collection names 
