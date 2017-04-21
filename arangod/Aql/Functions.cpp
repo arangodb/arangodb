@@ -3006,7 +3006,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
   
   auto options = trx->transactionContextPtr()->getVPackOptions();
   if (!toAppend.isArray()) {
-    if (!unique || !ListContainsElement(options, l, t)) {
+    if (!unique || !l.isArray() || !ListContainsElement(options, l, t)) {
       builder->add(t);
     }
   } else {
@@ -3016,8 +3016,8 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
       std::unordered_set<VPackSlice> added;
       added.reserve(static_cast<size_t>(slice.length()));
       for (auto const& it : VPackArrayIterator(slice)) {
-        if (added.find(it) == added.end() &&
-            !ListContainsElement(options, l, it)) {
+        if (added.find(it) == added.end() && (!l.isArray() ||
+            !ListContainsElement(options, l, it))) {
           builder->add(it);
           added.emplace(it);
         }
