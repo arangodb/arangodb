@@ -69,7 +69,9 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string con
 
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
     if (!path.empty()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to locate '" << fn << "' at '"<< path << "'";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "failed to locate '" << fn
+        << "' at '"<< path << "'";
     }
     std::string bpfn = binaryExecutionPath + TRI_DIR_SEPARATOR_STR  + fn;
     
@@ -83,6 +85,10 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string con
       std::string argv_0 = binaryExecutionPath + TRI_DIR_SEPARATOR_STR + binaryName;
       path = TRI_LocateInstallDirectory(argv_0.c_str(), binaryPath.c_str());
       path += ICU_DESTINATION_DIRECTORY TRI_DIR_SEPARATOR_STR + fn;
+      if (!TRI_IsRegularFile(path.c_str())) {
+        // Try whether we have an absolute install prefix: 
+        path = ICU_DESTINATION_DIRECTORY TRI_DIR_SEPARATOR_STR + fn;
+      }
     }
     if (!TRI_IsRegularFile(path.c_str())) {
       std::string msg =

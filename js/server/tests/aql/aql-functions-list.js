@@ -723,6 +723,7 @@ function ahuacatlListTestSuite () {
       for (var i = 0; i < 10; ++i) {
         collection.save({_key: "test" + i});
       }
+
       var bindVars = {"@collection" : collectionName};
       var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND([], tmp)", bindVars);
       assertEqual(actual.length, 1);
@@ -759,6 +760,9 @@ function ahuacatlListTestSuite () {
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i]._key, "test" + i);
       }
+
+      actual = getQueryResults("LET doc = DOCUMENT('nonexistantCollection/nonexistantDocument') RETURN append(doc.t,[1,2,2], true)");
+      assertEqual(actual[0], [1,2,2]);
     },
 
     testAppendDocuments2 : function () {
