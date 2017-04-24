@@ -152,7 +152,6 @@ void RocksDBEngine::start() {
   LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "initializing rocksdb, path: "
                                               << _path;
 
-  double counter_sync_seconds = 2.5;
   rocksdb::TransactionDBOptions transactionOptions;
 
   // options imported set by RocksDBOptionFeature
@@ -190,6 +189,7 @@ void RocksDBEngine::start() {
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
   _options.WAL_ttl_seconds = 60;  //(uint64_t)(counter_sync_seconds * 2.0);
+  double counter_sync_seconds = 2.5;
   // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
 
   rocksdb::Status status =
@@ -231,7 +231,7 @@ void RocksDBEngine::unprepare() {
       _backgroundThread.reset();
     }
     if (_counterManager) {
-      _counterManager->sync();
+      _counterManager->sync(true);
     }
 
     delete _db;
@@ -547,6 +547,15 @@ std::string RocksDBEngine::createCollection(
   VPackBuilder builder = parameters->toVelocyPackIgnore(
       {"path", "statusString"}, /*translate cid*/ true,
       /*for persistence*/ true);
+  
+  // should cause counter to be added to the manager
+  // in case the collection is created for the first time
+  VPackSlice objectId = builder.slice().get("objectId");
+  if (objectId.isInteger()) {
+    RocksDBCounterManager::CounterAdjustment adj;
+    _counterManager->updateCounter(objectId.getUInt(), adj);
+  }
+  
   int res = writeCreateCollectionMarker(vocbase->id(), id, builder.slice());
 
   if (res != TRI_ERROR_NO_ERROR) {
