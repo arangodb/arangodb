@@ -213,8 +213,6 @@ startDebugger() {
       --javascript.app-path ./js/apps \
       $STORAGE_ENGINE \
       $DEFAULT_REPLICATION \
-      $STORAGE_ENGINE \
-      $DEFAULT_REPLICATION \
       $SSLKEYFILE \
       $AUTHENTICATION &
       $XTERM $XTERMOPTIONS -e "gdb ${BUILD}/bin/arangod -p $!" &
