@@ -708,10 +708,16 @@ bool Index::canUseConditionPart(
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
     arangodb::aql::Ast::getReferencedVariables(access, variables);
+      if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
+          variables.find(reference) != variables.end()) {
+        variables.clear();
+        arangodb::aql::Ast::getReferencedVariables(other, variables);
+      }
   } else {
     // a.b == value  OR  a.b IN values
     arangodb::aql::Ast::getReferencedVariables(other, variables);
   }
+
   if (variables.find(reference) != variables.end()) {
     // yes. then we cannot use an index here
     return false;

@@ -123,6 +123,28 @@ function optimizerIndexesTestSuite () {
 /// @brief test _id
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUsePrimaryIdInAttributeAccess : function () {
+      var values = [ "UnitTestsCollection/test1", "UnitTestsCollection/test2", "UnitTestsCollection/test21", "UnitTestsCollection/test30" ];
+      var query = "LET data = NOOPT({ ids : " + JSON.stringify(values) + " }) FOR i IN " + c.name() + " FILTER i._id IN data.ids RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1, 2, 21, 30 ], results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(4, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _id
+////////////////////////////////////////////////////////////////////////////////
+
     testUsePrimaryId : function () {
       var values = [ "UnitTestsCollection/test1", "UnitTestsCollection/test2", "UnitTestsCollection/test21", "UnitTestsCollection/test30" ];
       var query = "FOR i IN " + c.name() + " FILTER i._id IN " + JSON.stringify(values) + " RETURN i.value";
