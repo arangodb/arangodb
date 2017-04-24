@@ -2874,7 +2874,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
+        assertEqual(stats.scannedIndex, 8);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -2898,7 +2898,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
+        assertEqual(stats.scannedIndex, 8);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -2964,7 +2964,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
+        assertEqual(stats.scannedIndex, 8);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -2988,7 +2988,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
+        assertEqual(stats.scannedIndex, 8);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3042,7 +3042,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 5);
+        assertEqual(stats.scannedIndex, 7);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3096,7 +3096,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 5);
+        assertEqual(stats.scannedIndex, 7);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3150,7 +3150,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 5);
+        assertEqual(stats.scannedIndex, 7);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3301,6 +3301,7 @@ function optimizeNonVertexCentricIndexesSuite () {
   };
 };
 
+/*
 jsunity.run(nestedSuite);
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
@@ -3313,6 +3314,7 @@ jsunity.run(brokenGraphSuite);
 jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
 jsunity.run(optionsSuite);
+*/
 jsunity.run(optimizeQuantifierSuite);
 if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);
