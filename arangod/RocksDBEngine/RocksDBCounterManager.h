@@ -100,6 +100,9 @@ class RocksDBCounterManager {
   };
 
   
+  void readSettings();
+  void writeSettings();
+
   void readCounterValues();
   bool parseRocksWAL();
   

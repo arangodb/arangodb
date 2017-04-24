@@ -40,7 +40,8 @@ enum class RocksDBEntryType : char {
   EdgeIndexValue = '5',
   IndexValue = '6',
   UniqueIndexValue = '7',
-  View = '8'
+  View = '8',
+  SettingsValue = '9'
 };
 
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);

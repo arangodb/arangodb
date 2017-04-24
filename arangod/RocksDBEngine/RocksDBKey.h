@@ -110,6 +110,11 @@ class RocksDBKey {
   static RocksDBKey View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId);
   
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for a settings value
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKey SettingsValue();
+  
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a counter value
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey CounterValue(uint64_t objectId);
@@ -129,7 +134,7 @@ class RocksDBKey {
   /// May be called on any valid key (in our keyspace)
   //////////////////////////////////////////////////////////////////////////////
   static uint64_t counterObjectId(rocksdb::Slice const&);
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the databaseId from a key
   ///
@@ -198,6 +203,7 @@ class RocksDBKey {
   std::string const& string() const;
 
  private:
+  explicit RocksDBKey(RocksDBEntryType type);
   RocksDBKey(RocksDBEntryType type, uint64_t first);
   RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second);
   RocksDBKey(RocksDBEntryType type, uint64_t first, VPackSlice const& slice);
