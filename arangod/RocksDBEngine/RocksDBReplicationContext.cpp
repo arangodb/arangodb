@@ -147,9 +147,10 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
     // set data
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
+
     if (!ok) {
-      // TODO: do something here?
-      return;
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "could not get document with token: " << token._data;
+      throw RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     }
 
     builder.add(VPackValue("data"));
@@ -170,6 +171,8 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
       _hasMore = _iter->next(cb, 10);  // TODO: adjust limit?
     } catch (std::exception const& ex) {
       return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
+    } catch (RocksDBReplicationResult const& ex) {
+      return ex;
     }
   }
 
@@ -369,7 +372,7 @@ void RocksDBReplicationContext::releaseDumpingResources() {
 std::unique_ptr<transaction::Methods>
 RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
   double lockTimeout = transaction::Methods::DefaultLockTimeout;
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  std::shared_ptr<transaction::StandaloneContext> ctx = transaction::StandaloneContext::Create(vocbase);
   std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(
       ctx, {}, {}, {}, lockTimeout, false, true));
   Result res = trx->begin();
