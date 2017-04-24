@@ -43,7 +43,7 @@ struct RocksDBToken;
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
   friend class RocksDBVPackIndex;
-  
+
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
@@ -131,9 +131,10 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
 
-  DocumentIdentifierToken lookupKey(transaction::Methods *trx,
-                                    arangodb::velocypack::Slice const& key) override;
-  
+  DocumentIdentifierToken lookupKey(
+      transaction::Methods* trx,
+      arangodb::velocypack::Slice const& key) override;
+
   int read(transaction::Methods*, arangodb::velocypack::Slice const key,
            ManagedDocumentResult& result, bool) override;
 
@@ -184,11 +185,11 @@ class RocksDBCollection final : public PhysicalCollection {
 
   Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
                              RocksDBToken& token) const;
-  
+
   int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
-  
+
   int endWrite(bool useDeadlockDetector);
-  
+
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(

@@ -41,7 +41,7 @@ var slaveEndpoint = ARGUMENTS[0];
 
 var mmfilesEngine = false;
 if (db._engine().name === "mmfiles") {
-    mmfilesEngine = true
+  mmfilesEngine = true;
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

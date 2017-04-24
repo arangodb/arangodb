@@ -28,11 +28,11 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
-#include "Transaction/Helpers.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
@@ -70,8 +70,8 @@ uint64_t RocksDBReplicationContext::lastTick() const { return _lastTick; }
 uint64_t RocksDBReplicationContext::count() const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_collection != nullptr);
-  RocksDBCollection *rcoll =
-    RocksDBCollection::toRocksDBCollection(_collection->getPhysical());
+  RocksDBCollection* rcoll =
+      RocksDBCollection::toRocksDBCollection(_collection->getPhysical());
   return rcoll->numberDocuments(_trx.get());
 }
 
@@ -81,12 +81,14 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   _trx = createTransaction(vocbase);
 }
 
-int RocksDBReplicationContext::bindCollection(std::string const& collectionName) {
+int RocksDBReplicationContext::bindCollection(
+    std::string const& collectionName) {
   if ((_collection == nullptr) || _collection->name() != collectionName) {
     _collection = _trx->vocbase()->lookupCollection(collectionName);
-    
+
     if (_collection == nullptr) {
-      return TRI_ERROR_BAD_PARAMETER; RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
+      return TRI_ERROR_BAD_PARAMETER;
+      RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
     _trx->addCollectionAtRuntime(collectionName);
     _iter = _collection->getAllIterator(_trx.get(), &_mdr,
@@ -150,7 +152,8 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
 
     if (!ok) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "could not get document with token: " << token._data;
+      LOG_TOPIC(ERR, Logger::REPLICATION)
+          << "could not get document with token: " << token._data;
       throw RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     }
 
@@ -180,25 +183,26 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick);
 }
 
-arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder &b,
+arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
                                                           uint64_t chunkSize) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
-  
-  RocksDBAllIndexIterator *primary = dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
-  
+
+  RocksDBAllIndexIterator* primary =
+      dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
+
   std::string lowKey;
-  VPackSlice highKey;// FIXME: no good keeping this
-  
+  VPackSlice highKey;  // FIXME: no good keeping this
+
   uint64_t hash = 0x012345678;
-  //auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
+  // auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
   auto cb = [&](DocumentIdentifierToken const& token) {
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
     if (!ok) {
       // TODO: do something here?
       return;
     }
-    
+
     // current document
     VPackSlice current(_mdr.vpack());
     highKey = current.get(StaticStrings::KeyString);
@@ -206,20 +210,19 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder &b,
     if (lowKey.empty()) {
       lowKey = highKey.copyString();
     }
-    
+
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
     hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
     hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
   };
-  
+
   b.openArray();
   while (_hasMore && true /*sizelimit*/) {
     try {
-      
       //_hasMore = primary->nextWithKey(cb, chunkSize);
       _hasMore = primary->next(cb, chunkSize);
-      
+
       b.add(VPackValue(VPackValueType::Object));
       b.add("low", VPackValue(lowKey));
       b.add("high", VPackValue(highKey.copyString()));
@@ -231,12 +234,12 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder &b,
     }
   }
   b.close();
-  
+
   return Result();
 }
 
 /// dump all keys from collection
-arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder &b,
+arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder& b,
                                                      size_t chunk,
                                                      size_t chunkSize) {
   TRI_ASSERT(_trx);
@@ -247,30 +250,32 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder &b,
     _iter->reset();
     _lastChunkOffset = 0;
     _hasMore = true;
-  } else if (from < _lastChunkOffset+chunkSize) {
+  } else if (from < _lastChunkOffset + chunkSize) {
     TRI_ASSERT(from >= chunkSize);
     uint64_t diff = from - chunkSize;
-    uint64_t to;// = (chunk + 1) * chunkSize;
+    uint64_t to;  // = (chunk + 1) * chunkSize;
     _iter->skip(diff, to);
-     TRI_ASSERT(to == diff);
+    TRI_ASSERT(to == diff);
     _lastChunkOffset = from;
-  } else if (from > _lastChunkOffset+chunkSize) {
+  } else if (from > _lastChunkOffset + chunkSize) {
     // no jumping back in time fix the intitial syncer if you see this
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "Trying to request a chunk the rocksdb "
-    << "iterator already passed over";
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "Trying to request a chunk the rocksdb "
+        << "iterator already passed over";
     return Result(TRI_ERROR_INTERNAL);
   }
-  
-  RocksDBAllIndexIterator *primary = dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
+
+  RocksDBAllIndexIterator* primary =
+      dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
   auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
     RocksDBToken const& rt = static_cast<RocksDBToken const&>(token);
-    
+
     b.openArray();
     b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
     b.add(VPackValue(std::to_string(rt.revisionId())));
     b.close();
   };
-  
+
   b.openArray();
   // chunk is going to be ignored here
   while (_hasMore && true /*sizelimit*/) {
@@ -281,15 +286,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder &b,
     }
   }
   b.close();
-  
+
   return Result();
 }
 
 /// dump keys and document
-arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder &b,
-                                                          size_t chunk,
-                                                          size_t chunkSize,
-                                                          VPackSlice const& ids) {
+arangodb::Result RocksDBReplicationContext::dumpDocuments(
+    VPackBuilder& b, size_t chunk, size_t chunkSize, VPackSlice const& ids) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
   // Position the iterator correctly
@@ -298,20 +301,21 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder &b,
     _iter->reset();
     _lastChunkOffset = 0;
     _hasMore = true;
-  } else if (from < _lastChunkOffset+chunkSize) {
+  } else if (from < _lastChunkOffset + chunkSize) {
     TRI_ASSERT(from >= chunkSize);
     uint64_t diff = from - chunkSize;
-    uint64_t to;// = (chunk + 1) * chunkSize;
+    uint64_t to;  // = (chunk + 1) * chunkSize;
     _iter->skip(diff, to);
     TRI_ASSERT(to == diff);
     _lastChunkOffset = from;
-  } else if (from > _lastChunkOffset+chunkSize) {
+  } else if (from > _lastChunkOffset + chunkSize) {
     // no jumping back in time fix the intitial syncer if you see this
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "Trying to request a chunk the rocksdb "
-      << "iterator already passed over";
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "Trying to request a chunk the rocksdb "
+        << "iterator already passed over";
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   auto cb = [&](DocumentIdentifierToken const& token) {
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
     if (!ok) {
@@ -322,7 +326,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder &b,
     TRI_ASSERT(current.isObject());
     b.add(current);
   };
-  
+
   b.openArray();
   bool hasMore = true;
   size_t oldPos = from;
@@ -331,7 +335,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder &b,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     TRI_ASSERT(hasMore);
-    
+
     size_t newPos = from + it.getNumber<size_t>();
     if (oldPos != from && newPos > oldPos + 1) {
       uint64_t ignore;
@@ -341,7 +345,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder &b,
     hasMore = _iter->next(cb, 1);
   }
   b.close();
-  
+
   return Result();
 }
 
@@ -381,7 +385,8 @@ void RocksDBReplicationContext::releaseDumpingResources() {
 std::unique_ptr<transaction::Methods>
 RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
   double lockTimeout = transaction::Methods::DefaultLockTimeout;
-  std::shared_ptr<transaction::StandaloneContext> ctx = transaction::StandaloneContext::Create(vocbase);
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(vocbase);
   std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(
       ctx, {}, {}, {}, lockTimeout, false, true));
   Result res = trx->begin();
