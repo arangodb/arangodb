@@ -168,7 +168,7 @@ function request (req) {
   } else {
     options.maxRedirects = 10;
   }
-  if (!isNaN(req.sslProtocol)) {
+  if (req.sslProtocol) {
     options.sslProtocol = req.sslProtocol;
   }
   let result = internal.download(path, body, options);
