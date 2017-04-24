@@ -23,6 +23,8 @@
 
 #include "Job.h"
 
+#include "Random/RandomGenerator.h"
+
 static std::string const DBServer = "DBServer";
 
 using namespace arangodb::consensus;
@@ -172,10 +174,13 @@ std::string Job::randomIdleGoodAvailableServer(
   
   // Choose random server from rest
   if (!as.empty()) {
-    if (as.size() > 1) {
-      std::random_shuffle(as.begin(), as.end());
+    if (as.size() == 1) {
+      ret = as[0];
+    } else {
+      uint16_t interval = as.size() - 1;
+      uint16_t random = RandomGenerator::interval(interval);
+      ret = as.at(random);
     }
-    ret = as.front();
   }
 
   return ret;

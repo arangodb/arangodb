@@ -101,6 +101,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   TRI_vocbase_t* lookupDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* lookupDatabase(std::string const& name);
+  void enumerateDatabases(std::function<void(TRI_vocbase_t*)>);
 
   void useSystemDatabase();
   TRI_vocbase_t* systemDatabase() const { return _vocbase; }

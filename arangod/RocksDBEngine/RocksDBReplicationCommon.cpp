@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,38 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHORTEST_PATH_OPTIONS_H
-#define ARANGOD_AQL_SHORTEST_PATH_OPTIONS_H 1
+#include "RocksDBEngine/RocksDBReplicationCommon.h"
 
-#include "Basics/Common.h"
+using namespace arangodb;
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber,
+                                                   uint64_t maxTick)
+    : Result(errorNumber), _maxTick(maxTick), _fromTickIncluded(false) {}
 
-namespace arangodb {
-namespace aql {
+uint64_t RocksDBReplicationResult::maxTick() const { return _maxTick; }
 
-/// @brief TraversalOptions
-struct ShortestPathOptions {
+bool RocksDBReplicationResult::fromTickIncluded() const {
+  return _fromTickIncluded;
+}
 
-  /// @brief constructor
-  explicit ShortestPathOptions(arangodb::velocypack::Slice const&);
-
-  /// @brief constructor, using default values
-  ShortestPathOptions()
-      : weightAttribute(),
-        defaultWeight(1) {}
-
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
-
-  std::string weightAttribute;
-  double defaultWeight;
-};
-
-}  // namespace arangodb::aql
-}  // namespace arangodb
-#endif
-
+void RocksDBReplicationResult::includeFromTick() { _fromTickIncluded = true; }

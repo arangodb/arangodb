@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -57,20 +58,26 @@ class TransactionCollection;
 class RocksDBSavePoint {
  public:
   explicit RocksDBSavePoint(rocksdb::Transaction* trx);
+  RocksDBSavePoint(rocksdb::Transaction* trx, bool handled);
   ~RocksDBSavePoint();
 
   void commit();
+ private:
   void rollback();
 
  private:
   rocksdb::Transaction* _trx;
-  bool _committed;
+  bool _handled;
 };
 
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
  public:
-  explicit RocksDBTransactionState(TRI_vocbase_t* vocbase);
+  explicit RocksDBTransactionState(TRI_vocbase_t* vocbase,
+                                   uint64_t maxOperationSize,
+                                   bool intermediateTransactionEnabled,
+                                   uint64_t intermediateTransactionSize,
+                                   uint64_t intermediateTransactionNumber);
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
@@ -85,7 +92,7 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
-  
+
   inline bool hasOperations() const {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }
@@ -95,8 +102,10 @@ class RocksDBTransactionState final : public TransactionState {
   }
 
   /// @brief add an operation for a transaction collection
-  void addOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-                    TRI_voc_document_operation_e operationType, uint64_t operationSize);
+  RocksDBOperationResult addOperation(
+      TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+      TRI_voc_document_operation_e operationType, uint64_t operationSize,
+      uint64_t keySize);
 
   rocksdb::Transaction* rocksTransaction() {
     TRI_ASSERT(_rocksTransaction != nullptr);
@@ -105,15 +114,27 @@ class RocksDBTransactionState final : public TransactionState {
 
   rocksdb::ReadOptions const& readOptions() { return _rocksReadOptions; }
 
+  uint64_t sequenceNumber() const;
+
+  void reset();
+
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   rocksdb::WriteOptions _rocksWriteOptions;
   rocksdb::ReadOptions _rocksReadOptions;
   cache::Transaction* _cacheTx;
-  uint64_t _operationSize;
+  // current transaction size
+  uint64_t _transactionSize;
+  // a transaction may not become bigger than this value
+  uint64_t _maxTransactionSize;
+  // if a transaction gets bigger than  this value and intermediate transactions
+  // are enabled then a commit will be done
+  uint64_t _intermediateTransactionSize;
+  uint64_t _intermediateTransactionNumber;
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
+  bool _intermediateTransactionEnabled;
 };
 }
 

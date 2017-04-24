@@ -38,9 +38,9 @@ static rocksdb::Slice Collection(
         &collection),
     1);
 
-static RocksDBEntryType index = RocksDBEntryType::Index;
-static rocksdb::Slice Index(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&index), 1);
+static RocksDBEntryType counterVal = RocksDBEntryType::CounterValue;
+static rocksdb::Slice CounterValue(
+                           reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&counterVal), 1);
 
 static RocksDBEntryType document = RocksDBEntryType::Document;
 static rocksdb::Slice Document(
@@ -75,33 +75,33 @@ static RocksDBEntryType view = RocksDBEntryType::View;
 static rocksdb::Slice View(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&view), 1);
 
-static RocksDBEntryType counterVal = RocksDBEntryType::CounterValue;
-static rocksdb::Slice CounterValue(
-                           reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&counterVal), 1);
+static RocksDBEntryType settingsValue = RocksDBEntryType::SettingsValue;
+static rocksdb::Slice SettingsValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&settingsValue), 1);
 }
 
 rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   switch (type) {
-    case RocksDBEntryType::Document:
-      return Document;
-    case RocksDBEntryType::Collection:
-      return Collection;
     case RocksDBEntryType::Database:
       return Database;
+    case RocksDBEntryType::Collection:
+      return Collection;
+    case RocksDBEntryType::CounterValue:
+      return CounterValue;
+    case RocksDBEntryType::Document:
+      return Document;
     case RocksDBEntryType::PrimaryIndexValue:
       return PrimaryIndexValue;
     case RocksDBEntryType::EdgeIndexValue:
       return EdgeIndexValue;
-    case RocksDBEntryType::Index:
-      return Index;
     case RocksDBEntryType::IndexValue:
       return IndexValue;
     case RocksDBEntryType::UniqueIndexValue:
       return UniqueIndexValue;
     case RocksDBEntryType::View:
       return View;
-    case RocksDBEntryType::CounterValue:
-      return CounterValue;
+    case RocksDBEntryType::SettingsValue:
+      return SettingsValue;
   }
 
   return Document;  // avoids warning - errorslice instead ?!

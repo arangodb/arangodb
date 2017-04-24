@@ -100,9 +100,6 @@ class ClusterTraverser final : public Traverser {
 
   void fetchVertices();
 
-  std::unordered_map<StringRef, arangodb::velocypack::Slice>
-      _edges;
-
   std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
       _vertices;
 
@@ -111,8 +108,6 @@ class ClusterTraverser final : public Traverser {
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
   std::unordered_set<StringRef> _verticesToFetch;
-
-  std::vector<std::shared_ptr<arangodb::velocypack::Builder>> _datalake;
 
 };
 

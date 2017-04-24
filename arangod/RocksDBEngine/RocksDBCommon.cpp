@@ -62,10 +62,13 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kCorruption:
       return {TRI_ERROR_ARANGO_CORRUPTED_DATAFILE, status.ToString()};
     case rocksdb::Status::Code::kNotSupported:
-      return {TRI_ERROR_ILLEGAL_OPTION, status.ToString()};
+      return {TRI_ERROR_NOT_IMPLEMENTED, status.ToString()};
     case rocksdb::Status::Code::kInvalidArgument:
       return {TRI_ERROR_BAD_PARAMETER, status.ToString()};
     case rocksdb::Status::Code::kIOError:
+      if (status.subcode() == rocksdb::Status::SubCode::kNoSpace) {
+        return {TRI_ERROR_ARANGO_FILESYSTEM_FULL, status.ToString()};
+      }
       return {TRI_ERROR_ARANGO_IO_ERROR, status.ToString()};
     case rocksdb::Status::Code::kMergeInProgress:
       return {TRI_ERROR_ARANGO_MERGE_IN_PROGRESS, status.ToString()};
@@ -74,11 +77,19 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kShutdownInProgress:
       return {TRI_ERROR_SHUTTING_DOWN, status.ToString()};
     case rocksdb::Status::Code::kTimedOut:
+      if (status.subcode() == rocksdb::Status::SubCode::kMutexTimeout ||
+          status.subcode() == rocksdb::Status::SubCode::kLockTimeout) {
+        // TODO: maybe add a separator error code/message here
+        return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
+      }
       return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
     case rocksdb::Status::Code::kAborted:
       return {TRI_ERROR_TRANSACTION_ABORTED, status.ToString()};
     case rocksdb::Status::Code::kBusy:
-      return {TRI_ERROR_ARANGO_BUSY, status.ToString()};
+      if (status.subcode() == rocksdb::Status::SubCode::kDeadlock) {
+        return {TRI_ERROR_DEADLOCK};
+      }
+      return {TRI_ERROR_ARANGO_CONFLICT};
     case rocksdb::Status::Code::kExpired:
       return {TRI_ERROR_INTERNAL, "key expired; TTL was set in error"};
     case rocksdb::Status::Code::kTryAgain:
@@ -149,6 +160,29 @@ arangodb::Result globalRocksDBRemove(rocksdb::Slice const& key,
   auto status = globalRocksDB()->Delete(options, key);
   return convertStatus(status);
 };
+
+uint64_t latestSequenceNumber() {
+  auto seq = globalRocksDB()->GetLatestSequenceNumber();
+  return static_cast<uint64_t>(seq);
+};
+
+void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
+                          TRI_voc_cid_t cid) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
+  TRI_ASSERT(rocks->db() != nullptr);
+  return rocks->addCollectionMapping(objectId, did, cid);
+}
+
+std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
+    uint64_t objectId) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
+  TRI_ASSERT(rocks->db() != nullptr);
+  return rocks->mapObjectToCollection(objectId);
+}
 
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
                           RocksDBKeyBounds const& bounds) {
@@ -236,16 +270,7 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
   });
   return rv;
 }
-std::vector<std::pair<RocksDBKey, RocksDBValue>> indexKVPairs(
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t cid) {
-  std::vector<std::pair<RocksDBKey, RocksDBValue>> rv;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseIndexes(databaseId, cid);
-  iterateBounds(bounds, [&rv](rocksdb::Iterator* it) {
-    rv.emplace_back(RocksDBKey(it->key()),
-                    RocksDBValue(RocksDBEntryType::Index, it->value()));
-  });
-  return rv;
-}
+
 std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
     TRI_voc_tick_t databaseId) {
   std::vector<std::pair<RocksDBKey, RocksDBValue>> rv;

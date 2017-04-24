@@ -33,7 +33,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
-#include "Basics/VelocyPackDumper.h"
 #include "Basics/tri-strings.h"
 #include "Meta/conversion.h"
 #include "Rest/VppRequest.h"

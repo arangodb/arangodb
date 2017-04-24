@@ -18,7 +18,7 @@ cppcheck -j4 \
   --suppress="*:Aql/grammar.cpp" \
   --suppress="*:Aql/tokens.cpp" \
   --suppress="*:Aql/tokens.ll" \
-  arangod/ arangosh/ lib/ 2>> cppcheck.tmp
+  arangod/ arangosh/ lib/ enterprise/ 2>> cppcheck.tmp
 
 sort cppcheck.tmp | uniq > cppcheck.log
 cat cppcheck.log

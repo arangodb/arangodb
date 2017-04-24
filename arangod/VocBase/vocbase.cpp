@@ -960,8 +960,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: cid may be modified by this function call
-  arangodb::LogicalCollection* collection =
-      createCollectionWorker(parameters);
+  arangodb::LogicalCollection* collection = createCollectionWorker(parameters);
 
   if (collection == nullptr) {
     // something went wrong... must not continue
@@ -1417,7 +1416,7 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   view->updateProperties(b.slice(), doSync);
 */
   unregisterView(view);
-  
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->dropView(this, view.get());
 
@@ -1559,6 +1558,20 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
     }
   }
   return views;
+}
+  
+void TRI_vocbase_t::processCollections(std::function<void(LogicalCollection*)> const& cb, bool includeDeleted) {
+  READ_LOCKER(readLocker, _collectionsLock);
+
+  if (includeDeleted) {
+    for (auto const& it : _collections) {
+      cb(it);
+    }
+  } else {
+    for (auto const& it : _collectionsById) {
+      cb(it.second);
+    }
+  }
 }
 
 std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(

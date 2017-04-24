@@ -34,14 +34,14 @@ namespace arangodb {
 enum class RocksDBEntryType : char {
   Database = '0',
   Collection = '1',
-  Index = '2',
+  CounterValue = '2',
   Document = '3',
   PrimaryIndexValue = '4',
   EdgeIndexValue = '5',
   IndexValue = '6',
   UniqueIndexValue = '7',
   View = '8',
-  CounterValue = '9'
+  SettingsValue = '9'
 };
 
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);

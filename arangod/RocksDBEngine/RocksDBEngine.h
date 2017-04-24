@@ -37,10 +37,12 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class RocksDBComparator;
-class RocksDBCounterManager;
 class PhysicalCollection;
 class PhysicalView;
+class RocksDBComparator;
+class RocksDBCounterManager;
+class RocksDBReplicationManager;
+class RocksDBBackgroundThread;
 class TransactionCollection;
 class TransactionState;
 
@@ -240,6 +242,12 @@ class RocksDBEngine final : public StorageEngine {
 
   RocksDBComparator* cmp() const { return _cmp.get(); }
 
+  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
+                                  VPackSlice const& slice);
+
+  void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
+  std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
+
  private:
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
@@ -248,22 +256,43 @@ class RocksDBEngine final : public StorageEngine {
   TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id,
                                       std::string const& name,
                                       bool wasCleanShutdown, bool isUpgrade);
-  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                  VPackSlice const& slice);
 
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
-  RocksDBCounterManager* counterManager();
+  RocksDBCounterManager* counterManager() const;
+  RocksDBReplicationManager* replicationManager() const;
 
  private:
+  /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
+  /// default read options
   rocksdb::Options _options;
+  /// arangodb comparator - requried because of vpack in keys
   std::unique_ptr<RocksDBComparator> _cmp;
+  /// path used by rocksdb (inside _basePath)
   std::string _path;
+  /// path to arangodb data dir
   std::string _basePath;
 
+  /// repository for replication contexts
+  std::unique_ptr<RocksDBReplicationManager> _replicationManager;
+  /// tracks the count of documents in collections
   std::unique_ptr<RocksDBCounterManager> _counterManager;
+  /// Background thread handling garbage collection etc
+  std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
+  uint64_t _maxTransactionSize;  // maximum allowed size for a transaction
+  uint64_t _intermediateTransactionCommitSize;   // maximum size for a
+                                                 // transaction before a
+                                                 // intermediate commit will be
+                                                 // tried
+  uint64_t _intermediateTransactionCommitCount;  // limit of transaction count
+                                                 // for intermediate commit
+  bool _intermediateTransactionCommitEnabled;    // allow usage of intermediate
+                                                 // commits
+
+  std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
+      _collectionMap;
 };
 }
 #endif

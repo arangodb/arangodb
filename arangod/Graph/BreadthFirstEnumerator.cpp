@@ -23,6 +23,7 @@
 
 #include "BreadthFirstEnumerator.h"
 
+#include "Graph/EdgeCursor.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserCache.h"
 #include "VocBase/TraverserOptions.h"
@@ -116,7 +117,7 @@ bool BreadthFirstEnumerator::next() {
     auto const nextVertex = _schreier[nextIdx].vertex;
     StringRef vId;
 
-    std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(_opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
+    std::unique_ptr<arangodb::graph::EdgeCursor> cursor(_opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
     if (cursor != nullptr) {
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;
@@ -126,11 +127,11 @@ bool BreadthFirstEnumerator::next() {
             TraverserOptions::UniquenessLevel::GLOBAL) {
           if (_returnedEdges.find(eid) == _returnedEdges.end()) {
             // Edge not yet visited. Mark and continue.
-            // TODO FIXME the edge will run out of scope
             _returnedEdges.emplace(eid);
           } else {
             // Edge filtered due to unique_constraint
-            _traverser->_filteredPaths++;
+            // This is not counted by matchConditions
+            _opts->cache()->increaseFilterCounter();
             return;
           }
         }

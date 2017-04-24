@@ -538,7 +538,11 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::createIndex(VPackSlice const& slice) {
-  VPackSlice const indexSlice = slice.get("index");
+  VPackSlice indexSlice = slice.get("index");
+  if (!indexSlice.isObject()) {
+    indexSlice = slice.get("data");
+  }
+
   if (!indexSlice.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -582,7 +586,12 @@ int Syncer::createIndex(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
-  std::string const id = VelocyPackHelper::getStringValue(slice, "id", "");
+  std::string id;
+  if (slice.hasKey("data")) {
+    id = VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
+  } else {
+    id = VelocyPackHelper::getStringValue(slice, "id", "");
+  }
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -653,7 +662,6 @@ int Syncer::getMasterState(std::string& errorMsg) {
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
 
-  
   auto builder = std::make_shared<VPackBuilder>();
   int res = parseResponse(builder, response.get());
 
@@ -661,6 +669,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
     VPackSlice const slice = builder->slice();
 
     if (!slice.isObject()) {
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "synger::getMasterState - state is not an object";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       errorMsg = "got invalid response from master at " +
                  _masterInfo._endpoint + ": invalid JSON";
@@ -670,6 +679,9 @@ int Syncer::getMasterState(std::string& errorMsg) {
     }
   }
 
+  if (res != TRI_ERROR_NO_ERROR){
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "synger::getMasterState - handleStateResponse failed";
+  }
   return res;
 }
 

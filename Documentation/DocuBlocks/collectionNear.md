@@ -34,13 +34,15 @@ contains the distance between the given point and the document in meters.
 This will add an attribute *name* to all documents returned, which
 contains the distance between the given point and the document in meters.
 
-Note: the *near* simple query function is **deprecated** as of ArangoDB 2.6. 
+**Note**: this method is not yet supported by the RocksDB storage engine.
+
+Note: the *near* simple query function is **deprecated** as of ArangoDB 2.6.
 The function may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the near operator is
-to use the AQL *NEAR* function in an [AQL query](../../AQL/Functions/Geo.html) as follows: 
+to use the AQL *NEAR* function in an [AQL query](../../AQL/Functions/Geo.html) as follows:
 
 ```js
-FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
+FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit)
     RETURN doc
 ```
 
@@ -52,7 +54,7 @@ To get the nearest two locations:
 ~ db._drop("geo");
 ~ db._create("geo");
   db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
-  |for (var i = -90;  i <= 90;  i += 10) { 
+  |for (var i = -90;  i <= 90;  i += 10) {
   |   for (var j = -180; j <= 180; j += 10) {
   |     db.geo.save({
   |        name : "Name/" + i + "/" + j,
@@ -79,4 +81,3 @@ operator:
 @END_EXAMPLE_ARANGOSH_OUTPUT
 
 @endDocuBlock
-

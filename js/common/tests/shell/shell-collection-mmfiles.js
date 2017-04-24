@@ -80,7 +80,7 @@ var decode = function(value) {
       result = (result * 2 * 2 * 2 * 2 * 2 * 2) + decodeTable[value.charCodeAt(i)];
     }
   }
-  return result; 
+  return result;
 };
 
 var compareStringIds = function (l, r) {
@@ -269,7 +269,7 @@ function CollectionSuite () {
 
       c1.properties({ doCompact: true });
       assertTrue(c1.properties().doCompact);
-      
+
       db._drop(cn);
     },
 
@@ -286,13 +286,13 @@ function CollectionSuite () {
       assertEqual(cn, c1.name());
       assertEqual(4, c1.properties().indexBuckets);
 
-      c1.properties({ indexBuckets: 8 }); 
+      c1.properties({ indexBuckets: 8 });
       // adjusted number will be stored, but number of index buckets will only
       // take effect when collection is reloaded
       assertEqual(8, c1.properties().indexBuckets);
-      
+
       db._drop(cn);
-      
+
       c1 = db._create(cn, { indexBuckets: 6 });
 
       assertEqual(cn, c1.name());
@@ -316,7 +316,7 @@ function CollectionSuite () {
 
       c1.properties({ journalSize: 8 * 1024 * 1024 });
       assertEqual(8 * 1024 * 1024, c1.properties().journalSize);
-      
+
       c1.properties({ journalSize: 16 * 1024 * 1024 });
       assertEqual(16 * 1024 * 1024, c1.properties().journalSize);
 
@@ -1216,4 +1216,3 @@ jsunity.run(CollectionSuite);
 jsunity.run(CollectionDbSuite);
 
 return jsunity.done();
-

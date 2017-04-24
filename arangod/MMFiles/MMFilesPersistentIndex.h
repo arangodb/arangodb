@@ -24,13 +24,13 @@
 #ifndef ARANGOD_MMFILES_PERSISTENT_INDEX_H
 #define ARANGOD_MMFILES_PERSISTENT_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AstNode.h"
+#include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
-#include "VocBase/vocbase.h"
+#include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
@@ -61,19 +61,19 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
   friend class MMFilesPersistentIndex;
 
  public:
-  MMFilesPersistentIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
-                  ManagedDocumentResult* mmdr,
-                  arangodb::MMFilesPersistentIndex const* index,
-                  arangodb::MMFilesPrimaryIndex* primaryIndex,
-                  rocksdb::OptimisticTransactionDB* db,
-                  bool reverse, 
-                  arangodb::velocypack::Slice const& left,
-                  arangodb::velocypack::Slice const& right);
+  MMFilesPersistentIndexIterator(LogicalCollection* collection,
+                                 transaction::Methods* trx,
+                                 ManagedDocumentResult* mmdr,
+                                 arangodb::MMFilesPersistentIndex const* index,
+                                 arangodb::MMFilesPrimaryIndex* primaryIndex,
+                                 rocksdb::OptimisticTransactionDB* db,
+                                 bool reverse,
+                                 arangodb::velocypack::Slice const& left,
+                                 arangodb::velocypack::Slice const& right);
 
   ~MMFilesPersistentIndexIterator() = default;
 
  public:
-  
   char const* typeName() const override { return "rocksdb-index-iterator"; }
 
   /// @brief Get the next limit many element in the index
@@ -81,13 +81,15 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
 
   /// @brief Reset the cursor
   void reset() override;
- 
+
  private:
   arangodb::MMFilesPrimaryIndex* _primaryIndex;
   rocksdb::OptimisticTransactionDB* _db;
   std::unique_ptr<rocksdb::Iterator> _cursor;
-  std::unique_ptr<arangodb::velocypack::Buffer<char>> _leftEndpoint;   // Interval left border
-  std::unique_ptr<arangodb::velocypack::Buffer<char>> _rightEndpoint;  // Interval right border
+  std::unique_ptr<arangodb::velocypack::Buffer<char>>
+      _leftEndpoint;  // Interval left border
+  std::unique_ptr<arangodb::velocypack::Buffer<char>>
+      _rightEndpoint;  // Interval right border
   bool const _reverse;
   bool _probe;
 };
@@ -99,7 +101,7 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   MMFilesPersistentIndex() = delete;
 
   MMFilesPersistentIndex(TRI_idx_iid_t, LogicalCollection*,
-               arangodb::velocypack::Slice const&);
+                         arangodb::velocypack::Slice const&);
 
   ~MMFilesPersistentIndex();
 
@@ -107,11 +109,11 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   IndexType type() const override {
     return Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
-  
+
   char const* typeName() const override { return "persistent"; }
-  
+
   bool allowExpansion() const override { return true; }
-  
+
   bool isPersistent() const override { return true; }
   bool canBeDropped() const override { return true; }
 
@@ -121,42 +123,52 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
-  
-  static constexpr size_t minimalPrefixSize() {
-    return sizeof(TRI_voc_tick_t);
-  }
+
+  static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
   static constexpr size_t keyPrefixSize() {
-    return sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_idx_iid_t);
+    return sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) +
+           sizeof(TRI_idx_iid_t);
   }
-  
+
   static std::string buildPrefix(TRI_voc_tick_t databaseId) {
     std::string value;
-    value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
-    return value;
-  }
-  
-  static std::string buildPrefix(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
-    std::string value;
-    value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
-    value.append(reinterpret_cast<char const*>(&collectionId), sizeof(TRI_voc_cid_t));
+    value.append(reinterpret_cast<char const*>(&databaseId),
+                 sizeof(TRI_voc_tick_t));
     return value;
   }
 
-  static std::string buildPrefix(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
+  static std::string buildPrefix(TRI_voc_tick_t databaseId,
+                                 TRI_voc_cid_t collectionId) {
+    std::string value;
+    value.append(reinterpret_cast<char const*>(&databaseId),
+                 sizeof(TRI_voc_tick_t));
+    value.append(reinterpret_cast<char const*>(&collectionId),
+                 sizeof(TRI_voc_cid_t));
+    return value;
+  }
+
+  static std::string buildPrefix(TRI_voc_tick_t databaseId,
+                                 TRI_voc_cid_t collectionId,
+                                 TRI_idx_iid_t indexId) {
     std::string value;
     value.reserve(keyPrefixSize());
-    value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
-    value.append(reinterpret_cast<char const*>(&collectionId), sizeof(TRI_voc_cid_t));
-    value.append(reinterpret_cast<char const*>(&indexId), sizeof(TRI_idx_iid_t));
+    value.append(reinterpret_cast<char const*>(&databaseId),
+                 sizeof(TRI_voc_tick_t));
+    value.append(reinterpret_cast<char const*>(&collectionId),
+                 sizeof(TRI_voc_cid_t));
+    value.append(reinterpret_cast<char const*>(&indexId),
+                 sizeof(TRI_idx_iid_t));
     return value;
   }
 
-  int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int unload() override;
 
@@ -166,18 +178,18 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   ///
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the MMFilesPersistentIndexIterator* results
-  MMFilesPersistentIndexIterator* lookup(transaction::Methods*, 
-                          ManagedDocumentResult* mmdr,
-                          arangodb::velocypack::Slice const,
-                          bool reverse) const;
+  MMFilesPersistentIndexIterator* lookup(transaction::Methods*,
+                                         ManagedDocumentResult* mmdr,
+                                         arangodb::velocypack::Slice const,
+                                         bool reverse) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
   bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                             arangodb::aql::Variable const*, size_t,
-                             double&, size_t&) const override;
+                             arangodb::aql::Variable const*, size_t, double&,
+                             size_t&) const override;
 
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
@@ -196,14 +208,12 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes,
-      bool) const;
+      std::unordered_set<std::string>& nonNullAttributes, bool) const;
 
   void matchAttributes(
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      size_t& values, 
-      std::unordered_set<std::string>& nonNullAttributes,
+      size_t& values, std::unordered_set<std::string>& nonNullAttributes,
       bool) const;
 };
 }

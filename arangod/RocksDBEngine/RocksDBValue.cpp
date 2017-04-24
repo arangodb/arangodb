@@ -37,10 +37,6 @@ RocksDBValue RocksDBValue::Collection(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::Collection, data);
 }
 
-RocksDBValue RocksDBValue::Index(VPackSlice const& data) {
-  return RocksDBValue(RocksDBEntryType::Index, data);
-}
-
 RocksDBValue RocksDBValue::Document(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::Document, data);
 }
@@ -141,7 +137,6 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   switch (_type) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Index:
     case RocksDBEntryType::Document:
     case RocksDBEntryType::View: {
       _buffer.reserve(static_cast<size_t>(data.byteSize()));

@@ -1377,9 +1377,9 @@ static void JS_BinaryWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   max_length = MIN(length, MIN(buffer->_length - offset, max_length));
 
-  int written = DecodeWrite(isolate, p, max_length, s, BINARY);
+  ssize_t written = DecodeWrite(isolate, p, max_length, s, BINARY);
 
-  TRI_V8_RETURN(v8::Integer::New(isolate, written));
+  TRI_V8_RETURN(v8::Integer::New(isolate, (int32_t)written));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

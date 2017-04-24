@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIndex.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -38,49 +39,95 @@ RocksDBIndex::RocksDBIndex(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse, uint64_t objectId)
     : Index(id, collection, attributes, unique, sparse),
-      _objectId(TRI_NewTickServer()),  // TODO!
+      _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
-      _cacheManager(CacheManagerFeature::MANAGER),
       _cache(nullptr),
+      _cachePresent(false),
       _useCache(false) {}
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
                            VPackSlice const& info)
     : Index(id, collection, info),
-      _objectId(TRI_NewTickServer()),  // TODO!
+      _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
-      _cacheManager(CacheManagerFeature::MANAGER),
       _cache(nullptr),
-      _useCache(false) {}
+      _cachePresent(false),
+      _useCache(false) {
+  if (_objectId == 0) {
+    _objectId = TRI_NewTickServer();
+  }
+}
 
 RocksDBIndex::~RocksDBIndex() {
-  if (_useCache && _cache != nullptr) {
+  if (_useCache && _cachePresent) {
     try {
-      TRI_ASSERT(_cacheManager != nullptr);
-      _cacheManager->destroyCache(_cache);
+      TRI_ASSERT(_cache != nullptr);
+      TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+      CacheManagerFeature::MANAGER->destroyCache(_cache);
     } catch (...) {
     }
   }
 }
 
-void RocksDBIndex::createCache() {
-  TRI_ASSERT(_cacheManager != nullptr);
-  TRI_ASSERT(_useCache);
-  TRI_ASSERT(_cache.get() == nullptr);
-  _cache = _cacheManager->createCache(cache::CacheType::Transactional);
-  if (_cache.get() == nullptr) {
-    _useCache = false;
+void RocksDBIndex::load() {
+  if (_useCache) {
+    createCache();
   }
+}
+
+int RocksDBIndex::unload() {
+  if (_useCache && _cachePresent) {
+    disableCache();
+    TRI_ASSERT(!_cachePresent);
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+  
+/// @brief return a VelocyPack representation of the index
+void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+                                bool forPersistence) const {
+  Index::toVelocyPack(builder, withFigures, forPersistence);
+  if (forPersistence) {
+    builder.add("objectId", VPackValue(std::to_string(_objectId)));
+  }
+}
+
+void RocksDBIndex::createCache() {
+  if (!_useCache || _cachePresent) {
+    // we should not get here if we do not need the cache
+    // or if cache already created
+  }
+
+  TRI_ASSERT(_cache.get() == nullptr);
+  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
+  _cachePresent = (_cache.get() != nullptr);
+}
+
+void RocksDBIndex::disableCache() {
+  if (!_cachePresent) {
+    return;
+  }
+  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  // must have a cache...
+  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cachePresent);
+  TRI_ASSERT(_cache.get() != nullptr);
+  CacheManagerFeature::MANAGER->destroyCache(_cache);
+  _cache.reset();
+  _cachePresent = false;
 }
 
 int RocksDBIndex::drop() {
   // Try to drop the cache as well.
-  if (_useCache && _cache != nullptr) {
+  if (_cachePresent) {
     try {
-      _cacheManager->destroyCache(_cache);
+      TRI_ASSERT(_cachePresent);
+      TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+      CacheManagerFeature::MANAGER->destroyCache(_cache);
       // Reset flag
-      _cache = nullptr;
-      _useCache = false;
+      _cache.reset();
+      _cachePresent = false;
     } catch (...) {
     }
   }

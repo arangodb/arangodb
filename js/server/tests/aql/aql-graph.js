@@ -879,7 +879,8 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraOutbound : function () {
-      var query = `LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v: v._id, e: e._id})
+      var query = `WITH ${vn}
+                   LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v: v._id, e: e._id})
                    LET edges = (FOR e IN p[*].e FILTER e != null RETURN e)
                    LET vertices = p[*].v
                    LET distance = LENGTH(edges)
@@ -911,7 +912,8 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraOutboundIncludeData : function () {
-      var query = `LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v, e})
+      var query = `WITH ${vn}
+                   LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v, e})
                    LET edges = (FOR e IN p[*].e FILTER e != null RETURN e)
                    LET vertices = p[*].v
                    LET distance = LENGTH(edges)
@@ -940,7 +942,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraInbound : function () {
-      var query = `FOR v IN INBOUND SHORTEST_PATH "${vn}/H" TO "${vn}/A" ${en} RETURN v._id`;
+      var query = `WITH ${vn} FOR v IN INBOUND SHORTEST_PATH "${vn}/H" TO "${vn}/A" ${en} RETURN v._id`;
       var actual = getQueryResults(query);
       assertEqual([ vn + "/H", vn + "/G", vn + "/E", vn + "/D", vn + "/A" ], actual);
     },
@@ -950,7 +952,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraDistance : function () {
-      var query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} OPTIONS {weightAttribute: "weight"} RETURN v._key`;
+      var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} OPTIONS {weightAttribute: "weight"} RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual([ "A", "B", "C", "D", "E", "G", "H" ], actual);
     },
@@ -966,7 +968,7 @@ function ahuacatlQueryShortestPathTestSuite () {
         edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
       });
 
-      var query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN v._key`;
+      var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN v._key`;
       var actual = getQueryResults(query);
 
       assertEqual(["A","D","E","G","H"], actual);

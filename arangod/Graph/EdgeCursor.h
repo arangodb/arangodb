@@ -18,32 +18,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_MEASURE_CALLBACK_H
-#define ARANGOD_CONSENSUS_MEASURE_CALLBACK_H 1
+#ifndef ARANGOD_GRAPH_EDGECURSOR_H
+#define ARANGOD_GRAPH_EDGECURSOR_H 1
 
-#include "Cluster/ClusterComm.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
-namespace consensus {
 
-class Inception;
+class StringRef;
 
-class MeasureCallback : public arangodb::ClusterCommCallback {
-
-public:
-  explicit MeasureCallback(Inception*, std::string const&, uint64_t);
-  
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
-  
- private:
-  Inception* _inc;
-  std::string const _peerId;
-  uint64_t const _sent;
-};
+namespace velocypack {
+class Slice;
 }
-}  // namespace
+
+namespace graph {
+
+/// @brief Abstract class used in the traversals
+/// to abstract away access to indexes / DBServers.
+/// Returns edges as VelocyPack.
+class EdgeCursor {
+ public:
+  EdgeCursor() {}
+  virtual ~EdgeCursor() {}
+
+  virtual bool next(std::function<void(arangodb::StringRef const&,
+                                       arangodb::velocypack::Slice, size_t)>
+                        callback) = 0;
+
+  virtual void readAll(
+      std::function<void(arangodb::StringRef const&,
+                         arangodb::velocypack::Slice, size_t&)>) = 0;
+};
+
+}  // namespace graph
+}  // namespace arangodb
 
 #endif

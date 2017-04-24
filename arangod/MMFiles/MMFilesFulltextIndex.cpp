@@ -85,7 +85,7 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
 
   if (value.isNumber()) {
     _minWordLength = value.getNumericValue<int>();
-    if (_minWordLength <= 0) { 
+    if (_minWordLength <= 0) {
       // The min length cannot be negative.
       _minWordLength = 1;
     }
@@ -128,11 +128,13 @@ size_t MMFilesFulltextIndex::memory() const {
 
 /// @brief return a VelocyPack representation of the index
 void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder,
-                                 bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
+                                 bool withFigures, bool forPersistence) const {
+  builder.openObject();
+  Index::toVelocyPack(builder, withFigures, forPersistence);
   builder.add("unique", VPackValue(false));
   builder.add("sparse", VPackValue(true));
   builder.add("minLength", VPackValue(_minWordLength));
+  builder.close();
 }
 
 /// @brief Test if this index matches the definition
@@ -216,7 +218,7 @@ int MMFilesFulltextIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId
   int res = TRI_ERROR_NO_ERROR;
 
   std::vector<std::string> words = wordlist(doc);
-   
+
   if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
     // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";

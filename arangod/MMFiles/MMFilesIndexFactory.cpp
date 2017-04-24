@@ -448,3 +448,7 @@ void MMFilesIndexFactory::fillSystemIndexes(
         std::make_shared<arangodb::MMFilesEdgeIndex>(1, col));
   }
 }
+  
+std::vector<std::string> MMFilesIndexFactory::supportedIndexes() const {
+  return std::vector<std::string>{ "primary", "edge", "hash", "skiplist", "persistent", "geo", "fulltext" };
+}

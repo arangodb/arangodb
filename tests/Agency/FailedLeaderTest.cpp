@@ -33,6 +33,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "lib/Basics/StringUtils.h"
+#include "lib/Random/RandomGenerator.h"
 
 #include <iostream>
 #include <velocypack/Parser.h>
@@ -105,6 +106,7 @@ typedef std::function<std::unique_ptr<Builder>(
   Slice const&, std::string const&)>TestStructureType;
 
 TEST_CASE("FailedLeader", "[agency][supervision]") {
+  RandomGenerator::seed(3);
 
   auto baseStructure = createRootNode();
 
@@ -535,7 +537,6 @@ SECTION("abort any moveShard job blocking the shard and start") {
   Verify(Method(mockAgent, write));
 }
 
-#ifdef __linux__
 SECTION("if everything is fine than the job should be written to pending, adding the toServer") {
   std::string jobId = "1";
 
@@ -637,7 +638,6 @@ SECTION("if everything is fine than the job should be written to pending, adding
   );
   failedLeader.start();
 }
-#endif
 
 SECTION("if we want are working and our collection went missing from plan the job should just finish") {
   std::string jobId = "1";

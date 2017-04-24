@@ -276,6 +276,19 @@ describe ArangoDB do
           doc.parsed_response['status'].should eq(3)
           doc.parsed_response['count'].should be_kind_of(Integer)
           doc.parsed_response['count'].should eq(0)
+          #doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
+          #doc.parsed_response['figures']['dead']['count'].should eq(0)
+          #doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
+          #doc.parsed_response['figures']['alive']['count'].should eq(0)
+          #doc.parsed_response['figures']['datafiles']['count'].should be_kind_of(Integer)
+          #doc.parsed_response['figures']['datafiles']['fileSize'].should be_kind_of(Integer)
+          #doc.parsed_response['figures']['datafiles']['count'].should eq(0)
+          #doc.parsed_response['figures']['journals']['count'].should be_kind_of(Integer)
+          #doc.parsed_response['figures']['journals']['fileSize'].should be_kind_of(Integer)
+          #doc.parsed_response['figures']['journals']['count'].should eq(0)
+          #doc.parsed_response['figures']['compactors']['count'].should be_kind_of(Integer)
+          #doc.parsed_response['figures']['compactors']['fileSize'].should be_kind_of(Integer)
+          #doc.parsed_response['figures']['compactors']['count'].should eq(0)
                 
           # create a few documents, this should increase counts
           (0...10).each{|i|

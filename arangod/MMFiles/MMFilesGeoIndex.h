@@ -28,31 +28,30 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/mmfiles-geo-index.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 // GeoCoordinate.data must be capable of storing revision ids
-static_assert(sizeof(GeoCoordinate::data) >= sizeof(TRI_voc_rid_t), "invalid size of GeoCoordinate.data");
+static_assert(sizeof(GeoCoordinate::data) >= sizeof(TRI_voc_rid_t),
+              "invalid size of GeoCoordinate.data");
 
 namespace arangodb {
 class MMFilesGeoIndex;
 
 class MMFilesGeoIndexIterator final : public IndexIterator {
  public:
+  /// @brief Construct an MMFilesGeoIndexIterator based on Ast Conditions
+  MMFilesGeoIndexIterator(LogicalCollection* collection,
+                          transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr,
+                          MMFilesGeoIndex const* index,
+                          arangodb::aql::AstNode const*,
+                          arangodb::aql::Variable const*);
 
-/// @brief Construct an MMFilesGeoIndexIterator based on Ast Conditions
-  MMFilesGeoIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
-                   ManagedDocumentResult* mmdr,
-                   MMFilesGeoIndex const* index,
-                   arangodb::aql::AstNode const*,
-                   arangodb::aql::Variable const*);
-
-  ~MMFilesGeoIndexIterator() {
-    replaceCursor(nullptr);
-  }
+  ~MMFilesGeoIndexIterator() { replaceCursor(nullptr); }
 
   char const* typeName() const override { return "geo-index-iterator"; }
 
@@ -64,7 +63,7 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
   size_t findLastIndex(GeoCoordinates* coords) const;
   void replaceCursor(::GeoCursor* c);
   void createCursor(double lat, double lon);
-  void evaluateCondition(); //called in constructor
+  void evaluateCondition();  // called in constructor
 
   MMFilesGeoIndex const* _index;
   ::GeoCursor* _cursor;
@@ -79,12 +78,13 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
 };
 
 class MMFilesGeoIndex final : public Index {
-friend class MMFilesGeoIndexIterator;
+  friend class MMFilesGeoIndexIterator;
+
  public:
   MMFilesGeoIndex() = delete;
 
   MMFilesGeoIndex(TRI_idx_iid_t, LogicalCollection*,
-            arangodb::velocypack::Slice const&);
+                  arangodb::velocypack::Slice const&);
 
   ~MMFilesGeoIndex();
 
@@ -106,23 +106,23 @@ friend class MMFilesGeoIndexIterator;
 
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
-  
-  char const* typeName() const override { 
+
+  char const* typeName() const override {
     if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
         _variant == INDEX_GEO_COMBINED_LON_LAT) {
       return "geo1";
     }
     return "geo2";
   }
-  
+
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) override;
-  
+
   bool allowExpansion() const override { return false; }
-  
+
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return true; }
@@ -131,14 +131,16 @@ friend class MMFilesGeoIndexIterator;
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   // Uses default toVelocyPackFigures
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int unload() override;
 
@@ -166,11 +168,10 @@ friend class MMFilesGeoIndexIterator;
   static DocumentIdentifierToken toDocumentIdentifierToken(uint64_t internal);
 
  private:
-
   /// @brief attribute paths
-  std::vector<std::string>  _location;
-  std::vector<std::string>  _latitude;
-  std::vector<std::string>  _longitude;
+  std::vector<std::string> _location;
+  std::vector<std::string> _latitude;
+  std::vector<std::string> _longitude;
 
   /// @brief the geo index variant (geo1 or geo2)
   IndexVariant _variant;

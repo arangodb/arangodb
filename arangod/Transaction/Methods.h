@@ -60,7 +60,7 @@ enum class ResponseCode;
 }
 
 namespace traverser {
-class BaseTraverserEngine;
+class BaseEngine;
 }
 
 namespace transaction {
@@ -80,7 +80,7 @@ class TransactionCollection;
 namespace transaction {
 
 class Methods {
-  friend class traverser::BaseTraverserEngine;
+  friend class traverser::BaseEngine;
 
  public:
 

@@ -153,7 +153,7 @@ std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
   return result;
 }
 
-void* Table::primaryBucket(uint32_t index) {
+void* Table::primaryBucket(uint64_t index) {
   if (!isEnabled()) {
     return nullptr;
   }

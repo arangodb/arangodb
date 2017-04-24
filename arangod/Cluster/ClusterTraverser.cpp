@@ -26,6 +26,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/BreadthFirstEnumerator.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/TraverserCache.h"
 
@@ -33,6 +34,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::graph;
 
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
@@ -57,7 +59,7 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     if (firstSlash == std::string::npos ||
         vid.find("/", firstSlash + 1) != std::string::npos) {
       // We can stop here. The start vertex is not a valid _id
-      ++_filteredPaths;
+      traverserCache()->increaseFilterCounter();
       _done = true;
       return;
     }
@@ -107,7 +109,8 @@ bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge, StringR
 }
 
 void ClusterTraverser::fetchVertices() {
-  _readDocuments += _verticesToFetch.size();
+  auto ch = static_cast<ClusterTraverserCache*>(traverserCache());
+  ch->insertedDocuments() += _verticesToFetch.size();
   transaction::BuilderLeaser lease(_trx);
   fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices,
                            *(lease.get()));
@@ -129,7 +132,7 @@ aql::AqlValue ClusterTraverser::fetchVertexData(StringRef idString) {
 }
 
 aql::AqlValue ClusterTraverser::fetchEdgeData(StringRef eid) {
-  return aql::AqlValue(_edges[eid]);//this->_cache->fetchAqlResult(edge);
+  return traverserCache()->fetchAqlResult(eid);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -138,7 +141,6 @@ aql::AqlValue ClusterTraverser::fetchEdgeData(StringRef eid) {
 
 void ClusterTraverser::addVertexToVelocyPack(StringRef vid,
                                              VPackBuilder& result) {
-  //TRI_ASSERT(id.isString());
   auto cached = _vertices.find(vid);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
@@ -157,5 +159,5 @@ void ClusterTraverser::addVertexToVelocyPack(StringRef vid,
 
 void ClusterTraverser::addEdgeToVelocyPack(StringRef eid,
                          arangodb::velocypack::Builder& result) {
-  result.add(_edges[eid]);
+  traverserCache()->insertIntoResult(eid, result);
 }

@@ -7,13 +7,15 @@ This is an introduction to ArangoDB's geo indexes.
 
 AQL's geographic features are described in [Geo functions](../../AQL/Functions/Geo.html).
 
-ArangoDB uses Hilbert curves to implement geo-spatial indexes. 
+ArangoDB uses Hilbert curves to implement geo-spatial indexes.
 See this [blog](https://www.arangodb.com/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
 for details.
 
 A geo-spatial index assumes that the latitude is between -90 and 90 degree and
 the longitude is between -180 and 180 degree. A geo index will ignore all
 documents which do not fulfill these requirements.
+
+Currently, geo indexes are not yet supported with the RocksDB storage engine. Thus the functions `NEAR()`, `WITHIN()` and `WITHIN_RECTANGLE()` will be unavailable when using this storage engine. To use geo indexes, please use the MMFiles storage engine for the time being.
 
 Accessing Geo Indexes from the Shell
 ------------------------------------
@@ -66,7 +68,7 @@ Create a geo index for an array attribute:
     |     for (j = -180; j <= 180; j += 10) {
     |         db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] });
     |     }
-      }	
+      }
     db.geo.count();
     db.geo.near(0, 0).limit(3).toArray();
     db.geo.near(0, 0).count();
@@ -85,7 +87,7 @@ Create a geo index for a hash array attribute:
     |     for (j = -180; j <= 180; j += 10) {
     |         db.geo2.save({ name : "Name/" + i + "/" + j, location: { latitude : i, longitude : j } });
     |     }
-      }	
+      }
     db.geo2.near(0, 0).limit(3).toArray();
     ~db._drop("geo2")
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -101,8 +103,8 @@ Use GeoIndex with AQL SORT statement:
     |     for (j = -180; j <= 180; j += 10) {
     |         db.geoSort.save({ name : "Name/" + i + "/" + j, latitude : i, longitude : j });
     |     }
-      }	
-    var query = "FOR doc in geoSort SORT distance(doc.latitude, doc.longitude, 0, 0) LIMIT 5 RETURN doc"
+      }
+    var query = "FOR doc in geoSort SORT DISTANCE(doc.latitude, doc.longitude, 0, 0) LIMIT 5 RETURN doc"
     db._explain(query, {}, {colors: false});
     db._query(query);
     ~db._drop("geoSort")
@@ -119,8 +121,8 @@ Use GeoIndex with AQL FILTER statement:
     |     for (j = -180; j <= 180; j += 10) {
     |         db.geoFilter.save({ name : "Name/" + i + "/" + j, latitude : i, longitude : j });
     |     }
-      }	
-    var query = "FOR doc in geoFilter FILTER distance(doc.latitude, doc.longitude, 0, 0) < 2000 RETURN doc"
+      }
+    var query = "FOR doc in geoFilter FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000 RETURN doc"
     db._explain(query, {}, {colors: false});
     db._query(query);
     ~db._drop("geoFilter")
@@ -143,7 +145,7 @@ Use GeoIndex with AQL FILTER statement:
 ensures that a geo index exists
 `collection.ensureIndex({ type: "geo", fields: [ "location" ] })`
 
-Since ArangoDB 2.5, this method is an alias for *ensureGeoIndex* since 
+Since ArangoDB 2.5, this method is an alias for *ensureGeoIndex* since
 geo indexes are always sparse, meaning that documents that do not contain
 the index attributes or have non-numeric values in the index attributes
 will not be indexed. *ensureGeoConstraint* is deprecated and *ensureGeoIndex*

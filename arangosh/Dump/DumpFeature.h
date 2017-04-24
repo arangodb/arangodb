@@ -32,10 +32,9 @@ class SimpleHttpResult;
 }
 
 class DumpFeature final : public application_features::ApplicationFeature,
-                                public ArangoClientHelper {
+                          public ArangoClientHelper {
  public:
-  DumpFeature(application_features::ApplicationServer* server,
-                    int* result);
+  DumpFeature(application_features::ApplicationServer* server, int* result);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -63,8 +62,9 @@ class DumpFeature final : public application_features::ApplicationFeature,
   int startBatch(std::string DBserver, std::string& errorMsg);
   void extendBatch(std::string DBserver);
   void endBatch(std::string DBserver);
-  int dumpCollection(int fd, std::string const& cid, std::string const& name,
-                     uint64_t maxTick, std::string& errorMsg);
+  int dumpCollection(int fd, std::string const& collectionId,
+                     std::string const& name, uint64_t maxTick,
+                     std::string& errorMsg);
   void flushWal();
   int runDump(std::string& dbName, std::string& errorMsg);
   int dumpShard(int fd, std::string const& DBserver, std::string const& name,

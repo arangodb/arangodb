@@ -26,81 +26,101 @@
 
 #include <rocksdb/types.h>
 #include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "Basics/Thread.h"
+#include "VocBase/voc-types.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include <atomic>
 
 namespace rocksdb {
 class DB;
 class Transaction;
-class Snapshot;
 }
 
 namespace arangodb {
-
-class RocksDBCounterManager : Thread {
+  
+class RocksDBCounterManager {
   friend class RocksDBEngine;
-  RocksDBCounterManager(rocksdb::DB* db, double interval);
+  
+  /// Constructor needs to be called synchronously,
+  /// will load counts from the db and scan the WAL
+  explicit RocksDBCounterManager(rocksdb::DB* db);
 
  public:
-  struct Counter {
-    rocksdb::SequenceNumber sequenceNumber;
-    uint64_t value1; // used for number of documents
-    uint64_t value2; // used for revision id
     
-    Counter(rocksdb::SequenceNumber seq, uint64_t value1, uint64_t value2)
-      : sequenceNumber(seq), value1(value1), value2(value2) {}
-    explicit Counter(VPackSlice const&);
-    void serialize(VPackBuilder&) const;
+  struct CounterAdjustment {
+    rocksdb::SequenceNumber _sequenceNum = 0;
+    uint64_t _added = 0;
+    uint64_t _removed = 0;
+    TRI_voc_rid_t _revisionId = 0; // used for revision id
+    
+    CounterAdjustment() {}
+    CounterAdjustment(rocksdb::SequenceNumber seq, uint64_t added,
+                  uint64_t removed, TRI_voc_rid_t revisionId)
+    : _sequenceNum(seq), _added(added), _removed(removed), _revisionId(revisionId) {}
+    
+    rocksdb::SequenceNumber sequenceNumber() const {return _sequenceNum;};
+    uint64_t added() const { return _added; }
+    uint64_t removed() const { return _removed; }
+    TRI_voc_rid_t revisionId() const { return _revisionId; }
   };
-
-  /// Constructor needs to be called synchrunously,
-  /// will load counts from the db and scan the WAL
+  
 
   /// Thread-Safe load a counter
-  std::pair<uint64_t, uint64_t> loadCounter(uint64_t objectId);
+  CounterAdjustment loadCounter(uint64_t objectId) const;
 
   /// collections / views / indexes can call this method to update
   /// their total counts. Thread-Safe needs the snapshot so we know
   /// the sequence number used
-  void updateCounter(uint64_t objectId, rocksdb::Snapshot const* snapshot,
-                     uint64_t value1, uint64_t value2);
+  void updateCounter(uint64_t objectId,
+                     CounterAdjustment const&);
 
   /// Thread-Safe remove a counter
   void removeCounter(uint64_t objectId);
 
   /// Thread-Safe force sync
-  arangodb::Result sync();
-
-  void beginShutdown() override;
+  arangodb::Result sync(bool force);
 
  protected:
-  void run() override;
+  
+  struct CMValue {
+    /// ArangoDB transaction ID
+    rocksdb::SequenceNumber  _sequenceNum;
+    /// used for number of documents
+    uint64_t _count;
+    /// used for revision id
+    TRI_voc_rid_t _revisionId;
+    
+    CMValue(rocksdb::SequenceNumber sq, uint64_t cc, TRI_voc_rid_t rid)
+    : _sequenceNum(sq), _count(cc), _revisionId(rid) {}
+    explicit CMValue(arangodb::velocypack::Slice const&);
+    void serialize(arangodb::velocypack::Builder&) const;
+  };
 
- private:
+  
+  void readSettings();
+  void writeSettings();
+
   void readCounterValues();
   bool parseRocksWAL();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief counter values
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<uint64_t, Counter> _counters;
+  std::unordered_map<uint64_t, CMValue> _counters;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief counter values
+  /// @brief synced sequence numbers
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<uint64_t, Counter> _syncedCounters;
+  std::unordered_map<uint64_t, rocksdb::SequenceNumber> _syncedSeqNums;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently syncing
   //////////////////////////////////////////////////////////////////////////////
-  bool _syncing = false;
+  std::atomic<bool> _syncing;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rocsdb instance
@@ -108,19 +128,9 @@ class RocksDBCounterManager : Thread {
   rocksdb::DB* _db;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief interval i which we will sync
-  //////////////////////////////////////////////////////////////////////////////
-  double const _interval;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief condition variable for heartbeat
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::basics::ConditionVariable _condition;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief protect _syncing and _counters
   //////////////////////////////////////////////////////////////////////////////
-  basics::ReadWriteLock _rwLock;
+  mutable basics::ReadWriteLock _rwLock;
 };
 }
 

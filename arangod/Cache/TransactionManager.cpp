@@ -46,11 +46,14 @@ Transaction* TransactionManager::begin(bool readOnly) {
     }
   } else {
     tx->sensitive = true;
-    _openWrites++;
-    if (++_openSensitive == 1) {
+    if (_openSensitive.load() == 0) {
       _term++;
-      _openSensitive += _openReads.load();
     }
+    if (_openWrites.load() == 0) {
+      _openSensitive = _openReads.load() + _openWrites.load();
+    }
+    _openWrites++;
+    _openSensitive++;
   }
   tx->term = _term;
   _state.unlock();

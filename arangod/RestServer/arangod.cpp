@@ -35,6 +35,7 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
+#include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Pregel/PregelFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -175,6 +176,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new VersionFeature(&server));
     server.addFeature(new ViewTypesFeature(&server));
     server.addFeature(new WorkMonitorFeature(&server));
+    server.addFeature(new RocksDBOptionFeature(&server));
 
 #ifdef ARANGODB_HAVE_FORK
     server.addFeature(new DaemonFeature(&server));

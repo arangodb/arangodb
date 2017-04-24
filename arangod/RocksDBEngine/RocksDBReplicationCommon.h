@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,22 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MeasureCallback.h"
-#include "Agent.h"
+#ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_COMMON_H
+#define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_COMMON_H 1
 
-using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
+#include "Basics/Common.h"
+#include "Basics/Result.h"
 
-MeasureCallback::MeasureCallback(
-  Inception* inc, std::string const& peerId, uint64_t sent) :
-  _inc(inc), _peerId(peerId), _sent(sent){}
+namespace arangodb {
 
-bool MeasureCallback::operator()(arangodb::ClusterCommResult* res) {
-  if (res->status == CL_COMM_SENT && res->result->getHttpReturnCode() == 200) {
-    _inc->reportIn(_peerId, _sent);
-  }
-  return true;
-}
+class RocksDBReplicationResult : public Result {
+ public:
+  RocksDBReplicationResult(int, uint64_t);
+  uint64_t maxTick() const;
+  bool fromTickIncluded() const;
+
+  void includeFromTick();
+
+ private:
+  uint64_t _maxTick;
+  bool _fromTickIncluded;
+};
+
+}  // namespace arangodb
+
+#endif

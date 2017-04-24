@@ -39,6 +39,10 @@ namespace velocypack {
 class Builder;
 }
 
+namespace graph {
+class EdgeCursor;
+}
+
 namespace traverser {
 class Traverser;
 struct TraverserOptions;
@@ -48,7 +52,6 @@ struct EnumeratedPath {
   std::vector<arangodb::StringRef> vertices;
   EnumeratedPath() {}
 };
-
 
 class PathEnumerator {
 
@@ -109,16 +112,14 @@ class DepthFirstEnumerator final : public PathEnumerator {
   /// @brief The stack of EdgeCursors to walk through.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::stack<std::unique_ptr<EdgeCursor>> _edgeCursors;
+  std::stack<std::unique_ptr<graph::EdgeCursor>> _edgeCursors;
 
  public:
   DepthFirstEnumerator(Traverser* traverser,
                        std::string const& startVertex,
-                       TraverserOptions* opts)
-      : PathEnumerator(traverser, startVertex, opts) {}
+                       TraverserOptions* opts);
 
-  ~DepthFirstEnumerator() {
-  }
+  ~DepthFirstEnumerator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.

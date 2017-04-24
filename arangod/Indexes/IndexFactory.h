@@ -55,6 +55,8 @@ class IndexFactory {
   virtual void fillSystemIndexes(
       arangodb::LogicalCollection* col,
       std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const  = 0;
+
+  virtual std::vector<std::string> supportedIndexes() const = 0;
 };
 
 } // namespace arangodb

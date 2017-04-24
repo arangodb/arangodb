@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexLookupContext.h"
+#include "RocksDBCommon.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
@@ -42,6 +43,8 @@ struct RocksDBToken;
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
   friend class RocksDBVPackIndex;
+  
+  constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
   static inline RocksDBCollection* toRocksDBCollection(
@@ -118,7 +121,8 @@ class RocksDBCollection final : public PhysicalCollection {
   std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx, ManagedDocumentResult* mdr) override;
 
-  void invokeOnAllElements(transaction::Methods* trx,
+  void invokeOnAllElements(
+      transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback) override;
 
   ////////////////////////////////////
@@ -176,8 +180,12 @@ class RocksDBCollection final : public PhysicalCollection {
   uint64_t objectId() const { return _objectId; }
 
   Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
-                             RocksDBToken& token);
-
+                             RocksDBToken& token) const;
+  
+  int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
+  
+  int endWrite(bool useDeadlockDetector);
+  
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(
@@ -194,30 +202,32 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBPrimaryIndex* primaryIndex() const;
 
-  int insertDocument(arangodb::transaction::Methods* trx,
-                     TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const& doc, bool& waitForSync);
+  arangodb::RocksDBOperationResult insertDocument(
+      arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
+      arangodb::velocypack::Slice const& doc, bool& waitForSync) const;
 
-  int removeDocument(arangodb::transaction::Methods* trx,
-                     TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const& doc, bool& waitForSync);
+  arangodb::RocksDBOperationResult removeDocument(
+      arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
+      arangodb::velocypack::Slice const& doc, bool& waitForSync) const;
 
-  int lookupDocument(transaction::Methods* trx, arangodb::velocypack::Slice key,
-                     ManagedDocumentResult& result);
+  arangodb::RocksDBOperationResult lookupDocument(
+      transaction::Methods* trx, arangodb::velocypack::Slice key,
+      ManagedDocumentResult& result) const;
 
-  int updateDocument(transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
-                     arangodb::velocypack::Slice const& oldDoc,
-                     TRI_voc_rid_t newRevisionId,
-                     arangodb::velocypack::Slice const& newDoc,
-                     bool& waitForSync);
+  arangodb::RocksDBOperationResult updateDocument(
+      transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
+      arangodb::velocypack::Slice const& oldDoc, TRI_voc_rid_t newRevisionId,
+      arangodb::velocypack::Slice const& newDoc, bool& waitForSync) const;
 
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
-                                       arangodb::ManagedDocumentResult&);
+                                       arangodb::ManagedDocumentResult&) const;
 
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
+
+  basics::ReadWriteLock _exclusiveLock;
 };
 }
 

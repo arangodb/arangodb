@@ -8,7 +8,7 @@ single query. It will then calculate the costs for all plans and pick the plan w
 lowest total cost. This resulting plan is considered to be the *optimal plan*, which is
 then executed.
 
-The optimizer is designed to only perform optimizations if they are *safe*, in the 
+The optimizer is designed to only perform optimizations if they are *safe*, in the
 meaning that an optimization should not modify the result of a query. A notable exception
 to this is that the optimizer is allowed to change the order of results for queries that
 do not explicitly specify how results should be sorted.
@@ -17,11 +17,11 @@ do not explicitly specify how results should be sorted.
 
 The `explain` command can be used to query the optimal executed plan or even all plans
 the optimizer has generated. Additionally, `explain` can reveal some more information
-about the optimizer's view of the query. 
+about the optimizer's view of the query.
 
 ### Inspecting plans using the explain helper
 
-The `explain` method of `ArangoStatement` as shown in the next chapters creates very verbose output. 
+The `explain` method of `ArangoStatement` as shown in the next chapters creates very verbose output.
 You can work on the output programmatically, or use this handsome tool that we created
 to generate a more human readable representation.
 
@@ -31,14 +31,14 @@ You may use it like this: (we disable syntax highlighting here)
     @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_01_axplainer}
     ~addIgnoreCollection("test")
     ~db._drop("test");
-    db._create("test"); 
+    db._create("test");
     for (i = 0; i < 100; ++i) { db.test.save({ value: i }); }
     db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
     var explain = require("@arangodb/aql/explainer").explain;
     explain("FOR i IN test FILTER i.value > 97 SORT i.value RETURN i.value", {colors:false});
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_01_axplainer
-    
+
 
 ### Execution plans in detail
 
@@ -60,7 +60,7 @@ sections. Instead, let's take a closer look at the results step by step.
 In general, an execution plan can be considered to be a pipeline of processing steps.
 Each processing step is carried out by a so-called *execution node*
 
-The `nodes` attribute of the `explain` result contains these *execution nodes* in 
+The `nodes` attribute of the `explain` result contains these *execution nodes* in
 the *execution plan*. The output is still very verbose, so here's a shorted form of it:
 
     @startDocuBlockInline AQLEXP_02_explainOverview
@@ -70,8 +70,8 @@ the *execution plan*. The output is still very verbose, so here's a shorted form
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_02_explainOverview
 
-*Note that the list of nodes might slightly change in future versions of ArangoDB if 
-new execution node types get added or the optimizer create somewhat more 
+*Note that the list of nodes might slightly change in future versions of ArangoDB if
+new execution node types get added or the optimizer create somewhat more
 optimized plans).*
 
 When a plan is executed, the query execution engine will start with the node at
@@ -127,7 +127,7 @@ that were applied to the plan:
 Here is the meaning of these rules in context of this query:
 * `move-calculations-up`: moves a *CalculationNode* as far up in the processing pipeline
   as possible
-* `move-filters-up`: moves a *FilterNode* as far up in the processing pipeline as 
+* `move-filters-up`: moves a *FilterNode* as far up in the processing pipeline as
   possible
 * `remove-redundant-calculations`: replaces references to variables with references to
   other variables that contain the exact same result. In the example query, `i.value`
@@ -136,14 +136,14 @@ Here is the meaning of these rules in context of this query:
 * `remove-unnecessary-calculations`: removes *CalculationNode*s whose result values are
   not used in the query. In the example this happens due to the `remove-redundant-calculations`
   rule having made some calculations unnecessary.
-* `use-index`: use an index to iterate over a collection instead of performing a
+* `use-indexes`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
   used for filtering and sorting.
-* `use-index-for-sort`: removes a `SORT` operation if it is already satisfied by 
+* `use-index-for-sort`: removes a `SORT` operation if it is already satisfied by
   traversing over a sorted index
 
-Note that some rules may appear multiple times in the list, with number suffixes. 
-This is due to the same rule being applied multiple times, at different positions 
+Note that some rules may appear multiple times in the list, with number suffixes.
+This is due to the same rule being applied multiple times, at different positions
 in the optimizer pipeline.
 
 
@@ -159,7 +159,7 @@ attribute of a plan:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_04_explainCollections
 
-The `name` attribute contains the name of the `collection`, and `type` is the 
+The `name` attribute contains the name of the `collection`, and `type` is the
 access type, which can be either `read` or `write`.
 
 
@@ -172,9 +172,9 @@ can be ignored by end users in most cases.
 
 #### Cost of a query
 
-For each plan the optimizer generates, it will calculate the total cost. The plan 
-with the lowest total cost is considered to be the optimal plan. Costs are 
-estimates only, as the actual execution costs are unknown to the optimizer. 
+For each plan the optimizer generates, it will calculate the total cost. The plan
+with the lowest total cost is considered to be the optimal plan. Costs are
+estimates only, as the actual execution costs are unknown to the optimizer.
 Costs are calculated based on heuristics that are hard-coded into execution nodes.
 Cost values do not have any unit.
 
@@ -240,7 +240,7 @@ like this:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_08_explainDisableSingleRulePlans
 
-The maximum number of plans created by the optimizer can also be limited using the 
+The maximum number of plans created by the optimizer can also be limited using the
 `maxNumberOfPlans` attribute:
 
     @startDocuBlockInline AQLEXP_09_explainMaxNumberOfPlans
@@ -257,7 +257,7 @@ The optimizer will return statistics as a part of an `explain` result.
 The following attributes will be returned in the `stats` attribute of an `explain` result:
 
 - `plansCreated`: total number of plans created by the optimizer
-- `rulesExecuted`: number of rules executed (note: an executed rule does not 
+- `rulesExecuted`: number of rules executed (note: an executed rule does not
   indicate a plan was actually modified by a rule)
 - `rulesSkipped`: number of rules skipped by the optimizer
 
@@ -349,19 +349,19 @@ The following execution node types will appear in the output of `explain`:
   appear once per *COLLECT* statement.
 * *ReturnNode*: returns data to the caller. Will appear in each read-only query at
   least once. Subqueries will also contain *ReturnNode*s.
-* *InsertNode*: inserts documents into a collection (given in its *collection* 
+* *InsertNode*: inserts documents into a collection (given in its *collection*
   attribute). Will appear exactly once in a query that contains an *INSERT* statement.
-* *RemoveNode*: removes documents from a collection (given in its *collection* 
+* *RemoveNode*: removes documents from a collection (given in its *collection*
   attribute). Will appear exactly once in a query that contains a *REMOVE* statement.
-* *ReplaceNode*: replaces documents in a collection (given in its *collection* 
+* *ReplaceNode*: replaces documents in a collection (given in its *collection*
   attribute). Will appear exactly once in a query that contains a *REPLACE* statement.
-* *UpdateNode*: updates documents in a collection (given in its *collection* 
+* *UpdateNode*: updates documents in a collection (given in its *collection*
   attribute). Will appear exactly once in a query that contains an *UPDATE* statement.
-* *UpsertNode*: upserts documents in a collection (given in its *collection* 
+* *UpsertNode*: upserts documents in a collection (given in its *collection*
   attribute). Will appear exactly once in a query that contains an *UPSERT* statement.
 * *NoResultsNode*: will be inserted if *FILTER* statements turn out to be never
   satisfiable. The *NoResultsNode* will pass an empty result set into the processing
-  pipeline. 
+  pipeline.
 
 For queries in the cluster, the following nodes may appear in execution plans:
 
@@ -371,18 +371,18 @@ For queries in the cluster, the following nodes may appear in execution plans:
 * *DistributeNode*: used on a coordinator to fan-out data to one or multiple shards,
   taking into account a collection's shard key.
 * *RemoteNode*: a *RemoteNode* will perform communication with another ArangoDB
-  instances in the cluster. For example, the cluster coordinator will need to 
-  communicate with other servers to fetch the actual data from the shards. It 
+  instances in the cluster. For example, the cluster coordinator will need to
+  communicate with other servers to fetch the actual data from the shards. It
   will do so via *RemoteNode*s. The data servers themselves might again pull
   further data from the coordinator, and thus might also employ *RemoteNode*s.
   So, all of the above cluster relevant nodes will be accompanied by a *RemoteNode*.
-  
+
 
 ### List of optimizer rules
 
 The following optimizer rules may appear in the `rules` attribute of a plan:
 
-* `move-calculations-up`: will appear if a *CalculationNode* was moved up in a plan. 
+* `move-calculations-up`: will appear if a *CalculationNode* was moved up in a plan.
   The intention of this rule is to move calculations up in the processing pipeline
   as far as possible (ideally out of enumerations) so they are not executed in loops
   if not required. It is also quite common that this rule enables further optimizations
@@ -392,7 +392,7 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   as possible (ideally out of inner loops) so they filter results as early as possible.
 * `sort-in-values`: will appear when the values used as right-hand side of an `IN`
   operator will be pre-sorted using an extra function call. Pre-sorting the comparison
-  array allows using a binary search in-list lookup with a logarithmic complexity instead 
+  array allows using a binary search in-list lookup with a logarithmic complexity instead
   of the default linear complexity in-list lookup.
 * `remove-unnecessary-filters`: will appear if a *FilterNode* was removed or replaced.
   *FilterNode*s whose filter condition will always evaluate to *true* will be
@@ -403,35 +403,35 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   replace references to the redundant expressions with a single reference, allowing
   other optimizer rules to remove the then-unneeded *CalculationNode*s.
 * `remove-unnecessary-calculations`: will appear if *CalculationNode*s were removed
-  from the query. The rule will removed all calculations whose result is not 
+  from the query. The rule will removed all calculations whose result is not
   referenced in the query (note that this may be a consequence of applying other
   optimizations).
 * `remove-redundant-sorts`: will appear if multiple *SORT* statements can be merged
   into fewer sorts.
-* `interchange-adjacent-enumerations`: will appear if a query contains multiple 
+* `interchange-adjacent-enumerations`: will appear if a query contains multiple
   *FOR* statements whose order were permuted. Permutation of *FOR* statements is
   performed because it may enable further optimizations by other rules.
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
-  moving the random iteration into an *EnumerateCollectionNode*.
+  moving the random iteration into an *EnumerateCollectionNode*. (MMFiles-specific)
 * `remove-collect-variables`: will appear if an *INTO* clause was removed from a *COLLECT*
   statement because the result of *INTO* is not used. May also appear if a result
   of a *COLLECT* statement's *AGGREGATE* variables is not used.
 * `propagate-constant-attributes`: will appear when a constant value was inserted
   into a filter condition, replacing a dynamic attribute value.
-* `replace-or-with-in`: will appear if multiple *OR*-combined equality conditions 
+* `replace-or-with-in`: will appear if multiple *OR*-combined equality conditions
   on the same variable or attribute were replaced with an *IN* condition.
 * `remove-redundant-or`: will appear if multiple *OR* conditions for the same variable
   or attribute were combined into a single condition.
 * `use-indexes`: will appear when an index is used to iterate over a collection.
-  As a consequence, an *EnumerateCollectionNode* was replaced with an 
+  As a consequence, an *EnumerateCollectionNode* was replaced with an
   *IndexNode* in the plan.
 * `remove-filters-covered-by-index`: will appear if a *FilterNode* was removed or replaced
   because the filter condition is already covered by an *IndexNode*.
-* `use-index-for-sort`: will appear if an index can be used to avoid a *SORT* 
+* `use-index-for-sort`: will appear if an index can be used to avoid a *SORT*
   operation. If the rule was applied, a *SortNode* was removed from the plan.
-* `move-calculations-down`: will appear if a *CalculationNode* was moved down in a plan. 
+* `move-calculations-down`: will appear if a *CalculationNode* was moved down in a plan.
   The intention of this rule is to move calculations down in the processing pipeline
-  as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed 
+  as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed
   as late as possible and not before their results are required.
 * `patch-update-statements`: will appear if an *UpdateNode* was patched to not buffer
   its input completely, but to process it in smaller batches. The rule will fire for an
@@ -441,20 +441,21 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   AQL traversal was optimized away, or if a *FILTER* condition from the query was moved
   in the *TraversalNode* for early pruning of results.
 * `inline-subqueries`: will appear when a subquery was pulled out in its surrounding scope,
-  e.g. `FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a` 
-  would become `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a` 
+  e.g. `FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a`
+  would become `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a`
+* `geo-index-optimizer`: will appear when a geo index is utilized (MMFiles-specific)
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
 * `distribute-in-cluster`: will appear when query parts get distributed in a cluster.
-  This is not an optimization rule, and it cannot be turned off. 
+  This is not an optimization rule, and it cannot be turned off.
 * `scatter-in-cluster`: will appear when scatter, gather, and remote nodes are inserted
   into a distributed query. This is not an optimization rule, and it cannot be turned off.
-* `distribute-filtercalc-to-cluster`: will appear when filters are moved up in a 
-  distributed execution plan. Filters are moved as far up in the plan as possible to 
+* `distribute-filtercalc-to-cluster`: will appear when filters are moved up in a
+  distributed execution plan. Filters are moved as far up in the plan as possible to
   make result sets as small as possible as early as possible.
 * `distribute-sort-to-cluster`: will appear if sorts are moved up in a distributed query.
-  Sorts are moved as far up in the plan as possible to make result sets as small as possible 
+  Sorts are moved as far up in the plan as possible to make result sets as small as possible
   as early as possible.
 * `remove-unnecessary-remote-scatter`: will appear if a RemoteNode is followed by a
   ScatterNode, and the ScatterNode is only followed by calculations or the SingletonNode.
@@ -464,6 +465,6 @@ The following optimizer rules may appear in the `rules` attribute of cluster pla
   the same query part that enumerates over the documents of a collection. This saves
   inter-cluster roundtrips between the EnumerateCollectionNode and the RemoveNode.
 
-Note that some rules may appear multiple times in the list, with number suffixes. 
-This is due to the same rule being applied multiple times, at different positions 
+Note that some rules may appear multiple times in the list, with number suffixes.
+This is due to the same rule being applied multiple times, at different positions
 in the optimizer pipeline.

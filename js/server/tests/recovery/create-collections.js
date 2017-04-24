@@ -36,14 +36,12 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  var c;
   db._drop('UnitTestsRecovery1');
-  c = db._create('UnitTestsRecovery1', {
+  var c = db._create('UnitTestsRecovery1', {
     waitForSync: true,
     journalSize: 8 * 1024 * 1024,
     doCompact: false
   });
-
   c.save({ value1: 1, value2: [ 'the',
       'quick',
       'brown',
@@ -64,7 +62,6 @@ function runSetup () {
     doCompact: true,
     isVolatile: true
   });
-
   c.save({ value1: { 'some': 'rubbish' } });
   c.ensureSkiplist('value1');
 
@@ -80,11 +77,11 @@ function runSetup () {
 
   db._drop('_UnitTestsRecovery4');
   c = db._create('_UnitTestsRecovery4', { isSystem: true });
+
   c.save({ value42: 42 });
   c.ensureUniqueConstraint('value42');
-
   c.save({ _key: 'crashme' }, true);
-
+  
   internal.debugSegfault('crashing server');
 }
 
@@ -112,21 +109,26 @@ function recoverySuite () {
       prop = c.properties();
       assertTrue(prop.waitForSync);
       assertEqual(2, c.type());
-      assertEqual(8 * 1024 * 1024, prop.journalSize);
-      assertFalse(prop.doCompact);
-      assertFalse(prop.isVolatile);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(8 * 1024 * 1024, prop.journalSize);
+        assertFalse(prop.doCompact);
+        assertFalse(prop.isVolatile);
+      }
       assertFalse(prop.isSystem);
       idx = c.getIndexes();
       assertEqual(3, idx.length);
 
       c = db._collection('UnitTestsRecovery2');
-      assertEqual(0, c.count());
+      // isVolatile has no effect on rocksdb
+      assertEqual(db._engine().name  === "mmfiles" ? 0 : 1, c.count());
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(2, c.type());
-      assertEqual(16 * 1024 * 1024, prop.journalSize);
-      assertTrue(prop.doCompact);
-      assertTrue(prop.isVolatile);
+      if (db._engine().name  === "mmfiles") {
+        assertEqual(16 * 1024 * 1024, prop.journalSize);
+        assertTrue(prop.doCompact);
+        assertTrue(prop.isVolatile);
+      }
       assertFalse(prop.isSystem);
       idx = c.getIndexes();
       assertEqual(2, idx.length);
@@ -134,13 +136,16 @@ function recoverySuite () {
       assertFalse(idx[1].unique);
 
       c = db._collection('UnitTestsRecovery3');
+
       assertEqual(1, c.count());
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(3, c.type());
-      assertEqual(32 * 1024 * 1024, prop.journalSize);
-      assertTrue(prop.doCompact);
-      assertFalse(prop.isVolatile);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(32 * 1024 * 1024, prop.journalSize);
+        assertTrue(prop.doCompact);
+        assertFalse(prop.isVolatile);
+      }
       assertFalse(prop.isSystem);
       idx = c.getIndexes();
       assertEqual(3, idx.length);

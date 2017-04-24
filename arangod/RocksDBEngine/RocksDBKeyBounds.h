@@ -51,18 +51,6 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds DatabaseCollections(TRI_voc_tick_t databaseId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all collections belonging to a specified database
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds DatabaseIndexes(TRI_voc_tick_t databaseId,
-                                          TRI_voc_cid_t cid);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all indexes belonging to a specified collection
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds CollectionIndexes(TRI_voc_tick_t databaseId,
-                                            TRI_voc_cid_t collectionId);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents belonging to a specified collection
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds CollectionDocuments(uint64_t collectionId);
@@ -139,7 +127,6 @@ class RocksDBKeyBounds {
  private:
   RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, uint64_t second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    std::string const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,

@@ -1289,7 +1289,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
 
     if (mod == 0) {
-      TRI_AppendStringStringBuffer(buffer, "\"write\": [ \"");
+      TRI_AppendStringStringBuffer(buffer, "\"exclusive\": [ \"");
     } else {
       TRI_AppendStringStringBuffer(buffer, "\"read\": [ \"");
     }

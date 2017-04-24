@@ -61,7 +61,7 @@ Supervision::~Supervision() {
   if (!isStopping()) {
     shutdown();
   }
-};
+}
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
@@ -331,8 +331,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
 
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatTime, lastHeartbeatAcked, lastHeartbeatStatus,
-      lastStatus, heartbeatTime, heartbeatStatus, serverID = machine.first,
-      shortName = "Unknown";
+      lastStatus, heartbeatTime, heartbeatStatus, serverID = machine.first;
     
     bool reportPersistent(false), good(false),
       sync(_transient.has(syncPrefix + serverID));
@@ -340,7 +339,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
     todelete.erase(std::remove(todelete.begin(), todelete.end(), serverID),
                    todelete.end());
     
-    shortName = _snapshot(targetShortID + serverID + "/ShortName").toJson();
+    std::string shortName = _snapshot(targetShortID + serverID + "/ShortName").toJson();
     
     if (sync) {
       heartbeatTime = _transient(syncPrefix + serverID + "/time").toJson();
@@ -803,9 +802,8 @@ void Supervision::shrinkCluster() {
     auto const& databases = _snapshot(planColPrefix).children();
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
-        uint64_t replFact{0};
         try {
-          replFact = (*collptr.second)("replicationFactor").getUInt();
+          uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }

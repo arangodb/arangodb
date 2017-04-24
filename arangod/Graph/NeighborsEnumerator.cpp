@@ -24,6 +24,7 @@
 #include "NeighborsEnumerator.h"
 
 #include "Basics/VelocyPackHelper.h"
+#include "Graph/EdgeCursor.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserCache.h"
 
@@ -64,7 +65,6 @@ bool NeighborsEnumerator::next() {
       for (auto const& nextVertex : _lastDepth) {
         auto callback = [&](StringRef const& edgeId, VPackSlice e, size_t& cursorId) {
           // Counting should be done in readAll
-          _traverser->_readDocuments++;
           if (_traverser->getSingleVertex(e, nextVertex, _searchDepth, v)) {
             StringRef otherId = _traverser->traverserCache()->persistString(v);
             if (_allFound.find(otherId) == _allFound.end()) {
@@ -73,7 +73,7 @@ bool NeighborsEnumerator::next() {
             }
           }
         };
-        std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(
+        std::unique_ptr<arangodb::graph::EdgeCursor> cursor(
             _opts->nextCursor(_traverser->mmdr(), nextVertex, _searchDepth));
         cursor->readAll(callback);
       }
@@ -95,11 +95,15 @@ arangodb::aql::AqlValue NeighborsEnumerator::lastVertexToAqlValue() {
 }
 
 arangodb::aql::AqlValue NeighborsEnumerator::lastEdgeToAqlValue() {
-  // TODO should return Optimizer failed
+  // If we get here the optimizer decided we do NOT need edges.
+  // But the Block asks for it.
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
-  // TODO should return Optimizer failed
+  // If we get here the optimizer decided we do NOT need paths
+  // But the Block asks for it.
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

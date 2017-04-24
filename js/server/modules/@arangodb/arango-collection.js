@@ -513,3 +513,34 @@ ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
     minLength: minLength || undefined
   });
 };
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief getIndex() wrapper to ensure consistency between mmfiles and rocksdb
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.getIndexes = function (withFigures) {
+  'use strict';
+  var indexes = this.getIndexesPrivate(withFigures);
+  if (this.type() === 3) {
+    // edge collections
+    var result = [];
+    for (var i = 0; i < indexes.length; i++) {
+      if (indexes[i].type === "edge") {
+        if (indexes[i].fields.length === 1
+            && indexes[i].fields[0] === "_from") {
+          // we got two edge indexes. now pretend we only have one, and
+          // make it claim it is created on _from and _to
+          indexes[i].fields.push("_to");
+          result.push(indexes[i]);
+        } else if (indexes[i].fields.length === 2) {
+          // we have an edge index with two attributes
+          result.push(indexes[i]);
+        }
+      } else {
+        result.push(indexes[i]);
+      }
+    }
+    return result;
+  }
+  return indexes;
+};

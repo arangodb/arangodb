@@ -78,7 +78,12 @@ function recoverySuite () {
       for (i = 0; i < 10; ++i) {
         c = db._collection('UnitTestsRecovery' + i);
 
-        assertEqual(50, c.count());
+        if (db._engine().name === "rocksdb") {
+          // rocksdb does not have this failure point
+          assertEqual(51, c.count());
+        } else {
+          assertEqual(50, c.count());
+        }
         for (j = 0; j < 50; ++j) {
           assertEqual(j, c.document('test' + j).a);
           assertEqual('test' + j, c.document('test' + j).b);

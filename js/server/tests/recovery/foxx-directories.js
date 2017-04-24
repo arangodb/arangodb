@@ -83,7 +83,7 @@ function recoverySuite () {
       assertTrue(fs.isDirectory(fs.join(appPath, 'UnitTestsRecovery1')));
       assertTrue(fs.isFile(fs.join(appPath, 'UnitTestsRecovery1', 'foo.json')));
 
-      assertTrue(fs.isDirectory(fs.join(appPath, 'UnitTestsRecovery2')));
+      assertFalse(fs.isDirectory(fs.join(appPath, 'UnitTestsRecovery2')));
       assertFalse(fs.isFile(fs.join(appPath, 'UnitTestsRecovery2', 'bar.json')));
     }
 

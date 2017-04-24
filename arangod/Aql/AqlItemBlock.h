@@ -54,6 +54,7 @@ class BlockCollector;
 
 class AqlItemBlock {
   friend class AqlItemBlockManager;
+  friend class BlockCollector;
 
  public:
   AqlItemBlock() = delete;
