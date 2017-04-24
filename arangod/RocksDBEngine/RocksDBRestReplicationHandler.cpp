@@ -327,9 +327,59 @@ bool RocksDBRestReplicationHandler::isCoordinatorError() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandLoggerState() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "logger-state API is not implemented for RocksDB yet");
+  VPackBuilder builder;
+  builder.add(VPackValue(VPackValueType::Object));  // Base
+  
+  //MMFilesLogfileManager::instance()->waitForSync(10.0);
+  //MMFilesLogfileManagerState const s =
+  //MMFilesLogfileManager::instance()->state();
+  rocksdb::TransactionDB* db =
+  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
+  rocksdb::Status status = db->GetBaseDB()->SyncWAL();
+  if (!status.ok()) {
+    Result res = rocksutils::convertStatus(status).errorNumber();
+    generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+    return;
+  }
+  rocksdb::SequenceNumber lastTick = db->GetLatestSequenceNumber();
+  
+  // "state" part
+  builder.add("state", VPackValue(VPackValueType::Object));
+  builder.add("running", VPackValue(true));
+  builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
+  builder.add("lastUncommittedLogTick",
+              VPackValue(std::to_string(lastTick+1)));
+  builder.add("totalEvents", VPackValue(0));//s.numEvents + s.numEventsSync
+  builder.add("time", VPackValue(utilities::timeString()));
+  builder.close();
+  
+  // "server" part
+  builder.add("server", VPackValue(VPackValueType::Object));
+  builder.add("version", VPackValue(ARANGODB_VERSION));
+  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  builder.close();
+  
+  // "clients" part
+  builder.add("clients", VPackValue(VPackValueType::Array));
+  auto allClients = _vocbase->getReplicationClients();
+  for (auto& it : allClients) {
+    // One client
+    builder.add(VPackValue(VPackValueType::Object));
+    builder.add("serverId", VPackValue(std::to_string(std::get<0>(it))));
+    
+    char buffer[21];
+    TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
+    builder.add("time", VPackValue(buffer));
+    
+    builder.add("lastServedTick", VPackValue(std::to_string(std::get<2>(it))));
+    
+    builder.close();
+  }
+  builder.close();  // clients
+  
+  builder.close();  // base
+  
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -666,6 +716,17 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
         if (length > 0) {
           httpResponse->body().appendText(data.toJson());
+        }
+      }
+      // add client
+      bool found;
+      std::string const& value = _request->value("serverId", found);
+      
+      if (found) {
+        TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
+        
+        if (serverId > 0) {
+          _vocbase->updateReplicationClient(serverId, result.maxTick());
         }
       }
     }
