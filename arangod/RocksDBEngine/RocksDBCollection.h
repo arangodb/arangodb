@@ -180,7 +180,7 @@ class RocksDBCollection final : public PhysicalCollection {
   uint64_t objectId() const { return _objectId; }
 
   Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
-                             RocksDBToken& token);
+                             RocksDBToken& token) const;
   
   int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
   
@@ -208,7 +208,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult removeDocument(
       arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
-      arangodb::velocypack::Slice const& doc, bool& waitForSync);
+      arangodb::velocypack::Slice const& doc, bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice key,
@@ -217,7 +217,7 @@ class RocksDBCollection final : public PhysicalCollection {
   arangodb::RocksDBOperationResult updateDocument(
       transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
       arangodb::velocypack::Slice const& oldDoc, TRI_voc_rid_t newRevisionId,
-      arangodb::velocypack::Slice const& newDoc, bool& waitForSync);
+      arangodb::velocypack::Slice const& newDoc, bool& waitForSync) const;
 
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
                                        arangodb::ManagedDocumentResult&) const;

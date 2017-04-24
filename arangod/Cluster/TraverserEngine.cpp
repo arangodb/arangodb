@@ -31,6 +31,7 @@
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/TraverserCache.h"
 #include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Iterator.h>
@@ -217,8 +218,6 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
   TRI_ASSERT(vertex.isString() || vertex.isArray());
-  size_t read = 0;
-  size_t filtered = 0;
   ManagedDocumentResult mmdr;
   builder.openObject();
   builder.add(VPackValue("edges"));
@@ -233,10 +232,8 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
 
       edgeCursor->readAll(
           [&](StringRef const& documentId, VPackSlice edge, size_t cursorId) {
-            if (!_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
-                                               cursorId)) {
-              filtered++;
-            } else {
+            if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
+                                              cursorId)) {
               builder.add(edge);
             }
           });
@@ -247,10 +244,8 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
         _opts->nextCursor(&mmdr, StringRef(vertex), depth));
     edgeCursor->readAll(
         [&](StringRef const& documentId, VPackSlice edge, size_t cursorId) {
-          if (!_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
-                                             cursorId)) {
-            filtered++;
-          } else {
+          if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
+                                            cursorId)) {
             builder.add(edge);
           }
         });
@@ -259,8 +254,10 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
   builder.close();
-  builder.add("readIndex", VPackValue(read));
-  builder.add("filtered", VPackValue(filtered));
+  builder.add("readIndex",
+              VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
+  builder.add("filtered",
+              VPackValue(_opts->cache()->getAndResetFilteredDocuments()));
   builder.close();
 }
 
@@ -353,12 +350,11 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t* vocbase,
 
 ShortestPathEngine::~ShortestPathEngine() {}
 
-void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder& builder) {
+void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
+                                  VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
   TRI_ASSERT(vertex.isString() || vertex.isArray());
-  size_t read = 0;
-  size_t filtered = 0;
 
   std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor;
 
@@ -377,10 +373,8 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
         edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
       }
 
-      edgeCursor->readAll(
-          [&](StringRef const& documentId, VPackSlice edge, size_t cursorId) {
-            builder.add(edge);
-          });
+      edgeCursor->readAll([&](StringRef const& documentId, VPackSlice edge,
+                              size_t cursorId) { builder.add(edge); });
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
@@ -391,16 +385,15 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
       edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
     }
     edgeCursor->readAll([&](StringRef const& documentId, VPackSlice edge,
-                            size_t cursorId) {
-      builder.add(edge);
-    });
+                            size_t cursorId) { builder.add(edge); });
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
   builder.close();
-  builder.add("readIndex", VPackValue(read));
-  builder.add("filtered", VPackValue(filtered));
+  builder.add("readIndex",
+              VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
+  builder.add("filtered", VPackValue(0));
   builder.close();
 }
 

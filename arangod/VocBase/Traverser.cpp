@@ -141,7 +141,6 @@ bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
                                                            uint64_t depth,
                                                            size_t cursorId) {
   if (!_opts->evaluateEdgeExpression(e, vid, depth, cursorId)) {
-    _opts->cache()->increaseFilterCounter();
     return false;
   }
   return true;
@@ -153,7 +152,6 @@ bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, uint6
     // We always need to destroy this vertex
     aql::AqlValue vertex = fetchVertexData(StringRef(v));
     if (!_opts->evaluateVertexExpression(vertex.slice(), depth)) {
-      _opts->cache()->increaseFilterCounter();
       vertex.destroy();
       return false;
     }

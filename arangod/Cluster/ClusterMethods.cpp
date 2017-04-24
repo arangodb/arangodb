@@ -1543,7 +1543,7 @@ int fetchEdgesFromEngines(
     filtered += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
         resSlice, "filtered", 0);
     read += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-        resSlice, "read", 0);
+        resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
       VPackSlice id = e.get(StaticStrings::IdString);
@@ -2437,7 +2437,7 @@ int fetchEdgesFromEngines(
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
     read += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-        resSlice, "read", 0);
+        resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
       VPackSlice id = e.get(StaticStrings::IdString);

@@ -179,11 +179,14 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
   try {
     setProgress("fetching master state");
 
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
     res = getMasterState(errorMsg);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: got master state: " << res << " " << errorMsg;
       return res;
     }
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: got master state: " << res << " " << errorMsg;
 
     if (incremental) {
       if (_masterInfo._majorVersion == 1 ||
@@ -210,7 +213,8 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
       return res;
     }
 
-    std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString;
+    std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString
+                              + "&batchId=" + std::to_string(_batchId);
     if (_includeSystem) {
       url += "&includeSystem=true";
     }
@@ -255,6 +259,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
 
       VPackSlice const slice = builder->slice();
       if (!slice.isObject()) {
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: InitialSyncer::run - inventoryResponse is not an object";
         res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
         errorMsg = "got invalid response from master at " +
@@ -615,7 +620,10 @@ int InitialSyncer::handleCollectionDump(
 
   uint64_t chunkSize = _chunkSize;
 
-  std::string const baseUrl = BaseUrl + "/dump?collection=" + cid + appendix;
+  TRI_ASSERT(_batchId); //should not be equal to 0
+  std::string const baseUrl = BaseUrl + "/dump?collection=" + cid
+                                      + "&batchId=" + std::to_string(_batchId)
+                                      + appendix;
 
   TRI_voc_tick_t fromTick = 0;
   int batch = 1;
@@ -1691,7 +1699,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   if (checkAborted()) {
     return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
   }
-    
+
   if (!parameters.isObject() || !indexes.isArray()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
