@@ -24,11 +24,15 @@
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
+#include "Transaction/Helpers.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
@@ -63,10 +67,32 @@ TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
 
 uint64_t RocksDBReplicationContext::lastTick() const { return _lastTick; }
 
+uint64_t RocksDBReplicationContext::count() const {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_collection != nullptr);
+  RocksDBCollection *rcoll =
+    RocksDBCollection::toRocksDBCollection(_collection->getPhysical());
+  return rcoll->numberDocuments(_trx.get());
+}
+
 // creates new transaction/snapshot
 void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   releaseDumpingResources();
   _trx = createTransaction(vocbase);
+}
+
+int RocksDBReplicationContext::bindCollection(std::string const& collectionName) {
+  if ((_collection == nullptr) || _collection->name() != collectionName) {
+    _collection = _trx->vocbase()->lookupCollection(collectionName);
+    
+    if (_collection == nullptr) {
+      return TRI_ERROR_BAD_PARAMETER; RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
+    }
+    _iter = _collection->getAllIterator(_trx.get(), &_mdr,
+                                        false);  //_mdr is not used nor updated
+    _hasMore = true;
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 // returns inventory
@@ -98,16 +124,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   if (_trx.get() == nullptr) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
-
-  if ((_collection == nullptr) || _collection->name() != collectionName) {
-    _collection = vocbase->lookupCollection(collectionName);
-    if (_collection == nullptr) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
-    }
-    _iter = _collection->getAllIterator(_trx.get(), &_mdr,
-                                        false);  //_mdr is not used nor updated
-    _hasMore = true;
-  }
+  bindCollection(collectionName);
 
   // set type
   int type = 2300;  // documents
@@ -132,6 +149,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
     if (!ok) {
       // TODO: do something here?
+      return;
     }
 
     builder.add(VPackValue("data"));
@@ -156,6 +174,163 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   }
 
   return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick);
+}
+
+arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder &b,
+                                                          uint64_t chunkSize) {
+  TRI_ASSERT(_trx);
+  TRI_ASSERT(_iter);
+  
+  RocksDBAllIndexIterator *primary = dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
+  
+  std::string lowKey;
+  VPackSlice highKey;// FIXME: no good keeping this
+  
+  uint64_t hash = 0x012345678;
+  //auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
+  auto cb = [&](DocumentIdentifierToken const& token) {
+    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
+    if (!ok) {
+      // TODO: do something here?
+      return;
+    }
+    
+    // current document
+    VPackSlice current(_mdr.vpack());
+    highKey = current.get(StaticStrings::KeyString);
+    // set type
+    if (lowKey.empty()) {
+      lowKey = highKey.copyString();
+    }
+    
+    // we can get away with the fast hash function here, as key values are
+    // restricted to strings
+    hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
+    hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
+  };
+  
+  while (_hasMore && true /*sizelimit*/) {
+    try {
+      
+      //_hasMore = primary->nextWithKey(cb, chunkSize);
+      _hasMore = primary->next(cb, chunkSize);
+      
+      b.add(VPackValue(VPackValueType::Object));
+      b.add("low", VPackValue(lowKey));
+      b.add("high", VPackValue(highKey.copyString()));
+      b.add("hash", VPackValue(std::to_string(hash)));
+      b.close();
+      lowKey = "";
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL);
+    }
+  }
+  
+  return Result();
+}
+
+/// dump all keys from collection
+arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder &b,
+                                                     size_t chunk,
+                                                     size_t chunkSize) {
+  TRI_ASSERT(_trx);
+  TRI_ASSERT(_iter);
+  // Position the iterator correctly
+  size_t from = chunk * chunkSize;
+  if (from == 0) {
+    _iter->reset();
+    _lastChunkOffset = 0;
+  } else if (from < _lastChunkOffset+chunkSize) {
+    TRI_ASSERT(from >= chunkSize);
+    uint64_t diff = from - chunkSize;
+    uint64_t to;// = (chunk + 1) * chunkSize;
+    _iter->skip(diff, to);
+     TRI_ASSERT(to == diff);
+    _lastChunkOffset = from;
+  } else if (from > _lastChunkOffset+chunkSize) {
+    // no jumping back in time fix the intitial syncer if you see this
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "Trying to request a chunk the rocksdb "
+    << "iterator already passed over";
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  
+  RocksDBAllIndexIterator *primary = dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
+  auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
+    RocksDBToken const& rt = static_cast<RocksDBToken const&>(token);
+    
+    b.openArray();
+    b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
+    b.add(VPackValue(rt.revisionId()));
+    b.close();
+  };
+  
+  // chunk is going to be ignored here
+  while (_hasMore && true /*sizelimit*/) {
+    try {
+      _hasMore = primary->nextWithKey(cb, chunkSize);
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL);
+    }
+  }
+  
+  return Result();
+}
+
+/// dump keys and document
+arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder &b,
+                                                          size_t chunk,
+                                                          size_t chunkSize,
+                                                          VPackSlice const& ids) {
+  TRI_ASSERT(_trx);
+  TRI_ASSERT(_iter);
+  // Position the iterator correctly
+  size_t from = chunk * chunkSize;
+  if (from == 0) {
+    _iter->reset();
+    _lastChunkOffset = 0;
+  } else if (from < _lastChunkOffset+chunkSize) {
+    TRI_ASSERT(from >= chunkSize);
+    uint64_t diff = from - chunkSize;
+    uint64_t to;// = (chunk + 1) * chunkSize;
+    _iter->skip(diff, to);
+    TRI_ASSERT(to == diff);
+    _lastChunkOffset = from;
+  } else if (from > _lastChunkOffset+chunkSize) {
+    // no jumping back in time fix the intitial syncer if you see this
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "Trying to request a chunk the rocksdb "
+      << "iterator already passed over";
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  
+  auto cb = [&](DocumentIdentifierToken const& token) {
+    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
+    if (!ok) {
+      // TODO: do something here?
+      return;
+    }
+    VPackSlice current(_mdr.vpack());
+    TRI_ASSERT(current.isObject());
+    b.add(current);
+  };
+  
+  bool hasMore = true;
+  size_t oldPos = from;
+  for (auto const& it : VPackArrayIterator(ids)) {
+    if (!it.isNumber()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    }
+    TRI_ASSERT(hasMore);
+    
+    size_t newPos = from + it.getNumber<size_t>();
+    if (oldPos != from && newPos > oldPos + 1) {
+      uint64_t ignore;
+      _iter->skip(newPos - oldPos, ignore);
+      TRI_ASSERT(ignore == newPos - oldPos);
+    }
+    hasMore = _iter->next(cb, 1);
+  }
+  
+  return Result();
 }
 
 double RocksDBReplicationContext::expires() const { return _expires; }
@@ -188,6 +363,7 @@ void RocksDBReplicationContext::releaseDumpingResources() {
   if (_iter.get() != nullptr) {
     _iter.reset();
   }
+  _collection = nullptr;
 }
 
 std::unique_ptr<transaction::Methods>
