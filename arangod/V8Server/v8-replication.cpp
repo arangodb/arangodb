@@ -21,12 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-replication.h"
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -35,6 +32,14 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
+#include "v8-replication.h"
+
+// FIXME to be removed (should be storage engine independent - get it working now)
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/mmfiles-replication-dump.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -51,21 +56,41 @@ using namespace arangodb::rest;
 
 static void JS_StateLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+  // FIXME: use code in RestReplicationHandler and get rid of storage-engine
+  //        depended code here
+  //        
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  MMFilesLogfileManagerState const s =
-      MMFilesLogfileManager::instance()->state();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string engineName = engine->name();
 
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   v8::Handle<v8::Object> state = v8::Object::New(isolate);
   state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
-  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
-  state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
-  state->Set(TRI_V8_ASCII_STRING("totalEvents"),
+
+  if(engineName == "mmfiles"){
+    MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
+    state->Set(TRI_V8_ASCII_STRING("lastLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
+    state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
+    state->Set(TRI_V8_ASCII_STRING("totalEvents"),
              v8::Number::New(isolate, static_cast<double>(s.numEvents + s.numEventsSync)));
-  state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
+    state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
+  } else if (engineName == "rocksdb") {
+    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    uint64_t lastTick = db->GetLatestSequenceNumber();
+    state->Set(TRI_V8_ASCII_STRING("lastLogTick"),
+               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, lastTick));
+    state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"),
+               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, lastTick+1));
+    state->Set(TRI_V8_ASCII_STRING("totalEvents"),
+             v8::Number::New(isolate, static_cast<double>(0))); //s.numEvents + s.numEventsSync)));
+    state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(utilities::timeString()));
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  }
+
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("state"), state);
 
   v8::Handle<v8::Object> server = v8::Object::New(isolate);
