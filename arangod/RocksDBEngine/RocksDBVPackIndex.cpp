@@ -55,25 +55,6 @@ using namespace arangodb;
 static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
     arangodb::basics::AttributeName("_key", false)};
 
-static size_t sortWeight(arangodb::aql::AstNode const* node) {
-  switch (node->type) {
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      return 1;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-      return 2;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      return 3;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      return 4;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      return 5;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      return 6;
-    default:
-      return 42;
-  }
-}
-
 // .............................................................................
 // recall for all of the following comparison functions:
 //
@@ -130,9 +111,9 @@ void RocksDBVPackIndexIterator::reset() {
 
 bool RocksDBVPackIndexIterator::outOfRange() const {
   if (_reverse) {
-    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
+    return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
   } else {
-    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+    return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
   }
 }
 
@@ -174,18 +155,16 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
     : RocksDBIndex(iid, collection, info),
       _useExpansion(false),
       _allowPartialIndex(true) {
-  {
-    TRI_ASSERT(!_fields.empty());
+  TRI_ASSERT(!_fields.empty());
 
-    TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid != 0);
 
-    fillPaths(_paths, _expanding);
+  fillPaths(_paths, _expanding);
 
-    for (auto const& it : _fields) {
-      if (TRI_AttributeNamesHaveExpansion(it)) {
-        _useExpansion = true;
-        break;
-      }
+  for (auto const& it : _fields) {
+    if (TRI_AttributeNamesHaveExpansion(it)) {
+      _useExpansion = true;
+      break;
     }
   }
 }
@@ -198,11 +177,14 @@ size_t RocksDBVPackIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
-                                     bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
+void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+                                     bool forPersistence) const {
+  TRI_ASSERT(builder.isOpenArray() || builder.isEmpty());
+  builder.openObject();
+  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   builder.add("unique", VPackValue(_unique));
   builder.add("sparse", VPackValue(_sparse));
+  builder.close();
 }
 
 /// @brief return a VelocyPack representation of the index figures
@@ -278,6 +260,13 @@ int RocksDBVPackIndex::fillElement(
       }
     }
     indexVals->close();
+    
+    TRI_IF_FAILURE("FillElementOOM") {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+    TRI_IF_FAILURE("FillElementOOM2") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
 
     StringRef key(doc.get(StaticStrings::KeyString));
     if (_unique) {
@@ -315,7 +304,7 @@ void RocksDBVPackIndex::addIndexValue(
     VPackSlice const& document,
     std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
     std::vector<VPackSlice>& sliceStack) {
-  // TODO maybe use leaded Builder from transaction.
+  // TODO maybe use leased Builder from transaction.
   VPackBuilder b;
   b.openArray();
   for (VPackSlice const& s : sliceStack) {
@@ -336,7 +325,7 @@ void RocksDBVPackIndex::addIndexValue(
     // + primary key
     // - Value: empty
     elements.emplace_back(
-        RocksDBKey::IndexValue(_objectId, StringRef(key), b.slice()),
+        RocksDBKey::IndexValue(_objectId, key, b.slice()),
         RocksDBValue::IndexValue());
   }
 }
@@ -385,7 +374,7 @@ void RocksDBVPackIndex::buildIndexValues(
     for (size_t i = level; i < _paths.size(); i++) {
       sliceStack.emplace_back(illegalSlice);
     }
-    addIndexValue(document.get(StaticStrings::KeyString), elements, sliceStack);
+    addIndexValue(document, elements, sliceStack);
     for (size_t i = level; i < _paths.size(); i++) {
       sliceStack.pop_back();
     }
@@ -529,6 +518,7 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
         // We ignore unique_constraint violated if we are not unique
         res = TRI_ERROR_NO_ERROR;
+        // TODO: remove this? seems dangerous...
       }
       break;
     }
@@ -576,10 +566,14 @@ int RocksDBVPackIndex::drop() {
   RocksDBIndex::drop();
   if (_unique) {
     return rocksutils::removeLargeRange(
-        rocksutils::globalRocksDB(), RocksDBKeyBounds::UniqueIndex(_objectId)).errorNumber();
+               rocksutils::globalRocksDB(),
+               RocksDBKeyBounds::UniqueIndex(_objectId))
+        .errorNumber();
   } else {
-    return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                        RocksDBKeyBounds::IndexEntries(_objectId)).errorNumber();
+    return rocksutils::removeLargeRange(
+               rocksutils::globalRocksDB(),
+               RocksDBKeyBounds::IndexEntries(_objectId))
+        .errorNumber();
   }
 }
 
@@ -780,6 +774,12 @@ bool RocksDBVPackIndex::accessFitsIndex(
       TRI_IF_FAILURE("PersistentIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+      TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      TRI_IF_FAILURE("HashIndex::accessFitsIndex") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
 
       return true;
     }
@@ -833,6 +833,13 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
+  // mmfiles failure point compat
+  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -990,6 +997,13 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     TRI_IF_FAILURE("PersistentIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("HashIndex::noSortIterator") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
   } else {
     // Create the search Values for the lookup
     VPackArrayBuilder guard(&searchValues);
@@ -1053,11 +1067,23 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
         TRI_IF_FAILURE("PersistentIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+        TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        TRI_IF_FAILURE("HashIndex::permutationEQ") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
       } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         if (isAttributeExpanded(usedFields)) {
           searchValues.openObject();
           searchValues.add(VPackValue(StaticStrings::IndexEq));
           TRI_IF_FAILURE("PersistentIndex::permutationArrayIN") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         } else {
@@ -1080,6 +1106,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
       if (it != found.end()) {
         auto rangeConditions = it->second;
         TRI_ASSERT(rangeConditions.size() <= 2);
+
         VPackObjectBuilder searchElement(&searchValues);
         for (auto& comp : rangeConditions) {
           TRI_ASSERT(comp->numMembers() == 2);
@@ -1132,6 +1159,12 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
   TRI_IF_FAILURE("PersistentIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("HashIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   if (needNormalize) {
     VPackBuilder expandedSearchValues;
@@ -1171,6 +1204,16 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
 arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
+  // mmfiles failure compat
+  if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+  
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1216,6 +1259,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
       if (isDuplicateOperator(it, operatorsFound)) {
         continue;
       }
+
       operatorsFound.emplace(static_cast<int>(it->type));
       children.emplace_back(it);
     }

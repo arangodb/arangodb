@@ -6,6 +6,13 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
+if [ -z "USE_ROCKSDB" ] ; then
+  STORAGE_ENGINE=""
+  DEFAULT_REPLICATION=""
+else
+  STORAGE_ENGINE="--server.storage-engine=rocksdb"
+  DEFAULT_REPLICATION="--cluster.system-replication-factor=1"
+fi
 
 printf "Starting agency ... \n"
 printf "  # agents: %s," "$NRAGENTS"
@@ -51,6 +58,9 @@ CO_BASE=$(( $PORT_OFFSET + 8530 ))
 DB_BASE=$(( $PORT_OFFSET + 8629 ))
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
+LOCALHOST="[::1]"
+ANYWHERE="[::]"
+
 rm -rf cluster
 if [ -d cluster-init ];then
   cp -a cluster-init cluster
@@ -76,7 +86,7 @@ fi
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $AG_BASE + $aid ))
-    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://localhost:$port "
+    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$port "
     ${BUILD}/bin/arangod \
         -c none \
         --agency.activate true \
@@ -84,8 +94,8 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.compaction-keep-size $KEEP \
         --agency.election-timeout-min $MINT \
         --agency.election-timeout-max $MAXT \
-        --agency.endpoint $TRANSPORT://localhost:$AG_BASE \
-        --agency.my-address $TRANSPORT://localhost:$port \
+        --agency.endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
+        --agency.my-address $TRANSPORT://$LOCALHOST:$port \
         --agency.pool-size $NRAGENTS \
         --agency.size $NRAGENTS \
         --agency.supervision true \
@@ -97,12 +107,14 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.v8-contexts 1 \
-        --server.endpoint $TRANSPORT://0.0.0.0:$port \
+        --server.endpoint $TRANSPORT://$ANY:$port \
         --server.statistics false \
         --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
         --log.level agency=$LOG_LEVEL_AGENCY \
+        $STORAGE_ENGINE \
+        $DEFAULT_REPLICATION \
         $AUTHENTICATION \
         $SSLKEYFILE \
         > cluster/$port.stdout 2>&1 &
@@ -122,11 +134,11 @@ start() {
     ${BUILD}/bin/arangod \
        -c none \
        --database.directory cluster/data$PORT \
-       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
-       --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
-       --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
-       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
+       --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
+       --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
+       --server.endpoint $TRANSPORT://$ANY:$PORT \
+       --cluster.my-local-info $TYPE:$LOCALHOST:$PORT \
+       --server.endpoint $TRANSPORT://$ANY:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
        --log.level $LOG_LEVEL \
@@ -137,8 +149,10 @@ start() {
        --javascript.app-path cluster/apps$PORT \
        --log.force-direct true \
        --log.level cluster=$LOG_LEVEL_CLUSTER \
-        $AUTHENTICATION \
-        $SSLKEYFILE \
+       $STORAGE_ENGINE \
+       $DEFAULT_REPLICATION \
+       $AUTHENTICATION \
+       $SSLKEYFILE \
        > cluster/$PORT.stdout 2>&1 &
 }
 
@@ -155,9 +169,9 @@ startTerminal() {
     $XTERM $XTERMOPTIONS -e "${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
-        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
+        --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
+        --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
+        --server.endpoint $TRANSPORT://$ANY:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
@@ -166,6 +180,8 @@ startTerminal() {
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.app-path ./js/apps \
+        $STORAGE_ENGINE \
+        $DEFAULT_REPLICATION \
         $AUTHENTICATION \
         $SSLKEYFILE \
         --console" &
@@ -184,9 +200,9 @@ startDebugger() {
     ${BUILD}/bin/arangod \
       -c none \
       --database.directory cluster/data$PORT \
-      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
-      --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-      --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
+      --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
+      --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
+      --server.endpoint $TRANSPORT://$ANY:$PORT \
       --cluster.my-role $ROLE \
       --log.file cluster/$PORT.log \
       --log.level $LOG_LEVEL \
@@ -195,6 +211,8 @@ startDebugger() {
       --javascript.startup-directory ./js \
       --javascript.module-directory ./enterprise/js \
       --javascript.app-path ./js/apps \
+      $STORAGE_ENGINE \
+      $DEFAULT_REPLICATION \
       $SSLKEYFILE \
       $AUTHENTICATION &
       $XTERM $XTERMOPTIONS -e "gdb ${BUILD}/bin/arangod -p $!" &
@@ -213,9 +231,9 @@ startRR() {
     $XTERM $XTERMOPTIONS -e "rr ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
-        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
+        --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
+        --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
+        --server.endpoint $TRANSPORT://$ANY:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
@@ -224,6 +242,8 @@ startRR() {
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.app-path ./js/apps \
+        $STORAGE_ENGINE \
+        $DEFAULT_REPLICATION \
         $AUTHENTICATION \
         $SSLKEYFILE \
         --console" &
@@ -266,9 +286,9 @@ testServer() {
     PORT=$1
     while true ; do
         if [ -z "$AUTHORIZATION_HEADER" ]; then
-          ${CURL}//127.0.0.1:$PORT/_api/version > /dev/null 2>&1
+          ${CURL}//$LOCALHOST:$PORT/_api/version > /dev/null 2>&1
         else
-          ${CURL}//127.0.0.1:$PORT/_api/version -H "$AUTHORIZATION_HEADER" > /dev/null 2>&1
+          ${CURL}//$LOCALHOST:$PORT/_api/version -H "$AUTHORIZATION_HEADER" > /dev/null 2>&1
         fi
         if [ "$?" != "0" ] ; then
             echo Server on port $PORT does not answer yet.
@@ -299,21 +319,23 @@ if [ "$SECONDARIES" == "1" ] ; then
         
         CLUSTER_ID="Secondary$index"
         
-        DBSERVER_ID=$(curl -s 127.0.0.1:$CO_BASE/_admin/cluster/health | jq '.Health | to_entries | map(select(.value.Role == "DBServer")) | .' | jq -r ".[$dbserverindex].key")
+        DBSERVER_ID=$(curl -s $LOCALHOST:$CO_BASE/_admin/cluster/health | jq '.Health | to_entries | map(select(.value.Role == "DBServer")) | .' | jq -r ".[$dbserverindex].key")
         echo Registering secondary $CLUSTER_ID for $DBSERVER_ID
-        curl -s -f -X PUT --data "{\"primary\": \"$DBSERVER_ID\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:$CO_BASE/_admin/cluster/replaceSecondary
+        curl -s -f -X PUT --data "{\"primary\": \"$DBSERVER_ID\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" $LOCALHOST:$CO_BASE/_admin/cluster/replaceSecondary
         echo Starting Secondary $CLUSTER_ID on port $PORT
         ${BUILD}/bin/arangod \
             -c none \
             --database.directory cluster/data$PORT \
-            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
-            --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-            --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
+            --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
+            --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
+            --server.endpoint $TRANSPORT://$ANY:$PORT \
             --cluster.my-id $CLUSTER_ID \
             --log.file cluster/$PORT.log \
             --server.statistics true \
             --javascript.startup-directory ./js \
             --javascript.module-directory ./enterprise/js \
+            $STORAGE_ENGINE \
+            $DEFAULT_REPLICATION \
             $AUTHENTICATION \
             $SSLKEYFILE \
             --javascript.app-path ./js/apps \
@@ -326,7 +348,7 @@ fi
 echo Done, your cluster is ready at
 if [ "$NRCOORDINATORS" -gt 0 ] ; then
 for p in `seq $CO_BASE $PORTTOPCO` ; do
-    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://127.0.0.1:$p"
+    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://$LOCALHOST:$p"
 done
 fi
 

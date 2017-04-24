@@ -48,15 +48,18 @@ class RocksDBIndex : public Index {
                arangodb::velocypack::Slice const&);
 
  public:
-
   ~RocksDBIndex();
 
   uint64_t objectId() const { return _objectId; }
 
   bool isPersistent() const override final { return true; }
 
+  /// @brief return a VelocyPack representation of the index
+  void toVelocyPack(velocypack::Builder& builder, bool withFigures,
+                    bool forPersistence) const override;
+
   int drop() override;
-  
+
   int unload() override {
     // nothing to do here yet
     // TODO: free the cache the index uses
@@ -64,20 +67,21 @@ class RocksDBIndex : public Index {
   }
 
   /// @brief provides a size hint for the index
-  int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final{
+  int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {
     // nothing to do here
     return TRI_ERROR_NO_ERROR;
   }
 
  protected:
   void createCache();
+  void disableCache();
 
  protected:
   uint64_t _objectId;
   RocksDBComparator* _cmp;
 
   cache::Manager* _cacheManager;
-  std::shared_ptr<cache::Cache> _cache;
+  mutable std::shared_ptr<cache::Cache> _cache;
   bool _useCache;
 };
 }

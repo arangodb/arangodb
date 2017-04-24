@@ -29,6 +29,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -117,10 +118,11 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _cmp(index->_cmp),
       _reverse(reverse),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
+  auto& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
 
   _iterator.reset(rtrx->GetIterator(options));
   if (reverse) {
@@ -176,29 +178,40 @@ bool RocksDBAllIndexIterator::outOfRange() const {
 
 // ================ Any Iterator ================
 
-uint64_t RocksDBAnyIndexIterator::OFFSET = 0;
-
-RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                                                 ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
-: IndexIterator(collection, trx, mmdr, index),
-_cmp(index->_cmp),
-_bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
-  // aquire rocksdb transaction
+RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
+    : IndexIterator(collection, trx, mmdr, index),
+      _cmp(index->_cmp),
+      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
+      _total(0),
+      _returned(0) {
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
-  
+  auto& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
+
   _iterator.reset(rtrx->GetIterator(options));
-  _iterator->Seek(_bounds.start());
-  
-  // not thread safe by design
-  uint64_t off = OFFSET++;
-  while (_iterator->Valid() && --off > 0) {
-    _iterator->Next();
-  }
-  if (!_iterator->Valid()) {
-    OFFSET = 0;
-    _iterator->Seek(_bounds.start());
+  _total = collection->numberDocuments(trx);
+  uint64_t off = RandomGenerator::interval(_total - 1);
+  // uint64_t goal = off;
+  if (_total > 0) {
+    if (off <= _total / 2) {
+      _iterator->Seek(_bounds.start());
+      while (_iterator->Valid() && off-- > 0) {
+        _iterator->Next();
+      }
+    } else {
+      off = _total - (off + 1);
+      _iterator->SeekForPrev(_bounds.end());
+      while (_iterator->Valid() && off-- > 0) {
+        _iterator->Prev();
+      }
+    }
+    if (!_iterator->Valid()) {
+      _iterator->Seek(_bounds.start());
+    }
   }
 }
 
@@ -209,24 +222,26 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
-  
+
   while (limit > 0) {
     RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
     cb(token);
-    
+
     --limit;
+    _returned++;
     _iterator->Next();
     if (!_iterator->Valid() || outOfRange()) {
+      if (_returned < _total) {
+        _iterator->Seek(_bounds.start());
+        continue;
+      }
       return false;
     }
   }
-  
   return true;
 }
 
-void RocksDBAnyIndexIterator::reset() {
-  _iterator->Seek(_bounds.start());
-}
+void RocksDBAnyIndexIterator::reset() { _iterator->Seek(_bounds.start()); }
 
 bool RocksDBAnyIndexIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
@@ -236,14 +251,16 @@ bool RocksDBAnyIndexIterator::outOfRange() const {
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(
     arangodb::LogicalCollection* collection, VPackSlice const& info)
-    : RocksDBIndex(basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   collection,
+    : RocksDBIndex(0, collection,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(
                            StaticStrings::KeyString, false)}}),
-                   true, false) {
-  _useCache = true;
-  createCache();
+                   true, false,
+                   basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
+  if (_objectId != 0) {
+    _useCache = true;
+    createCache();
+  }
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
@@ -260,12 +277,14 @@ size_t RocksDBPrimaryIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
-                                       bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
+void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+                                       bool forPersistence) const {
+  builder.openObject();
+  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   // hard-coded
   builder.add("unique", VPackValue(true));
   builder.add("sparse", VPackValue(false));
+  builder.close();
 }
 
 /// @brief return a VelocyPack representation of the index figures
@@ -275,7 +294,7 @@ void RocksDBPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
-                                            arangodb::StringRef keyRef) {
+                                            arangodb::StringRef keyRef) const {
   auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
@@ -284,17 +303,17 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     auto f = _cache->find(key.string().data(),
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
-      f.value();
       value.buffer()->append(reinterpret_cast<char const*>(f.value()->value()),
                              static_cast<size_t>(f.value()->valueSize));
       return RocksDBToken(RocksDBValue::revisionId(value));
     }
   }
 
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
+  auto& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
 
   auto status = rtrx->Get(options, key.string(), value.buffer());
   if (!status.ok()) {
@@ -318,28 +337,22 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 // TODO: remove this method?
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                             VPackSlice slice,
-                                            ManagedDocumentResult& result) {
+                                            ManagedDocumentResult& result) const {
   return lookupKey(trx, StringRef(slice));
 }
 
 int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
                                 TRI_voc_rid_t revisionId,
                                 VPackSlice const& slice, bool) {
-  // TODO: deal with uniqueness?
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
-  /*
-    LOG_TOPIC(ERR, Logger::FIXME)
-        << "PRIMARYINDEX::INSERT. COLLECTION '" << _collection->name()
-        << "', OBJECTID: " << _objectId << ", REVISIONID: " << revisionId
-        << ", KEY: " << slice.get("_key").copyString();
-  */
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
+  auto& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
 
   std::string empty;
   auto existing = rtrx->Get(options, key.string(), &empty);
@@ -350,9 +363,18 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   if (_useCache) {
     // blacklist from cache
     bool blacklisted = false;
+    uint64_t attempts = 0;
     while (!blacklisted) {
       blacklisted = _cache->blacklist(
           key.string().data(), static_cast<uint32_t>(key.string().size()));
+      attempts++;
+      if (attempts > 10) {
+        if (_cache->isShutdown()) {
+          disableCache();
+          break;
+        }
+        attempts = 0;
+      }
     }
   }
 
@@ -376,13 +398,22 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   if (_useCache) {
     // blacklist from cache
     bool blacklisted = false;
+    uint64_t attempts = 0;
     while (!blacklisted) {
       blacklisted = _cache->blacklist(
           key.string().data(), static_cast<uint32_t>(key.string().size()));
+      attempts++;
+      if (attempts > 10) {
+        if (_cache->isShutdown()) {
+          disableCache();
+          break;
+        }
+        attempts = 0;
+      }
     }
   }
 
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 
@@ -468,15 +499,16 @@ IndexIterator* RocksDBPrimaryIndex::allIterator(transaction::Methods* trx,
 
 /// @brief request an iterator over all elements in the index in
 ///        a sequential order.
-IndexIterator* RocksDBPrimaryIndex::anyIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mmdr) const {
+IndexIterator* RocksDBPrimaryIndex::anyIterator(
+    transaction::Methods* trx, ManagedDocumentResult* mmdr) const {
   return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
 }
 
-void RocksDBPrimaryIndex::invokeOnAllElements(transaction::Methods* trx,
-                                              std::function<bool(DocumentIdentifierToken const&)> callback) {
+void RocksDBPrimaryIndex::invokeOnAllElements (
+    transaction::Methods* trx,
+    std::function<bool(DocumentIdentifierToken const&)> callback) const {
   ManagedDocumentResult mmdr;
-  std::unique_ptr<IndexIterator> cursor (allIterator(trx, &mmdr, false));
+  std::unique_ptr<IndexIterator> cursor(allIterator(trx, &mmdr, false));
   bool cnt = true;
   auto cb = [&](DocumentIdentifierToken token) {
     if (cnt) {
@@ -484,10 +516,8 @@ void RocksDBPrimaryIndex::invokeOnAllElements(transaction::Methods* trx,
     }
   };
   while (cursor->next(cb, 1000) && cnt) {
-    
   }
 }
-
 
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* RocksDBPrimaryIndex::createInIterator(

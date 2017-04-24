@@ -200,15 +200,6 @@ Loads a collection into memory.
 
 
 
-### Reserve
-`collection.reserve(number)`
-
-Sends a resize hint to the indexes in the collection. The resize hint allows indexes to reserve space for additional documents (specified by number) in one go.
-
-The reserve hint can be sent before a mass insertion into the collection is started. It allows indexes to allocate the required memory at once and avoids re-allocations and possible re-locations.
-
-Not all indexes implement the reserve function at the moment. The indexes that don't implement it will simply ignore the request. returns the revision id of a collection
-
 ### Revision
 <!-- arangod/V8Server/v8-collection.cpp -->
 
@@ -227,6 +218,21 @@ previous fetch of the revision id.
 
 The revision id returned is a string value. Clients should treat this value
 as an opaque string, and only use it for equality/non-equality comparisons.
+
+
+### Path
+
+
+returns the physical path of the collection
+`collection.path()`
+
+The *path* operation returns a string with the physical storage path for
+the collection data.
+
+**Note**: this method will return nothing meaningful in a cluster. In a 
+single-server ArangoDB, this method will only return meaningful data for the 
+MMFiles engine.
+
 
 
 ### Checksum

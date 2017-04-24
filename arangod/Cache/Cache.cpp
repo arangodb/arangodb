@@ -163,6 +163,14 @@ bool Cache::isResizing() {
   return resizing;
 }
 
+bool Cache::isShutdown() {
+  _state.lock();
+  bool shutdown = !isOperational();
+  _state.unlock();
+
+  return shutdown;
+}
+
 void Cache::destroy(std::shared_ptr<Cache> cache) {
   if (cache.get() != nullptr) {
     cache->shutdown();

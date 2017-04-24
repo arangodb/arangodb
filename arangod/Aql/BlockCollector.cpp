@@ -45,7 +45,7 @@ RegisterId BlockCollector::nrRegs() const {
 
 void BlockCollector::clear() {
   for (auto& it : _blocks) {
-    it->eraseAll();
+    it->destroy(); // overkill?
     _blockManager->returnBlock(it);
   }
   _blocks.clear();

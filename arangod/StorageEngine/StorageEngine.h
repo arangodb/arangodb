@@ -171,7 +171,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // so that subsequent database creation requests will not fail.
   // the WAL entry for the database creation will be written *after* the call
   // to "createDatabase" returns
-  //no way to aquire id within this function?!
+  // no way to acquire id within this function?!
   virtual Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) = 0;
   Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args ){
     int status;
@@ -329,7 +329,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
-  IndexFactory const* indexFactory() {
+  IndexFactory const* indexFactory() const {
     // The factory has to be created by the implementation
     // and shall never be deleted
     TRI_ASSERT(_indexFactory.get() != nullptr);
@@ -406,6 +406,21 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t*, int& status) = 0;
   virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
   virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) = 0; 
+  
+  void getCapabilities(VPackBuilder& builder) const {
+    builder.openObject();
+    builder.add("name", VPackValue(typeName()));
+    builder.add("supports", VPackValue(VPackValueType::Object));
+    builder.add("indexes", VPackValue(VPackValueType::Array));
+
+    for (auto const& it : indexFactory()->supportedIndexes()) {
+      builder.add(VPackValue(it));
+    }
+
+    builder.close(); // indexes
+    builder.close(); // supports
+    builder.close(); // object
+  }
 
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,

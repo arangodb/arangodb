@@ -350,7 +350,7 @@ class BenchmarkThread : public arangodb::Thread {
       }
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "batch operation failed because server did not reply";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "single operation failed because server did not reply";
       }
       return;
     }
@@ -361,7 +361,7 @@ class BenchmarkThread : public arangodb::Thread {
       _warningCount++;
       if (_warningCount < MaxWarnings) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "request for URL '" << url << "' failed with HTTP code "
-                  << result->getHttpReturnCode();
+                  << result->getHttpReturnCode() << ": " << std::string(result->getBody().c_str(), result->getBody().length());
       } else if (_warningCount == MaxWarnings) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "...more warnings...";
       }

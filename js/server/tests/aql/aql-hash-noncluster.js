@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var db = internal.db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
@@ -275,7 +276,11 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      if (db._engine().name === "rocksdb") {
+        assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,8 +293,12 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      
+      if (db._engine().name === "rocksdb") {
+        assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,7 +312,11 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      if (db._engine().name === "rocksdb") {
+        assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,8 +329,12 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      
+      if (db._engine().name === "rocksdb") {
+        assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,8 +347,12 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      
+      if (db._engine().name === "rocksdb") {
+        assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
     testInvalidValuesinList : function () {

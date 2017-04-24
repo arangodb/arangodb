@@ -106,19 +106,22 @@ class RocksDBVPackIndex : public RocksDBIndex {
   RocksDBVPackIndex(TRI_idx_iid_t, LogicalCollection*,
                     arangodb::velocypack::Slice const&);
 
-  virtual ~RocksDBVPackIndex();
+  ~RocksDBVPackIndex();
 
  public:
-  bool hasSelectivityEstimate() const override { return _unique && true; }
+  bool hasSelectivityEstimate() const override { return true; }
 
   double selectivityEstimate(
       arangodb::StringRef const* = nullptr) const override {
-    return 1.0;  // only valid if unique
+    if (_unique) {
+      return 1.0;  // only valid if unique
+    }
+    return 0.2;  // TODO: fix this hard-coded estimate
   }
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   bool allowExpansion() const override { return true; }

@@ -90,15 +90,19 @@ function recoverySuite () {
       c = db._collection('UnitTestsRecovery2');
       prop = c.properties();
       assertTrue(prop.waitForSync);
-      assertEqual(8 * 1024 * 1024, prop.journalSize);
-      assertFalse(prop.doCompact);
+      if (db._engine().name !== "rocksdb") {
+        assertEqual(8 * 1024 * 1024, prop.journalSize);
+        assertFalse(prop.doCompact);
+      }
 
       assertNull(db._collection('UnitTestsRecovery3'));
       c = db._collection('UnitTestsRecovery4');
       prop = c.properties();
       assertFalse(prop.waitForSync);
-      assertEqual(16 * 1024 * 1024, prop.journalSize);
-      assertTrue(prop.doCompact);
+      if (db._engine().name !== "rocksdb") {
+        assertEqual(16 * 1024 * 1024, prop.journalSize);
+        assertTrue(prop.doCompact);
+      }
 
       assertNull(db._collection('UnitTestsRecovery6'));
       assertNotNull(db._collection('UnitTestsRecovery5'));

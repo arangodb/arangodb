@@ -31,31 +31,33 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
+var engine = db._engine()["name"];
 
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  internal.debugSetFailAt('CreateCollection::tempDirectory');
-  try {
-    db._create('UnitTestsRecovery1');
-    fail();
-  } catch (err) {}
+  if (engine === "mmfiles") {
+    internal.debugSetFailAt('CreateCollection::tempDirectory');
+    try {
+      db._create('UnitTestsRecovery1');
+      fail();
+    } catch (err) {}
 
-  internal.debugClearFailAt();
-  internal.debugSetFailAt('CreateCollection::tempFile');
-  try {
-    db._create('UnitTestsRecovery2');
-    fail();
-  } catch (err) {}
+    internal.debugClearFailAt();
+    internal.debugSetFailAt('CreateCollection::tempFile');
+    try {
+      db._create('UnitTestsRecovery2');
+      fail();
+    } catch (err) {}
 
-  internal.debugClearFailAt();
-  internal.debugSetFailAt('CreateCollection::renameDirectory');
-  try {
-    db._create('UnitTestsRecovery3');
-    fail();
-  } catch (err) {}
-
+    internal.debugClearFailAt();
+    internal.debugSetFailAt('CreateCollection::renameDirectory');
+    try {
+      db._create('UnitTestsRecovery3');
+      fail();
+    } catch (err) {}
+  }
   internal.debugClearFailAt();
   db._create('UnitTestsRecovery3'); // must work now
   db._create('UnitTestsRecovery4');
@@ -80,8 +82,10 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCreateCollectionFail: function () {
-      assertNull(db._collection('UnitTestsRecovery1'));
-      assertNull(db._collection('UnitTestsRecovery2'));
+      if (engine === "mmfiles") {
+        assertNull(db._collection('UnitTestsRecovery1'));
+        assertNull(db._collection('UnitTestsRecovery2'));
+      }
       assertNotNull(db._collection('UnitTestsRecovery3'));
       assertNotNull(db._collection('UnitTestsRecovery4'));
     }

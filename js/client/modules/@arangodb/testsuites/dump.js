@@ -54,6 +54,8 @@ function dump (options) {
     cluster = '';
   }
 
+  const storageEngine = options.storageEngine;
+
   print(CYAN + 'dump tests...' + RESET);
 
   let instanceInfo = pu.startInstance('tcp', options, {}, 'dump');
@@ -92,7 +94,7 @@ function dump (options) {
         print(CYAN + Date() + ': Dump and Restore - dump after restore' + RESET);
 
         results.test = tu.runInArangosh(options, instanceInfo,
-          tu.makePathUnix('js/server/tests/dump/dump' + cluster + '.js'), {
+          tu.makePathUnix('js/server/tests/dump/dump-' + storageEngine + cluster + '.js'), {
             'server.database': 'UnitTestsDumpDst'
           });
 

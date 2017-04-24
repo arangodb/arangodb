@@ -25,6 +25,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RocksDBEngine/RocksDBRestExportHandler.h"
+#include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBRestWalHandler.h"
 
 using namespace arangodb;
@@ -34,6 +35,10 @@ void RocksDBRestHandlers::registerResources(
   handlerFactory->addPrefixHandler(
       "/_api/export",
       RestHandlerCreator<RocksDBRestExportHandler>::createNoData);
+
+  handlerFactory->addPrefixHandler(
+      "/_api/replication",
+      RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
 
   handlerFactory->addPrefixHandler(
       "/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData);

@@ -57,6 +57,7 @@ class AggregatorHandler {
 
   /// return true if there are values in this Slice
   void setAggregatedValues(VPackSlice const& workerValues);
+  //void setAggregatedValue(std::string const& name, const void* valuePtr);
 
   /// get the pointer to an aggregator value
   const void* getAggregatedValue(std::string const& name);

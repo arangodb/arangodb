@@ -28,6 +28,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -53,13 +54,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-/// @brief hard-coded vector of the index attributes
-/// note that the attribute names must be hard-coded here to avoid an init-order
-/// fiasco with StaticStrings::FromString etc.
-/*static std::vector<std::vector<arangodb::basics::AttributeName>> const
-    IndexAttributes{{arangodb::basics::AttributeName("_from", false)},
-                    {arangodb::basics::AttributeName("_to", false)}};*/
-
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBEdgeIndex const* index,
@@ -70,6 +64,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _index(index),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)) {
   keys.release();  // now we have ownership for _keys
+  TRI_ASSERT(_keys->slice().isArray());
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   _iterator.reset(rtrx->GetIterator(state->readOptions()));
@@ -85,7 +80,7 @@ bool RocksDBEdgeIndexIterator::updateBounds() {
     TRI_ASSERT(fromTo.isString());
     _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId,
                                                 fromTo.copyString());
-    
+
     _iterator->Seek(_bounds.start());
     return true;
   }
@@ -107,25 +102,24 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     return false;
   }
 
-  // aquire rocksdb collection
+  // acquire rocksdb collection
   auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
   while (limit > 0) {
-    
-    while (_iterator->Valid() && _iterator->key().starts_with(_bounds.start())) {
-      TRI_ASSERT(_iterator->key().size() > _bounds.start().size());
+    while (_iterator->Valid() &&
+           (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
       StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
 
-      // aquire the document token through the primary index
+      // acquire the document token through the primary index
       RocksDBToken token;
       Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
+      _iterator->Next();
       if (res.ok()) {
         cb(token);
-        if (--limit == 0) {
-          break;
+        --limit;
+        if (limit == 0) {
+          return true;
         }
       }  // TODO do we need to handle failed lookups here?
-
-      _iterator->Next();
     }
     if (limit > 0) {
       _keysIterator.next();
@@ -146,16 +140,13 @@ void RocksDBEdgeIndexIterator::reset() {
 
 RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    arangodb::LogicalCollection* collection,
+                                   VPackSlice const& info,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
                                         {{AttributeName(attr, false)}}),
-                   false, false),
+                   false, false,
+                   basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _directionAttr(attr) {
-  /*std::vector<std::vector<arangodb::basics::AttributeName>>(
-                  {{arangodb::basics::AttributeName(StaticStrings::FromString,
-                                                    false)},
-                   {arangodb::basics::AttributeName(StaticStrings::ToString,
-                                                    false)}})*/
   TRI_ASSERT(iid != 0);
 }
 
@@ -197,13 +188,14 @@ size_t RocksDBEdgeIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
-                                    bool withFigures) const {
-  Index::toVelocyPack(builder, withFigures);
-
-  // hard-coded
+void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+                                    bool forPersistence) const {
+  builder.openObject();
+  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
+  // add slectivity estimate hard-coded
   builder.add("unique", VPackValue(false));
   builder.add("sparse", VPackValue(false));
+  builder.close();
 }
 
 /// @brief return a VelocyPack representation of the index figures
@@ -216,22 +208,13 @@ void RocksDBEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 int RocksDBEdgeIndex::insert(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
-  // uint64_t collId = this->_collection->cid();
-  // RocksDBEntry entry = RocksDBEntry::IndexValue(_objectId, revisionId, doc);
-  /*VPackSlice key;
-  if (_directionAttr == StaticStrings::FromString) {
-    key = doc.get(StaticStrings::ToString);
-  } else {
-    key = doc.get(StaticStrings::FromString);
-  }*/
-
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
                                               primaryKey.copyString());
 
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 
@@ -253,7 +236,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
                                               primaryKey.copyString());
 
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
@@ -268,7 +251,7 @@ void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     arangodb::basics::LocalTaskQueue* queue) {
-  // aquire rocksdb transaction
+  // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 
@@ -295,7 +278,8 @@ int RocksDBEdgeIndex::drop() {
   // First drop the cache all indexes can work without it.
   RocksDBIndex::drop();
   return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::EdgeIndex(_objectId)).errorNumber();
+                                      RocksDBKeyBounds::EdgeIndex(_objectId))
+      .errorNumber();
 }
 
 /// @brief checks whether the index supports the condition

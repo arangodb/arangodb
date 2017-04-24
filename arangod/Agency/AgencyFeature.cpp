@@ -24,7 +24,9 @@
 #include "AgencyFeature.h"
 
 #include "Agency/Agent.h"
-#include "Cluster/ServerState.h"
+#include "Agency/Job.h"
+#include "Agency/Supervision.h"
+#include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -45,10 +47,10 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _maxElectionTimeout(5.0),
       _supervision(false),
       _waitForSync(true),
-      _supervisionFrequency(5.0),
+      _supervisionFrequency(1.0),
       _compactionStepSize(200000),
       _compactionKeepSize(500),
-      _supervisionGracePeriod(15.0),
+      _supervisionGracePeriod(10.0),
       _cmdLineTimings(false)
 {
   setOptional(true);
@@ -60,7 +62,6 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
   startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("Aql");
 }
 
 AgencyFeature::~AgencyFeature() {}
@@ -234,7 +235,7 @@ void AgencyFeature::start() {
 
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
-      _agencyEndpoints, _supervision, false, _supervisionFrequency,
+      _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
       _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
       _cmdLineTimings)));
 

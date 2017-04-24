@@ -39,6 +39,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesRemoverThread.cpp
   MMFiles/MMFilesRestExportHandler.cpp
   MMFiles/MMFilesRestHandlers.cpp
+  MMFiles/MMFilesRestReplicationHandler.cpp
   MMFiles/MMFilesRestWalHandler.cpp
   MMFiles/MMFilesRevisionsCache.cpp
   MMFiles/MMFilesSkiplistIndex.cpp

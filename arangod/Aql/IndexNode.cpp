@@ -69,9 +69,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto& index : _indexes) {
-      nodes.openObject();
       index.toVelocyPack(nodes, false);
-      nodes.close();
     }
   }
   nodes.add(VPackValue("condition"));

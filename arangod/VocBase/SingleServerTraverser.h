@@ -25,52 +25,22 @@
 #define ARANGOD_SINGLE_SERVER_TRAVERSER_H 1
 
 #include "Aql/AqlValue.h"
-#include "Utils/OperationCursor.h"
 #include "VocBase/Traverser.h"
-#include "VocBase/TraverserOptions.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
 
-class LogicalCollection;
 class ManagedDocumentResult;
+
+namespace graph {
+struct BaseOptions;
+class SingleServerEdgeCursor;
+}
 
 namespace traverser {
 
 class PathEnumerator;
   
-class SingleServerEdgeCursor : public EdgeCursor {
- private:
-  TraverserOptions* _opts;
-  transaction::Methods* _trx;
-  ManagedDocumentResult* _mmdr;
-  std::vector<std::vector<OperationCursor*>> _cursors;
-  size_t _currentCursor;
-  size_t _currentSubCursor;
-  std::vector<DocumentIdentifierToken> _cache;
-  size_t _cachePos;
-  std::vector<size_t> const* _internalCursorMapping;
-
- public:
-  SingleServerEdgeCursor(ManagedDocumentResult* mmdr, TraverserOptions* options, size_t, std::vector<size_t> const* mapping = nullptr);
-
-  ~SingleServerEdgeCursor() {
-    for (auto& it : _cursors) {
-      for (auto& it2 : it) {
-        delete it2;
-      }
-    }
-  }
-
-  bool next(std::function<void(arangodb::StringRef const&, VPackSlice, size_t)> callback) override;
-
-  void readAll(std::function<void(arangodb::StringRef const&, arangodb::velocypack::Slice, size_t&)>) override;
-
-  std::vector<std::vector<OperationCursor*>>& getCursors() {
-    return _cursors;
-  }
-};
-
 class SingleServerTraverser final : public Traverser {
 
  public:
@@ -84,8 +54,6 @@ class SingleServerTraverser final : public Traverser {
 
   void setStartVertex(std::string const& v) override;
   
-  size_t getAndResetReadDocuments() override;
-
  protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions

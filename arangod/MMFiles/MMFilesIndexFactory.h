@@ -45,6 +45,8 @@ class MMFilesIndexFactory final : public IndexFactory {
   void fillSystemIndexes(arangodb::LogicalCollection* col,
                           std::vector<std::shared_ptr<arangodb::Index>>&
                               systemIndexes) const override;
+  
+  std::vector<std::string> supportedIndexes() const override;
 };
 
 }

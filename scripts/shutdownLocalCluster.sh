@@ -6,10 +6,13 @@ echo Number of Agents: $NRAGENTS
 echo Number of DBServers: $NRDBSERVERS
 echo Number of Coordinators: $NRCOORDINATORS
 
+LOCALHOST="[::1]"
+ANY="[::]"
+
 shutdown() {
     PORT=$1
     echo -n "$PORT "
-    curl -X DELETE http://localhost:$PORT/_admin/shutdown >/dev/null 2>/dev/null
+    curl -X DELETE http://$LOCALHOST:$PORT/_admin/shutdown >/dev/null 2>/dev/null
     echo
 }
 
@@ -36,7 +39,7 @@ done
 testServerDown() {
     PORT=$1
     while true ; do
-        curl -s -f -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
+        curl -s -f -X GET "http://$LOCALHOST:$PORT/_api/version" > /dev/null 2>&1
         if [ "$?" != "0" ] ; then
             echo Server on port $PORT does not answer any more.
             break

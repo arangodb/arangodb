@@ -25,6 +25,7 @@
 #include "OptimizerRules.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/ClusterNodes.h"
+#include "Aql/Collection.h"
 #include "Aql/CollectNode.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
@@ -3644,6 +3645,7 @@ void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> tNodes{a};
   plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
+  plan->findNodesOfType(tNodes, EN::SHORTEST_PATH, true);
 
   if (tNodes.empty()) {
     // no traversals present
@@ -3654,8 +3656,14 @@ void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
   // first make a pass over all traversal nodes and remove unused
   // variables from them
   for (auto const& n : tNodes) {
-    TraversalNode* traversal = static_cast<TraversalNode*>(n);
-    traversal->prepareOptions();
+    if (n->getType() == EN::TRAVERSAL) {
+      TraversalNode* traversal = static_cast<TraversalNode*>(n);
+      traversal->prepareOptions();
+    } else {
+      TRI_ASSERT(n->getType() == EN::SHORTEST_PATH);
+      ShortestPathNode* spn = static_cast<ShortestPathNode*>(n);
+      spn->prepareOptions();
+    }
   }
 
   opt->addPlan(std::move(plan), rule, true);

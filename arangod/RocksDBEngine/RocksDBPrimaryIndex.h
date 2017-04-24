@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBToken.h"
@@ -95,27 +96,30 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
-  public:
-    RocksDBAnyIndexIterator(LogicalCollection* collection,
-                            transaction::Methods* trx,
-                            ManagedDocumentResult* mmdr,
-                            RocksDBPrimaryIndex const* index);
-    
-    ~RocksDBAnyIndexIterator() {}
-    
-    char const* typeName() const override { return "any-index-iterator"; }
-    
-    bool next(TokenCallback const& cb, size_t limit) override;
-    
-    void reset() override;
-    
-private:
+ public:
+  RocksDBAnyIndexIterator(LogicalCollection* collection,
+                          transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr,
+                          RocksDBPrimaryIndex const* index);
+
+  ~RocksDBAnyIndexIterator() {}
+
+  char const* typeName() const override { return "any-index-iterator"; }
+
+  bool next(TokenCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+ private:
   bool outOfRange() const;
-  
+  static uint64_t newOffset(LogicalCollection* collection,
+                            transaction::Methods* trx);
+
   RocksDBComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   RocksDBKeyBounds _bounds;
-  static uint64_t OFFSET;
+  uint64_t _total;
+  uint64_t _returned;
 };
 
 class RocksDBPrimaryIndex final : public RocksDBIndex {
@@ -153,13 +157,14 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  RocksDBToken lookupKey(transaction::Methods* trx, arangodb::StringRef key);
+  RocksDBToken lookupKey(transaction::Methods* trx,
+                         arangodb::StringRef key) const;
   RocksDBToken lookupKey(transaction::Methods* trx,
                          arangodb::velocypack::Slice key,
-                         ManagedDocumentResult& result);
+                         ManagedDocumentResult& result) const;
 
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
@@ -189,10 +194,11 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   IndexIterator* anyIterator(transaction::Methods* trx,
                              ManagedDocumentResult* mmdr) const;
-  
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(DocumentIdentifierToken const&)> callback);
-  
+
+  void invokeOnAllElements(
+      transaction::Methods* trx,
+      std::function<bool(DocumentIdentifierToken const&)> callback) const;
+
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,

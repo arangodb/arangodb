@@ -112,29 +112,29 @@ void Constituent::termNoLock(term_t t) {
 
     if (!_votedFor.empty()) {
       Builder body;
-      body.add(VPackValue(VPackValueType::Object));
-      std::ostringstream i_str;
-      i_str << std::setw(20) << std::setfill('0') << t;
-      body.add("_key", Value(i_str.str()));
-      body.add("term", Value(t));
-      body.add("voted_for", Value(_votedFor));
-      body.close();
+      { VPackObjectBuilder b(&body);
+        std::ostringstream i_str;
+        i_str << std::setw(20) << std::setfill('0') << t;
+        body.add("_key", Value(i_str.str()));
+        body.add("term", Value(t));
+        body.add("voted_for", Value(_votedFor)); }
       
       TRI_ASSERT(_vocbase != nullptr);
       auto transactionContext =
         std::make_shared<transaction::StandaloneContext>(_vocbase);
       SingleCollectionTransaction trx(transactionContext, "election",
                                       AccessMode::Type::WRITE);
+      
       Result res = trx.begin();
-
+      
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
-
+      
       OperationOptions options;
       options.waitForSync = _agent->config().waitForSync();
       options.silent = true;
-
+      
       OperationResult result = trx.insert("election", body.slice(), options);
       trx.finish(result.code);
     }
@@ -527,16 +527,16 @@ void Constituent::run() {
   // single instance
   _id = _agent->config().id();
 
-  {
-    TRI_ASSERT(_vocbase != nullptr);
-    auto bindVars = std::make_shared<VPackBuilder>();
-    bindVars->openObject();
-    bindVars->close();
+  TRI_ASSERT(_vocbase != nullptr);
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
 
-    // Most recent vote
+  // Most recent vote
+  {
     std::string const aql("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
-                              nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(),
+                               bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     auto queryResult = query.execute(_queryRegistry);
     if (queryResult.code != TRI_ERROR_NO_ERROR) {

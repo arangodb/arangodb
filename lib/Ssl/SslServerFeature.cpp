@@ -75,8 +75,8 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
 
   options->addOption("--ssl.protocol",
-                     "ssl protocol (1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = "
-                     "TLSv1, 5 = TLSV1.2 (recommended))",
+                     "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = "
+                     "TLSv1, 5 = TLSv1.2)",
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 
@@ -129,7 +129,7 @@ void SslServerFeature::verifySslOptions() {
 
   LOG_TOPIC(DEBUG, arangodb::Logger::SSL)
       << "using SSL protocol version '"
-      << protocolName((protocol_e)_sslProtocol) << "'";
+      << protocolName(protocol_e(_sslProtocol)) << "'";
 
   if (!FileUtils::exists(_keyfile)) {
     LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "unable to find SSL keyfile '"

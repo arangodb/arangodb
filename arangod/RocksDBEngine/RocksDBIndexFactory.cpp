@@ -28,9 +28,9 @@
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
-#include "RocksDBEngine/RocksDBPersistentIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
+#include "RocksDBEngine/RocksDBPersistentIndex.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/ticks.h"
@@ -152,7 +152,7 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexPersistent(VPackSlice const definition,
-                                    VPackBuilder& builder, bool create) {
+                                      VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 0, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
@@ -264,12 +264,14 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
         enhanced.add("objectId",
                      VPackValue(std::to_string(TRI_NewTickServer())));
       }
-    } else {
+    }
+    // breaks lookupIndex()
+    /*else {
       if (!definition.hasKey("objectId")) {
         // objectId missing, but must be present
         return TRI_ERROR_INTERNAL;
       }
-    }
+    }*/
 
     enhanced.add("type", VPackValue(Index::oldtypeName(type)));
 
@@ -294,7 +296,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
         res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
         break;
-        
+
       case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
         res = EnhanceJsonIndexPersistent(definition, enhanced, create);
         break;
@@ -353,7 +355,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
   }
 
   if (iid == 0 && !isClusterConstructor) {
-    // Restore is not allowed to generate in id
+    // Restore is not allowed to generate an id
     TRI_ASSERT(generateKey);
     iid = arangodb::Index::generateId();
   }
@@ -374,12 +376,16 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create edge index");
       }
-      newIdx.reset(
-          new arangodb::RocksDBEdgeIndex(iid, col, StaticStrings::FromString));
+      VPackSlice fields = info.get("fields");
+      TRI_ASSERT(fields.isArray() && fields.length() == 1);
+      std::string direction = fields.at(0).copyString();
+      TRI_ASSERT(direction == StaticStrings::FromString ||
+                 direction == StaticStrings::ToString);
+      newIdx.reset(new arangodb::RocksDBEdgeIndex(iid, col, info, direction));
       break;
     }
-    //case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    //case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
+    // case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
+    // case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
       newIdx.reset(new arangodb::RocksDBHashIndex(iid, col, info));
       break;
@@ -413,11 +419,16 @@ void RocksDBIndexFactory::fillSystemIndexes(
 
   systemIndexes.emplace_back(
       std::make_shared<arangodb::RocksDBPrimaryIndex>(col, builder.slice()));
-  // create edges index
+  // create edges indexes
   if (col->type() == TRI_COL_TYPE_EDGE) {
     systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        1, col, StaticStrings::FromString));
+        1, col, builder.slice(), StaticStrings::FromString));
     systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        2, col, StaticStrings::ToString));
+        2, col, builder.slice(), StaticStrings::ToString));
   }
+}
+
+std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
+  return std::vector<std::string>{"primary", "edge", "hash", "skiplist",
+                                  "persistent"};
 }

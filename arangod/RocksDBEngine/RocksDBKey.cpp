@@ -24,9 +24,9 @@
 
 #include "RocksDBEngine/RocksDBKey.h"
 #include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -42,25 +42,20 @@ RocksDBKey RocksDBKey::Collection(TRI_voc_tick_t databaseId,
   return RocksDBKey(RocksDBEntryType::Collection, databaseId, collectionId);
 }
 
-RocksDBKey RocksDBKey::Index(TRI_voc_tick_t databaseId,
-                             TRI_voc_cid_t collectionId,
-                             TRI_idx_iid_t indexId) {
-  return RocksDBKey(RocksDBEntryType::Index, databaseId, collectionId, indexId);
-}
-
 RocksDBKey RocksDBKey::Document(uint64_t collectionId,
                                 TRI_voc_rid_t revisionId) {
   return RocksDBKey(RocksDBEntryType::Document, collectionId, revisionId);
 }
 
-RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
-                                         arangodb::StringRef const& primaryKey) {
+RocksDBKey RocksDBKey::PrimaryIndexValue(
+    uint64_t indexId, arangodb::StringRef const& primaryKey) {
   return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, primaryKey);
 }
 
 RocksDBKey RocksDBKey::PrimaryIndexValue(uint64_t indexId,
                                          char const* primaryKey) {
-  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId, StringRef(primaryKey));
+  return RocksDBKey(RocksDBEntryType::PrimaryIndexValue, indexId,
+                    StringRef(primaryKey));
 }
 
 RocksDBKey RocksDBKey::EdgeIndexValue(uint64_t indexId,
@@ -90,7 +85,6 @@ RocksDBKey RocksDBKey::CounterValue(uint64_t objectId) {
   return RocksDBKey(RocksDBEntryType::CounterValue, objectId);
 }
 
-
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
   return type(key._buffer.data(), key._buffer.size());
 }
@@ -99,7 +93,7 @@ RocksDBEntryType RocksDBKey::type(rocksdb::Slice const& slice) {
   return type(slice.data(), slice.size());
 }
 
-uint64_t RocksDBKey::extractObjectId(rocksdb::Slice const& s) {
+uint64_t RocksDBKey::counterObjectId(rocksdb::Slice const& s) {
   TRI_ASSERT(s.size() >= (sizeof(char) + sizeof(uint64_t)));
   return uint64FromPersistent(s.data() + sizeof(char));
 }
@@ -118,14 +112,6 @@ TRI_voc_cid_t RocksDBKey::collectionId(RocksDBKey const& key) {
 
 TRI_voc_cid_t RocksDBKey::collectionId(rocksdb::Slice const& slice) {
   return collectionId(slice.data(), slice.size());
-}
-
-TRI_idx_iid_t RocksDBKey::indexId(RocksDBKey const& key) {
-  return indexId(key._buffer.data(), key._buffer.size());
-}
-
-TRI_idx_iid_t RocksDBKey::indexId(rocksdb::Slice const& slice) {
-  return indexId(slice.data(), slice.size());
 }
 
 TRI_voc_cid_t RocksDBKey::viewId(RocksDBKey const& key) {
@@ -231,26 +217,6 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second)
   }
 }
 
-RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second,
-                       uint64_t third)
-    : _type(type), _buffer() {
-  switch (_type) {
-    case RocksDBEntryType::Index: {
-      size_t length =
-          sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t);
-      _buffer.reserve(length);
-      _buffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_buffer, first);   // databaseId
-      uint64ToPersistent(_buffer, second);  // collectionId
-      uint64ToPersistent(_buffer, third);   // indexId
-      break;
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-}
-
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
                        arangodb::StringRef const& docKey,
                        VPackSlice const& indexData)
@@ -282,7 +248,8 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   }
 }
 
-RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second)
+RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
+                       arangodb::StringRef const& second)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::PrimaryIndexValue: {
@@ -335,7 +302,6 @@ TRI_voc_tick_t RocksDBKey::databaseId(char const* data, size_t size) {
   switch (type) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Index:
     case RocksDBEntryType::View: {
       TRI_ASSERT(size >= (sizeof(char) + sizeof(uint64_t)));
       return uint64FromPersistent(data + sizeof(char));
@@ -351,25 +317,9 @@ TRI_voc_cid_t RocksDBKey::collectionId(char const* data, size_t size) {
   TRI_ASSERT(size >= sizeof(char));
   RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
   switch (type) {
-    case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Index: {
+    case RocksDBEntryType::Collection: {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
       return uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t));
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
-  }
-}
-
-TRI_idx_iid_t RocksDBKey::indexId(char const* data, size_t size) {
-  TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size >= sizeof(char));
-  RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
-  switch (type) {
-    case RocksDBEntryType::Index: {
-      TRI_ASSERT(size >= (sizeof(char) + (3 * sizeof(uint64_t))));
-      return uint64FromPersistent(data + sizeof(char) + (2 * sizeof(uint64_t)));
     }
 
     default:
@@ -413,7 +363,7 @@ arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
   RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
   switch (type) {
     case RocksDBEntryType::PrimaryIndexValue: {
-      TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t) + sizeof(uint8_t)));
+      TRI_ASSERT(size >= (sizeof(char) + sizeof(uint64_t) + sizeof(char)));
       size_t keySize = size - (sizeof(char) + sizeof(uint64_t));
       return arangodb::StringRef(data + sizeof(char) + sizeof(uint64_t),
                                  keySize);

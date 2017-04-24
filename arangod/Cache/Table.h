@@ -132,7 +132,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// @brief Returns a pointer to the specified bucket in the primary table,
   /// regardless of migration status.
   //////////////////////////////////////////////////////////////////////////////
-  void* primaryBucket(uint32_t index);
+  void* primaryBucket(uint64_t index);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a subtable in the auxiliary index which corresponds to the

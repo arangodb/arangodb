@@ -47,6 +47,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
+using namespace arangodb::traverser;
 
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     : ExecutionBlock(engine, ep),
@@ -71,7 +72,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     _inRegs.emplace_back(it->second.registerId);
   }
 
-  _opts = ep->options();
+  _opts = static_cast<TraverserOptions*>(ep->options());
+  TRI_ASSERT(_opts != nullptr);
   _mmdr.reset(new ManagedDocumentResult);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {

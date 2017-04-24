@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var db = internal.db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
@@ -162,9 +163,12 @@ function optimizerRuleTestSuite() {
         [ "FOR v IN " + colName + " FILTER v.c == 1 SORT v.c RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.c == 1 SORT v.z RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.c == 1 SORT v.f RETURN 1", false, true ],
-        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.z RETURN 1", false, true ],
-        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.y RETURN 1", false, true ],
-        [ "FOR v IN " + colName + " FILTER v.z == 1 SORT v.y RETURN 1", false, true ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.z RETURN 1",
+          db._engine().name === "rocksdb", db._engine().name !== "rocksdb" ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.y RETURN 1",
+          db._engine().name === "rocksdb", db._engine().name !== "rocksdb" ],
+        [ "FOR v IN " + colName + " FILTER v.z == 1 SORT v.y RETURN 1",
+          db._engine().name === "rocksdb", db._engine().name !== "rocksdb" ],
         [ "FOR v IN " + colName + " FILTER v.z == 1 SORT v.z RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.y == 1 && v.z == 1 SORT v.y RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.y == 1 && v.z == 1 SORT v.z RETURN 1", true, false ],
@@ -213,21 +217,25 @@ function optimizerRuleTestSuite() {
       var j;
       var queries = [ 
 
-        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
+        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true, true],
         ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a]", true],
-        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
+        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true, true],
         ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a]", false],
         ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a]", true],
         // TODO: limit blocks sort atm.
-        ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a]", false],
+        ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a]", true],
         ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a]", true]
       ];
 
       queries.forEach(function(query) {
         
         var result = AQL_EXPLAIN(query[0], { }, paramIndexFromSort);
-        assertEqual([], removeAlwaysOnClusterRules(result.plan.rules), query);
-        if (query[1]) {
+          if (db._engine().name === "rocksdb" && query.length === 3 && query[2]) {
+            assertEqual(["use-index-for-sort"], removeAlwaysOnClusterRules(result.plan.rules), query);
+          } else {
+            assertEqual([], removeAlwaysOnClusterRules(result.plan.rules), query);
+          }
+        if (!query[1]) {
           var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
           for (j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],

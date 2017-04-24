@@ -1501,7 +1501,7 @@ void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase,
   int res = TRI_UnlinkFile(filename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "cannot remove index definition in file '" << filename
         << "': " << TRI_errno_string(res);
   }

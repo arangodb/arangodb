@@ -946,7 +946,11 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          assertEqual("hash", node.indexes[0].type);
+           if (db._engine().name === "rocksdb") {
+             assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+           } else {
+            assertEqual("hash", node.indexes[0].type);
+           }
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -1032,12 +1036,18 @@ function optimizerIndexesTestSuite () {
           ++indexNodes;
           if (indexNodes === 1) {
             // skiplist must be used for the first FOR
-            assertEqual("skiplist", node.indexes[0].type);
+            if (db._engine().name === "rocksdb") {
+              assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+            } else {
+              assertEqual("skiplist", node.indexes[0].type);
+            }
             assertEqual("i", node.outVariable.name);
           }
           else {
-            // second FOR should use a hash index
-            assertEqual("hash", node.indexes[0].type);
+            if (db._engine().name !== "rocksdb") {// all indexes were created equal
+              // second FOR should use a hash index
+              assertEqual("hash", node.indexes[0].type);
+            }
             assertEqual("j", node.outVariable.name);
           }
         }
@@ -1111,11 +1121,19 @@ function optimizerIndexesTestSuite () {
         if (node.type === "IndexNode") {
           ++indexNodes;
           if (indexNodes === 1) {
-            assertEqual("hash", node.indexes[0].type);
+            if (db._engine().name === "rocksdb") {
+              assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+            } else {
+              assertEqual("hash", node.indexes[0].type);
+            }
             assertEqual("i", node.outVariable.name);
           }
           else if (indexNodes === 2) {
-            assertEqual("hash", node.indexes[0].type);
+            if (db._engine().name === "rocksdb") {
+              assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+            } else {
+              assertEqual("hash", node.indexes[0].type);
+            }
             assertEqual("j", node.outVariable.name);
           }
           else {
@@ -1173,7 +1191,11 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          assertEqual("hash", node.indexes[0].type);
+          if (db._engine().name === "rocksdb") {
+             assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+          } else {
+             assertEqual("hash", node.indexes[0].type);
+          }
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -1263,7 +1285,11 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.indexes[0].type);
+          if (db._engine().name === "rocksdb") {
+            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+          } else {
+            assertEqual("hash", node.indexes[0].type);
+          }
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -1644,12 +1670,20 @@ function optimizerIndexesTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         return node.type;
       });
-      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      // rocksdb supports prefix filtering in the hash index
+      if (db._engine().name !== "rocksdb") {
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      }
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2 ], results.json.sort(), query);
-      assertEqual(0, results.stats.scannedIndex);
-      assertTrue(results.stats.scannedFull > 0);
+      if (db._engine().name === "rocksdb") {
+        assertEqual(2, results.stats.scannedIndex);
+        assertEqual(0, results.stats.scannedFull);
+      } else {
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

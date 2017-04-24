@@ -65,7 +65,7 @@ class TraverserDocumentCache : public TraverserCache {
    //////////////////////////////////////////////////////////////////////////////
 
    void insertDocument(StringRef idString,
-                       arangodb::velocypack::Slice const& document);
+                       arangodb::velocypack::Slice const& document) override;
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Throws the document referenced by the token into the filter
@@ -75,7 +75,7 @@ class TraverserDocumentCache : public TraverserCache {
    //////////////////////////////////////////////////////////////////////////////
 
    bool validateFilter(StringRef idString,
-       std::function<bool(arangodb::velocypack::Slice const&)> filterFunc);
+       std::function<bool(arangodb::velocypack::Slice const&)> filterFunc) override;
  
   protected:
 

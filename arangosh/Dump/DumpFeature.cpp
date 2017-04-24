@@ -58,6 +58,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _maxChunkSize(1024 * 1024 * 12),
       _dumpData(true),
       _force(false),
+      _ignoreDistributeShardsLikeErrors(false),
       _includeSystemCollections(false),
       _outputDirectory(),
       _overwrite(false),
@@ -100,6 +101,11 @@ void DumpFeature::collectOptions(
       "--force", "continue dumping even in the face of some server-side errors",
       new BooleanParameter(&_force));
 
+  options->addOption(
+      "--ignore-distribute-shards-like-errors",
+      "continue dump even if sharding prototype collection is not backed up along",
+      new BooleanParameter(&_ignoreDistributeShardsLikeErrors));
+  
   options->addOption("--include-system-collections",
                      "include system collections",
                      new BooleanParameter(&_includeSystemCollections));
@@ -309,7 +315,8 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
   while (true) {
     std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
-                      "&chunkSize=" + StringUtils::itoa(chunkSize);
+                      "&chunkSize=" + StringUtils::itoa(chunkSize) +
+                      "&batchId=" + StringUtils::itoa(_batchId);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -425,7 +432,8 @@ void DumpFeature::flushWal() {
 int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   std::string const url =
       "/_api/replication/inventory?includeSystem=" +
-      std::string(_includeSystemCollections ? "true" : "false");
+      std::string(_includeSystemCollections ? "true" : "false") + "&batchId=" +
+      StringUtils::itoa(_batchId);
 
   std::unique_ptr<SimpleHttpResult> response(
       _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
@@ -504,8 +512,9 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       TRI_UnlinkFile(fileName.c_str());
     }
 
-    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                    S_IRUSR | S_IWUSR);
+    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
+                                 O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                 S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
       errorMsg = "cannot write to file '" + fileName + "'";
@@ -605,8 +614,8 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                      O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                      S_IRUSR | S_IWUSR);
+                                   O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -641,8 +650,8 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                      O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                      S_IRUSR | S_IWUSR);
+                                   O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -861,6 +870,25 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       continue;
     }
 
+    if (!_ignoreDistributeShardsLikeErrors) {
+      std::string prototypeCollection =
+        arangodb::basics::VelocyPackHelper::getStringValue(
+          parameters, "distributeShardsLike", "");
+
+      if (!prototypeCollection.empty() && !restrictList.empty()) {
+        if (std::find(
+              _collections.begin(), _collections.end(), prototypeCollection) ==
+            _collections.end()) {
+          errorMsg = std::string("Collection ") + name
+            + "'s shard distribution is based on a that of collection " +
+            prototypeCollection + ", which is not dumped along. You may "
+            "dump the collection regardless of the missing prototype collection "
+            "by using the --ignore-distribute-shards-like-errors parameter.";
+          return TRI_ERROR_INTERNAL;
+        }
+      }
+    }
+
     // found a collection!
     if (_progress) {
       std::cout << "# Dumping collection '" << name << "'..." << std::endl;
@@ -879,9 +907,9 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                          O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                          S_IRUSR | S_IWUSR);
+      int fd = TRI_TRACKED_CREATE_FILE(
+          fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+          S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -915,9 +943,9 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                          O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                          S_IRUSR | S_IWUSR);
+      int fd = TRI_TRACKED_CREATE_FILE(
+          fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+          S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";

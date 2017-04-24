@@ -93,13 +93,16 @@
   c = db._create("UnitTestsDumpIndexes", { indexBuckets: 32 });
   c.ensureUniqueConstraint("a_uc");
   c.ensureSkiplist("a_s1", "a_s2");
-  c.ensureFulltextIndex("a_f");
-  c.ensureGeoIndex("a_la", "a_lo");
 
   c.ensureHashIndex("a_h1", "a_h2");
   c.ensureUniqueSkiplist("a_su");
   c.ensureHashIndex("a_hs1", "a_hs2", { sparse: true });
   c.ensureSkiplist("a_ss1", "a_ss2", { sparse: true });
+ 
+  if (db._engine().name !== "rocksdb") {
+    c.ensureFulltextIndex("a_f");
+    c.ensureGeoIndex("a_la", "a_lo");
+  }
 
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated", { isVolatile: true });
