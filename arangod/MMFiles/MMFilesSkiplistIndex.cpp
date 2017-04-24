@@ -1430,7 +1430,7 @@ arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
     }
 
     std::sort(nodes.begin(), nodes.end(),
-              [](arangodb::aql::AstNode const* lhs,
+              [this](arangodb::aql::AstNode const* lhs,
                  arangodb::aql::AstNode const* rhs) -> bool {
                 return Index::sortWeight(lhs) < Index::sortWeight(rhs);
               });
