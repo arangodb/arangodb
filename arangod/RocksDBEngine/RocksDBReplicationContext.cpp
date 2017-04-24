@@ -139,8 +139,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
   VPackBuilder builder(&_vpackOptions);
 
-  uint64_t size = 0;
-  auto cb = [this, &type, &buff, &adapter, &size,
+  auto cb = [this, &type, &buff, &adapter,
              &builder](DocumentIdentifierToken const& token) {
     builder.clear();
 
@@ -167,10 +166,9 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     VPackSlice slice = builder.slice();
     dumper.dump(slice);
     buff.appendChar('\n');
-    size += (slice.byteSize() + 1);
   };
 
-  while (_hasMore && (size < chunkSize)) {
+  while (_hasMore && buff.length() < chunkSize) {
     try {
       _hasMore = _iter->next(cb, 10);  // TODO: adjust limit?
     } catch (std::exception const& ex) {
@@ -189,7 +187,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   TRI_ASSERT(_iter);
 
   RocksDBAllIndexIterator* primary =
-      dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
+      static_cast<RocksDBAllIndexIterator*>(_iter.get());
 
   std::string lowKey;
   VPackSlice highKey;  // FIXME: no good keeping this
@@ -266,7 +264,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder& b,
   }
 
   RocksDBAllIndexIterator* primary =
-      dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
+      static_cast<RocksDBAllIndexIterator*>(_iter.get());
   auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
     RocksDBToken const& rt = static_cast<RocksDBToken const&>(token);
 
