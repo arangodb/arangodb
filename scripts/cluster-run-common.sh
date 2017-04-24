@@ -16,6 +16,7 @@ function help() {
   echo "  -x/--xterm              XTerm command       (default: xterm)"
   echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
   echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
+  echo "  -r/--rocksdb-engine     Use Rocksdb engine  (default: false )"
   echo ""
   echo "EXAMPLES:"
   echo "  $0"
@@ -56,6 +57,10 @@ while [[ ${1} ]]; do
       ;;
     -d|--ndbservers)
       NRDBSERVERS=${2}
+      shift
+      ;;
+    -r|--rocksdbengine)
+      USE_ROCKSDB=${2}
       shift
       ;;
     -s|--secondaries)

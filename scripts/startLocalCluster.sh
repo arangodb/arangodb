@@ -6,13 +6,13 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-if [ -z "USE_ROCKSDB" ] ; then
+#if [ -z "USE_ROCKSDB" ] ; then
   STORAGE_ENGINE=""
   DEFAULT_REPLICATION=""
-else
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-  DEFAULT_REPLICATION="--cluster.system-replication-factor=1"
-fi
+#else
+#  STORAGE_ENGINE="--server.storage-engine=rocksdb"
+#  DEFAULT_REPLICATION="--cluster.system-replication-factor=1"
+#fi
 
 printf "Starting agency ... \n"
 printf "  # agents: %s," "$NRAGENTS"
@@ -107,7 +107,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.v8-contexts 1 \
-        --server.endpoint $TRANSPORT://$ANY:$port \
+        --server.endpoint $TRANSPORT://$ANYWHERE:$port \
         --server.statistics false \
         --server.threads 16 \
         --log.file cluster/$port.log \
@@ -136,9 +136,9 @@ start() {
        --database.directory cluster/data$PORT \
        --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
        --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
-       --server.endpoint $TRANSPORT://$ANY:$PORT \
+       --server.endpoint $TRANSPORT://$ANYWHERE:$PORT \
        --cluster.my-local-info $TYPE:$LOCALHOST:$PORT \
-       --server.endpoint $TRANSPORT://$ANY:$PORT \
+       --server.endpoint $TRANSPORT://$ANYWHERE:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
        --log.level $LOG_LEVEL \
@@ -171,7 +171,7 @@ startTerminal() {
         --database.directory cluster/data$PORT \
         --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
         --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
-        --server.endpoint $TRANSPORT://$ANY:$PORT \
+        --server.endpoint $TRANSPORT://$ANYWHERE:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
@@ -202,7 +202,7 @@ startDebugger() {
       --database.directory cluster/data$PORT \
       --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
       --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
-      --server.endpoint $TRANSPORT://$ANY:$PORT \
+      --server.endpoint $TRANSPORT://$ANYWHERE:$PORT \
       --cluster.my-role $ROLE \
       --log.file cluster/$PORT.log \
       --log.level $LOG_LEVEL \
@@ -233,7 +233,7 @@ startRR() {
         --database.directory cluster/data$PORT \
         --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
         --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
-        --server.endpoint $TRANSPORT://$ANY:$PORT \
+        --server.endpoint $TRANSPORT://$ANYWHERE:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
@@ -328,7 +328,7 @@ if [ "$SECONDARIES" == "1" ] ; then
             --database.directory cluster/data$PORT \
             --cluster.agency-endpoint $TRANSPORT://$LOCALHOST:$AG_BASE \
             --cluster.my-address $TRANSPORT://$LOCALHOST:$PORT \
-            --server.endpoint $TRANSPORT://$ANY:$PORT \
+            --server.endpoint $TRANSPORT://$ANYWHERE:$PORT \
             --cluster.my-id $CLUSTER_ID \
             --log.file cluster/$PORT.log \
             --server.statistics true \
