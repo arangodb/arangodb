@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
+#include "Cluster/ServerState.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -160,6 +161,33 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
+/// special method to expose the document key for incremental replication
+bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb, size_t limit) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  while (limit > 0) {
+    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
+    StringRef key = RocksDBKey::primaryKey(_iterator->key());
+    cb(token, key);
+    --limit;
+    
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void RocksDBAllIndexIterator::reset() {
   if (_reverse) {
     _iterator->SeekForPrev(_bounds.end());
@@ -257,9 +285,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
-  if (_objectId != 0) {
+  if (_objectId != 0 && !ServerState::instance()->isCoordinator()) {
     _useCache = true;
-    createCache();
   }
 }
 
@@ -298,7 +325,8 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
-  if (_useCache) {
+  if (useCache()) {
+    TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
     auto f = _cache->find(key.string().data(),
                           static_cast<uint32_t>(key.string().size()));
@@ -320,7 +348,8 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     return RocksDBToken();
   }
 
-  if (_useCache) {
+  if (useCache()) {
+    TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
     auto entry = cache::CachedValue::construct(
         key.string().data(), static_cast<uint32_t>(key.string().size()),
@@ -360,7 +389,8 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
-  if (_useCache) {
+  if (useCache()) {
+    TRI_ASSERT(_cache != nullptr);
     // blacklist from cache
     bool blacklisted = false;
     uint64_t attempts = 0;
@@ -395,7 +425,8 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
 
-  if (_useCache) {
+  if (useCache()) {
+    TRI_ASSERT(_cache != nullptr);
     // blacklist from cache
     bool blacklisted = false;
     uint64_t attempts = 0;

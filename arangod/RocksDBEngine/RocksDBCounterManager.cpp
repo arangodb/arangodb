@@ -26,22 +26,26 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
-
-#include "RocksDBEngine/RocksDBCommon.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
 RocksDBCounterManager::CMValue::CMValue(VPackSlice const& slice) {
+  if (!slice.isArray()) {
+    // got a somewhat invalid slice. probably old data from before the key structure changes
+    return;
+  }
   TRI_ASSERT(slice.isArray());
 
   velocypack::ArrayIterator array(slice);
@@ -63,11 +67,13 @@ void RocksDBCounterManager::CMValue::serialize(VPackBuilder& b) const {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
-    : _db(db) {
+    : _syncing(false), _db(db) {
+  readSettings();
+
   readCounterValues();
-  if (_counters.size() > 0) {
+  if (!_counters.empty()) {
     if (parseRocksWAL()) {
-      sync();
+      sync(false);
     }
   }
 }
@@ -120,7 +126,7 @@ void RocksDBCounterManager::updateCounter(uint64_t objectId,
     }
   }
   if (needsSync) {
-    sync();
+    sync(true);
   }
 }
 
@@ -139,18 +145,31 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
 }
 
 /// Thread-Safe force sync
-Result RocksDBCounterManager::sync() {
-  if (_syncing) {
-    return Result();
-  }
+Result RocksDBCounterManager::sync(bool force) {
+  if (force) {
+    while(true) {
+      bool expected = false;
+      bool res = _syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
+                                                  std::memory_order_relaxed);
+      if (res) {
+        break;
+      }
+      usleep(10000);
+    }
+  } else {
+    bool expected = false;
 
+    if (!_syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
+                                          std::memory_order_relaxed)) {
+      return Result();
+    }
+  }
+  
+  TRI_DEFER(_syncing = false);
+  
   std::unordered_map<uint64_t, CMValue> copy;
   {  // block all updates
     WRITE_LOCKER(guard, _rwLock);
-    if (_syncing) {
-      return Result();
-    }
-    _syncing = true;
     copy = _counters;
   }
 
@@ -175,7 +194,6 @@ Result RocksDBCounterManager::sync() {
     rocksdb::Status s = rtrx->Put(key.string(), value);
     if (!s.ok()) {
       rtrx->Rollback();
-      _syncing = false;
       return rocksutils::convertStatus(s);
     }
   }
@@ -189,8 +207,40 @@ Result RocksDBCounterManager::sync() {
     }
   }
 
-  _syncing = false;
   return rocksutils::convertStatus(s);
+}
+
+void RocksDBCounterManager::readSettings() {
+#if 0
+  RocksDBKey key = RocksDBKey::SettingsValue();
+
+  std::string result;
+  rocksdb::Status status = _db->Get(rocksdb::ReadOptions(), key.string(), &result);
+  if (status.ok()) {
+    // key may not be there...
+    VPackSlice slice = VPackSlice(result.data());
+    TRI_ASSERT(slice.isObject());
+  }
+#endif
+}
+
+void RocksDBCounterManager::writeSettings() {
+#if 0
+  RocksDBKey key = RocksDBKey::SettingsValue();
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.close();
+
+  VPackSlice slice = builder.slice();
+  rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
+
+  rocksdb::Status status = _db->Put(rocksdb::WriteOptions(), key.string(), value);
+  
+  if (status.ok()) {
+    // TODO
+  }
+#endif
 }
 
 /// Parse counter values from rocksdb
@@ -267,17 +317,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   }
 
   void SingleDelete(const rocksdb::Slice& key) override {
-    if (prepKey(key)) {
-      uint64_t objectId = RocksDBKey::counterObjectId(key);
-      uint64_t revisionId = RocksDBKey::revisionId(key);
-
-      auto const& it = deltas.find(objectId);
-      if (it != deltas.end()) {
-        it->second._sequenceNum = currentSeqNum;
-        it->second._removed++;
-        it->second._revisionId = revisionId;
-      }
-    }
+    Delete(key);
   }
 };
 

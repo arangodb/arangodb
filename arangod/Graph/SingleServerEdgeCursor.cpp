@@ -80,6 +80,7 @@ bool SingleServerEdgeCursor::next(
       VPackSlice edgeDocument(_mmdr->vpack());
       std::string eid = _trx->extractIdString(edgeDocument);
       StringRef persId = _opts->cache()->persistString(StringRef(eid));
+      _opts->cache()->insertDocument(persId, edgeDocument);
       if (_internalCursorMapping != nullptr) {
         TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
         callback(persId, edgeDocument,
@@ -138,6 +139,7 @@ bool SingleServerEdgeCursor::next(
     VPackSlice edgeDocument(_mmdr->vpack());
     std::string eid = _trx->extractIdString(edgeDocument);
     StringRef persId = _opts->cache()->persistString(StringRef(eid));
+    _opts->cache()->insertDocument(persId, edgeDocument);
     if (_internalCursorMapping != nullptr) {
       TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
       callback(persId, edgeDocument,
@@ -168,6 +170,7 @@ void SingleServerEdgeCursor::readAll(
           VPackSlice doc(_mmdr->vpack());
           std::string tmpId = _trx->extractIdString(doc);
           StringRef edgeId = _opts->cache()->persistString(StringRef(tmpId));
+          _opts->cache()->insertDocument(edgeId, doc);
           callback(edgeId, doc, cursorId);
         }
       };

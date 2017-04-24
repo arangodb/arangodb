@@ -22,11 +22,11 @@
 
 #include "RocksDBBackgroundThread.h"
 #include "Basics/ConditionLocker.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "Utils/CursorRepository.h"
-#include "RestServer/DatabaseFeature.h"
 
 using namespace arangodb;
 
@@ -46,11 +46,13 @@ void RocksDBBackgroundThread::beginShutdown() {
 
 void RocksDBBackgroundThread::run() {
   while (!isStopping()) {
-    CONDITION_LOCKER(guard, _condition);
-    guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
-
+    {
+      CONDITION_LOCKER(guard, _condition);
+      guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
+    }
+    
     if (!isStopping()) {
-      _engine->counterManager()->sync();
+      _engine->counterManager()->sync(false);
     }
 
     bool force = isStopping();
