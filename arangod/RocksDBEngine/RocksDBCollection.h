@@ -131,6 +131,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
 
+  DocumentIdentifierToken lookupKey(transaction::Methods *trx,
+                                    arangodb::velocypack::Slice const& key) override;
+  
   int read(transaction::Methods*, arangodb::velocypack::Slice const key,
            ManagedDocumentResult& result, bool) override;
 
