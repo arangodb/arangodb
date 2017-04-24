@@ -189,7 +189,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   int processRestoreCollectionCoordinator(VPackSlice const&, bool, bool, bool,
-                                          uint64_t, std::string&, uint64_t);
+                                          uint64_t, std::string&, uint64_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection TODO MOVE

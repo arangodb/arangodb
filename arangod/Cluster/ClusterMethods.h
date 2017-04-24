@@ -215,7 +215,8 @@ class ClusterMethods {
   // to the caller, which is expressed by the returned unique_ptr.
   static std::unique_ptr<LogicalCollection> createCollectionOnCoordinator(
       TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
-      arangodb::velocypack::Slice parameters);
+      arangodb::velocypack::Slice parameters,
+      bool ignoreDistributeShardsLikeErrors = false);
 
  private:
 
@@ -224,7 +225,7 @@ class ClusterMethods {
 ////////////////////////////////////////////////////////////////////////////////
 
   static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
-      LogicalCollection* col);
+    LogicalCollection* col, bool ignoreDistributeShardsLikeErrors);
 };
 
 }  // namespace arangodb

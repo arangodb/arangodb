@@ -57,7 +57,11 @@ Supervision::Supervision()
   _selfShutdown(false),
   _upgraded(false) {}
 
-Supervision::~Supervision() { shutdown(); };
+Supervision::~Supervision() {
+  if (!isStopping()) {
+    shutdown();
+  }
+};
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
