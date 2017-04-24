@@ -84,9 +84,10 @@ class RequestStatistics {
     }
   }
 
-  static void SET_QUEUE_START(RequestStatistics* stat) {
+  static void SET_QUEUE_START(RequestStatistics* stat, int64_t nrQueued) {
     if (stat != nullptr) {
       stat->_queueStart = StatisticsFeature::time();
+      stat->_queueSize = nrQueued;
     }
   }
 
@@ -171,6 +172,7 @@ class RequestStatistics {
     _readEnd = 0.0;
     _queueStart = 0.0;
     _queueEnd = 0.0;
+    _queueSize = 0;
     _requestStart = 0.0;
     _requestEnd = 0.0;
     _writeStart = 0.0;
@@ -188,8 +190,10 @@ class RequestStatistics {
 
   double _readStart;     // CommTask::processRead - read first byte of message
   double _readEnd;       // CommTask::processRead - message complete
-  double _queueStart;    // addJob to queue GeneralServer::handleRequest
-  double _queueEnd;      // exit queue DispatcherThread::handleJob
+  double _queueStart;    // job added to JobQueue
+  double _queueEnd;      // job removed from JobQueue
+  int64_t _queueSize;
+  
   double _requestStart;  // GeneralServerJob::work
   double _requestEnd;
   double _writeStart;

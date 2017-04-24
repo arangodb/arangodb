@@ -308,7 +308,7 @@ bool Scheduler::hasQueueCapacity() {
 }
 
 bool Scheduler::queue(std::unique_ptr<Job> job) {
-  RequestStatistics::SET_QUEUE_START(job->_handler->statistics());
+  RequestStatistics::SET_QUEUE_START(job->_handler->statistics(), _nrQueued);
   return _jobQueue->queue(std::move(job));
 }
 
