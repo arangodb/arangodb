@@ -26,17 +26,17 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
-
-#include "RocksDBEngine/RocksDBCommon.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -68,6 +68,8 @@ void RocksDBCounterManager::CMValue::serialize(VPackBuilder& b) const {
 /// will load counts from the db and scan the WAL
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
     : _syncing(false), _db(db) {
+  readSettings();
+
   readCounterValues();
   if (!_counters.empty()) {
     if (parseRocksWAL()) {
@@ -162,7 +164,9 @@ Result RocksDBCounterManager::sync(bool force) {
       return Result();
     }
   }
+  
   TRI_DEFER(_syncing = false);
+  
   std::unordered_map<uint64_t, CMValue> copy;
   {  // block all updates
     WRITE_LOCKER(guard, _rwLock);
@@ -204,6 +208,39 @@ Result RocksDBCounterManager::sync(bool force) {
   }
 
   return rocksutils::convertStatus(s);
+}
+
+void RocksDBCounterManager::readSettings() {
+#if 0
+  RocksDBKey key = RocksDBKey::SettingsValue();
+
+  std::string result;
+  rocksdb::Status status = _db->Get(rocksdb::ReadOptions(), key.string(), &result);
+  if (status.ok()) {
+    // key may not be there...
+    VPackSlice slice = VPackSlice(result.data());
+    TRI_ASSERT(slice.isObject());
+  }
+#endif
+}
+
+void RocksDBCounterManager::writeSettings() {
+#if 0
+  RocksDBKey key = RocksDBKey::SettingsValue();
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.close();
+
+  VPackSlice slice = builder.slice();
+  rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
+
+  rocksdb::Status status = _db->Put(rocksdb::WriteOptions(), key.string(), value);
+  
+  if (status.ok()) {
+    // TODO
+  }
+#endif
 }
 
 /// Parse counter values from rocksdb

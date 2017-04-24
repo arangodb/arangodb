@@ -2261,14 +2261,14 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
 
 #ifndef USE_ENTERPRISE
 std::unique_ptr<LogicalCollection>
-ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
-                                              TRI_vocbase_t* vocbase,
-                                              VPackSlice parameters) {
+ClusterMethods::createCollectionOnCoordinator(
+  TRI_col_type_e collectionType, TRI_vocbase_t* vocbase, VPackSlice parameters,
+  bool ignoreDistributeShardsLikeErrors) {
   auto col = std::make_unique<LogicalCollection>(vocbase, parameters);
   // Collection is a temporary collection object that undergoes sanity checks etc.
   // It is not used anywhere and will be cleaned up after this call.
   // Persist collection will return the real object.
-  return persistCollectionInAgency(col.get());
+  return persistCollectionInAgency(col.get(), ignoreDistributeShardsLikeErrors);
 }
 #endif
 
@@ -2277,11 +2277,14 @@ ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<LogicalCollection>
-ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
+ClusterMethods::persistCollectionInAgency(
+  LogicalCollection* col, bool ignoreDistributeShardsLikeErrors) {
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> dbServers;
   std::vector<std::string> avoid = col->avoidServers();
-    
+
+  bool chainOfDistributeShardsLike = false;
+  
   ClusterInfo* ci = ClusterInfo::instance();
   if (!distributeShardsLike.empty()) {
 
@@ -2295,6 +2298,9 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
       try {
         std::shared_ptr<LogicalCollection> collInfo =
           ci->getCollection(col->dbName(), otherCidString);
+        if (!collInfo->distributeShardsLike().empty()) {
+          chainOfDistributeShardsLike = true;
+        }
         auto shards = collInfo->shardIds();
         auto shardList = ci->getShardList(otherCidString);
         for (auto const& s : *shardList) {
@@ -2305,11 +2311,20 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
             }
           }
         }
-      } catch (...) {
+      } catch (...) {}
+      
+      if (chainOfDistributeShardsLike) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE);
       }
+      
       col->distributeShardsLike(otherCidString);
+    } else {
+      if (ignoreDistributeShardsLikeErrors) {
+        col->distributeShardsLike(std::string());
+      } else {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE);
+      }
     }
-    
   } else if(!avoid.empty()) {
     
     size_t replicationFactor = col->replicationFactor();

@@ -60,6 +60,7 @@ class RestoreFeature final
   bool _overwrite;
   bool _recycleIds;
   bool _force;
+  bool _ignoreDistributeShardsLikeErrors;
   bool _clusterMode;
   uint64_t _defaultNumberOfShards;
   uint64_t _defaultReplicationFactor;

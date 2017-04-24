@@ -269,6 +269,16 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
 function filterTestcaseByOptions (testname, options, whichFilter) {
   // These filters require a proper setup, Even if we filter by testcase:
+  if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === 'rocksdb') {
+    whichFilter.filter = 'skip when running as rocksdb';
+    return false;
+  }
+
+  if ((testname.indexOf('-rocksdb') !== -1) && options.storageEngine === 'mmfiles') {
+    whichFilter.filter = 'skip when running as mmfiles';
+    return false;
+  }
+
   if (options.replication) {
     whichFilter.filter = 'replication';
 
@@ -281,15 +291,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     }
   } else if (testname.indexOf('replication') !== -1) {
     whichFilter.filter = 'replication';
-    return false;
-  }
-
-  if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === 'rocksdb') {
-    whichFilter.filter = 'skip when running as rocksdb';
-    return false;
-  }
-  if ((testname.indexOf('-rocksdb') !== -1) && options.storageEngine === 'mmfiles') {
-    whichFilter.filter = 'skip when running as mmfiles';
     return false;
   }
 

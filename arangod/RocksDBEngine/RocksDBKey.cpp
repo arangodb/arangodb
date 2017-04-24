@@ -85,6 +85,10 @@ RocksDBKey RocksDBKey::CounterValue(uint64_t objectId) {
   return RocksDBKey(RocksDBEntryType::CounterValue, objectId);
 }
 
+RocksDBKey RocksDBKey::SettingsValue() {
+  return RocksDBKey(RocksDBEntryType::SettingsValue);
+}
+
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
   return type(key._buffer.data(), key._buffer.size());
 }
@@ -155,6 +159,19 @@ VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
 }
 
 std::string const& RocksDBKey::string() const { return _buffer; }
+
+RocksDBKey::RocksDBKey(RocksDBEntryType type)
+    : _type(type), _buffer() {
+  switch (_type) {
+    case RocksDBEntryType::SettingsValue: {
+      _buffer.push_back(static_cast<char>(_type));
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
 
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first)
     : _type(type), _buffer() {

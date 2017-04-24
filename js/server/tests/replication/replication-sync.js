@@ -39,6 +39,10 @@ var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();
 var slaveEndpoint = ARGUMENTS[0];
 
+var mmfilesEngine = false;
+if (db._engine().name === "mmfiles") {
+    mmfilesEngine = true
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,9 +141,11 @@ function ReplicationSuite() {
         function(state) {
           var c = db._collection(cn);
           var p = c.properties();
-          assertEqual(32, p.indexBuckets);
           assertTrue(p.waitForSync);
-          assertEqual(16 * 1024 * 1024, p.journalSize);
+          if(mmfilesEngine){
+            assertEqual(32, p.indexBuckets);
+            assertEqual(16 * 1024 * 1024, p.journalSize);
+          }
         },
         true
       );
@@ -169,9 +175,11 @@ function ReplicationSuite() {
         function(state) {
           var c = db._collection(cn);
           var p = c.properties();
-          assertEqual(32, p.indexBuckets);
           assertTrue(p.waitForSync);
-          assertEqual(16 * 1024 * 1024, p.journalSize);
+          if(mmfilesEngine){
+            assertEqual(32, p.indexBuckets);
+            assertEqual(16 * 1024 * 1024, p.journalSize);
+          }
         },
         true
       );
