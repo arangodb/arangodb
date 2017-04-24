@@ -1333,6 +1333,11 @@ void MMFilesRestReplicationHandler::handleCommandRestoreCollection() {
     force = StringUtils::boolean(value3);
   }
 
+  std::string const& value9 =
+    _request->value("ignoreDistributeShardsLikeErrors", found);
+  bool ignoreDistributeShardsLikeErrors =
+    found ? StringUtils::boolean(value9) : false;
+
   uint64_t numberOfShards = 0;
   std::string const& value4 = _request->value("numberOfShards", found);
 
@@ -1351,14 +1356,16 @@ void MMFilesRestReplicationHandler::handleCommandRestoreCollection() {
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    res = processRestoreCollectionCoordinator(slice, overwrite, recycleIds,
-                                              force, numberOfShards, errorMsg,
-                                              replicationFactor);
+    res = (ServerState::instance()->isCoordinator()) ?
+      processRestoreCollectionCoordinator(
+        slice, overwrite, recycleIds, force, numberOfShards, errorMsg,
+        replicationFactor, ignoreDistributeShardsLikeErrors) : 
+      processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
   } else {
     res =
-        processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
+      processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
   }
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1543,7 +1550,7 @@ int MMFilesRestReplicationHandler::processRestoreCollection(
 int MMFilesRestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
     uint64_t numberOfShards, std::string& errorMsg,
-    uint64_t replicationFactor) {
+    uint64_t replicationFactor, bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -1672,8 +1679,8 @@ int MMFilesRestReplicationHandler::processRestoreCollectionCoordinator(
   VPackSlice const merged = mergedBuilder.slice();
 
   try {
-    auto col = ClusterMethods::createCollectionOnCoordinator(collectionType,
-                                                             _vocbase, merged);
+    auto col = ClusterMethods::createCollectionOnCoordinator(
+      collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors);
     TRI_ASSERT(col != nullptr);
   } catch (basics::Exception const& e) {
     // Error, report it.

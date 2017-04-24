@@ -198,6 +198,10 @@ ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID,1480,"Invalid agency structure","The stru
 ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,1481,"collection is out of sync","Will be raised if a collection needed during query execution is out of sync. This currently can only happen when using satellite collections"
 ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,1482,"could not create index in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new index in the Plan hierarchy in the agency."
 ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,1483,"could not drop index in plan","Will be raised when a coordinator in a cluster cannot remove an index from the Plan hierarchy in the agency."
+ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,1484,"chain of distributeShardsLike references","Will be raised if one tries to create a collection with a distributeShardsLike attribute which points to another collection that also has one."
+ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE,1485,"must not drop collection while another has a distributeShardsLike attribute pointing to it","Will be raised if one tries to drop a collection to which another collection points with its distributeShardsLike attribute."
+ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,1486,"must not have a distributeShardsLike attribute pointing to an unknown collection","Will be raised if one tries to create a collection which points to an unknown collection in its distributeShardsLike attribute."
+
 
 ################################################################################
 ## ArangoDB query errors
