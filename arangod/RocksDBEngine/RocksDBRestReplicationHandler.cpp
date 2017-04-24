@@ -421,7 +421,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
-    b.add("id", VPackValue(std::to_string(ctx->id())));
+    b.add("id", VPackValue(std::to_string(ctx->id())));// id always string
     b.close();
 
     generateResult(rest::ResponseCode::OK, b.slice());
@@ -1081,7 +1081,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  result.add("id", VPackValue(ctx->id()));
+  result.add("id", VPackValue(StringUtils::itoa(ctx->id())));
   result.add("count", VPackValue(ctx->count()));
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -1198,8 +1198,6 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   transaction::StandaloneContext::Create(_vocbase);
   
   VPackBuilder resultBuilder(transactionContext->getVPackOptions());
-  resultBuilder.openArray();
-  
   if (keys) {
     ctx->dumpKeys(resultBuilder, chunk,
                              static_cast<size_t>(chunkSize));
@@ -1215,7 +1213,6 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                              parsedIds->slice());
   }
   
-  resultBuilder.close();
   generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
                  transactionContext);
 }

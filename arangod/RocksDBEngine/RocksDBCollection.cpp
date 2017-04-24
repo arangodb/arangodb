@@ -498,6 +498,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   }
 }
 
+DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods *trx,
+                                                     VPackSlice const& key) {
+  TRI_ASSERT(key.isString());
+  return primaryIndex()->lookupKey(trx, StringRef(key));
+}
+
 int RocksDBCollection::read(transaction::Methods* trx,
                             arangodb::velocypack::Slice const key,
                             ManagedDocumentResult& result, bool) {

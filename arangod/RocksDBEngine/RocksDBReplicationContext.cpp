@@ -88,6 +88,7 @@ int RocksDBReplicationContext::bindCollection(std::string const& collectionName)
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER; RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
+    _trx->addCollectionAtRuntime(collectionName);
     _iter = _collection->getAllIterator(_trx.get(), &_mdr,
                                         false);  //_mdr is not used nor updated
     _hasMore = true;
@@ -212,6 +213,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder &b,
     hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
   };
   
+  b.openArray();
   while (_hasMore && true /*sizelimit*/) {
     try {
       
@@ -228,6 +230,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder &b,
       return Result(TRI_ERROR_INTERNAL);
     }
   }
+  b.close();
   
   return Result();
 }
@@ -243,6 +246,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder &b,
   if (from == 0) {
     _iter->reset();
     _lastChunkOffset = 0;
+    _hasMore = true;
   } else if (from < _lastChunkOffset+chunkSize) {
     TRI_ASSERT(from >= chunkSize);
     uint64_t diff = from - chunkSize;
@@ -263,10 +267,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder &b,
     
     b.openArray();
     b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-    b.add(VPackValue(rt.revisionId()));
+    b.add(VPackValue(std::to_string(rt.revisionId())));
     b.close();
   };
   
+  b.openArray();
   // chunk is going to be ignored here
   while (_hasMore && true /*sizelimit*/) {
     try {
@@ -275,6 +280,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder &b,
       return Result(TRI_ERROR_INTERNAL);
     }
   }
+  b.close();
   
   return Result();
 }
@@ -291,6 +297,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder &b,
   if (from == 0) {
     _iter->reset();
     _lastChunkOffset = 0;
+    _hasMore = true;
   } else if (from < _lastChunkOffset+chunkSize) {
     TRI_ASSERT(from >= chunkSize);
     uint64_t diff = from - chunkSize;
@@ -316,6 +323,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder &b,
     b.add(current);
   };
   
+  b.openArray();
   bool hasMore = true;
   size_t oldPos = from;
   for (auto const& it : VPackArrayIterator(ids)) {
@@ -332,6 +340,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder &b,
     }
     hasMore = _iter->next(cb, 1);
   }
+  b.close();
   
   return Result();
 }

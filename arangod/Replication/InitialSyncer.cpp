@@ -39,11 +39,9 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
-#include "MMFiles/MMFilesCollection.h" //TODO -- Remove -- ditches 
+#include "MMFiles/MMFilesCollection.h" //TODO -- Remove -- ditches
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
-#include "MMFiles/MMFilesIndexElement.h"
-#include "MMFiles/MMFilesPrimaryIndex.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -847,7 +845,8 @@ int InitialSyncer::handleCollectionSync(
 
   std::string const baseUrl = BaseUrl + "/keys";
   std::string url =
-      baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick);
+      baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick)
+                                     + "&batchId=" + std::to_string(_batchId);
   
   std::string progress = "fetching collection keys for collection '" +
                          collectionName + "' from " + url;
@@ -1049,6 +1048,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   setProgress(progress);
 
   // fetch all local keys from primary index
+  VPackBuilder dataLake;
   std::vector<uint8_t const*> markers;
     
   MMFilesDocumentDitch* ditch = nullptr;
@@ -1066,20 +1066,24 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return res.errorNumber();
     }
 
-    ditch = arangodb::MMFilesCollection::toMMFilesCollection(col)
-                ->ditches()
-                ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
-
-    if (ditch == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
+    MMFilesCollection* mmcol = dynamic_cast<MMFilesCollection*>(col->getPhysical());
+    if (mmcol != nullptr) {
+      ditch = mmcol->ditches()
+      ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
+      
+      if (ditch == nullptr) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
     }
   }
 
-  TRI_ASSERT(ditch != nullptr);
-
-  TRI_DEFER(arangodb::MMFilesCollection::toMMFilesCollection(col)
-                ->ditches()
-                ->freeDitch(ditch));
+  //TRI_ASSERT(ditch != nullptr);
+  TRI_DEFER(
+            if (ditch != nullptr) {
+              arangodb::MMFilesCollection::toMMFilesCollection(col)
+                  ->ditches()
+              ->freeDitch(ditch);}
+            );
 
   {
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
@@ -1100,9 +1104,15 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations](DocumentIdentifierToken const& token) {
+    dataLake.openArray();
+    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &dataLake] (DocumentIdentifierToken const& token) {
       if (trx.documentCollection()->readDocument(&trx, token, mmdr)) {
-        markers.emplace_back(mmdr.vpack());
+        
+        VPackSlice doc(mmdr.vpack());
+        dataLake.openObject();
+        dataLake.add(StaticStrings::KeyString, doc.get(StaticStrings::KeyString));
+        dataLake.add(StaticStrings::RevString, doc.get(StaticStrings::RevString));
+        dataLake.close();
         
         if (++iterations % 10000 == 0) {
           if (checkAborted()) {
@@ -1112,6 +1122,11 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       }
       return true;
     });
+    dataLake.close();
+    // because live is hard
+    for (VPackSlice const& slice : VPackArrayIterator(dataLake.slice())) {
+      markers.emplace_back(slice.start());
+    }
 
     if (checkAborted()) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
@@ -1312,9 +1327,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     // Neither it nor it's indexes can be invalidated
 
     // TODO Move to MMFiles
-    auto physical = static_cast<MMFilesCollection*>(
-        trx.documentCollection()->getPhysical());
-    auto idx = physical->primaryIndex();
+    PhysicalCollection* physical = trx.documentCollection()->getPhysical();
 
     size_t const currentChunkId = i;
     progress = "processing keys chunk " + std::to_string(currentChunkId) +
@@ -1503,12 +1516,11 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
           }
         }
 
-        MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
-
-        if (!element) {
+        DocumentIdentifierToken token = physical->lookupKey(&trx, keySlice);
+        if (!token._data) {
           // key not found locally
           toFetch.emplace_back(i);
-        } else if (TRI_RidToString(element.revisionId()) != pair.at(1).copyString()) {
+        } else if (TRI_RidToString(token._data) != pair.at(1).copyString()) {
           // key found, but revision id differs
           toFetch.emplace_back(i);
           ++nextStart;
@@ -1626,9 +1638,9 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+          DocumentIdentifierToken token = physical->lookupKey(&trx, keySlice);
 
-          if (!element) {
+          if (!token._data) {
             // INSERT
             OperationResult opRes = trx.insert(collectionName, it, options);
             res = opRes.code;

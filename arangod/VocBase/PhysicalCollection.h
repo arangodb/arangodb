@@ -133,6 +133,9 @@ class PhysicalCollection {
 
   virtual void truncate(transaction::Methods* trx,
                         OperationOptions& options) = 0;
+  
+  virtual DocumentIdentifierToken lookupKey(transaction::Methods*,
+                                            arangodb::velocypack::Slice const&) = 0;
 
   virtual int read(transaction::Methods*, arangodb::velocypack::Slice const key,
                    ManagedDocumentResult& result, bool) = 0;
