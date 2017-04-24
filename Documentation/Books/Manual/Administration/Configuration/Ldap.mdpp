@@ -72,9 +72,13 @@ The ldap url consists of the ldap *server* and *port*, a *basedn*, a *search att
 
 ### TLS options
 
-A encrypted connection can be established with `--ldap.tls true` under all platforms.
+A encrypted connection can be established with `--ldap.tls true` under UNIX and GNU/Linux platforms.
 
-All following options are not availbe under Windows.
+All following options are not available under Windows.
+
+    --ldap.tls
+
+The default is `false`. With `true` a tls connection is established.
 
     --ldap.tls-version
 
