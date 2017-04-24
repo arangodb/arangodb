@@ -181,6 +181,7 @@ Result RocksDBTransactionState::commitTransaction(
       // set wait for sync flag if required
       if (waitForSync()) {
         _rocksWriteOptions.sync = true;
+        _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
       }
 
       // TODO wait for response on github issue to see how we can use the
