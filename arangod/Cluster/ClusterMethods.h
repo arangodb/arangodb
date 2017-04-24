@@ -267,7 +267,7 @@ class ClusterMethods {
 ////////////////////////////////////////////////////////////////////////////////
 
   static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
-    LogicalCollection* col, bool ignoreDistributeShardsLikeErrors);
+    LogicalCollection* col, bool ignoreDistributeShardsLikeErrors = false);
 };
 
 }  // namespace arangodb
