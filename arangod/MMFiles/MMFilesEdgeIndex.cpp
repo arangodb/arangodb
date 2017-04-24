@@ -448,14 +448,15 @@ IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
     if (!valNode->isArray()) {
-      return nullptr;
+      // a.b IN non-array
+      return new EmptyIndexIterator(_collection, trx, mmdr, this);
     }
 
     return createInIterator(trx, mmdr, attrNode, valNode);
   }
 
   // operator type unsupported
-  return nullptr;
+  return new EmptyIndexIterator(_collection, trx, mmdr, this);
 }
 
 /// @brief specializes the condition for use with the index

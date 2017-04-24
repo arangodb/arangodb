@@ -120,8 +120,10 @@ MMFilesHashIndexLookupBuilder::MMFilesHashIndexLookupBuilder(
       TRI_IF_FAILURE("Index::permutationIN") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      for (auto const& value : VPackArrayIterator(values)) {
-        tmp.emplace(value);
+      if (values.isArray()) {
+        for (auto const& value : VPackArrayIterator(values)) {
+          tmp.emplace(value);
+        }
       }
       if (tmp.empty()) {
         // IN [] short-circuit, cannot be fullfilled;

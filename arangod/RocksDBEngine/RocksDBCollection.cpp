@@ -464,10 +464,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // TODO maybe we could also reuse Index::drop, if we ensure the
   // implementations
   // don't do anything beyond deleting their contents
-  RocksDBKeyBounds indexBounds =
-      RocksDBKeyBounds::PrimaryIndex(42);  // default constructor?
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
+  
+    RocksDBKeyBounds indexBounds =
+        RocksDBKeyBounds::Empty();
     switch (rindex->type()) {
       case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
         indexBounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());

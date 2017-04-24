@@ -104,7 +104,10 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   // acquire rocksdb collection
   auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
-  while (limit > 0) {
+  
+  while (true) {
+    TRI_ASSERT(limit > 0);
+
     while (_iterator->Valid() &&
            (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
       StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
@@ -121,14 +124,12 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         }
       }  // TODO do we need to handle failed lookups here?
     }
-    if (limit > 0) {
-      _keysIterator.next();
-      if (!updateBounds()) {
-        return false;
-      }
+
+    _keysIterator.next();
+    if (!updateBounds()) {
+      return false;
     }
   }
-  return true;
 }
 
 void RocksDBEdgeIndexIterator::reset() {
@@ -323,14 +324,15 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
     if (!valNode->isArray()) {
-      return nullptr;
+      // a.b IN non-array
+      return new EmptyIndexIterator(_collection, trx, mmdr, this);
     }
 
     return createInIterator(trx, mmdr, attrNode, valNode);
   }
 
   // operator type unsupported
-  return nullptr;
+  return new EmptyIndexIterator(_collection, trx, mmdr, this);
 }
 
 /// @brief specializes the condition for use with the index

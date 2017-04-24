@@ -764,22 +764,30 @@ void Index::expandInSearchValues(VPackSlice const base,
       VPackSlice current = oneLookup.at(i);
       if (current.hasKey(StaticStrings::IndexIn)) {
         VPackSlice inList = current.get(StaticStrings::IndexIn);
+        if (!inList.isArray()) {
+          // IN value is a non-array
+          result.clear();
+          result.openArray();
+          return;
+        }
+        
+        TRI_ASSERT(inList.isArray());
+        VPackValueLength nList = inList.length();
+        
+        if (nList == 0) {
+          // Empty Array. short circuit, no matches possible
+          result.clear();
+          result.openArray();
+          return;
+        }
 
         std::unordered_set<VPackSlice,
                            arangodb::basics::VelocyPackHelper::VPackHash,
                            arangodb::basics::VelocyPackHelper::VPackEqual>
-            tmp(static_cast<size_t>(inList.length()),
+            tmp(static_cast<size_t>(nList),
                 arangodb::basics::VelocyPackHelper::VPackHash(),
                 arangodb::basics::VelocyPackHelper::VPackEqual());
 
-        TRI_ASSERT(inList.isArray());
-        if (inList.length() == 0) {
-          // Empty Array. short circuit, no matches possible
-          result.clear();
-          result.openArray();
-          result.close();
-          return;
-        }
         for (auto const& el : VPackArrayIterator(inList)) {
           tmp.emplace(el);
         }
