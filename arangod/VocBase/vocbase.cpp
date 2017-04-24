@@ -1559,6 +1559,20 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   }
   return views;
 }
+  
+void TRI_vocbase_t::processCollections(std::function<void(LogicalCollection*)> const& cb, bool includeDeleted) {
+  READ_LOCKER(readLocker, _collectionsLock);
+
+  if (includeDeleted) {
+    for (auto const& it : _collections) {
+      cb(it);
+    }
+  } else {
+    for (auto const& it : _collectionsById) {
+      cb(it.second);
+    }
+  }
+}
 
 std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(
     bool includeDeleted) {

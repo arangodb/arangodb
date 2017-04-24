@@ -152,7 +152,9 @@ void RocksDBCollection::getPropertiesVPackCoordinator(
 
 /// @brief closes an open collection
 int RocksDBCollection::close() {
-  // nothing to do
+  for (auto& it : _indexes) {
+    it->unload();
+  }
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -198,6 +200,10 @@ void RocksDBCollection::open(bool ignoreErrors) {
   _revisionId = counterValue.revisionId();
   //_numberDocuments = countKeyRange(db, readOptions,
   // RocksDBKeyBounds::CollectionDocuments(_objectId));
+
+  for (auto& it : _indexes) {
+    static_cast<RocksDBIndex*>(it.get())->load();
+  }
 }
 
 /// @brief iterate all markers of a collection on load

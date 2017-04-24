@@ -42,6 +42,10 @@
 using namespace arangodb;
 
 RocksDBCounterManager::CMValue::CMValue(VPackSlice const& slice) {
+  if (!slice.isArray()) {
+    // got a somewhat invalid slice. probably old data from before the key structure changes
+    return;
+  }
   TRI_ASSERT(slice.isArray());
 
   velocypack::ArrayIterator array(slice);

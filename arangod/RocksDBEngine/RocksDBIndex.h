@@ -32,7 +32,6 @@
 namespace arangodb {
 namespace cache {
 class Cache;
-class Manager;
 }
 class LogicalCollection;
 class RocksDBComparator;
@@ -60,11 +59,7 @@ class RocksDBIndex : public Index {
 
   int drop() override;
 
-  int unload() override {
-    // nothing to do here yet
-    // TODO: free the cache the index uses
-    return TRI_ERROR_NO_ERROR;
-  }
+  int unload() override;
 
   /// @brief provides a size hint for the index
   int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {
@@ -72,16 +67,19 @@ class RocksDBIndex : public Index {
     return TRI_ERROR_NO_ERROR;
   }
 
+  void load();
+
  protected:
   void createCache();
   void disableCache();
+  inline bool useCache() const { return (_useCache && _cachePresent); }
 
  protected:
   uint64_t _objectId;
   RocksDBComparator* _cmp;
 
-  cache::Manager* _cacheManager;
   mutable std::shared_ptr<cache::Cache> _cache;
+  bool _cachePresent; // we use this boolean for testing whether _cache is set. it's quicker than accessing the shared_ptr each time
   bool _useCache;
 };
 }
