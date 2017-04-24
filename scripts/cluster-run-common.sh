@@ -16,6 +16,7 @@ function help() {
   echo "  -x/--xterm              XTerm command       (default: xterm)"
   echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
   echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
+  echo "  -r/--rocksDB            Use RocksDB storage engine (default: not)"
   echo ""
   echo "EXAMPLES:"
   echo "  $0"
@@ -43,6 +44,7 @@ SECONDARIES=0
 BUILD="build"
 JWT_SECRET=""
 PORT_OFFSET=0
+USE_ROCKSDB=""
 
 while [[ ${1} ]]; do
     case "${1}" in
@@ -100,6 +102,10 @@ while [[ ${1} ]]; do
       ;;
     -B|--build)
       BUILD=${2}
+      shift
+      ;;
+    -r|--rocksDB)
+      USE_ROCKSDB=1
       shift
       ;;
     *)

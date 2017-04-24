@@ -6,6 +6,13 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
+if [ -z "USE_ROCKSDB" ] ; then
+  STORAGE_ENGINE=""
+  DEFAULT_REPLICATION=""
+else
+  STORAGE_ENGINE="--server.storage-engine=rocksdb"
+  DEFAULT_REPLICATION="--cluster.system-replication-factor=1"
+fi
 
 printf "Starting agency ... \n"
 printf "  # agents: %s," "$NRAGENTS"
@@ -103,6 +110,8 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --log.file cluster/$port.log \
         --log.force-direct true \
         --log.level agency=$LOG_LEVEL_AGENCY \
+        $STORAGE_ENGINE \
+        $DEFAULT_REPLICATION \
         $AUTHENTICATION \
         $SSLKEYFILE \
         > cluster/$port.stdout 2>&1 &
@@ -137,8 +146,10 @@ start() {
        --javascript.app-path cluster/apps$PORT \
        --log.force-direct true \
        --log.level cluster=$LOG_LEVEL_CLUSTER \
-        $AUTHENTICATION \
-        $SSLKEYFILE \
+       $STORAGE_ENGINE \
+       $DEFAULT_REPLICATION \
+       $AUTHENTICATION \
+       $SSLKEYFILE \
        > cluster/$PORT.stdout 2>&1 &
 }
 
@@ -166,6 +177,8 @@ startTerminal() {
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.app-path ./js/apps \
+        $STORAGE_ENGINE \
+        $DEFAULT_REPLICATION \
         $AUTHENTICATION \
         $SSLKEYFILE \
         --console" &
@@ -195,6 +208,10 @@ startDebugger() {
       --javascript.startup-directory ./js \
       --javascript.module-directory ./enterprise/js \
       --javascript.app-path ./js/apps \
+      $STORAGE_ENGINE \
+      $DEFAULT_REPLICATION \
+      $STORAGE_ENGINE \
+      $DEFAULT_REPLICATION \
       $SSLKEYFILE \
       $AUTHENTICATION &
       $XTERM $XTERMOPTIONS -e "gdb ${BUILD}/bin/arangod -p $!" &
@@ -224,6 +241,8 @@ startRR() {
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.app-path ./js/apps \
+        $STORAGE_ENGINE \
+        $DEFAULT_REPLICATION \
         $AUTHENTICATION \
         $SSLKEYFILE \
         --console" &
@@ -314,6 +333,8 @@ if [ "$SECONDARIES" == "1" ] ; then
             --server.statistics true \
             --javascript.startup-directory ./js \
             --javascript.module-directory ./enterprise/js \
+            $STORAGE_ENGINE \
+            $DEFAULT_REPLICATION \
             $AUTHENTICATION \
             $SSLKEYFILE \
             --javascript.app-path ./js/apps \
