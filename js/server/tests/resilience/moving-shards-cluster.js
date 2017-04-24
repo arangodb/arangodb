@@ -87,7 +87,7 @@ function MovingShardsSuite () {
             database, c[i].name(), s)
         );
         let replicas = ccinfo.map(s => s.servers.length);
-        if (_.every(replicas, x => x >= replFactor)) {
+        if (_.every(replicas, x => x === replFactor)) {
           console.info("Replication up and running!");
           break;
         }
@@ -156,14 +156,14 @@ function MovingShardsSuite () {
         if (obj.cleanedServers.indexOf(id) >= 0) {
           ok = true;
           console.info(
-            "Success: Server " + id + " cleaned out after " + (300-count) + " seconds");
+            "Success: Server " + id + " cleaned out after " + (600-count) + " seconds");
           break;
         }
         wait(1.0);
       }
 
       if (!ok) {
-        console.error(
+        console.info(
           "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
             + obj.cleanedServers + "]");
       }
@@ -314,7 +314,7 @@ function MovingShardsSuite () {
                                      replicationFactor: replFactor,
                                      avoidServers: systemCollServers});
         var servers = findCollectionServers("_system", name);
-        console.info("Test collections uses servers:", servers);
+        console.info("Test collection uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           c.push(coll);
           break;

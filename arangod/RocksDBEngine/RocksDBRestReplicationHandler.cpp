@@ -2329,7 +2329,9 @@ int RocksDBRestReplicationHandler::processRestoreData(
     return res.errorNumber();
   }
 
-  res = processRestoreDataBatch(trx, colName, useRevision, force, errorMsg);
+  int resCode =
+      processRestoreDataBatch(trx, colName, useRevision, force, errorMsg);
+  res.reset(resCode, errorMsg);
   res = trx.finish(res);
 
   return res.errorNumber();

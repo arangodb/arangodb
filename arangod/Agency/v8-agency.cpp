@@ -198,10 +198,9 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8g->AgentTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING("ArangoAgentCtor"));
 
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("ArangoAgentCtor"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ArangoAgentCtor"),
                                ft->GetFunction(), true);
-
+  
   // register the global object
   v8::Handle<v8::Object> aa = rt->NewInstance();
   if (!aa.IsEmpty()) {

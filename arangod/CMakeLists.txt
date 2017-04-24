@@ -85,18 +85,17 @@ SET(ARANGOD_SOURCES
   Agency/GossipCallback.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
-  Agency/MeasureCallback.cpp
+  Agency/JobContext.cpp  
   Agency/MoveShard.cpp
   Agency/Node.cpp
   Agency/NotifyCallback.cpp
-  Agency/RemoveServer.cpp
+  Agency/RemoveFollower.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
   Agency/Store.cpp
   Agency/StoreCallback.cpp
   Agency/Supervision.cpp
-  Agency/UnassumedLeadership.cpp
   Agency/v8-agency.cpp
   Aql/Aggregator.cpp
   Aql/AqlFunctionFeature.cpp
