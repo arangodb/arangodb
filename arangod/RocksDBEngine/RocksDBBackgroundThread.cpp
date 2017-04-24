@@ -22,11 +22,11 @@
 
 #include "RocksDBBackgroundThread.h"
 #include "Basics/ConditionLocker.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "Utils/CursorRepository.h"
-#include "RestServer/DatabaseFeature.h"
 
 using namespace arangodb;
 
