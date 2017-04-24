@@ -1432,7 +1432,7 @@ arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
     std::sort(nodes.begin(), nodes.end(),
               [this](arangodb::aql::AstNode const* lhs,
                  arangodb::aql::AstNode const* rhs) -> bool {
-                return Index::sortWeight(lhs) < Index::sortWeight(rhs);
+                return this->sortWeight(lhs) < this->sortWeight(rhs);
               });
 
     lastContainsEquality = containsEquality;
