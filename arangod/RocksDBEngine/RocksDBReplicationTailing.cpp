@@ -57,6 +57,7 @@ class WBReader : public rocksdb::WriteBatch::Handler {
           _builder.add(
               "type",
               VPackValue(static_cast<uint64_t>(REPLICATION_COLLECTION_CREATE)));
+          break;
         }
         case RocksDBEntryType::Document: {
           _builder.add(
