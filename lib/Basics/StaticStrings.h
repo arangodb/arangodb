@@ -100,11 +100,13 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const Location;
   static std::string const MultiPartContentType;
+  static std::string const NoSniff;
   static std::string const Origin;
   static std::string const Queue;
   static std::string const Server;
   static std::string const StartThread;
   static std::string const WwwAuthenticate;
+  static std::string const XContentTypeOptions;
 
   // mime types
   static std::string const MimeTypeJson;

@@ -129,6 +129,10 @@ void HttpCommTask::addResponse(HttpResponse* response,
                                   StaticStrings::ExposedCorsHeaders);
   }
 
+  // use "IfNotSet"
+  response->setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
+                                StaticStrings::NoSniff);
+
   // set "connection" header, keep-alive is the default
   response->setConnectionType(_closeRequested
                                   ? rest::ConnectionType::C_CLOSE
