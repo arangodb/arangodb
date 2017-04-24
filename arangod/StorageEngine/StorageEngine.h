@@ -104,7 +104,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // status functionality
   // --------------------
 
-  // return the name of the storage engine
+  // return the name of the specific storage engine e.g. rocksdb
   char const* typeName() const { return _typeName.c_str(); }
 
   // inventory functionality

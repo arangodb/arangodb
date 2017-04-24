@@ -63,15 +63,15 @@ static void JS_StateLoggerReplication(
   v8::HandleScope scope(isolate);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::string engineName = engine->name();
-
+  std::string engineName = engine->typeName();
 
   v8::Handle<v8::Object> state = v8::Object::New(isolate);
   state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
 
   if(engineName == "mmfiles"){
     MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
-    state->Set(TRI_V8_ASCII_STRING("lastLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
+    state->Set(TRI_V8_ASCII_STRING("lastLogTick"),
+               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
     state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
     state->Set(TRI_V8_ASCII_STRING("totalEvents"),
              v8::Number::New(isolate, static_cast<double>(s.numEvents + s.numEventsSync)));
