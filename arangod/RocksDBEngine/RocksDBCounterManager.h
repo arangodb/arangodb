@@ -33,6 +33,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <atomic>
 
 namespace rocksdb {
 class DB;
@@ -81,7 +82,7 @@ class RocksDBCounterManager {
   void removeCounter(uint64_t objectId);
 
   /// Thread-Safe force sync
-  arangodb::Result sync();
+  arangodb::Result sync(bool force);
 
  protected:
   
@@ -119,7 +120,7 @@ class RocksDBCounterManager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently syncing
   //////////////////////////////////////////////////////////////////////////////
-  bool _syncing = false;
+  std::atomic<bool> _syncing;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rocsdb instance

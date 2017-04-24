@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var db = internal.db;
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 
@@ -471,7 +472,12 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      if (db._engine().name !== "rocksdb") {
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      } else {
+        // RocksDB HashIndex can be used for range queries.
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,7 +495,12 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      if (db._engine().name !== "rocksdb") {
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      } else {
+        // RocksDB HashIndex can be used for range queries.
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

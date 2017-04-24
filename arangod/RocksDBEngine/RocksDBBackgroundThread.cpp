@@ -46,11 +46,13 @@ void RocksDBBackgroundThread::beginShutdown() {
 
 void RocksDBBackgroundThread::run() {
   while (!isStopping()) {
-    CONDITION_LOCKER(guard, _condition);
-    guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
-
+    {
+      CONDITION_LOCKER(guard, _condition);
+      guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
+    }
+    
     if (!isStopping()) {
-      _engine->counterManager()->sync();
+      _engine->counterManager()->sync(false);
     }
 
     bool force = isStopping();

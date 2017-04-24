@@ -67,13 +67,13 @@ void RocksDBCounterManager::CMValue::serialize(VPackBuilder& b) const {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
-    : _db(db) {
+    : _syncing(false), _db(db) {
   readSettings();
 
   readCounterValues();
-  if (_counters.size() > 0) {
+  if (!_counters.empty()) {
     if (parseRocksWAL()) {
-      sync();
+      sync(false);
     }
   }
 }
@@ -126,7 +126,7 @@ void RocksDBCounterManager::updateCounter(uint64_t objectId,
     }
   }
   if (needsSync) {
-    sync();
+    sync(true);
   }
 }
 
@@ -145,20 +145,31 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
 }
 
 /// Thread-Safe force sync
-Result RocksDBCounterManager::sync() {
-  if (_syncing) {
-    return Result();
+Result RocksDBCounterManager::sync(bool force) {
+  if (force) {
+    while(true) {
+      bool expected = false;
+      bool res = _syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
+                                                  std::memory_order_relaxed);
+      if (res) {
+        break;
+      }
+      usleep(10000);
+    }
+  } else {
+    bool expected = false;
+
+    if (!_syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
+                                          std::memory_order_relaxed)) {
+      return Result();
+    }
   }
-
-  writeSettings();
-
+  
+  TRI_DEFER(_syncing = false);
+  
   std::unordered_map<uint64_t, CMValue> copy;
   {  // block all updates
     WRITE_LOCKER(guard, _rwLock);
-    if (_syncing) {
-      return Result();
-    }
-    _syncing = true;
     copy = _counters;
   }
 
@@ -183,7 +194,6 @@ Result RocksDBCounterManager::sync() {
     rocksdb::Status s = rtrx->Put(key.string(), value);
     if (!s.ok()) {
       rtrx->Rollback();
-      _syncing = false;
       return rocksutils::convertStatus(s);
     }
   }
@@ -197,7 +207,6 @@ Result RocksDBCounterManager::sync() {
     }
   }
 
-  _syncing = false;
   return rocksutils::convertStatus(s);
 }
 
@@ -308,17 +317,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   }
 
   void SingleDelete(const rocksdb::Slice& key) override {
-    if (prepKey(key)) {
-      uint64_t objectId = RocksDBKey::counterObjectId(key);
-      uint64_t revisionId = RocksDBKey::revisionId(key);
-
-      auto const& it = deltas.find(objectId);
-      if (it != deltas.end()) {
-        it->second._sequenceNum = currentSeqNum;
-        it->second._removed++;
-        it->second._revisionId = revisionId;
-      }
-    }
+    Delete(key);
   }
 };
 

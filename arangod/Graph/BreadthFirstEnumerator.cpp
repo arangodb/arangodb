@@ -130,6 +130,7 @@ bool BreadthFirstEnumerator::next() {
             _returnedEdges.emplace(eid);
           } else {
             // Edge filtered due to unique_constraint
+            // This is not counted by matchConditions
             _opts->cache()->increaseFilterCounter();
             return;
           }

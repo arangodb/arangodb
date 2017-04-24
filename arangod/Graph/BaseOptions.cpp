@@ -354,6 +354,9 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   if (mustDestroy) {
     res.destroy();
   }
+  if (!result) {
+    cache()->increaseFilterCounter();
+  }
   return result;
 }
 

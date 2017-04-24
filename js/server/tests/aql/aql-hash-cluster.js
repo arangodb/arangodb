@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var db = internal.db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
@@ -275,7 +276,12 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      if (db._engine().name !== "rocksdb") {
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        // RocksDB uses index for Sort
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +295,12 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      if (db._engine().name !== "rocksdb") {
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        // RocksDB uses Index For Sort
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,7 +314,12 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      if (db._engine().name !== "rocksdb") {
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        // RocksDB HashIndex supports prefix lookups.
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +333,12 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      if (db._engine().name !== "rocksdb") {
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        // RocksDB uses Index For sort
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,8 +351,11 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      if (db._engine().name !== "rocksdb") {
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      } else {
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      }
     },
 
     testInvalidValuesinList : function () {

@@ -1098,7 +1098,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
 
 RocksDBOperationResult RocksDBCollection::removeDocument(
     arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
-    VPackSlice const& doc, bool& waitForSync) {
+    VPackSlice const& doc, bool& waitForSync) const {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
@@ -1173,7 +1173,7 @@ RocksDBOperationResult RocksDBCollection::lookupDocument(
 RocksDBOperationResult RocksDBCollection::updateDocument(
     transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
     VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
-    VPackSlice const& newDoc, bool& waitForSync) {
+    VPackSlice const& newDoc, bool& waitForSync) const {
   // keysize in return value is set by insertDocument
 
   // Coordinator doesn't know index internals
@@ -1192,7 +1192,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
 
 Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
                                               arangodb::StringRef key,
-                                              RocksDBToken& outToken) {
+                                              RocksDBToken& outToken) const {
   TRI_ASSERT(_objectId != 0);
 
   // TODO fix as soon as we got a real primary index
