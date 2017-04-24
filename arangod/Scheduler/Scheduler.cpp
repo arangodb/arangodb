@@ -34,6 +34,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/JobGuard.h"
@@ -307,6 +308,7 @@ bool Scheduler::hasQueueCapacity() {
 }
 
 bool Scheduler::queue(std::unique_ptr<Job> job) {
+  RequestStatistics::SET_QUEUE_START(job->_handler->statistics());
   return _jobQueue->queue(std::move(job));
 }
 

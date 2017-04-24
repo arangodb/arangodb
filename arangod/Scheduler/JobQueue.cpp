@@ -72,6 +72,8 @@ class JobQueueThread final
         std::shared_ptr<Job> job(jobPtr);
 
         _scheduler->post([this, self, job]() {
+          RequestStatistics::SET_QUEUE_END(job->_handler->statistics());
+
           try {
             job->_callback(std::move(job->_handler));
           } catch (std::exception& e) {

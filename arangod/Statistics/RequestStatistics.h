@@ -84,6 +84,18 @@ class RequestStatistics {
     }
   }
 
+  static void SET_QUEUE_START(RequestStatistics* stat) {
+    if (stat != nullptr) {
+      stat->_queueStart = StatisticsFeature::time();
+    }
+  }
+
+  static void SET_QUEUE_END(RequestStatistics* stat) {
+    if (stat != nullptr) {
+      stat->_queueEnd = StatisticsFeature::time();
+    }
+  }
+
   static void ADD_RECEIVED_BYTES(RequestStatistics* stat, size_t bytes) {
     if (stat != nullptr) {
       stat->_receivedBytes += bytes;
@@ -131,6 +143,7 @@ class RequestStatistics {
                    basics::StatisticsDistribution& bytesSent,
                    basics::StatisticsDistribution& bytesReceived);
 
+  std::string timingsCsv();
   std::string to_string();
   void trace_log();
 

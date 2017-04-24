@@ -124,7 +124,7 @@ void GeneralCommTask::executeRequest(
       GeneralServerFeature::HANDLER_FACTORY->createHandler(
           std::move(request), std::move(response)));
 
-  // transfer statistics into handler
+  // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG(TRACE) << "no handler is known, giving up";
     handleSimpleError(rest::ResponseCode::NOT_FOUND, messageId);
