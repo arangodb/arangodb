@@ -38,7 +38,9 @@ Compactor::Compactor(Agent* agent) :
 
 /// Dtor shuts down thread
 Compactor::~Compactor() {
-  //shutdown();
+  if (!isStopping()) {
+    shutdown();
+  }
 }
 
 
