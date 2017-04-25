@@ -1294,7 +1294,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         nextChunk = true;
       }
       
-      TRI_ASSERT(!rangeUneqal || rangeUneqal && nextChunk); // A => B
+      TRI_ASSERT(!rangeUneqal || (rangeUneqal && nextChunk)); // A => B
       if (nextChunk) {
         if (rangeUneqal && !syncedRange) {
           syncedRange = true;
