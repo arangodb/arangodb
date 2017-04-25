@@ -186,9 +186,10 @@ class RocksDBCollection final : public PhysicalCollection {
   Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
                              RocksDBToken& token) const;
 
-  int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
-
-  int endWrite(bool useDeadlockDetector);
+  int lockWrite(double timeout = 0.0);
+  int unlockWrite();
+  int lockRead(double timeout = 0.0);
+  int unlockRead();
 
  private:
   /// @brief return engine-specific figures

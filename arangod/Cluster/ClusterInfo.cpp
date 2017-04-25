@@ -1293,10 +1293,10 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
 
-int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
-                                           std::string const& collectionID,
-                                           std::string& errorMsg,
-                                           double timeout) {
+int ClusterInfo::dropCollectionCoordinator(
+  std::string const& databaseName, std::string const& collectionID,
+  std::string& errorMsg, double timeout) {
+  
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1305,12 +1305,23 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   auto coll = getCollection(databaseName, collectionID);
   // not used # std::string id = std::to_string(coll->cid());
   auto colls = getCollections(databaseName);
+  std::vector<std::string> clones;
   for (std::shared_ptr<LogicalCollection> const& p : colls) {
     if (p->distributeShardsLike() == coll->name() ||
         p->distributeShardsLike() == collectionID) {
-      return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
+      clones.push_back(p->name());
     }
   }
+    if (!clones.empty()){
+      errorMsg += "Collection must not be dropped while it is sharding "
+        "prototype for collection[s]";
+      for (auto const& i : clones) {
+        errorMsg +=  std::string(" ") + i;
+      }
+      errorMsg += ".";
+      return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
+
+    }
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
