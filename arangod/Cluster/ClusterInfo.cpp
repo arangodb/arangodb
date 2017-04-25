@@ -1311,6 +1311,7 @@ int ClusterInfo::dropCollectionCoordinator(
         p->distributeShardsLike() == collectionID) {
       clones.push_back(p->name());
     }
+  }
     if (!clones.empty()){
       errorMsg += "Collection must not be dropped while it is sharding "
         "prototype for collection[s]";
@@ -1321,7 +1322,6 @@ int ClusterInfo::dropCollectionCoordinator(
       return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
 
     }
-  }
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
