@@ -17,7 +17,8 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _UvRj1jS---
+etag: _U4W45OS---
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -39,7 +40,7 @@ etag: _UvRj1jS---
     <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">""</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UvRj1jS---"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U4W45OS---"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }
