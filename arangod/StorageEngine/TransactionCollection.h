@@ -82,15 +82,6 @@ class TransactionCollection {
   virtual void release() = 0;
 
  protected:
-  inline bool isExclusive(AccessMode::Type type) const {
-    return (type == AccessMode::Type::EXCLUSIVE);
-  }
-  
-  inline bool isWrite(AccessMode::Type type) const {
-    return (type == AccessMode::Type::WRITE || type == AccessMode::Type::EXCLUSIVE);
-  }
-  
- protected:
   TransactionState* _transaction;  // the transaction state
   TRI_voc_cid_t const _cid;        // collection id
   LogicalCollection* _collection;  // vocbase collection pointer
