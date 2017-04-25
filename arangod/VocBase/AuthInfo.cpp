@@ -34,6 +34,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
+#include "Random/UniformCharacter.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -436,7 +437,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
         binds.add("simple", VPackValue(VPackValueType::Object));
         binds.add("method", VPackValue("sha256"));
 
-        std::string salt = "1f71c278"; // TODO: random salt
+        std::string salt = UniformCharacter(8, "0123456789abcdef").random();
         binds.add("salt", VPackValue(salt));
 
         std::string saltedPassword = salt + password;
