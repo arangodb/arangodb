@@ -59,7 +59,7 @@ TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
                                                 VPackSlice info)
     : _isInUse(false),
       _toBeDeleted(false),
-      _engine(std::move(BaseEngine::BuildEngine(vocbase, info))),
+      _engine(BaseEngine::BuildEngine(vocbase, info)),
       _timeToLive(0),
       _expires(0) {}
 

@@ -139,6 +139,15 @@ void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
   auto buffers = createChunkForNetwork(slices, id, chunkSize, false);
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
+  if (stat != nullptr && arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE,
+                                                     Logger::REQUESTS)) {
+    LOG_TOPIC(TRACE, Logger::REQUESTS)
+        << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
+        << VppRequest::translateVersion(_protocolVersion) << "\","
+        << static_cast<int>(response->responseCode()) << ","
+        << _connectionInfo.clientAddress << "\"," << stat->timingsCsv();
+  }
+
   if (buffers.empty()) {
     if (stat != nullptr) {
       stat->release();

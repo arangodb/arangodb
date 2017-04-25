@@ -1300,6 +1300,18 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   AgencyComm ac;
   AgencyCommResult res;
 
+  // First check that no other collection has a distributeShardsLike
+  // entry pointing to us:
+  auto coll = getCollection(databaseName, collectionID);
+  // not used # std::string id = std::to_string(coll->cid());
+  auto colls = getCollections(databaseName);
+  for (std::shared_ptr<LogicalCollection> const& p : colls) {
+    if (p->distributeShardsLike() == coll->name() ||
+        p->distributeShardsLike() == collectionID) {
+      return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
+    }
+  }
+
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();

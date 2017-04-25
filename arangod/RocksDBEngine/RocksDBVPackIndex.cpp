@@ -1147,7 +1147,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
               // unsupported right now. Should have been rejected by
               // supportsFilterCondition
               TRI_ASSERT(false);
-              return nullptr;
+              return new EmptyIndexIterator(_collection, trx, mmdr, this);
           }
           value->toVelocyPackValue(searchValues);
         }
