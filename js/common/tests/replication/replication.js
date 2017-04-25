@@ -183,7 +183,7 @@ function ReplicationLoggerSuite () {
       assertTrue(typeof tick === 'string');
       assertNotEqual("", state.time);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.time);
-      
+
       // query the state again
       state = replication.logger.state().state;
       assertTrue(state.running);
