@@ -42,7 +42,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h" b
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -1210,6 +1210,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
     uint64_t localHash = 0x012345678;
     // chunk keys + revisionId
     std::vector<std::pair<std::string, uint64_t>> markers;
+    bool foundLowKey = false;
     
     auto resetChunk = [&] () -> void {
       sendExtendBatch();
@@ -1244,55 +1245,83 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
       highKey = highSlice.copyString();
       hashString = hashSlice.copyString();
       localHash = 0x012345678;
+      foundLowKey = false;
+    };
+    // set to first chunk
+    resetChunk();
+    
+    std::function<void(VPackSlice, VPackSlice)> parseDoc =
+      [&] (VPackSlice doc, VPackSlice key) {
+      
+      bool rangeUneqal = false;
+      bool nextChunk = false;
+      
+      int cmp1 = key.compareString(lowKey.data(), lowKey.length());
+      int cmp2 = key.compareString(highKey.data(), highKey.length());
+      
+      if (cmp1 < 0) {
+        // smaller values than lowKey mean they don't exist remotely
+        trx.remove(collectionName, key, options);
+        return;
+      } if (cmp1 >= 0 && cmp2 <= 0) {
+        // we only need to hash we are in the range
+        if (cmp1 == 0) {
+          foundLowKey = true;
+        } else if (!foundLowKey && cmp1 > 0) {
+          rangeUneqal = true;
+          nextChunk = true;
+        }
+        
+        if (foundLowKey) {
+          VPackSlice revision = doc.get(StaticStrings::RevString);
+          localHash ^= key.hashString();
+          localHash ^= revision.hash();
+          
+          markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
+          
+          if (cmp2 == 0) {// found highKey
+            rangeUneqal = std::to_string(localHash) != hashString;
+            nextChunk = true;
+          }
+        } else if (cmp2 == 0) {
+          rangeUneqal = true;
+          nextChunk = true;
+        }
+      } else if (cmp2 > 0) { // higher than highKey
+        // current range was unequal and we did not find the
+        // high key. Load range and skip to next
+        rangeUneqal = true;
+        nextChunk = true;
+      }
+      
+      if (rangeUneqal) {
+        int res = syncChunkRocksDB(&trx, keysId, currentChunkId,
+                                   lowKey, highKey,
+                                   markers, errorMsg);
+        if (res != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+      }
+      TRI_ASSERT(!rangeUneqal || rangeUneqal && nextChunk); // A => B
+      if (nextChunk && currentChunkId+1 < numChunks) {
+        currentChunkId++;// we are out of range, see next chunk
+        resetChunk();
+        
+        // key is higher than upper bound, recheck the current document
+        if (cmp2 > 0) {
+          parseDoc(doc, key);
+        }
+      }
     };
     
-    LogicalCollection* coll = trx.documentCollection();
-    std::unique_ptr<IndexIterator> iterator = coll->getAllIterator(&trx, &mmdr, false);
+    std::unique_ptr<IndexIterator> iterator = col->getAllIterator(&trx, &mmdr, false);
     iterator->next([&] (DocumentIdentifierToken const& token) {
-      if (coll->readDocument(&trx, token, mmdr) == false) {
+      if (col->readDocument(&trx, token, mmdr) == false) {
         return;
       }
       VPackSlice doc(mmdr.vpack());
       VPackSlice key = doc.get(StaticStrings::KeyString);
-      
-      int cmp1 = key.compareString(lowKey.data(), lowKey.length());
-      int cmp2 = key.compareString(highKey.data(), highKey.length());
-      if (cmp1 >= 0 && cmp2 <= 0) {
-        VPackSlice revision = doc.get(StaticStrings::RevString);
-        localHash ^= key.hashString();
-        localHash ^= revision.hash();
-        
-        VPackValueLength revLength;
-        char const* revCharPtr = revision.getString(revLength);
-        markers.emplace_back(key.copyString(),
-                             StringUtils::uint64(revCharPtr, revLength));
-        
-        if (cmp2 == 0) {// found highKey
-          if (std::to_string(localHash) != hashString) {
-            // TODO do something
-            int res = syncChunkRocksDB(&trx, keysId, currentChunkId,
-                                       lowKey, highKey,
-                                       markers, errorMsg);
-            if (res != TRI_ERROR_NO_ERROR) {
-              THROW_ARANGO_EXCEPTION(res);
-            }
-          }
-          // else: we will jump into if (cmp2 > 0) next
-          return;
-        }
-      } else if (cmp1 < 0) {
-        // smaller values than lowKey should never happen, unless
-        // we hit the 
-        trx.remove(collectionName, key, options);
-        return;
-      } else if (cmp2 > 0) { // higher than highKey
-        if (currentChunkId+1 < numChunks) {
-          currentChunkId++;// we are out of range, see next chunk
-          resetChunk();
-        } else {
-          LOG_TOPIC(ERR, Logger::FIXME) << "WTF iterator position beyond last chunk";
-        }
-      }
+      parseDoc(doc, key);
     }, UINT64_MAX);
 
     res = trx.commit();
@@ -1327,7 +1356,7 @@ int InitialSyncer::syncChunkRocksDB(SingleCollectionTransaction* trx,
   std::to_string(chunkId) + "&chunkSize=" +
   std::to_string(chunkSize);
   
-  std::string progress = "fetching keys chunk " + std::to_string(chunkId) + "' from " + url;
+  std::string progress = "fetching keys chunk '" + std::to_string(chunkId) + "' from " + url;
   setProgress(progress);
   
   std::unique_ptr<SimpleHttpResult> response(
@@ -1395,6 +1424,8 @@ int InitialSyncer::syncChunkRocksDB(SingleCollectionTransaction* trx,
   TRI_ASSERT(numKeys > 0);
   
   size_t i = 0;
+  size_t nextStart = 0;
+
   for (VPackSlice const& pair : VPackArrayIterator(responseBody)) {
     
     if (!pair.isArray() || pair.length() != 2) {
@@ -1418,12 +1449,12 @@ int InitialSyncer::syncChunkRocksDB(SingleCollectionTransaction* trx,
     if (markers.empty()) {
       // no local markers
       toFetch.emplace_back(i);
+      i++;
       continue;
     }
     
     std::string const keyString = keySlice.copyString();
-    
-    size_t nextStart = 0;
+    // remove keys not present anymore
     while (nextStart < markers.size()) {
       std::string const& localKey = markers[nextStart].first;
       
@@ -1443,6 +1474,7 @@ int InitialSyncer::syncChunkRocksDB(SingleCollectionTransaction* trx,
       }
     }
     
+    // see if key exists
     DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
     if (!token._data) {
       // key not found locally
@@ -1455,6 +1487,8 @@ int InitialSyncer::syncChunkRocksDB(SingleCollectionTransaction* trx,
       // a match - nothing to do!
       ++nextStart;
     }
+    
+    i++;
   }
   
   
