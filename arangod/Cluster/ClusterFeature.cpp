@@ -476,6 +476,29 @@ void ClusterFeature::start() {
   }
 }
 
+
+void ClusterFeature::stop() {
+
+  if (_enableCluster) {
+    if (_heartbeatThread != nullptr) {
+      _heartbeatThread->beginShutdown();
+    }
+    
+    if (_heartbeatThread != nullptr) {
+      int counter = 0;
+      while (_heartbeatThread->isRunning()) {
+        usleep(100000);
+        // emit warning after 5 seconds
+        if (++counter == 10 * 5) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "waiting for heartbeat thread to finish";
+        }
+      }
+    }
+  }
+
+}
+
+
 void ClusterFeature::unprepare() {
   if (_enableCluster) {
     if (_heartbeatThread != nullptr) {
