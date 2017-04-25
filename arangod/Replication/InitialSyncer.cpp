@@ -1255,7 +1255,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
     std::function<void(VPackSlice, VPackSlice)> parseDoc =
       [&] (VPackSlice doc, VPackSlice key) {
       
-      bool rangeUneqal = true;
+      bool rangeUnequal = true;
       bool nextChunk = false;
       
       int cmp1 = key.compareString(lowKey.data(), lowKey.length());
@@ -1281,7 +1281,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
           markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
           
           if (cmp2 == 0) {// found highKey
-            rangeUneqal = std::to_string(localHash) != hashString;
+            rangeUnequal = std::to_string(localHash) != hashString;
             nextChunk = true;
           }
         } else if (cmp2 == 0) {
@@ -1290,13 +1290,13 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
       } else if (cmp2 > 0) { // higher than highKey
         // current range was unequal and we did not find the
         // high key. Load range and skip to next
-        rangeUneqal = true;
+        rangeUnequal = true;
         nextChunk = true;
       }
       
-      TRI_ASSERT(!rangeUneqal || (rangeUneqal && nextChunk)); // A => B
+      TRI_ASSERT(!rangeUnequal || (rangeUnequal && nextChunk)); // A => B
       if (nextChunk) {
-        if (rangeUneqal && !syncedRange) {
+        if (rangeUnequal && !syncedRange) {
           syncedRange = true;
           int res = syncChunkRocksDB(&trx, keysId, currentChunkId,
                                      lowKey, highKey,
