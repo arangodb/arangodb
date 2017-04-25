@@ -1585,8 +1585,6 @@ int MMFilesCollection::fillIndexes(
       blockSize = 1;
     }
 
-    ManagedDocumentResult mmdr;
-
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> documents;
     documents.reserve(blockSize);
 

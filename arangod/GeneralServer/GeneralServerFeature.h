@@ -84,7 +84,6 @@ class GeneralServerFeature final
 
  public:
   explicit GeneralServerFeature(application_features::ApplicationServer*);
-  ~GeneralServerFeature();
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
