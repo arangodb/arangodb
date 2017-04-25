@@ -1305,12 +1305,21 @@ int ClusterInfo::dropCollectionCoordinator(
   auto coll = getCollection(databaseName, collectionID);
   // not used # std::string id = std::to_string(coll->cid());
   auto colls = getCollections(databaseName);
+  std::vector<std::string> clones;
   for (std::shared_ptr<LogicalCollection> const& p : colls) {
     if (p->distributeShardsLike() == coll->name() ||
         p->distributeShardsLike() == collectionID) {
+      clones.push_back(p->name());
+    }
+    if (!clones.empty()){
       errorMsg += "Collection must not be dropped while it is sharding "
-        "prototype for collection " + coll->name();
+        "prototype for collection[s]";
+      for (auto const& i : clones) {
+        errorMsg +=  std::string(" ") + i;
+      }
+      errorMgs += std::string(".");
       return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
+
     }
   }
 
