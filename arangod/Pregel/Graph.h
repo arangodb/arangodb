@@ -75,7 +75,7 @@ class Edge {
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
   Edge() : _targetShard(InvalidPregelShard) {}
   Edge(PregelShard target, PregelKey const& key)
-      : _targetShard(target), _toKey(key) {}
+      : _targetShard(target), _toKey(key), _data(0) {}
 
   // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
   PregelKey const& toKey() const { return _toKey; }
