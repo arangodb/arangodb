@@ -100,20 +100,8 @@ Agent::~Agent() {
       FATAL_ERROR_EXIT();
     }
   }
-
-  if (!isStopping()) {
-
-    {
-      CONDITION_LOCKER(guardW, _waitForCV);
-      guardW.broadcast();
-    }
-    {
-      CONDITION_LOCKER(guardA, _appendCV);
-      guardA.broadcast();
-    }
     
-    shutdown();
-  }
+  shutdown();
   
 }
 

@@ -107,12 +107,6 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Upgrade");
 }
 
-GeneralServerFeature::~GeneralServerFeature() {
-  for (auto& server : _servers) {
-    delete server;
-  }
-}
-
 void GeneralServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
@@ -273,6 +267,10 @@ void GeneralServerFeature::stop() {
 }
 
 void GeneralServerFeature::unprepare() {
+  for (auto& server : _servers) {
+    delete server;
+  }
+
   GENERAL_SERVER = nullptr;
   JOB_MANAGER = nullptr;
   HANDLER_FACTORY = nullptr;

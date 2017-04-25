@@ -48,7 +48,6 @@ using namespace arangodb::rest;
 
 GeneralServer::~GeneralServer() {
   for (auto& task : _listenTasks) {
-    task->stop();
     delete task;
   }
 }

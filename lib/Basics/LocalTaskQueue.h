@@ -43,7 +43,7 @@ class LocalTask : public std::enable_shared_from_this<LocalTask> {
   LocalTask(LocalTask const&) = delete;
   LocalTask& operator=(LocalTask const&) = delete;
 
-  explicit LocalTask(LocalTaskQueue* queue);
+  explicit LocalTask(std::shared_ptr<LocalTaskQueue> queue);
   virtual ~LocalTask() {}
 
   virtual void run() = 0;
@@ -54,7 +54,7 @@ class LocalTask : public std::enable_shared_from_this<LocalTask> {
   /// @brief the underlying queue
   //////////////////////////////////////////////////////////////////////////////
 
-  LocalTaskQueue* _queue;
+  std::shared_ptr<LocalTaskQueue> _queue;
 };
 
 class LocalCallbackTask
@@ -64,7 +64,7 @@ class LocalCallbackTask
   LocalCallbackTask(LocalCallbackTask const&) = delete;
   LocalCallbackTask& operator=(LocalCallbackTask const&) = delete;
 
-  LocalCallbackTask(LocalTaskQueue* queue, std::function<void()> cb);
+  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> queue, std::function<void()> cb);
   virtual ~LocalCallbackTask() {}
 
   virtual void run();
@@ -75,7 +75,7 @@ class LocalCallbackTask
   /// @brief the underlying queue
   //////////////////////////////////////////////////////////////////////////////
 
-  LocalTaskQueue* _queue;
+  std::shared_ptr<LocalTaskQueue> _queue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the callback executed by run() (any exceptions will be caught and
@@ -93,6 +93,9 @@ class LocalTaskQueue {
   explicit LocalTaskQueue(boost::asio::io_service*);
 
   ~LocalTaskQueue();
+
+  void startTask(); 
+  void stopTask();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief exposes underlying io_service
@@ -176,6 +179,12 @@ class LocalTaskQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _missing;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief number of dispatched and started tasks
+  //////////////////////////////////////////////////////////////////////////////
+  
+  size_t _started;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief overall status of queue tasks

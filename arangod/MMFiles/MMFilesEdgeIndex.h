@@ -111,7 +111,7 @@ class MMFilesEdgeIndex final : public Index {
 
   void batchInsert(transaction::Methods*,
                    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
-                   arangodb::basics::LocalTaskQueue*) override;
+                   std::shared_ptr<arangodb::basics::LocalTaskQueue>) override;
 
   int unload() override;
 

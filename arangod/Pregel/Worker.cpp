@@ -62,7 +62,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     : _state(WorkerState::IDLE),
       _config(vocbase, initConfig),
       _algorithm(algo),
-      _nextGSSSendMessageCount(0) {
+      _nextGSSSendMessageCount(0),
+      _requestedNextGSS(false) {
   MUTEX_LOCKER(guard, _commandMutex);
 
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);

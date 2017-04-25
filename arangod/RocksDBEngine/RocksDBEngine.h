@@ -248,6 +248,8 @@ class RocksDBEngine final : public StorageEngine {
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
   std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 
+  Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder);
+
  private:
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();

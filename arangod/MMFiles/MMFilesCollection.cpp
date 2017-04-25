@@ -73,7 +73,7 @@ namespace {
 class MMFilesIndexFillerTask : public basics::LocalTask {
  public:
   MMFilesIndexFillerTask(
-      basics::LocalTaskQueue* queue, transaction::Methods* trx, Index* idx,
+      std::shared_ptr<basics::LocalTaskQueue> queue, transaction::Methods* trx, Index* idx,
       std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents)
       : LocalTask(queue), _trx(trx), _idx(idx), _documents(documents) {}
 
@@ -1464,7 +1464,7 @@ bool MMFilesCollection::openIndex(VPackSlice const& description,
 
 /// @brief initializes an index with a set of existing documents
 void MMFilesCollection::fillIndex(
-    arangodb::basics::LocalTaskQueue* queue, transaction::Methods* trx,
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue, transaction::Methods* trx,
     arangodb::Index* idx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     bool skipPersistent) {
@@ -1554,12 +1554,13 @@ int MMFilesCollection::fillIndexes(
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   auto ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
-  arangodb::basics::LocalTaskQueue queue(ioService);
-
+  
   PerformanceLogScope logScope(
       std::string("fill-indexes-document-collection { collection: ") +
       _logicalCollection->vocbase()->name() + "/" + _logicalCollection->name() +
       " }, indexes: " + std::to_string(n - 1));
+  
+  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(ioService);
 
   try {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1585,8 +1586,6 @@ int MMFilesCollection::fillIndexes(
       blockSize = 1;
     }
 
-    ManagedDocumentResult mmdr;
-
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> documents;
     documents.reserve(blockSize);
 
@@ -1596,12 +1595,12 @@ int MMFilesCollection::fillIndexes(
         if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
           continue;
         }
-        fillIndex(&queue, trx, idx.get(), documents, skipPersistent);
+        fillIndex(queue, trx, idx.get(), documents, skipPersistent);
       }
 
-      queue.dispatchAndWait();
+      queue->dispatchAndWait();
 
-      if (queue.status() != TRI_ERROR_NO_ERROR) {
+      if (queue->status() != TRI_ERROR_NO_ERROR) {
         rollbackAll();
         rolledBack = true;
       }
@@ -1628,7 +1627,7 @@ int MMFilesCollection::fillIndexes(
           if (documents.size() == blockSize) {
             // now actually fill the secondary indexes
             insertInAllIndexes();
-            if (queue.status() != TRI_ERROR_NO_ERROR) {
+            if (queue->status() != TRI_ERROR_NO_ERROR) {
               break;
             }
             documents.clear();
@@ -1638,33 +1637,33 @@ int MMFilesCollection::fillIndexes(
     }
 
     // process the remainder of the documents
-    if (queue.status() == TRI_ERROR_NO_ERROR && !documents.empty()) {
+    if (queue->status() == TRI_ERROR_NO_ERROR && !documents.empty()) {
       insertInAllIndexes();
     }
   } catch (arangodb::basics::Exception const& ex) {
-    queue.setStatus(ex.code());
+    queue->setStatus(ex.code());
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "caught exception while filling indexes: " << ex.what();
   } catch (std::bad_alloc const&) {
-    queue.setStatus(TRI_ERROR_OUT_OF_MEMORY);
+    queue->setStatus(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "caught exception while filling indexes: " << ex.what();
-    queue.setStatus(TRI_ERROR_INTERNAL);
+    queue->setStatus(TRI_ERROR_INTERNAL);
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "caught unknown exception while filling indexes";
-    queue.setStatus(TRI_ERROR_INTERNAL);
+    queue->setStatus(TRI_ERROR_INTERNAL);
   }
 
-  if (queue.status() != TRI_ERROR_NO_ERROR && !rolledBack) {
+  if (queue->status() != TRI_ERROR_NO_ERROR && !rolledBack) {
     try {
       rollbackAll();
     } catch (...) {
     }
   }
 
-  return queue.status();
+  return queue->status();
 }
 
 /// @brief opens an existing collection

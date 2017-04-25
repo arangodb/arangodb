@@ -64,11 +64,13 @@ function collectionRepresentation(collection, showProperties, showCount, showFig
     result.indexBuckets = properties.indexBuckets;
 
     if (cluster.isCoordinator()) {
-      result.shardKeys = properties.shardKeys;
+      result.avoidServers = properties.avoidServers;
+      result.distributeShardsLike = properties.distributeShardsLike;
       result.numberOfShards = properties.numberOfShards;
       result.replicationFactor = properties.replicationFactor;
       result.avoidServers = properties.avoidServers;
       result.distributeShardsLike = properties.distributeShardsLike;
+      result.shardKeys = properties.shardKeys;
     }
   }
 

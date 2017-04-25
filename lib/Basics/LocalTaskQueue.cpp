@@ -23,8 +23,10 @@
 
 #include "LocalTaskQueue.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/asio-helper.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::basics;
 
@@ -32,7 +34,7 @@ using namespace arangodb::basics;
 /// @brief create a task tied to the specified queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTask::LocalTask(LocalTaskQueue* queue) : _queue(queue) {}
+LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> queue) : _queue(queue) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch this task to the underlying io_service
@@ -40,14 +42,23 @@ LocalTask::LocalTask(LocalTaskQueue* queue) : _queue(queue) {}
 
 void LocalTask::dispatch() {
   auto self = shared_from_this();
-  _queue->ioService()->post([self, this]() { run(); });
+  _queue->ioService()->post([self, this]() { 
+    _queue->startTask();
+    try { 
+      run(); 
+      _queue->stopTask();
+    } catch (...) {
+      _queue->stopTask();
+      throw;
+    }
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a callback task tied to the specified queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalCallbackTask::LocalCallbackTask(LocalTaskQueue* queue,
+LocalCallbackTask::LocalCallbackTask(std::shared_ptr<LocalTaskQueue> queue,
                                      std::function<void()> cb)
     : _queue(queue), _cb(cb) {}
 
@@ -83,6 +94,7 @@ LocalTaskQueue::LocalTaskQueue(boost::asio::io_service* ioService)
       _condition(),
       _mutex(),
       _missing(0),
+      _started(0),
       _status(TRI_ERROR_NO_ERROR) {
   TRI_ASSERT(_ioService != nullptr);
 }
@@ -98,6 +110,16 @@ boost::asio::io_service* LocalTaskQueue::ioService() { return _ioService; }
 ////////////////////////////////////////////////////////////////////////////////
 
 LocalTaskQueue::~LocalTaskQueue() {}
+  
+void LocalTaskQueue::startTask() { 
+  CONDITION_LOCKER(guard, _condition);
+  ++_started; 
+}
+
+void LocalTaskQueue::stopTask() { 
+  CONDITION_LOCKER(guard, _condition);
+  --_started; 
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief enqueue a task to be run
@@ -159,6 +181,12 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
+      if (_missing > 0 &&
+          _started == 0 &&
+          _ioService->stopped()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+
       guard.wait(100000);
     }
   }
@@ -181,6 +209,12 @@ void LocalTaskQueue::dispatchAndWait() {
 
       if (_missing == 0) {
         break;
+      }
+      
+      if (_missing > 0 &&
+          _started == 0 &&
+          _ioService->stopped()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
       guard.wait(100000);
