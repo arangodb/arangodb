@@ -42,7 +42,7 @@ class MMFilesCollectionWriteLocker {
         _useDeadlockDetector(useDeadlockDetector),
         _doLock(false) {
     if (doLock) {
-      int res = _collection->beginWriteTimed(_useDeadlockDetector);
+      int res = _collection->lockWrite(_useDeadlockDetector);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -58,7 +58,7 @@ class MMFilesCollectionWriteLocker {
   /// @brief release the lock
   inline void unlock() {
     if (_doLock) {
-      _collection->endWrite(_useDeadlockDetector);
+      _collection->unlockWrite(_useDeadlockDetector);
       _doLock = false;
     }
   }

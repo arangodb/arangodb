@@ -2346,8 +2346,7 @@ void MMFilesCollection::invokeOnAllElements(
 }
 
 /// @brief read locks a collection, with a timeout (in µseconds)
-int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
-                                      double timeout) {
+int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
   if (CollectionLockState::_noLockHeaders != nullptr) {
     auto it =
         CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
@@ -2462,8 +2461,7 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
 }
 
 /// @brief write locks a collection, with a timeout
-int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
-                                       double timeout) {
+int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
   if (CollectionLockState::_noLockHeaders != nullptr) {
     auto it =
         CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
@@ -2576,7 +2574,7 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
 }
 
 /// @brief read unlocks a collection
-int MMFilesCollection::endRead(bool useDeadlockDetector) {
+int MMFilesCollection::unlockRead(bool useDeadlockDetector) {
   if (CollectionLockState::_noLockHeaders != nullptr) {
     auto it =
         CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
@@ -2605,7 +2603,7 @@ int MMFilesCollection::endRead(bool useDeadlockDetector) {
 }
 
 /// @brief write unlocks a collection
-int MMFilesCollection::endWrite(bool useDeadlockDetector) {
+int MMFilesCollection::unlockWrite(bool useDeadlockDetector) {
   if (CollectionLockState::_noLockHeaders != nullptr) {
     auto it =
         CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
