@@ -347,8 +347,8 @@ function printTraversalDetails (traversals) {
         maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
       }
     }
-    if (node.hasOwnProperty('traversalFlags')) {
-      var opts = optify(node.traversalFlags); 
+    if (node.hasOwnProperty('options')) {
+      var opts = optify(node.options); 
       if (opts.length > maxOptionsLen) {
         maxOptionsLen = opts.length;
       }
@@ -384,8 +384,8 @@ function printTraversalDetails (traversals) {
       line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
     }
 
-    if (traversals[i].hasOwnProperty('traversalFlags')) {
-      line += optify(traversals[i].traversalFlags, true) + pad(1 + maxOptionsLen - optify(traversals[i].traversalFlags, false).length) + '   ';
+    if (traversals[i].hasOwnProperty('options')) {
+      line += optify(traversals[i].options, true) + pad(1 + maxOptionsLen - optify(traversals[i].options, false).length) + '   ';
     } else {
       line += pad(1 + maxOptionsLen) + '   ';
     }
@@ -856,7 +856,7 @@ function processQuery (query, explain) {
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + (node.reverse ? 'reverse ' : '') + node.index.type + ' index scan */');
 
       case 'TraversalNode':
-        node.minMaxDepth = node.traversalFlags.minDepth + '..' + node.traversalFlags.maxDepth;
+        node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
         node.minMaxDepthLen = node.minMaxDepth.length;
 
         rc = keyword('FOR ');

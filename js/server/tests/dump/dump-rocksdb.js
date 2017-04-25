@@ -185,7 +185,7 @@ function dumpTestSuite () {
       assertFalse(p.waitForSync);
       assertFalse(p.isVolatile);
 
-      assertEqual(9, c.getIndexes().length);
+      assertEqual(7, c.getIndexes().length);
       assertEqual("primary", c.getIndexes()[0].type);
 
       assertEqual("hash", c.getIndexes()[1].type);
@@ -241,7 +241,7 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      
+
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(0, c.count());
