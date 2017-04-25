@@ -242,7 +242,7 @@ std::vector<Job::shard_t> Job::clones(
 
   std::vector<shard_t> ret;
   ret.emplace_back(collection, shard);  // add (collection, shard) as first item
-  typedef std::unordered_map<std::string, std::shared_ptr<Node>> UChildren;
+  //typedef std::unordered_map<std::string, std::shared_ptr<Node>> UChildren;
 
   try {
     std::string databasePath = planColPrefix + database,

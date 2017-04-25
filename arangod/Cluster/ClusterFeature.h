@@ -73,6 +73,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   void setUnregisterOnShutdown(bool);
 
+  void stop() override final;
+
  private:
   bool _unregisterOnShutdown;
   bool _enableCluster;

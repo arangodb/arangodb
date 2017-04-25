@@ -292,7 +292,7 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
       static_cast<RocksDBTransactionCollection*>(findCollection(cid));
 
   if (collection == nullptr) {
-    std::string message = "collection '" + collection->collectionName() +
+    std::string message = "collection '" + std::to_string(cid) + 
                           "' not found in transaction state";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }

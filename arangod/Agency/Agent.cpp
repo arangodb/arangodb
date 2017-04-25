@@ -101,8 +101,20 @@ Agent::~Agent() {
     }
   }
 
-  shutdown();
+  if (!isStopping()) {
 
+    {
+      CONDITION_LOCKER(guardW, _waitForCV);
+      guardW.broadcast();
+    }
+    {
+      CONDITION_LOCKER(guardA, _appendCV);
+      guardA.broadcast();
+    }
+    
+    shutdown();
+  }
+  
 }
 
 /// State machine

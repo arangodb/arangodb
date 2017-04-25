@@ -58,10 +58,14 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   uint64_t _maxBackgroundCompactions;
   uint64_t _maxLogFileSize;
   uint64_t _keepLogFileNum;
+  uint64_t _recycleLogFileNum;
   uint64_t _logFileTimeToRoll;
   uint64_t _compactionReadaheadSize;
   bool _verifyChecksumsInCompaction;
   bool _optimizeFiltersForHits;
+  bool _useDirectReads;
+  bool _useDirectWrites;
+  bool _skipCorrupted;
 };
 
 }

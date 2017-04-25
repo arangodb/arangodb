@@ -54,10 +54,14 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     _maxBackgroundCompactions(rocksDBDefaults.max_background_compactions),
     _maxLogFileSize(rocksDBDefaults.max_log_file_size),
     _keepLogFileNum(rocksDBDefaults.keep_log_file_num),
+    _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
     _logFileTimeToRoll(rocksDBDefaults.log_file_time_to_roll),
     _compactionReadaheadSize(rocksDBDefaults.compaction_readahead_size),
     _verifyChecksumsInCompaction(rocksDBDefaults.verify_checksums_in_compaction),
-    _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits) {
+    _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
+    _useDirectReads(rocksDBDefaults.use_direct_reads),
+    _useDirectWrites(rocksDBDefaults.use_direct_writes),
+    _skipCorrupted(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
@@ -108,13 +112,13 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "control maximum total data size for a level",
       new UInt64Parameter(&_maxBytesForLevelMultiplier));
 
-  options->addOption(
+  options->addHiddenOption(
       "--rocksdb.verify-checksums-in-compation",
       "if true, compaction will verify checksum on every read that happens "
       "as part of compaction",
       new BooleanParameter(&_verifyChecksumsInCompaction));
 
-  options->addOption(
+  options->addHiddenOption(
       "--rocksdb.optimize-filters-for-hits",
       "this flag specifies that the implementation should optimize the filters "
       "mainly for cases where keys are found rather than also optimize for keys "
@@ -123,39 +127,60 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "important",
       new BooleanParameter(&_optimizeFiltersForHits));
 
-  options->addOption(
+#ifdef __linux__ 
+  options->addHiddenOption(
+      "--rocksdb.use-direct-reads",
+      "use O_DIRECT for reading files",
+      new BooleanParameter(&_useDirectReads));
+  
+  options->addHiddenOption(
+      "--rocksdb.use-direct-writes",
+      "use O_DIRECT for writing files",
+      new BooleanParameter(&_useDirectWrites));
+#endif
+
+  options->addHiddenOption(
       "--rocksdb.base-background-compactions",
       "suggested number of concurrent background compaction jobs",
       new UInt64Parameter(&_baseBackgroundCompactions));
 
-  options->addOption(
+  options->addHiddenOption(
       "--rocksdb.max-background-compactions",
       "maximum number of concurrent background compaction jobs",
       new UInt64Parameter(&_maxBackgroundCompactions));
 
-  options->addOption(
+  options->addHiddenOption(
       "--rocksdb.max-log-file-size",
       "specify the maximal size of the info log file",
       new UInt64Parameter(&_maxLogFileSize));
 
-  options->addOption(
+  options->addHiddenOption(
       "--rocksdb.keep-log-file-num",
       "maximal info log files to be kept",
       new UInt64Parameter(&_keepLogFileNum));
-
-  options->addOption(
+  
+  options->addHiddenOption(
+      "--rocksdb.recycle-log-file-num",
+      "number of log files to keep around for recycling",
+      new UInt64Parameter(&_recycleLogFileNum));
+  
+  options->addHiddenOption(
       "--rocksdb.log-file-time-to-roll",
       "time for the info log file to roll (in seconds). "
       "If specified with non-zero value, log file will be rolled "
       "if it has been active longer than `log_file_time_to_roll`",
       new UInt64Parameter(&_logFileTimeToRoll));
 
-  options->addOption(
+  options->addHiddenOption(
       "--rocksdb.compaction-read-ahead-size",
       "if non-zero, we perform bigger reads when doing compaction. If you're "
       "running RocksDB on spinning disks, you should set this to at least 2MB. "
       "that way RocksDB's compaction is doing sequential instead of random reads.",
       new UInt64Parameter(&_compactionReadaheadSize));
+  
+  options->addHiddenOption("--rocksdb.wal-recovery-skip-corrupted",
+                           "skip corrupted records in WAL recovery",
+                           new BooleanParameter(&_skipCorrupted));
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
