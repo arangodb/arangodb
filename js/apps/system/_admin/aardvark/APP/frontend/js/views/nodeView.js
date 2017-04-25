@@ -30,6 +30,14 @@
       }
     },
 
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     breadcrumb: function (name) {
       $('#subNavigationBar .breadcrumb').html('Node: ' + name);
     },
