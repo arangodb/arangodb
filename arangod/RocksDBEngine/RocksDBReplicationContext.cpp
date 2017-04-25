@@ -88,7 +88,6 @@ int RocksDBReplicationContext::bindCollection(
 
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER;
-      RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
     _trx->addCollectionAtRuntime(collectionName);
     _iter = _collection->getAllIterator(_trx.get(), &_mdr,
@@ -127,7 +126,10 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   if (_trx.get() == nullptr) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
-  bindCollection(collectionName);
+  int res = bindCollection(collectionName);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return RocksDBReplicationResult(res, _lastTick);
+  }
 
   // set type
   int type = 2300;  // documents
@@ -195,7 +197,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   VPackSlice highKey;  // FIXME: no good keeping this
 
   uint64_t hash = 0x012345678;
-  // auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
   auto cb = [&](DocumentIdentifierToken const& token) {
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
     if (!ok) {
@@ -220,7 +221,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   b.openArray();
   while (_hasMore && true /*sizelimit*/) {
     try {
-      //_hasMore = primary->nextWithKey(cb, chunkSize);
       _hasMore = primary->next(cb, chunkSize);
 
       b.add(VPackValue(VPackValueType::Object));
