@@ -1317,7 +1317,7 @@ int ClusterInfo::dropCollectionCoordinator(
       for (auto const& i : clones) {
         errorMsg +=  std::string(" ") + i;
       }
-      errorMgs += std::string(".");
+      errorMsg += ".";
       return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
 
     }
