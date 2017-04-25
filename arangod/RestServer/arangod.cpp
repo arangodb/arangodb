@@ -91,7 +91,6 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestServer/arangodEE.h"
-#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 // storage engine
@@ -190,7 +189,6 @@ static int runServer(int argc, char** argv) {
 
 #ifdef USE_ENTERPRISE
     setupServerEE(&server);
-    server.addFeature( new LdapFeature(&server));
 #else
     server.addFeature(new SslServerFeature(&server));
 #endif
