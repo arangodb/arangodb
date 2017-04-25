@@ -80,18 +80,54 @@ rest::ResponseCode VocbaseContext::authenticate() {
 
   // mop: inside authenticateRequest() _request->user will be populated
   bool forceOpen = false;
-  rest::ResponseCode result = authenticateRequest(&forceOpen);
+  rest::ResponseCode result = authenticateRequest();
 
   if (result == rest::ResponseCode::UNAUTHORIZED ||
       result == rest::ResponseCode::FORBIDDEN) {
-    if (StringUtils::isPrefix(path, "/_open/") ||
-        StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
-      // mop: these paths are always callable...they will be able to check
-      // req.user when it could be validated
-      result = rest::ResponseCode::OK;
+
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+    // check if we need to run authentication for this type of
+    // endpoint
+    ConnectionInfo const& ci = _request->connectionInfo();
+
+    if (ci.endpointType == Endpoint::DomainType::UNIX &&
+        !_authentication->authenticationUnixSockets()) {
+      // no authentication required for unix domain socket connections
       forceOpen = true;
+      result = rest::ResponseCode::OK;
+    }
+#endif
+
+    if (result != rest::ResponseCode::OK &&
+        _authentication->authenticationSystemOnly()) {
+      // authentication required, but only for /_api, /_admin etc.
+
+      if (!path.empty()) {
+        // check if path starts with /_
+        if (path[0] != '/') {
+          forceOpen = true;
+          result = rest::ResponseCode::OK;
+        }
+
+        // path begins with /
+        if (path.size() > 1 && path[1] != '_') {
+          forceOpen = true;
+          result = rest::ResponseCode::OK;
+        }
+      }
+    }
+
+    if (result != rest::ResponseCode::OK) {
+      if (StringUtils::isPrefix(path, "/_open/") ||
+          StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
+        // mop: these paths are always callable...they will be able to check
+        // req.user when it could be validated
+        result = rest::ResponseCode::OK;
+        forceOpen = true;
+      }
     }
   }
+  
   
   if (result != rest::ResponseCode::OK) {
     return result;
@@ -124,42 +160,7 @@ rest::ResponseCode VocbaseContext::authenticate() {
   return result;
 }
 
-rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  // check if we need to run authentication for this type of
-  // endpoint
-  ConnectionInfo const& ci = _request->connectionInfo();
-
-  if (ci.endpointType == Endpoint::DomainType::UNIX &&
-      !_authentication->authenticationUnixSockets()) {
-    // no authentication required for unix socket domain connections
-    return rest::ResponseCode::OK;
-  }
-#endif
-
-  std::string const& path = _request->requestPath();
-
-  if (_authentication->authenticationSystemOnly()) {
-    // authentication required, but only for /_api, /_admin etc.
-
-    if (!path.empty()) {
-      // check if path starts with /_
-      if (path[0] != '/') {
-        *forceOpen = true;
-        return rest::ResponseCode::OK;
-      }
-
-      if (path.size() > 1 && path[1] != '_') {
-        *forceOpen = true;
-        return rest::ResponseCode::OK;
-      }
-    }
-  }
-
-  // .............................................................................
-  // authentication required
-  // .............................................................................
-
+rest::ResponseCode VocbaseContext::authenticateRequest() {
   bool found;
   std::string const& authStr =
       _request->header(StaticStrings::Authorization, found);
@@ -171,28 +172,27 @@ rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
 
   size_t methodPos = authStr.find_first_of(' ');
 
-  if (methodPos == std::string::npos) {
-    events::UnknownAuthenticationMethod(_request);
-    return rest::ResponseCode::UNAUTHORIZED;
+  if (methodPos != std::string::npos) {
+    // skip over authentication method
+    char const* auth = authStr.c_str() + methodPos;
+
+    while (*auth == ' ') {
+      ++auth;
+    }
+
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Authorization header: " << authStr;
+
+    if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
+      return basicAuthentication(auth);
+    } 
+    if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
+      return jwtAuthentication(std::string(auth));
+    }
+    // fallthrough intentional
   }
-
-  // skip over authentication method
-  char const* auth = authStr.c_str() + methodPos;
-
-  while (*auth == ' ') {
-    ++auth;
-  }
-
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Authorization header: " << authStr;
-
-  if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
-    return basicAuthentication(auth);
-  } else if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
-    return jwtAuthentication(std::string(auth));
-  } else {
-    events::UnknownAuthenticationMethod(_request);
-    return rest::ResponseCode::UNAUTHORIZED;
-  }
+    
+  events::UnknownAuthenticationMethod(_request);
+  return rest::ResponseCode::UNAUTHORIZED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

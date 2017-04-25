@@ -292,7 +292,11 @@ build-book:
 	make ppbook-check-directory-link
 	make book-check-images-referenced
 
-	cd ppbooks/$(NAME) && gitbook install
+	if test -n "$(NODE_MODLUES_DIR)"; then \
+		cp -a $(NODE_MODLUES_DIR) ppbooks/$(NAME); \
+	else \
+		cd ppbooks/$(NAME); gitbook install -g ; \
+	fi
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	rm -f ./books/$(NAME)/HEADER.html
 	python ../Scripts/deprecated.py
@@ -421,12 +425,11 @@ build-books:
 
 
 build-dist-books:
+	set -x ; set -e ; \
 	PIDFILE=/tmp/xvfb_20_0.pid; \
 	if test -z "$${DISPLAY}"; then \
 		make start_X11_display PIDFILE=$${PIDFILE} DISP=':20.0'; \
-	fi; \
-	set -x ; \
-	if test -z "$${DISPLAY}"; then \
+		trap 'make stop_X11_display PIDFILE="$${PIDFILE}"' 0; \
 		DISP=:20.0; \
 	else \
 		DISPL="$${DISPLAY}"; \
@@ -434,7 +437,7 @@ build-dist-books:
 	make build-books DISPLAY="$${DISP}"; \
 	mkdir -p ${OUTPUT_DIR} ; \
 	( \
-		mv books ArangoDB-${newVersionNumber} ; \
+		mv books ArangoDB-${newVersionNumber} ; pwd; \
 		if test -n "${COOKBOOK_DIR}" ; then \
 			cp -a ${COOKBOOK_DIR} ArangoDB-${newVersionNumber}/cookbook ; \
 		fi ; \
@@ -442,8 +445,6 @@ build-dist-books:
 		mv ArangoDB-${newVersionNumber} books ; \
 	) ; \
 	for book in $(ALLBOOKS); do \
-		make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
+	    make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
 	done; \
-	if test -z "$${DISPLAY}"; then \
-		make stop_X11_display PIDFILE="$${PIDFILE}"; \
-	fi
+	exit $$rc

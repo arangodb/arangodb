@@ -26,10 +26,16 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ShortestPathNode.h"
-#include "V8Server/V8Traverser.h"
+#include "Graph/ShortestPathOptions.h"
 
 namespace arangodb {
 class ManagedDocumentResult;
+
+namespace graph {
+class ConstantWeightShortestPathFinder;
+class ShortestPathFinder;
+class ShortestPathResult;
+}
 
 namespace traverser {
 class EdgeCollectionInfo;
@@ -40,10 +46,11 @@ namespace aql {
 class ShortestPathNode;
 
 class ShortestPathBlock : public ExecutionBlock {
-  friend struct ConstDistanceExpanderLocal;
-  friend struct ConstDistanceExpanderCluster;
   friend struct EdgeWeightExpanderLocal;
   friend struct EdgeWeightExpanderCluster;
+
+  // TODO ONLY TEMPORARY
+  friend class graph::ConstantWeightShortestPathFinder;
 
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
@@ -55,6 +62,8 @@ class ShortestPathBlock : public ExecutionBlock {
 
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
+
+  int shutdown(int errorCode) override;
 
   /// @brief getSome
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
@@ -94,10 +103,7 @@ class ShortestPathBlock : public ExecutionBlock {
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief options to compute the shortest path
-  traverser::ShortestPathOptions _opts;
-
-  /// @brief list of edge collection infos used to compute the path
-  std::vector<arangodb::traverser::EdgeCollectionInfo*> _collectionInfos;
+  graph::ShortestPathOptions* _opts;
 
   /// @brief position in the current path
   size_t _posInPath;
@@ -106,11 +112,10 @@ class ShortestPathBlock : public ExecutionBlock {
   size_t _pathLength;
 
   /// @brief current computed path.
-  std::unique_ptr<traverser::ShortestPath> _path;
+  std::unique_ptr<graph::ShortestPathResult> _path;
 
   /// @brief the shortest path finder.
-  std::unique_ptr<arangodb::basics::PathFinder<
-      arangodb::velocypack::Slice, arangodb::traverser::ShortestPath>> _finder;
+  std::unique_ptr<arangodb::graph::ShortestPathFinder> _finder;
 
   /// @brief The information to get the starting point, when a register id is
   /// used
@@ -143,6 +148,9 @@ class ShortestPathBlock : public ExecutionBlock {
 
   /// @brief Cache for edges send over the network
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _coordinatorCache;
+
+  /// @brief Traverser Engines
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
 };
 

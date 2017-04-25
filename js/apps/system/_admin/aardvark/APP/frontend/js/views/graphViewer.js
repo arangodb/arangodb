@@ -2018,11 +2018,11 @@
               var callback = function (error, data, id) {
                 if (!error) {
                   var attributes = '';
-                  attributes += '<span class="title">ID </span> <span class="nodeId">' + data._id + '</span>';
-                  if (Object.keys(data).length > 3) {
+                  attributes += '<span class="title">ID </span> <span class="nodeId">' + data.documents[0]._id + '</span>';
+                  if (Object.keys(data.documents[0]).length > 3) {
                     attributes += '<span class="title">ATTRIBUTES </span>';
                   }
-                  _.each(data, function (value, key) {
+                  _.each(data.documents[0], function (value, key) {
                     if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
                       attributes += '<span class="nodeAttribute">' + key + '</span>';
                     }

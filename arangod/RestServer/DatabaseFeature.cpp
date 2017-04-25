@@ -53,6 +53,7 @@
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/ticks.h"
@@ -241,6 +242,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("InitDatabase");
   startsAfter("MMFilesEngine");
   startsAfter("MMFilesPersistentIndex");
+  startsAfter("RocksDBEngine");
 }
 
 DatabaseFeature::~DatabaseFeature() {
@@ -392,8 +394,19 @@ void DatabaseFeature::beginShutdown() {
 }
 
 void DatabaseFeature::stop() {
-  //StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  //engine->stop();
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+  
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+
+    vocbase->processCollections([](LogicalCollection* collection) { 
+      collection->close(); 
+    }, true);
+  }
 }
 
 void DatabaseFeature::unprepare() {
@@ -570,7 +583,6 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // createDatabase must return a valid database or throw
     vocbase.reset(engine->createDatabase(id, builder.slice()));
 
-
     TRI_ASSERT(vocbase != nullptr);
 
     try {
@@ -637,7 +649,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   int res = TRI_ERROR_NO_ERROR;
 
   if (!engine->inRecovery()) {
-    res = engine->writeCreateMarker(id, builder.slice());
+    res = engine->writeCreateDatabaseMarker(id, builder.slice());
   }
 
   result = vocbase.release();
@@ -902,7 +914,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabaseCoordinator(TRI_voc_tick_t id) {
     TRI_vocbase_t* vocbase = p.second;
 
     if (vocbase->id() == id) {
-      bool result TRI_UNUSED = vocbase->use();
+      bool result = vocbase->use();
 
       // if we got here, no one else can have deleted the database
       TRI_ASSERT(result == true);
@@ -992,6 +1004,19 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   }
 
   return nullptr;
+}
+
+void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> func) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+  
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+    func(vocbase);
+  }
 }
 
 void DatabaseFeature::updateContexts() {
@@ -1163,6 +1188,8 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   try {
     for (auto const& it : VPackArrayIterator(databases)) {
       TRI_ASSERT(it.isObject());
+
+      LOG_TOPIC(TRACE, Logger::FIXME) << "processing database: " << it.toJson();
 
       VPackSlice deleted = it.get("deleted");
       if (deleted.isBoolean() && deleted.getBoolean()) {

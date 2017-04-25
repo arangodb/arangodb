@@ -156,7 +156,7 @@ ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
   ADB_WindowsEntryFunction();
 
 #ifdef _WIN32
-  SetUnhandledExceptionFilter(unhandledExceptionHandler);
+  // SetUnhandledExceptionFilter(unhandledExceptionHandler);
 #endif
 
   TRIAGENS_REST_INITIALIZE();

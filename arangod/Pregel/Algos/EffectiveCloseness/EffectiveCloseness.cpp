@@ -51,12 +51,12 @@ struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
       value->counter.addNode(pregelId());
     }
 
-    int32_t seenCountBefore = value->counter.getCount();
+    uint32_t seenCountBefore = value->counter.getCount();
     for (HLLCounter const* inCounter : messages) {
       value->counter.merge(*inCounter);
     }
 
-    int32_t seenCountAfter = value->counter.getCount();
+    uint32_t seenCountAfter = value->counter.getCount();
     if ((seenCountBefore != seenCountAfter) || (globalSuperstep() == 0)) {
       sendMessageToAllEdges(value->counter);
     }
@@ -66,8 +66,8 @@ struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
     // because the number of reachable vertices stays the same
     // when the compute method is not invoked
     if (value->shortestPaths.size() < globalSuperstep()) {
-      uint32_t i = value->shortestPaths.size();
-      int32_t numReachable = value->shortestPaths.back();
+      size_t i = value->shortestPaths.size();
+      uint32_t numReachable = value->shortestPaths.back();
       for (; i < globalSuperstep(); i++) {
         value->shortestPaths.push_back(numReachable);
       }
@@ -107,10 +107,10 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const ECValue* ptr,
                            size_t size) const override {
-    int32_t numVerticesReachable = 0;
-    int32_t sumLengths = 0;
+    size_t numVerticesReachable = 0;
+    size_t sumLengths = 0;
     for (size_t i = 1; i < ptr->shortestPaths.size(); i++) {
-      int32_t newlyReachable =
+      uint32_t newlyReachable =
           ptr->shortestPaths[i] - ptr->shortestPaths[i - 1];
       sumLengths += i * newlyReachable;
       if (ptr->shortestPaths[i] > numVerticesReachable) {

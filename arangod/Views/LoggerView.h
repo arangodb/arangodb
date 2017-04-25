@@ -40,8 +40,7 @@ class LoggerView final : public ViewImplementation {
  public:
   static std::string type;
   static std::unique_ptr<ViewImplementation> creator(
-      LogicalView*, arangodb::velocypack::Slice const& info,
-      bool isNew);
+      LogicalView*, arangodb::velocypack::Slice const& info, bool isNew);
 
  private:
   // private struct that does not do anything
@@ -52,13 +51,12 @@ class LoggerView final : public ViewImplementation {
 
  public:
   LoggerView(ConstructionGuard const&, LogicalView* logical,
-             arangodb::velocypack::Slice const& info,
-             bool isNew);
+             arangodb::velocypack::Slice const& info, bool isNew);
 
   ~LoggerView() = default;
 
   arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
-                                    bool doSync) override;
+                                    bool partialUpdate, bool doSync) override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;

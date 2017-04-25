@@ -217,7 +217,7 @@ void sslBASE64(char const* inputStr, char*& outputStr, size_t& outputLen) {
 std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
                       size_t passLength, int iter, int keyLength) {
   unsigned char* dk =
-      (unsigned char*)TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
+      (unsigned char*)TRI_SystemAllocate(keyLength + 1, false);
 
   PKCS5_PBKDF2_HMAC_SHA1(pass, (int)passLength, (const unsigned char*)salt,
                          (int)saltLength, iter, keyLength, dk);
@@ -250,7 +250,7 @@ std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
   }
 
   unsigned char* dk =
-      (unsigned char*)TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
+      (unsigned char*)TRI_SystemAllocate(keyLength + 1, false);
 
   PKCS5_PBKDF2_HMAC(pass, (int)passLength, (const unsigned char*)salt,
                          (int)saltLength, iter, evp_md, keyLength, dk);

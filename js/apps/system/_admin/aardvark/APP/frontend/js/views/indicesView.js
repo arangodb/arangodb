@@ -19,14 +19,29 @@
     },
 
     render: function () {
-      $(this.el).html(this.template.render({
-        model: this.model
-      }));
+      var self = this;
 
-      this.breadcrumb();
-      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Indexes');
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/engine'),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          $(self.el).html(self.template.render({
+            model: self.model,
+            supported: data.supports.indexes
+          }));
 
-      this.getIndex();
+          self.breadcrumb();
+          window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
+
+          self.getIndex();
+        },
+        error: function () {
+          arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
+        }
+      });
     },
 
     breadcrumb: function () {
@@ -332,6 +347,10 @@
     selectIndexType: function () {
       $('.newIndexClass').hide();
       var type = $('#newIndexType').val();
+      if (type === null) {
+        type = $('#newIndexType').children().first().attr('value');
+        $('#newIndexType').val(type);
+      }
       $('#newIndexType' + type).show();
     },
 

@@ -213,6 +213,20 @@ void RequestStatistics::fill(StatisticsDistribution& totalTime,
   bytesReceived = *TRI_BytesReceivedDistributionStatistics;
 }
 
+std::string RequestStatistics::timingsCsv() {
+  std::stringstream ss;
+
+  ss << std::setprecision(9) << std::fixed
+     << "read," << (_readEnd - _readStart)
+     << ",queue," << (_queueEnd - _queueStart)
+     << ",queue-size," << _queueSize
+     << ",request," << (_requestEnd - _requestStart)
+     << ",total," << (StatisticsFeature::time() - _readStart)
+     << ",error," << (_executeError ? "true" : "false");
+
+  return ss.str();
+}
+
 std::string RequestStatistics::to_string() {
   std::stringstream ss;
 

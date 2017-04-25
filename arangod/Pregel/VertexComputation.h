@@ -45,11 +45,11 @@ class VertexContext {
 
   uint64_t _gss = 0;
   uint64_t _lss = 0;
-  WorkerContext* _context;
-  GraphStore<V, E>* _graphStore;
-  AggregatorHandler* _readAggregators;
-  AggregatorHandler* _writeAggregators;
-  VertexEntry* _vertexEntry;
+  WorkerContext* _context = nullptr;
+  GraphStore<V, E>* _graphStore = nullptr;
+  AggregatorHandler* _readAggregators = nullptr;
+  AggregatorHandler* _writeAggregators = nullptr;
+  VertexEntry* _vertexEntry = nullptr;
 
  public:
   virtual ~VertexContext() {}
@@ -101,7 +101,7 @@ class VertexContext {
 template <typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
-  OutCache<M>* _cache;
+  OutCache<M>* _cache = nullptr;
   bool _enterNextGSS = false;
 
  public:

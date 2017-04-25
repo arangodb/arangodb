@@ -44,7 +44,7 @@ class RestViewHandler : public RestVocbaseBaseHandler {
 
  protected:
   void createView();
-  void modifyView();
+  void modifyView(bool partialUpdate);
   void deleteView();
   void getViews();
 

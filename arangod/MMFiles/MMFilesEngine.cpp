@@ -48,6 +48,7 @@
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesV8Functions.h"
 #include "MMFiles/MMFilesView.h"
+#include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -142,12 +143,16 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
       _isUpgrade(false),
       _maxTick(0) {
   startsAfter("MMFilesPersistentIndex");
+    
+  server->addFeature(new MMFilesWalRecoveryFeature(server));
+  server->addFeature(new MMFilesLogfileManager(server));
+  server->addFeature(new MMFilesPersistentIndexFeature(server));
 }
 
 MMFilesEngine::~MMFilesEngine() {}
 
 // perform a physical deletion of the database
-void MMFilesEngine::dropDatabase(Database* database, int& status) {
+Result MMFilesEngine::dropDatabase(Database* database) {
   // delete persistent indexes for this database
   MMFilesPersistentIndexFeature::dropDatabase(database->id());
 
@@ -175,7 +180,7 @@ void MMFilesEngine::dropDatabase(Database* database, int& status) {
     _collectionPaths.erase(database->id());
   }
 
-  status = dropDatabaseDirectory(databaseDirectory(database->id()));
+  return dropDatabaseDirectory(databaseDirectory(database->id()));
 }
 
 // add the storage engine's specifc options to the global list of options
@@ -205,6 +210,10 @@ void MMFilesEngine::prepare() {
 
 // initialize engine
 void MMFilesEngine::start() {
+  if (!isEnabled()) {
+    return;
+  }
+
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 
   // test if the "databases" directory is present and writable
@@ -233,9 +242,11 @@ void MMFilesEngine::start() {
 void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 
-  auto logfileManager = MMFilesLogfileManager::instance();
-  logfileManager->flush(true, true, false);
-  logfileManager->waitForCollector();
+  if (!inRecovery()) {
+    auto logfileManager = MMFilesLogfileManager::instance();
+    logfileManager->flush(true, true, false);
+    logfileManager->waitForCollector();
+  }
 }
 
 transaction::ContextData* MMFilesEngine::createTransactionContextData() {
@@ -547,10 +558,20 @@ int MMFilesEngine::getCollectionsAndIndexes(
 
       return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
     }
+    
+    std::vector<std::string> files = TRI_FilesDirectory(directory.c_str());
+    if (files.empty()) {
+      // the list always contains the empty string as its first element
+      // if the list is empty otherwise, this means the directory is also empty and
+      // we can ignore it
+      LOG_TOPIC(TRACE, Logger::FIXME) << "ignoring empty collection directory '" << directory << "'";
+      continue;
+    }
 
     int res = TRI_ERROR_NO_ERROR;
 
     try {
+      LOG_TOPIC(TRACE, Logger::FIXME) << "loading collection info from directory '" << directory << "'";
       VPackBuilder builder = loadCollectionInfo(vocbase, directory);
       VPackSlice info = builder.slice();
 
@@ -678,8 +699,7 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(
   bool const wasCleanShutdown =
       MMFilesLogfileManager::instance()->hasFoundLastTick();
   status = TRI_ERROR_NO_ERROR;
-
-  // try catch?!
+      
   return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
 }
 
@@ -723,11 +743,18 @@ void MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force,
   // wait for at most 30 seconds for the directory to be removed
   while (TRI_IsDirectory(path.c_str())) {
     if (iterations == 0) {
+      if (TRI_FilesDirectory(path.c_str()).empty()) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "deleting empty database directory '" << path << "'";
+        status = dropDatabaseDirectory(path);
+        return;
+      }
+
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "waiting for deletion of database directory '" << path << "'";
     } else if (iterations >= 30 * 20) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-          << "unable to remove database directory '" << path << "'";
+          << "timed out waiting for deletion of database directory '" << path << "'";
 
       if (force) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -1474,7 +1501,7 @@ void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase,
   int res = TRI_UnlinkFile(filename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "cannot remove index definition in file '" << filename
         << "': " << TRI_errno_string(res);
   }
@@ -1895,6 +1922,10 @@ VPackBuilder MMFilesEngine::databaseToVelocyPack(TRI_voc_tick_t id,
   return builder;
 }
 
+std::string MMFilesEngine::versionFilename(TRI_voc_tick_t id) const {
+  return databaseDirectory(id) + TRI_DIR_SEPARATOR_CHAR + "VERSION";
+}
+
 std::string MMFilesEngine::databaseDirectory(TRI_voc_tick_t id) const {
   return _databasePath + "database-" + std::to_string(id);
 }
@@ -2000,6 +2031,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
+      LOG_TOPIC(TRACE, Logger::FIXME) << "processing view: " << it.toJson();
 
       std::string type = it.get("type").copyString();
       // will throw if type is invalid
@@ -2021,12 +2053,12 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       view->getImplementation()->open();
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database views: "
                                             << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error while opening database: unknown exception";
+        << "error while opening database views: unknown exception";
     throw;
   }
 
@@ -2044,6 +2076,8 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
     TRI_ASSERT(slice.isArray());
 
     for (auto const& it : VPackArrayIterator(slice)) {
+      LOG_TOPIC(TRACE, Logger::FIXME) << "processing collection: " << it.toJson();
+
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
@@ -2080,12 +2114,12 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     return vocbase.release();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database collections: "
                                             << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error while opening database: unknown exception";
+        << "error while opening database collections: unknown exception";
     throw;
   }
 }
@@ -2253,20 +2287,31 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
   if (!TRI_ExistsFile(filename.c_str())) {
     filename += ".tmp";  // try file with .tmp extension
     if (!TRI_ExistsFile(filename.c_str())) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "collection directory '" << path << " ' does not contain a "
+          << "parameters file '" << filename.substr(0, filename.size() - 4) << "'";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
     }
   }
-
-  std::shared_ptr<VPackBuilder> content =
+      
+  std::shared_ptr<VPackBuilder> content;
+  VPackSlice slice;
+  
+  try {
+    content =
       arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-  VPackSlice slice = content->slice();
+    slice = content->slice();
+  } catch (...) {
+    // ignore errors right now but re-throw with the following exception
+  }
+
   if (!slice.isObject()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "cannot open '" << filename
         << "', collection parameters are not readable";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
-
+      
   if (filename.substr(filename.size() - 4, 4) == ".tmp") {
     // we got a tmp file. Now try saving the original file
     std::string const original(filename.substr(0, filename.size() - 4));
@@ -2278,7 +2323,7 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
           << "cannot store collection parameters in file '" << original << "'";
     }
   }
-
+  
   // fiddle "isSystem" value, which is not contained in the JSON file
   bool isSystemValue = false;
   if (slice.hasKey("name")) {
@@ -3217,8 +3262,8 @@ bool MMFilesEngine::inRecovery() {
 }
 
 /// @brief writes a create-database marker into the log
-int MMFilesEngine::writeCreateMarker(TRI_voc_tick_t id,
-                                     VPackSlice const& slice) {
+int MMFilesEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
+                                             VPackSlice const& slice) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -3244,4 +3289,54 @@ int MMFilesEngine::writeCreateMarker(TRI_voc_tick_t id,
   }
 
   return res;
+}
+  
+std::shared_ptr<arangodb::velocypack::Builder> MMFilesEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
+
+  std::shared_ptr<VPackBuilder> builder;
+
+  if (!TRI_ExistsFile(filename.c_str())) {
+    status = TRI_ERROR_FILE_NOT_FOUND;
+    return builder;
+  }
+
+  try {
+    builder = VelocyPackHelper::velocyPackFromFile(filename);
+    if (builder->slice().isObject()) {
+      status = TRI_ERROR_NO_ERROR;
+    } else {
+      LOG_TOPIC(ERR, Logger::REPLICATION)
+          << "unable to read replication applier configuration from file '"
+          << filename << "'";
+      status = TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
+    } 
+  } catch (...) {
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "unable to read replication applier configuration from file '"
+        << filename << "'";
+    status = TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
+  }
+
+  return builder;
+}
+
+int MMFilesEngine::removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) {
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
+
+  if (TRI_ExistsFile(filename.c_str())) {
+    return TRI_UnlinkFile(filename.c_str());
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+ 
+int MMFilesEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) { 
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
+
+  if (!VelocyPackHelper::velocyPackToFile(filename, slice, doSync)) {
+    return TRI_errno();
+  } 
+  
+  return TRI_ERROR_NO_ERROR;
 }

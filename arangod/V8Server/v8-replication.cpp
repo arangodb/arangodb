@@ -21,12 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-replication.h"
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -35,6 +32,14 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
+#include "v8-replication.h"
+
+// FIXME to be removed (should be storage engine independent - get it working now)
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/mmfiles-replication-dump.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -51,32 +56,50 @@ using namespace arangodb::rest;
 
 static void JS_StateLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+  // FIXME: use code in RestReplicationHandler and get rid of storage-engine
+  //        depended code here
+  //        
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  MMFilesLogfileManagerState const s =
-      MMFilesLogfileManager::instance()->state();
-
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
+
+  if(engineName == "mmfiles"){
   v8::Handle<v8::Object> state = v8::Object::New(isolate);
-  state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
-  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
-  state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
-  state->Set(TRI_V8_ASCII_STRING("totalEvents"),
+    MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
+    state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
+    state->Set(TRI_V8_ASCII_STRING("lastLogTick"),
+               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
+    state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
+    state->Set(TRI_V8_ASCII_STRING("totalEvents"),
              v8::Number::New(isolate, static_cast<double>(s.numEvents + s.numEventsSync)));
-  state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
-  result->Set(TRI_V8_ASCII_STRING("state"), state);
+    state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
+    result->Set(TRI_V8_ASCII_STRING("state"), state);
 
-  v8::Handle<v8::Object> server = v8::Object::New(isolate);
-  server->Set(TRI_V8_ASCII_STRING("version"),
-              TRI_V8_ASCII_STRING(ARANGODB_VERSION));
-  server->Set(TRI_V8_ASCII_STRING("serverId"),
-              TRI_V8_STD_STRING(StringUtils::itoa(ServerIdFeature::getId())));
-  result->Set(TRI_V8_ASCII_STRING("server"), server);
+    v8::Handle<v8::Object> server = v8::Object::New(isolate);
+    server->Set(TRI_V8_ASCII_STRING("version"),
+                TRI_V8_ASCII_STRING(ARANGODB_VERSION));
+    server->Set(TRI_V8_ASCII_STRING("serverId"),
+                TRI_V8_STD_STRING(StringUtils::itoa(ServerIdFeature::getId())));
+    result->Set(TRI_V8_ASCII_STRING("server"), server);
 
-  v8::Handle<v8::Object> clients = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("clients"), clients);
+    v8::Handle<v8::Object> clients = v8::Object::New(isolate);
+    result->Set(TRI_V8_ASCII_STRING("clients"), clients);
+  } else if (engineName == "rocksdb") {
+    VPackBuilder builder;
+    auto res = rocksutils::globalRocksEngine()->createLoggerState(nullptr,builder);
+    if(res.fail()){
+      TRI_V8_THROW_EXCEPTION(res);
+      return;
+    }
+    v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
+    result = v8::Handle<v8::Object>::Cast(resultValue);
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+    return;
+  }
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -90,6 +113,12 @@ static void JS_TickRangesLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if( engineName != "mmfiles"){
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "only implemented for mmfiles engine");
+    return;
+  }
 
   auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
@@ -121,6 +150,12 @@ static void JS_FirstTickLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if( engineName != "mmfiles"){
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "only implemented for mmfiles engine");
+    return;
+  }
+
   auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
   TRI_voc_tick_t tick = UINT64_MAX;
@@ -151,6 +186,12 @@ static void JS_LastLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if( engineName != "mmfiles"){
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "only implemented for mmfiles engine");
+    return;
+  }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 

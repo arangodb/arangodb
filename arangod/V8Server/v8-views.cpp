@@ -237,8 +237,7 @@ static void JS_DropViewVocbase(
 
   int res = vocbase->dropView(name);
 
-  if (res != TRI_ERROR_NO_ERROR &&
-      res != TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
+  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -422,7 +421,7 @@ static void JS_PropertiesViewVocbase(
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
               "Database")
               ->forceSyncProperties();
-      arangodb::Result updateRes = view->updateProperties(slice, doSync);
+      arangodb::Result updateRes = view->updateProperties(slice, true, doSync);
 
       if (!updateRes.ok()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.errorNumber(),

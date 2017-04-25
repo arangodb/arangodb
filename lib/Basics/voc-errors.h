@@ -53,6 +53,9 @@
 ///   Will be raised when a request is canceled by the user.
 /// - 22: @LIT{intentional debug error}
 ///   Will be raised intentionally during debugging.
+/// - 23: @LIT{not yet implemented}
+///   Will be raised when hitting an unimplemented feature that will be
+///   implemented soon.
 /// - 25: @LIT{IP address is invalid}
 ///   Will be raised when the structure of an IP address is invalid.
 /// - 27: @LIT{file exists}
@@ -234,6 +237,15 @@
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
 ///   Will be raised when encountering an empty server database directory.
+/// - 1302: @LIT{operation should be tried again}
+///   Will be raised when an operation should be retried.
+/// - 1303: @LIT{engine is busy}
+///   Will be raised when storage engine is busy.
+/// - 1304: @LIT{merge in progress}
+///   Will be raised when storage engine has a datafile merge in progress and
+///   cannot complete the operation.
+/// - 1305: @LIT{storage engine I/O error}
+///   Will be raised when storage engine encounters an I/O error.
 /// - 1400: @LIT{no response}
 ///   Will be raised when the replication applier does not receive any or an
 ///   incomplete response from the master.
@@ -376,6 +388,16 @@
 /// - 1483: @LIT{could not drop index in plan}
 ///   Will be raised when a coordinator in a cluster cannot remove an index
 ///   from the Plan hierarchy in the agency.
+/// - 1484: @LIT{chain of distributeShardsLike references}
+///   Will be raised if one tries to create a collection with a
+///   distributeShardsLike attribute which points to another collection that
+///   also has one.
+/// - 1485: @LIT{must not drop collection while another has a distributeShardsLike attribute pointing to it}
+///   Will be raised if one tries to drop a collection to which another
+///   collection points with its distributeShardsLike attribute.
+/// - 1486: @LIT{must not have a distributeShardsLike attribute pointing to an unknown collection}
+///   Will be raised if one tries to create a collection which points to an
+///   unknown collection in its distributeShardsLike attribute.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -656,6 +678,8 @@
 ///   The inform message in the agency must contain an object 'pool'.
 /// - 20020: @LIT{Inquiry failed}
 ///   Inquiry by clientId failed
+/// - 20501: @LIT{general supervision failure}
+///   General supervision failure.
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -905,6 +929,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_DEBUG                                                   (22)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 23: ERROR_NOT_YET_IMPLEMENTED
+///
+/// not yet implemented
+///
+/// Will be raised when hitting an unimplemented feature that will be
+/// implemented soon.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_NOT_YET_IMPLEMENTED                                     (23)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 25: ERROR_IP_ADDRESS_INVALID
@@ -1692,6 +1727,47 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_ARANGO_EMPTY_DATADIR                                    (1301)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1302: ERROR_ARANGO_TRY_AGAIN
+///
+/// operation should be tried again
+///
+/// Will be raised when an operation should be retried.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_TRY_AGAIN                                        (1302)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1303: ERROR_ARANGO_BUSY
+///
+/// engine is busy
+///
+/// Will be raised when storage engine is busy.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_BUSY                                             (1303)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1304: ERROR_ARANGO_MERGE_IN_PROGRESS
+///
+/// merge in progress
+///
+/// Will be raised when storage engine has a datafile merge in progress and
+/// cannot complete the operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_MERGE_IN_PROGRESS                                (1304)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1305: ERROR_ARANGO_IO_ERROR
+///
+/// storage engine I/O error
+///
+/// Will be raised when storage engine encounters an I/O error.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_IO_ERROR                                         (1305)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1400: ERROR_REPLICATION_NO_RESPONSE
 ///
 /// no response
@@ -2215,6 +2291,42 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN                    (1483)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1484: ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE
+///
+/// chain of distributeShardsLike references
+///
+/// Will be raised if one tries to create a collection with a
+/// distributeShardsLike attribute which points to another collection that also
+/// has one.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE                   (1484)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1485: ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE
+///
+/// must not drop collection while another has a distributeShardsLike attribute
+/// pointing to it
+///
+/// Will be raised if one tries to drop a collection to which another
+/// collection points with its distributeShardsLike attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE   (1485)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1486: ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE
+///
+/// must not have a distributeShardsLike attribute pointing to an unknown
+/// collection
+///
+/// Will be raised if one tries to create a collection which points to an
+/// unknown collection in its distributeShardsLike attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE                    (1486)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
@@ -3473,6 +3585,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING                 (20020)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20501: ERROR_SUPERVISION_GENERAL_FAILURE
+///
+/// general supervision failure
+///
+/// General supervision failure.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             (20501)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING

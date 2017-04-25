@@ -123,6 +123,8 @@ DOCUMENT("users/john")
 DOCUMENT( [ "users/john", "users/amy" ] )
 ```
 
+Please also consider [to use `DOCUMENT` in conjunction with `WITH`](../Operations/With.md)
+
 ### LENGTH()
 
 `LENGTH(coll) → documentCount`

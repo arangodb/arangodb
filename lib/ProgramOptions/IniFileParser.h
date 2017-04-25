@@ -65,7 +65,8 @@ class IniFileParser {
   // errors that occur during parse are reported to _options
   bool parse(std::string const& filename) {
     if (filename.empty()) {
-      return _options->fail("unable to open configuration file: no configuration file specified");
+      return _options->fail(
+          "unable to open configuration file: no configuration file specified");
     }
 
     std::ifstream ifs(filename, std::ifstream::in);
@@ -130,7 +131,7 @@ class IniFileParser {
           auto dn = basics::FileUtils::dirname(filename);
           include = basics::FileUtils::buildFilename(dn, include);
         }
-        
+
         LOG_TOPIC(DEBUG, Logger::CONFIG) << "reading include file '" << include
                                          << "'";
 

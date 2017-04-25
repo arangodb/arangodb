@@ -39,14 +39,11 @@ struct TRI_vocbase_t;
   try {
 /// @brief macro to terminate a try-catch sequence for V8 callbacks
 #define TRI_V8_TRY_CATCH_END                                       \
-  }                                                                \
-  catch (arangodb::basics::Exception const& ex) {                  \
+  } catch (arangodb::basics::Exception const& ex) {                \
     TRI_V8_THROW_EXCEPTION_FULL(ex.code(), ex.what());             \
-  }                                                                \
-  catch (std::exception const& ex) {                               \
+  } catch (std::exception const& ex) {                             \
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what()); \
-  }                                                                \
-  catch (...) {                                                    \
+  } catch (...) {                                                  \
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);                    \
   }
 
@@ -151,21 +148,21 @@ struct TRI_vocbase_t;
   do {                                                            \
     std::string msg = "usage: ";                                  \
     msg += usage;                                                 \
-    TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, msg); \
+    TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, msg, false); \
     return;                                                       \
   } while (0)
 
 /// @brief shortcut for throwing an internal exception and returning
 #define TRI_V8_THROW_EXCEPTION_INTERNAL(message)                 \
   do {                                                           \
-    TRI_CreateErrorObject(isolate, TRI_ERROR_INTERNAL, message); \
+    TRI_CreateErrorObject(isolate, TRI_ERROR_INTERNAL, message, false); \
     return;                                                      \
   } while (0)
 
 /// @brief shortcut for throwing a parameter exception and returning
 #define TRI_V8_THROW_EXCEPTION_PARAMETER(message)                     \
   do {                                                                \
-    TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, message); \
+    TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, message, false); \
     return;                                                           \
   } while (0)
 
@@ -188,7 +185,7 @@ struct TRI_vocbase_t;
     std::string msg = message;                        \
     msg += ": ";                                      \
     msg += TRI_LAST_ERROR_STR;                        \
-    TRI_CreateErrorObject(isolate, TRI_errno(), msg); \
+    TRI_CreateErrorObject(isolate, TRI_errno(), msg, false); \
     return;                                           \
   } while (0)
 
@@ -682,7 +679,7 @@ inline void TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl,
                              bool isHidden = false) {
   // hidden method
   if (isHidden) {
-    tpl->Set(name, v8::FunctionTemplate::New(isolate, callback)->GetFunction());
+    tpl->ForceSet(name, v8::FunctionTemplate::New(isolate, callback)->GetFunction(), v8::DontEnum);
   }
   // normal method
   else {

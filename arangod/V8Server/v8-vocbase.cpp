@@ -46,7 +46,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
@@ -62,7 +61,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Utils/UserTransaction.h"
+#include "Transaction/UserTransaction.h"
 #include "Transaction/V8Context.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
@@ -329,7 +328,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       actionError += " - ";
       actionError += *v8::String::Utf8Value(tryCatch.StackTrace());
 
-      TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, actionError);
+      TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, actionError, false);
       tryCatch.ReThrow();
       return;
     }
@@ -345,12 +344,12 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       std::make_shared<transaction::V8Context>(vocbase, embed);
 
   // start actual transaction
-  UserTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
+  transaction::UserTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
                           lockTimeout, waitForSync, allowImplicitCollections);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -383,7 +382,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   res = trx.commit();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -1695,10 +1694,12 @@ static void JS_EngineServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  // return engine name
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_ASCII_STRING(EngineSelectorFeature::engineName()));
-  TRI_V8_RETURN(result);
+  // return engine data
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  VPackBuilder builder;
+  engine->getCapabilities(builder);
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1748,6 +1749,22 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   TRI_V8_RETURN_STD_STRING(engine->databasePath(vocbase));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_VersionFilenameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+  TRI_V8_RETURN_STD_STRING(engine->versionFilename(vocbase->id()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2370,39 +2387,6 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_ClearTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  
-  arangodb::basics::Timers::clear();
-
-  TRI_V8_RETURN(v8::Undefined(isolate));
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_GetTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  v8::Handle<v8::Object> totals = v8::Object::New(isolate);
-  v8::Handle<v8::Object> counts = v8::Object::New(isolate);
-
-  for (auto& it : arangodb::basics::Timers::get()) {
-    totals->ForceSet(TRI_V8_STD_STRING(it.first),
-                     v8::Number::New(isolate, it.second.first));
-    counts->ForceSet(
-        TRI_V8_STD_STRING(it.first),
-        v8::Number::New(isolate, static_cast<double>(it.second.second)));
-  }
-
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->ForceSet(TRI_V8_ASCII_STRING("totals"), totals);
-  result->ForceSet(TRI_V8_ASCII_STRING("counts"), counts);
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
 static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
 
@@ -2654,6 +2638,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_NameDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_path"),
                        JS_PathDatabase);
+  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_versionFilename"),
+                       JS_VersionFilenameDatabase, true);
   TRI_AddMethodVocbase(isolate, ArangoNS,
                        TRI_V8_ASCII_STRING("_createDatabase"),
                        JS_CreateDatabase);
@@ -2766,13 +2752,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("Debug"),
                                JS_Debug, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("CLEAR_TIMERS"),
-                               JS_ClearTimers, true);
-
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("GET_TIMERS"), JS_GetTimers, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("AUTHENTICATION_ENABLED"),

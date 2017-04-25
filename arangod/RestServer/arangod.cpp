@@ -31,9 +31,11 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/JemallocFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
+#include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Pregel/PregelFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -80,12 +82,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
-// TODO - move the following MMFiles includes to the storage engine
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "MMFiles/MMFilesWalRecoveryFeature.h"
-#include "MMFiles/MMFilesEngine.h"
-
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -96,6 +92,10 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
+
+// storage engine
+#include "MMFiles/MMFilesEngine.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 
 using namespace arangodb;
 
@@ -148,6 +148,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new GeneralServerFeature(&server));
     server.addFeature(new GreetingsFeature(&server));
     server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
+    server.addFeature(new JemallocFeature(&server));
     server.addFeature(new LanguageFeature(&server));
     server.addFeature(new LockfileFeature(&server));
     server.addFeature(new LoggerBufferFeature(&server));
@@ -175,6 +176,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new VersionFeature(&server));
     server.addFeature(new ViewTypesFeature(&server));
     server.addFeature(new WorkMonitorFeature(&server));
+    server.addFeature(new RocksDBOptionFeature(&server));
 
 #ifdef ARANGODB_HAVE_FORK
     server.addFeature(new DaemonFeature(&server));
@@ -193,9 +195,7 @@ static int runServer(int argc, char** argv) {
 
     // storage engines
     server.addFeature(new MMFilesEngine(&server));
-    server.addFeature(new MMFilesWalRecoveryFeature(&server));
-    server.addFeature(new MMFilesLogfileManager(&server));
-    server.addFeature(new MMFilesPersistentIndexFeature(&server));
+    server.addFeature(new RocksDBEngine(&server));
 
     try {
       server.run(argc, argv);
@@ -205,12 +205,12 @@ static int runServer(int argc, char** argv) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "arangod terminated because of an unhandled exception: "
+          << "arangod terminated because of an exception: "
           << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "arangod terminated because of an unhandled exception of "
+          << "arangod terminated because of an exception of "
              "unknown type";
       ret = EXIT_FAILURE;
     }
@@ -219,11 +219,11 @@ static int runServer(int argc, char** argv) {
     return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangod terminated because of an unhandled exception: "
+        << "arangod terminated because of an exception: "
         << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangod terminated because of an unhandled exception of "
+        << "arangod terminated because of an xception of "
            "unknown type";
   }
   exit(EXIT_FAILURE);
@@ -260,11 +260,11 @@ int main(int argc, char* argv[]) {
     ARGV = argv;
 
     SERVICE_TABLE_ENTRY ste[] = {
-        {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
+      {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
-                << GetLastError() << std::endl;
+        << GetLastError() << std::endl;
       exit(EXIT_FAILURE);
     }
   } else

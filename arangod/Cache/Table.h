@@ -43,11 +43,12 @@ class Table : public std::enable_shared_from_this<Table> {
   static const uint32_t maxLogSize;
   static constexpr uint32_t standardLogSizeAdjustment = 6;
   static constexpr int64_t triesGuarantee = -1;
+  static constexpr uint64_t padding = 64;
 
   typedef std::function<void(void*)> BucketClearer;
 
  private:
-  struct alignas(BUCKET_SIZE) GenericBucket {
+  struct GenericBucket {
     State _state;
     uint8_t _filler[BUCKET_SIZE - sizeof(State)];
     bool lock(int64_t maxTries);
@@ -131,7 +132,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// @brief Returns a pointer to the specified bucket in the primary table,
   /// regardless of migration status.
   //////////////////////////////////////////////////////////////////////////////
-  void* primaryBucket(uint32_t index);
+  void* primaryBucket(uint64_t index);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a subtable in the auxiliary index which corresponds to the
@@ -187,7 +188,8 @@ class Table : public std::enable_shared_from_this<Table> {
   uint64_t _size;
   uint32_t _shift;
   uint32_t _mask;
-  std::unique_ptr<GenericBucket[]> _buckets;
+  std::unique_ptr<uint8_t[]> _buffer;
+  GenericBucket* _buckets;
 
   std::shared_ptr<Table> _auxiliary;
 

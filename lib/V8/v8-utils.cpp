@@ -525,7 +525,10 @@ static std::string GetEndpointFromUrl(std::string const& url) {
   size_t slashes = 0;
 
   while (p < e) {
-    if (*p == '/') {
+    if (*p == '?') {
+      // http(s)://example.com?foo=bar
+      return url.substr(0, p - url.c_str());
+    } else if (*p == '/') {
       if (++slashes == 3) {
         return url.substr(0, p - url.c_str());
       }
@@ -658,7 +661,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   rest::RequestType method = rest::RequestType::GET;
   bool returnBodyOnError = false;
   int maxRedirects = 5;
-  uint64_t sslProtocol = TLS_V1;
+  uint64_t sslProtocol = TLS_V12;
 
   if (args.Length() > 2) {
     if (!args[2]->IsObject()) {
@@ -777,33 +780,25 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::string relative;
 
     if (url.substr(0, 7) == "http://") {
-      size_t found = url.find('/', 7);
+      endpoint = GetEndpointFromUrl(url).substr(7);
+      relative = url.substr(7 + endpoint.length());
 
-      relative = "/";
-      if (found != std::string::npos) {
-        relative.append(url.substr(found + 1));
-        endpoint = url.substr(7, found - 7);
-      } else {
-        endpoint = url.substr(7);
+      if (relative.empty() || relative[0] != '/') {
+        relative = "/" + relative;
       }
-      found = endpoint.find(":");
-      if (found == std::string::npos) {
-        endpoint = endpoint + ":80";
+      if (endpoint.find(':') == std::string::npos) {
+        endpoint.append(":80");
       }
       endpoint = "tcp://" + endpoint;
     } else if (url.substr(0, 8) == "https://") {
-      size_t found = url.find('/', 8);
+      endpoint = GetEndpointFromUrl(url).substr(8);
+      relative = url.substr(8 + endpoint.length());
 
-      relative = "/";
-      if (found != std::string::npos) {
-        relative.append(url.substr(found + 1));
-        endpoint = url.substr(8, found - 8);
-      } else {
-        endpoint = url.substr(8);
+      if (relative.empty() || relative[0] != '/') {
+        relative = "/" + relative;
       }
-      found = endpoint.find(":");
-      if (found == std::string::npos) {
-        endpoint = endpoint + ":443";
+      if (endpoint.find(':') == std::string::npos) {
+        endpoint.append(":443");
       }
       endpoint = "ssl://" + endpoint;
     } else if (url.substr(0, 6) == "srv://") {
@@ -818,14 +813,25 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
       endpoint = "srv://" + endpoint;
     } else if (!url.empty() && url[0] == '/') {
+      size_t found;
       // relative URL. prefix it with last endpoint
       relative = url;
       url = lastEndpoint + url;
       endpoint = lastEndpoint;
       if (endpoint.substr(0, 5) == "http:") {
-        endpoint = "tcp:" + endpoint.substr(5);
+        endpoint = endpoint.substr(5);
+        found = endpoint.find(":");
+        if (found == std::string::npos) {
+          endpoint = endpoint + ":80";
+        }
+        endpoint = "tcp:" + endpoint;
       } else if (endpoint.substr(0, 6) == "https:") {
-        endpoint = "ssl:" + endpoint.substr(6);
+        endpoint = endpoint.substr(6);
+        found = endpoint.find(":");
+        if (found == std::string::npos) {
+          endpoint = endpoint + ":443";
+        }
+        endpoint = "ssl:" + endpoint;
       }
     } else {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
@@ -4267,14 +4273,12 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an error in a javascript object, using supplied text
+/// @brief creates an error in a javascript object, based on arangodb::result
 ////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                           std::string const& message) {
-  v8::HandleScope scope(isolate);
-  CreateErrorObject(isolate, errorNumber, message);
+void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const& res){
+  TRI_CreateErrorObject(isolate, res.errorNumber(), res.errorMessage(), false);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object
@@ -4284,18 +4288,18 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                            std::string const& message, bool autoPrepend) {
   v8::HandleScope scope(isolate);
 
-  if (autoPrepend) {
-    try {
-      // does string concatenation, so we must wrap this in a try...catch block
-      CreateErrorObject(
-          isolate, errorNumber,
-          message + ": " + std::string(TRI_errno_string(errorNumber)));
-    } catch (...) {
-      // we cannot do anything about this here, but no C++ exception must
-      // escape the C++ bindings called by V8
+  try {
+    // does string concatenation, so we must wrap this in a try...catch block
+    if (autoPrepend && message.empty()) {
+        CreateErrorObject(
+            isolate, errorNumber,
+            message + ": " + std::string(TRI_errno_string(errorNumber)));
+    } else {
+      CreateErrorObject(isolate, errorNumber, message);
     }
-  } else {
-    CreateErrorObject(isolate, errorNumber, message);
+  } catch (...) {
+    // we cannot do anything about this here, but no C++ exception must
+    // escape the C++ bindings called by V8
   }
 }
 
@@ -4312,7 +4316,7 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
   size_t str_len = str.length();
   if (str_len > 0) {
     UErrorCode errorCode = U_ZERO_ERROR;
-    const Normalizer2* normalizer =
+    Normalizer2 const* normalizer =
         Normalizer2::getInstance(nullptr, "nfc", UNORM2_COMPOSE, errorCode);
 
     if (U_FAILURE(errorCode)) {
@@ -4336,7 +4340,7 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
                                       result.length()));
   }
 
-  TRI_V8_RETURN(v8::String::NewFromUtf8(isolate, ""));
+  TRI_V8_RETURN(v8::String::Empty(isolate));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

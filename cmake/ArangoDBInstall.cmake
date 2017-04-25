@@ -157,6 +157,9 @@ if (UNIX)
       ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
       ${PROJECT_BINARY_DIR}/arangodb3.service
       NEWLINE_STYLE UNIX)
+    if (CMAKE_INSTALL_PREFIX AND NOT "${CMAKE_INSTALL_PREFIX}" STREQUAL "/")
+      set(SYSTEMD_UNIT_DIR "${CMAKE_INSTALL_PREFIX}/${SYSTEMD_UNIT_DIR}/")
+    endif()
     install(FILES ${PROJECT_BINARY_DIR}/arangodb3.service
       DESTINATION ${SYSTEMD_UNIT_DIR}/
       RENAME ${SERVICE_NAME}.service)
@@ -225,4 +228,15 @@ if (MSVC)
 
   install (FILES "${LIB_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
   install (FILES "${SSL_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
+endif()
+
+
+if (THIRDPARTY_SBIN)
+  install(FILES ${THIRDPARTY_SBIN}
+    DESTINATION "${CMAKE_INSTALL_SBINDIR}")
+endif()
+
+if (THIRDPARTY_BIN)
+  install(FILES ${THIRDPARTY_BIN}
+    DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endif()

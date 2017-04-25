@@ -34,10 +34,10 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/UserTransaction.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/UserTransaction.h"
 #include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -61,7 +61,8 @@ static uint64_t TRI_totalSystemMemory() {
 #else
   long pages = sysconf(_SC_PHYS_PAGES);
   long page_size = sysconf(_SC_PAGE_SIZE);
-  return pages * page_size;
+  long mem = pages * page_size;
+  return mem > 0 ? (uint64_t)mem : 0;
 #endif
 }
 
@@ -132,7 +133,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
     _edges = new VectorTypedBuffer<Edge<E>>(count);
   }
 
-  if (countTrx->commit() != TRI_ERROR_NO_ERROR) {
+  if (!countTrx->commit().ok()) {
     LOG_TOPIC(WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
@@ -285,7 +286,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
       break;
     }
   }
-  if (trx->commit() != TRI_ERROR_NO_ERROR) {
+  if (!trx->commit().ok()) {
     LOG_TOPIC(WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
@@ -329,9 +330,9 @@ std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
   double lockTimeout = transaction::Methods::DefaultLockTimeout;
   auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase());
   std::unique_ptr<transaction::Methods> trx(
-      new UserTransaction(ctx, {}, {}, {}, lockTimeout, false, true));
-  int res = trx->begin();
-  if (res != TRI_ERROR_NO_ERROR) {
+      new transaction::UserTransaction(ctx, {}, {}, {}, lockTimeout, false, true));
+  Result res = trx->begin();
+  if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   return trx;
@@ -360,7 +361,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
 
   // tell the formatter the number of docs we are about to load
   LogicalCollection* collection = cursor->collection();
-  uint64_t number = collection->numberDocuments();
+  uint64_t number = collection->numberDocuments(trx.get());
   _graphFormat->willLoadVertices(number);
 
   auto cb = [&](DocumentIdentifierToken const& token) {
@@ -400,7 +401,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   // Add all new vertices
   _localVerticeCount += (vertexOffset - originalVertexOffset);
 
-  if (trx->commit() != TRI_ERROR_NO_ERROR) {
+  if (!trx->commit().ok()) {
     LOG_TOPIC(WARN, Logger::PREGEL)
         << "Pregel worker: Failed to commit on a read transaction";
   }
@@ -487,9 +488,9 @@ template <typename V, typename E>
 void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
                                       RangeIterator<VertexEntry>& it) {
   // transaction on one shard
-  std::unique_ptr<UserTransaction> trx;
+  std::unique_ptr<transaction::UserTransaction> trx;
   PregelShard currentShard = (PregelShard)-1;
-  int res = TRI_ERROR_NO_ERROR;
+  Result res = TRI_ERROR_NO_ERROR;
 
   V* vData = _vertexData->data();
 
@@ -498,18 +499,18 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     if (it->shard() != currentShard) {
       if (trx) {
         res = trx->finish(res);
-        if (res != TRI_ERROR_NO_ERROR) {
+        if (!res.ok()) {
           THROW_ARANGO_EXCEPTION(res);
         }
       }
       currentShard = it->shard();
       ShardID const& shard = globalShards[currentShard];
       double timeout = transaction::Methods::DefaultLockTimeout;
-      trx.reset(new UserTransaction(
+      trx.reset(new transaction::UserTransaction(
           transaction::StandaloneContext::Create(_vocbaseGuard.vocbase()), {},
           {shard}, {}, timeout, false, false));
       res = trx->begin();
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
@@ -550,7 +551,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 
   if (trx) {
     res = trx->finish(res);
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }

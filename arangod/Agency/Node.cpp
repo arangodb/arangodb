@@ -45,16 +45,26 @@ struct Empty {
 };
 
 /// @brief Split strings by separator
-inline static std::vector<std::string> split(const std::string& value,
-                                      char separator) {
+inline static std::vector<std::string> split(const std::string& str,
+                                             char separator) {
+
   std::vector<std::string> result;
-  std::string::size_type p = (value.find(separator) == 0) ? 1 : 0;
+  if (str.empty()) {
+    return result;
+  }
+  std::regex reg("/+");
+  std::string key = std::regex_replace(str, reg, "/");
+
+  if (!key.empty() && key.front() == '/') { key.erase(0,1); }
+  if (!key.empty() && key.back()  == '/') { key.pop_back(); }
+  
+  std::string::size_type p = 0;
   std::string::size_type q;
-  while ((q = value.find(separator, p)) != std::string::npos) {
-    result.emplace_back(value, p, q - p);
+  while ((q = key.find(separator, p)) != std::string::npos) {
+    result.emplace_back(key, p, q - p);
     p = q + 1;
   }
-  result.emplace_back(value, p);
+  result.emplace_back(key, p);
   result.erase(std::find_if(result.rbegin(), result.rend(), NotEmpty()).base(),
                result.end());
   return result;
@@ -107,11 +117,11 @@ Slice Node::slice() const {
 void Node::rebuildVecBuf() const {
   if (_vecBufDirty) {  // Dirty vector buffer
     Builder tmp;
-    tmp.openArray();
-    for (auto const& i : _value) {
-      tmp.add(Slice(i.data()));
+    { VPackArrayBuilder t(&tmp);
+      for (auto const& i : _value) {
+        tmp.add(Slice(i.data()));
+      }
     }
-    tmp.close();
     _vecBuf = *tmp.steal();
     _vecBufDirty = false;
   }
@@ -298,6 +308,11 @@ Node const& Node::operator()(std::string const& path) const {
   return this->operator()(split(path, '/'));
 }
 
+// Get method which always throws when not found:
+Node const& Node::get(std::string const& path) const {
+  return this->operator()(path);
+}
+
 // lh-store
 Node const& Node::root() const {
   Node *par = _parent, *tmp = nullptr;
@@ -393,14 +408,18 @@ bool Node::handle<SET>(VPackSlice const& slice) {
 /// Increment integer value or set 1
 template <>
 bool Node::handle<INCREMENT>(VPackSlice const& slice) {
+
+  size_t inc = (slice.hasKey("step") && slice.get("step").isUInt()) ?
+    slice.get("step").getUInt() : 1;
+
   Builder tmp;
-  tmp.openObject();
-  try {
-    tmp.add("tmp", Value(this->slice().getInt() + 1));
-  } catch (std::exception const&) {
-    tmp.add("tmp", Value(1));
+  { VPackObjectBuilder t(&tmp);
+    try {
+      tmp.add("tmp", Value(this->slice().getInt() + inc));
+    } catch (std::exception const&) {
+      tmp.add("tmp", Value(1));
+    }
   }
-  tmp.close();
   *this = tmp.slice().get("tmp");
   return true;
 }
@@ -409,13 +428,13 @@ bool Node::handle<INCREMENT>(VPackSlice const& slice) {
 template <>
 bool Node::handle<DECREMENT>(VPackSlice const& slice) {
   Builder tmp;
-  tmp.openObject();
-  try {
-    tmp.add("tmp", Value(this->slice().getInt() - 1));
-  } catch (std::exception const&) {
-    tmp.add("tmp", Value(-1));
+  { VPackObjectBuilder t(&tmp);
+    try {
+      tmp.add("tmp", Value(this->slice().getInt() - 1));
+    } catch (std::exception const&) {
+      tmp.add("tmp", Value(-1));
+    }
   }
-  tmp.close();
   *this = tmp.slice().get("tmp");
   return true;
 }
@@ -429,12 +448,12 @@ bool Node::handle<PUSH>(VPackSlice const& slice) {
     return false;
   }
   Builder tmp;
-  tmp.openArray();
-  if (this->slice().isArray()) {
-    for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+  { VPackArrayBuilder t(&tmp);
+    if (this->slice().isArray()) {
+      for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+    }
+    tmp.add(slice.get("new"));
   }
-  tmp.add(slice.get("new"));
-  tmp.close();
   *this = tmp.slice();
   return true;
 }
@@ -448,15 +467,15 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
     return false;
   }
   Builder tmp;
-  tmp.openArray();
-  if (this->slice().isArray()) {
-    for (auto const& old : VPackArrayIterator(this->slice())) {
-      if (old != slice.get("val")) {
-        tmp.add(old);
+  { VPackArrayBuilder t(&tmp);
+    if (this->slice().isArray()) {
+      for (auto const& old : VPackArrayIterator(this->slice())) {
+        if (old != slice.get("val")) {
+          tmp.add(old);
+        }
       }
     }
   }
-  tmp.close();
   *this = tmp.slice();
   return true;
 }
@@ -475,17 +494,13 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
     return false;
   }
   Builder tmp;
-  tmp.openArray();
-  if (this->slice().isArray()) {
-    for (auto const& old : VPackArrayIterator(this->slice())) {
-      if (old == slice.get("val")) {
-        tmp.add(slice.get("new"));
-      } else {
-        tmp.add(old);
+  { VPackArrayBuilder t(&tmp);
+    if (this->slice().isArray()) {
+      for (auto const& old : VPackArrayIterator(this->slice())) {
+        tmp.add(old == slice.get("val") ? slice.get("new") : old);
       }
     }
   }
-  tmp.close();
   *this = tmp.slice();
   return true;
 }
@@ -494,18 +509,18 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
 template <>
 bool Node::handle<POP>(VPackSlice const& slice) {
   Builder tmp;
-  tmp.openArray();
-  if (this->slice().isArray()) {
-    VPackArrayIterator it(this->slice());
-    if (it.size() > 1) {
-      size_t j = it.size() - 1;
-      for (auto old : it) {
-        tmp.add(old);
-        if (--j == 0) break;
+  { VPackArrayBuilder t(&tmp);
+    if (this->slice().isArray()) {
+      VPackArrayIterator it(this->slice());
+      if (it.size() > 1) {
+        size_t j = it.size() - 1;
+        for (auto old : it) {
+          tmp.add(old);
+          if (--j == 0) break;
+        }
       }
     }
   }
-  tmp.close();
   *this = tmp.slice();
   return true;
 }
@@ -519,12 +534,12 @@ bool Node::handle<PREPEND>(VPackSlice const& slice) {
     return false;
   }
   Builder tmp;
-  tmp.openArray();
-  tmp.add(slice.get("new"));
-  if (this->slice().isArray()) {
-    for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+  { VPackArrayBuilder t(&tmp);
+    tmp.add(slice.get("new"));
+    if (this->slice().isArray()) {
+      for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+    }
   }
-  tmp.close();
   *this = tmp.slice();
   return true;
 }
@@ -533,19 +548,19 @@ bool Node::handle<PREPEND>(VPackSlice const& slice) {
 template <>
 bool Node::handle<SHIFT>(VPackSlice const& slice) {
   Builder tmp;
-  tmp.openArray();
-  if (this->slice().isArray()) {  // If a
-    VPackArrayIterator it(this->slice());
-    bool first = true;
-    for (auto const& old : it) {
-      if (first) {
-        first = false;
-      } else {
-        tmp.add(old);
+  { VPackArrayBuilder t(&tmp);
+    if (this->slice().isArray()) {  // If a
+      VPackArrayIterator it(this->slice());
+      bool first = true;
+      for (auto const& old : it) {
+        if (first) {
+          first = false;
+        } else {
+          tmp.add(old);
+        }
       }
     }
   }
-  tmp.close();
   *this = tmp.slice();
   return true;
 }
@@ -714,14 +729,18 @@ Node::Children& Node::children() { return _children; }
 
 Node::Children const& Node::children() const { return _children; }
 
+Builder Node::toBuilder() const {
+  Builder builder;
+  toBuilder(builder);
+  return builder;
+}
+
 std::string Node::toJson() const {
   Builder builder;
-  builder.openArray();
-  toBuilder(builder);
-  builder.close();
-  std::string strval = builder.slice()[0].isString()
-                           ? builder.slice()[0].copyString()
-                           : builder.slice()[0].toJson();
+  { VPackArrayBuilder b(&builder);
+    toBuilder(builder); }
+  std::string strval = builder.slice()[0].isString() ?
+    builder.slice()[0].copyString() : builder.slice()[0].toJson();
   return strval;
 }
 
@@ -745,6 +764,14 @@ std::vector<std::string> Node::exists(
 
 std::vector<std::string> Node::exists(std::string const& rel) const {
   return exists(split(rel, '/'));
+}
+
+bool Node::has(std::vector<std::string> const& rel) const {
+  return exists(rel).size() == rel.size();
+}
+
+bool Node::has(std::string const& rel) const {
+  return has(split(rel, '/'));
 }
 
 int Node::getInt() const {

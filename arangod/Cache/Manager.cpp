@@ -35,6 +35,7 @@
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
+#include "Logger/Logger.h"
 
 #include <stdint.h>
 #include <algorithm>
@@ -298,9 +299,18 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     uint64_t fixedSize, uint64_t maxSize) {
   TRI_ASSERT(_state.isLocked());
   Metadata metadata;
+  std::shared_ptr<Table> table(nullptr);
+  bool ok = true;
 
-  std::shared_ptr<Table> table = leaseTable(Table::minLogSize);
-  bool ok = (table.get() != nullptr);
+  if ((_globalHighwaterMark / (_caches.size() + 1)) <
+      Manager::minCacheAllocation) {
+    ok = false;
+  }
+
+  if (ok) {
+    table = leaseTable(Table::minLogSize);
+    ok = (table.get() != nullptr);
+  }
 
   if (ok) {
     metadata =
@@ -311,7 +321,7 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     }
   }
 
-  if (!ok) {
+  if (!ok && (table.get() != nullptr)) {
     reclaimTable(table, true);
     table.reset();
   }
@@ -531,8 +541,16 @@ bool Manager::rebalance(bool onlyCalculate) {
   for (auto pair : (*cacheList)) {
     std::tie(cache, weight) = pair;
     uint64_t newDeserved = static_cast<uint64_t>(
-        weight * static_cast<double>(_globalHighwaterMark));
-    TRI_ASSERT(newDeserved >= Manager::minCacheAllocation);
+        std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (newDeserved < Manager::minCacheAllocation) {
+      LOG_TOPIC(FATAL, Logger::FIXME)
+          << "Deserved limit of " << newDeserved << " from weight " << weight
+          << " and highwater " << _globalHighwaterMark
+          << ". Should be at least " << Manager::minCacheAllocation;
+      TRI_ASSERT(newDeserved >= Manager::minCacheAllocation);
+    }
+#endif
     Metadata* metadata = cache->metadata();
     metadata->lock();
     metadata->adjustDeserved(newDeserved);
@@ -727,8 +745,20 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   list->reserve(_caches.size());
   double minimumWeight = static_cast<double>(Manager::minCacheAllocation) /
                          static_cast<double>(_globalHighwaterMark);
+  while (static_cast<uint64_t>(std::ceil(
+             minimumWeight * static_cast<double>(_globalHighwaterMark))) <
+         Manager::minCacheAllocation) {
+    minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
+  }
   double uniformMarginalWeight = 0.5 / static_cast<double>(_caches.size());
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
+    LOG_TOPIC(FATAL, Logger::FIXME) << "weight: " << baseWeight
+                                    << ", count: " << _caches.size();
+    TRI_ASSERT(1.0 >= (baseWeight * static_cast<double>(_caches.size())));
+  }
+#endif
   double remainingWeight =
       1.0 - (baseWeight * static_cast<double>(_caches.size()));
 
@@ -754,12 +784,15 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   for (auto s : *stats) {
     totalAccesses += s.second;
   }
-  double normalizer = remainingWeight / static_cast<double>(totalAccesses);
+
+  double normalizer =
+      remainingWeight / (std::max)(1.0, static_cast<double>(totalAccesses));
 
   // gather all accessed caches in order
   for (auto s : *stats) {
     if (auto cache = s.first.lock()) {
       double accessWeight = static_cast<double>(s.second) * normalizer;
+      TRI_ASSERT(accessWeight >= 0.0);
       list->emplace_back(cache, baseWeight + accessWeight);
     }
   }

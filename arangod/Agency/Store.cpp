@@ -54,20 +54,29 @@ struct Empty {
 };
 
 /// @brief Split strings by separator
-inline static std::vector<std::string> split(const std::string& value,
+inline static std::vector<std::string> split(const std::string& str,
                                              char separator) {
-  std::vector<std::string> res;
-  std::string::size_type q, p = (value.find(separator) == 0) ? 1 : 0;
 
-  while ((q = value.find(separator, p)) != std::string::npos) {
-    res.emplace_back(value, p, q - p);
+  std::vector<std::string> result;
+  if (str.empty()) {
+    return result;
+  }
+  std::regex reg("/+");
+  std::string key = std::regex_replace(str, reg, "/");
+
+  if (!key.empty() && key.front() == '/') { key.erase(0,1); }
+  if (!key.empty() && key.back()  == '/') { key.pop_back(); }
+  
+  std::string::size_type p = 0;
+  std::string::size_type q;
+  while ((q = key.find(separator, p)) != std::string::npos) {
+    result.emplace_back(key, p, q - p);
     p = q + 1;
   }
-  res.emplace_back(value, p);
-  res.erase(std::find_if(res.rbegin(), res.rend(), NotEmpty()).base(),
-            res.end());
-
-  return res;
+  result.emplace_back(key, p);
+  result.erase(std::find_if(result.rbegin(), result.rend(), NotEmpty()).base(),
+               result.end());
+  return result;
 }
 
 /// Build endpoint from URL
@@ -105,16 +114,16 @@ inline static bool endpointPathFromUrl(std::string const& url,
 
 /// Ctor with name
 Store::Store(Agent* agent, std::string const& name)
-    : Thread(name), _agent(agent), _node(name, this) {}
+  : Thread(name), _agent(agent), _node(name, this) {}
 
 /// Move constructor
 Store::Store(Store&& other)
-    : Thread(other._node.name()),
-      _agent(std::move(other._agent)),
-      _timeTable(std::move(other._timeTable)),
-      _observerTable(std::move(other._observerTable)),
-      _observedTable(std::move(other._observedTable)),
-      _node(std::move(other._node)) {}
+  : Thread(other._node.name()),
+    _agent(std::move(other._agent)),
+    _timeTable(std::move(other._timeTable)),
+    _observerTable(std::move(other._observerTable)),
+    _observedTable(std::move(other._observedTable)),
+    _node(std::move(other._node)) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -142,7 +151,11 @@ Store& Store::operator=(Store&& rhs) {
 }
 
 /// Default dtor
-Store::~Store() { shutdown(); }
+Store::~Store() {
+  if (!isStopping()) {
+    shutdown();
+  }
+}
 
 /// Apply array of queries multiple queries to store
 /// Return vector of according success
@@ -159,7 +172,7 @@ std::vector<bool> Store::apply(query_t const& query, bool verbose) {
           break;
         case 2: // precondition + uuid
         case 3:
-          if (check(i[1])) {
+          if (check(i[1]).successful()) {
             success.push_back(applies(i[0]));
           } else {  // precondition failed
             LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
@@ -193,21 +206,22 @@ std::vector<bool> Store::apply(query_t const& query, bool verbose) {
 }
 
 
-/// Apply single query 
-bool Store::apply(Slice const& query, bool verbose) {
+/// Apply single query
+check_ret_t Store::apply(Slice const& query, bool verbose) {
 
-  bool success = false;
+  check_ret_t ret(true);
 
   try {
     MUTEX_LOCKER(storeLocker, _storeLock);
     switch (query.length()) {
     case 1:  // No precondition
-      success = applies(query[0]);
+      applies(query[0]);
       break;
     case 2:  // precondition
     case 3:  // precondition + clientId
-      if (check(query[1])) {
-        success = applies(query[0]);
+      ret = check(query[1], CheckMode::FULL);
+      if (ret.successful()) {
+        applies(query[0]);
       } else {  // precondition failed
         LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
       }
@@ -228,7 +242,7 @@ bool Store::apply(Slice const& query, bool verbose) {
       << __FILE__ << ":" << __LINE__ << " " << e.what();
   }
     
-  return success;
+  return ret;
   
 }
 
@@ -313,39 +327,27 @@ std::vector<bool> Store::apply(
 
     for (auto const& url : urls) {
       Builder body;  // host
-      body.openObject();
-      body.add("term", VPackValue(term));
-      body.add("index", VPackValue(lastCommitIndex));
-      auto ret = in.equal_range(url);
-      
-      // mop: XXX not exactly sure what is supposed to happen here
-      // if there are multiple subobjects being updates at the same time
-      // e.g.
-      // /hans/wurst
-      //        /hans/wurst/peter: 1
-      // /hans/wurst
-      //        /hans/wurst/uschi: 2
-      // we are generating invalid json...not sure if this here is a
-      // valid fix...it is most likely broken :S
-      std::string currentKey;
-      for (auto it = ret.first; it != ret.second; ++it) {
-        if (currentKey != it->second->key) {
-          if (!currentKey.empty()) {
-            body.close();
+      { VPackObjectBuilder b(&body);
+        body.add("term", VPackValue(term));
+        body.add("index", VPackValue(lastCommitIndex));
+        auto ret = in.equal_range(url);
+        std::string currentKey;
+        for (auto it = ret.first; it != ret.second; ++it) {
+          if (currentKey != it->second->key) {
+            if (!currentKey.empty()) {
+              body.close();
+            }
+            body.add(it->second->key, VPackValue(VPackValueType::Object));
+            currentKey = it->second->key;
           }
-          body.add(it->second->key, VPackValue(VPackValueType::Object));
-          currentKey = it->second->key;
+          body.add(VPackValue(it->second->modified));
+          { VPackObjectBuilder b(&body);
+            body.add("op", VPackValue(it->second->oper)); }
         }
-        // mop: XXX maybe there are duplicates here as well?
-        // e.g. a key is set and deleted in the same transaction?
-        body.add(it->second->modified, VPackValue(VPackValueType::Object));
-        body.add("op", VPackValue(it->second->oper));
-        body.close();
+        if (!currentKey.empty()) {
+          body.close();
+        }
       }
-      if (!currentKey.empty()) {
-        body.close();
-      }
-      body.close();
       
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
@@ -367,16 +369,16 @@ std::vector<bool> Store::apply(
 }
 
 /// Check precodition object
-bool Store::check(VPackSlice const& slice) const {
-  if (!slice.isObject()) {  // Must be object
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot check precondition: "
-                                    << slice.toJson();
-    return false;
-  }
+check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
+
+  TRI_ASSERT(slice.isObject());
+  check_ret_t ret;
+  ret.open();
 
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
 
-    std::vector<std::string> pv = split(precond.key.copyString(), '/');
+    std::string key = precond.key.copyString();
+    std::vector<std::string> pv = split(key, '/');
     
     Node node("precond");
 
@@ -391,64 +393,111 @@ bool Store::check(VPackSlice const& slice) const {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {  // old
           if (node != op.value) {
-            return false;
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
           }
         } else if (oper == "isArray") {  // isArray
           if (!op.value.isBoolean()) {
             LOG_TOPIC(ERR, Logger::AGENCY)
-                << "Non boolean expression for 'isArray' precondition";
-            return false;
+              << "Non boolean expression for 'isArray' precondition";
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
           }
           bool isArray = (node.type() == LEAF && node.slice().isArray());
           if (op.value.getBool() ? !isArray : isArray) {
-            return false;
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
           }
         } else if (oper == "oldEmpty") {  // isEmpty
           if (!op.value.isBoolean()) {
             LOG_TOPIC(ERR, Logger::AGENCY)
                 << "Non boolsh expression for 'oldEmpty' precondition";
-            return false;
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
           }
           if (op.value.getBool() ? found : !found) {
-            return false;
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
           }
         } else if (oper == "in") {  // in
           if (found) {
             if (node.slice().isArray()) {
-              bool found = false;
+              bool _found = false;
               for (auto const& i : VPackArrayIterator(node.slice())) {
                 if (i == op.value) {
-                  found = true;
+                  _found = true;
                   continue;
                 }
               }
-              if (found) {
+              if (_found) {
+                continue;
+              } else {
+                ret.push_back(precond.key);
+              }
+            }
+          } 
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
+        } else if (oper == "notin") {  // in
+          if (!found) {
+            continue;
+          } else {
+            if (node.slice().isArray()) {
+              bool _found = false;
+              for (auto const& i : VPackArrayIterator(node.slice())) {
+                if (i == op.value) {
+                  _found = true;
+                  continue;
+                }
+              }
+              if (_found) {
+                ret.push_back(precond.key);
+              } else {
                 continue;
               }
             }
+          } 
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
           }
-          return false;
         }
-      }
+      } 
     } else {
       if (node != precond.value) {
-        return false;
+        ret.push_back(precond.key);
+        if (mode == FIRST_FAIL) {
+          break;
+        }
       }
     }
   }
 
-  return true;
+  ret.close();
+  return ret;
 }
+
 
 /// Read queries into result
 std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
   std::vector<bool> success;
   if (queries->slice().isArray()) {
-    result->add(VPackValue(VPackValueType::Array));  // top node array
+    VPackArrayBuilder r(result.get());
     for (auto const& query : VPackArrayIterator(queries->slice())) {
       success.push_back(read(query, *result));
     }
-    result->close();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Read queries to stores must be arrays";
   }
@@ -517,25 +566,24 @@ void Store::beginShutdown() {
 
 /// TTL clear values from store
 query_t Store::clearExpired() const {
+
   query_t tmp = std::make_shared<Builder>();
-  tmp->openArray();
-  {
+  { VPackArrayBuilder t(tmp.get());
     MUTEX_LOCKER(storeLocker, _storeLock);
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
       if (it->first < std::chrono::system_clock::now()) {
-        tmp->openArray();
-        tmp->openObject();
-        tmp->add(it->second, VPackValue(VPackValueType::Object));
-        tmp->add("op", VPackValue("delete"));
-        tmp->close();
-        tmp->close();
-        tmp->close();
+        VPackArrayBuilder ttt(tmp.get());
+        { VPackObjectBuilder tttt(tmp.get());
+          tmp->add(VPackValue(it->second));
+          { VPackObjectBuilder ttttt(tmp.get());
+            tmp->add("op", VPackValue("delete"));
+          }}
       } else {
         break;
       }
     }
+    
   }
-  tmp->close();
   return tmp;
 }
 

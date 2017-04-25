@@ -27,8 +27,8 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "MMFiles/mmfiles-fulltext-common.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -41,19 +41,17 @@ class MMFilesFulltextIndex final : public Index {
   MMFilesFulltextIndex() = delete;
 
   MMFilesFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
-                arangodb::velocypack::Slice const&);
+                       arangodb::velocypack::Slice const&);
 
   ~MMFilesFulltextIndex();
 
  public:
-  IndexType type() const override {
-    return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
-  }
-  
+  IndexType type() const override { return Index::TRI_IDX_TYPE_FULLTEXT_INDEX; }
+
   char const* typeName() const override { return "fulltext"; }
-  
+
   bool allowExpansion() const override { return false; }
-  
+
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }
@@ -62,14 +60,16 @@ class MMFilesFulltextIndex final : public Index {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   // Uses default toVelocyPackFigures
 
   bool matchesDefinition(VPackSlice const&) const override;
 
-  int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(transaction::Methods*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int unload() override;
 

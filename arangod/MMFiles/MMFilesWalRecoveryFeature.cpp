@@ -37,11 +37,15 @@ using namespace arangodb::options;
 MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "MMFilesWalRecovery") {
 
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database"); 
   startsAfter("MMFilesLogfileManager");
   startsAfter("MMFilesPersistentIndex");
+  startsAfter("Scheduler");
+
+  onlyEnabledWith("MMFilesEngine");
+  onlyEnabledWith("MMFilesLogfileManager");
 }
 
 /// @brief run the recovery procedure

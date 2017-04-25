@@ -305,6 +305,8 @@ endif ()
 add_executable(${BIN_ARANGOVPACK}
   ${ProductVersionFiles_arangovpack}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
   VPack/VPackFeature.cpp
   VPack/arangovpack.cpp
 )

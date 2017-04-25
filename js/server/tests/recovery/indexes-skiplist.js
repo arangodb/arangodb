@@ -93,6 +93,7 @@ function recoverySuite () {
       for (i = 0; i < 1000; ++i) {
         assertEqual(1, c.byExample({ value: i }).toArray().length);
       }
+      assertEqual(1, db._query("FOR doc IN UnitTestsRecovery1 FILTER doc.value == 1 RETURN doc").toArray().length);
 
       c = db._collection('UnitTestsRecovery2');
       idx = c.getIndexes()[1];
@@ -102,6 +103,7 @@ function recoverySuite () {
       for (i = 0; i < 1000; ++i) {
         assertEqual(1, c.byExample({ 'a.value': i }).toArray().length);
       }
+      assertEqual(1, db._query("FOR doc IN UnitTestsRecovery2 FILTER doc.a.value == 1 RETURN doc").toArray().length);
 
       c = db._collection('UnitTestsRecovery3');
       idx = c.getIndexes()[1];
@@ -112,6 +114,7 @@ function recoverySuite () {
       assertEqual(250, c.byExample({ a: 1, b: 2 }).toArray().length);
       assertEqual(250, c.byExample({ a: 2, b: 1 }).toArray().length);
       assertEqual(250, c.byExample({ a: 2, b: 2 }).toArray().length);
+      assertEqual(250, db._query("FOR doc IN UnitTestsRecovery3 FILTER doc.a == 1 && doc.b == 1 RETURN doc").toArray().length);
     }
 
   };

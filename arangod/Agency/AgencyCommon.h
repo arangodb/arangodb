@@ -23,11 +23,10 @@
 #ifndef ARANGOD_CONSENSUS_AGENCY_COMMON_H
 #define ARANGOD_CONSENSUS_AGENCY_COMMON_H 1
 
-#include "AgencyCommon.h"
-
 #include <chrono>
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/VelocyPackHelper.h"
@@ -70,6 +69,15 @@ struct write_ret_t {
               std::vector<index_t> const& idx)
     : accepted(a), redirect(id), applied(app), indices(idx) {}
 };
+
+inline std::ostream& operator<< (std::ostream& o, write_ret_t const& w) {
+  o << "accepted: " << w.accepted << ", redirect: " << w.redirect << ", indices: [";
+  for (const auto& i : w.indices) {
+    o << i << ", ";
+  }
+  o << "]";
+  return o;
+}
 
 struct trans_ret_t {
   bool accepted;         // Query accepted (i.e. we are leader)
@@ -115,6 +123,7 @@ struct log_t {
       << " " << " " << l.clientId << " "<< l.timestamp.count();
     return o;
   }
+  
 };
 
 struct priv_rpc_ret_t {
@@ -122,7 +131,16 @@ struct priv_rpc_ret_t {
   term_t term;
   priv_rpc_ret_t(bool s, term_t t) : success(s), term(t) {}
 };
+
 }
 }
+
+inline std::ostream& operator<<(std::ostream& o, arangodb::consensus::log_t const& l) {
+  o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
+    << " " << " " << l.clientId << " "<< l.timestamp.count();
+  return o;
+}
+  
+
 
 #endif

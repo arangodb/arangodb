@@ -109,15 +109,14 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "creating WAL logfile manager";
   TRI_ASSERT(!_allowWrites);
 
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("FeatureCache");
-
-  for (auto const& it : EngineSelectorFeature::availableEngines()) {
-    startsAfter(it.second);
-  }
+  startsAfter("MMFilesEngine");
+  
+  onlyEnabledWith("MMFilesEngine");
 }
 
 // destroy the logfile manager
@@ -453,6 +452,10 @@ void MMFilesLogfileManager::beginShutdown() {
 }
 
 void MMFilesLogfileManager::unprepare() {
+  if (!isEnabled()) {
+    return;
+  }
+
   // deactivate write-throttling (again) on shutdown in case it was set again
   // after beginShutdown
   throttleWhenPending(0); 
@@ -482,7 +485,9 @@ void MMFilesLogfileManager::unprepare() {
   }
 
   // do a final flush at shutdown
-  this->flush(true, true, false);
+  if (!_inRecovery) {
+    flush(true, true, false);
+  }
 
   // stop other threads
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "sending shutdown request to WAL threads";
@@ -1288,7 +1293,7 @@ int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
           // found a logfile, update the status variable and return the logfile
 
           {
-            // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "setting lastOpenedId " << // logfile->id();
+            // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "setting lastOpenedId " << logfile->id();
             MUTEX_LOCKER(mutexLocker, _idLock);
             _lastOpenedId = logfile->id();
           }
@@ -1485,8 +1490,7 @@ void MMFilesLogfileManager::setCollectionDone(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
   MMFilesWalLogfile::IdType id = logfile->id();
 
-  // LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "setCollectionDone setting lastCollectedId to " << (unsigned
-  // long long) id;
+  // LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "setCollectionDone setting lastCollectedId to " << id
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
     logfile->setStatus(MMFilesWalLogfile::StatusType::COLLECTED);

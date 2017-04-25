@@ -44,8 +44,6 @@ if ("-Dbyteorder=big" not in sys.argv and "-Dbyteorder=little" not in sys.argv):
         
 sys.argv.append("-DPYTHON_EXECUTABLE=" + sys.executable)
 
-print("x"*80)
-print(sys.argv)
 sys.byteorder
 path = os.path.abspath(os.path.split(__file__)[0])
 execfile(os.path.join(path, 'gyp_v8'))

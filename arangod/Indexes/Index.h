@@ -55,8 +55,7 @@ struct Variable;
 
 namespace transaction {
 class Methods;
-}
-;
+};
 }
 
 namespace arangodb {
@@ -182,7 +181,7 @@ class Index {
   static IndexType type(char const* type);
 
   static IndexType type(std::string const& type);
-  
+
   virtual char const* typeName() const = 0;
 
   virtual bool allowExpansion() const = 0;
@@ -237,7 +236,7 @@ class Index {
 
   virtual size_t memory() const = 0;
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool, bool) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
@@ -251,7 +250,7 @@ class Index {
   virtual void batchInsert(
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
-      arangodb::basics::LocalTaskQueue* queue = nullptr);
+      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
   virtual int unload() = 0;
 
@@ -277,7 +276,7 @@ class Index {
                                               ManagedDocumentResult*,
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
-                                              bool) const;
+                                              bool);
 
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
@@ -294,6 +293,9 @@ class Index {
   ///        entries.
   virtual void expandInSearchValues(arangodb::velocypack::Slice const,
                                     arangodb::velocypack::Builder&) const;
+
+ protected:
+  static size_t sortWeight(arangodb::aql::AstNode const* node);
 
  private:
   /// @brief set fields from slice

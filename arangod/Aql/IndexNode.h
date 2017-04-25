@@ -74,9 +74,6 @@ class IndexNode : public ExecutionNode {
   /// @brief return the condition for the node
   Condition* condition() const { return _condition; }
 
-  /// @brief return the transaction for the node
-  transaction::Methods* trx() const;
-
   /// @brief whether or not all indexes are accessed in reverse order
   bool reverse() const { return _reverse; }
  

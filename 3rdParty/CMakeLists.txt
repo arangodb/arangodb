@@ -7,12 +7,6 @@
 include(ExternalProject)
 
 ################################################################################
-## boost
-################################################################################
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
-
-################################################################################
 ## V8 and ICU
 ################################################################################
 
@@ -20,13 +14,14 @@ option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 
 set(V8_SUB_DIR "v5.7.0.0")
-if (USE_PRECOMPILED_V8)
-  set(V8_VERSION
-    "V8-${V8_SUB_DIR}"
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Version"
-    FORCE
+set(V8_VERSION
+  "5.7.0.0"
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Version"
+  FORCE
   )
+set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
+if (USE_PRECOMPILED_V8)
 
   set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/${V8_SUB_DIR})
   set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_SUB_DIR})
@@ -106,24 +101,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 ## ROCKSDB
 ################################################################################
 
-if (${JEMALLOC_FOUND})
-#   set(USE_JEMALLOC_DEFAULT 1)
-endif()
-
-set(SKIP_INSTALL_ALL ON)
-set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
-
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/v5.1.4)
-
-list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb/v5.1.4")
-
-set(ROCKSDB_LIBS
-  "rocksdblib"
-  CACHE INTERNAL
-  "${PROJECT_NAME}: Libraries"
-)
-
 
 ################################################################################
 ## LIBCUCKOO

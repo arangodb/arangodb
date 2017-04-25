@@ -32,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief add a collection to the transaction
-int AqlTransaction::processCollection(aql::Collection* collection) {
+Result AqlTransaction::processCollection(aql::Collection* collection) {
   if (ServerState::instance()->isCoordinator()) {
     return processCollectionCoordinator(collection);
   }
@@ -41,7 +41,7 @@ int AqlTransaction::processCollection(aql::Collection* collection) {
 
 /// @brief add a coordinator collection to the transaction
 
-int AqlTransaction::processCollectionCoordinator(aql::Collection*  collection) {
+Result AqlTransaction::processCollectionCoordinator(aql::Collection*  collection) {
   TRI_voc_cid_t cid = resolver()->getCollectionId(collection->getName());
 
   return addCollection(cid, collection->getName().c_str(),
@@ -50,7 +50,7 @@ int AqlTransaction::processCollectionCoordinator(aql::Collection*  collection) {
 
 /// @brief add a regular collection to the transaction
 
-int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
+Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   TRI_voc_cid_t cid = 0;
 
   arangodb::LogicalCollection const* col =
@@ -71,9 +71,9 @@ int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
     cid = col->cid();
   }
 
-  int res = addCollection(cid, collection->getName(), collection->accessType);
+  Result res = addCollection(cid, collection->getName(), collection->accessType);
 
-  if (res == TRI_ERROR_NO_ERROR && col != nullptr) {
+  if (res.ok() && col != nullptr) {
     collection->setCollection(const_cast<arangodb::LogicalCollection*>(col));
   }
 

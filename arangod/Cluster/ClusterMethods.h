@@ -25,7 +25,7 @@
 #define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringRef.h"
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -126,16 +126,38 @@ int getDocumentOnCoordinator(
 ///        point to content inside of this lake
 ///        only and do not run out of scope unless
 ///        the lake is cleared.
+///        TraversalVariant
 
 int fetchEdgesFromEngines(
     std::string const&,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    arangodb::velocypack::Slice const, size_t,
-    std::unordered_map<arangodb::velocypack::Slice,
-                       arangodb::velocypack::Slice>&,
+    arangodb::velocypack::Slice vertexId, size_t,
+    std::unordered_map<StringRef, arangodb::velocypack::Slice>&,
     std::vector<arangodb::velocypack::Slice>&,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>&,
     arangodb::velocypack::Builder&, size_t&, size_t&);
+
+/// @brief fetch edges from TraverserEngines
+///        Contacts all TraverserEngines placed
+///        on the DBServers for the given list
+///        of vertex _id's.
+///        All non-empty and non-cached results
+///        of DBServers will be inserted in the
+///        datalake. Slices used in the result
+///        point to content inside of this lake
+///        only and do not run out of scope unless
+///        the lake is cleared.
+///        ShortestPathVariant
+
+int fetchEdgesFromEngines(
+    std::string const& dbname,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+    arangodb::velocypack::Slice vertexId,
+    bool backward,
+    std::unordered_map<StringRef, arangodb::velocypack::Slice>& cache,
+    std::vector<arangodb::velocypack::Slice>& result,
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
+    arangodb::velocypack::Builder& builder, size_t& read);
 
 /// @brief fetch vertices from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -149,10 +171,28 @@ int fetchEdgesFromEngines(
 void fetchVerticesFromEngines(
     std::string const&,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    std::unordered_set<arangodb::velocypack::Slice>&,
-    std::unordered_map<arangodb::velocypack::Slice,
-                       std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
+    std::unordered_set<StringRef>&,
+    std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
     arangodb::velocypack::Builder&);
+
+/// @brief fetch vertices from TraverserEngines
+///        Contacts all TraverserEngines placed
+///        on the DBServers for the given list
+///        of vertex _id's.
+///        If any server responds with a document
+///        it will be inserted into the result.
+///        If no server responds with a document
+///        a 'null' will be inserted into the result.
+///        ShortestPath Variant
+
+void fetchVerticesFromEngines(
+    std::string const&,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+    std::unordered_set<StringRef>&,
+    std::unordered_map<StringRef, arangodb::velocypack::Slice>& result,
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
+    arangodb::velocypack::Builder&);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a filtered set of edges on Coordinator.
@@ -217,7 +257,8 @@ class ClusterMethods {
   // to the caller, which is expressed by the returned unique_ptr.
   static std::unique_ptr<LogicalCollection> createCollectionOnCoordinator(
       TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
-      arangodb::velocypack::Slice parameters);
+      arangodb::velocypack::Slice parameters,
+      bool ignoreDistributeShardsLikeErrors = false);
 
  private:
 
@@ -226,7 +267,7 @@ class ClusterMethods {
 ////////////////////////////////////////////////////////////////////////////////
 
   static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
-      LogicalCollection* col);
+    LogicalCollection* col, bool ignoreDistributeShardsLikeErrors = false);
 };
 
 }  // namespace arangodb

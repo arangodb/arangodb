@@ -154,7 +154,7 @@ bool ApplicationServer::isRequired(std::string const& name) const {
 // signal. after that, it will shutdown all features
 void ApplicationServer::run(int argc, char* argv[]) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::run";
-
+  
   // collect options from all features
   // in this phase, all features are order-independent
   _state = ServerState::IN_COLLECT_OPTIONS;
@@ -181,11 +181,12 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(_state);
   validateOptions();
 
-  // enable automatic features
-  enableAutomaticFeatures();
-
   // setup and validate all feature dependencies
   setupDependencies(true);
+
+  // turn off all features that depend on other features that have been
+  // turned off
+  disableDependentFeatures();
 
   // allows process control
   daemonize();
@@ -198,6 +199,11 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _state = ServerState::IN_PREPARE;
   reportServerProgress(_state);
   prepare();
+  
+  // turn off all features that depend on other features that have been
+  // turned off. we repeat this to allow features to turn other features
+  // off even in the prepare phase
+  disableDependentFeatures();
 
   // permanently drop the privileges
   dropPrivilegesPermanently();
@@ -346,28 +352,6 @@ void ApplicationServer::validateOptions() {
   }
 }
 
-void ApplicationServer::enableAutomaticFeatures() {
-  bool changed;
-  do {
-    changed = false;
-    for (auto& it : _features) {
-      auto other = it.second->enableWith();
-      if (other.empty()) {
-        continue;
-      }
-      if (!this->exists(other)) {
-        fail("feature '" + it.second->name() +
-             "' depends on unknown feature '" + other + "'");
-      }
-      bool otherIsEnabled = this->feature(other)->isEnabled();
-      if (otherIsEnabled != it.second->isEnabled()) {
-        it.second->setEnabled(otherIsEnabled);
-        changed = true;
-      }
-    }
-  } while (changed);
-}
-
 // setup and validate all feature dependencies, determine feature order
 void ApplicationServer::setupDependencies(bool failOnMissing) {
   LOG_TOPIC(TRACE, Logger::STARTUP)
@@ -465,6 +449,35 @@ void ApplicationServer::daemonize() {
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     if ((*it)->isEnabled()) {
       (*it)->daemonize();
+    }
+  }
+}
+
+void ApplicationServer::disableDependentFeatures() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::disableDependentFeatures";
+
+  for (auto feature : _orderedFeatures) {
+    auto const& onlyEnabledWith = feature->onlyEnabledWith();
+
+    if (!feature->isEnabled() || onlyEnabledWith.empty()) {
+      continue;
+    }
+
+    for (auto const& other : onlyEnabledWith) {
+      ApplicationFeature* f = lookupFeature(other);
+      if (f == nullptr) {
+        LOG_TOPIC(TRACE, Logger::STARTUP) << "turning off feature '" << feature->name() 
+                                          << "' because it is enabled only in conjunction with non-existing feature '" 
+                                          << other << "'";
+        feature->disable();
+        break;
+      } else if (!f->isEnabled()) {
+        LOG_TOPIC(TRACE, Logger::STARTUP) << "turning off feature '" << feature->name() 
+                                          << "' because it is enabled only in conjunction with disabled feature '" 
+                                          << f->name() << "'";
+        feature->disable();
+        break;
+      }
     }
   }
 }

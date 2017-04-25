@@ -87,6 +87,25 @@ Index::Index(VPackSlice const& slice)
 
 Index::~Index() {}
 
+size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
+  switch (node->type) {
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      return 1;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+      return 2;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      return 3;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      return 4;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      return 5;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      return 6;
+    default:
+      return 42; /* OPST_CIRCUS */
+  }
+}
+
 /// @brief set fields from slice
 void Index::setFields(VPackSlice const& fields, bool allowExpansion) {
   if (!fields.isArray()) {
@@ -374,16 +393,14 @@ std::string Index::context() const {
 /// base functionality (called from derived classes)
 std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
   auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  toVelocyPack(*builder, withFigures);
-  builder->close();
+  toVelocyPack(*builder, withFigures, false);
   return builder;
 }
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
 /// note: needs an already-opened object as its input!
-void Index::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("id", VPackValue(std::to_string(_iid)));
   builder.add("type", VPackValue(oldtypeName()));
@@ -497,7 +514,7 @@ void Index::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&
         documents,
-    arangodb::basics::LocalTaskQueue* queue) {
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   for (auto const& it : documents) {
     int status = insert(trx, it.first, it.second, false);
     if (status != TRI_ERROR_NO_ERROR) {
@@ -559,7 +576,7 @@ IndexIterator* Index::iteratorForCondition(transaction::Methods*,
                                            ManagedDocumentResult*,
                                            arangodb::aql::AstNode const*,
                                            arangodb::aql::Variable const*,
-                                           bool) const {
+                                           bool) {
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
   return nullptr;
@@ -691,10 +708,16 @@ bool Index::canUseConditionPart(
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
     arangodb::aql::Ast::getReferencedVariables(access, variables);
+      if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
+          variables.find(reference) != variables.end()) {
+        variables.clear();
+        arangodb::aql::Ast::getReferencedVariables(other, variables);
+      }
   } else {
     // a.b == value  OR  a.b IN values
     arangodb::aql::Ast::getReferencedVariables(other, variables);
   }
+
   if (variables.find(reference) != variables.end()) {
     // yes. then we cannot use an index here
     return false;
@@ -741,22 +764,30 @@ void Index::expandInSearchValues(VPackSlice const base,
       VPackSlice current = oneLookup.at(i);
       if (current.hasKey(StaticStrings::IndexIn)) {
         VPackSlice inList = current.get(StaticStrings::IndexIn);
+        if (!inList.isArray()) {
+          // IN value is a non-array
+          result.clear();
+          result.openArray();
+          return;
+        }
+        
+        TRI_ASSERT(inList.isArray());
+        VPackValueLength nList = inList.length();
+        
+        if (nList == 0) {
+          // Empty Array. short circuit, no matches possible
+          result.clear();
+          result.openArray();
+          return;
+        }
 
         std::unordered_set<VPackSlice,
                            arangodb::basics::VelocyPackHelper::VPackHash,
                            arangodb::basics::VelocyPackHelper::VPackEqual>
-            tmp(static_cast<size_t>(inList.length()),
+            tmp(static_cast<size_t>(nList),
                 arangodb::basics::VelocyPackHelper::VPackHash(),
                 arangodb::basics::VelocyPackHelper::VPackEqual());
 
-        TRI_ASSERT(inList.isArray());
-        if (inList.length() == 0) {
-          // Empty Array. short circuit, no matches possible
-          result.clear();
-          result.openArray();
-          result.close();
-          return;
-        }
         for (auto const& el : VPackArrayIterator(inList)) {
           tmp.emplace(el);
         }

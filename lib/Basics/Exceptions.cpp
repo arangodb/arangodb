@@ -42,6 +42,24 @@ Exception::Exception(int code, char const* file, int line)
   appendLocation();
 }
 
+Exception::Exception(arangodb::Result const& result, char const* file, int line)
+    : _errorMessage(result.errorMessage()),
+      _file(file),
+      _line(line),
+      _code(result.errorNumber()) {
+
+  appendLocation();
+}
+
+Exception::Exception(arangodb::Result&& result, char const* file, int line)
+    : _errorMessage(std::move(result).errorMessage()), //cast to rvalueref so the error stirng gets moved out
+      _file(file),
+      _line(line),
+      _code(result.errorNumber()) {
+
+  appendLocation();
+}
+
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
 Exception::Exception(int code, std::string const& errorMessage,
@@ -87,8 +105,9 @@ char const* Exception::what() const throw() { return _errorMessage.c_str(); }
 void Exception::appendLocation () {
   if (_code == TRI_ERROR_INTERNAL) {
     _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
-  } else if (_code == TRI_ERROR_OUT_OF_MEMORY) {
-    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ").";
+  } else if (_code == TRI_ERROR_OUT_OF_MEMORY || 
+             _code == TRI_ERROR_NOT_YET_IMPLEMENTED) {
+    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ")";
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

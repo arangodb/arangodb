@@ -15,6 +15,7 @@
         myResponse.push({
           level: response.level[i],
           lid: val,
+          topic: response.topic[i],
           text: response.text[i],
           timestamp: response.timestamp[i],
           totalAmount: response.totalAmount
@@ -56,6 +57,7 @@
         type = 'level';
       }
       rtnStr = '/_admin/log?' + type + '=' + this.loglevel + '&size=' + size + '&offset=' + inverseOffset;
+      this.lastInverseOffset = inverseOffset;
       return arangoHelper.databaseUrl(rtnStr);
     }
 

@@ -37,21 +37,6 @@ using namespace arangodb;
 static std::vector<arangodb::basics::AttributeName> const KeyAttribute
      {arangodb::basics::AttributeName("_key", false)};
 
-arangodb::aql::AstNode const* MMFilesPathBasedIndex::PermutationState::getValue()
-    const {
-  if (type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-    TRI_ASSERT(current == 0);
-    return value;
-  } else if (type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    TRI_ASSERT(n > 0);
-    TRI_ASSERT(current < n);
-    return value->getMember(current);
-  }
-
-  TRI_ASSERT(false);
-  return nullptr;
-}
-
 /// @brief create the index
 MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
                                arangodb::LogicalCollection* collection,
@@ -71,6 +56,8 @@ MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
       break;
     }
   }
+
+  TRI_ASSERT(baseSize > 0);
   
   _allocator.reset(new FixedSizeAllocator(baseSize + sizeof(MMFilesIndexElementValue) * numPaths()));
 }

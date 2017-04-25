@@ -15,12 +15,12 @@ This concept enables us to perform distributed graph processing, without the nee
 
 If you are running a single ArangoDB instance in single-server mode, there are no requirements regarding the modeling 
 of your data. All you need is at least one vertex collection and one edge collection. Note that the performance may be
-better if the number of your shards / collections matches the number of CPU cores.
+better, if the number of your shards / collections matches the number of CPU cores.
 
 When you use ArangoDB Community edition in cluster mode, you might need to model your collections in a certain way to
 ensure correct results. For more information see the next section.
 
-## Requirements for Collections (Non Smart Graph)
+## Requirements for Collections in a Cluster (Non Smart Graph)
 
 To enable iterative graph processing for your data, you will need to ensure
 that your vertex and edge collections are sharded in a specific way.
@@ -232,13 +232,14 @@ There are various definitions for centrality, the simplest one being the vertex 
 
 ![Illustration of an execution of different centrality measures (Freeman 1977)](centrality_visual.png)
 
-A common definitions of centrality is the \textbf{closeness centrality} (or closeness). 
+
+##### Effective Closeness
+
+A common definitions of centrality is the **closeness centrality** (or closeness). 
 The closeness of a vertex in a graph is the inverse average length of the shortest path between the vertex 
 and all other vertices. For vertices *x*, *y* and shortest distance *d(y,x)* it is defined as
 
 ![Vertex Closeness](closeness.png)
-
-##### Effective Closeness
 
 Effective Closeness approximates the closeness measure. The algorithm works by iteratively estimating the number
 of shortest paths passing through each vertex. The score will approximates the the real closeness score, since
@@ -255,19 +256,21 @@ algorithm. The algorithm can be used like this
     var handle = pregel.start("effectivecloseness", "yourgraph", resultField: "closeness");
 ```
 
-Another common measure is the *betweenness* centrality: It measures the number of times a vertex is part 
-of shortest paths between any two vertices. For a vertex *v* betweenness is defined as
+##### LineRank
+
+Another common measure is the [betweenness* centrality](https://en.wikipedia.org/wiki/Betweenness_centrality): 
+It measures the number of times a vertex is part  of shortest paths between any pairs of vertices. 
+For a vertex *v* betweenness is defined as
 
 ![Vertex Betweeness](betweeness.png)
 
-Where $\sigma_{xy}$ is the number of shortest paths between $x$ and $y$, and $\sigma_{xy}(v)$ is the 
-number of paths also passing through $v$. The intuitive visualization of these metrics can be seen 
-below.
+Where the &sigma; represents the number of shortest paths between *x* and *y*, and &sigma;(v) represents the 
+number of paths also passing through a vertex *v*. By intuition a vertex with higher betweeness centrality will have more information
+passing through it.
 
 Unfortunately these definitions were not designed with scalability in mind. It is probably impossible to compute them
 efficiently and accurately. Fortunately there are scalable substitutions proposed by **U Kang et.al. 2011**.
 
-##### LineRank
 
 **LineRank** approximates the random walk betweenness of every vertex in a graph. This is the probability that someone starting on
 an arbitary vertex, will visit this node when he randomly chooses edges to visit.

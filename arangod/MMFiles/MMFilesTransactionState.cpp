@@ -21,16 +21,17 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesTransactionState.h"
 #include "Aql/QueryCache.h"
-#include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
+#include "MMFilesTransactionState.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -71,8 +72,9 @@ rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
 }
   
 /// @brief start a transaction
-int MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
+Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
+  Result result;
 
   if (_nestingLevel == 0) {
     TRI_ASSERT(_status == transaction::Status::CREATED);
@@ -105,18 +107,19 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
 
     // register a protector
     int res = logfileManager->registerTransaction(_id, isReadOnlyTransaction());
+    result.reset(res);
  
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (!result.ok()) {
+      return result;
     }
   
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
-  int res = useCollections(_nestingLevel);
+  result = useCollections(_nestingLevel);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (result.ok()) {
     // all valid
     if (_nestingLevel == 0) {
       updateStatus(transaction::Status::RUNNING);
@@ -133,36 +136,35 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     unuseCollections(_nestingLevel);
   }
 
-  return res;
+  return result;
 }
 
 /// @brief commit a transaction
-int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) {
+Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) {
   LOG_TRX(this, _nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
-
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
-  int res = TRI_ERROR_NO_ERROR;
-
+  Result result;
   if (_nestingLevel == 0) {
     if (_rocksTransaction != nullptr) {
       auto status = _rocksTransaction->Commit();
+      result = rocksutils::convertStatus(status);
 
-      if (!status.ok()) {
-        res = TRI_ERROR_INTERNAL;
+      if (!result.ok()) {
         abortTransaction(activeTrx);
-        return res;
+        return result;
       }
     }
 
-    res = writeCommitMarker();
+    int res = writeCommitMarker();
+    result.reset(res);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!result.ok()) {
       // TODO: revert rocks transaction somehow
       abortTransaction(activeTrx);
 
       // return original error
-      return res;
+      return result;
     }
 
     updateStatus(transaction::Status::COMMITTED);
@@ -170,6 +172,7 @@ int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) 
     // if a write query, clear the query cache for the participating collections
     if (AccessMode::isWriteOrExclusive(_type) &&
         !_collections.empty() &&
+        !isSingleOperation() && 
         arangodb::aql::QueryCache::instance()->mayBeActive()) {
       clearQueryCache();
     }
@@ -179,19 +182,20 @@ int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) 
 
   unuseCollections(_nestingLevel);
 
-  return res;
+  return result;
 }
 
 /// @brief abort and rollback a transaction
-int MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx) {
+Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx) {
   LOG_TRX(this, _nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
-  int res = TRI_ERROR_NO_ERROR;
+  Result result;
 
   if (_nestingLevel == 0) {
-    res = writeAbortMarker();
+    int res = writeAbortMarker();
+    result.reset(res);
 
     updateStatus(transaction::Status::ABORTED);
 
@@ -206,7 +210,7 @@ int MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx) {
 
   unuseCollections(_nestingLevel);
 
-  return res;
+  return result;
 }
 
 /// @brief add a WAL operation for a transaction collection

@@ -24,6 +24,7 @@
 #define ARANGODB_PREGEL_WORKER_H 1
 
 #include <atomic>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -32,7 +33,6 @@
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -100,7 +100,7 @@ class Worker : public IWorker {
 
   // only valid while recovering to determine the offset
   // where new vertices were inserted
-  size_t _preRecoveryTotal;
+  size_t _preRecoveryTotal = 0;
 
   std::unique_ptr<AggregatorHandler> _conductorAggregators;
   std::unique_ptr<AggregatorHandler> _workerAggregators;
@@ -130,7 +130,7 @@ class Worker : public IWorker {
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
   std::unique_ptr<boost::asio::deadline_timer> _boost_timer;
-  
+
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();

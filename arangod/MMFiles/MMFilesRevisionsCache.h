@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_REVISIONS_CACHE_H
-#define ARANGOD_STORAGE_ENGINE_MMFILES_REVISIONS_CACHE_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_REVISIONS_CACHE_H
+#define ARANGOD_MMFILES_MMFILES_REVISIONS_CACHE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/AssocUnique.h"

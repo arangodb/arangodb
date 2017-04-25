@@ -42,17 +42,17 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     : ExecutionBlock(engine, ep),
       _collection(ep->_collection),
       _mmdr(new ManagedDocumentResult),
-      _cursor(_trx->indexScan(
-          _collection->getName(),
-          (ep->_random ? transaction::Methods::CursorType::ANY
-                       : transaction::Methods::CursorType::ALL),
-          _mmdr.get(), 0, UINT64_MAX, 1000, false)),
+      _cursor(
+          _trx->indexScan(_collection->getName(),
+                          (ep->_random ? transaction::Methods::CursorType::ANY
+                                       : transaction::Methods::CursorType::ALL),
+                          _mmdr.get(), 0, UINT64_MAX, 1000, false)),
       _mustStoreResult(true) {
   TRI_ASSERT(_cursor->successful());
 }
 
 int EnumerateCollectionBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   auto ep = static_cast<EnumerateCollectionNode const*>(_exeNode);
   _mustStoreResult = ep->isVarUsedLater(ep->_outVariable);
 
@@ -60,9 +60,11 @@ int EnumerateCollectionBlock::initialize() {
     auto logicalCollection = _collection->getCollection();
     auto cid = logicalCollection->planId();
     auto dbName = logicalCollection->dbName();
-    auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(dbName, std::to_string(cid));
+    auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
+        dbName, std::to_string(cid));
 
-    double maxWait = _engine->getQuery()->getNumericOption<double>("satelliteSyncWait", 60.0);
+    double maxWait = _engine->getQuery()->getNumericOption<double>(
+        "satelliteSyncWait", 60.0);
     bool inSync = false;
     unsigned long waitInterval = 10000;
     double startTime = TRI_microtime();
@@ -71,12 +73,13 @@ int EnumerateCollectionBlock::initialize() {
 
     while (!inSync) {
       auto followers = collectionInfoCurrent->servers(_collection->getName());
-      inSync = std::find(followers.begin(), followers.end(), ServerState::instance()->getId()) != followers.end();
+      inSync = std::find(followers.begin(), followers.end(),
+                         ServerState::instance()->getId()) != followers.end();
       if (!inSync) {
         if (endTime - now < waitInterval) {
           waitInterval = static_cast<unsigned long>(endTime - now);
         }
-        usleep(waitInterval);
+        usleep((TRI_usleep_t)waitInterval);
       }
       now = TRI_microtime();
       if (now > endTime) {
@@ -85,39 +88,41 @@ int EnumerateCollectionBlock::initialize() {
     }
 
     if (!inSync) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC, "collection " + _collection->name);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+          "collection " + _collection->name);
     }
   }
 
   return ExecutionBlock::initialize();
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
                                                size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   _cursor->reset();
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 /// @brief getSome
 AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
                                                 size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
 
   TRI_ASSERT(_cursor.get() != nullptr);
@@ -130,7 +135,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
-  
+
   bool needMore;
   AqlItemBlock* cur = nullptr;
   size_t send = 0;
@@ -169,7 +174,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     TRI_ASSERT(_cursor->hasMore());
 
     size_t curRegs = cur->getNrRegs();
-    
+
     RegisterId nrRegs =
         getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
@@ -179,20 +184,27 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
 
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
-      
+
     auto col = _collection->getCollection();
     LogicalCollection* c = col.get();
     std::function<void(DocumentIdentifierToken const& tkn)> cb;
     if (_mustStoreResult) {
-      cb = [&] (DocumentIdentifierToken const& tkn) {
+      cb = [&](DocumentIdentifierToken const& tkn) {
         if (c->readDocument(_trx, tkn, *_mmdr)) {
           // The result is in the first variable of this depth,
-          // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
+          // we do not need to do a lookup in
+          // getPlanNode()->_registerPlan->varInfo,
           // but can just take cur->getNrRegs() as registerId:
           uint8_t const* vpack = _mmdr->vpack();
-          res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
-                        AqlValue(vpack, AqlValueFromManagedDocument()));
-          // No harm done, if the setValue throws!
+          if (_mmdr->canUseInExternal()) {
+            res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
+                          AqlValue(vpack, AqlValueFromManagedDocument()));
+          } else {
+            AqlValue a(_mmdr->createAqlValue());
+            AqlValueGuard guard(a, true);
+            res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs), a);
+            guard.steal();
+          }
         }
 
         if (send > 0) {
@@ -202,7 +214,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
         ++send;
       };
     } else {
-      cb = [&] (DocumentIdentifierToken const& tkn) {
+      cb = [&](DocumentIdentifierToken const& tkn) {
         if (send > 0) {
           // re-use already copied AQLValues
           res->copyValuesFromFirstRow(send, static_cast<RegisterId>(curRegs));
@@ -212,7 +224,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     }
 
     throwIfKilled();  // check if we were aborted
-
+    
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -240,11 +252,11 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   return res.release();
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK(); 
+  DEBUG_END_BLOCK();
 }
 
 size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
   TRI_ASSERT(_cursor != nullptr);
 
@@ -294,5 +306,5 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   return skipped;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK(); 
+  DEBUG_END_BLOCK();
 }

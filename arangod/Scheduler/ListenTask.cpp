@@ -106,4 +106,5 @@ void ListenTask::stop() {
 
   _bound = false;
   _acceptor->close();
+  _acceptor.reset();
 }

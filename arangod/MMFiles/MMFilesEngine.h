@@ -22,8 +22,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_ENGINE_H
-#define ARANGOD_STORAGE_ENGINE_MMFILES_ENGINE_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_ENGINE_H
+#define ARANGOD_MMFILES_MMFILES_ENGINE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -84,6 +84,10 @@ class MMFilesEngine final : public StorageEngine {
 
   // flush wal wait for collector
   void stop() override;
+  
+  std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) override;
+  int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override;
+  int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) override; 
 
   transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
@@ -128,18 +132,20 @@ class MMFilesEngine final : public StorageEngine {
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
     return databaseDirectory(vocbase->id());
   }
+
+  std::string versionFilename(TRI_voc_tick_t id) const override;
   
   void waitForSync(TRI_voc_tick_t tick) override;
 
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade, int&) override;
   Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override {
     status = TRI_ERROR_NO_ERROR;
-    return createDatabaseMMFiles(id,args);
+    return createDatabaseMMFiles(id, args);
   }
-  int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
+  int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
 
   void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) override;
-  void dropDatabase(Database* database, int& status) override;
+  Result dropDatabase(Database* database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery

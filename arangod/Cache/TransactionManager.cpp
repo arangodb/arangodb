@@ -34,8 +34,9 @@ TransactionManager::TransactionManager()
     : _state(), _openReads(0), _openSensitive(0), _openWrites(0), _term(0) {}
 
 Transaction* TransactionManager::begin(bool readOnly) {
-  _state.lock();
   Transaction* tx = new Transaction(readOnly);
+
+  _state.lock();
 
   if (readOnly) {
     _openReads++;
@@ -45,11 +46,14 @@ Transaction* TransactionManager::begin(bool readOnly) {
     }
   } else {
     tx->sensitive = true;
-    _openWrites++;
-    if (++_openSensitive == 1) {
+    if (_openSensitive.load() == 0) {
       _term++;
-      _openSensitive += _openReads.load();
     }
+    if (_openWrites.load() == 0) {
+      _openSensitive = _openReads.load() + _openWrites.load();
+    }
+    _openWrites++;
+    _openSensitive++;
   }
   tx->term = _term;
   _state.unlock();

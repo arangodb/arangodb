@@ -25,6 +25,7 @@
 #include "OptimizerRules.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/ClusterNodes.h"
+#include "Aql/Collection.h"
 #include "Aql/CollectNode.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
@@ -704,133 +705,6 @@ void arangodb::aql::propagateConstantAttributesRule(
   helper.propagateConstants(plan.get());
 
   opt->addPlan(std::move(plan), rule, helper.modified());
-}
-
-/// @brief remove SORT RAND() if appropriate
-void arangodb::aql::removeSortRandRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                                       OptimizerRule const* rule) {
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::SORT, true);
-
-  bool modified = false;
-
-  for (auto const& n : nodes) {
-    auto node = static_cast<SortNode*>(n);
-    auto const& elements = node->getElements();
-    if (elements.size() != 1) {
-      // we're looking for "SORT RAND()", which has just one sort criterion
-      continue;
-    }
-
-    auto const variable = elements[0].var;
-    TRI_ASSERT(variable != nullptr);
-
-    auto setter = plan->getVarSetBy(variable->id);
-
-    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-      continue;
-    }
-
-    auto cn = static_cast<CalculationNode*>(setter);
-    auto const expression = cn->expression();
-
-    if (expression == nullptr || expression->node() == nullptr ||
-        expression->node()->type != NODE_TYPE_FCALL) {
-      // not the right type of node
-      continue;
-    }
-
-    auto funcNode = expression->node();
-    auto func = static_cast<Function const*>(funcNode->getData());
-
-    // we're looking for "RAND()", which is a function call
-    // with an empty parameters array
-    if (func->externalName != "RAND" || funcNode->numMembers() != 1 ||
-        funcNode->getMember(0)->numMembers() != 0) {
-      continue;
-    }
-
-    // now we're sure we got SORT RAND() !
-
-    // we found what we were looking for!
-    // now check if the dependencies qualify
-    if (!n->hasDependency()) {
-      break;
-    }
-
-    auto current = n->getFirstDependency();
-    ExecutionNode* collectionNode = nullptr;
-
-    while (current != nullptr) {
-      if (current->canThrow()) {
-        // we shouldn't bypass a node that can throw
-        collectionNode = nullptr;
-        break;
-      }
-
-      switch (current->getType()) {
-        case EN::SORT:
-        case EN::COLLECT:
-        case EN::FILTER:
-        case EN::SUBQUERY:
-        case EN::ENUMERATE_LIST:
-        case EN::TRAVERSAL:
-        case EN::SHORTEST_PATH:
-        case EN::INDEX: {
-          // if we found another SortNode, a CollectNode, FilterNode, a
-          // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode
-          // this means we cannot apply our optimization
-          collectionNode = nullptr;
-          current = nullptr;
-          continue;  // this will exit the while loop
-        }
-
-        case EN::ENUMERATE_COLLECTION: {
-          if (collectionNode == nullptr) {
-            // note this node
-            collectionNode = current;
-            break;
-          } else {
-            // we already found another collection node before. this means we
-            // should not apply our optimization
-            collectionNode = nullptr;
-            current = nullptr;
-            continue;  // this will exit the while loop
-          }
-          // cannot get here
-          TRI_ASSERT(false);
-        }
-
-        default: {
-          // ignore all other nodes
-        }
-      }
-
-      if (!current->hasDependency()) {
-        break;
-      }
-
-      current = current->getFirstDependency();
-    }
-
-    if (collectionNode != nullptr) {
-      // we found a node to modify!
-      TRI_ASSERT(collectionNode->getType() == EN::ENUMERATE_COLLECTION);
-      // set the random iteration flag for the EnumerateCollectionNode
-      static_cast<EnumerateCollectionNode*>(collectionNode)->setRandom();
-
-      // remove the SortNode
-      // note: the CalculationNode will be removed by
-      // "remove-unnecessary-calculations"
-      // rule if not used
-
-      plan->unlinkNode(n);
-      modified = true;
-    }
-  }
-
-  opt->addPlan(std::move(plan), rule, modified);
 }
 
 /// @brief move calculations up in the plan
@@ -1581,7 +1455,6 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
     TRI_ASSERT(outvars.size() == 1);
     auto varsUsedLater = n->getVarsUsedLater();
 
-
     if (varsUsedLater.find(outvars[0]) == varsUsedLater.end()) {
       // The variable whose value is calculated here is not used at
       // all further down the pipeline! We remove the whole
@@ -1669,7 +1542,6 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         vars.clear();
       }
 
-
       if (usageCount == 1) {
         // our variable is used by exactly one other calculation
         // now we can replace the reference to our variable in the other
@@ -1685,6 +1557,15 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
 
         if (rootNode->isSimple() != otherExpression->node()->isSimple()) {
           // expression types (V8 vs. non-V8) do not match. give up
+          continue;
+        }
+ 
+        if (!n->isInInnerLoop() && 
+            rootNode->callsFunction() && 
+            other->isInInnerLoop()) {
+          // original expression calls a function and is not contained in a loop
+          // we're about to move this expression into a loop, but we don't want
+          // to move (expensive) function calls into loops
           continue;
         }
 
@@ -1782,7 +1663,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       auto resultPair = trx->getIndexForSortCondition(
           enumerateCollectionNode->collection()->getName(),
           &sortCondition, outVariable,
-          enumerateCollectionNode->collection()->count(),
+          enumerateCollectionNode->collection()->count(trx),
           usedIndexes, coveredAttributes);
       if (resultPair.second) {
         // If this bit is set, then usedIndexes has length exactly one
@@ -1832,7 +1713,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(outVariable != nullptr);
 
     auto index = indexes[0];
-    transaction::Methods* trx = indexNode->trx();
+    transaction::Methods* trx = _plan->getAst()->query()->trx();
     bool isSorted = false;
     bool isSparse = false;
     std::vector<std::vector<arangodb::basics::AttributeName>> fields =
@@ -3764,6 +3645,7 @@ void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> tNodes{a};
   plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
+  plan->findNodesOfType(tNodes, EN::SHORTEST_PATH, true);
 
   if (tNodes.empty()) {
     // no traversals present
@@ -3774,8 +3656,14 @@ void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
   // first make a pass over all traversal nodes and remove unused
   // variables from them
   for (auto const& n : tNodes) {
-    TraversalNode* traversal = static_cast<TraversalNode*>(n);
-    traversal->prepareOptions();
+    if (n->getType() == EN::TRAVERSAL) {
+      TraversalNode* traversal = static_cast<TraversalNode*>(n);
+      traversal->prepareOptions();
+    } else {
+      TRI_ASSERT(n->getType() == EN::SHORTEST_PATH);
+      ShortestPathNode* spn = static_cast<ShortestPathNode*>(n);
+      spn->prepareOptions();
+    }
   }
 
   opt->addPlan(std::move(plan), rule, true);
@@ -3920,6 +3808,10 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           replacements.emplace(listNode->outVariable()->id, returnNode->inVariable());
           RedundantCalculationsReplacer finder(replacements);
           plan->root()->walk(&finder);
+
+          plan->clearVarUsageComputed();
+          plan->invalidateCost();
+          plan->findVarUsage();
 
           // abort optimization
           current = nullptr;

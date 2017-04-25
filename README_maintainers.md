@@ -175,6 +175,30 @@ There are several major places where unittests live:
  - *js/apps/system/aardvark/test*
 
 
+Debugging Tests (quick intro)
+-----------------------------
+
+runnuing single rspec test
+
+   ./scripts/unittest http_server --test api-import-spec.rb
+
+debugging rspec with gdb
+
+    server> ./scripts/unittest http_server --test api-import-spec.rb --server tcp://127.0.0.1:7777
+    - or -
+    server> ARANGO_SERVER="127.0.0.1:6666" rspec -IUnitTests/HttpInterface --format d --color UnitTests/HttpInterface/api-import-spec.rb
+
+    client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 --server.authentication false --log.level communication=trace ../arangodb-data-test-mmfiles
+
+debugging a storage engine
+
+    host> rm -fr ../arangodb-data-rocksdb/; gdb --args ./build/bin/arangod --console --server.storage-engine rocksdb --foxx.queues false --server.statistics false --server.endpoint http+tcp://0.0.0.0:7777 ../arangodb-data-rocksdb
+    (gdb) catch throw
+    (gdb) r
+    arangod> require("jsunity").runTest("js/client/tests/shell/shell-client.js");
+
+
+
 HttpInterface - RSpec Client Tests
 ----------------------------------
 These tests work on the plain RESTfull interface of arangodb, and thus also test invalid HTTP-requests and so forth, plus check error handling in the server.
@@ -260,16 +284,16 @@ valgrind could look like this. Options are passed as regular long values in the
 syntax --option value --sub:option value. Using Valgrind could look like this:
 
     ./scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js \
-      --extraargs:server.threads 1 \
-      --extraargs:scheduler.threads 1 \
-      --extraargs:javascript.gc-frequency 1000000 \
-      --extraargs:javascript.gc-interval 65536 \
+      --extraArgs:server.threads 1 \
+      --extraArgs:scheduler.threads 1 \
+      --extraArgs:javascript.gc-frequency 1000000 \
+      --extraArgs:javascript.gc-interval 65536 \
       --javascript.v8-contexts 2 \
       --valgrind /usr/bin/valgrind \
       --valgrindargs:log-file /tmp/valgrindlog.%p
 
  - we specify the test to execute
- - we specify some arangod arguments via --extraargs which increase the server performance
+ - we specify some arangod arguments via --extraArgs which increase the server performance
  - we specify to run using valgrind (this is supported by all facilities)
  - we specify some valgrind commandline arguments
 
@@ -318,9 +342,21 @@ arangod commandline arguments
 
 __________________________________________________________________________________________________________
 
-Linux Cordeumps
+Linux Coredumps
 ===============
-Hint: on Ubuntu the `apport` package may interfere with this.
+Generally coredumps have to be enabled using:
+
+     ulimit -c unlimited
+
+You should then see:
+
+     ulimit -a
+     core file size          (blocks, -c) unlimited
+
+for each shell and its subsequent processes.
+
+Hint: on Ubuntu the `apport` package may interfere with this; however you may use the `systemd-coredump` package
+which automates much of the following:
 
 So that the unit testing framework can autorun gdb it needs to reliably find the corefiles.
 In Linux this is configured via the `/proc` filesystem, you can make this reboot permanent by
@@ -340,6 +376,22 @@ Solaris Coredumps
 =================
 Solaris configures the system corefile behaviour via the `coreadm` programm.
 see https://docs.oracle.com/cd/E19455-01/805-7229/6j6q8svhr/ for more details.
+
+Analyzing Coredumps on Linux
+============================
+We offer debug packages containing the debug symbols for your binaries. Please install them if you didn't compile yourselves.
+
+Given you saw in the log of the arangod with the PID `25216` that it died, you should then find 
+`/var/tmp/core-V8 WorkerThread-25216-1490887259` with this information. We may now start GDB and inspect whats going on:
+
+    gdb /usr/sbin/arangod /var/tmp/*25216*
+
+These commands give usefull information about the incident:
+
+    backtrace full
+    thread apply all bt
+
+The first gives the full stacktrace including variables of the last active thread, the later one the stacktraces of all threads.
 
 Windows debugging
 =================
@@ -700,7 +752,7 @@ RESTBODYPARAM
 Attributes:
   - name - the name of the parameter
   - type - the swaggertype of the parameter
-  - required/optional - whether the user can ommit this parameter
+  - required/optional - whether the user can omit this parameter
   - subtype / format (can be empty)
     - subtype: if type is object or array, this references the enclosed variables.
                can be either a swaggertype, or a *RESTRUCT*
@@ -715,7 +767,7 @@ Attributes:
   - name - the name of the parameter
   - structure name - the **type** under which this structure can be reached (should be uniq!)
   - type - the swaggertype of the parameter (or another *RESTSTRUCT*...)
-  - required/optional - whether the user can ommit this parameter
+  - required/optional - whether the user can omit this parameter
   - subtype / format (can be empty)
     - subtype: if type is object or array, this references the enclosed variables.
                can be either a swaggertype, or a *RESTRUCT*

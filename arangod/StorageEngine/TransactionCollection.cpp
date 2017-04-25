@@ -29,3 +29,4 @@ std::string TransactionCollection::collectionName() const {
   TRI_ASSERT(_collection != nullptr);
   return _collection->name();
 }
+

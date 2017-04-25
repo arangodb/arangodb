@@ -89,7 +89,7 @@ std::string const StaticStrings::ContentLength("content-length");
 std::string const StaticStrings::ContentTypeHeader("content-type");
 std::string const StaticStrings::Coordinator("x-arango-coordinator");
 std::string const StaticStrings::CorsMethods(
-    "DELETE, GET, HEAD, PATCH, POST, PUT");
+    "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
 std::string const StaticStrings::Error("error");
 std::string const StaticStrings::ErrorMessage("errorMessage");
 std::string const StaticStrings::ErrorNum("errorNum");
@@ -104,11 +104,13 @@ std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
+std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::StartThread("x-arango-start-thread");
-std::string const StaticStrings::WwwAuthenticate("www-authenticate");    
+std::string const StaticStrings::WwwAuthenticate("www-authenticate");
+std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 
 // mime types
 std::string const StaticStrings::MimeTypeJson(

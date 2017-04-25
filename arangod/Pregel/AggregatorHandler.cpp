@@ -46,15 +46,17 @@ IAggregator* AggregatorHandler::getAggregator(AggregatorID const& name) {
     }
   }
   // aggregator doesn't exists, create it
-  {
+  std::unique_ptr<IAggregator> agg(_algorithm->aggregator(name));
+  if (agg) {
     WRITE_LOCKER(guard, _lock);
-    std::unique_ptr<IAggregator> agg(_algorithm->aggregator(name));
-    if (agg) {
-      _values[name] = agg.get();
+    if (_values.find(name) == _values.end()) {
+      _values.emplace(name, agg.get());
       return agg.release();
     }
+    return _values[name];
+  } else {
+    return nullptr;
   }
-  return nullptr;
 }
 
 void AggregatorHandler::aggregate(AggregatorID const& name,

@@ -1,6 +1,81 @@
 v3.2.alpha3 (2017-03-22)
 ------------------------
 
+* fixed issue #2450
+
+* fixed issue #2448
+
+* fixed issue #2442
+
+* added 'x-content-type-options: nosniff' to avoid MSIE bug
+
+* set default value for `--ssl.protocol` from TLSv1 to TLSv1.2.
+
+* AQL breaking change in cluster:
+  The SHORTEST_PATH statement using edge-collection names instead
+  of a graph name now requires to explicitly name the vertex-collection names 
+  within the AQL query in the cluster. It can be done by adding `WITH <name>`
+  at the beginning of the query.
+  
+  Example:
+  ```
+  FOR v,e IN OUTBOUND SHORTEST_PATH @start TO @target edges [...]
+  ```
+
+  Now has to be:
+
+  ```
+  WITH vertices
+  FOR v,e IN OUTBOUND SHORTEST_PATH @start TO @target edges [...]
+  ```
+
+  This change is due to avoid dead-lock sitations in clustered case.
+  An error stating the above is included.
+
+* add implicit use of geo indexes when using SORT/FILTER in AQL, without
+  the need to use the special-purpose geo AQL functions `NEAR` or `WITHIN`.
+
+  the special purpose `NEAR` AQL function can now be substituted with the
+  following AQL (provided there is a geo index present on the `doc.latitude`
+  and `doc.longitude` attributes):
+
+      FOR doc in geoSort 
+        SORT DISTANCE(doc.latitude, doc.longitude, 0, 0) 
+        LIMIT 5 
+        RETURN doc
+
+  `WITHIN` can be substituted with the following AQL:
+
+      FOR doc in geoFilter 
+        FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000 
+        RETURN doc
+
+  Compared to using the special purpose AQL functions this approach has the
+  advantage that it is more composable, and will also honor any `LIMIT` values
+  used in the AQL query.
+
+* potential fix for shutdown hangs on OSX
+
+* added KB, MB, GB prefix for integer parameters, % for integer parameters
+  with a base value
+
+* added JEMALLOC 4.5.0
+
+* added `--vm.resident-limit` and `--vm.path` for file-backed memory mapping
+  after reaching a configurable maximum RAM size
+
+* try recommended limit for file descriptors in case of unlimited
+  hard limit
+
+* issue #2413: improve logging in case of lock timeout and deadlocks
+
+* added log topic attribute to /_admin/log api
+
+* removed internal build option `USE_DEV_TIMERS`
+
+  Enabling this option activated some proprietary timers for only selected 
+  events in arangod. Instead better use `perf` to gather timings.
+
 * increase default collection lock timeout from 30 to 900 seconds
 
 * added function `db._engine()` for retrieval of storage engine information at
@@ -96,6 +171,14 @@ v3.2.alpha3 (2017-03-22)
 
 * arangoimp: fixed issue #2214
 
+* Foxx: automatically add CORS response headers
+
+* added "OPTIONS" to CORS `access-control-allow-methods` header
+
+* Foxx: Fix arangoUser sometimes not being set correctly
+
+* fixed issue #1974
+
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
@@ -157,11 +240,69 @@ v3.2.alpha1 (2017-02-05)
 
 * generated Foxx services now use swagger tags
 
+v3.1.19 (XXXX-XX-XX)
+--------------------
 
-v3.1.16 (2017-XX-XX)
+
+* Fixed a StackOverflow issue in Traversal and ShortestPath. Occured if many (>1000) input
+  values in a row do not return any result. Fixes issue: #2445
+
+v3.1.19 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #2440
+
+
+
+v3.1.18 (2017-04-18)
+--------------------
+
+* fixed error in continuous synchronization of collections
+
+* fixed spurious hangs on server shutdown
+
+* better error messages during restore collection
+
+* completely overhaul supervision. More detailed tests
+
+* Fixed a dead-lock situation in cluster traversers, it could happen in
+  rare cases if the computation on one DBServer could be completed much earlier
+  than the other server. It could also be restricted to SmartGraphs only.
+
+* (Enterprise only) Fixed a bug in SmartGraph DepthFirstSearch. In some
+  more complicated queries, the maxDepth limit of 1 was not considered strictly
+  enough, causing the traverser to do unlimited depth searches.
+
+* fixed issue #2415
+
+* fixed issue #2422
+
+* fixed issue #1974
+
+
+v3.1.17 (2017-04-04)
+--------------------
+
+* (Enterprise only) fixed a bug where replicationFactor was not correctly
+  forwarded in SmartGraph creation.
+
+* fixed issue #2404
+
+* fixed issue #2397
+
+* ui - fixed smart graph option not appearing
+
+* fixed issue #2389
+
+* fixed issue #2400
+
+
+v3.1.16 (2017-03-27)
 --------------------
 
 * fixed issue #2392
+
+* try to raise file descriptors to at least 8192, warn otherwise
 
 * ui - aql editor improvements + updated ace editor version (memory leak)
 
@@ -170,6 +311,22 @@ v3.1.16 (2017-XX-XX)
 * ui - fixed some event issues
 
 * avoid name resolution when given connection string is a valid ip address
+
+* helps with issue #1842, bug in COLLECT statement in connection with LIMIT.
+
+* fix locking bug in cluster traversals
+
+* increase lock timeout defaults
+
+* increase various cluster timeouts
+
+* limit default target size for revision cache to 1GB, which is better for
+  tight RAM situations (used to be 40% of (totalRAM - 1GB), use
+  --database.revision-cache-target-size <VALUEINBYTES> to get back the
+  old behaviour
+
+* fixed a bug with restarted servers indicating status as "STARTUP"
+  rather that "SERVING" in Nodes UI.
 
 
 v3.1.15 (2017-03-20)
@@ -312,7 +469,7 @@ v3.1.10 (2017-02-02)
       FOR doc IN docs RETURN doc.value ? doc.value : 'not present'
 
 * fixed wrong sorting order in cluster, if an index was used to sort with many
-shards.
+  shards.
 
 * added --replication-factor, --number-of-shards and --wait-for-sync to arangobench
 

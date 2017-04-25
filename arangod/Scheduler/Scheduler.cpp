@@ -34,6 +34,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/JobGuard.h"
@@ -328,6 +329,10 @@ bool Scheduler::hasQueueCapacity() const {
 }
 
 bool Scheduler::queue(std::unique_ptr<Job> job) {
+  auto jobQueue = _jobQueue.get();
+  auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
+  RequestStatistics::SET_QUEUE_START(job->_handler->statistics(), queueSize);
+
   return _jobQueue->queue(std::move(job));
 }
 
@@ -386,6 +391,10 @@ void Scheduler::rebalanceThreads() {
   }
 
   while (_nrRunning < _nrWorking + _nrQueued + _nrMinimum) {
+    if (_stopping) {
+      // do not start any new threads in case we are already shutting down
+      break;
+    }
     startNewThread();
     usleep(5000);
   }

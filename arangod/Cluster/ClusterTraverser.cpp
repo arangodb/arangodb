@@ -25,12 +25,16 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
+#include "Graph/BreadthFirstEnumerator.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Transaction/Helpers.h"
+#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::graph;
 
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
@@ -43,19 +47,19 @@ ClusterTraverser::ClusterTraverser(
   _opts->linkTraverser(this);
 }
 
-void ClusterTraverser::setStartVertex(std::string const& id) {
+void ClusterTraverser::setStartVertex(std::string const& vid) {
   _verticesToFetch.clear();
   _startIdBuilder->clear();
-  _startIdBuilder->add(VPackValue(id));
+  _startIdBuilder->add(VPackValue(vid));
   VPackSlice idSlice = _startIdBuilder->slice();
 
-  auto it = _vertices.find(idSlice);
+  auto it = _vertices.find(StringRef(vid));
   if (it == _vertices.end()) {
-    size_t firstSlash = id.find("/");
+    size_t firstSlash = vid.find("/");
     if (firstSlash == std::string::npos ||
-        id.find("/", firstSlash + 1) != std::string::npos) {
+        vid.find("/", firstSlash + 1) != std::string::npos) {
       // We can stop here. The start vertex is not a valid _id
-      ++_filteredPaths;
+      traverserCache()->increaseFilterCounter();
       _done = true;
       return;
     }
@@ -66,23 +70,24 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
     _done = true;
     return;
   }
+  StringRef persId = traverserCache()->persistString(StringRef(vid));
 
-  _vertexGetter->reset(idSlice);
+  _vertexGetter->reset(persId);
   if (_opts->useBreadthFirst) {
     _enumerator.reset(
-        new arangodb::traverser::BreadthFirstEnumerator(this, idSlice, _opts));
+        new arangodb::graph::BreadthFirstEnumerator(this, idSlice, _opts));
   } else {
     _enumerator.reset(
-        new arangodb::traverser::DepthFirstEnumerator(this, idSlice, _opts));
+        new arangodb::traverser::DepthFirstEnumerator(this, vid, _opts));
   }
   _done = false;
 }
 
 bool ClusterTraverser::getVertex(VPackSlice edge,
-                                 std::vector<VPackSlice>& result) {
+                                 std::vector<StringRef>& result) {
   bool res = _vertexGetter->getVertex(edge, result);
   if (res) {
-    VPackSlice other = result.back();
+    StringRef const& other = result.back();
     if (_vertices.find(other) == _vertices.end()) {
       // Vertex not yet cached. Prepare it.
       _verticesToFetch.emplace(other);
@@ -91,28 +96,29 @@ bool ClusterTraverser::getVertex(VPackSlice edge,
   return res;
 }
 
-bool ClusterTraverser::getSingleVertex(VPackSlice edge, VPackSlice comp,
-                                       uint64_t depth, VPackSlice& result) {
-  bool res = _vertexGetter->getSingleVertex(edge, comp, depth, result);
+bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge, StringRef const sourceVertexId,
+                     uint64_t depth, StringRef& targetVertexId) {
+  bool res = _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
   if (res) {
-    if (_vertices.find(result) == _vertices.end()) {
+    if (_vertices.find(targetVertexId) == _vertices.end()) {
       // Vertex not yet cached. Prepare it.
-      _verticesToFetch.emplace(result);
+      _verticesToFetch.emplace(targetVertexId);
     }
   }
   return res;
 }
 
 void ClusterTraverser::fetchVertices() {
-  _readDocuments += _verticesToFetch.size();
+  auto ch = static_cast<ClusterTraverserCache*>(traverserCache());
+  ch->insertedDocuments() += _verticesToFetch.size();
   transaction::BuilderLeaser lease(_trx);
   fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices,
                            *(lease.get()));
   _verticesToFetch.clear();
 }
 
-aql::AqlValue ClusterTraverser::fetchVertexData(VPackSlice idString) {
-  TRI_ASSERT(idString.isString());
+aql::AqlValue ClusterTraverser::fetchVertexData(StringRef idString) {
+  //TRI_ASSERT(idString.isString());
   auto cached = _vertices.find(idString);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
@@ -125,23 +131,22 @@ aql::AqlValue ClusterTraverser::fetchVertexData(VPackSlice idString) {
   return aql::AqlValue((*cached).second->data());
 }
 
-aql::AqlValue ClusterTraverser::fetchEdgeData(VPackSlice edge) {
-  return aql::AqlValue(edge);
+aql::AqlValue ClusterTraverser::fetchEdgeData(StringRef eid) {
+  return traverserCache()->fetchAqlResult(eid);
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Function to add the real data of a vertex into a velocypack builder
 //////////////////////////////////////////////////////////////////////////////
 
-void ClusterTraverser::addVertexToVelocyPack(VPackSlice id,
+void ClusterTraverser::addVertexToVelocyPack(StringRef vid,
                                              VPackBuilder& result) {
-  TRI_ASSERT(id.isString());
-  auto cached = _vertices.find(id);
+  auto cached = _vertices.find(vid);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
-    _verticesToFetch.emplace(id);
+    _verticesToFetch.emplace(vid);
     fetchVertices();
-    cached = _vertices.find(id);
+    cached = _vertices.find(vid);
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
@@ -152,7 +157,7 @@ void ClusterTraverser::addVertexToVelocyPack(VPackSlice id,
 /// @brief Function to add the real data of an edge into a velocypack builder
 //////////////////////////////////////////////////////////////////////////////
 
-void ClusterTraverser::addEdgeToVelocyPack(arangodb::velocypack::Slice edge,
+void ClusterTraverser::addEdgeToVelocyPack(StringRef eid,
                          arangodb::velocypack::Builder& result) {
-  result.add(edge);
+  traverserCache()->insertIntoResult(eid, result);
 }

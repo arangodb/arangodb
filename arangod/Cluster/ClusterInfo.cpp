@@ -854,7 +854,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
           for (auto const& dbserver : dbs) {
             VPackSlice slice = dbserver.value;
             if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-                    slice, "error", false)) {
+                  slice, "error", false)) {
               tmpHaveError = true;
               tmpMsg += " DBServer:" + dbserver.key.copyString() + ":";
               tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
@@ -1056,6 +1056,14 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::string const name =
       arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
 
+  std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
+  if (json.hasKey("distributeShardsLike")) {
+    auto const otherCidString = json.get("distributeShardsLike").copyString();
+    if (!otherCidString.empty()) {
+      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
+    }
+  }
+
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1144,29 +1152,65 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   VPackBuilder builder;
   builder.add(json);
 
-  AgencyOperation createCollection(
+
+  std::vector<AgencyOperation> opers (
+    { AgencyOperation("Plan/Collections/" + databaseName + "/" + collectionID,
+                      AgencyValueOperationType::SET, builder.slice()),
+      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
+
+  std::vector<AgencyPrecondition> precs;
+  precs.emplace_back(
+    AgencyPrecondition(
       "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, builder.slice()); 
-  AgencyOperation increaseVersion("Plan/Version",
-                                  AgencySimpleOperationType::INCREMENT_OP);
-
-  AgencyPrecondition precondition = AgencyPrecondition(
-      "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyPrecondition::Type::EMPTY, true);
-
-  AgencyWriteTransaction transaction;
-
-  transaction.operations.push_back(createCollection);
-  transaction.operations.push_back(increaseVersion);
-  transaction.preconditions.push_back(precondition);
-
-  AgencyCommResult res = ac.sendTransactionWithFailover(transaction);
+      AgencyPrecondition::Type::EMPTY, true));
+  
+  // Any of the shards locked?
+  if (otherCidShardMap != nullptr) {
+    for (auto const& shard : *otherCidShardMap) {
+      precs.emplace_back(
+        AgencyPrecondition("Supervision/Shards/" + shard.first,
+                           AgencyPrecondition::Type::EMPTY, true));
+    }
+  }
+  
+  AgencyGeneralTransaction transaction;
+  transaction.transactions.push_back(
+    AgencyGeneralTransaction::TransactionType(opers,precs));
+  
+  auto res = ac.sendTransactionWithFailover(transaction);
+  auto result = res.slice();
 
   // Only if not precondition failed
   if (!res.successful()) {
     if (res.httpCode() ==
         (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       AgencyCommResult ag = ac.getValues("/");
+
+      if (result.isArray() && result.length() > 0) {
+        if (result[0].isObject()) {
+          auto tres = result[0];
+          if (tres.hasKey(
+                std::vector<std::string>(
+                  {AgencyCommManager::path(), "Plan", "Collections", databaseName,collectionID}))) {
+            errorMsg += std::string( "Preexisting collection with ID ") + collectionID;
+          } else if (
+            tres.hasKey(
+              std::vector<std::string>(
+                {AgencyCommManager::path(), "Supervision"}))) {
+            for (const auto& s :
+                   VPackObjectIterator(
+                     tres.get(
+                       std::vector<std::string>(
+                         {AgencyCommManager::path(), "Supervision","Shards"})))) {
+              errorMsg += std::string("Shard ") + s.key.copyString();
+              errorMsg += " of prototype collection is blocked by supervision job ";
+              errorMsg += s.value.copyString();
+            }
+          }
+          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+        }
+      }
+
       if (ag.successful()) {
         LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
                                         << ag.slice().toJson();
@@ -1219,6 +1263,21 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         } else {
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
+
+        // Now we ought to remove the collection again in the Plan:
+        AgencyOperation removeCollection(
+            "Plan/Collections/" + databaseName + "/" + collectionID,
+            AgencySimpleOperationType::DELETE_OP);
+        AgencyOperation increaseVersion("Plan/Version",
+                                        AgencySimpleOperationType::INCREMENT_OP);
+        AgencyWriteTransaction transaction;
+
+        transaction.operations.push_back(removeCollection);
+        transaction.operations.push_back(increaseVersion);
+
+        // This is a best effort, in the worst case the collection stays:
+        ac.sendTransactionWithFailover(transaction);
+
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
@@ -1234,12 +1293,35 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
 
-int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
-                                           std::string const& collectionID,
-                                           std::string& errorMsg,
-                                           double timeout) {
+int ClusterInfo::dropCollectionCoordinator(
+  std::string const& databaseName, std::string const& collectionID,
+  std::string& errorMsg, double timeout) {
+  
   AgencyComm ac;
   AgencyCommResult res;
+
+  // First check that no other collection has a distributeShardsLike
+  // entry pointing to us:
+  auto coll = getCollection(databaseName, collectionID);
+  // not used # std::string id = std::to_string(coll->cid());
+  auto colls = getCollections(databaseName);
+  std::vector<std::string> clones;
+  for (std::shared_ptr<LogicalCollection> const& p : colls) {
+    if (p->distributeShardsLike() == coll->name() ||
+        p->distributeShardsLike() == collectionID) {
+      clones.push_back(p->name());
+    }
+  }
+    if (!clones.empty()){
+      errorMsg += "Collection must not be dropped while it is sharding "
+        "prototype for collection[s]";
+      for (auto const& i : clones) {
+        errorMsg +=  std::string(" ") + i;
+      }
+      errorMsg += ".";
+      return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
+
+    }
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
@@ -1942,7 +2024,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   {
     VPackArrayBuilder newIndexesArrayBuilder(&newIndexes);
     // mop: eh....do we need a flag to mark it invalid until cache is renewed?
-    // TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes");
     for (auto const& indexSlice : VPackArrayIterator(indexes)) {
       VPackSlice id = indexSlice.get("id");
       VPackSlice type = indexSlice.get("type");

@@ -4,19 +4,23 @@ const createRouter = require('@arangodb/foxx/router');
 const router = createRouter();
 
 router.get('/header-echo', function (req, res) {
-  Object.keys(req.headers).forEach(function(key) {
-    if (key.match(/^[xX]-/)) {
-      res.headers[key] = req.headers[key];
-    }
-  });
+  res.json(req.headers);
 });
 
-router.get('/header-static', function (req, res) {
-  res.headers['x-foobar'] = 'baz';
+router.all('/header-empty', function (req, res) {
+  // do nothing
 });
 
-router.get('/header-cors', function (req, res) {
-  res.headers['access-control-expose-headers'] = 'x-session-id';
+router.all('/header-automatic', function (req, res) {
+  res.set('x-foobar', 'baz');
+  res.set('x-nofoobar', 'baz');
+});
+
+router.all('/header-manual', function (req, res) {
+  res.set('access-control-allow-credentials', 'false');
+  res.set('access-control-expose-headers', 'x-foobar');
+  res.set('x-foobar', 'baz');
+  res.set('x-nofoobar', 'baz');
 });
 
 module.context.use(router);

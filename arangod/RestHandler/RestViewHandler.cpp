@@ -48,7 +48,12 @@ RestStatus RestViewHandler::execute() {
   }
 
   if (type == rest::RequestType::PUT) {
-    modifyView();
+    modifyView(false);
+    return RestStatus::DONE;
+  }
+
+  if (type == rest::RequestType::PATCH) {
+    modifyView(true);
     return RestStatus::DONE;
   }
 
@@ -130,7 +135,7 @@ void RestViewHandler::createView() {
 /// @brief was docuBlock JSF_post_api_cursor_identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestViewHandler::modifyView() {
+void RestViewHandler::modifyView(bool partialUpdate) {
   if (_request->payload().isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
@@ -140,7 +145,7 @@ void RestViewHandler::modifyView() {
 
   if ((suffixes.size() != 2) || (suffixes[1] != "properties")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "expecting PUT /_api/view/<view-name>/properties");
+                  "expecting [PUT, PATCH] /_api/view/<view-name>/properties");
     return;
   }
 
@@ -162,7 +167,8 @@ void RestViewHandler::modifyView() {
     }
     VPackSlice body = parsedBody.get()->slice();
 
-    auto result = view->updateProperties(body, true);  // TODO: not force sync?
+    auto result = view->updateProperties(body, partialUpdate,
+                                         true);  // TODO: not force sync?
     if (result.ok()) {
       VPackBuilder updated;
       updated.openObject();

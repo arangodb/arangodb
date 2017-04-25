@@ -53,11 +53,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
   TRI_ASSERT(_condition != nullptr);
 }
 
-/// @brief return the transaction for the node
-transaction::Methods* IndexNode::trx() const {
-  return _plan->getAst()->query()->trx();
-};
-
 /// @brief toVelocyPack, for IndexNode
 void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
@@ -74,9 +69,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto& index : _indexes) {
-      nodes.openObject();
       index.toVelocyPack(nodes, false);
-      nodes.close();
     }
   }
   nodes.add(VPackValue("condition"));
@@ -145,12 +138,12 @@ IndexNode::~IndexNode() { delete _condition; }
 double IndexNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double const dependencyCost = _dependencies.at(0)->getCost(incoming);
-  size_t const itemsInCollection = _collection->count();
+  transaction::Methods* trx = _plan->getAst()->query()->trx();
+  size_t const itemsInCollection = _collection->count(trx);
   size_t totalItems = 0;
   double totalCost = 0.0;
 
   auto root = _condition->root();
-  auto transaction = trx();
 
   for (size_t i = 0; i < _indexes.size(); ++i) {
     double estimatedCost = 0.0;
@@ -164,7 +157,7 @@ double IndexNode::estimateCost(size_t& nrItems) const {
     }
 
     if (condition != nullptr &&
-        transaction->supportsFilterCondition(_indexes[i], condition,
+        trx->supportsFilterCondition(_indexes[i], condition,
                                      _outVariable, itemsInCollection,
                                      estimatedItems, estimatedCost)) {
       totalItems += estimatedItems;

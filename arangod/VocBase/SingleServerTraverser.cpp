@@ -23,214 +23,46 @@
 
 #include "SingleServerTraverser.h"
 #include "Basics/StringRef.h"
+
+#include "Aql/AqlValue.h"
+#include "Graph/BreadthFirstEnumerator.h"
+#include "Graph/NeighborsEnumerator.h"
 #include "Transaction/Methods.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/TraverserCache.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get a document by it's ID. Also lazy locks the collection.
-///        If DOCUMENT_NOT_FOUND this function will return normally
-///        with a OperationResult.failed() == true.
-///        On all other cases this function throws.
-////////////////////////////////////////////////////////////////////////////////
-
-static int FetchDocumentById(transaction::Methods* trx,
-                             StringRef const& id,
-                             ManagedDocumentResult& result) {
-  size_t pos = id.find('/');
-  if (pos == std::string::npos) {
-    TRI_ASSERT(false);
-    return TRI_ERROR_INTERNAL;
-  }
-
-  int res = trx->documentFastPathLocal(id.substr(0, pos).toString(),
-                                       id.substr(pos + 1).toString(), result);
-
-  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  return res;
-}
-
-SingleServerEdgeCursor::SingleServerEdgeCursor(ManagedDocumentResult* mmdr,
-    transaction::Methods* trx,
-    size_t nrCursors, std::vector<size_t> const* mapping)
-    : _trx(trx),
-      _mmdr(mmdr), 
-      _cursors(),
-      _currentCursor(0),
-      _currentSubCursor(0),
-      _cachePos(0),
-      _internalCursorMapping(mapping) {
-  TRI_ASSERT(_mmdr != nullptr);
-  _cursors.reserve(nrCursors);
-  _cache.reserve(1000);
-};
-
-bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
-                                  size_t& cursorId) {
-  if (_currentCursor == _cursors.size()) {
-    return false;
-  }
-  if (_cachePos < _cache.size()) {
-    LogicalCollection* collection = _cursors[_currentCursor][_currentSubCursor]->collection();
-    if (collection->readDocument(_trx, _cache[_cachePos++], *_mmdr)) {
-      result.emplace_back(_mmdr->vpack());
-    }
-    if (_internalCursorMapping != nullptr) {
-      TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-      cursorId = _internalCursorMapping->at(_currentCursor);
-    } else {
-      cursorId = _currentCursor;
-    }
-    return true;
-  }
-  // We need to refill the cache.
-  _cachePos = 0;
-  auto cursorSet = _cursors[_currentCursor];
-  while (cursorSet.empty()) {
-    // Fast Forward to the next non-empty cursor set
-    _currentCursor++;
-    _currentSubCursor = 0;
-    if (_currentCursor == _cursors.size()) {
-      return false;
-    }
-    cursorSet = _cursors[_currentCursor];
-  }
-  auto cursor = cursorSet[_currentSubCursor];
-  // NOTE: We cannot clear the cache,
-  // because the cursor expect's it to be filled.
-  do {
-    if (!cursor->hasMore()) {
-      // This one is exhausted, next
-      ++_currentSubCursor;
-      while (_currentSubCursor == cursorSet.size()) {
-        ++_currentCursor;
-        _currentSubCursor = 0;
-        if (_currentCursor == _cursors.size()) {
-          // We are done, all cursors exhausted.
-          return false;
-        }
-        cursorSet = _cursors[_currentCursor];
-      }
-      cursor = cursorSet[_currentSubCursor];
-      // If we switch the cursor. We have to clear the cache.
-      _cache.clear();
-    } else {
-      _cache.clear();
-      auto cb = [&] (DocumentIdentifierToken const& token) {
-        _cache.emplace_back(token);
-      };
-      bool tmp = cursor->getMore(cb, 1000);
-      TRI_ASSERT(tmp == cursor->hasMore());
-    }
-  } while (_cache.empty());
-
-  TRI_ASSERT(_cachePos < _cache.size());
-  LogicalCollection* collection = cursor->collection();
-  if (collection->readDocument(_trx, _cache[_cachePos++], *_mmdr)) {
-    result.emplace_back(_mmdr->vpack());
-  }
-  if (_internalCursorMapping != nullptr) {
-    TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-    cursorId = _internalCursorMapping->at(_currentCursor);
-  } else {
-    cursorId = _currentCursor;
-  }
-  return true;
-}
-
-bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result,
-                                     size_t& cursorId) {
-  if (_currentCursor >= _cursors.size()) {
-    return false;
-  }
-  
-  if (_internalCursorMapping != nullptr) {
-    TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-    cursorId = _internalCursorMapping->at(_currentCursor);
-  } else {
-    cursorId = _currentCursor;
-  }
-  
-  auto& cursorSet = _cursors[_currentCursor];
-  for (auto& cursor : cursorSet) {
-    LogicalCollection* collection = cursor->collection(); 
-    auto cb = [&] (DocumentIdentifierToken const& token) {
-      if (collection->readDocument(_trx, token, *_mmdr)) {
-        result.emplace(_mmdr->vpack());
-      }
-    };
-    while (cursor->getMore(cb, 1000)) {
-    }
-  }
-  _currentCursor++;
-  return true;
-}
+using namespace arangodb::graph;
 
 SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts,
                                              transaction::Methods* trx,
                                              ManagedDocumentResult* mmdr)
-    : Traverser(opts, trx, mmdr) {}
+  : Traverser(opts, trx, mmdr) {}
 
 SingleServerTraverser::~SingleServerTraverser() {}
 
-aql::AqlValue SingleServerTraverser::fetchVertexData(VPackSlice id) {
-  TRI_ASSERT(id.isString());
-  auto it = _vertices.find(id);
-
-  if (it == _vertices.end()) {
-    StringRef ref(id);
-    int res = FetchDocumentById(_trx, ref, *_mmdr);
-    ++_readDocuments;
-    if (res != TRI_ERROR_NO_ERROR) {
-      return aql::AqlValue(basics::VelocyPackHelper::NullValue());
-    }
-
-    uint8_t const* p = _mmdr->vpack();
-    _vertices.emplace(id, p);
-    return aql::AqlValue(p, aql::AqlValueFromManagedDocument());
-  }
-
-  return aql::AqlValue((*it).second, aql::AqlValueFromManagedDocument());
+aql::AqlValue SingleServerTraverser::fetchVertexData(StringRef vid) {
+  return _opts->cache()->fetchAqlResult(vid);
 }
 
-aql::AqlValue SingleServerTraverser::fetchEdgeData(VPackSlice edge) {
-  return aql::AqlValue(edge);
+aql::AqlValue SingleServerTraverser::fetchEdgeData(StringRef edge) {  
+  return _opts->cache()->fetchAqlResult(edge);
 }
 
-void SingleServerTraverser::addVertexToVelocyPack(VPackSlice id,
+void SingleServerTraverser::addVertexToVelocyPack(StringRef vid,
                                                   VPackBuilder& result) {
-  TRI_ASSERT(id.isString());
-  auto it = _vertices.find(id);
-
-  if (it == _vertices.end()) {
-    StringRef ref(id);
-    int res = FetchDocumentById(_trx, ref, *_mmdr);
-    ++_readDocuments;
-    if (res != TRI_ERROR_NO_ERROR) {
-      result.add(basics::VelocyPackHelper::NullValue());
-    } else {
-      uint8_t const* p = _mmdr->vpack();
-      _vertices.emplace(id, p);
-      result.addExternal(p);
-    }
-  } else {
-    result.addExternal((*it).second);
-  }
+  _opts->cache()->insertIntoResult(vid, result);
 }
 
-void SingleServerTraverser::addEdgeToVelocyPack(VPackSlice edge,
+void SingleServerTraverser::addEdgeToVelocyPack(StringRef edge,
     VPackBuilder& result) {
-  result.addExternal(edge.begin());
+  _opts->cache()->insertIntoResult(edge, result);
 }
 
-void SingleServerTraverser::setStartVertex(std::string const& v) {
+void SingleServerTraverser::setStartVertex(std::string const& vid) {
   _startIdBuilder->clear();
-  _startIdBuilder->add(VPackValue(v));
+  _startIdBuilder->add(VPackValue(vid));
   VPackSlice idSlice = _startIdBuilder->slice();
 
   if (!vertexMatchesConditions(idSlice, 0)) {
@@ -239,7 +71,8 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
     return;
   }
 
-  _vertexGetter->reset(idSlice);
+  StringRef persId = _opts->cache()->persistString(StringRef(vid));
+  _vertexGetter->reset(persId);
 
   if (_opts->useBreadthFirst) {
     if (_canUseOptimizedNeighbors) {
@@ -248,17 +81,17 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
       _enumerator.reset(new BreadthFirstEnumerator(this, idSlice, _opts));
     }
   } else {
-    _enumerator.reset(new DepthFirstEnumerator(this, idSlice, _opts));
+    _enumerator.reset(new DepthFirstEnumerator(this, vid, _opts));
   }
   _done = false;
 }
 
 bool SingleServerTraverser::getVertex(VPackSlice edge,
-                                      std::vector<VPackSlice>& result) {
+                                      std::vector<StringRef>& result) {
   return _vertexGetter->getVertex(edge, result);
 }
 
-bool SingleServerTraverser::getSingleVertex(VPackSlice edge, VPackSlice vertex,
-                                            uint64_t depth, VPackSlice& result) {
-  return _vertexGetter->getSingleVertex(edge, vertex, depth, result);
+bool SingleServerTraverser::getSingleVertex(VPackSlice edge, StringRef const sourceVertexId,
+                                            uint64_t depth, StringRef& targetVertexId) {
+  return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
 }

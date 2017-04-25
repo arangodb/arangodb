@@ -32,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
-static float EPS = 0.00001;
+static float EPS = 0.00001f;
 static std::string const kConvergence = "convergence";
 static std::string const kStep = "step";
 static std::string const kRank = "rank";

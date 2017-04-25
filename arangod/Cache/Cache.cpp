@@ -163,6 +163,14 @@ bool Cache::isResizing() {
   return resizing;
 }
 
+bool Cache::isShutdown() {
+  _state.lock();
+  bool shutdown = !isOperational();
+  _state.unlock();
+
+  return shutdown;
+}
+
 void Cache::destroy(std::shared_ptr<Cache> cache) {
   if (cache.get() != nullptr) {
     cache->shutdown();
@@ -313,19 +321,18 @@ void Cache::shutdown() {
 }
 
 bool Cache::canResize() {
-  bool allowed = true;
-  _state.lock();
-  if (isOperational()) {
-    _metadata.lock();
-    if (_metadata.isSet(State::Flag::resizing) ||
-        _metadata.isSet(State::Flag::migrating)) {
-      allowed = false;
+  bool allowed = _state.lock(Cache::triesSlow);
+  if (allowed) {
+    if (isOperational()) {
+      _metadata.lock();
+      if (_metadata.isSet(State::Flag::resizing) ||
+          _metadata.isSet(State::Flag::migrating)) {
+        allowed = false;
+      }
+      _metadata.unlock();
     }
-    _metadata.unlock();
-  } else {
-    allowed = false;
+    _state.unlock();
   }
-  _state.unlock();
 
   return allowed;
 }
@@ -333,21 +340,23 @@ bool Cache::canResize() {
 bool Cache::canMigrate() {
   bool allowed = (_manager->ioService() != nullptr);
   if (allowed) {
-    _state.lock();
-    if (isOperational()) {
-      if (_state.isSet(State::Flag::migrating)) {
-        allowed = false;
-      } else {
-        _metadata.lock();
-        if (_metadata.isSet(State::Flag::migrating)) {
+    allowed = _state.lock(Cache::triesSlow);
+    if (allowed) {
+      if (isOperational()) {
+        if (_state.isSet(State::Flag::migrating)) {
           allowed = false;
+        } else {
+          _metadata.lock();
+          if (_metadata.isSet(State::Flag::migrating)) {
+            allowed = false;
+          }
+          _metadata.unlock();
         }
-        _metadata.unlock();
+      } else {
+        allowed = false;
       }
-    } else {
-      allowed = false;
+      _state.unlock();
     }
-    _state.unlock();
   }
 
   return allowed;

@@ -25,34 +25,88 @@
 #define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
+namespace aql {
+struct AqlValue;
+}
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() : _vpack(nullptr), _lastRevisionId(0) {}
-  ~ManagedDocumentResult() = default;
+  ManagedDocumentResult() :
+    _length(0),
+    _lastRevisionId(0),
+    _vpack(nullptr),
+    _managed(false),
+    _useString(false) {}
+  ~ManagedDocumentResult() { reset(); }
+  ManagedDocumentResult(ManagedDocumentResult const& other) = delete;
+  ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = delete;
 
-  inline uint8_t const* vpack() const { 
-    TRI_ASSERT(_vpack != nullptr); 
-    return _vpack; 
+  ManagedDocumentResult& operator=(ManagedDocumentResult&& other) {
+    if (other._useString){
+      setManaged(std::move(other._string), other._lastRevisionId);
+      other._managed = false;
+      other.reset();
+    } else if (other._managed){
+      reset();
+      _vpack = other._vpack;
+      _length = other._length;
+      _lastRevisionId = other._lastRevisionId;
+      _managed = true;
+      other._managed = false;
+      other.reset();
+    } else {
+      setUnmanaged(other._vpack, other._lastRevisionId);
+    }
+    return *this;
   }
-  
-  inline void addExisting(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
-    _vpack = vpack;
-    _lastRevisionId = revisionId;
-  }
+
+  ManagedDocumentResult(ManagedDocumentResult&& other) = delete;
+
+  void clone(ManagedDocumentResult& cloned) const;
+
+  //add unmanaged vpack 
+  void setUnmanaged(uint8_t const* vpack, TRI_voc_rid_t revisionId);
+
+  void setManaged(uint8_t const* vpack, TRI_voc_rid_t revisionId);
+
+  void setManaged(std::string&& str, TRI_voc_rid_t revisionId);
 
   inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
 
-  void clear() {
-    _vpack = nullptr;
-    _lastRevisionId = 0;
+  void reset() noexcept;
+  
+  inline uint8_t const* vpack() const {
+    TRI_ASSERT(_vpack != nullptr);
+    return _vpack;
   }
+  
+  inline bool empty() const { return _vpack == nullptr; }
+
+  inline bool canUseInExternal() const {
+    return (!_managed && !_useString);
+  }
+  
+  void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
+
+  // @brief Creates an AQLValue with the content of this ManagedDocumentResult
+  // The caller is responsible to properly destroy() the
+  // returned value
+  aql::AqlValue createAqlValue() const;
 
  private:
-  uint8_t const* _vpack;
+  uint64_t _length;
   TRI_voc_rid_t _lastRevisionId;
+  uint8_t* _vpack;
+  std::string _string;
+  bool _managed;
+  bool _useString;
 };
 
 }

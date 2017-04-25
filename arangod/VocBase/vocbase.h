@@ -38,6 +38,8 @@
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 
+#include <functional>
+
 class TRI_replication_applier_t;
 
 namespace arangodb {
@@ -257,6 +259,8 @@ struct TRI_vocbase_t {
 
   /// @brief returns all known collections
   std::vector<arangodb::LogicalCollection*> collections(bool includeDeleted);
+  
+  void processCollections(std::function<void(arangodb::LogicalCollection*)> const& cb, bool includeDeleted);
 
   /// @brief returns names of all known collections
   std::vector<std::string> collectionNames();
@@ -289,16 +293,18 @@ struct TRI_vocbase_t {
                        std::string const& newName, bool doOverride);
 
   /// @brief creates a new collection from parameter set
-  /// collection id (cid) is normally passed with a value of 0
+  /// collection id ("cid") is normally passed with a value of 0
   /// this means that the system will assign a new collection id automatically
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
   arangodb::LogicalCollection* createCollection(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t cid);
+      arangodb::velocypack::Slice parameters);
 
-  /// @brief drops a collection
+  /// @brief drops a collection, no timeout if timeout is < 0.0, otherwise
+  /// timeout is in seconds. Essentially, the timeout counts to acquire the
+  /// write lock for using the collection.
   int dropCollection(arangodb::LogicalCollection* collection,
-                     bool allowDropSystem);
+                     bool allowDropSystem, double timeout);
 
   /// @brief callback for collection dropping
   static bool DropCollectionCallback(arangodb::LogicalCollection* collection);
@@ -358,11 +364,11 @@ struct TRI_vocbase_t {
 
   /// @brief creates a new collection, worker function
   arangodb::LogicalCollection* createCollectionWorker(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& cid);
+      arangodb::velocypack::Slice parameters);
 
   /// @brief drops a collection, worker function
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
-                           DropState& state);
+                           DropState& state, double timeout);
 
   /// @brief creates a new view, worker function
   std::shared_ptr<arangodb::LogicalView> createViewWorker(

@@ -100,9 +100,9 @@ Agent::~Agent() {
       FATAL_ERROR_EXIT();
     }
   }
-
+    
   shutdown();
-
+  
 }
 
 /// State machine
@@ -167,7 +167,7 @@ void Agent::startConstituent() {
 }
 
 // Waits here for confirmation of log's commits up to index. Timeout in seconds.
-Agent::raft_commit_t Agent::waitFor(index_t index, double timeout) {
+AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 
   if (size() == 1) {  // single host agency
     return Agent::raft_commit_t::OK;
@@ -654,13 +654,14 @@ trans_ret_t Agent::transact(query_t const& queries) {
     
     for (const auto& query : VPackArrayIterator(qs)) {
       if (query[0].isObject()) {
-        if(_spearhead.apply(query)) {
+        check_ret_t res = _spearhead.apply(query); 
+        if(res.successful()) {
           maxind = (query.length() == 3 && query[2].isString()) ?
             _state.log(query[0], term(), query[2].copyString()) :
             _state.log(query[0], term());
           ret->add(VPackValue(maxind));
         } else {
-          ret->add(VPackValue(0));
+          _spearhead.read(res.failed->slice(), *ret);
           ++failed;
         }
       } else if (query[0].isString()) {
@@ -669,7 +670,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     }
     
     // (either no writes or all preconditions failed)
-    if (maxind == 0) {
+/*    if (maxind == 0) {
       ret->clear();
       ret->openArray();      
       for (const auto& query : VPackArrayIterator(qs)) {
@@ -679,7 +680,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
           _readDB.read(query, *ret);
         }
       }
-    }
+      }*/
     
   }
   ret->close();
@@ -715,7 +716,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
     // Read and writes
     for (const auto& query : VPackArrayIterator(queries->slice())) {
       if (query[0].isObject()) {
-        _transient.apply(query);
+        ret->add(VPackValue(_transient.apply(query).successful()));
       } else if (query[0].isString()) {
         _transient.read(query, *ret);
       }
@@ -820,6 +821,7 @@ read_ret_t Agent::read(query_t const& query) {
   std::vector<bool> success = _readDB.read(query, result);
 
   return read_ret_t(true, _constituent.leaderID(), success, result);
+  
 }
 
 
@@ -900,19 +902,17 @@ void Agent::persistConfiguration(term_t t) {
 
   // Agency configuration
   auto agency = std::make_shared<Builder>();
-  agency->openArray();
-  agency->openArray();
-  agency->openObject();
-  agency->add(".agency", VPackValue(VPackValueType::Object));
-  agency->add("term", VPackValue(t));
-  agency->add("id", VPackValue(id()));
-  agency->add("active", _config.activeToBuilder()->slice());
-  agency->add("pool", _config.poolToBuilder()->slice());
-  agency->add("size", VPackValue(size()));
-  agency->close();
-  agency->close();
-  agency->close();
-  agency->close();
+  { VPackArrayBuilder trxs(agency.get());
+    { VPackArrayBuilder trx(agency.get());
+      { VPackObjectBuilder oper(agency.get());
+        agency->add(VPackValue(".agency"));
+        { VPackObjectBuilder a(agency.get());
+          agency->add("term", VPackValue(t));
+          agency->add("id", VPackValue(id()));
+          agency->add("active", _config.activeToBuilder()->slice());
+          agency->add("pool", _config.poolToBuilder()->slice());
+          agency->add("size", VPackValue(size()));
+        }}}}
   
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
@@ -1066,28 +1066,23 @@ void Agent::notifyInactive() const {
   std::string path = "/_api/agency_priv/inform";
 
   Builder out;
-  out.openObject();
-  out.add("term", VPackValue(term()));
-  out.add("id", VPackValue(id()));
-  out.add("active", _config.activeToBuilder()->slice());
-  out.add("pool", _config.poolToBuilder()->slice());
-  out.add("min ping", VPackValue(_config.minPing()));
-  out.add("max ping", VPackValue(_config.maxPing()));
-  out.close();
+  { VPackObjectBuilder o(&out);
+    out.add("term", VPackValue(term()));
+    out.add("id", VPackValue(id()));
+    out.add("active", _config.activeToBuilder()->slice());
+    out.add("pool", _config.poolToBuilder()->slice());
+    out.add("min ping", VPackValue(_config.minPing()));
+    out.add("max ping", VPackValue(_config.maxPing())); }
 
   for (auto const& p : pool) {
-
     if (p.first != id()) {
-
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
-
       cc->asyncRequest(
         "1", 1, p.second, arangodb::rest::RequestType::POST,
         path, std::make_shared<std::string>(out.toJson()), headerFields,
         nullptr, 1.0, true);
     }
-
   }
 
 }
@@ -1185,7 +1180,7 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     << _lastAppliedIndex << " to " << _leaderCommitIndex;
 
   auto logs = _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1);
-  
+
   _spearhead.apply(logs, _leaderCommitIndex, _constituent.term());
   _readDB.apply(logs, _leaderCommitIndex, _constituent.term());
   
@@ -1193,7 +1188,11 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     << "ReadDB: " << _readDB;
   
   _lastAppliedIndex = _leaderCommitIndex;
+  //_lastCompactionIndex = _leaderCommitIndex;
   
+  LOG_TOPIC(INFO, Logger::AGENCY)
+    << id() << " rebuilt key-value stores - serving.";
+
   return _lastAppliedIndex;
 
 }
@@ -1291,6 +1290,8 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         20002, "Gossip message must contain string parameter 'id'");
   }
 
+  
+  
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20003, "Gossip message must contain string parameter 'endpoint'");

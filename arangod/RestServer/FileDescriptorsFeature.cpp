@@ -23,6 +23,7 @@
 
 #include "FileDescriptorsFeature.h"
 
+#include "Basics/OpenFilesTracker.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -33,9 +34,11 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+uint64_t const FileDescriptorsFeature::RECOMMENDED = 8192;
+
 FileDescriptorsFeature::FileDescriptorsFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "FileDescriptors"), _descriptorsMinimum(1024) {
+    : ApplicationFeature(server, "FileDescriptors"), _descriptorsMinimum(0) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -56,9 +59,17 @@ void FileDescriptorsFeature::prepare() { adjustFileDescriptors(); }
 
 #ifdef TRI_HAVE_GETRLIMIT
 template <typename T>
-static std::string StringifyLimitValue(T value) {
+static bool isUnlimited(T value) {
   auto max = std::numeric_limits<decltype(value)>::max();
   if (value == max || value == max / 2) {
+    return true;
+  }
+  return false;
+}
+
+template <typename T>
+static std::string StringifyLimitValue(T value) {
+  if (isUnlimited(value)) {
     return "unlimited";
   }
   return std::to_string(value);
@@ -76,76 +87,89 @@ void FileDescriptorsFeature::start() {
         << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
         << StringifyLimitValue(rlim.rlim_cur);
   }
+
+  if (rlim.rlim_cur < RECOMMENDED) {
+    LOG_TOPIC(WARN, arangodb::Logger::SYSCALL)
+        << "file-descriptors limit is too low, currently "
+        << StringifyLimitValue(rlim.rlim_cur) << ", please raise to at least "
+        << RECOMMENDED << " (e.g. ulimit -n " << RECOMMENDED << ")";
+  }
+
+  if (rlim.rlim_cur >= 1024) {
+    // set file descriptor warning threshold value to 95% of max available descriptors
+    OpenFilesTracker::instance()->warnThreshold(uint64_t(rlim.rlim_cur * 0.95));
+  }
 #endif
 }
 
 void FileDescriptorsFeature::adjustFileDescriptors() {
 #ifdef TRI_HAVE_GETRLIMIT
-  if (0 < _descriptorsMinimum) {
-    struct rlimit rlim;
-    int res = getrlimit(RLIMIT_NOFILE, &rlim);
+  struct rlimit rlim;
+  int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
-    if (res != 0) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "cannot get the file descriptor limit: " << strerror(errno);
+  if (res != 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::SYSCALL)
+        << "cannot get the file descriptor limit: " << strerror(errno);
+    FATAL_ERROR_EXIT();
+  }
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::SYSCALL)
+      << "file-descriptors (nofiles) hard limit is "
+      << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
+      << StringifyLimitValue(rlim.rlim_cur);
+
+  uint64_t recommended = RECOMMENDED;
+  uint64_t minimum = _descriptorsMinimum;
+
+  if (minimum < recommended && 0 < minimum) {
+    recommended = minimum;
+  }
+
+  if (rlim.rlim_max < recommended) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::SYSCALL)
+        << "hard limit " << rlim.rlim_max << " is too small, trying to raise";
+
+    rlim.rlim_max = recommended;
+    rlim.rlim_cur = recommended;
+
+    res = setrlimit(RLIMIT_NOFILE, &rlim);
+
+    if (0 < minimum && minimum < recommended && res < 0) {
+      rlim.rlim_max = minimum;
+      rlim.rlim_cur = minimum;
+
+      res = setrlimit(RLIMIT_NOFILE, &rlim);
+    }
+
+    if (0 < minimum && res < 0) {
+      LOG_TOPIC(FATAL, arangodb::Logger::SYSCALL)
+          << "cannot raise the file descriptor limit to " << minimum << ": "
+          << strerror(errno);
       FATAL_ERROR_EXIT();
     }
+  } else if (rlim.rlim_cur < recommended) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::SYSCALL)
+        << "soft limit " << rlim.rlim_cur << " is too small, trying to raise";
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-        << "file-descriptors (nofiles) hard limit is "
-        << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
-        << StringifyLimitValue(rlim.rlim_cur);
-
-    bool changed = false;
-
-    if (rlim.rlim_max < _descriptorsMinimum) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-          << "hard limit " << rlim.rlim_max << " is too small, trying to raise";
-
-      rlim.rlim_max = _descriptorsMinimum;
-      rlim.rlim_cur = _descriptorsMinimum;
-
-      res = setrlimit(RLIMIT_NOFILE, &rlim);
-
-      if (res < 0) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-            << "cannot raise the file descriptor limit to "
-            << _descriptorsMinimum << ": " << strerror(errno);
-        FATAL_ERROR_EXIT();
-      }
-
-      changed = true;
-    } else if (rlim.rlim_cur < _descriptorsMinimum) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-          << "soft limit " << rlim.rlim_cur << " is too small, trying to raise";
-
-      rlim.rlim_cur = _descriptorsMinimum;
-
-      res = setrlimit(RLIMIT_NOFILE, &rlim);
-
-      if (res < 0) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-            << "cannot raise the file descriptor limit to "
-            << _descriptorsMinimum << ": " << strerror(errno);
-        FATAL_ERROR_EXIT();
-      }
-
-      changed = true;
+    if (!isUnlimited(rlim.rlim_max) && recommended < rlim.rlim_max) {
+      recommended = rlim.rlim_max;
     }
 
-    if (changed) {
-      res = getrlimit(RLIMIT_NOFILE, &rlim);
+    rlim.rlim_cur = recommended;
 
-      if (res != 0) {
-        LOG_TOPIC(FATAL, arangodb::Logger::SYSCALL)
-            << "cannot get the file descriptor limit: " << strerror(errno);
-        FATAL_ERROR_EXIT();
-      }
+    res = setrlimit(RLIMIT_NOFILE, &rlim);
 
-      LOG_TOPIC(INFO, arangodb::Logger::SYSCALL)
-          << "file-descriptors (nofiles) new hard limit is "
-          << StringifyLimitValue(rlim.rlim_max) << ", new soft limit is "
-          << StringifyLimitValue(rlim.rlim_cur);
+    if (0 < minimum && minimum < recommended && res < 0) {
+      rlim.rlim_cur = minimum;
+
+      res = setrlimit(RLIMIT_NOFILE, &rlim);
+    }
+
+    if (0 < minimum && res < 0) {
+      LOG_TOPIC(FATAL, arangodb::Logger::SYSCALL)
+          << "cannot raise the file descriptor limit to " << minimum << ": "
+          << strerror(errno);
+      FATAL_ERROR_EXIT();
     }
   }
 #endif

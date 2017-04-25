@@ -25,6 +25,7 @@ ERROR_CANNOT_CREATE_DIRECTORY,19,"cannot create directory","Will be raised when 
 ERROR_CANNOT_CREATE_TEMP_FILE,20,"cannot create temporary file","Will be raised when an attempt to create a temporary file fails."
 ERROR_REQUEST_CANCELED,21,"canceled request","Will be raised when a request is canceled by the user."
 ERROR_DEBUG,22,"intentional debug error","Will be raised intentionally during debugging."
+ERROR_NOT_YET_IMPLEMENTED,23,"not yet implemented","Will be raised when hitting an unimplemented feature that will be implemented soon."
 ERROR_IP_ADDRESS_INVALID,25,"IP address is invalid","Will be raised when the structure of an IP address is invalid."
 ERROR_FILE_EXISTS,27,"file exists","Will be raised when a file already exists."
 ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is locked."
@@ -135,6 +136,10 @@ ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised w
 
 ERROR_ARANGO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafile reaches its limit."
 ERROR_ARANGO_EMPTY_DATADIR,1301,"server database directory is empty","Will be raised when encountering an empty server database directory."
+ERROR_ARANGO_TRY_AGAIN,1302,"operation should be tried again","Will be raised when an operation should be retried."
+ERROR_ARANGO_BUSY,1303,"engine is busy","Will be raised when storage engine is busy."
+ERROR_ARANGO_MERGE_IN_PROGRESS,1304,"merge in progress","Will be raised when storage engine has a datafile merge in progress and cannot complete the operation."
+ERROR_ARANGO_IO_ERROR,1305,"storage engine I/O error","Will be raised when storage engine encounters an I/O error."
 
 ################################################################################
 ## ArangoDB replication errors
@@ -193,6 +198,10 @@ ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID,1480,"Invalid agency structure","The stru
 ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,1481,"collection is out of sync","Will be raised if a collection needed during query execution is out of sync. This currently can only happen when using satellite collections"
 ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,1482,"could not create index in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new index in the Plan hierarchy in the agency."
 ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,1483,"could not drop index in plan","Will be raised when a coordinator in a cluster cannot remove an index from the Plan hierarchy in the agency."
+ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,1484,"chain of distributeShardsLike references","Will be raised if one tries to create a collection with a distributeShardsLike attribute which points to another collection that also has one."
+ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE,1485,"must not drop collection while another has a distributeShardsLike attribute pointing to it","Will be raised if one tries to drop a collection to which another collection points with its distributeShardsLike attribute."
+ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,1486,"must not have a distributeShardsLike attribute pointing to an unknown collection","Will be raised if one tries to create a collection which points to an unknown collection in its distributeShardsLike attribute."
+
 
 ################################################################################
 ## ArangoDB query errors
@@ -397,6 +406,12 @@ ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string pa
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE,20014,"Inform message must contain array 'active'","The inform message in the agency must contain an array 'active'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL,20015,"Inform message must contain object 'pool'","The inform message in the agency must contain an object 'pool'."
 ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING,20020,"Inquiry failed","Inquiry by clientId failed"
+
+################################################################################
+## Supervision errors
+################################################################################
+
+ERROR_SUPERVISION_GENERAL_FAILURE,20501,"general supervision failure","General supervision failure."
 
 ################################################################################
 ## Dispatcher errors

@@ -323,7 +323,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
       auto physical = static_cast<MMFilesCollection*>(context._collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
       bool const useDeadlockDetector = false;
-      int res = physical->beginReadTimed(useDeadlockDetector, 86400.0);
+      int res = physical->lockRead(useDeadlockDetector, 86400.0);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
@@ -334,7 +334,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         } catch (...) {
           ok = false;
         }
-        physical->endRead(useDeadlockDetector);
+        physical->unlockRead(useDeadlockDetector);
       }
     }
 
@@ -478,10 +478,10 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   context->_compactor = compactor;
   context->_trx = &trx;
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "error during compaction: " << TRI_errno_string(res);
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "error during compaction: " << res.errorMessage();
     return;
   }
 
@@ -989,13 +989,13 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
   trx.addHint(transaction::Hints::Hint::TRY_LOCK); 
   trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
 
-  int res = trx.begin();
+  Result res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!res.ok()) {
     return 16384; // assume some positive value 
   }
    
-  return collection->numberDocuments();
+  return collection->numberDocuments(&trx);
 }
 
 /// @brief write a copy of the marker into the datafile

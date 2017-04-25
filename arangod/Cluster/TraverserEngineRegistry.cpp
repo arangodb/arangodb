@@ -23,6 +23,7 @@
 
 #include "TraverserEngineRegistry.h"
 
+#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -35,17 +36,34 @@
 using namespace arangodb::traverser;
 
 #ifndef USE_ENTERPRISE
+std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(TRI_vocbase_t* vocbase,
+                                                    VPackSlice info) {
+  VPackSlice type = info.get(std::vector<std::string>({"options", "type"}));
+  if (!type.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The body requires an 'options.type' attribute.");
+  }
+  if (type.isEqualString("traversal")) {
+    return std::make_unique<TraverserEngine>(vocbase, info);
+  } else if (type.isEqualString("shortestPath")) {
+    return std::make_unique<ShortestPathEngine>(vocbase, info);
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "The 'options.type' attribute either has to be traversal or shortestPath");
+}
+#endif
+
 TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
                                                 VPackSlice info)
     : _isInUse(false),
       _toBeDeleted(false),
-      _engine(new TraverserEngine(vocbase, info)),
+      _engine(BaseEngine::BuildEngine(vocbase, info)),
       _timeToLive(0),
       _expires(0) {}
 
-TraverserEngineRegistry::EngineInfo::~EngineInfo() {
-}
-#endif
+TraverserEngineRegistry::EngineInfo::~EngineInfo() {}
 
 TraverserEngineRegistry::~TraverserEngineRegistry() {
   WRITE_LOCKER(writeLocker, _lock);
@@ -77,21 +95,30 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id) {
 }
 
 /// @brief Get the engine with the given id
-BaseTraverserEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
-  WRITE_LOCKER(writeLocker, _lock);
-  auto e = _engines.find(id);
-  if (e == _engines.end()) {
-    // Nothing to hand out
-    // TODO: Should we throw an error instead?
-    return nullptr;
+BaseEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
+  while (true) {
+    {
+      WRITE_LOCKER(writeLocker, _lock);
+      auto e = _engines.find(id);
+      if (e == _engines.end()) {
+        // Nothing to hand out
+        // TODO: Should we throw an error instead?
+        return nullptr;
+      }
+      if (!e->second->_isInUse) {
+        // We capture the engine
+        e->second->_isInUse = true;
+        return e->second->_engine.get();
+      }
+      // Free write lock
+    }
+
+    CONDITION_LOCKER(condLocker, _cv);
+    condLocker.wait(1000);
   }
-  if (e->second->_isInUse) {
-    // Someone is still working with this engine.
-    // TODO can we just delete it? Or throw an error?
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEADLOCK);
-  }
-  e->second->_isInUse = true; 
-  return e->second->_engine.get();
+  // Unreachable the above loop can only be left by error or return;
+  TRI_ASSERT(false);
+  return nullptr;
 }
 
 /// @brief Returns the engine to the registry. Someone else can now use it.
@@ -114,6 +141,9 @@ void TraverserEngineRegistry::returnEngine(TraverserEngineID id, double ttl) {
       }
       e->second->_expires = TRI_microtime() + e->second->_timeToLive;
     }
+    // Lockgard send signal auf conditionvar
+    CONDITION_LOCKER(condLocker, _cv);
+    condLocker.broadcast();
   }
 }
 

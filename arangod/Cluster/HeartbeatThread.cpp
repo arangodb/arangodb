@@ -600,7 +600,7 @@ void HeartbeatThread::runCoordinator() {
           usleep(500000);
           remain -= 0.5;
         } else {
-          usleep((unsigned long)(remain * 1000.0 * 1000.0));
+          usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
           remain = 0.0;
         }
       }
@@ -825,7 +825,8 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   _backgroundJobScheduledOrRunning = true;
 
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
-  _ioService->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
+  _ioService->
+    post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

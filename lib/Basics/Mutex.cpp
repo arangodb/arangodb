@@ -100,7 +100,7 @@ bool Mutex::tryLock() {
 
 void Mutex::lock() { AcquireSRWLockExclusive(&_mutex); }
 
-bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex); }
+bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
 
 #endif
 

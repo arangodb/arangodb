@@ -25,23 +25,23 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Result.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
-#include "Basics/Result.h"
 #include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "RestServer/DatabaseFeature.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesWalSlots.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
@@ -57,8 +57,9 @@ namespace {
 template <typename T>
 static inline T numericValue(VPackSlice const& slice, char const* attribute) {
   if (!slice.isObject()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value type when looking for attribute '" << attribute
-             << "': expecting object";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "invalid value type when looking for attribute '" << attribute
+        << "': expecting object";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid attribute value: expecting object");
   }
@@ -70,11 +71,11 @@ static inline T numericValue(VPackSlice const& slice, char const* attribute) {
     return v.getNumber<T>();
   }
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for attribute '" << attribute << "'";
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for attribute '"
+                                          << attribute << "'";
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "invalid attribute value");
 }
-
 }
 
 /// @brief creates the recover state
@@ -213,8 +214,9 @@ arangodb::LogicalCollection* MMFilesWalRecoverState::useCollection(
     res = TRI_errno();
 
     if (res == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to open collection " << collectionId
-                << ". Please check the logs above for errors.";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "unable to open collection " << collectionId
+          << ". Please check the logs above for errors.";
     }
 
     return nullptr;
@@ -239,7 +241,8 @@ LogicalCollection* MMFilesWalRecoverState::getCollection(
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
   if (vocbase == nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "database " << databaseId << " not found";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "database " << databaseId
+                                              << " not found";
     return nullptr;
   }
 
@@ -248,8 +251,9 @@ LogicalCollection* MMFilesWalRecoverState::getCollection(
       useCollection(vocbase, collectionId, res);
 
   if (collection == nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "collection " << collectionId << " of database " << databaseId
-               << " not found";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "collection " << collectionId
+                                              << " of database " << databaseId
+                                              << " not found";
     return nullptr;
   }
   return collection;
@@ -265,19 +269,21 @@ int MMFilesWalRecoverState::executeSingleOperation(
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
   if (vocbase == nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "database " << databaseId << " not found";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "database " << databaseId
+                                              << " not found";
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
 
-  int res;
+  Result res;
+  int tmpres;
   arangodb::LogicalCollection* collection =
-      useCollection(vocbase, collectionId, res);
+      useCollection(vocbase, collectionId, tmpres);
+  res.reset(tmpres);
 
   if (collection == nullptr) {
-    if (res == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
-      return res;
+    if (res.errorNumber() == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
+      return res.errorNumber();
     }
-
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -292,18 +298,21 @@ int MMFilesWalRecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase), collectionId, AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), collectionId,
+        AccessMode::Type::WRITE);
 
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
     trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
     trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
     trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
-    trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -312,27 +321,30 @@ int MMFilesWalRecoverState::executeSingleOperation(
     // execute the operation
     res = func(&trx, &envelope);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
     // commit the operation
     res = trx.commit();
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception during recovery of marker type "
-             << TRI_NameMarkerDatafile(marker) << ": " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught exception during recovery of marker type "
+        << TRI_NameMarkerDatafile(marker) << ": " << ex.what();
     res = ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception during recovery of marker type "
-             << TRI_NameMarkerDatafile(marker) << ": " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught exception during recovery of marker type "
+        << TRI_NameMarkerDatafile(marker) << ": " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception during recovery of marker type "
-             << TRI_NameMarkerDatafile(marker);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught unknown exception during recovery of marker type "
+        << TRI_NameMarkerDatafile(marker);
     res = TRI_ERROR_INTERNAL;
   }
 
-  return res;
+  return res.errorNumber();
 }
 
 /// @brief callback to handle one marker during recovery
@@ -414,11 +426,10 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker,
       state->totalDroppedCollections.emplace(collectionId);
       break;
     }
-    
+
     case TRI_DF_MARKER_VPACK_DROP_VIEW: {
       // note that the view was dropped and doesn't need to be recovered
-      TRI_voc_cid_t const viewId =
-          MMFilesDatafileHelper::ViewId(marker);
+      TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
       state->totalDroppedViews.emplace(viewId);
       break;
     }
@@ -440,7 +451,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       reinterpret_cast<MMFilesWalRecoverState*>(data);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "replaying marker of type " << TRI_NameMarkerDatafile(marker);
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "replaying marker of type "
+                                            << TRI_NameMarkerDatafile(marker);
 #endif
 
   MMFilesMarkerType const type = marker->getType();
@@ -454,8 +466,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         TRI_voc_cid_t const collectionId =
             MMFilesDatafileHelper::CollectionId(marker);
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found prologue marker. databaseId: " << databaseId
-                   << ", collectionId: " << collectionId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found prologue marker. databaseId: " << databaseId
+            << ", collectionId: " << collectionId;
         state->resetCollection(databaseId, collectionId);
         return true;
       }
@@ -482,9 +495,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found document marker. databaseId: " << databaseId
-                   << ", collectionId: " << collectionId
-                   << ", transactionId: " << tid;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found document marker. databaseId: " << databaseId
+            << ", collectionId: " << collectionId << ", transactionId: " << tid;
 
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->fid(),
@@ -529,9 +542,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
             res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
             res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to insert document in collection "
-                    << collectionId << " of database " << databaseId << ": "
-                    << TRI_errno_string(res);
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "unable to insert document in collection " << collectionId
+              << " of database " << databaseId << ": " << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();
         }
@@ -558,9 +571,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found remove marker. databaseId: " << databaseId
-                   << ", collectionId: " << collectionId
-                   << ", transactionId: " << tid;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found remove marker. databaseId: " << databaseId
+            << ", collectionId: " << collectionId << ", transactionId: " << tid;
 
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->fid(),
@@ -612,9 +625,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
             res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND &&
             res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to remove document in collection "
-                    << collectionId << " of database " << databaseId << ": "
-                    << TRI_errno_string(res);
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "unable to remove document in collection " << collectionId
+              << " of database " << databaseId << ": " << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();
         }
@@ -634,7 +647,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot rename collection: invalid marker";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot rename collection: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
@@ -643,14 +657,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found collection rename marker. databaseId: "
-                   << databaseId << ", collectionId: " << collectionId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found collection rename marker. databaseId: " << databaseId
+            << ", collectionId: " << collectionId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
         if (vocbase == nullptr) {
           // if the underlying database is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database " << databaseId;
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database "
+                                                    << databaseId;
           return true;
         }
 
@@ -663,15 +679,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (collection == nullptr) {
           // if the underlying collection is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open collection " << collectionId;
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open collection "
+                                                    << collectionId;
           return true;
         }
 
         VPackSlice nameSlice = payloadSlice.get("name");
         if (!nameSlice.isString()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot rename collection " << collectionId
-                    << " in database " << databaseId
-                    << ": name attribute is no string";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot rename collection " << collectionId << " in database "
+              << databaseId << ": name attribute is no string";
           ++state->errorCount;
           return state->canContinue();
         }
@@ -683,15 +700,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         if (other != nullptr) {
           TRI_voc_cid_t otherCid = other->cid();
           state->releaseCollection(otherCid);
-          vocbase->dropCollection(other, true);
+          vocbase->dropCollection(other, true, -1.0);
         }
 
         int res = vocbase->renameCollection(collection, name, true);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot rename collection " << collectionId
-                    << " in database " << databaseId << " to '" << name
-                    << "': " << TRI_errno_string(res);
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot rename collection " << collectionId << " in database "
+              << databaseId << " to '" << name
+              << "': " << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();
         }
@@ -707,7 +725,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot change properties of collection: invalid marker";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot change properties of collection: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
@@ -716,14 +735,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found collection change marker. databaseId: "
-                   << databaseId << ", collectionId: " << collectionId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found collection change marker. databaseId: " << databaseId
+            << ", collectionId: " << collectionId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
         if (vocbase == nullptr) {
           // if the underlying database is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database " << databaseId;
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database "
+                                                    << databaseId;
           return true;
         }
 
@@ -732,9 +753,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (collection == nullptr) {
           // if the underlying collection is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot change properties of collection "
-                     << collectionId << " in database " << databaseId << ": "
-                     << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+              << "cannot change properties of collection " << collectionId
+              << " in database " << databaseId << ": "
+              << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
           return true;
         }
 
@@ -742,29 +764,29 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // be
         // dropped later
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
-        arangodb::Result res = collection->updateProperties(payloadSlice, forceSync);
+        arangodb::Result res =
+            collection->updateProperties(payloadSlice, forceSync);
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-              << "cannot change properties for collection "
-              << collectionId << " in database " << databaseId << ": "
-              << res.errorMessage();
+              << "cannot change properties for collection " << collectionId
+              << " in database " << databaseId << ": " << res.errorMessage();
           ++state->errorCount;
           return state->canContinue();
         }
 
         break;
       }
-      
+
       case TRI_DF_MARKER_VPACK_CHANGE_VIEW: {
         TRI_voc_tick_t const databaseId =
             MMFilesDatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const viewId =
-            MMFilesDatafileHelper::ViewId(marker);
+        TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
         VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot change properties of view: invalid marker";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot change properties of view: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
@@ -773,24 +795,28 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found view change marker. databaseId: "
-                   << databaseId << ", viewId: " << viewId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found view change marker. databaseId: " << databaseId
+            << ", viewId: " << viewId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
         if (vocbase == nullptr) {
           // if the underlying database is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database " << databaseId;
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database "
+                                                    << databaseId;
           return true;
         }
 
-        std::shared_ptr<arangodb::LogicalView> view = vocbase->lookupView(viewId);
+        std::shared_ptr<arangodb::LogicalView> view =
+            vocbase->lookupView(viewId);
 
         if (view == nullptr) {
           // if the underlying collection is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot change properties of view "
-                     << viewId << " in database " << databaseId << ": "
-                     << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+              << "cannot change properties of view " << viewId
+              << " in database " << databaseId << ": "
+              << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
           return true;
         }
 
@@ -798,12 +824,12 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // be
         // dropped later
         bool const forceSync = state->willViewBeDropped(databaseId, viewId);
-        arangodb::Result res = view->updateProperties(payloadSlice, forceSync);
+        arangodb::Result res =
+            view->updateProperties(payloadSlice, false, forceSync);
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-              << "cannot change properties for view "
-              << viewId << " in database " << databaseId << ": "
-              << res.errorMessage();
+              << "cannot change properties for view " << viewId
+              << " in database " << databaseId << ": " << res.errorMessage();
           ++state->errorCount;
           return state->canContinue();
         }
@@ -820,7 +846,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create index for collection: invalid marker";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot create index for collection: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
@@ -831,16 +858,18 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found create index marker. databaseId: " << databaseId
-                   << ", collectionId: " << collectionId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found create index marker. databaseId: " << databaseId
+            << ", collectionId: " << collectionId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
         if (vocbase == nullptr) {
           // if the underlying database is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot create index for collection " << collectionId
-                     << " in database " << databaseId << ": "
-                     << TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+              << "cannot create index for collection " << collectionId
+              << " in database " << databaseId << ": "
+              << TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
           return true;
         }
 
@@ -849,28 +878,31 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (col == nullptr) {
           // if the underlying collection gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot create index for collection " << collectionId
-                     << " in database " << databaseId << ": "
-                     << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+              << "cannot create index for collection " << collectionId
+              << " in database " << databaseId << ": "
+              << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
           return true;
         }
 
         auto physical = static_cast<MMFilesCollection*>(col->getPhysical());
         TRI_ASSERT(physical != nullptr);
-        MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
+        MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId,
+                                                 indexId);
 
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
-        std::string const filename(
-            arangodb::basics::FileUtils::buildFilename(physical->path(), indexName));
+        std::string const filename(arangodb::basics::FileUtils::buildFilename(
+            physical->path(), indexName));
 
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
         bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
             filename, payloadSlice, forceSync);
 
         if (!ok) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create index " << indexId << ", collection "
-                    << collectionId << " in database " << databaseId;
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot create index " << indexId << ", collection "
+              << collectionId << " in database " << databaseId;
           ++state->errorCount;
           return state->canContinue();
         } else {
@@ -881,8 +913,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           int res = physical->restoreIndex(&trx, payloadSlice, unused);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create index " << indexId << ", collection "
-                      << collectionId << " in database " << databaseId;
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+                << "cannot create index " << indexId << ", collection "
+                << collectionId << " in database " << databaseId;
             ++state->errorCount;
             return state->canContinue();
           }
@@ -900,13 +933,15 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create collection: invalid marker";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot create collection: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found create collection marker. databaseId: "
-                   << databaseId << ", collectionId: " << collectionId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found create collection marker. databaseId: " << databaseId
+            << ", collectionId: " << collectionId;
 
         // remove the drop marker
         state->droppedCollections.erase(collectionId);
@@ -919,7 +954,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (vocbase == nullptr) {
           // if the underlying database is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database " << databaseId;
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database "
+                                                    << databaseId;
           return true;
         }
 
@@ -932,7 +968,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (collection != nullptr) {
           // drop an existing collection
-          vocbase->dropCollection(collection, true);
+          vocbase->dropCollection(collection, true, -1.0);
         }
 
         MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
@@ -951,12 +987,13 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             TRI_voc_cid_t otherCid = collection->cid();
 
             state->releaseCollection(otherCid);
-            vocbase->dropCollection(collection, true);
+            vocbase->dropCollection(collection, true, -1.0);
           }
         } else {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "empty name attribute in create collection marker for "
-                       "collection "
-                    << collectionId << " and database " << databaseId;
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "empty name attribute in create collection marker for "
+                 "collection "
+              << collectionId << " and database " << databaseId;
           ++state->errorCount;
           return state->canContinue();
         }
@@ -983,12 +1020,12 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             bool oldSync = state->databaseFeature->forceSyncProperties();
             state->databaseFeature->forceSyncProperties(false);
             collection =
-                vocbase->createCollection(b2.slice(), collectionId);
+                vocbase->createCollection(b2.slice());
             state->databaseFeature->forceSyncProperties(oldSync);
           } else {
             // collection will be kept
             collection =
-                vocbase->createCollection(b2.slice(), collectionId);
+                vocbase->createCollection(b2.slice());
           }
           TRI_ASSERT(collection != nullptr);
         } catch (basics::Exception const& ex) {
@@ -998,31 +1035,32 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         }
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create collection " << collectionId
-                    << " in database " << databaseId << ": "
-                    << TRI_errno_string(res);
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot create collection " << collectionId << " in database "
+              << databaseId << ": " << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();
         }
         break;
       }
-      
+
       case TRI_DF_MARKER_VPACK_CREATE_VIEW: {
         TRI_voc_tick_t const databaseId =
             MMFilesDatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const viewId =
-            MMFilesDatafileHelper::ViewId(marker);
+        TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
         VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create view: invalid marker";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot create view: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found create view marker. databaseId: "
-                   << databaseId << ", viewId: " << viewId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found create view marker. databaseId: " << databaseId
+            << ", viewId: " << viewId;
 
         // remove the drop marker
         state->droppedViews.erase(viewId);
@@ -1035,11 +1073,13 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (vocbase == nullptr) {
           // if the underlying database is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database " << databaseId;
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database "
+                                                    << databaseId;
           return true;
         }
 
-        std::shared_ptr<arangodb::LogicalView> view = vocbase->lookupView(viewId);
+        std::shared_ptr<arangodb::LogicalView> view =
+            vocbase->lookupView(viewId);
 
         if (view != nullptr) {
           // drop an existing view
@@ -1059,9 +1099,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             vocbase->dropView(view);
           }
         } else {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "empty name attribute in create view marker for "
-                       "view "
-                    << viewId << " and database " << databaseId;
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "empty name attribute in create view marker for "
+                 "view "
+              << viewId << " and database " << databaseId;
           ++state->errorCount;
           return state->canContinue();
         }
@@ -1074,13 +1115,11 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             // set the sync properties to false temporarily
             bool oldSync = state->databaseFeature->forceSyncProperties();
             state->databaseFeature->forceSyncProperties(false);
-            view =
-                vocbase->createView(payloadSlice, viewId);
+            view = vocbase->createView(payloadSlice, viewId);
             state->databaseFeature->forceSyncProperties(oldSync);
           } else {
             // view will be kept
-            view =
-                vocbase->createView(payloadSlice, viewId);
+            view = vocbase->createView(payloadSlice, viewId);
           }
           TRI_ASSERT(view != nullptr);
         } catch (basics::Exception const& ex) {
@@ -1090,9 +1129,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         }
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create view " << viewId
-                    << " in database " << databaseId << ": "
-                    << TRI_errno_string(res);
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot create view " << viewId << " in database "
+              << databaseId << ": " << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();
         }
@@ -1106,13 +1145,14 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create database: invalid marker";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot create database: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found create database marker. databaseId: "
-                   << databaseId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found create database marker. databaseId: " << databaseId;
 
         // remove the drop marker
         state->droppedDatabases.erase(databaseId);
@@ -1127,8 +1167,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         VPackSlice const nameSlice = payloadSlice.get("name");
 
         if (!nameSlice.isString()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot unpack database properties for database "
-                    << databaseId;
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot unpack database properties for database "
+              << databaseId;
           ++state->errorCount;
           return state->canContinue();
         }
@@ -1157,8 +1198,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                                          vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create database " << databaseId << ": "
-                    << TRI_errno_string(res);
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create database "
+                                                   << databaseId << ": "
+                                                   << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();
         }
@@ -1175,16 +1217,17 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                       MMFilesDatafileHelper::VPackOffset(type));
 
         if (!payloadSlice.isObject()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot drop index for collection: invalid marker";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot drop index for collection: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
 
         TRI_idx_iid_t indexId = numericValue<TRI_idx_iid_t>(payloadSlice, "id");
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found drop index marker. databaseId: " << databaseId
-                   << ", collectionId: " << collectionId
-                   << ", indexId: " << indexId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found drop index marker. databaseId: " << databaseId
+            << ", collectionId: " << collectionId << ", indexId: " << indexId;
 
         if (state->isDropped(databaseId, collectionId)) {
           return true;
@@ -1194,7 +1237,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (vocbase == nullptr) {
           // if the underlying database is gone, we can go on
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database " << databaseId;
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database "
+                                                    << databaseId;
           return true;
         }
 
@@ -1211,13 +1255,14 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         TRI_ASSERT(physical != nullptr);
         col->dropIndex(indexId);
 
-        MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
+        MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId,
+                                                 indexId);
 
         // additionally remove the index file
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
-        std::string const filename(
-            arangodb::basics::FileUtils::buildFilename(physical->path(), indexName));
+        std::string const filename(arangodb::basics::FileUtils::buildFilename(
+            physical->path(), indexName));
 
         TRI_UnlinkFile(filename.c_str());
         break;
@@ -1232,8 +1277,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // insert the drop marker
         state->droppedCollections.emplace(collectionId);
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found drop collection marker. databaseId: " << databaseId
-                   << ", collectionId: " << collectionId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found drop collection marker. databaseId: " << databaseId
+            << ", collectionId: " << collectionId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
@@ -1251,23 +1297,23 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         }
 
         if (collection != nullptr) {
-          vocbase->dropCollection(collection, true);
+          vocbase->dropCollection(collection, true, -1.0);
         }
         MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
         break;
       }
-      
+
       case TRI_DF_MARKER_VPACK_DROP_VIEW: {
         TRI_voc_tick_t const databaseId =
             MMFilesDatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const viewId =
-            MMFilesDatafileHelper::ViewId(marker);
+        TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
 
         // insert the drop marker
         state->droppedViews.emplace(viewId);
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found drop view marker. databaseId: " << databaseId
-                   << ", viewId: " << viewId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found drop view marker. databaseId: " << databaseId
+            << ", viewId: " << viewId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
@@ -1277,7 +1323,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         }
 
         // ignore any potential error returned by this call
-        std::shared_ptr<arangodb::LogicalView> view = vocbase->lookupView(viewId);
+        std::shared_ptr<arangodb::LogicalView> view =
+            vocbase->lookupView(viewId);
 
         if (view != nullptr) {
           vocbase->dropView(view);
@@ -1292,14 +1339,13 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // insert the drop marker
         state->droppedDatabases.emplace(databaseId);
 
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found drop database marker. databaseId: " << databaseId;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found drop database marker. databaseId: " << databaseId;
 
-        TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
+        /*TRI_vocbase_t* vocbase = */ state->releaseDatabase(databaseId);
 
-        if (vocbase != nullptr) {
-          // ignore any potential error returned by this call
-          state->databaseFeature->dropDatabase(databaseId, true, false);
-        }
+        // ignore any potential error returned by this call
+        state->databaseFeature->dropDatabase(databaseId, true, state->isDropped(databaseId));
 
         MMFilesPersistentIndexFeature::dropDatabase(databaseId);
         break;
@@ -1320,7 +1366,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
     return true;
   } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot replay marker: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot replay marker: "
+                                             << ex.what();
     ++state->errorCount;
     return state->canContinue();
   } catch (...) {
@@ -1331,13 +1378,15 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 }
 
 /// @brief replay a single logfile
-int MMFilesWalRecoverState::replayLogfile(MMFilesWalLogfile* logfile, int number) {
+int MMFilesWalRecoverState::replayLogfile(MMFilesWalLogfile* logfile,
+                                          int number) {
   std::string const logfileName = logfile->filename();
 
   int const n = static_cast<int>(logfilesToProcess.size());
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "replaying WAL logfile '" << logfileName << "' (" << (number + 1)
-            << " of " << n << ")";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      << "replaying WAL logfile '" << logfileName << "' (" << (number + 1)
+      << " of " << n << ")";
 
   MMFilesDatafile* df = logfile->df();
 
@@ -1347,8 +1396,9 @@ int MMFilesWalRecoverState::replayLogfile(MMFilesWalLogfile* logfile, int number
 
   if (!TRI_IterateDatafile(df, &MMFilesWalRecoverState::ReplayMarker,
                            static_cast<void*>(this))) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "WAL inspection failed when scanning logfile '" << logfileName
-              << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "WAL inspection failed when scanning logfile '" << logfileName
+        << "'";
     return TRI_ERROR_ARANGO_RECOVERY;
   }
 
@@ -1383,7 +1433,8 @@ int MMFilesWalRecoverState::abortOpenTransactions() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "writing abort markers for still open transactions";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "writing abort markers for still open transactions";
   int res = TRI_ERROR_NO_ERROR;
 
   VPackBuilder builder;
@@ -1434,7 +1485,8 @@ int MMFilesWalRecoverState::removeEmptyLogfiles() {
     auto filename = (*it);
 
     if (basics::FileUtils::remove(filename, 0)) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "removing empty WAL logfile '" << filename << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "removing empty WAL logfile '" << filename << "'";
     }
   }
 

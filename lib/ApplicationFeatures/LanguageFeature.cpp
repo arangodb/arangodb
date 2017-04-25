@@ -25,6 +25,7 @@
 
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/directories.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -68,7 +69,9 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string con
 
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
     if (!path.empty()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to locate '" << fn << "' at '"<< path << "'";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "failed to locate '" << fn
+        << "' at '"<< path << "'";
     }
     std::string bpfn = binaryExecutionPath + TRI_DIR_SEPARATOR_STR  + fn;
     
@@ -82,6 +85,10 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string con
       std::string argv_0 = binaryExecutionPath + TRI_DIR_SEPARATOR_STR + binaryName;
       path = TRI_LocateInstallDirectory(argv_0.c_str(), binaryPath.c_str());
       path += ICU_DESTINATION_DIRECTORY TRI_DIR_SEPARATOR_STR + fn;
+      if (!TRI_IsRegularFile(path.c_str())) {
+        // Try whether we have an absolute install prefix: 
+        path = ICU_DESTINATION_DIRECTORY TRI_DIR_SEPARATOR_STR + fn;
+      }
     }
     if (!TRI_IsRegularFile(path.c_str())) {
       std::string msg =
@@ -94,6 +101,16 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string con
 
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << msg;
       FATAL_ERROR_EXIT();
+    }
+    else {
+      std::string icu_path = path.substr(0, path.length() - fn.length());
+      FileUtils::makePathAbsolute(icu_path);
+      FileUtils::normalizePath(icu_path);
+#ifndef _WIN32
+      setenv("ICU_DATA", icu_path.c_str(), 1);
+#else
+      SetEnvironmentVariable("ICU_DATA", icu_path.c_str());
+#endif
     }
   }
 

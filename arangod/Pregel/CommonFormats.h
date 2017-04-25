@@ -47,8 +47,8 @@ struct LPValue {
 /// Value for Hyperlink-Induced Topic Search (HITS; also known as
 /// hubs and authorities)
 struct HITSValue {
-  float authorityScore;
-  float hubScore;
+  double authorityScore;
+  double hubScore;
 };
 
 struct DMIDValue {
@@ -60,15 +60,14 @@ struct DMIDValue {
 
 struct DMIDMessage {
   DMIDMessage() {}
-  DMIDMessage(PregelID const& pid, float const& val)
-      : senderId(pid), weight(val) {}
+  DMIDMessage(PregelID const& pid, float val) : senderId(pid), weight(val) {}
 
   DMIDMessage(PregelID const& sender, PregelID const& leader)
       : senderId(sender), leaderId(leader) {}
 
   PregelID senderId;
   PregelID leaderId;
-  float weight;
+  float weight = 0;
 };
 
 /// A counter for counting unique vertex IDs using a HyperLogLog sketch.
@@ -91,7 +90,7 @@ struct HLLCounter {
 /// Effective closeness value
 struct ECValue {
   HLLCounter counter;
-  std::vector<int32_t> shortestPaths;
+  std::vector<uint32_t> shortestPaths;
 };
 
 struct SCCValue {
@@ -116,7 +115,7 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
   SenderMessageFormat() {}
   void unwrapValue(VPackSlice s, SenderMessage<T>& senderVal) const override {
     VPackArrayIterator array(s);
-    senderVal.senderId.shard = (*array).getUInt();
+    senderVal.senderId.shard = (PregelShard) ((*array).getUInt());
     senderVal.senderId.key = (*(++array)).copyString();
     senderVal.value = (*(++array)).getNumber<T>();
   }

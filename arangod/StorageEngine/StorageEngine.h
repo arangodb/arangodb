@@ -26,6 +26,7 @@
 #define ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
 #include "VocBase/AccessMode.h"
@@ -86,6 +87,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 
+  // when a new collection is created, this method is called to augment the collection
+  // creation data with engine-specific information
+  virtual void addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {}
+  
+  // when a new index is created, this method is called to augment the index
+  // creation data with engine-specific information
+  virtual void addParametersForNewIndex(VPackBuilder& builder, VPackSlice info) {}
+
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
 
@@ -95,7 +104,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // status functionality
   // --------------------
 
-  // return the name of the storage engine
+  // return the name of the specific storage engine e.g. rocksdb
   char const* typeName() const { return _typeName.c_str(); }
 
   // inventory functionality
@@ -118,6 +127,9 @@ class StorageEngine : public application_features::ApplicationFeature {
                                        bool wasCleanShutdown, bool isUpgrade) = 0;
   
   virtual int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) = 0;
+  
+  // return the absolute path for the VERSION file of a database
+  virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
 
   // return the path for a database
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
@@ -159,7 +171,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // so that subsequent database creation requests will not fail.
   // the WAL entry for the database creation will be written *after* the call
   // to "createDatabase" returns
-  //no way to aquire id within this function?!
+  // no way to acquire id within this function?!
   virtual Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) = 0;
   Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args ){
     int status;
@@ -170,7 +182,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   }
 
   // @brief wirte create marker for database
-  virtual int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
+  virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
@@ -189,12 +201,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   };
 
   // perform a physical deletion of the database
-  virtual void dropDatabase(Database*, int& status) = 0;
-  void dropDatabase(Database* db){
-    int status;
-    dropDatabase(db, status);
-    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
-  };
+  virtual Result dropDatabase(Database*) = 0;
 
   /// @brief wait until a database directory disappears - not under lock in databaseFreature
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) = 0;
@@ -322,7 +329,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
-  IndexFactory const* indexFactory() {
+  IndexFactory const* indexFactory() const {
     // The factory has to be created by the implementation
     // and shall never be deleted
     TRI_ASSERT(_indexFactory.get() != nullptr);
@@ -384,16 +391,36 @@ class StorageEngine : public application_features::ApplicationFeature {
   // -------------
 
   /// @brief Add engine-specific AQL functions.
-  virtual void addAqlFunctions() = 0;
+  virtual void addAqlFunctions() {}
   
   /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules() = 0;
+  virtual void addOptimizerRules() {}
   
   /// @brief Add engine-specific V8 functions
-  virtual void addV8Functions() = 0;
+  virtual void addV8Functions() {}
   
   /// @brief Add engine-specific REST handlers
-  virtual void addRestHandlers(rest::RestHandlerFactory*) = 0;
+  virtual void addRestHandlers(rest::RestHandlerFactory*) {}
+
+  // replication
+  virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t*, int& status) = 0;
+  virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
+  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) = 0; 
+  
+  void getCapabilities(VPackBuilder& builder) const {
+    builder.openObject();
+    builder.add("name", VPackValue(typeName()));
+    builder.add("supports", VPackValue(VPackValueType::Object));
+    builder.add("indexes", VPackValue(VPackValueType::Array));
+
+    for (auto const& it : indexFactory()->supportedIndexes()) {
+      builder.add(VPackValue(it));
+    }
+
+    builder.close(); // indexes
+    builder.close(); // supports
+    builder.close(); // object
+  }
 
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,

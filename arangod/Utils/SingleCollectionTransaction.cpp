@@ -98,17 +98,17 @@ std::string SingleCollectionTransaction::name() {
 }
 
 /// @brief explicitly lock the underlying collection for read access
-int SingleCollectionTransaction::lockRead() {
+Result SingleCollectionTransaction::lockRead() {
   return lock(trxCollection(), AccessMode::Type::READ);
 }
 
 /// @brief explicitly unlock the underlying collection after read access
-int SingleCollectionTransaction::unlockRead() {
+Result SingleCollectionTransaction::unlockRead() {
   return unlock(trxCollection(), AccessMode::Type::READ);
 }
 
 /// @brief explicitly lock the underlying collection for write access
-int SingleCollectionTransaction::lockWrite() {
+Result SingleCollectionTransaction::lockWrite() {
   return lock(trxCollection(), AccessMode::Type::WRITE);
 }
 

@@ -479,7 +479,7 @@ exports.checkAvailableVersions = function (version) {
   }
 
   if (version.match(/beta|alpha|preview|milestone|devel/) !== null) {
-    log("You are using an milestone/alpha/beta/preview version ('" + version + "') of ArangoDB");
+    log("You are using a milestone/alpha/beta/preview version ('" + version + "') of ArangoDB");
     return;
   }
 

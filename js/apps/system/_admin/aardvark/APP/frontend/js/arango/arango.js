@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, sigma, $, document, _, arangoHelper, frontendConfig, arangoHelper, localStorage */
+/* global Blob, window, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, localStorage */
 
 (function () {
   'use strict';
@@ -44,6 +44,44 @@
   };
 
   window.arangoHelper = {
+
+    alphabetColors: {
+      a: 'rgb(0,0,180)',
+      b: 'rgb(175,13,102)',
+      c: 'rgb(146,248,70)',
+      d: 'rgb(255,200,47)',
+      e: 'rgb(255,118,0)',
+      f: 'rgb(185,185,185)',
+      g: 'rgb(235,235,222)',
+      h: 'rgb(100,100,100)',
+      i: 'rgb(255,255,0)',
+      j: 'rgb(55,19,112)',
+      k: 'rgb(255,255,150)',
+      l: 'rgb(202,62,94)',
+      m: 'rgb(205,145,63)',
+      n: 'rgb(12,75,100)',
+      o: 'rgb(255,0,0)',
+      p: 'rgb(175,155,50)',
+      q: 'rgb(0,0,0)',
+      r: 'rgb(37,70,25)',
+      s: 'rgb(121,33,135)',
+      t: 'rgb(83,140,208)',
+      u: 'rgb(0,154,37)',
+      v: 'rgb(178,220,205)',
+      w: 'rgb(255,152,213)',
+      x: 'rgb(0,0,74)',
+      y: 'rgb(175,200,74)',
+      z: 'rgb(63,25,12)'
+    },
+
+    statusColors: {
+      fatal: '#ad5148',
+      info: 'rgb(88, 214, 141)',
+      error: 'rgb(236, 112, 99)',
+      warning: '#ffb075',
+      debug: 'rgb(64, 74, 83)'
+    },
+
     getCurrentJwt: function () {
       return localStorage.getItem('jwt');
     },
@@ -158,12 +196,49 @@
       return windowHeight - footer - navigation - 110;
     },
 
+    createTooltips: function (selector, position) {
+      var self = this;
+
+      var settings = {
+        arrow: true,
+        animation: 'fade',
+        animateFill: false,
+        multiple: false,
+        hideDuration: 1
+      };
+
+      if (position) {
+        settings.position = position;
+      }
+
+      if (!selector) {
+        selector = '.tippy';
+      }
+
+      if (typeof selector === 'object') {
+        _.each(selector, function (elem) {
+          self.lastTooltips = new Tippy(elem, settings);
+        });
+      } else {
+        if (selector.indexOf(',') > -1) {
+          var selectors = selector.split(',');
+          _.each(selectors, function (elem) {
+            self.lastTooltips = new Tippy(elem, settings);
+          });
+        }
+        this.lastTooltips = new Tippy(selector, settings);
+      }
+    },
+
     fixTooltips: function (selector, placement) {
+      arangoHelper.createTooltips(selector, placement);
+      /*
       $(selector).tooltip({
         placement: placement,
         hide: false,
         show: false
       });
+      */
     },
 
     currentDatabase: function (callback) {

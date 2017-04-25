@@ -9,8 +9,10 @@ const UnitTest = require("@arangodb/testing");
 
 const internalMembers = UnitTest.internalMembers;
 const fs = require("fs");
-const internal = require("internal");
+const internal = require("internal"); // js/common/bootstrap/modules/internal.js
 const inspect = internal.inspect;
+
+let testOutputDirectory;
 
 function makePathGeneric(path) {
   return path.split(fs.pathSeparator);
@@ -93,12 +95,7 @@ function resultsToXml(results, baseName, cluster) {
             total = current.total;
           }
 
-          let failuresFound = 0;
-
-          if (current.hasOwnProperty('failed')) {
-            failuresFound = current.failed;
-          }
-
+          let failuresFound = current.failed;
           xml.elem("testsuite", {
             errors: 0,
             failures: failuresFound,
@@ -141,7 +138,7 @@ function resultsToXml(results, baseName, cluster) {
 
           const fn = makePathGeneric(baseName + xmlName + ".xml").join('_');
 
-          fs.write("out/" + fn, xml.join(""));
+          fs.write(testOutputDirectory + fn, xml.join(""));
         }
       }
     }
@@ -156,47 +153,56 @@ function main(argv) {
   start_pretty_print();
 
   // parse arguments
-  let cases = [];
+  let testSuits = []; // e.g all, http_server, recovery, ...
   let options = {};
 
   while (argv.length >= 1) {
-    if (argv[0].slice(0, 1) === '{') {
+    if (argv[0].slice(0, 1) === '{') { // stop parsing if there is a json document
       break;
     }
 
-    if (argv[0].slice(0, 1) === '-') {
+    if (argv[0].slice(0, 1) === '-') { // break parsing if we hit some -option
       break;
     }
 
-    cases.push(argv[0]);
-    argv = argv.slice(1);
+    testSuits.push(argv[0]); // append first arg to test suits
+    argv = argv.slice(1);    // and remove first arg (c++:pop_front/bash:shift)
   }
 
   // convert arguments
   if (argv.length >= 1) {
     try {
       if (argv[0].slice(0, 1) === '{') {
-        options = JSON.parse(argv[0]);
+        options = JSON.parse(argv[0]); // parse options form json
       } else {
-        options = internal.parseArgv(argv, 0);
+        options = internal.parseArgv(argv, 0); // parse option with parseArgv function
       }
     } catch (x) {
-      print("failed to parse the json options: " + x.message);
+      print("failed to parse the json options: " + x.message + "\n" + String(x.stack));
+      print("argv: ", argv);
       return -1;
     }
   }
 
+  if (options.hasOwnProperty('testOutput')) {
+    testOutputDirectory = options.testOutput + '/';
+  } else {
+    testOutputDirectory = 'out/';
+  }
+
+  options.testOutputDirectory = testOutputDirectory;
+  
   // force json reply
   options.jsonReply = true;
 
   // create output directory
-  fs.makeDirectoryRecursive("out");
+  fs.makeDirectoryRecursive(testOutputDirectory);
 
   // run the test and store the result
-  let r = {};
-
+  let r = {}; // result
   try {
-    r = UnitTest.unitTest(cases, options) || {};
+    // run tests
+    r = UnitTest.unitTest(testSuits, options, testOutputDirectory) || {};
   } catch (x) {
     print("caught exception during test execution!");
 
@@ -220,7 +226,7 @@ function main(argv) {
   });
 
   // whether or not there was an error 
-  fs.write("out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.status));
+  fs.write(testOutputDirectory + "/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.status));
 
   if (options.writeXmlReport) {
     let j;
@@ -231,8 +237,8 @@ function main(argv) {
       j = inspect(r);
     }
 
-    fs.write("out/UNITTEST_RESULT.json", j);
-    fs.write("out/UNITTEST_RESULT_CRASHED.json", String(r.crashed));
+    fs.write(testOutputDirectory + "/UNITTEST_RESULT.json", j);
+    fs.write(testOutputDirectory + "/UNITTEST_RESULT_CRASHED.json", String(r.crashed));
 
     try {
       resultsToXml(r,
@@ -245,7 +251,8 @@ function main(argv) {
     }
   }
 
-  UnitTest.unitTestPrettyPrintResults(r);
+  // creates yaml like dump at the end
+  UnitTest.unitTestPrettyPrintResults(r, testOutputDirectory);
 
   return r.status;
 }

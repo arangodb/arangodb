@@ -8,12 +8,14 @@ The *fulltext* simple query functions performs a fulltext search on the specifie
 
 Details about the fulltext query syntax can be found below.
 
-Note: the *fulltext* simple query function is **deprecated** as of ArangoDB 2.6. 
+**Note**: this method is not yet supported by the RocksDB storage engine.
+
+Note: the *fulltext* simple query function is **deprecated** as of ArangoDB 2.6.
 The function may be removed in future versions of ArangoDB. The preferred
 way for executing fulltext queries is to use an AQL query using the *FULLTEXT*
 [AQL function](../Aql/FulltextFunctions.md) as follows:
 
-    FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
+    FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit)
       RETURN doc
 
 @EXAMPLES
@@ -30,4 +32,3 @@ way for executing fulltext queries is to use an AQL query using the *FULLTEXT*
   db.emails.fulltext("content", "charlie,|eve").toArray();
 ~ db._drop("emails");
 @END_EXAMPLE_ARANGOSH_OUTPUT
-

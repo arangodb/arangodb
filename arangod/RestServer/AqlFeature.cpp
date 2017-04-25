@@ -42,6 +42,7 @@ AqlFeature::AqlFeature(
     : ApplicationFeature(server, "Aql"), _numberLeases(0), _isStopped(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("CacheManager");
   startsAfter("Scheduler");
   startsAfter("MMFilesLogfileManager");
   startsAfter("Database");

@@ -199,8 +199,8 @@ static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
 
   // shut up Valgrind
   memset(&tv, 0, sizeof(tv));
-  tv.tv_sec = (long)timeout;
-  tv.tv_usec = (long)((timeout - (double)tv.tv_sec) * 1000000.0);
+  tv.tv_sec = (time_t)timeout;
+  tv.tv_usec = (suseconds_t)((timeout - (double)tv.tv_sec) * 1000000.0);
 
   if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
     return false;

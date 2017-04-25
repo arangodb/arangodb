@@ -28,6 +28,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
@@ -234,27 +235,51 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
           if (!ok) {
             if (localContext->Global()->Has(TRI_V8_ASCII_STRING2(
                     context->_isolate, "UPGRADE_STARTED"))) {
+            
+              uint64_t upgradeType = TRI_ObjectToUInt64(localContext->Global()->Get(TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_TYPE")), false);
+
               localContext->Exit();
-              if (_upgrade) {
-                LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
-                           << "' upgrade failed. Please inspect the logs from "
-                              "the upgrade procedure";
-                FATAL_ERROR_EXIT();
-              } else {
-                LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-                    << "Database '" << vocbase->name()
-                    << "' needs upgrade. Please start the server with the "
-                       "--database.auto-upgrade option";
-                FATAL_ERROR_EXIT();
+  // 0 = undecided
+  // 1 = same version
+  // 2 = downgrade
+  // 3 = upgrade
+  // 4 = requires upgrade
+  // 5 = no version found
+              char const* typeName = "initialization";
+
+              switch (upgradeType) {
+                case 0: // undecided
+                case 1: // same version
+                case 2: // downgrade
+                case 5: // no VERSION file found
+                  // initialization
+                  break;
+                case 3: // upgrade
+                  typeName = "upgrade";
+                  break;
+                case 4: // requires upgrade
+                  typeName = "upgrade";
+                  if (!_upgrade) {
+                    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+                        << "Database '" << vocbase->name()
+                        << "' needs upgrade. Please start the server with the "
+                           "--database.auto-upgrade option";
+                  }
+                  break;
               }
+
+              LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
+                         << "' " << typeName << " failed. Please inspect the logs from "
+                            "the " << typeName << " procedure";
             } else {
               LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "JavaScript error during server start";
-              FATAL_ERROR_EXIT();
             }
-
-            LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "database '" << vocbase->name()
-                       << "' init/upgrade done";
+              
+            FATAL_ERROR_EXIT();
           }
+            
+          LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "database '" << vocbase->name()
+                     << "' init/upgrade done";
         }
       }
 

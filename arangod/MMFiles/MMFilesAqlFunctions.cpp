@@ -120,7 +120,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
     } else {
       for (auto& it : distances) {
         if (collection->readDocument(trx, it._token, mmdr)) {
-          builder->addExternal(mmdr.vpack());
+          mmdr.addToBuilder(*builder.get(), true);
         }
       }
     }
@@ -296,7 +296,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
     size_t const numResults = queryResult->_numDocuments;
     for (size_t i = 0; i < numResults; ++i) {
       if (collection->readDocument(trx, queryResult->_documents[i], mmdr)) {
-        builder->addExternal(mmdr.vpack());
+        mmdr.addToBuilder(*builder.get(), true);
       }
     }
     builder->close();

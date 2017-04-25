@@ -25,40 +25,79 @@
 
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTraverser.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
+#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using ClusterEdgeCursor = arangodb::traverser::ClusterEdgeCursor;
+using namespace arangodb;
+using namespace arangodb::graph;
+using namespace arangodb::traverser;
 
-ClusterEdgeCursor::ClusterEdgeCursor(VPackSlice v, uint64_t depth,
-                                     arangodb::traverser::ClusterTraverser* traverser)
-    : _position(0) {
-      transaction::BuilderLeaser leased(traverser->_trx);
-      fetchEdgesFromEngines(traverser->_dbname, traverser->_engines, v, depth,
-                            traverser->_edges, _edgeList, traverser->_datalake,
-                            *(leased.get()), traverser->_filteredPaths,
-                            traverser->_readDocuments);
-    }
+// Traverser variant
+ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
+                                     graph::BaseOptions* opts)
+    : _position(0),
+      _resolver(opts->trx()->resolver()),
+      _opts(opts),
+      _cache(static_cast<ClusterTraverserCache*>(opts->cache())) {
+  TRI_ASSERT(_cache != nullptr);
+  auto trx = _opts->trx();
+  transaction::BuilderLeaser leased(trx);
 
+  transaction::BuilderLeaser b(trx);
+  b->add(VPackValuePair(vertexId.data(), vertexId.length(),
+                        VPackValueType::String));
 
-bool ClusterEdgeCursor::next(std::vector<VPackSlice>& result, size_t& cursorId) {
+  fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
+                        depth, _cache->edges(), _edgeList, _cache->datalake(),
+                        *(leased.get()), _cache->filteredDocuments(),
+                        _cache->insertedDocuments());
+}
+
+// ShortestPath variant
+ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward,
+                                     graph::BaseOptions* opts)
+    : _position(0),
+      _resolver(opts->trx()->resolver()),
+      _opts(opts),
+      _cache(static_cast<ClusterTraverserCache*>(opts->cache())) {
+  TRI_ASSERT(_cache != nullptr);
+  auto trx = _opts->trx();
+  transaction::BuilderLeaser leased(trx);
+
+  transaction::BuilderLeaser b(trx);
+  b->add(VPackValuePair(vertexId.data(), vertexId.length(),
+                        VPackValueType::String));
+  fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
+                        backward, _cache->edges(), _edgeList,
+                        _cache->datalake(), *(leased.get()),
+                        _cache->insertedDocuments());
+}
+
+bool ClusterEdgeCursor::next(
+    std::function<void(StringRef const&, VPackSlice, size_t)> callback) {
   if (_position < _edgeList.size()) {
-    result.emplace_back(_edgeList[_position]);
+    VPackSlice edge = _edgeList[_position];
+    std::string eid =
+        transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
+    StringRef persId = _cache->persistString(StringRef(eid));
+    callback(persId, edge, _position);
     ++_position;
     return true;
   }
   return false;
 }
 
-bool ClusterEdgeCursor::readAll(std::unordered_set<VPackSlice>& result, size_t& cursorId) {
-  if (_position == 0) {
-    // We have not yet returned anything. So we simply return everything at once.
-    std::copy(_edgeList.begin(), _edgeList.end(), std::inserter(result, result.end()));
-    _position++;
-    return true;
+void ClusterEdgeCursor::readAll(
+    std::function<void(StringRef const&, VPackSlice, size_t&)> callback) {
+  for (auto const& edge : _edgeList) {
+    std::string eid =
+        transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
+    StringRef persId = _cache->persistString(StringRef(eid));
+    callback(persId, edge, _position);
   }
-  // We have already returned everything last time.
-  return false;
 }
