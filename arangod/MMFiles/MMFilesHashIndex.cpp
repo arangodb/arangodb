@@ -644,7 +644,7 @@ int MMFilesHashIndex::remove(transaction::Methods* trx,
 void MMFilesHashIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
-    arangodb::basics::LocalTaskQueue* queue) {
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   TRI_ASSERT(queue != nullptr);
   if (_unique) {
     batchInsertUnique(trx, documents, queue);
@@ -760,7 +760,7 @@ int MMFilesHashIndex::insertUnique(transaction::Methods* trx,
 void MMFilesHashIndex::batchInsertUnique(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
-    arangodb::basics::LocalTaskQueue* queue) {
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   TRI_ASSERT(queue != nullptr);
   std::shared_ptr<std::vector<MMFilesHashIndexElement*>> elements;
   elements.reset(new std::vector<MMFilesHashIndexElement*>());
@@ -880,7 +880,7 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
 void MMFilesHashIndex::batchInsertMulti(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
-    arangodb::basics::LocalTaskQueue* queue) {
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   TRI_ASSERT(queue != nullptr);
   std::shared_ptr<std::vector<MMFilesHashIndexElement*>> elements;
   elements.reset(new std::vector<MMFilesHashIndexElement*>());

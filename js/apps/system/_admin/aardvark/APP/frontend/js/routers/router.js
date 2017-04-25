@@ -39,6 +39,7 @@
       'nodes': 'nodes',
       'shards': 'shards',
       'node/:name': 'node',
+      'nodeInfo/:id': 'nodeInfo',
       'logs': 'logger',
       'helpus': 'helpUs',
       'graph/:name': 'graph',
@@ -327,14 +328,38 @@
         return;
       }
 
-      if (!this.nodeView) {
-        this.nodeView = new window.NodeView({
-          coordname: name,
-          coordinators: this.coordinatorCollection,
-          dbServers: this.dbServers
-        });
+      if (this.nodeView) {
+        this.nodeView.remove();
       }
+      this.nodeView = new window.NodeView({
+        coordname: name,
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers
+      });
       this.nodeView.render();
+    },
+
+    nodeInfo: function (id, initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.nodeInfo.bind(this), id);
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[''] = 'dashboard';
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
+
+      if (this.nodeInfoView) {
+        this.nodeInfoView.remove();
+      }
+      this.nodeInfoView = new window.NodeInfoView({
+        nodeId: id,
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0]
+      });
+      this.nodeInfoView.render();
     },
 
     shards: function (initialized) {
@@ -367,10 +392,11 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
-      if (!this.nodesView) {
-        this.nodesView = new window.NodesView({
-        });
+      if (this.nodesView) {
+        this.nodesView.remove();
       }
+      this.nodesView = new window.NodesView({
+      });
       this.nodesView.render();
     },
 

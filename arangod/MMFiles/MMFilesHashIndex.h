@@ -173,7 +173,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
   void batchInsert(
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
-      arangodb::basics::LocalTaskQueue* queue = nullptr) override;
+      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
 
   int unload() override;
 
@@ -205,7 +205,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
   void batchInsertUnique(
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
-      arangodb::basics::LocalTaskQueue* queue = nullptr);
+      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
   int insertMulti(transaction::Methods*, TRI_voc_rid_t,
                   arangodb::velocypack::Slice const&, bool isRollback);
@@ -213,7 +213,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
   void batchInsertMulti(
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
-      arangodb::basics::LocalTaskQueue* queue = nullptr);
+      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
   int removeUniqueElement(transaction::Methods*, MMFilesHashIndexElement*,
                           bool);
