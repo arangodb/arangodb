@@ -1,6 +1,10 @@
 devel
 -----
 
+* fixed issue #2450
+
+* added 'x-content-type-options: nosniff' to avoid MSIE bug
+
 * set default value for `--ssl.protocol` from TLSv1 to TLSv1.2.
 
 * AQL breaking change in cluster:
@@ -243,6 +247,7 @@ v3.1.19 (XXXX-XX-XX)
 --------------------
 
 * fixed issue #2440
+
 
 
 v3.1.18 (2017-04-18)

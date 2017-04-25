@@ -35,6 +35,10 @@ using namespace arangodb::velocypack;
 
 const char RocksDBKeyBounds::_stringSeparator = '\0';
 
+RocksDBKeyBounds RocksDBKeyBounds::Empty() {
+  return RocksDBKeyBounds();
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::Databases() {
   return RocksDBKeyBounds(RocksDBEntryType::Database);
 }
@@ -97,6 +101,11 @@ rocksdb::Slice const RocksDBKeyBounds::start() const {
 rocksdb::Slice const RocksDBKeyBounds::end() const {
   return rocksdb::Slice(_endBuffer);
 }
+
+// constructor for an empty bound. do not use for anything but to
+// default-construct a key bound!
+RocksDBKeyBounds::RocksDBKeyBounds() 
+    : _type(RocksDBEntryType::Database), _startBuffer(), _endBuffer() {}
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
     : _type(type), _startBuffer(), _endBuffer() {
