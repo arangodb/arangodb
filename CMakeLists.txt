@@ -340,8 +340,8 @@ if (CMAKE_COMPILER_IS_CLANG)
 endif ()
 
 # need c++11
+# XXX this should really be set on a per target level using cmake compile_features capabilties
 set(CMAKE_CXX_STANDARD 11)
-include(CheckCXX11Features)
 
 # need threads
 find_package(Threads REQUIRED)
