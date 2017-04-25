@@ -2284,16 +2284,15 @@ ClusterMethods::persistCollectionInAgency(
   std::vector<std::string> dbServers;
   std::vector<std::string> avoid = col->avoidServers();
     
-  bool chainOfDistributeShardsLike = false;
-
   ClusterInfo* ci = ClusterInfo::instance();
   if (!distributeShardsLike.empty()) {
-
     CollectionNameResolver resolver(col->vocbase());
     TRI_voc_cid_t otherCid =
       resolver.getCollectionIdCluster(distributeShardsLike);
 
     if (otherCid != 0) {
+      bool chainOfDistributeShardsLike = false;
+
       std::string otherCidString 
         = arangodb::basics::StringUtils::itoa(otherCid);
 
@@ -2328,8 +2327,7 @@ ClusterMethods::persistCollectionInAgency(
       }
     }
     
-  } else if(!avoid.empty()) {
-    
+  } else if (!avoid.empty()) {
     size_t replicationFactor = col->replicationFactor();
     dbServers = ci->getCurrentDBServers();
     if (dbServers.size() - avoid.size() >= replicationFactor) {
@@ -2340,7 +2338,6 @@ ClusterMethods::persistCollectionInAgency(
           }), dbServers.end());
     }
     std::random_shuffle(dbServers.begin(), dbServers.end());
-    
   }
 
   // If the list dbServers is still empty, it will be filled in
