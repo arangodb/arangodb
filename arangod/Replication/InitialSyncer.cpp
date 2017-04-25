@@ -1267,9 +1267,6 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         // we only need to hash we are in the range
         if (cmp1 == 0) {
           foundLowKey = true;
-        } else if (!foundLowKey && cmp1 > 0) {
-          rangeUneqal = true;
-          nextChunk = true;
         }
         
         if (foundLowKey) {
