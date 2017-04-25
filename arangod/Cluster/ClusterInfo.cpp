@@ -1303,7 +1303,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   // First check that no other collection has a distributeShardsLike
   // entry pointing to us:
   auto coll = getCollection(databaseName, collectionID);
-  std::string id = std::to_string(coll->cid());
+  // not used # std::string id = std::to_string(coll->cid());
   auto colls = getCollections(databaseName);
   for (std::shared_ptr<LogicalCollection> const& p : colls) {
     if (p->distributeShardsLike() == coll->name() ||
