@@ -790,6 +790,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       } else if (arangod.exitStatus.status !== 'TERMINATED') {
         if (arangod.exitStatus.hasOwnProperty('signal')) {
           analyzeServerCrash(arangod, options, 'instance Shutdown - ' + arangod.exitStatus.signal);
+          serverCrashed = true;
         }
       } else {
         print('Server shutdown: Success: pid', arangod.pid);

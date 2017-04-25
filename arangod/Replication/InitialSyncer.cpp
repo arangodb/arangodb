@@ -1253,7 +1253,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
     std::function<void(VPackSlice, VPackSlice)> parseDoc =
       [&] (VPackSlice doc, VPackSlice key) {
       
-      bool rangeUnequal = false;
+      bool rangeUneqal = false;
       bool nextChunk = false;
       
       int cmp1 = key.compareString(lowKey.data(), lowKey.length());
@@ -1268,7 +1268,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         if (cmp1 == 0) {
           foundLowKey = true;
         } else if (!foundLowKey && cmp1 > 0) {
-          rangeUnequal = true;
+          rangeUneqal = true;
           nextChunk = true;
         }
         
@@ -1280,21 +1280,21 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
           markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
           
           if (cmp2 == 0) {// found highKey
-            rangeUnequal = std::to_string(localHash) != hashString;
+            rangeUneqal = std::to_string(localHash) != hashString;
             nextChunk = true;
           }
         } else if (cmp2 == 0) {
-          rangeUnequal = true;
+          rangeUneqal = true;
           nextChunk = true;
         }
       } else if (cmp2 > 0) { // higher than highKey
         // current range was unequal and we did not find the
         // high key. Load range and skip to next
-        rangeUnequal = true;
+        rangeUneqal = true;
         nextChunk = true;
       }
       
-      if (rangeUnequal) {
+      if (rangeUneqal) {
         int res = syncChunkRocksDB(&trx, keysId, currentChunkId,
                                    lowKey, highKey,
                                    markers, errorMsg);
@@ -1302,7 +1302,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
           THROW_ARANGO_EXCEPTION(res);
         }
       }
-      TRI_ASSERT(!rangeUnequal || (rangeUnequal && nextChunk)); // A => B
+      TRI_ASSERT(!rangeUneqal || rangeUneqal && nextChunk); // A => B
       if (nextChunk && currentChunkId+1 < numChunks) {
         currentChunkId++;// we are out of range, see next chunk
         resetChunk();
