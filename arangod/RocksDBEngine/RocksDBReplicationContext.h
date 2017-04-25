@@ -31,9 +31,9 @@
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Builder.h>
 
 namespace arangodb {
 
@@ -67,21 +67,21 @@ class RocksDBReplicationContext {
   RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
                                 std::string const& collectionName,
                                 basics::StringBuffer&, uint64_t chunkSize);
-  
+
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
   // per chunk. Distance between min and maxKey should be chunkSize
-  arangodb::Result dumpKeyChunks(velocypack::Builder &outBuilder,
+  arangodb::Result dumpKeyChunks(velocypack::Builder& outBuilder,
                                  uint64_t chunkSize);
-  
+
   /// dump all keys from collection
-  arangodb::Result dumpKeys(velocypack::Builder &outBuilder, size_t chunk, size_t chunkSize);
+  arangodb::Result dumpKeys(velocypack::Builder& outBuilder, size_t chunk,
+                            size_t chunkSize);
   /// dump keys and document
-  arangodb::Result dumpDocuments(velocypack::Builder &b,
-                                 size_t chunk,
+  arangodb::Result dumpDocuments(velocypack::Builder& b, size_t chunk,
                                  size_t chunkSize,
                                  velocypack::Slice const& ids);
-  
+
   double expires() const;
   bool isDeleted() const;
   void deleted();

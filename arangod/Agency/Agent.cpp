@@ -101,7 +101,9 @@ Agent::~Agent() {
     }
   }
 
-  shutdown();
+  if (!isStopping()) {
+    shutdown();
+  }
 
 }
 

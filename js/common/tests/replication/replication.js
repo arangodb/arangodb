@@ -183,7 +183,7 @@ function ReplicationLoggerSuite () {
       assertTrue(typeof tick === 'string');
       assertNotEqual("", state.time);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.time);
-      
+
       // query the state again
       state = replication.logger.state().state;
       assertTrue(state.running);
@@ -430,8 +430,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerSystemCollection : function () {
-      db._drop("_unitfoxx");
-      db._drop("_unittests");
+      db._drop("_unittests", true);
 
       var tick = getLastLogTick();
 

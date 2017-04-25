@@ -44,22 +44,52 @@
         $('.login-window #databases').show();
 
         $.ajax(url).success(function (permissions) {
-          // enable db select and login button
-          $('#loginDatabase').html('');
-          // fill select with allowed dbs
-          _.each(permissions.result, function (rule, db) {
-            if (errCallback) {
-              $('#loginDatabase').append(
-                '<option>' + db + '</option>'
-              );
-            } else {
-              $('#loginDatabase').append(
-                '<option>' + rule + '</option>'
-              );
-            }
-          });
+          var successFunc = function (availableDbs) {
+            //  enable db select and login button
+            $('#loginDatabase').html('');
+            // fill select with allowed dbs
+            _.each(permissions.result, function (rule, db) {
+              if (errCallback) {
+                if (availableDbs) {
+                  if (availableDbs.indexOf(db) > -1) {
+                    $('#loginDatabase').append(
+                      '<option>' + db + '</option>'
+                    );
+                  }
+                } else {
+                  $('#loginDatabase').append(
+                    '<option>' + db + '</option>'
+                  );
+                }
+              } else {
+                if (availableDbs) {
+                  if (availableDbs.indexOf(db) > -1) {
+                    $('#loginDatabase').append(
+                      '<option>' + rule + '</option>'
+                    );
+                  }
+                } else {
+                  $('#loginDatabase').append(
+                    '<option>' + rule + '</option>'
+                  );
+                }
+              }
+            });
 
-          self.renderDBS();
+            self.renderDBS();
+          };
+
+          // fetch available dbs
+          var availableDbs;
+          try {
+            $.ajax(arangoHelper.databaseUrl('/_api/database/user')).success(function (dbs) {
+              availableDbs = dbs.result;
+              successFunc(availableDbs);
+            });
+          } catch (ignore) {
+            console.log(ignore);
+            successFunc();
+          }
         }).error(function () {
           if (errCallback) {
             errCallback();
@@ -191,14 +221,35 @@
         // enable db select and login button
         $('#loginDatabase').html('');
 
-        // fill select with allowed dbs
-        _.each(permissions.result, function (db, key) {
-          $('#loginDatabase').append(
-            '<option>' + key + '</option>'
-          );
-        });
+        var successFunc = function (availableDbs) {
+          if (availableDbs) {
+            _.each(permissions.result, function (db, key) {
+              if (availableDbs.indexOf(key) > -1) {
+                $('#loginDatabase').append(
+                  '<option>' + key + '</option>'
+                );
+              }
+            });
+          } else {
+            // fill select with allowed dbs
+            _.each(permissions.result, function (db, key) {
+              $('#loginDatabase').append(
+                '<option>' + key + '</option>'
+              );
+            });
+          }
 
-        self.renderDBS();
+          self.renderDBS();
+        };
+
+        // fetch available dbs
+        try {
+          $.ajax(arangoHelper.databaseUrl('/_api/database/user')).success(function (dbs) {
+            successFunc(dbs.result);
+          });
+        } catch (ignore) {
+          successFunc();
+        }
       }).error(function () {
         $('.wrong-credentials').show();
       });

@@ -329,36 +329,37 @@ bool RocksDBRestReplicationHandler::isCoordinatorError() {
 void RocksDBRestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Object));  // Base
-  
-  //MMFilesLogfileManager::instance()->waitForSync(10.0);
-  //MMFilesLogfileManagerState const s =
-  //MMFilesLogfileManager::instance()->state();
+
+  // MMFilesLogfileManager::instance()->waitForSync(10.0);
+  // MMFilesLogfileManagerState const s =
+  // MMFilesLogfileManager::instance()->state();
   rocksdb::TransactionDB* db =
-  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
   rocksdb::Status status = db->GetBaseDB()->SyncWAL();
   if (!status.ok()) {
     Result res = rocksutils::convertStatus(status).errorNumber();
-    generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+    generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                  res.errorMessage());
     return;
   }
   rocksdb::SequenceNumber lastTick = db->GetLatestSequenceNumber();
-  
+
   // "state" part
   builder.add("state", VPackValue(VPackValueType::Object));
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
   builder.add("lastUncommittedLogTick",
-              VPackValue(std::to_string(lastTick+1)));
-  builder.add("totalEvents", VPackValue(0));//s.numEvents + s.numEventsSync
+              VPackValue(std::to_string(lastTick + 1)));
+  builder.add("totalEvents", VPackValue(0));  // s.numEvents + s.numEventsSync
   builder.add("time", VPackValue(utilities::timeString()));
   builder.close();
-  
+
   // "server" part
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("version", VPackValue(ARANGODB_VERSION));
   builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
   builder.close();
-  
+
   // "clients" part
   builder.add("clients", VPackValue(VPackValueType::Array));
   auto allClients = _vocbase->getReplicationClients();
@@ -366,19 +367,19 @@ void RocksDBRestReplicationHandler::handleCommandLoggerState() {
     // One client
     builder.add(VPackValue(VPackValueType::Object));
     builder.add("serverId", VPackValue(std::to_string(std::get<0>(it))));
-    
+
     char buffer[21];
     TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
     builder.add("time", VPackValue(buffer));
-    
+
     builder.add("lastServedTick", VPackValue(std::to_string(std::get<2>(it))));
-    
+
     builder.close();
   }
   builder.close();  // clients
-  
+
   builder.close();  // base
-  
+
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
@@ -421,7 +422,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
-    b.add("id", VPackValue(std::to_string(ctx->id())));
+    b.add("id", VPackValue(std::to_string(ctx->id())));  // id always string
     b.close();
 
     generateResult(rest::ResponseCode::OK, b.slice());
@@ -721,10 +722,10 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       // add client
       bool found;
       std::string const& value = _request->value("serverId", found);
-      
+
       if (found) {
         TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
-        
+
         if (serverId > 0) {
           _vocbase->updateReplicationClient(serverId, result.maxTick());
         }
@@ -757,9 +758,14 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   if (found) {
     ctx = _manager->find(StringUtils::uint64(batchId), busy);
   }
-  if (!found || busy || ctx == nullptr) {
+  if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
+    return;
+  }
+  if (busy || ctx == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
+                  "context is busy or nullptr");
     return;
   }
   RocksDBReplicationContextGuard(_manager, ctx);
@@ -1025,7 +1031,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
                   "invalid collection parameter");
     return;
   }
-  
+
   RocksDBReplicationContext* ctx = nullptr;
   bool found, busy;
   std::string batchId = _request->value("batchId", found);
@@ -1038,54 +1044,53 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
   RocksDBReplicationContextGuard(_manager, ctx);
-  
-  //TRI_voc_tick_t tickEnd = UINT64_MAX;
+
+  // TRI_voc_tick_t tickEnd = UINT64_MAX;
   // determine end tick for keys
-  //std::string const& value = _request->value("to", found);
-  //if (found) {
+  // std::string const& value = _request->value("to", found);
+  // if (found) {
   //  tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   //}
-  
-  //arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
-  //arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
-  //arangodb::LogicalCollection* col = guard.collection();
-  
+
+  // arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
+  // arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
+  // arangodb::LogicalCollection* col = guard.collection();
+
   int res = ctx->bindCollection(collection);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
-  
+
   // turn off the compaction for the collection
-  //StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  //TRI_voc_tick_t id;
-  //int res = engine->insertCompactionBlocker(_vocbase, 1200.0, id);
-  //if (res != TRI_ERROR_NO_ERROR) {
+  // StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  // TRI_voc_tick_t id;
+  // int res = engine->insertCompactionBlocker(_vocbase, 1200.0, id);
+  // if (res != TRI_ERROR_NO_ERROR) {
   //  THROW_ARANGO_EXCEPTION(res);
   //}
-  
+
   // initialize a container with the keys
-  //auto keys =
-  //std::make_unique<MMFilesCollectionKeys>(_vocbase, col->name(), id, 300.0);
-  
-  //std::string const idString(std::to_string(keys->id()));
-  
-  //keys->create(tickEnd);
-  //size_t const count = keys->count();
-  
-  //auto keysRepository = _vocbase->collectionKeys();
-  
-  //keysRepository->store(keys.get());
-  //keys.release();
-  
+  // auto keys =
+  // std::make_unique<MMFilesCollectionKeys>(_vocbase, col->name(), id, 300.0);
+
+  // std::string const idString(std::to_string(keys->id()));
+
+  // keys->create(tickEnd);
+  // size_t const count = keys->count();
+
+  // auto keysRepository = _vocbase->collectionKeys();
+
+  // keysRepository->store(keys.get());
+  // keys.release();
+
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  result.add("id", VPackValue(ctx->id()));
+  result.add("id", VPackValue(StringUtils::itoa(ctx->id())));
   result.add("count", VPackValue(ctx->count()));
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1094,20 +1099,20 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 
 void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  
+
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/replication/keys/<keys-id>");
     return;
   }
-  
+
   static uint64_t const DefaultChunkSize = 5000;
   uint64_t chunkSize = DefaultChunkSize;
-  
+
   // determine chunk size
   bool found;
   std::string const& value = _request->value("chunkSize", found);
-  
+
   if (found) {
     chunkSize = StringUtils::uint64(value);
     if (chunkSize < 100) {
@@ -1116,18 +1121,18 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
       chunkSize = 20000;
     }
   }
-  
+
   std::string const& id = suffixes[1];
   uint64_t batchId = arangodb::basics::StringUtils::uint64(id);
   bool busy;
-  RocksDBReplicationContext *ctx = _manager->find(batchId, busy);
+  RocksDBReplicationContext* ctx = _manager->find(batchId, busy);
   if (busy || ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
     return;
   }
   RocksDBReplicationContextGuard(_manager, ctx);
-  
+
   VPackBuilder b;
   ctx->dumpKeyChunks(b, chunkSize);
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -1139,20 +1144,20 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
 
 void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  
+
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/replication/keys/<keys-id>");
     return;
   }
-  
+
   static uint64_t const DefaultChunkSize = 5000;
   uint64_t chunkSize = DefaultChunkSize;
-  
+
   // determine chunk size
   bool found;
   std::string const& value1 = _request->value("chunkSize", found);
-  
+
   if (found) {
     chunkSize = StringUtils::uint64(value1);
     if (chunkSize < 100) {
@@ -1161,16 +1166,16 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       chunkSize = 20000;
     }
   }
-  
+
   std::string const& value2 = _request->value("chunk", found);
-  
+
   size_t chunk = 0;
   if (found) {
     chunk = static_cast<size_t>(StringUtils::uint64(value2));
   }
-  
+
   std::string const& value3 = _request->value("type", found);
-  
+
   bool keys = true;
   if (value3 == "keys") {
     keys = true;
@@ -1181,28 +1186,25 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "invalid 'type' value");
     return;
   }
-  
+
   std::string const& id = suffixes[1];
-  
+
   uint64_t batchId = arangodb::basics::StringUtils::uint64(id);
   bool busy;
-  RocksDBReplicationContext *ctx = _manager->find(batchId, busy);
+  RocksDBReplicationContext* ctx = _manager->find(batchId, busy);
   if (busy || ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
     return;
   }
   RocksDBReplicationContextGuard(_manager, ctx);
-  
+
   std::shared_ptr<transaction::Context> transactionContext =
-  transaction::StandaloneContext::Create(_vocbase);
-  
+      transaction::StandaloneContext::Create(_vocbase);
+
   VPackBuilder resultBuilder(transactionContext->getVPackOptions());
-  resultBuilder.openArray();
-  
   if (keys) {
-    ctx->dumpKeys(resultBuilder, chunk,
-                             static_cast<size_t>(chunkSize));
+    ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize));
   } else {
     bool success;
     std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
@@ -1210,25 +1212,23 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
-    ctx->dumpDocuments(resultBuilder, chunk,
-                             static_cast<size_t>(chunkSize),
-                             parsedIds->slice());
+    ctx->dumpDocuments(resultBuilder, chunk, static_cast<size_t>(chunkSize),
+                       parsedIds->slice());
   }
-  
-  resultBuilder.close();
+
   generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
                  transactionContext);
 }
 
 void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  
+
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/replication/keys/<keys-id>");
     return;
   }
-  
+
   std::string const& id = suffixes[1];
   /*uint64_t batchId = arangodb::basics::StringUtils::uint64(id);
   bool busy;
@@ -1239,20 +1239,19 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
     return;
   }
   RocksDBReplicationContextGuard(_manager, ctx);*/
-  
-  
+
   /*auto keys = _vocbase->collectionKeys();
   TRI_ASSERT(keys != nullptr);
-  
+
   auto collectionKeysId =
   static_cast<CollectionKeysId>(arangodb::basics::StringUtils::uint64(id));
   bool found = keys->remove(collectionKeysId);
-  
+
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }*/
-  
+
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(id));  // id as a string
@@ -1260,7 +1259,7 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   resultBuilder.add("code",
                     VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   resultBuilder.close();
-  
+
   generateResult(rest::ResponseCode::ACCEPTED, resultBuilder.slice());
 }
 
@@ -1359,60 +1358,60 @@ void RocksDBRestReplicationHandler::handleCommandSync() {
     // error already created
     return;
   }
-  
+
   VPackSlice const body = parsedBody->slice();
-  
+
   std::string const endpoint =
-  VelocyPackHelper::getStringValue(body, "endpoint", "");
-  
+      VelocyPackHelper::getStringValue(body, "endpoint", "");
+
   if (endpoint.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "<endpoint> must be a valid endpoint");
     return;
   }
-  
+
   std::string const database =
-  VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
   std::string const username =
-  VelocyPackHelper::getStringValue(body, "username", "");
+      VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
-  VelocyPackHelper::getStringValue(body, "password", "");
+      VelocyPackHelper::getStringValue(body, "password", "");
   std::string const jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
   bool const verbose =
-  VelocyPackHelper::getBooleanValue(body, "verbose", false);
+      VelocyPackHelper::getBooleanValue(body, "verbose", false);
   bool const includeSystem =
-  VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
+      VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   bool const incremental =
-  VelocyPackHelper::getBooleanValue(body, "incremental", false);
+      VelocyPackHelper::getBooleanValue(body, "incremental", false);
   bool const keepBarrier =
-  VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
+      VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
   bool const useCollectionId =
-  VelocyPackHelper::getBooleanValue(body, "useCollectionId", true);
-  
+      VelocyPackHelper::getBooleanValue(body, "useCollectionId", true);
+
   std::unordered_map<std::string, bool> restrictCollections;
   VPackSlice const restriction = body.get("restrictCollections");
-  
+
   if (restriction.isArray()) {
     for (VPackSlice const& cname : VPackArrayIterator(restriction)) {
       if (cname.isString()) {
         restrictCollections.insert(
-                                   std::pair<std::string, bool>(cname.copyString(), true));
+            std::pair<std::string, bool>(cname.copyString(), true));
       }
     }
   }
-  
+
   std::string restrictType =
-  VelocyPackHelper::getStringValue(body, "restrictType", "");
-  
+      VelocyPackHelper::getStringValue(body, "restrictType", "");
+
   if ((restrictType.empty() && !restrictCollections.empty()) ||
       (!restrictType.empty() && restrictCollections.empty()) ||
       (!restrictType.empty() && restrictType != "include" &&
        restrictType != "exclude")) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "invalid value for <restrictCollections> or <restrictType>");
-        return;
-      }
-  
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid value for <restrictCollections> or <restrictType>");
+    return;
+  }
+
   TRI_replication_applier_configuration_t config;
   config._endpoint = endpoint;
   config._database = database;
@@ -1422,31 +1421,32 @@ void RocksDBRestReplicationHandler::handleCommandSync() {
   config._includeSystem = includeSystem;
   config._verbose = verbose;
   config._useCollectionId = useCollectionId;
-  
+
   // wait until all data in current logfile got synced
-  //MMFilesLogfileManager::instance()->waitForSync(5.0);
+  // MMFilesLogfileManager::instance()->waitForSync(5.0);
   rocksdb::TransactionDB* db =
-  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
-  
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
+
   rocksdb::Status status = db->GetBaseDB()->SyncWAL();
   if (!status.ok()) {
     Result res = rocksutils::convertStatus(status).errorNumber();
-    generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+    generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                  res.errorMessage());
     return;
   }
-  
+
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
                        verbose);
-  
+
   std::string errorMsg = "";
-  
+
   /*int res = */ syncer.run(errorMsg, incremental);
-  
+
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  
+
   result.add("collections", VPackValue(VPackValueType::Array));
-  
+
   for (auto const& it : syncer.getProcessedCollections()) {
     std::string const cidString = StringUtils::itoa(it.first);
     // Insert a collection
@@ -1455,17 +1455,17 @@ void RocksDBRestReplicationHandler::handleCommandSync() {
     result.add("name", VPackValue(it.second));
     result.close();  // one collection
   }
-  
+
   result.close();  // collections
-  
+
   auto tickString = std::to_string(syncer.getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
-  
+
   if (keepBarrier) {
     auto barrierId = std::to_string(syncer.stealBarrier());
     result.add("barrierId", VPackValue(barrierId));
   }
-  
+
   result.close();  // base
   generateResult(rest::ResponseCode::OK, result.slice());
 }

@@ -123,6 +123,28 @@ function optimizerIndexesTestSuite () {
 /// @brief test _id
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUsePrimaryIdInAttributeAccess : function () {
+      var values = [ "UnitTestsCollection/test1", "UnitTestsCollection/test2", "UnitTestsCollection/test21", "UnitTestsCollection/test30" ];
+      var query = "LET data = NOOPT({ ids : " + JSON.stringify(values) + " }) FOR i IN " + c.name() + " FILTER i._id IN data.ids RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1, 2, 21, 30 ], results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(4, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _id
+////////////////////////////////////////////////////////////////////////////////
+
     testUsePrimaryId : function () {
       var values = [ "UnitTestsCollection/test1", "UnitTestsCollection/test2", "UnitTestsCollection/test21", "UnitTestsCollection/test30" ];
       var query = "FOR i IN " + c.name() + " FILTER i._id IN " + JSON.stringify(values) + " RETURN i.value";
@@ -203,6 +225,28 @@ function optimizerIndexesTestSuite () {
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(0, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _id
+////////////////////////////////////////////////////////////////////////////////
+
+    testUsePrimaryKeyInAttributeAccess : function () {
+      var values = [ "test1", "test2", "test21", "test30" ];
+      var query = "LET data = NOOPT({ ids : " + JSON.stringify(values) + " }) FOR i IN " + c.name() + " FILTER i._key IN data.ids RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1, 2, 21, 30 ], results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(4, results.stats.scannedIndex);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2538,7 +2582,18 @@ function optimizerIndexesTestSuite () {
         [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23', 'test42'] RETURN i._key", [ 'test23', 'test42' ] ],
         [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
         [ "LET a = PASSTHRU(['test23']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23' ] ],
-        [ "LET a = PASSTHRU(['test23', 'test42']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23', 'test42' ] ]
+        [ "LET a = PASSTHRU(['test23', 'test42']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = PASSTHRU({ ids: ['test23', 'test42'] }) FOR i IN " + c.name() + " FILTER i._key IN a.ids RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = PASSTHRU({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value2 IN a.ids RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value3 IN a.ids RETURN i.value2", [ 23, 42 ] ],
+        
+        // non-arrays. should not fail but return no results
+        [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
+        [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ ] ],
+        [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ]
+        
+
+
       ];
 
       queries.forEach(function(query) {

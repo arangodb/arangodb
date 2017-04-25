@@ -1448,11 +1448,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
           "Inquiry failed (" << inq._statusCode << "). Keep trying ...";
         continue;
       }
-    
-      AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
-      endpoint.clear();
-      connection = AgencyCommManager::MANAGER->acquire(endpoint);
-      continue;
     }
     
     // sometimes the agency will return a 307 (temporary redirect)

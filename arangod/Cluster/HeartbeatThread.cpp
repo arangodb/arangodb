@@ -825,10 +825,8 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   _backgroundJobScheduledOrRunning = true;
 
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
-  if (!isStopping() && !_ioService->stopped()) {
-    _ioService->
-      post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
-  }
+  _ioService->
+    post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

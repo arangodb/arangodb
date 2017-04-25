@@ -430,8 +430,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerSystemCollection : function () {
-      db._drop("_unitfoxx");
-      db._drop("_unittests");
+      db._drop("_unittests", true);
 
       var tick = getLastLogTick();
 

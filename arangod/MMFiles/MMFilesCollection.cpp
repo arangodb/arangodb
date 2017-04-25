@@ -1871,6 +1871,13 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
   return TRI_ERROR_NO_ERROR;
 }
 
+DocumentIdentifierToken MMFilesCollection::lookupKey(transaction::Methods *trx,
+                                                     VPackSlice const& key) {
+  MMFilesPrimaryIndex *index = primaryIndex();
+  MMFilesSimpleIndexElement element = index->lookupKey(trx, key);
+  return element ? MMFilesToken(element.revisionId()) : MMFilesToken();
+}
+
 int MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
                             ManagedDocumentResult& result, bool lock) {
   TRI_IF_FAILURE("ReadDocumentNoLock") {

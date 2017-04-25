@@ -38,9 +38,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-/// @brief typedef the template instantiation of the PathFinder
-typedef arangodb::graph::AttributeWeightShortestPathFinder ArangoDBPathFinder;
-
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 
@@ -91,22 +88,12 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   }
   _path = std::make_unique<arangodb::graph::ShortestPathResult>();
 
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    if (_opts->useWeight()) {
-      _finder.reset(
-          new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
-    } else {
-      _finder.reset(
-          new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
-    }
+  if (_opts->useWeight()) {
+    _finder.reset(
+        new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
   } else {
-    if (_opts->useWeight()) {
-      _finder.reset(
-          new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
-    } else {
-      _finder.reset(
-          new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
-    }
+    _finder.reset(
+        new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
   }
 
   if (arangodb::ServerState::instance()->isCoordinator()) {

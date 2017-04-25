@@ -45,7 +45,7 @@ class Query;
 }
 
 namespace graph {
-class ShortestPathOptions;
+struct ShortestPathOptions;
 }
 
 namespace velocypack {
@@ -54,7 +54,7 @@ class Slice;
 }
 
 namespace traverser {
-class TraverserOptions;
+struct TraverserOptions;
 
 class BaseEngine {
   friend class TraverserEngineRegistry;

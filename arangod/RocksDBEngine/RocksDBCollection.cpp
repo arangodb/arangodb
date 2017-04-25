@@ -464,10 +464,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // TODO maybe we could also reuse Index::drop, if we ensure the
   // implementations
   // don't do anything beyond deleting their contents
-  RocksDBKeyBounds indexBounds =
-      RocksDBKeyBounds::PrimaryIndex(42);  // default constructor?
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
+  
+    RocksDBKeyBounds indexBounds =
+        RocksDBKeyBounds::Empty();
     switch (rindex->type()) {
       case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
         indexBounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
@@ -502,6 +503,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       iter->Next();
     }
   }
+}
+
+DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods* trx,
+                                                     VPackSlice const& key) {
+  TRI_ASSERT(key.isString());
+  return primaryIndex()->lookupKey(trx, StringRef(key));
 }
 
 int RocksDBCollection::read(transaction::Methods* trx,
@@ -597,7 +604,8 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   TRI_voc_rid_t revisionId =
       transaction::helpers::extractRevFromDocument(newSlice);
 
-  RocksDBSavePoint guard(rocksTransaction(trx), trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(rocksTransaction(trx),
+                         trx->isSingleOperationTransaction());
 
   res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
   if (res.ok()) {
@@ -698,7 +706,8 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     }
   }
 
-  RocksDBSavePoint guard(rocksTransaction(trx), trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(rocksTransaction(trx),
+                         trx->isSingleOperationTransaction());
 
   VPackSlice const newDoc(builder->slice());
 
@@ -796,7 +805,8 @@ int RocksDBCollection::replace(
     }
   }
 
-  RocksDBSavePoint guard(rocksTransaction(trx), trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(rocksTransaction(trx),
+                         trx->isSingleOperationTransaction());
 
   RocksDBOperationResult opResult =
       updateDocument(trx, oldRevisionId, oldDoc, revisionId,
@@ -880,7 +890,8 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
     }
   }
 
-  RocksDBSavePoint guard(rocksTransaction(trx), trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(rocksTransaction(trx),
+                         trx->isSingleOperationTransaction());
 
   res = removeDocument(trx, oldRevisionId, oldDoc, options.waitForSync);
   if (res.ok()) {
@@ -1152,7 +1163,8 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 /// @brief looks up a document by key, low level worker
 /// the key must be a string slice, no revision check is performed
 RocksDBOperationResult RocksDBCollection::lookupDocument(
-    transaction::Methods* trx, VPackSlice key, ManagedDocumentResult& mdr) const {
+    transaction::Methods* trx, VPackSlice key,
+    ManagedDocumentResult& mdr) const {
   RocksDBOperationResult res;
   if (!key.isString()) {
     res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
