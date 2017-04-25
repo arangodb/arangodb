@@ -62,8 +62,7 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::string engineName = engine->typeName();
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
 
   v8::Handle<v8::Object> state = v8::Object::New(isolate);
   state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
@@ -82,12 +81,13 @@ static void JS_StateLoggerReplication(
     state->Set(TRI_V8_ASCII_STRING("lastLogTick"),
                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, lastTick));
     state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, lastTick+1));
+               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, lastTick));
     state->Set(TRI_V8_ASCII_STRING("totalEvents"),
              v8::Number::New(isolate, static_cast<double>(0))); //s.numEvents + s.numEventsSync)));
     state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(utilities::timeString()));
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+    return;
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -115,6 +115,12 @@ static void JS_TickRangesLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if( engineName != "mmfiles"){
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "only implemented for mmfiles engine");
+    return;
+  }
 
   auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
@@ -146,6 +152,12 @@ static void JS_FirstTickLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if( engineName != "mmfiles"){
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "only implemented for mmfiles engine");
+    return;
+  }
+
   auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
   TRI_voc_tick_t tick = UINT64_MAX;
@@ -176,6 +188,12 @@ static void JS_LastLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if( engineName != "mmfiles"){
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "only implemented for mmfiles engine");
+    return;
+  }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
