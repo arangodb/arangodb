@@ -43,6 +43,7 @@ var mmfilesEngine = false;
 if (db._engine().name === "mmfiles") {
   mmfilesEngine = true;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +115,6 @@ function ReplicationSuite() {
       db._drop(cn);
 
       connectToSlave();
-      replication.applier.stop();
       db._drop(cn);
     },
 
