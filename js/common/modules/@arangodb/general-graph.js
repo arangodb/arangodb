@@ -644,6 +644,10 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
   var result = true;
   graphs.forEach(
     function (graph) {
+      if (result == false) {
+        // Short circuit
+        return;
+      }
       if (graph._key === graphName) {
         return;
       }
@@ -2008,31 +2012,7 @@ exports._drop = function (graphId, dropCollections) {
 
   if (dropCollections === true) {
     graphs = exports._listObjects();
-    var edgeDefinitions = graph.edgeDefinitions;
-    edgeDefinitions.forEach(
-      function (edgeDefinition) {
-        var from = edgeDefinition.from;
-        var to = edgeDefinition.to;
-        var collection = edgeDefinition.collection;
-        if (checkIfMayBeDropped(collection, graph._key, graphs)) {
-          db._drop(collection);
-        }
-        from.forEach(
-          function (col) {
-            if (checkIfMayBeDropped(col, graph._key, graphs)) {
-              db._drop(col);
-            }
-          }
-        );
-        to.forEach(
-          function (col) {
-            if (checkIfMayBeDropped(col, graph._key, graphs)) {
-              db._drop(col);
-            }
-          }
-        );
-      }
-    );
+    var initialCollections = new Set();  // Here we collect the initial collection(s)
     // drop orphans
     if (!graph.orphanCollections) {
       graph.orphanCollections = [];
@@ -2041,11 +2021,67 @@ exports._drop = function (graphId, dropCollections) {
       function (oC) {
         if (checkIfMayBeDropped(oC, graph._key, graphs)) {
           try {
-            db._drop(oC);
+            let colObj = db[oC];
+            if (colObj.properties().distributeShardsLike !== undefined) {
+              db._drop(oC);
+            } else {
+              initialCollections.add(oC);
+            }
           } catch (ignore) {}
         }
       }
     );
+    var edgeDefinitions = graph.edgeDefinitions;
+    edgeDefinitions.forEach(
+      function (edgeDefinition) {
+        var from = edgeDefinition.from;
+        var to = edgeDefinition.to;
+        var collection = edgeDefinition.collection;
+        if (checkIfMayBeDropped(collection, graph._key, graphs)) {
+          let colObj = db[collection];
+          if (colObj.properties().distributeShardsLike !== undefined) {
+            db._drop(collection);
+          } else {
+            initialCollections.add(collection);
+          }
+        }
+        from.forEach(
+          function (col) {
+            if (checkIfMayBeDropped(col, graph._key, graphs)) {
+              try {
+                let colObj = db[col];
+                if (colObj.properties().distributeShardsLike !== undefined) {
+                  db._drop(col);
+                } else {
+                  initialCollections.add(col);
+                }
+              } catch (ignore) {}
+            }
+          }
+        );
+        to.forEach(
+          function (col) {
+            if (checkIfMayBeDropped(col, graph._key, graphs)) {
+              try {
+                let colObj = db[col];
+                if (colObj.properties().distributeShardsLike !== undefined) {
+                  db._drop(col);
+                } else {
+                  initialCollections.add(col);
+                }
+              } catch (ignore2) {}
+            }
+          }
+        );
+      }
+    );
+    for (let c of initialCollections) {
+      try {
+        db._drop(c);
+      } catch (e) {
+        console.error("Failed to Drop: '" + c + "' reason: " + e.message);
+      }
+    }
   }
 
   gdb.remove(graphId);
