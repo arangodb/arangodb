@@ -24,29 +24,32 @@
 #include "RocksDBCounterManager.h"
 
 #include "Basics/ReadLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "VocBase/ticks.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
-RocksDBCounterManager::CMValue::CMValue(VPackSlice const& slice) {
+RocksDBCounterManager::CMValue::CMValue(VPackSlice const& slice) 
+    : _sequenceNum(0), _count(0), _revisionId(0) {
   if (!slice.isArray()) {
     // got a somewhat invalid slice. probably old data from before the key structure changes
     return;
   }
-  TRI_ASSERT(slice.isArray());
 
   velocypack::ArrayIterator array(slice);
   if (array.valid()) {
@@ -146,6 +149,10 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
 
 /// Thread-Safe force sync
 Result RocksDBCounterManager::sync(bool force) {
+#if 0
+  writeSettings();
+#endif
+
   if (force) {
     while(true) {
       bool expected = false;
@@ -198,8 +205,7 @@ Result RocksDBCounterManager::sync(bool force) {
     }
   }
 
-  // we have to commit all counters in one batch otherwise
-  // there would be the possibility of
+  // we have to commit all counters in one batch 
   rocksdb::Status s = rtrx->Commit();
   if (s.ok()) {
     for (std::pair<uint64_t, CMValue> const& pair : copy) {
@@ -211,36 +217,48 @@ Result RocksDBCounterManager::sync(bool force) {
 }
 
 void RocksDBCounterManager::readSettings() {
-#if 0
   RocksDBKey key = RocksDBKey::SettingsValue();
 
   std::string result;
   rocksdb::Status status = _db->Get(rocksdb::ReadOptions(), key.string(), &result);
   if (status.ok()) {
-    // key may not be there...
+    // key may not be there, so don't fail when not found
     VPackSlice slice = VPackSlice(result.data());
     TRI_ASSERT(slice.isObject());
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
+
+    if (!result.empty()) {
+      try {
+        std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(result);
+        VPackSlice s = builder->slice();
+      
+        uint64_t lastTick = basics::VelocyPackHelper::stringUInt64(s.get("tick"));
+        TRI_UpdateTickServer(lastTick);
+      } catch (...) {
+        LOG_TOPIC(WARN, Logger::ENGINES) << "unable to read initial settings: invalid data";
+      }
+    }
   }
-#endif
 }
 
 void RocksDBCounterManager::writeSettings() {
-#if 0
   RocksDBKey key = RocksDBKey::SettingsValue();
 
   VPackBuilder builder;
   builder.openObject();
+  builder.add("tick", VPackValue(std::to_string(TRI_CurrentTickServer())));
   builder.close();
 
   VPackSlice slice = builder.slice();
+  LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
+
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
   rocksdb::Status status = _db->Put(rocksdb::WriteOptions(), key.string(), value);
   
-  if (status.ok()) {
-    // TODO
+  if (!status.ok()) {
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings failed";
   }
-#endif
 }
 
 /// Parse counter values from rocksdb
@@ -271,7 +289,7 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   std::unordered_map<uint64_t, RocksDBCounterManager::CounterAdjustment> deltas;
   rocksdb::SequenceNumber currentSeqNum;
 
-  explicit WBReader() {}
+  explicit WBReader() : currentSeqNum(0) {}
 
   bool prepKey(const rocksdb::Slice& key) {
     if (RocksDBKey::type(key) == RocksDBEntryType::Document) {

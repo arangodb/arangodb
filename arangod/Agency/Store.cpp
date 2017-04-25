@@ -151,7 +151,11 @@ Store& Store::operator=(Store&& rhs) {
 }
 
 /// Default dtor
-Store::~Store() { shutdown(); }
+Store::~Store() {
+  if (!isStopping()) {
+    shutdown();
+  }
+}
 
 /// Apply array of queries multiple queries to store
 /// Return vector of according success

@@ -342,14 +342,13 @@ void RocksDBRestReplicationHandler::handleCommandLoggerState() {
                   res.errorMessage());
     return;
   }
-  rocksdb::SequenceNumber lastTick = db->GetLatestSequenceNumber();
-
+  rocksdb::SequenceNumber lastTick = latestSequenceNumber();
   // "state" part
   builder.add("state", VPackValue(VPackValueType::Object));
   builder.add("running", VPackValue(true));
-  builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
+  builder.add("lastLogTick", VPackValue(StringUtils::itoa(lastTick)));
   builder.add("lastUncommittedLogTick",
-              VPackValue(std::to_string(lastTick + 1)));
+              VPackValue(StringUtils::itoa(lastTick + 1)));
   builder.add("totalEvents", VPackValue(0));  // s.numEvents + s.numEventsSync
   builder.add("time", VPackValue(utilities::timeString()));
   builder.close();
@@ -758,9 +757,14 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   if (found) {
     ctx = _manager->find(StringUtils::uint64(batchId), busy);
   }
-  if (!found || busy || ctx == nullptr) {
+  if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
+    return;
+  }
+  if (busy || ctx == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
+                  "context is busy or nullptr");
     return;
   }
   RocksDBReplicationContextGuard(_manager, ctx);

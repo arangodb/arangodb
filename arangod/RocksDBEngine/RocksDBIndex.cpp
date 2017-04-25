@@ -96,6 +96,7 @@ void RocksDBIndex::createCache() {
   if (!_useCache || _cachePresent) {
     // we should not get here if we do not need the cache
     // or if cache already created
+    return;
   }
 
   TRI_ASSERT(_cache.get() == nullptr);

@@ -36,9 +36,17 @@ struct AccessMode {
     WRITE = 2,
     EXCLUSIVE = 4
   };
+  
+  static inline bool isWrite(Type type) {
+    return (type == Type::WRITE);
+  }
+  
+  static inline bool isExclusive(Type type) {
+    return (type == Type::EXCLUSIVE);
+  }
 
-  static bool isWriteOrExclusive(Type type) {
-    return (type == Type::WRITE || type == Type::EXCLUSIVE);
+  static inline bool isWriteOrExclusive(Type type) {
+    return (isWrite(type) || isExclusive(type));
   }
 
   /// @brief get the transaction type from a string

@@ -170,6 +170,13 @@ void RocksDBEngine::start() {
       static_cast<int>(opts->_maxBytesForLevelMultiplier);
   _options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
   _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
+  _options.use_direct_reads = opts->_useDirectReads;
+  _options.use_direct_writes = opts->_useDirectWrites;
+  if (opts->_skipCorrupted) {
+    _options.wal_recovery_mode = rocksdb::WALRecoveryMode::kSkipAnyCorruptedRecords;
+  } else {
+    _options.wal_recovery_mode = rocksdb::WALRecoveryMode::kPointInTimeRecovery;
+  } 
 
   _options.base_background_compactions =
       static_cast<int>(opts->_baseBackgroundCompactions);
@@ -178,10 +185,13 @@ void RocksDBEngine::start() {
 
   _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
   _options.keep_log_file_num = static_cast<size_t>(opts->_keepLogFileNum);
+  _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
   _options.log_file_time_to_roll =
       static_cast<size_t>(opts->_logFileTimeToRoll);
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
+
+  _options.IncreaseParallelism(TRI_numberProcessors());
 
   _options.create_if_missing = true;
   _options.max_open_files = -1;

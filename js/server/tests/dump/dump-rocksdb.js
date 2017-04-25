@@ -241,8 +241,7 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertTrue(p.isVolatile);
-
+      
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(0, c.count());

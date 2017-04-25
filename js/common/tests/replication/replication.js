@@ -183,7 +183,7 @@ function ReplicationLoggerSuite () {
       assertTrue(typeof tick === 'string');
       assertNotEqual("", state.time);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.time);
-      
+
       // query the state again
       state = replication.logger.state().state;
       assertTrue(state.running);
@@ -1518,7 +1518,7 @@ function ReplicationApplierSuite () {
 
       // configure && start
       replication.applier.properties({
-        endpoint: "tcp://9.9.9.9:9999", // should not exist
+        endpoint: "tcp://127.0.0.1:0", // should not exist
         connectTimeout: 2,
         maxConnectRetries: 0,
         connectionRetryWaitTime: 1
@@ -1566,7 +1566,7 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
       // configure && start
       replication.applier.properties({
-        endpoint: "tcp://www.arangodb.com:7999", // should not exist
+        endpoint: "tcp://127.0.0.1:0", // should not exist
         connectTimeout: 2,
         maxConnectRetries: 0,
         connectionRetryWaitTime: 1

@@ -23,6 +23,7 @@
 
 #include "RocksDBCollection.h"
 #include "Aql/PlanCache.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -464,10 +465,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // TODO maybe we could also reuse Index::drop, if we ensure the
   // implementations
   // don't do anything beyond deleting their contents
-  RocksDBKeyBounds indexBounds =
-      RocksDBKeyBounds::PrimaryIndex(42);  // default constructor?
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
+  
+    RocksDBKeyBounds indexBounds =
+        RocksDBKeyBounds::Empty();
     switch (rindex->type()) {
       case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
         indexBounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
@@ -1247,83 +1249,17 @@ void RocksDBCollection::adjustNumberDocuments(int64_t adjustment) {
 }
 
 /// @brief write locks a collection, with a timeout
-int RocksDBCollection::beginWriteTimed(bool useDeadlockDetector,
-                                       double timeout) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWriteTimed blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  // LOCKING-DEBUG
-  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
-  int iterations = 0;
-  bool wasBlocked = false;
-  uint64_t waitTime = 0;  // indicate that times uninitialized
+int RocksDBCollection::lockWrite(double timeout) {
+  uint64_t waitTime = 0;  // indicates that time is uninitialized
   double startTime = 0.0;
 
   while (true) {
     TRY_WRITE_LOCKER(locker, _exclusiveLock);
 
     if (locker.isLocked()) {
-      // register writer
-      if (useDeadlockDetector) {
-        _logicalCollection->vocbase()->_deadlockDetector.addWriter(
-            _logicalCollection, wasBlocked);
-      }
       // keep lock and exit loop
       locker.steal();
       return TRI_ERROR_NO_ERROR;
-    }
-
-    if (useDeadlockDetector) {
-      try {
-        if (!wasBlocked) {
-          // insert writer
-          wasBlocked = true;
-          if (_logicalCollection->vocbase()->_deadlockDetector.setWriterBlocked(
-                  _logicalCollection) == TRI_ERROR_DEADLOCK) {
-            // deadlock
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-                << "deadlock detected while trying to acquire "
-                   "write-lock on collection '"
-                << _logicalCollection->name() << "'";
-            return TRI_ERROR_DEADLOCK;
-          }
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-              << "waiting for write-lock on collection '"
-              << _logicalCollection->name() << "'";
-        } else if (++iterations >= 5) {
-          // periodically check for deadlocks
-          TRI_ASSERT(wasBlocked);
-          iterations = 0;
-          if (_logicalCollection->vocbase()->_deadlockDetector.detectDeadlock(
-                  _logicalCollection, true) == TRI_ERROR_DEADLOCK) {
-            // deadlock
-            _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
-                _logicalCollection);
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-                << "deadlock detected while trying to acquire "
-                   "write-lock on collection '"
-                << _logicalCollection->name() << "'";
-            return TRI_ERROR_DEADLOCK;
-          }
-        }
-      } catch (...) {
-        // clean up!
-        if (wasBlocked) {
-          _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
-              _logicalCollection);
-        }
-        // always exit
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
     }
 
     double now = TRI_microtime();
@@ -1338,10 +1274,6 @@ int RocksDBCollection::beginWriteTimed(bool useDeadlockDetector,
     }
 
     if (now > startTime + timeout) {
-      if (useDeadlockDetector) {
-        _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
-            _logicalCollection);
-      }
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "timed out after " << timeout
           << " s waiting for write-lock on collection '"
@@ -1361,32 +1293,59 @@ int RocksDBCollection::beginWriteTimed(bool useDeadlockDetector,
 }
 
 /// @brief write unlocks a collection
-int RocksDBCollection::endWrite(bool useDeadlockDetector) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndWrite blocked: " << _name <<
-      // std::endl;
+int RocksDBCollection::unlockWrite() {
+  _exclusiveLock.unlockWrite();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief read locks a collection, with a timeout
+int RocksDBCollection::lockRead(double timeout) {
+  uint64_t waitTime = 0;  // indicates that time is uninitialized
+  double startTime = 0.0;
+
+  while (true) {
+    TRY_READ_LOCKER(locker, _exclusiveLock);
+
+    if (locker.isLocked()) {
+      // keep lock and exit loop
+      locker.steal();
       return TRI_ERROR_NO_ERROR;
     }
-  }
 
-  if (useDeadlockDetector) {
-    // unregister writer
-    try {
-      _logicalCollection->vocbase()->_deadlockDetector.unsetWriter(
-          _logicalCollection);
-    } catch (...) {
-      // must go on here to unlock the lock
+    double now = TRI_microtime();
+
+    if (waitTime == 0) {  // initialize times
+      // set end time for lock waiting
+      if (timeout <= 0.0) {
+        timeout = defaultLockTimeout;
+      }
+      startTime = now;
+      waitTime = 1;
+    }
+
+    if (now > startTime + timeout) {
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "timed out after " << timeout
+          << " s waiting for read-lock on collection '"
+          << _logicalCollection->name() << "'";
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+
+    if (now - startTime < 0.001) {
+      std::this_thread::yield();
+    } else {
+      usleep(static_cast<TRI_usleep_t>(waitTime));
+      if (waitTime < 500000) {
+        waitTime *= 2;
+      }
     }
   }
+}
 
-  // LOCKING-DEBUG
-  // std::cout << "EndWrite: " << _name << std::endl;
-  _exclusiveLock.unlockWrite();
+/// @brief read unlocks a collection
+int RocksDBCollection::unlockRead() {
+  _exclusiveLock.unlockRead();
 
   return TRI_ERROR_NO_ERROR;
 }

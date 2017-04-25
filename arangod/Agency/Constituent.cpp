@@ -82,7 +82,11 @@ Constituent::Constituent()
       _votedFor(NO_LEADER) {}
 
 /// Shutdown if not already
-Constituent::~Constituent() { shutdown(); }
+Constituent::~Constituent() {
+  if (!isStopping()) {
+    shutdown();
+  }
+}
 
 /// Wait for sync
 bool Constituent::waitForSync() const { return _agent->config().waitForSync(); }

@@ -38,8 +38,11 @@ namespace arangodb {
 
 class RocksDBKeyBounds {
  public:
-  RocksDBKeyBounds() = delete;
-  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief empty bounds
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds Empty();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for list of all databases
   //////////////////////////////////////////////////////////////////////////////
@@ -125,7 +128,8 @@ class RocksDBKeyBounds {
   rocksdb::Slice const end() const;
 
  private:
-  RocksDBKeyBounds(RocksDBEntryType type);
+  RocksDBKeyBounds();
+  explicit RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    std::string const& second);

@@ -88,7 +88,6 @@ int RocksDBReplicationContext::bindCollection(
 
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER;
-      RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
     _trx->addCollectionAtRuntime(collectionName);
     _iter = _collection->getAllIterator(_trx.get(), &_mdr,
@@ -127,7 +126,10 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   if (_trx.get() == nullptr) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
-  bindCollection(collectionName);
+  int res = bindCollection(collectionName);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return RocksDBReplicationResult(res, _lastTick);
+  }
 
   // set type
   int type = 2300;  // documents
@@ -139,8 +141,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
   VPackBuilder builder(&_vpackOptions);
 
-  uint64_t size = 0;
-  auto cb = [this, &type, &buff, &adapter, &size,
+  auto cb = [this, &type, &buff, &adapter,
              &builder](DocumentIdentifierToken const& token) {
     builder.clear();
 
@@ -167,10 +168,9 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     VPackSlice slice = builder.slice();
     dumper.dump(slice);
     buff.appendChar('\n');
-    size += (slice.byteSize() + 1);
   };
 
-  while (_hasMore && (size < chunkSize)) {
+  while (_hasMore && buff.length() < chunkSize) {
     try {
       _hasMore = _iter->next(cb, 10);  // TODO: adjust limit?
     } catch (std::exception const& ex) {
@@ -189,13 +189,12 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   TRI_ASSERT(_iter);
 
   RocksDBAllIndexIterator* primary =
-      dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
+      static_cast<RocksDBAllIndexIterator*>(_iter.get());
 
   std::string lowKey;
   VPackSlice highKey;  // FIXME: no good keeping this
 
   uint64_t hash = 0x012345678;
-  // auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
   auto cb = [&](DocumentIdentifierToken const& token) {
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
     if (!ok) {
@@ -220,7 +219,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   b.openArray();
   while (_hasMore && true /*sizelimit*/) {
     try {
-      //_hasMore = primary->nextWithKey(cb, chunkSize);
       _hasMore = primary->next(cb, chunkSize);
 
       b.add(VPackValue(VPackValueType::Object));
@@ -266,7 +264,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder& b,
   }
 
   RocksDBAllIndexIterator* primary =
-      dynamic_cast<RocksDBAllIndexIterator*>(_iter.get());
+      static_cast<RocksDBAllIndexIterator*>(_iter.get());
   auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
     RocksDBToken const& rt = static_cast<RocksDBToken const&>(token);
 

@@ -55,7 +55,7 @@ class GeneralServer {
  protected:
   bool openEndpoint(Endpoint* endpoint);
 
- protected:
+ private:
   std::vector<ListenTask*> _listenTasks;
   EndpointList const* _endpointList = nullptr;
 };

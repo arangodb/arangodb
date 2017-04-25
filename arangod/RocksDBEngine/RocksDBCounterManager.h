@@ -99,7 +99,6 @@ class RocksDBCounterManager {
     explicit CMValue(arangodb::velocypack::Slice const&);
     void serialize(arangodb::velocypack::Builder&) const;
   };
-
   
   void readSettings();
   void writeSettings();
