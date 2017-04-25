@@ -1302,7 +1302,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
           THROW_ARANGO_EXCEPTION(res);
         }
       }
-      TRI_ASSERT(!rangeUneqal || rangeUneqal && nextChunk); // A => B
+      TRI_ASSERT(!rangeUneqal || (rangeUneqal && nextChunk)); // A => B
       if (nextChunk && currentChunkId+1 < numChunks) {
         currentChunkId++;// we are out of range, see next chunk
         resetChunk();
