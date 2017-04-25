@@ -1309,7 +1309,7 @@ int ClusterInfo::dropCollectionCoordinator(
     if (p->distributeShardsLike() == coll->name() ||
         p->distributeShardsLike() == collectionID) {
       errorMsg += "Collection must not be dropped while it is sharding "
-        "prototype for collection " + p->distributeShardsLike();
+        "prototype for collection " + coll->name();
       return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
     }
   }
