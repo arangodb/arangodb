@@ -251,7 +251,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
 void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
-    arangodb::basics::LocalTaskQueue* queue) {
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();

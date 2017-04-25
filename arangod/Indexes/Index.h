@@ -250,7 +250,7 @@ class Index {
   virtual void batchInsert(
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
-      arangodb::basics::LocalTaskQueue* queue = nullptr);
+      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
   virtual int unload() = 0;
 
