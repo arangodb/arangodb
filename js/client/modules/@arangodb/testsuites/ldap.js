@@ -205,7 +205,7 @@ function ldap(options) {
       body: JSON.stringify({username: t.user.name, password: t.user.pass})
     });
 
-    results[t.name] = { status: t.result.statusCode == res.statusCode };
+    results[t.name] = { status: t.result.statusCode === res.statusCode };
 
     pu.shutdownInstance(adbInstance, options);
   }
