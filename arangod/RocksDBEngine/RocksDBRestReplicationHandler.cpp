@@ -758,9 +758,14 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   if (found) {
     ctx = _manager->find(StringUtils::uint64(batchId), busy);
   }
-  if (!found || busy || ctx == nullptr) {
+  if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
+    return;
+  }
+  if (busy || ctx == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
+                  "context is busy or nullptr");
     return;
   }
   RocksDBReplicationContextGuard(_manager, ctx);

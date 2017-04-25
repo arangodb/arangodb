@@ -48,6 +48,7 @@ using namespace arangodb::rest;
 
 GeneralServer::~GeneralServer() {
   for (auto& task : _listenTasks) {
+    task->stop();
     delete task;
   }
 }
@@ -114,6 +115,7 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
     return false;
   }
 
-  _listenTasks.emplace_back(task.release());
+  _listenTasks.emplace_back(task.get());
+  task.release();
   return true;
 }
