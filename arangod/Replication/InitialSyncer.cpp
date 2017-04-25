@@ -42,7 +42,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/EngineSelectorFeature.h" b
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -1211,6 +1211,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
     // chunk keys + revisionId
     std::vector<std::pair<std::string, uint64_t>> markers;
     bool foundLowKey = false;
+    bool syncedRange = false;
     
     auto resetChunk = [&] () -> void {
       sendExtendBatch();
@@ -1246,6 +1247,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
       hashString = hashSlice.copyString();
       localHash = 0x012345678;
       foundLowKey = false;
+      syncedRange = false;
     };
     // set to first chunk
     resetChunk();
@@ -1253,7 +1255,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
     std::function<void(VPackSlice, VPackSlice)> parseDoc =
       [&] (VPackSlice doc, VPackSlice key) {
       
-      bool rangeUneqal = false;
+      bool rangeUnequal = true;
       bool nextChunk = false;
       
       int cmp1 = key.compareString(lowKey.data(), lowKey.length());
@@ -1268,7 +1270,6 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         if (cmp1 == 0) {
           foundLowKey = true;
         } else if (!foundLowKey && cmp1 > 0) {
-          rangeUneqal = true;
           nextChunk = true;
         }
         
@@ -1280,37 +1281,43 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
           markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
           
           if (cmp2 == 0) {// found highKey
-            rangeUneqal = std::to_string(localHash) != hashString;
+            rangeUnequal = std::to_string(localHash) != hashString;
             nextChunk = true;
           }
         } else if (cmp2 == 0) {
-          rangeUneqal = true;
           nextChunk = true;
         }
       } else if (cmp2 > 0) { // higher than highKey
         // current range was unequal and we did not find the
         // high key. Load range and skip to next
-        rangeUneqal = true;
+        rangeUnequal = true;
         nextChunk = true;
       }
       
-      if (rangeUneqal) {
-        int res = syncChunkRocksDB(&trx, keysId, currentChunkId,
-                                   lowKey, highKey,
-                                   markers, errorMsg);
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
+      TRI_ASSERT(!rangeUnequal || (rangeUnequal && nextChunk)); // A => B
+      if (nextChunk) {
+        if (rangeUnequal && !syncedRange) {
+          syncedRange = true;
+          int res = syncChunkRocksDB(&trx, keysId, currentChunkId,
+                                     lowKey, highKey,
+                                     markers, errorMsg);
+          if (res != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
         }
-      }
-      TRI_ASSERT(!rangeUneqal || rangeUneqal && nextChunk); // A => B
-      if (nextChunk && currentChunkId+1 < numChunks) {
-        currentChunkId++;// we are out of range, see next chunk
-        resetChunk();
+        
+        if (currentChunkId+1 < numChunks) {
+          currentChunkId++;// we are out of range, see next chunk
+          resetChunk();
+        }
         
         // key is higher than upper bound, recheck the current document
         if (cmp2 > 0) {
           parseDoc(doc, key);
         }
+      } else {
+        LOG_TOPIC(ERR, Logger::FIXME) << "Did not expect keys higher"
+          << "than teh highest chunk";
       }
     };
     
