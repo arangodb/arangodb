@@ -43,7 +43,7 @@ class MMFilesCollectionReadLocker {
         _useDeadlockDetector(useDeadlockDetector),
         _doLock(false) {
     if (doLock) {
-      int res = _collection->beginReadTimed(_useDeadlockDetector);
+      int res = _collection->lockRead(_useDeadlockDetector);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -59,7 +59,7 @@ class MMFilesCollectionReadLocker {
   /// @brief release the lock
   inline void unlock() {
     if (_doLock) {
-      _collection->endRead(_useDeadlockDetector);
+      _collection->unlockRead(_useDeadlockDetector);
       _doLock = false;
     }
   }
