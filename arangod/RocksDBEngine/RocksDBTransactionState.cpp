@@ -183,12 +183,19 @@ Result RocksDBTransactionState::commitTransaction(
         _rocksWriteOptions.sync = true;
         _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
       }
+      
+      rocksdb::SequenceNumber prevSeq =
+      rocksutils::globalRocksDB()->GetLatestSequenceNumber();
 
       // TODO wait for response on github issue to see how we can use the
       // sequence number
       result = rocksutils::convertStatus(_rocksTransaction->Commit());
       rocksdb::SequenceNumber latestSeq =
           rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+      if (prevSeq+1 != latestSeq) {
+        LOG_TOPIC(INFO, Logger::DEVEL) << "Commits slipped between commits";
+      }
+      
       if (!result.ok()) {
         abortTransaction(activeTrx);
         return result;
