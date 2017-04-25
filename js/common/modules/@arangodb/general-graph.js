@@ -644,7 +644,7 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
   var result = true;
   graphs.forEach(
     function (graph) {
-      if (result == false) {
+      if (result === false) {
         // Short circuit
         return;
       }
