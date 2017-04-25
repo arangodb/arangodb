@@ -553,7 +553,7 @@ class AssocUnique {
   void batchInsert(std::function<void*()> const& contextCreator,
                    std::function<void(void*)> const& contextDestroyer,
                    std::shared_ptr<std::vector<Element> const> data,
-                   arangodb::basics::LocalTaskQueue* queue) {
+                   std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
     TRI_ASSERT(queue != nullptr);
     if (data->empty()) {
       // nothing to do

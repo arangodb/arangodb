@@ -514,7 +514,7 @@ void Index::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&
         documents,
-    arangodb::basics::LocalTaskQueue* queue) {
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   for (auto const& it : documents) {
     int status = insert(trx, it.first, it.second, false);
     if (status != TRI_ERROR_NO_ERROR) {
