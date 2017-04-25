@@ -106,6 +106,7 @@ class RocksDBReplicationContext {
  private:
   TRI_voc_tick_t _id;
   uint64_t _lastTick;
+  uint64_t _currentTick;
   std::unique_ptr<transaction::Methods> _trx;
   LogicalCollection* _collection;
   std::unique_ptr<IndexIterator> _iter;

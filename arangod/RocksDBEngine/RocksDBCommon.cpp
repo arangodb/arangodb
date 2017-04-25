@@ -35,6 +35,7 @@
 #include <rocksdb/comparator.h>
 #include <rocksdb/convenience.h>
 #include <rocksdb/utilities/transaction_db.h>
+#include <velocypack/Iterator.h>
 #include "Logger/Logger.h"
 
 namespace arangodb {
@@ -125,6 +126,30 @@ void uint64ToPersistent(std::string& p, uint64_t value) {
     p.push_back(static_cast<char>(value & 0xffU));
     value >>= 8;
   } while (++len < sizeof(uint64_t));
+}
+
+void stripObjectIds(VPackBuilder& builder, VPackSlice const& slice) {
+  if (slice.isObject()) {
+    builder.openObject();
+    for (auto it = arangodb::velocypack::ObjectIterator(slice); it.valid();
+         it++) {
+      if (it.key().copyString() == "objectId") {
+        continue;
+      }
+      builder.add(it.key());
+      stripObjectIds(builder, it.value());
+    }
+    builder.close();
+  } else if (slice.isArray()) {
+    builder.openArray();
+    for (auto it = arangodb::velocypack::ArrayIterator(slice); it.valid();
+         it++) {
+      stripObjectIds(builder, it.value());
+    }
+    builder.close();
+  } else {
+    builder.add(slice);
+  }
 }
 
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {

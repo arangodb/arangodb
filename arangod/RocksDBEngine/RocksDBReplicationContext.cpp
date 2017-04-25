@@ -48,6 +48,7 @@ double const RocksDBReplicationContext::DefaultTTL = 30 * 60.0;
 RocksDBReplicationContext::RocksDBReplicationContext()
     : _id(TRI_NewTickServer()),
       _lastTick(0),
+      _currentTick(0),
       _trx(),
       _collection(nullptr),
       _iter(),
@@ -77,21 +78,26 @@ uint64_t RocksDBReplicationContext::count() const {
 
 // creates new transaction/snapshot
 void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
-  releaseDumpingResources();
-  _trx = createTransaction(vocbase);
+  if ((_trx.get() == nullptr) || (_trx->vocbase() != vocbase)) {
+    releaseDumpingResources();
+    _trx = createTransaction(vocbase);
+  }
 }
 
 int RocksDBReplicationContext::bindCollection(
     std::string const& collectionName) {
-  if ((_collection == nullptr) || _collection->name() != collectionName) {
+  if ((_collection == nullptr) ||
+      ((_collection->name() != collectionName) &&
+       std::to_string(_collection->cid()) != collectionName)) {
     _collection = _trx->vocbase()->lookupCollection(collectionName);
-
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER;
     }
+
     _trx->addCollectionAtRuntime(collectionName);
     _iter = _collection->getAllIterator(_trx.get(), &_mdr,
                                         false);  //_mdr is not used nor updated
+    _currentTick = 1;
     _hasMore = true;
   }
   return TRI_ERROR_NO_ERROR;
@@ -174,13 +180,19 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     try {
       _hasMore = _iter->next(cb, 10);  // TODO: adjust limit?
     } catch (std::exception const& ex) {
+      _hasMore = false;
       return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     } catch (RocksDBReplicationResult const& ex) {
+      _hasMore = false;
       return ex;
     }
   }
 
-  return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick);
+  if (_hasMore) {
+    _currentTick++;
+  }
+
+  return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _currentTick);
 }
 
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,

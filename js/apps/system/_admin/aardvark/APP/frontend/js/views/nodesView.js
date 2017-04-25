@@ -22,6 +22,14 @@
       'keyup #plannedDBs': 'checkKey'
     },
 
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     checkKey: function (e) {
       if (e.keyCode === 13) {
         var self = this;
@@ -121,11 +129,16 @@
     },
 
     navigateToNode: function (elem) {
+      var name = $(elem.currentTarget).attr('node').slice(0, -5);
+
+      if ($(elem.target).hasClass('fa-info-circle')) {
+        window.App.navigate('#nodeInfo/' + encodeURIComponent(name), {trigger: true});
+        return;
+      }
       if ($(elem.currentTarget).hasClass('noHover')) {
         return;
       }
 
-      var name = $(elem.currentTarget).attr('node').slice(0, -5);
       window.App.navigate('#node/' + encodeURIComponent(name), {trigger: true});
     },
 
