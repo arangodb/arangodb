@@ -31,6 +31,8 @@
 #include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathResult.h"
+#include "Graph/AttributeWeightShortestPathFinder.h"
+#include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
