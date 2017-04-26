@@ -146,9 +146,6 @@ class ShortestPathBlock : public ExecutionBlock {
   ///        We use it to check if we are done with enumerating.
   bool _usedConstant;
 
-  /// @brief Cache for edges send over the network
-  std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _coordinatorCache;
-
   /// @brief Traverser Engines
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
