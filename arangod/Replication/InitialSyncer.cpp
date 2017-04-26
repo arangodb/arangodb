@@ -1494,6 +1494,24 @@ int InitialSyncer::syncChunkRocksDB(
 
     i++;
   }
+  
+  // delete all keys at end of the range
+  while (nextStart < markers.size()) {
+    std::string const& localKey = markers[nextStart].first;
+    
+    if ( localKey.compare(highString) > 0) {
+      // we have a local key that is not present remotely
+      keyBuilder->clear();
+      keyBuilder->openObject();
+      keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
+      keyBuilder->close();
+      
+      trx->remove(collectionName, keyBuilder->slice(), options);
+      ++nextStart;
+    } else {
+      break;
+    }
+  }
 
   if (!toFetch.empty()) {
     VPackBuilder keysBuilder;
