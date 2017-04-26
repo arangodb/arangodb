@@ -521,6 +521,7 @@ function unitTest (cases, options) {
       print(RED + require('internal').inspect(results) + RESET);
     }
   }
+
   if (jsonReply === true) {
     return results;
   } else {

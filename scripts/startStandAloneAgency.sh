@@ -177,8 +177,6 @@ else
     CO_ARANGOD=$ARANGOD
 fi
 
-MINP=0.5
-MAXP=2.0
 SFRE=2.5
 COMP=200000
 BASE=$(( $PORT_OFFSET + 5000 ))
@@ -192,7 +190,7 @@ mkdir -p agency
 PIDS=""
 
 aaid=(`seq 0 $(( $POOLSZ - 1 ))`)
-#shuffle
+shuffle
 
 count=1
 

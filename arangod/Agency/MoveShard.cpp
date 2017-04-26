@@ -84,7 +84,6 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb = envelope;
   }
 
-  std::string path;
   std::string now(timepointToString(std::chrono::system_clock::now()));
   
   // DBservers
