@@ -40,7 +40,9 @@ class DatabaseGuard {
   explicit DatabaseGuard(TRI_vocbase_t* vocbase) 
       : _vocbase(vocbase) {
     TRI_ASSERT(vocbase != nullptr);
-    _vocbase->use();
+    if (!_vocbase->use()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
   }
 
   /// @brief create the guard, using a database id
