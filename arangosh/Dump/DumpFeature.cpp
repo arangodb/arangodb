@@ -309,14 +309,15 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
   uint64_t chunkSize = _chunkSize;
 
   std::string const baseUrl =
-      "/_api/replication/dump?collection=" + cid + "&ticks=false&flush=false";
+      "/_api/replication/dump?collection=" + cid +
+      "&batchId=" + StringUtils::itoa(_batchId) +
+      "&ticks=false&flush=false";
 
   uint64_t fromTick = _tickStart;
 
   while (true) {
     std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
-                      "&chunkSize=" + StringUtils::itoa(chunkSize) +
-                      "&batchId=" + StringUtils::itoa(_batchId);
+                      "&chunkSize=" + StringUtils::itoa(chunkSize);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -682,6 +683,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 int DumpFeature::dumpShard(int fd, std::string const& DBserver,
                            std::string const& name, std::string& errorMsg) {
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
+                              "&batchId=" + StringUtils::itoa(_batchId) +
                               "&collection=" + name + "&chunkSize=" +
                               StringUtils::itoa(_chunkSize) + "&ticks=false";
 
