@@ -98,7 +98,10 @@ static inline bool MustReplicateWalMarkerType(MMFilesMarker const* marker) {
           type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
           type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
           type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
-          type == TRI_DF_MARKER_VPACK_DROP_INDEX);
+          type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+          type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+          type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+          type == TRI_DF_MARKER_VPACK_CHANGE_VIEW);
 }
 
 /// @brief whether or not a marker belongs to a transaction
@@ -135,6 +138,12 @@ static TRI_replication_operation_e TranslateType(
       return REPLICATION_INDEX_CREATE;
     case TRI_DF_MARKER_VPACK_DROP_INDEX:
       return REPLICATION_INDEX_DROP;
+    case TRI_DF_MARKER_VPACK_CREATE_VIEW:
+      return REPLICATION_VIEW_CREATE;
+    case TRI_DF_MARKER_VPACK_DROP_VIEW:
+      return REPLICATION_VIEW_DROP;
+    case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
+      return REPLICATION_VIEW_CHANGE;
 
     default:
       return REPLICATION_INVALID;
@@ -265,11 +274,14 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
     case TRI_DF_MARKER_VPACK_CREATE_COLLECTION:
     case TRI_DF_MARKER_VPACK_CREATE_INDEX:
+    case TRI_DF_MARKER_VPACK_CREATE_VIEW:
     case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
     case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
-    case TRI_DF_MARKER_VPACK_DROP_INDEX: {
+    case TRI_DF_MARKER_VPACK_DROP_INDEX: 
+    case TRI_DF_MARKER_VPACK_DROP_VIEW: {
       Append(dump, ",\"data\":");
 
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
@@ -394,11 +406,14 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
     case TRI_DF_MARKER_VPACK_CREATE_COLLECTION:
     case TRI_DF_MARKER_VPACK_CREATE_INDEX:
+    case TRI_DF_MARKER_VPACK_CREATE_VIEW:
     case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
     case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
-    case TRI_DF_MARKER_VPACK_DROP_INDEX: {
+    case TRI_DF_MARKER_VPACK_DROP_INDEX: 
+    case TRI_DF_MARKER_VPACK_DROP_VIEW: { 
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       builder.add("data", slice);

@@ -867,6 +867,18 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
   else if (type == REPLICATION_INDEX_DROP) {
     return dropIndex(slice);
   }
+  
+  else if (type == REPLICATION_VIEW_CREATE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view create not yet implemented");
+  }
+  
+  else if (type == REPLICATION_VIEW_DROP) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view drop not yet implemented");
+  }
+  
+  else if (type == REPLICATION_VIEW_CHANGE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view change not yet implemented");
+  }
 
   errorMsg = "unexpected marker type " + StringUtils::itoa(type);
 
