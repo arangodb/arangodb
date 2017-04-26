@@ -32,7 +32,6 @@ namespace arangodb {
 class ManagedDocumentResult;
 
 namespace graph {
-class ConstantWeightShortestPathFinder;
 class ShortestPathFinder;
 class ShortestPathResult;
 }
@@ -48,9 +47,6 @@ class ShortestPathNode;
 class ShortestPathBlock : public ExecutionBlock {
   friend struct EdgeWeightExpanderLocal;
   friend struct EdgeWeightExpanderCluster;
-
-  // TODO ONLY TEMPORARY
-  friend class graph::ConstantWeightShortestPathFinder;
 
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
