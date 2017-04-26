@@ -53,6 +53,8 @@ Web Admin Interface
 Authentication
 --------------
 
+(Enterprise only) added authentication against a [LDAP server](../Administration/Configuration/Ldap.md)
+
 
 Foxx
 ----
