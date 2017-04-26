@@ -12,6 +12,7 @@
 
     events: {
       'click #nodesContent .coords-nodes .pure-table-row': 'navigateToNode',
+      'click #nodesContent .dbs-nodes .pure-table-row': 'navigateToInfo',
       'click #nodesContent .coords-nodes .pure-table-row .fa-trash-o': 'deleteNode',
       'click #addCoord': 'addCoord',
       'click #removeCoord': 'removeCoord',
@@ -126,6 +127,13 @@
         });
       }
       return false;
+    },
+
+    navigateToInfo: function (elem) {
+      var name = $(elem.currentTarget).attr('node').slice(0, -5);
+      if ($(elem.target).hasClass('fa-info-circle')) {
+        window.App.navigate('#nodeInfo/' + encodeURIComponent(name), {trigger: true});
+      }
     },
 
     navigateToNode: function (elem) {
@@ -303,7 +311,6 @@
         this.setCoordSize(coords);
         this.setDBsSize(dbs);
       } catch (ignore) {
-        console.log(ignore);
         arangoHelper.arangoError('Plan', 'Could not abort Cluster Plan');
       }
     },

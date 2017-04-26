@@ -56,11 +56,21 @@
       }
 
       var renderObj = {};
-      renderObj.Name = model.name;
-      renderObj.Address = model.address;
-      renderObj.Status = model.status;
-      renderObj.Protocol = model.protocol;
-      renderObj.Role = model.role;
+      if (model.name) {
+        renderObj.Name = model.name;
+      }
+      if (model.address) {
+        renderObj.Address = model.address;
+      }
+      if (model.status) {
+        renderObj.Status = model.status;
+      }
+      if (model.protocol) {
+        renderObj.Protocol = model.protocol;
+      }
+      if (model.role) {
+        renderObj.Role = model.role;
+      }
       this.$el.html(this.template.render({entries: renderObj}));
     },
 

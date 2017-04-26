@@ -23,8 +23,9 @@
 #ifndef GENERAL_SERVER_AUTHENTICATION_HANDLER_H
 #define GENERAL_SERVER_AUTHENTICATION_HANDLER_H 1
 
-#include "VocBase/AuthInfo.h"
+#include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "VocBase/AuthInfo.h"
 
 namespace arangodb {
 
@@ -33,16 +34,16 @@ enum class AuthSource;
 
 class AuthenticationResult : public arangodb::Result {
   public:
-    AuthenticationResult(AuthSource source) : AuthenticationResult(TRI_ERROR_FAILED, source) {}
+    explicit AuthenticationResult(AuthSource const& source) : AuthenticationResult(TRI_ERROR_FAILED, source) {}
 
-    AuthenticationResult(int errorNumber, AuthSource source) : Result(errorNumber), _authSource(source) {}
-    AuthenticationResult(std::unordered_map<std::string, std::string> permissions, AuthSource source) :
+    AuthenticationResult(int errorNumber, AuthSource const& source) : Result(errorNumber), _authSource(source) {}
+    AuthenticationResult(std::unordered_map<std::string, std::string> const& permissions, AuthSource const& source) :
         Result(0),
         _authSource(source),
         _permissions(permissions) {}
 
-    AuthSource source() { return _authSource; }
-    std::unordered_map<std::string, std::string> permissions() { return _permissions; }
+    AuthSource source() const { return _authSource; }
+    std::unordered_map<std::string, std::string> permissions() const { return _permissions; }
 
   protected:
     AuthSource _authSource;
