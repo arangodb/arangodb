@@ -281,43 +281,47 @@
               if (error) {
                 arangoHelper.arangoError('Collection', 'Could not fetch properties');
               } else {
-                var journalSize = data.journalSize / (1024 * 1024);
-                var indexBuckets = data.indexBuckets;
-                var wfs = data.waitForSync;
+                if (data.journalSize) {
+                  var journalSize = data.journalSize / (1024 * 1024);
+                  var indexBuckets = data.indexBuckets;
+                  var wfs = data.waitForSync;
 
-                tableContent.push(
-                  window.modalView.createTextEntry(
-                    'change-collection-size',
-                    'Journal size',
-                    journalSize,
-                    'The maximal size of a journal or datafile (in MB). Must be at least 1.',
-                    '',
-                    true,
-                    [
-                      {
-                        rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                        msg: 'Must be a number.'
-                      }
-                    ]
-                  )
-                );
+                  tableContent.push(
+                    window.modalView.createTextEntry(
+                      'change-collection-size',
+                      'Journal size',
+                      journalSize,
+                      'The maximal size of a journal or datafile (in MB). Must be at least 1.',
+                      '',
+                      true,
+                      [
+                        {
+                          rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                          msg: 'Must be a number.'
+                        }
+                      ]
+                    )
+                  );
+                }
 
-                tableContent.push(
-                  window.modalView.createTextEntry(
-                    'change-index-buckets',
-                    'Index buckets',
-                    indexBuckets,
-                    'The number of index buckets for this collection. Must be at least 1 and a power of 2.',
-                    '',
-                    true,
-                    [
-                      {
-                        rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                        msg: 'Must be a number greater than 1 and a power of 2.'
-                      }
-                    ]
-                  )
-                );
+                if (indexBuckets) {
+                  tableContent.push(
+                    window.modalView.createTextEntry(
+                      'change-index-buckets',
+                      'Index buckets',
+                      indexBuckets,
+                      'The number of index buckets for this collection. Must be at least 1 and a power of 2.',
+                      '',
+                      true,
+                      [
+                        {
+                          rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
+                          msg: 'Must be a number greater than 1 and a power of 2.'
+                        }
+                      ]
+                    )
+                  );
+                }
 
                 // prevent "unexpected sync method error"
                 tableContent.push(
