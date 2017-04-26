@@ -36,6 +36,7 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+class DatabaseGuard;
 
 class RocksDBReplicationContext {
  public:
@@ -53,6 +54,13 @@ class RocksDBReplicationContext {
   TRI_voc_tick_t id() const;
   uint64_t lastTick() const;
   uint64_t count() const;
+  
+  TRI_vocbase_t* vocbase() const {
+    if (_trx == nullptr) {
+      return nullptr;
+    }
+    return _trx->vocbase();
+  }
 
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
@@ -106,13 +114,15 @@ class RocksDBReplicationContext {
  private:
   TRI_voc_tick_t _id;
   uint64_t _lastTick;
+  uint64_t _currentTick;
   std::unique_ptr<transaction::Methods> _trx;
   LogicalCollection* _collection;
   std::unique_ptr<IndexIterator> _iter;
   ManagedDocumentResult _mdr;
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
   arangodb::velocypack::Options _vpackOptions;
-  uint64_t _lastChunkOffset = 0;
+  uint64_t _lastChunkOffset;
+  std::unique_ptr<DatabaseGuard> _guard;
 
   double _expires;
   bool _isDeleted;

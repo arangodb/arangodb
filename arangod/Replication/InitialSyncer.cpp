@@ -32,15 +32,20 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"  //TODO -- Remove -- ditches
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDitch.h"
+#include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesPrimaryIndex.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
@@ -53,11 +58,13 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <cstring>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
+using namespace arangodb::rocksutils;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a binary search for the given key in the markers vector
@@ -267,7 +274,9 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
         errorMsg = "got invalid response from master at " +
                    _masterInfo._endpoint + ": invalid JSON";
       } else {
-        res = handleInventoryResponse(slice, incremental, errorMsg);
+        auto pair = stripObjectIds(slice);
+        res = handleInventoryResponse(pair.first, incremental,
+                                      errorMsg);
       }
     }
 
@@ -1020,8 +1029,16 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
 
   // now we can fetch the complete chunk information from the master
   try {
-    res = handleSyncKeys(col, id.copyString(), cid, collectionName, maxTick,
-                         errorMsg);
+    if (std::strcmp("mmfiles", EngineSelectorFeature::engineName()) == 0) {
+      res = handleSyncKeysMMFiles(col, id.copyString(), cid, collectionName,
+                                  maxTick, errorMsg);
+    } else if (std::strcmp("rocksdb", EngineSelectorFeature::engineName()) ==
+               0) {
+      res = handleSyncKeysRocksDB(col, id.copyString(), cid, collectionName,
+                                  maxTick, errorMsg);
+    } else {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (std::exception const& ex) {
@@ -1038,18 +1055,563 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
-                                  std::string const& keysId,
-                                  std::string const& cid,
-                                  std::string const& collectionName,
-                                  TRI_voc_tick_t maxTick,
-                                  std::string& errorMsg) {
+int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
+                                         std::string const& keysId,
+                                         std::string const& cid,
+                                         std::string const& collectionName,
+                                         TRI_voc_tick_t maxTick,
+                                         std::string& errorMsg) {
+  std::string progress =
+      "collecting local keys for collection '" + collectionName + "'";
+  setProgress(progress);
+
+  if (checkAborted()) {
+    return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+  }
+
+  sendExtendBatch();
+  sendExtendBarrier();
+
+  TRI_voc_tick_t const chunkSize = 5000;
+  std::string const baseUrl = BaseUrl + "/keys";
+
+  std::string url =
+      baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
+  progress = "fetching remote keys chunks for collection '" + collectionName +
+             "' from " + url;
+  setProgress(progress);
+
+  std::unique_ptr<SimpleHttpResult> response(
+      _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+
+  if (response == nullptr || !response->isComplete()) {
+    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
+               ": " + _client->getErrorMessage();
+
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  if (response->wasHttpError()) {
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+               ": " + response->getHttpReturnMessage();
+
+    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+  }
+
+  auto builder = std::make_shared<VPackBuilder>();
+  int res = parseResponse(builder, response.get());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg = "got invalid response from master at " +
+               std::string(_masterInfo._endpoint) +
+               ": invalid response is no array";
+
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  VPackSlice const chunkSlice = builder->slice();
+
+  if (!chunkSlice.isArray()) {
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
+               ": response is no array";
+
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  ManagedDocumentResult mmdr;
+  OperationOptions options;
+  options.silent = true;
+  options.ignoreRevs = true;
+  options.isRestore = true;
+
+  VPackBuilder keyBuilder;
+  size_t const numChunks = static_cast<size_t>(chunkSlice.length());
+
+  // remove all keys that are below first remote key or beyond last remote key
+  if (numChunks > 0) {
+    // first chunk
+    SingleCollectionTransaction trx(
+        transaction::StandaloneContext::Create(_vocbase), col->cid(),
+        AccessMode::Type::WRITE);
+
+    Result res = trx.begin();
+
+    if (!res.ok()) {
+      errorMsg =
+          std::string("unable to start transaction: ") + res.errorMessage();
+      res.reset(res.errorNumber(), errorMsg);
+      return res.errorNumber();
+    }
+
+    VPackSlice chunk = chunkSlice.at(0);
+
+    TRI_ASSERT(chunk.isObject());
+    auto lowSlice = chunk.get("low");
+    TRI_ASSERT(lowSlice.isString());
+
+    // last high
+    chunk = chunkSlice.at(numChunks - 1);
+    TRI_ASSERT(chunk.isObject());
+
+    auto highSlice = chunk.get("high");
+    TRI_ASSERT(highSlice.isString());
+
+    std::string const lowKey(lowSlice.copyString());
+    std::string const highKey(highSlice.copyString());
+
+    LogicalCollection* coll = trx.documentCollection();
+    std::unique_ptr<IndexIterator> iterator =
+        coll->getAllIterator(&trx, &mmdr, false);
+    iterator->next(
+        [&](DocumentIdentifierToken const& token) {
+          if (coll->readDocument(&trx, token, mmdr) == false) {
+            return;
+          }
+          VPackSlice doc(mmdr.vpack());
+          VPackSlice key = doc.get(StaticStrings::KeyString);
+          if (key.compareString(lowKey.data(), lowKey.length()) < 0) {
+            trx.remove(collectionName, key, options);
+          } else if (key.compareString(highKey.data(), highKey.length()) > 0) {
+            trx.remove(collectionName, key, options);
+          }
+        },
+        UINT64_MAX);
+
+    trx.commit();
+  }
+
+  {
+    if (checkAborted()) {
+      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+    }
+
+    SingleCollectionTransaction trx(
+        transaction::StandaloneContext::Create(_vocbase), col->cid(),
+        AccessMode::Type::WRITE);
+
+    Result res = trx.begin();
+
+    if (!res.ok()) {
+      errorMsg =
+          std::string("unable to start transaction: ") + res.errorMessage();
+      res.reset(res.errorNumber(), res.errorMessage());
+      return res.errorNumber();
+    }
+
+    // We do not take responsibility for the index.
+    // The LogicalCollection is protected by trx.
+    // Neither it nor it's indexes can be invalidated
+
+    size_t currentChunkId = 0;
+
+    std::string lowKey;
+    std::string highKey;
+    std::string hashString;
+    uint64_t localHash = 0x012345678;
+    // chunk keys + revisionId
+    std::vector<std::pair<std::string, uint64_t>> markers;
+    bool foundLowKey = false;
+
+    auto resetChunk = [&]() -> void {
+      sendExtendBatch();
+      sendExtendBarrier();
+
+      progress = "processing keys chunk " + std::to_string(currentChunkId) +
+                 " for collection '" + collectionName + "'";
+      setProgress(progress);
+
+      // read remote chunk
+      VPackSlice chunk = chunkSlice.at(currentChunkId);
+      if (!chunk.isObject()) {
+        errorMsg = "got invalid response from master at " +
+                   _masterInfo._endpoint + ": chunk is no object";
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
+      }
+
+      VPackSlice const lowSlice = chunk.get("low");
+      VPackSlice const highSlice = chunk.get("high");
+      VPackSlice const hashSlice = chunk.get("hash");
+      if (!lowSlice.isString() || !highSlice.isString() ||
+          !hashSlice.isString()) {
+        errorMsg = "got invalid response from master at " +
+                   _masterInfo._endpoint +
+                   ": chunks in response have an invalid format";
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
+      }
+
+      // now reset chunk information
+      markers.clear();
+      lowKey = lowSlice.copyString();
+      highKey = highSlice.copyString();
+      hashString = hashSlice.copyString();
+      localHash = 0x012345678;
+      foundLowKey = false;
+    };
+    // set to first chunk
+    resetChunk();
+
+    std::function<void(VPackSlice, VPackSlice)> parseDoc = [&](VPackSlice doc,
+                                                               VPackSlice key) {
+
+      bool rangeUnequal = false;
+      bool nextChunk = false;
+
+      int cmp1 = key.compareString(lowKey.data(), lowKey.length());
+      int cmp2 = key.compareString(highKey.data(), highKey.length());
+
+      if (cmp1 < 0) {
+        // smaller values than lowKey mean they don't exist remotely
+        trx.remove(collectionName, key, options);
+        return;
+      }
+      if (cmp1 >= 0 && cmp2 <= 0) {
+        // we only need to hash we are in the range
+        if (cmp1 == 0) {
+          foundLowKey = true;
+        } else if (!foundLowKey && cmp1 > 0) {
+          rangeUnequal = true;
+          nextChunk = true;
+        }
+
+        if (foundLowKey) {
+          VPackSlice revision = doc.get(StaticStrings::RevString);
+          localHash ^= key.hashString();
+          localHash ^= revision.hash();
+
+          markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
+
+          if (cmp2 == 0) {  // found highKey
+            rangeUnequal = std::to_string(localHash) != hashString;
+            nextChunk = true;
+          }
+        } else if (cmp2 == 0) {
+          rangeUnequal = true;
+          nextChunk = true;
+        }
+      } else if (cmp2 > 0) {  // higher than highKey
+        // current range was unequal and we did not find the
+        // high key. Load range and skip to next
+        rangeUnequal = true;
+        nextChunk = true;
+      }
+
+      if (rangeUnequal) {
+        int res = syncChunkRocksDB(&trx, keysId, currentChunkId, lowKey,
+                                   highKey, markers, errorMsg);
+        if (res != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+      }
+      TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
+      if (nextChunk && currentChunkId + 1 < numChunks) {
+        currentChunkId++;  // we are out of range, see next chunk
+        resetChunk();
+
+        // key is higher than upper bound, recheck the current document
+        if (cmp2 > 0) {
+          parseDoc(doc, key);
+        }
+      }
+    };
+
+    std::unique_ptr<IndexIterator> iterator =
+        col->getAllIterator(&trx, &mmdr, false);
+    iterator->next(
+        [&](DocumentIdentifierToken const& token) {
+          if (col->readDocument(&trx, token, mmdr) == false) {
+            return;
+          }
+          VPackSlice doc(mmdr.vpack());
+          VPackSlice key = doc.get(StaticStrings::KeyString);
+          parseDoc(doc, key);
+        },
+        UINT64_MAX);
+
+    res = trx.commit();
+    if (!res.ok()) {
+      return res.errorNumber();
+    }
+  }
+
+  return res;
+}
+
+int InitialSyncer::syncChunkRocksDB(
+    SingleCollectionTransaction* trx, std::string const& keysId,
+    uint64_t chunkId, std::string const& lowString,
+    std::string const& highString,
+    std::vector<std::pair<std::string, uint64_t>> markers,
+    std::string& errorMsg) {
+  std::string const baseUrl = BaseUrl + "/keys";
+  TRI_voc_tick_t const chunkSize = 5000;
+  std::string const& collectionName = trx->documentCollection()->name();
+  PhysicalCollection* physical = trx->documentCollection()->getPhysical();
+  OperationOptions options;
+  options.silent = true;
+  options.ignoreRevs = true;
+  options.isRestore = true;
+
+  // no match
+  // must transfer keys for non-matching range
+  std::string url = baseUrl + "/" + keysId + "?type=keys&chunk=" +
+                    std::to_string(chunkId) + "&chunkSize=" +
+                    std::to_string(chunkSize);
+
+  std::string progress =
+      "fetching keys chunk '" + std::to_string(chunkId) + "' from " + url;
+  setProgress(progress);
+
+  std::unique_ptr<SimpleHttpResult> response(
+      _client->retryRequest(rest::RequestType::PUT, url, nullptr, 0));
+
+  if (response == nullptr || !response->isComplete()) {
+    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
+               ": " + _client->getErrorMessage();
+
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  if (response->wasHttpError()) {
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+               ": " + response->getHttpReturnMessage();
+
+    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+  }
+
+  auto builder = std::make_shared<VPackBuilder>();
+  int res = parseResponse(builder, response.get());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
+               ": response is no array";
+
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  VPackSlice const responseBody = builder->slice();
+  if (!responseBody.isArray()) {
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
+               ": response is no array";
+
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  transaction::BuilderLeaser keyBuilder(trx);
+  /*size_t nextStart = 0;
+  // delete all keys at start of the range
+  while (nextStart < markers.size()) {
+    std::string const& localKey = markers[nextStart].first;
+
+    if ( localKey.compare(lowString) < 0) {
+      // we have a local key that is not present remotely
+      keyBuilder.clear();
+      keyBuilder.openObject();
+      keyBuilder.add(StaticStrings::KeyString, VPackValue(localKey));
+      keyBuilder.close();
+
+      trx.remove(collectionName, keyBuilder.slice(), options);
+      ++nextStart;
+    } else {
+      break;
+    }
+  }*/
+
+  std::vector<size_t> toFetch;
+
+  size_t const numKeys = static_cast<size_t>(responseBody.length());
+  TRI_ASSERT(numKeys > 0);
+
+  size_t i = 0;
+  size_t nextStart = 0;
+
+  for (VPackSlice const& pair : VPackArrayIterator(responseBody)) {
+    if (!pair.isArray() || pair.length() != 2) {
+      errorMsg = "got invalid response from master at " +
+                 _masterInfo._endpoint +
+                 ": response key pair is no valid array";
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+
+    // key
+    VPackSlice const keySlice = pair.at(0);
+    if (!keySlice.isString()) {
+      errorMsg = "got invalid response from master at " +
+                 _masterInfo._endpoint + ": response key is no string";
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+
+    // rid
+    if (markers.empty()) {
+      // no local markers
+      toFetch.emplace_back(i);
+      i++;
+      continue;
+    }
+
+    std::string const keyString = keySlice.copyString();
+    // remove keys not present anymore
+    while (nextStart < markers.size()) {
+      std::string const& localKey = markers[nextStart].first;
+
+      int res = localKey.compare(keyString);
+      if (res != 0) {
+        // we have a local key that is not present remotely
+        keyBuilder->clear();
+        keyBuilder->openObject();
+        keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
+        keyBuilder->close();
+
+        trx->remove(collectionName, keyBuilder->slice(), options);
+        ++nextStart;
+      } else {
+        // key match
+        break;
+      }
+    }
+
+    // see if key exists
+    DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
+    if (!token._data) {
+      // key not found locally
+      toFetch.emplace_back(i);
+    } else if (TRI_RidToString(token._data) != pair.at(1).copyString()) {
+      // key found, but revision id differs
+      toFetch.emplace_back(i);
+      ++nextStart;
+    } else {
+      // a match - nothing to do!
+      ++nextStart;
+    }
+
+    i++;
+  }
+
+  if (!toFetch.empty()) {
+    VPackBuilder keysBuilder;
+    keysBuilder.openArray();
+    for (auto& it : toFetch) {
+      keysBuilder.add(VPackValue(it));
+    }
+    keysBuilder.close();
+
+    std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" +
+                      std::to_string(chunkId) + "&chunkSize=" +
+                      std::to_string(chunkSize);
+    progress = "fetching documents chunk " + std::to_string(chunkId) +
+               " for collection '" + collectionName + "' from " + url;
+    setProgress(progress);
+
+    std::string const keyJsonString(keysBuilder.slice().toJson());
+
+    std::unique_ptr<SimpleHttpResult> response(
+        _client->retryRequest(rest::RequestType::PUT, url,
+                              keyJsonString.c_str(), keyJsonString.size()));
+
+    if (response == nullptr || !response->isComplete()) {
+      errorMsg = "could not connect to master at " + _masterInfo._endpoint +
+                 ": " + _client->getErrorMessage();
+
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    TRI_ASSERT(response != nullptr);
+
+    if (response->wasHttpError()) {
+      errorMsg = "got invalid response from master at " +
+                 _masterInfo._endpoint + ": HTTP " +
+                 StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+                 response->getHttpReturnMessage();
+
+      return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    }
+
+    auto builder = std::make_shared<VPackBuilder>();
+    int res = parseResponse(builder, response.get());
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = "got invalid response from master at " +
+                 std::string(_masterInfo._endpoint) + ": response is no array";
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+
+    VPackSlice const slice = builder->slice();
+    if (!slice.isArray()) {
+      errorMsg = "got invalid response from master at " +
+                 _masterInfo._endpoint + ": response is no array";
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+
+    for (auto const& it : VPackArrayIterator(slice)) {
+      if (!it.isObject()) {
+        errorMsg = "got invalid response from master at " +
+                   _masterInfo._endpoint + ": document is no object";
+
+        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      }
+
+      VPackSlice const keySlice = it.get(StaticStrings::KeyString);
+
+      if (!keySlice.isString()) {
+        errorMsg = "got invalid response from master at " +
+                   _masterInfo._endpoint + ": document key is invalid";
+
+        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      }
+
+      VPackSlice const revSlice = it.get(StaticStrings::RevString);
+
+      if (!revSlice.isString()) {
+        errorMsg = "got invalid response from master at " +
+                   _masterInfo._endpoint + ": document revision is invalid";
+
+        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      }
+
+      DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
+
+      if (!token._data) {
+        // INSERT
+        OperationResult opRes = trx->insert(collectionName, it, options);
+        res = opRes.code;
+      } else {
+        // UPDATE
+        OperationResult opRes = trx->update(collectionName, it, options);
+        res = opRes.code;
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief incrementally fetch data from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int InitialSyncer::handleSyncKeysMMFiles(arangodb::LogicalCollection* col,
+                                         std::string const& keysId,
+                                         std::string const& cid,
+                                         std::string const& collectionName,
+                                         TRI_voc_tick_t maxTick,
+                                         std::string& errorMsg) {
   std::string progress =
       "collecting local keys for collection '" + collectionName + "'";
   setProgress(progress);
 
   // fetch all local keys from primary index
-  VPackBuilder dataLake;
   std::vector<uint8_t const*> markers;
 
   MMFilesDocumentDitch* ditch = nullptr;
@@ -1070,23 +1632,20 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return res.errorNumber();
     }
 
-    MMFilesCollection* mmcol =
-        dynamic_cast<MMFilesCollection*>(col->getPhysical());
-    if (mmcol != nullptr) {
-      ditch = mmcol->ditches()->createMMFilesDocumentDitch(false, __FILE__,
-                                                           __LINE__);
+    ditch = arangodb::MMFilesCollection::toMMFilesCollection(col)
+                ->ditches()
+                ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
 
-      if (ditch == nullptr) {
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
+    if (ditch == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
   }
 
-  // TRI_ASSERT(ditch != nullptr);
-  TRI_DEFER(if (ditch != nullptr) {
-    arangodb::MMFilesCollection::toMMFilesCollection(col)->ditches()->freeDitch(
-        ditch);
-  });
+  TRI_ASSERT(ditch != nullptr);
+
+  TRI_DEFER(arangodb::MMFilesCollection::toMMFilesCollection(col)
+                ->ditches()
+                ->freeDitch(ditch));
 
   {
     SingleCollectionTransaction trx(
@@ -1110,18 +1669,11 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;
-    dataLake.openArray();
     trx.invokeOnAllElements(
-        trx.name(), [this, &trx, &mmdr, &markers, &iterations,
-                     &dataLake](DocumentIdentifierToken const& token) {
+        trx.name(), [this, &trx, &mmdr, &markers,
+                     &iterations](DocumentIdentifierToken const& token) {
           if (trx.documentCollection()->readDocument(&trx, token, mmdr)) {
-            VPackSlice doc(mmdr.vpack());
-            dataLake.openObject();
-            dataLake.add(StaticStrings::KeyString,
-                         doc.get(StaticStrings::KeyString));
-            dataLake.add(StaticStrings::RevString,
-                         doc.get(StaticStrings::RevString));
-            dataLake.close();
+            markers.emplace_back(mmdr.vpack());
 
             if (++iterations % 10000 == 0) {
               if (checkAborted()) {
@@ -1131,11 +1683,6 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
           }
           return true;
         });
-    dataLake.close();
-    // because live is hard
-    for (VPackSlice const& slice : VPackArrayIterator(dataLake.slice())) {
-      markers.emplace_back(slice.start());
-    }
 
     if (checkAborted()) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
@@ -1340,7 +1887,9 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     // Neither it nor it's indexes can be invalidated
 
     // TODO Move to MMFiles
-    PhysicalCollection* physical = trx.documentCollection()->getPhysical();
+    auto physical = static_cast<MMFilesCollection*>(
+        trx.documentCollection()->getPhysical());
+    auto idx = physical->primaryIndex();
 
     size_t const currentChunkId = i;
     progress = "processing keys chunk " + std::to_string(currentChunkId) +
@@ -1525,11 +2074,13 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
           }
         }
 
-        DocumentIdentifierToken token = physical->lookupKey(&trx, keySlice);
-        if (!token._data) {
+        MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+
+        if (!element) {
           // key not found locally
           toFetch.emplace_back(i);
-        } else if (TRI_RidToString(token._data) != pair.at(1).copyString()) {
+        } else if (TRI_RidToString(element.revisionId()) !=
+                   pair.at(1).copyString()) {
           // key found, but revision id differs
           toFetch.emplace_back(i);
           ++nextStart;
@@ -1643,9 +2194,9 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          DocumentIdentifierToken token = physical->lookupKey(&trx, keySlice);
+          MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
 
-          if (!token._data) {
+          if (!element) {
             // INSERT
             OperationResult opRes = trx.insert(collectionName, it, options);
             res = opRes.code;

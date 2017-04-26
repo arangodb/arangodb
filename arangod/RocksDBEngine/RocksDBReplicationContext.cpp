@@ -33,6 +33,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
@@ -48,12 +49,14 @@ double const RocksDBReplicationContext::DefaultTTL = 30 * 60.0;
 RocksDBReplicationContext::RocksDBReplicationContext()
     : _id(TRI_NewTickServer()),
       _lastTick(0),
+      _currentTick(0),
       _trx(),
       _collection(nullptr),
       _iter(),
       _mdr(),
       _customTypeHandler(),
       _vpackOptions(Options::Defaults),
+      _lastChunkOffset(0),
       _expires(TRI_microtime() + DefaultTTL),
       _isDeleted(false),
       _isUsed(true),
@@ -77,22 +80,26 @@ uint64_t RocksDBReplicationContext::count() const {
 
 // creates new transaction/snapshot
 void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
-  releaseDumpingResources();
-  _trx = createTransaction(vocbase);
+  if ((_trx.get() == nullptr) || (_trx->vocbase() != vocbase)) {
+    releaseDumpingResources();
+    _trx = createTransaction(vocbase);
+  }
 }
 
 int RocksDBReplicationContext::bindCollection(
     std::string const& collectionName) {
-  if ((_collection == nullptr) || _collection->name() != collectionName) {
+  if ((_collection == nullptr) ||
+      ((_collection->name() != collectionName) &&
+       std::to_string(_collection->cid()) != collectionName)) {
     _collection = _trx->vocbase()->lookupCollection(collectionName);
-
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER;
-      RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
+
     _trx->addCollectionAtRuntime(collectionName);
     _iter = _collection->getAllIterator(_trx.get(), &_mdr,
                                         false);  //_mdr is not used nor updated
+    _currentTick = 1;
     _hasMore = true;
   }
   return TRI_ERROR_NO_ERROR;
@@ -127,7 +134,10 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   if (_trx.get() == nullptr) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
-  bindCollection(collectionName);
+  int res = bindCollection(collectionName);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return RocksDBReplicationResult(res, _lastTick);
+  }
 
   // set type
   int type = 2300;  // documents
@@ -172,13 +182,19 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     try {
       _hasMore = _iter->next(cb, 10);  // TODO: adjust limit?
     } catch (std::exception const& ex) {
+      _hasMore = false;
       return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     } catch (RocksDBReplicationResult const& ex) {
+      _hasMore = false;
       return ex;
     }
   }
 
-  return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick);
+  if (_hasMore) {
+    _currentTick++;
+  }
+
+  return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _currentTick);
 }
 
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
@@ -193,7 +209,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   VPackSlice highKey;  // FIXME: no good keeping this
 
   uint64_t hash = 0x012345678;
-  // auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
   auto cb = [&](DocumentIdentifierToken const& token) {
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
     if (!ok) {
@@ -218,7 +233,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   b.openArray();
   while (_hasMore && true /*sizelimit*/) {
     try {
-      //_hasMore = primary->nextWithKey(cb, chunkSize);
       _hasMore = primary->next(cb, chunkSize);
 
       b.add(VPackValue(VPackValueType::Object));
@@ -378,10 +392,13 @@ void RocksDBReplicationContext::releaseDumpingResources() {
     _iter.reset();
   }
   _collection = nullptr;
+  _guard.reset();
 }
 
 std::unique_ptr<transaction::Methods>
 RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
+  _guard.reset(new DatabaseGuard(vocbase));
+
   double lockTimeout = transaction::Methods::DefaultLockTimeout;
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(vocbase);
@@ -389,6 +406,7 @@ RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
       ctx, {}, {}, {}, lockTimeout, false, true));
   Result res = trx->begin();
   if (!res.ok()) {
+    _guard.reset();
     THROW_ARANGO_EXCEPTION(res);
   }
   _customTypeHandler = ctx->orderCustomTypeHandler();

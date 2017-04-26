@@ -88,6 +88,10 @@ arangodb::Result convertStatus(rocksdb::Status const&,
 uint64_t uint64FromPersistent(char const* p);
 void uint64ToPersistent(char* p, uint64_t value);
 void uint64ToPersistent(std::string& out, uint64_t value);
+
+std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
+    VPackSlice const& inputSlice, bool checkBeforeCopy = true);
+
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();

@@ -133,6 +133,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.system-replication-factor",
                      "replication factor for system collections",
                      new UInt32Parameter(&_systemReplicationFactor));
+
+  options->addOption("--cluster.create-waits-for-sync-replication",
+                     "active coordinator will wait for all replicas to create collection",
+                     new BooleanParameter(&_createWaitsForSyncReplication));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

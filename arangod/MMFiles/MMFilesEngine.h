@@ -138,14 +138,14 @@ class MMFilesEngine final : public StorageEngine {
   void waitForSync(TRI_voc_tick_t tick) override;
 
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade, int&) override;
-  Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override {
+  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override {
     status = TRI_ERROR_NO_ERROR;
     return createDatabaseMMFiles(id, args);
   }
   int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
 
   void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) override;
-  Result dropDatabase(Database* database) override;
+  Result dropDatabase(TRI_vocbase_t* database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery

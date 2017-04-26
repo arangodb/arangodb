@@ -94,7 +94,7 @@ class MultiInserterTask : public LocalTask {
 
  public:
   MultiInserterTask(
-      LocalTaskQueue* queue, std::function<void(void*)> contextDestroyer,
+      std::shared_ptr<LocalTaskQueue> queue, std::function<void(void*)> contextDestroyer,
       std::vector<Bucket>* buckets,
       std::function<Element(void*, Element const&, uint64_t, Bucket&,
                             bool const, bool const)>
@@ -168,7 +168,7 @@ class MultiPartitionerTask : public LocalTask {
 
  public:
   MultiPartitionerTask(
-      LocalTaskQueue* queue,
+      std::shared_ptr<LocalTaskQueue> queue,
       std::function<uint64_t(void*, Element const&, bool)> hashElement,
       std::function<void(void*)> const& contextDestroyer,
       std::shared_ptr<std::vector<Element> const> data, size_t lower,

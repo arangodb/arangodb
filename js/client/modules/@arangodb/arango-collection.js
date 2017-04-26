@@ -336,6 +336,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'keyOptions': false,
     'indexBuckets': true,
     'replicationFactor': false,
+    'distributeShardsLike': false,
   };
   var a;
 
@@ -344,7 +345,7 @@ ArangoCollection.prototype.properties = function (properties) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
 
     arangosh.checkRequestResult(requestResult);
-  }else {
+  } else {
     var body = {};
 
     for (a in attributes) {

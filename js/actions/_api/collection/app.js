@@ -64,10 +64,12 @@ function collectionRepresentation(collection, showProperties, showCount, showFig
     result.indexBuckets = properties.indexBuckets;
 
     if (cluster.isCoordinator()) {
-      result.shardKeys = properties.shardKeys;
+      result.avoidServers = properties.avoidServers;
       result.numberOfShards = properties.numberOfShards;
       result.replicationFactor = properties.replicationFactor;
       result.avoidServers = properties.avoidServers;
+      result.distributeShardsLike = properties.distributeShardsLike;
+      result.shardKeys = properties.shardKeys;
     }
   }
 
@@ -203,6 +205,15 @@ function post_api_collection (req, res) {
   }
 
   try {
+    var options = {};
+    if (req.parameters.hasOwnProperty('waitForSyncReplication')) {
+      var value = req.parameters.waitForSyncReplication.toLowerCase();
+      if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
+        options.waitForSyncReplication = true;
+      } else {
+        options.waitForSyncReplication = false;
+      }
+    }
     var collection;
     if (typeof (r.type) === 'string') {
       if (r.type.toLowerCase() === 'edge' || r.type === '3') {
@@ -210,9 +221,9 @@ function post_api_collection (req, res) {
       }
     }
     if (r.type === arangodb.ArangoCollection.TYPE_EDGE) {
-      collection = arangodb.db._createEdgeCollection(r.name, r.parameters);
+      collection = arangodb.db._createEdgeCollection(r.name, r.parameters, options);
     } else {
-      collection = arangodb.db._createDocumentCollection(r.name, r.parameters);
+      collection = arangodb.db._createDocumentCollection(r.name, r.parameters, options);
     }
 
     var result = {};

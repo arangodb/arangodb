@@ -428,6 +428,8 @@ target_link_libraries(${BIN_ARANGOD}
   arangoserver
 )
 
+target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
+
 install(
   TARGETS ${BIN_ARANGOD}
   RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}

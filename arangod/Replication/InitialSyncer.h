@@ -185,14 +185,34 @@ class InitialSyncer : public Syncer {
 
   int handleCollectionSync(arangodb::LogicalCollection*, std::string const&,
                            std::string const&, TRI_voc_tick_t, std::string&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief incrementally fetch data from a collection
+  //////////////////////////////////////////////////////////////////////////////
+  
+  int handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
+                            std::string const& keysId, std::string const& cid,
+                            std::string const& collectionName, TRI_voc_tick_t maxTick,
+                            std::string& errorMsg);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief incrementally fetch chunk data from a collection
+  //////////////////////////////////////////////////////////////////////////////
+  
+  int syncChunkRocksDB(SingleCollectionTransaction* trx,
+                       std::string const& keysId,
+                       uint64_t chunkId,
+                       std::string const& lowKey, std::string const& highKey,
+                       std::vector<std::pair<std::string, uint64_t>> markers,
+                       std::string& errorMsg);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief incrementally fetch data from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSyncKeys(arangodb::LogicalCollection*, std::string const&,
-                     std::string const&, std::string const&, TRI_voc_tick_t,
-                     std::string&);
+  int handleSyncKeysMMFiles(arangodb::LogicalCollection* col,
+                            std::string const& keysId, std::string const& cid,
+                            std::string const& collectionName, TRI_voc_tick_t maxTick,
+                            std::string& errorMsg);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief changes the properties of a collection, based on the VelocyPack
