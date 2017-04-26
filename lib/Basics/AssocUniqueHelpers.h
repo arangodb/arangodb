@@ -70,7 +70,7 @@ class UniqueInserterTask : public LocalTask {
 
  public:
   UniqueInserterTask(
-      LocalTaskQueue* queue, std::function<void(void*)> contextDestroyer,
+      std::shared_ptr<LocalTaskQueue> queue, std::function<void(void*)> contextDestroyer,
       std::vector<Bucket>* buckets,
       std::function<int(void*, Element const&, Bucket&, uint64_t)> doInsert,
       std::function<bool(void*, Bucket&, uint64_t)> checkResize, size_t i,
@@ -140,7 +140,7 @@ class UniquePartitionerTask : public LocalTask {
 
  public:
   UniquePartitionerTask(
-      LocalTaskQueue* queue,
+      std::shared_ptr<LocalTaskQueue> queue,
       std::function<uint64_t(void*, Element const&)> hashElement,
       std::function<void(void*)> const& contextDestroyer,
       std::shared_ptr<std::vector<Element> const> data, size_t lower,

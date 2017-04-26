@@ -292,7 +292,7 @@ class AssocMulti {
   void batchInsert(std::function<void*()> const& contextCreator,
                    std::function<void(void*)> const& contextDestroyer,
                    std::shared_ptr<std::vector<Element> const> data,
-                   LocalTaskQueue* queue) {
+                   std::shared_ptr<LocalTaskQueue> queue) {
     if (data->empty()) {
       // nothing to do
       return;

@@ -398,7 +398,7 @@ class MMFilesCollection final : public PhysicalCollection {
   bool openIndex(VPackSlice const& description, transaction::Methods* trx);
 
   /// @brief initializes an index with all existing documents
-  void fillIndex(basics::LocalTaskQueue*, transaction::Methods*, Index*,
+  void fillIndex(std::shared_ptr<basics::LocalTaskQueue>, transaction::Methods*, Index*,
                  std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
                  bool);
 

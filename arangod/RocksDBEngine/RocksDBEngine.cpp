@@ -30,12 +30,14 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/build.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -54,6 +56,7 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBView.h"
+#include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/convenience.h>
@@ -300,7 +303,6 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
 
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions));
-
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
@@ -847,6 +849,58 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
   }
 
   return it->second;
+}
+
+Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder){
+  Result res;
+
+  rocksdb::Status status = _db->GetBaseDB()->SyncWAL();
+  if (!status.ok()) {
+    res = rocksutils::convertStatus(status).errorNumber();
+    return res;
+  }
+
+  builder.add(VPackValue(VPackValueType::Object));  // Base
+  rocksdb::SequenceNumber lastTick = _db->GetLatestSequenceNumber();
+
+  // "state" part
+  builder.add("state", VPackValue(VPackValueType::Object)); //open
+  builder.add("running", VPackValue(true));
+  builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
+  builder.add("lastUncommittedLogTick", VPackValue(std::to_string(lastTick)));
+  builder.add("totalEvents", VPackValue(0));  // s.numEvents + s.numEventsSync
+  builder.add("time", VPackValue(utilities::timeString()));
+  builder.close();
+
+  // "server" part
+  builder.add("server", VPackValue(VPackValueType::Object)); //open
+  builder.add("version", VPackValue(ARANGODB_VERSION));
+  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  builder.close();
+
+  // "clients" part
+  builder.add("clients", VPackValue(VPackValueType::Array)); //open
+  if(vocbase != nullptr) { //add clients
+    auto allClients = vocbase->getReplicationClients();
+    for (auto& it : allClients) {
+      // One client
+      builder.add(VPackValue(VPackValueType::Object));
+      builder.add("serverId", VPackValue(std::to_string(std::get<0>(it))));
+
+      char buffer[21];
+      TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
+      builder.add("time", VPackValue(buffer));
+
+      builder.add("lastServedTick", VPackValue(std::to_string(std::get<2>(it))));
+
+      builder.close();
+    }
+  }
+  builder.close();  // clients
+
+  builder.close();  // base
+
+  return res;
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {

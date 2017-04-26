@@ -111,7 +111,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void batchInsert(
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
-      arangodb::basics::LocalTaskQueue* queue = nullptr) override;
+      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
 
   int drop() override;
 

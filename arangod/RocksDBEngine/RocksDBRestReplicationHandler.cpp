@@ -328,57 +328,12 @@ bool RocksDBRestReplicationHandler::isCoordinatorError() {
 
 void RocksDBRestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
-  builder.add(VPackValue(VPackValueType::Object));  // Base
-
-  // MMFilesLogfileManager::instance()->waitForSync(10.0);
-  // MMFilesLogfileManagerState const s =
-  // MMFilesLogfileManager::instance()->state();
-  rocksdb::TransactionDB* db =
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
-  rocksdb::Status status = db->GetBaseDB()->SyncWAL();
-  if (!status.ok()) {
-    Result res = rocksutils::convertStatus(status).errorNumber();
+  auto res = globalRocksEngine()->createLoggerState(_vocbase, builder);
+  if (res.fail()) {
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   res.errorMessage());
     return;
   }
-  rocksdb::SequenceNumber lastTick = latestSequenceNumber();
-  // "state" part
-  builder.add("state", VPackValue(VPackValueType::Object));
-  builder.add("running", VPackValue(true));
-  builder.add("lastLogTick", VPackValue(StringUtils::itoa(lastTick)));
-  builder.add("lastUncommittedLogTick",
-              VPackValue(StringUtils::itoa(lastTick + 1)));
-  builder.add("totalEvents", VPackValue(0));  // s.numEvents + s.numEventsSync
-  builder.add("time", VPackValue(utilities::timeString()));
-  builder.close();
-
-  // "server" part
-  builder.add("server", VPackValue(VPackValueType::Object));
-  builder.add("version", VPackValue(ARANGODB_VERSION));
-  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
-  builder.close();
-
-  // "clients" part
-  builder.add("clients", VPackValue(VPackValueType::Array));
-  auto allClients = _vocbase->getReplicationClients();
-  for (auto& it : allClients) {
-    // One client
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add("serverId", VPackValue(std::to_string(std::get<0>(it))));
-
-    char buffer[21];
-    TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
-    builder.add("time", VPackValue(buffer));
-
-    builder.add("lastServedTick", VPackValue(std::to_string(std::get<2>(it))));
-
-    builder.close();
-  }
-  builder.close();  // clients
-
-  builder.close();  // base
-
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
@@ -871,7 +826,8 @@ void RocksDBRestReplicationHandler::handleCommandRestoreCollection() {
                   "invalid JSON");
     return;
   }
-  VPackSlice const slice = parsedRequest->slice();
+  auto pair = stripObjectIds(parsedRequest->slice());
+  VPackSlice const slice = pair.first;
 
   bool overwrite = false;
 
@@ -1775,14 +1731,15 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
     if (dropExisting) {
       int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
-      if (res == TRI_ERROR_FORBIDDEN) {
+      if (res == TRI_ERROR_FORBIDDEN ||
+          res == TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
         // some collections must not be dropped
         res = truncateCollectionOnCoordinator(dbName, name);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg =
               "unable to truncate collection (dropping is forbidden): " + name;
-          return res;
         }
+        return res;
       }
 
       if (res != TRI_ERROR_NO_ERROR) {

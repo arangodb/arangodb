@@ -1592,14 +1592,15 @@ int MMFilesRestReplicationHandler::processRestoreCollectionCoordinator(
     if (dropExisting) {
       int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
-      if (res == TRI_ERROR_FORBIDDEN) {
+      if (res == TRI_ERROR_FORBIDDEN ||
+          res == TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
         // some collections must not be dropped
         res = truncateCollectionOnCoordinator(dbName, name);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg =
               "unable to truncate collection (dropping is forbidden): " + name;
-          return res;
         }
+        return res;
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
