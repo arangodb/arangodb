@@ -4,13 +4,15 @@ devel
 * --server.maximal-queue-size is now an absolute maximum. If the queue is
   full, then 503 is returned. Setting it to 0 means "no limit".
 
-* fixed issue #2450
 
-* fixed issue #2453
+v3.2.alpha4 (2017-04-25)
+------------------------
 
-* fixed issue #2448
+* fixed issue #2450: Bad optimization plan on simple query
 
-* fixed issue #2442
+* fixed issue #2448: ArangoDB Web UI takes no action when Delete button is clicked
+
+* fixed issue #2442: Frontend shows already deleted databases during login 
 
 * added 'x-content-type-options: nosniff' to avoid MSIE bug
 
@@ -81,6 +83,10 @@ devel
   Enabling this option activated some proprietary timers for only selected 
   events in arangod. Instead better use `perf` to gather timings.
 
+
+v3.2.alpha3 (2017-03-22)
+------------------------
+
 * increase default collection lock timeout from 30 to 900 seconds
 
 * added function `db._engine()` for retrieval of storage engine information at
@@ -118,7 +124,7 @@ devel
   when unused.
 
   Waiting for an unused V8 context will now also abort if no V8 context can be 
-  acquired/created after 60 seconds.
+  acquired/created after 120 seconds.
 
 * improved diagnostic messages written to logfiles by supervisor process
 
@@ -235,7 +241,7 @@ v3.2.alpha1 (2017-02-05)
 * fix potential port number over-/underruns
 
 * added startup option `--log.shorten-filenames` for controlling whether filenames
-  in log message should be shortened to just the filename with the absolute path
+  in log messages should be shortened to just the filename with the absolute path
 
 * removed IndexThreadFeature, made `--database.index-threads` option obsolete
 
@@ -245,18 +251,27 @@ v3.2.alpha1 (2017-02-05)
 
 * generated Foxx services now use swagger tags
 
+
 v3.1.19 (XXXX-XX-XX)
 --------------------
-
 
 * Fixed a StackOverflow issue in Traversal and ShortestPath. Occured if many (>1000) input
   values in a row do not return any result. Fixes issue: #2445
 
-v3.1.19 (XXXX-XX-XX)
---------------------
+* fixed issue #2448
+
+* fixed issue #2442
+
+* added 'x-content-type-options: nosniff' to avoid MSIE bug
+
+* fixed issue #2441
 
 * fixed issue #2440
 
+* Fixed a StackOverflow issue in Traversal and ShortestPath. Occured if many (>1000) input
+  values in a row do not return any result. Fixes issue: #2445
+
+* fix occasional hanging shutdowns on OS X
 
 
 v3.1.18 (2017-04-18)
