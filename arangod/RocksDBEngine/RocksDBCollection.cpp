@@ -341,6 +341,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
             ->forceSyncProperties();
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
         {"path", "statusString"}, true, /*forPersistence*/ false);
+    auto rtrx = rocksTransaction(trx);
+    rtrx->PutLogData(
+        RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
+                                     _logicalCollection->cid(), info)
+            .slice());
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
   created = true;
