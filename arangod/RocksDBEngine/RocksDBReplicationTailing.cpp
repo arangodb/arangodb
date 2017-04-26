@@ -43,7 +43,7 @@ class WBReader : public rocksdb::WriteBatch::Handler {
   explicit WBReader(TRI_vocbase_t* vocbase, uint64_t from, size_t& limit,
                     bool includeSystem, VPackBuilder& builder)
       : _vocbase(vocbase),
-        _from(from),
+        /* _from(from), */
         _limit(limit),
         _includeSystem(includeSystem),
         _builder(builder) {}
@@ -170,7 +170,7 @@ class WBReader : public rocksdb::WriteBatch::Handler {
 
  private:
   TRI_vocbase_t* _vocbase;
-  uint64_t _from;
+  /* uint64_t _from; */
   size_t& _limit;
   bool _includeSystem;
   VPackBuilder& _builder;
