@@ -1065,6 +1065,10 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
+  rtrx->PutLogData(
+      RocksDBLogValue::DocumentInsert(_logicalCollection->vocbase()->id(),
+                                      _logicalCollection->cid())
+          .slice());
   rocksdb::Status status = rtrx->Put(key.string(), value.string());
 
   if (!status.ok()) {
@@ -1127,6 +1131,11 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
+  rtrx->PutLogData(RocksDBLogValue::DocumentRemove(
+                       _logicalCollection->vocbase()->id(),
+                       _logicalCollection->cid(),
+                       StringRef(doc.get(StaticStrings::KeyString)))
+                       .slice());
   auto status = rtrx->Delete(key.string());
   if (!status.ok()) {
     auto converted = rocksutils::convertStatus(status);

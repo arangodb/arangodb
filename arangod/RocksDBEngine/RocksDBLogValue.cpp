@@ -85,9 +85,14 @@ RocksDBLogValue RocksDBLogValue::ViewDrop(TRI_voc_cid_t cid,
   return RocksDBLogValue(RocksDBLogType::ViewDrop, cid, iid);
 }
 
+RocksDBLogValue RocksDBLogValue::DocumentInsert(TRI_voc_tick_t dbId,
+                                                TRI_voc_cid_t cid) {
+  return RocksDBLogValue(RocksDBLogType::DocumentInsert, dbId, cid);
+}
+
 RocksDBLogValue RocksDBLogValue::DocumentRemove(
-    arangodb::StringRef const& key) {
-  return RocksDBLogValue(RocksDBLogType::DocumentRemove, key);
+    TRI_voc_tick_t dbId, TRI_voc_cid_t cid, arangodb::StringRef const& key) {
+  return RocksDBLogValue(RocksDBLogType::DocumentRemove, dbId, cid, key);
 }
 
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type) : _buffer() {
@@ -123,7 +128,8 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
   switch (type) {
     case RocksDBLogType::BeginTransaction:
     case RocksDBLogType::CollectionChange:
-    case RocksDBLogType::CollectionDrop: {
+    case RocksDBLogType::CollectionDrop:
+    case RocksDBLogType::DocumentInsert: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
       _buffer += static_cast<char>(type);
       uint64ToPersistent(_buffer, dbId);
@@ -186,12 +192,16 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
   _buffer.append(data.data(), data.length());  // primary key
 }
 
-RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, StringRef const& data)
+RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, TRI_voc_tick_t dbId,
+                                 TRI_voc_cid_t cid, StringRef const& data)
     : _buffer() {
   switch (type) {
     case RocksDBLogType::DocumentRemove: {
-      _buffer.reserve(data.length() + sizeof(RocksDBLogType));
+      _buffer.reserve(data.length() + (sizeof(uint64_t) * 2) +
+                      sizeof(RocksDBLogType));
       _buffer += static_cast<char>(type);
+      uint64ToPersistent(_buffer, dbId);
+      uint64ToPersistent(_buffer, cid);
       _buffer.append(data.data(), data.length());  // primary key
       break;
     }
