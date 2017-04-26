@@ -1578,7 +1578,6 @@
     },
 
     checkExpand: function (data, origin) {
-      console.log(1);
       var self = this;
       var newNodes = data.nodes;
       var newEdges = data.edges;
