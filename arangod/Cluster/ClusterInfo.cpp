@@ -1101,12 +1101,10 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       [=](VPackSlice const& result) {
         if (result.isObject() && result.length() == (size_t)numberOfShards) {
           std::string tmpMsg = "";
-          bool tmpHaveError = false;
 
           for (auto const& p : VPackObjectIterator(result)) {
             if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                     p.value, "error", false)) {
-              tmpHaveError = true;
               tmpMsg += " shardID:" + p.key.copyString() + ":";
               tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
                   p.value, "errorMessage", "");
