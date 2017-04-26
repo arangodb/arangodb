@@ -826,9 +826,8 @@ void RocksDBRestReplicationHandler::handleCommandRestoreCollection() {
                   "invalid JSON");
     return;
   }
-  VPackBuilder builder;
-  stripObjectIds(builder, parsedRequest->slice());
-  VPackSlice const slice = builder.slice();
+  auto pair = stripObjectIds(parsedRequest->slice());
+  VPackSlice const slice = pair.first;
 
   bool overwrite = false;
 
