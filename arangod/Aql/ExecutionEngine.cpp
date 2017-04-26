@@ -1241,9 +1241,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       // optionally restrict query to certain shards
       inst->includedShards(query->includedShards());
 
-      plan->root()->walk(inst.get());
-
       try {
+        plan->root()->walk(inst.get());  // if this throws, we need to
+                                         // clean up as well
         engine = inst.get()->buildEngines();
         root = engine->root();
         // Now find all shards that take part:

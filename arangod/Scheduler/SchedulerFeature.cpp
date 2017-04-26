@@ -76,7 +76,7 @@ void SchedulerFeature::collectOptions(
                            new UInt64Parameter(&_nrMaximalThreads));
 
   options->addOption("--server.maximal-queue-size",
-                     "maximum queue length for asynchronous operations",
+                     "maximum queue length for asynchronous operations (use 0 for unrestricted)",
                      new UInt64Parameter(&_queueSize));
 
   options->addOldOption("scheduler.threads", "server.threads");
@@ -87,12 +87,6 @@ void SchedulerFeature::validateOptions(
   if (_nrServerThreads == 0) {
     _nrServerThreads = TRI_numberProcessors();
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Detected number of processors: " << _nrServerThreads;
-  }
-
-  if (_queueSize < 128) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "invalid value for `--server.maximal-queue-size', need at least 128";
-    FATAL_ERROR_EXIT();
   }
 
   if (_nrMinimalThreads < 2) {

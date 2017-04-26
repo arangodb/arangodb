@@ -46,7 +46,7 @@ class JobQueue {
   static size_t const STANDARD_QUEUE = 2;
 
  public:
-  JobQueue(size_t queueSize, rest::Scheduler*);
+  JobQueue(size_t maxQueueSize, rest::Scheduler*);
 
  public:
   void start();
@@ -56,8 +56,14 @@ class JobQueue {
 
   bool queue(std::unique_ptr<Job> job) {
     try {
+      if (0 < _maxQueueSize && _maxQueueSize <= _queueSize) {
+        wakeup();
+        return false;
+      }
+
       if (!_queue.push(job.get())) {
-        throw "failed to add to queue";
+        wakeup();
+        return false;
       }
 
       job.release();
@@ -85,6 +91,7 @@ class JobQueue {
   void waitForWork();
 
  private:
+  int64_t const _maxQueueSize;
   boost::lockfree::queue<Job*> _queue;
   std::atomic<int64_t> _queueSize;
 

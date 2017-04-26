@@ -55,8 +55,8 @@ class JobQueueThread final
     while (!isStopping()) {
       ++idleTries;
 
-      LOG_TOPIC(TRACE, Logger::THREADS) << "size of job queue: "
-                                        << _jobQueue->queueSize();
+      LOG_TOPIC(TRACE, Logger::THREADS)
+          << "size of job queue: " << _jobQueue->queueSize();
 
       while (_scheduler->shouldQueueMore()) {
         Job* jobPtr = nullptr;
@@ -77,7 +77,8 @@ class JobQueueThread final
           try {
             job->_callback(std::move(job->_handler));
           } catch (std::exception& e) {
-            LOG_TOPIC(WARN, Logger::THREADS) << "Exception caught in a dangereous place! " << e.what();
+            LOG_TOPIC(WARN, Logger::THREADS)
+                << "Exception caught in a dangereous place! " << e.what();
           }
 
           this->_jobQueue->wakeup();
@@ -102,14 +103,15 @@ class JobQueueThread final
   JobQueue* _jobQueue;
   rest::Scheduler* _scheduler;
 };
-}
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-JobQueue::JobQueue(size_t queueSize, rest::Scheduler* scheduler)
-    : _queue(queueSize),
+JobQueue::JobQueue(size_t maxQueueSize, rest::Scheduler* scheduler)
+    : _maxQueueSize(static_cast<int64_t>(maxQueueSize)),
+      _queue(maxQueueSize == 0 ? 512 : maxQueueSize),
       _queueSize(0),
       _queueThread(new JobQueueThread(this, scheduler)) {}
 
