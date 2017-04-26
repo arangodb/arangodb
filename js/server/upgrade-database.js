@@ -290,7 +290,7 @@
               JSON.stringify({
                 version: lastVersion,
                 tasks: lastTasks
-              }));
+              }, true));
           }
         } else {
           logger.error('Executing ' + taskName + ' failed. Aborting ' + procedure + ' procedure.');
@@ -306,7 +306,7 @@
           JSON.stringify({
             version: currentVersion,
             tasks: lastTasks
-          }));
+          }, true));
       }
 
       if (0 < activeTasks.length) {

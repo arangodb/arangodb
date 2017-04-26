@@ -2549,7 +2549,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 2) {
+  if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("write(<filename>, <content>)");
   }
 
@@ -2557,6 +2557,11 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
+  }
+
+  bool flush = false;
+  if (args.Length() > 2) {
+    flush = TRI_ObjectToBoolean(args[2]);
   }
 
   if (args[1]->IsObject() && V8Buffer::hasInstance(isolate, args[1])) {
@@ -2575,6 +2580,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (file.is_open()) {
       file.write(data, size);
+      if (flush) {
+        file.flush();
+      }
       file.close();
       TRI_V8_RETURN_TRUE();
     }
@@ -2591,6 +2599,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (file.is_open()) {
       file << *content;
+      if (flush) {
+        file.flush();
+      }
       file.close();
       TRI_V8_RETURN_TRUE();
     }
