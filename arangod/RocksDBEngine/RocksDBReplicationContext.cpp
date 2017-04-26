@@ -56,7 +56,7 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _mdr(),
       _customTypeHandler(),
       _vpackOptions(Options::Defaults),
-      _lastChunkOffset(0),
+      _lastIteratorOffset(0),
       _expires(TRI_microtime() + DefaultTTL),
       _isDeleted(false),
       _isUsed(true),
@@ -231,7 +231,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   };
 
   b.openArray();
-  while (_hasMore && true /*sizelimit*/) {
+  while (_hasMore) {
     try {
       _hasMore = primary->next(cb, chunkSize);
 
@@ -256,20 +256,23 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder& b,
                                                      size_t chunkSize) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
+  
+  
   // Position the iterator correctly
   size_t from = chunk * chunkSize;
-  if (from == 0) {
+  if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
     _iter->reset();
-    _lastChunkOffset = 0;
     _hasMore = true;
-  } else if (from < _lastChunkOffset + chunkSize) {
+    _lastIteratorOffset = 0;
+  }
+  if (from > _lastIteratorOffset) {
     TRI_ASSERT(from >= chunkSize);
-    uint64_t diff = from - chunkSize;
-    uint64_t to;  // = (chunk + 1) * chunkSize;
+    uint64_t diff = from - _lastIteratorOffset;
+    uint64_t to = 0;  // = (chunk + 1) * chunkSize;
     _iter->skip(diff, to);
+    _lastIteratorOffset += to;
     TRI_ASSERT(to == diff);
-    _lastChunkOffset = from;
-  } else if (from > _lastChunkOffset + chunkSize) {
+  } else if (from < _lastIteratorOffset) {
     // no jumping back in time fix the intitial syncer if you see this
     LOG_TOPIC(ERR, Logger::REPLICATION)
         << "Trying to request a chunk the rocksdb "
@@ -289,10 +292,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder& b,
   };
 
   b.openArray();
-  // chunk is going to be ignored here
-  while (_hasMore && true /*sizelimit*/) {
+  // chunkSize is going to be ignored here
+  if (_hasMore) {
     try {
       _hasMore = primary->nextWithKey(cb, chunkSize);
+      _lastIteratorOffset++;
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL);
     }
@@ -307,25 +311,22 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     VPackBuilder& b, size_t chunk, size_t chunkSize, VPackSlice const& ids) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
-  // Position the iterator correctly
+  
+  // Position the iterator must be reset to the beginning
+  // after calls to dumpKeys moved it forwards
   size_t from = chunk * chunkSize;
-  if (from == 0) {
+  if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
     _iter->reset();
-    _lastChunkOffset = 0;
     _hasMore = true;
-  } else if (from < _lastChunkOffset + chunkSize) {
+    _lastIteratorOffset = 0;
+  }
+  if (from > _lastIteratorOffset) {
     TRI_ASSERT(from >= chunkSize);
-    uint64_t diff = from - chunkSize;
-    uint64_t to;  // = (chunk + 1) * chunkSize;
+    uint64_t diff = from - _lastIteratorOffset;
+    uint64_t to = 0;  // = (chunk + 1) * chunkSize;
     _iter->skip(diff, to);
+    _lastIteratorOffset += to;
     TRI_ASSERT(to == diff);
-    _lastChunkOffset = from;
-  } else if (from > _lastChunkOffset + chunkSize) {
-    // no jumping back in time fix the intitial syncer if you see this
-    LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "Trying to request a chunk the rocksdb "
-        << "iterator already passed over";
-    return Result(TRI_ERROR_INTERNAL);
   }
 
   auto cb = [&](DocumentIdentifierToken const& token) {
@@ -344,17 +345,22 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   size_t oldPos = from;
   for (auto const& it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+      return Result(TRI_ERROR_BAD_PARAMETER);
     }
-    TRI_ASSERT(hasMore);
+    if (!hasMore) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "Not enough data";
+      return Result(TRI_ERROR_FAILED);
+    }
 
     size_t newPos = from + it.getNumber<size_t>();
     if (oldPos != from && newPos > oldPos + 1) {
-      uint64_t ignore;
+      uint64_t ignore = 0;
       _iter->skip(newPos - oldPos, ignore);
       TRI_ASSERT(ignore == newPos - oldPos);
+      _lastIteratorOffset += ignore;
     }
     hasMore = _iter->next(cb, 1);
+    _lastIteratorOffset++;
   }
   b.close();
 

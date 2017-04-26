@@ -121,7 +121,7 @@ class RocksDBReplicationContext {
   ManagedDocumentResult _mdr;
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
   arangodb::velocypack::Options _vpackOptions;
-  uint64_t _lastChunkOffset;
+  uint64_t _lastIteratorOffset;
   std::unique_ptr<DatabaseGuard> _guard;
 
   double _expires;
