@@ -141,7 +141,7 @@
       <% _.each(dbs, function(node, name) { %>
         <% var id = name + "-node"; %>
 
-        <div class="pure-table-row <%= disabled %>" id="<%= id %>">
+        <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
           <div class="pure-u-9-24 left"><%= node.ShortName %></div>
           <div class="pure-u-9-24 left"><%= node.Endpoint %></div>
