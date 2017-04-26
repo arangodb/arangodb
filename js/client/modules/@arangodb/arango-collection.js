@@ -345,7 +345,7 @@ ArangoCollection.prototype.properties = function (properties) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
 
     arangosh.checkRequestResult(requestResult);
-  }else {
+  } else {
     var body = {};
 
     for (a in attributes) {

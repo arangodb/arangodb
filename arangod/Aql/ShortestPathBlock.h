@@ -32,13 +32,8 @@ namespace arangodb {
 class ManagedDocumentResult;
 
 namespace graph {
-class ConstantWeightShortestPathFinder;
 class ShortestPathFinder;
 class ShortestPathResult;
-}
-
-namespace traverser {
-class EdgeCollectionInfo;
 }
 
 namespace aql {
@@ -46,11 +41,6 @@ namespace aql {
 class ShortestPathNode;
 
 class ShortestPathBlock : public ExecutionBlock {
-  friend struct EdgeWeightExpanderLocal;
-  friend struct EdgeWeightExpanderCluster;
-
-  // TODO ONLY TEMPORARY
-  friend class graph::ConstantWeightShortestPathFinder;
 
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
@@ -100,8 +90,6 @@ class ShortestPathBlock : public ExecutionBlock {
   /// @brief Register for the edge output
   RegisterId _edgeReg;
   
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
-
   /// @brief options to compute the shortest path
   graph::ShortestPathOptions* _opts;
 

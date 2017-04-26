@@ -577,7 +577,7 @@ bool ClusterComm::match(ClientTransactionID const& clientTransactionID,
 /// from deleting `result` and `answer`.
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult const ClusterComm::enquire(Ticket const ticketId) {
+ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId) {
   ResponseIterator i;
   AsyncResponse response;
 
@@ -614,7 +614,7 @@ ClusterCommResult const ClusterComm::enquire(Ticket const ticketId) {
 
 ClusterCommResult const ClusterComm::wait(
     ClientTransactionID const& clientTransactionID,
-    CoordTransactionID const coordTransactionID, Ticket const ticketId,
+    CoordTransactionID const coordTransactionID, communicator::Ticket const ticketId,
     ShardID const& shardID, ClusterCommTimeout timeout) {
 
   ResponseIterator i;
@@ -1123,6 +1123,19 @@ void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>*
   }
 }
 
+std::vector<communicator::Ticket> ClusterComm::activeServerTickets(std::vector<std::string> const& servers) {
+  std::vector<communicator::Ticket> tickets;
+  CONDITION_LOCKER(locker, somethingReceived);
+  for (auto const& it: responses) {
+    for (auto const& server: servers) {
+      if (it.second.result && it.second.result->serverID == server) {
+        tickets.push_back(it.first);
+      }
+    }
+  }
+  return tickets;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
 ////////////////////////////////////////////////////////////////////////////////
@@ -1130,18 +1143,10 @@ void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>*
 void ClusterCommThread::abortRequestsToFailedServers() {
   ClusterInfo* ci = ClusterInfo::instance();
   auto failedServers = ci->getFailedServers();
-  std::vector<std::string> failedServerEndpoints;
-  failedServerEndpoints.reserve(failedServers.size());
-
-  for (auto const& failedServer: failedServers) {
-    failedServerEndpoints.push_back(_cc->createCommunicatorDestination(ci->getServerEndpoint(failedServer), "/").url());
-  }
-
-  for (auto const& request: _cc->communicator()->requestsInProgress()) {
-    for (auto const& failedServerEndpoint: failedServerEndpoints) {
-      if (request->_destination.url().substr(0, failedServerEndpoint.length()) == failedServerEndpoint) {
-        _cc->communicator()->abortRequest(request->_ticketId);
-      }
+  if (failedServers.size() > 0) {
+    auto ticketIds = _cc->activeServerTickets(failedServers);
+    for (auto const& ticketId: ticketIds) {
+      _cc->communicator()->abortRequest(ticketId);
     }
   }
 }

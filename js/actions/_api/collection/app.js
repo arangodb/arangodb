@@ -65,7 +65,6 @@ function collectionRepresentation(collection, showProperties, showCount, showFig
 
     if (cluster.isCoordinator()) {
       result.avoidServers = properties.avoidServers;
-      result.distributeShardsLike = properties.distributeShardsLike;
       result.numberOfShards = properties.numberOfShards;
       result.replicationFactor = properties.replicationFactor;
       result.avoidServers = properties.avoidServers;
