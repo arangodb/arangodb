@@ -386,7 +386,6 @@ JOB_STATUS FailedLeader::status() {
 
   Node const& job = _snapshot(pendingPrefix + _jobId);
   std::string database = job("database").toJson(),
-    collection = job("collection").toJson(),
     shard = job("shard").toJson();
   
   bool done = false;

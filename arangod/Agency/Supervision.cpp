@@ -480,7 +480,11 @@ void Supervision::run() {
   // that running the supervision does not make sense and will indeed
   // lead to horrible errors:
   while (!this->isStopping()) {
-    std::this_thread::sleep_for(std::chrono::duration<double>(5.0));
+    {
+      CONDITION_LOCKER(guard, _cv);
+      _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
+    }
+    
     MUTEX_LOCKER(locker, _lock);
     try {
       _snapshot = _agent->readDB().get(_agencyPrefix);

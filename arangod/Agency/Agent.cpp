@@ -100,9 +100,9 @@ Agent::~Agent() {
       FATAL_ERROR_EXIT();
     }
   }
-
+    
   shutdown();
-
+  
 }
 
 /// State machine

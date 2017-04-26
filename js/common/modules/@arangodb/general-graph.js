@@ -644,6 +644,10 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
   var result = true;
   graphs.forEach(
     function (graph) {
+      if (result === false) {
+        // Short circuit
+        return;
+      }
       if (graph._key === graphName) {
         return;
       }
@@ -2008,66 +2012,46 @@ exports._drop = function (graphId, dropCollections) {
 
   if (dropCollections === true) {
     graphs = exports._listObjects();
-    var initialCollections = [];  // Here we collect the initial collection(s)
+    // Here we collect all collections
+    // that are leading for distribution
+    var initialCollections = new Set();
+    let dropColCB = (name) => {
+      if (checkIfMayBeDropped(name, graph._key, graphs)) {
+        try {
+          let colObj = db[name];
+          if (colObj !== undefined) {
+            // If it is undefined the collection is gone already
+            if (colObj.properties().distributeShardsLike !== undefined) {
+              db._drop(name);
+            } else {
+              initialCollections.add(name);
+            }
+          }
+        } catch (ignore) {}
+      }
+    };
     // drop orphans
     if (!graph.orphanCollections) {
       graph.orphanCollections = [];
     }
-    graph.orphanCollections.forEach(
-      function (oC) {
-        if (checkIfMayBeDropped(oC, graph._key, graphs)) {
-          try {
-            let colObj = db[oC];
-            if (colObj.properties().distributeShardsLike !== undefined) {
-              db._drop(oC);
-            } else {
-              initialCollections.push(oC);
-            }
-          } catch (ignore) {}
-        }
-      }
-    );
+    graph.orphanCollections.forEach(dropColCB);
     var edgeDefinitions = graph.edgeDefinitions;
     edgeDefinitions.forEach(
       function (edgeDefinition) {
         var from = edgeDefinition.from;
         var to = edgeDefinition.to;
         var collection = edgeDefinition.collection;
-        if (checkIfMayBeDropped(collection, graph._key, graphs)) {
-          db._drop(collection);
-        }
-        from.forEach(
-          function (col) {
-            if (checkIfMayBeDropped(col, graph._key, graphs)) {
-              try {
-                let colObj = db[col];
-                if (colObj.properties().distributeShardsLike !== undefined) {
-                  db._drop(col);
-                } else {
-                  initialCollections.push(col);
-                }
-              } catch (ignore) {}
-            }
-          }
-        );
-        to.forEach(
-          function (col) {
-            if (checkIfMayBeDropped(col, graph._key, graphs)) {
-              try {
-                let colObj = db[col];
-                if (colObj.properties().distributeShardsLike !== undefined) {
-                  db._drop(col);
-                } else {
-                  initialCollections.push(col);
-                }
-              } catch (ignore2) {}
-            }
-          }
-        );
+        dropColCB(edgeDefinition.collection);
+        from.forEach(dropColCB);
+        to.forEach(dropColCB);
       }
     );
-    for (let i = 0; i < initialCollections.length; ++i) {
-      db._drop(initialCollections[i]);
+    for (let c of initialCollections) {
+      try {
+        db._drop(c);
+      } catch (e) {
+        console.error("Failed to Drop: '" + c + "' reason: " + e.message);
+      }
     }
   }
 

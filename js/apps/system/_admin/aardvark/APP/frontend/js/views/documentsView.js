@@ -30,6 +30,14 @@
       next: null
     },
 
+    removeView: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     editButtons: ['#deleteSelected', '#moveSelected'],
 
     initialize: function (options) {

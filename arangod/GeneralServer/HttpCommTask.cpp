@@ -129,6 +129,10 @@ void HttpCommTask::addResponse(HttpResponse* response,
                                   StaticStrings::ExposedCorsHeaders);
   }
 
+  // use "IfNotSet"
+  response->setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
+                                StaticStrings::NoSniff);
+
   // set "connection" header, keep-alive is the default
   response->setConnectionType(_closeRequested
                                   ? rest::ConnectionType::C_CLOSE
@@ -160,13 +164,27 @@ void HttpCommTask::addResponse(HttpResponse* response,
   if (!buffer._buffer->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "\"http-request-response\",\"" << (void*)this << "\",\"" << _fullUrl
-        << "\",\"" << StringUtils::escapeUnicode(std::string(
-                          buffer._buffer->c_str(), buffer._buffer->length()))
+        << "\",\""
+        << StringUtils::escapeUnicode(
+               std::string(buffer._buffer->c_str(), buffer._buffer->length()))
         << "\"";
   }
 
   // append write buffer and statistics
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
+
+  if (stat != nullptr && arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE,
+                                                     Logger::REQUESTS)) {
+    LOG_TOPIC(TRACE, Logger::REQUESTS)
+        << "\"http-request-statistics\",\"" << (void*)this << "\",\""
+        << _connectionInfo.clientAddress << "\",\""
+        << HttpRequest::translateMethod(_requestType) << "\",\""
+        << HttpRequest::translateVersion(_protocolVersion) << "\","
+        << static_cast<int>(response->responseCode()) << ","
+        << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
+        << "\"," << stat->timingsCsv();
+  }
+
   addWriteBuffer(buffer);
 
   // and give some request information
@@ -701,7 +719,7 @@ std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(
 }
 
 void HttpCommTask::compactify() {
-  if (! _newRequest) {
+  if (!_newRequest) {
     return;
   }
 
@@ -732,7 +750,7 @@ void HttpCommTask::compactify() {
       TRI_ASSERT(_bodyPosition >= _readPosition);
       _bodyPosition -= _readPosition;
     }
-    
+
     _readPosition = 0;
   }
 }

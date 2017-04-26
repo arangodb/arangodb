@@ -1,6 +1,14 @@
 v3.1.19 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #2453
+
+* fixed issue #2448
+
+* fixed issue #2442
+
+* added 'x-content-type-options: nosniff' to avoid MSIE bug
+
 * fixed issue #2441
 
 * fixed issue #2440
@@ -9,6 +17,7 @@ v3.1.19 (XXXX-XX-XX)
   values in a row do not return any result. Fixes issue: #2445
 
 * fix occasional hanging shutdowns on OS X
+
 
 v3.1.18 (2017-04-18)
 --------------------
@@ -34,6 +43,7 @@ v3.1.18 (2017-04-18)
 * fixed issue #2422
 
 * fixed issue #1974
+
 
 v3.1.17 (2017-04-04)
 --------------------
