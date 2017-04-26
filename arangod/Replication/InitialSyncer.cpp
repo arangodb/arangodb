@@ -1072,8 +1072,6 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
   sendExtendBatch();
   sendExtendBarrier();
 
-  std::vector<size_t> toFetch;
-
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const baseUrl = BaseUrl + "/keys";
 
