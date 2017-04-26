@@ -198,9 +198,11 @@ Result RocksDBTransactionState::commitTransaction(
       result = rocksutils::convertStatus(_rocksTransaction->Commit());
       rocksdb::SequenceNumber latestSeq =
           rocksutils::globalRocksDB()->GetLatestSequenceNumber();
-      if (prevSeq+1 != latestSeq) {
-        LOG_TOPIC(INFO, Logger::DEVEL) << "Commits slipped between commits";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      if (prevSeq + 1 != latestSeq) {
+        LOG_TOPIC(FATAL, Logger::FIXME) << "commits slipped between commits";
       }
+#endif
       
       if (!result.ok()) {
         abortTransaction(activeTrx);
