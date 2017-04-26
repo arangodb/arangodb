@@ -276,7 +276,7 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
 
   if (!ok) {
-    handleSimpleError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_QUEUE_FULL,
+    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL,
                       TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
   }
 
