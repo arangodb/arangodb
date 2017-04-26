@@ -252,7 +252,7 @@ function main(argv) {
   }
 
   // creates yaml like dump at the end
-  UnitTest.unitTestPrettyPrintResults(r, testOutputDirectory);
+  UnitTest.unitTestPrettyPrintResults(r, testOutputDirectory, options);
 
   return r.status;
 }

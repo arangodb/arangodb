@@ -150,8 +150,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
       while (first || options.loopEternal) {
         if (!continueTesting) {
-          print('oops!');
-          print('Skipping, ' + te + ' server is gone.');
+          print('oops! Skipping, ' + te + ' server is gone.');
 
           results[te] = {
             status: false,

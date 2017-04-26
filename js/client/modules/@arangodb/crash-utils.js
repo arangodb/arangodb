@@ -29,6 +29,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const executeExternalAndWait = require('internal').executeExternalAndWait;
 const statusExternal = require('internal').statusExternal;
+const sleep = require('internal').sleep;
 
 let GDB_OUTPUT = '';
 
@@ -77,6 +78,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   const args = ['-c', command];
   print(JSON.stringify(args));
 
+  sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT = fs.read(gdbOutputFile);
   print(GDB_OUTPUT);
@@ -118,6 +120,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   const args = ['-c', command];
   print(JSON.stringify(args));
 
+  sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT = fs.read(lldbOutputFile);
   print(GDB_OUTPUT);
@@ -152,6 +155,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
     dbgCmds.join('; ')
   ];
 
+  sleep(5);
   print('running cdb ' + JSON.stringify(args));
   executeExternalAndWait('cdb', args);
 

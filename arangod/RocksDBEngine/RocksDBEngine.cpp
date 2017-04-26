@@ -194,7 +194,7 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
 
-  _options.IncreaseParallelism(TRI_numberProcessors());
+  _options.IncreaseParallelism((int)TRI_numberProcessors());
 
   _options.create_if_missing = true;
   _options.max_open_files = -1;

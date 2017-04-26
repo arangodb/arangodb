@@ -89,7 +89,7 @@ class SocketTcp final : public Socket {
   void shutdownReceive() override;
   void shutdownReceive(boost::system::error_code& ec) override;
   void shutdownSend(boost::system::error_code& ec) override;
-  int available(boost::system::error_code& ec) override;
+  std::size_t available(boost::system::error_code& ec) override;
 
  public:
   Mutex _lock;
