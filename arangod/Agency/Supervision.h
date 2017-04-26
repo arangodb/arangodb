@@ -119,7 +119,9 @@ class Supervision : public arangodb::Thread {
   }
 
   static void setAgencyPrefix(std::string prefix) {
+    LOG_TOPIC(WARN, Logger::SUPERVISION) << "WTF? " << _agencyPrefix;
     _agencyPrefix = prefix;
+    LOG_TOPIC(WARN, Logger::SUPERVISION) << "WTF? " << _agencyPrefix;
   }
 
  private:

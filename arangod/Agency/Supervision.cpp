@@ -566,7 +566,7 @@ std::string Supervision::serverHealth(std::string const& serverName) {
     return status;
   } catch (...) {
     LOG_TOPIC(WARN, Logger::SUPERVISION)
-        << "Couldn't read server health status for server " << serverName;
+      << "Couldn't read server health status for server " << serverName;
     return "";
   }
 }
