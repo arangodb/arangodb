@@ -21,6 +21,7 @@ done
     --prefix "/opt/arangodb" \
     --targetDir /var/tmp/ \
     --clang \
+    --staticOpenSSL \
     $@
 
 cd ${DIR}/..
