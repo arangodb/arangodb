@@ -1134,7 +1134,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
   }
 
   char zero = 0;
-  int res = TRI_WRITE(fd, &zero, 1);
+  long res = TRI_WRITE(fd, &zero, 1);
 
   if (res < 0) {
     TRI_SYSTEM_ERROR();
@@ -1155,7 +1155,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_SYSTEM_ERROR();
-    TRI_set_errno(res);
+    TRI_set_errno((int)res);
     TRI_TRACKED_CLOSE_FILE(fd);
 
     // remove empty file

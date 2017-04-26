@@ -23,6 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -128,28 +129,66 @@ void uint64ToPersistent(std::string& p, uint64_t value) {
   } while (++len < sizeof(uint64_t));
 }
 
-void stripObjectIds(VPackBuilder& builder, VPackSlice const& slice) {
-  if (slice.isObject()) {
+bool hasObjectIds(VPackSlice const& inputSlice) {
+  bool rv = false;
+  if (inputSlice.isObject()) {
+    for (auto const& objectPair :
+         arangodb::velocypack::ObjectIterator(inputSlice)) {
+      if (arangodb::StringRef(objectPair.key) == "objectId") {
+        return true;
+      }
+      rv = hasObjectIds(objectPair.value);
+      if (rv) {
+        return rv;
+      }
+    }
+  } else if (inputSlice.isArray()) {
+    for (auto const& slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
+      if (rv) {
+        return rv;
+      }
+      rv = hasObjectIds(slice);
+    }
+  }
+  return rv;
+}
+
+VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const& inputSlice) {
+  if (inputSlice.isObject()) {
     builder.openObject();
-    for (auto it = arangodb::velocypack::ObjectIterator(slice); it.valid();
-         it++) {
-      if (it.key().copyString() == "objectId") {
+    for (auto const& objectPair :
+         arangodb::velocypack::ObjectIterator(inputSlice)) {
+      if (arangodb::StringRef(objectPair.key) == "objectId") {
         continue;
       }
-      builder.add(it.key());
-      stripObjectIds(builder, it.value());
+      builder.add(objectPair.key);
+      stripObjectIdsImpl(builder, objectPair.value);
     }
     builder.close();
-  } else if (slice.isArray()) {
+  } else if (inputSlice.isArray()) {
     builder.openArray();
-    for (auto it = arangodb::velocypack::ArrayIterator(slice); it.valid();
-         it++) {
-      stripObjectIds(builder, it.value());
+    for (auto const& slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
+      stripObjectIdsImpl(builder, slice);
     }
     builder.close();
   } else {
-    builder.add(slice);
+    builder.add(inputSlice);
   }
+  return builder;
+}
+
+std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
+    VPackSlice const& inputSlice, bool checkBeforeCopy) {
+  std::unique_ptr<VPackBuffer<uint8_t>> buffer = nullptr;
+  if (checkBeforeCopy) {
+    if (!hasObjectIds(inputSlice)) {
+      return {inputSlice, std::move(buffer)};
+    }
+  }
+  buffer.reset(new VPackBuffer<uint8_t>);
+  VPackBuilder builder(*buffer);
+  stripObjectIdsImpl(builder, inputSlice);
+  return {VPackSlice(buffer->data()), std::move(buffer)};
 }
 
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {

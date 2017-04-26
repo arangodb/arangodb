@@ -27,10 +27,14 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterComm.h"
+#include "Graph/AttributeWeightShortestPathFinder.h"
+#include "Graph/ConstantWeightShortestPathFinder.h"
+#include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathResult.h"
+#include "Graph/AttributeWeightShortestPathFinder.h"
+#include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
-#include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
@@ -48,7 +52,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _vertexReg(ExecutionNode::MaxRegisterId),
       _edgeVar(nullptr),
       _edgeReg(ExecutionNode::MaxRegisterId),
-      _opts(nullptr),
+      _opts(static_cast<ShortestPathOptions*>(ep->options())),
       _posInPath(0),
       _pathLength(0),
       _path(nullptr),
@@ -58,8 +62,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _useTargetRegister(false),
       _usedConstant(false),
       _engines(nullptr) {
-  _opts = static_cast<ShortestPathOptions*>(ep->options());
-  _mmdr.reset(new ManagedDocumentResult);
+  TRI_ASSERT(_opts != nullptr);
 
   if (!ep->usesStartInVariable()) {
     _startVertexId = ep->getStartVertex();
@@ -257,9 +260,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   VPackSlice start = _opts->getStart();
   VPackSlice end = _opts->getEnd();
   TRI_ASSERT(_finder != nullptr);
-  // We do not need this data anymore. Result has been processed.
-  // Save some memory.
-  _coordinatorCache.clear();
+
   bool hasPath =
       _finder->shortestPath(start, end, *_path, [this]() { throwIfKilled(); });
 

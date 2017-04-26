@@ -69,7 +69,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
 
   if (_type == EndpointType::SERVER) {
     int result =
-        TRI_bind(listenSocket, (struct sockaddr*)&address, SUN_LEN(&address));
+        TRI_bind(listenSocket, (struct sockaddr*)&address, (int) SUN_LEN(&address));
     if (result != 0) {
       // bind error
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "bind() failed with " << errno << " (" << strerror(errno)

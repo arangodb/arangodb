@@ -123,14 +123,14 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_vocbase_t* openDatabase(
       arangodb::velocypack::Slice const& parameters, bool isUpgrade,
       int&) override;
-  Database* createDatabase(TRI_voc_tick_t id,
+  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id,
                            arangodb::velocypack::Slice const& args,
                            int& status) override;
   int writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                 VPackSlice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker,
                            int& status) override;
-  Result dropDatabase(Database* database) override;
+  Result dropDatabase(TRI_vocbase_t* database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery

@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -156,6 +157,11 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksWriteOptions, rocksdb::TransactionOptions()));
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
+    
+    RocksDBLogValue header = RocksDBLogValue::BeginTransaction(_vocbase->id(),
+                                                               _id);
+    _rocksTransaction->PutLogData(header.slice());
+    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }

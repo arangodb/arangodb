@@ -146,7 +146,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // TODO add pre / post conditions for functions
 
-  using Database = TRI_vocbase_t;
   using CollectionView = LogicalCollection;
     
   virtual void waitForSync(TRI_voc_tick_t tick) = 0;
@@ -154,10 +153,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   //// operations on databasea
 
   /// @brief opens a database
-  virtual Database* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) = 0;
-  Database* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade){
+  virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) = 0;
+  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade){
     int status;
-    Database* rv = openDatabase(args, isUpgrade, status);
+    TRI_vocbase_t* rv = openDatabase(args, isUpgrade, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(rv != nullptr);
     return rv;
@@ -172,16 +171,16 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the WAL entry for the database creation will be written *after* the call
   // to "createDatabase" returns
   // no way to acquire id within this function?!
-  virtual Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) = 0;
-  Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args ){
+  virtual TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) = 0;
+  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args ){
     int status;
-    Database* rv = createDatabase(id, args, status);
+    TRI_vocbase_t* rv = createDatabase(id, args, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(rv != nullptr);
     return rv;
   }
 
-  // @brief wirte create marker for database
+  // @brief write create marker for database
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
 
   // asks the storage engine to drop the specified database and persist the
@@ -194,14 +193,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   //
   // is done under a lock in database feature
   virtual void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) = 0;
-  void prepareDropDatabase(Database* db, bool useWriteMarker){
+  void prepareDropDatabase(TRI_vocbase_t* db, bool useWriteMarker){
     int status = 0;
     prepareDropDatabase(db, useWriteMarker, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
   };
 
   // perform a physical deletion of the database
-  virtual Result dropDatabase(Database*) = 0;
+  virtual Result dropDatabase(TRI_vocbase_t*) = 0;
 
   /// @brief wait until a database directory disappears - not under lock in databaseFreature
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) = 0;

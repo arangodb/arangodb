@@ -239,6 +239,40 @@ bool RocksDBReplicationManager::containsUsedContext() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drop contexts by database (at least mark them as deleted)
+////////////////////////////////////////////////////////////////////////////////
+
+void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    for (auto& context : _contexts) {
+      if (context.second->vocbase() == vocbase) {
+        context.second->deleted();
+      }
+    }
+  }
+
+  garbageCollect(true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop all contexts (at least mark them as deleted)
+////////////////////////////////////////////////////////////////////////////////
+
+void RocksDBReplicationManager::dropAll() {
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    for (auto& context : _contexts) {
+      context.second->deleted();
+    }
+  }
+
+  garbageCollect(true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief run a garbage collection on the contexts
 ////////////////////////////////////////////////////////////////////////////////
 

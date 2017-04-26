@@ -2264,12 +2264,13 @@ std::unique_ptr<LogicalCollection>
 ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
                                               TRI_vocbase_t* vocbase,
                                               VPackSlice parameters,
-                                              bool ignoreDistributeShardsLikeErrors) {
+                                              bool ignoreDistributeShardsLikeErrors,
+                                              bool waitForSyncReplication) {
   auto col = std::make_unique<LogicalCollection>(vocbase, parameters);
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
-  return persistCollectionInAgency(col.get(), ignoreDistributeShardsLikeErrors);
+  return persistCollectionInAgency(col.get(), ignoreDistributeShardsLikeErrors, waitForSyncReplication);
 }
 #endif
 
@@ -2279,7 +2280,7 @@ ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
 
 std::unique_ptr<LogicalCollection>
 ClusterMethods::persistCollectionInAgency(
-  LogicalCollection* col, bool ignoreDistributeShardsLikeErrors) {
+  LogicalCollection* col, bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication) {
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> dbServers;
   std::vector<std::string> avoid = col->avoidServers();
@@ -2364,7 +2365,7 @@ ClusterMethods::persistCollectionInAgency(
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
       col->dbName(), col->cid_as_string(),
-      col->numberOfShards(), col->replicationFactor(), velocy.slice(), errorMsg, 240.0);
+      col->numberOfShards(), col->replicationFactor(), waitForSyncReplication, velocy.slice(), errorMsg, 240.0);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {

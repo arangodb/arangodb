@@ -30,6 +30,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "GeneralServer/GeneralServer.h"
@@ -826,9 +827,8 @@ void RocksDBRestReplicationHandler::handleCommandRestoreCollection() {
                   "invalid JSON");
     return;
   }
-  VPackBuilder builder;
-  stripObjectIds(builder, parsedRequest->slice());
-  VPackSlice const slice = builder.slice();
+  auto pair = stripObjectIds(parsedRequest->slice());
+  VPackSlice const slice = pair.first;
 
   bool overwrite = false;
 
@@ -1732,14 +1732,15 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
     if (dropExisting) {
       int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
-      if (res == TRI_ERROR_FORBIDDEN) {
+      if (res == TRI_ERROR_FORBIDDEN ||
+          res == TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
         // some collections must not be dropped
         res = truncateCollectionOnCoordinator(dbName, name);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg =
               "unable to truncate collection (dropping is forbidden): " + name;
-          return res;
         }
+        return res;
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1819,8 +1820,9 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
   VPackSlice const merged = mergedBuilder.slice();
 
   try {
+    bool createWaitsForSyncReplication = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
     auto col = ClusterMethods::createCollectionOnCoordinator(collectionType,
-                                                             _vocbase, merged);
+                                                             _vocbase, merged, true, createWaitsForSyncReplication);
     TRI_ASSERT(col != nullptr);
   } catch (basics::Exception const& e) {
     // Error, report it.
