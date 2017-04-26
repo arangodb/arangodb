@@ -191,7 +191,7 @@ Client tools
 Authentication
 --------------
 
-* added LDAP authentication (Enterprise only)
+* added [LDAP](../Administration/Configuration/Ldap.md) authentication (Enterprise only)
 
 
 Foxx
