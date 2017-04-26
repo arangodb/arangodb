@@ -190,20 +190,11 @@ Result RocksDBTransactionState::commitTransaction(
         _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
       }
       
-      rocksdb::SequenceNumber prevSeq =
-      rocksutils::globalRocksDB()->GetLatestSequenceNumber();
-
       // TODO wait for response on github issue to see how we can use the
       // sequence number
       result = rocksutils::convertStatus(_rocksTransaction->Commit());
       rocksdb::SequenceNumber latestSeq =
           rocksutils::globalRocksDB()->GetLatestSequenceNumber();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      if (prevSeq + 1 != latestSeq) {
-        LOG_TOPIC(FATAL, Logger::FIXME) << "commits slipped between commits";
-      }
-#endif
-      
       if (!result.ok()) {
         abortTransaction(activeTrx);
         return result;
