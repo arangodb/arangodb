@@ -97,7 +97,8 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type) : _buffer() {
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t val) : _buffer() {
   switch (type) {
     case RocksDBLogType::DatabaseDrop:
-    case RocksDBLogType::CollectionCreate: {
+    case RocksDBLogType::CollectionCreate:
+    case RocksDBLogType::DocumentOperationsPrologue: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t));
       _buffer += static_cast<char>(type);
       uint64ToPersistent(_buffer, val);// database or collection ID

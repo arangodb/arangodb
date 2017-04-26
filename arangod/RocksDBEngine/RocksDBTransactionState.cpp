@@ -282,6 +282,8 @@ void RocksDBTransactionState::prepareOperation(
     TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
     TRI_voc_document_operation_e operationType) {
   switch (operationType) {
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+      break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
@@ -289,13 +291,10 @@ void RocksDBTransactionState::prepareOperation(
       if (collectionId != _lastUsedCollection) {
         RocksDBLogValue logValue =
             RocksDBLogValue::DocumentOpsPrologue(collectionId);
-        _rocksTransaction->PutLogData(logValue.slice());
+        //_rocksTransaction->PutLogData(logValue.slice());
         _lastUsedCollection = collectionId;
       }
     } break;
-    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-      break;
   }
 }
 
