@@ -110,26 +110,33 @@
 
           var error = 0;
 
-          _.each(window.clusterHealth, function (node) {
-            if (node.Status !== 'GOOD') {
-              error++;
-            }
-          });
+          if (Object.keys(window.clusterHealth).length !== 0) {
+            _.each(window.clusterHealth, function (node) {
+              if (node.Status !== 'GOOD') {
+                error++;
+              }
+            });
 
-          if (error > 0) {
+            if (error > 0) {
+              $('#healthStatus').removeClass('positive');
+              $('#healthStatus').addClass('negative');
+              if (error === 1) {
+                $('.health-state').html(error + ' NODE ERROR');
+              } else {
+                $('.health-state').html(error + ' NODES ERROR');
+              }
+              $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+            } else {
+              $('#healthStatus').removeClass('negative');
+              $('#healthStatus').addClass('positive');
+              $('.health-state').html('NODES OK');
+              $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+            }
+          } else {
+            $('.health-state').html('HEALTH ERROR');
             $('#healthStatus').removeClass('positive');
             $('#healthStatus').addClass('negative');
-            if (error === 1) {
-              $('.health-state').html(error + ' NODE ERROR');
-            } else {
-              $('.health-state').html(error + ' NODES ERROR');
-            }
             $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
-          } else {
-            $('#healthStatus').removeClass('negative');
-            $('#healthStatus').addClass('positive');
-            $('.health-state').html('NODES OK');
-            $('.health-icon').html('<i class="fa fa-check-circle"></i>');
           }
         };
 
