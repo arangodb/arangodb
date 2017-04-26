@@ -648,13 +648,14 @@
         this.waitForInit(this.documents.bind(this), colid, pageid);
         return;
       }
-      if (!this.documentsView) {
-        this.documentsView = new window.DocumentsView({
-          collection: new window.ArangoDocuments(),
-          documentStore: this.arangoDocumentStore,
-          collectionsStore: this.arangoCollectionsStore
-        });
+      if (this.documentsView) {
+        this.documentsView.removeView();
       }
+      this.documentsView = new window.DocumentsView({
+        collection: new window.ArangoDocuments(),
+        documentStore: this.arangoDocumentStore,
+        collectionsStore: this.arangoCollectionsStore
+      });
       this.documentsView.setCollectionId(colid, pageid);
       this.documentsView.render();
     },

@@ -179,13 +179,15 @@ Thread::~Thread() {
     }
 
     _state.store(ThreadState::DETACHED);
+    return;
   }
 
   state = _state.load();
 
   if (state != ThreadState::DETACHED && state != ThreadState::CREATED) {
-    LOG(FATAL) << "thread is not detached but " << stringify(state)
-               << ". shutting down hard";
+    LOG_TOPIC(FATAL, arangodb::Logger::THREADS)
+      << "thread '" << _name << "' is not detached but " << stringify(state)
+      << ". shutting down hard";
     FATAL_ERROR_ABORT();
   }
 }
