@@ -348,7 +348,13 @@ function printTraversalDetails (traversals) {
       }
     }
     if (node.hasOwnProperty('options')) {
-      var opts = optify(node.options); 
+      let opts = optify(node.options); 
+      if (opts.length > maxOptionsLen) {
+        maxOptionsLen = opts.length;
+      }
+    } else if (node.hasOwnProperty("traversalFlags")) {
+      // Backwards compatibility for < 3.2
+      let opts = optify(node.traversalFlags); 
       if (opts.length > maxOptionsLen) {
         maxOptionsLen = opts.length;
       }
@@ -386,6 +392,8 @@ function printTraversalDetails (traversals) {
 
     if (traversals[i].hasOwnProperty('options')) {
       line += optify(traversals[i].options, true) + pad(1 + maxOptionsLen - optify(traversals[i].options, false).length) + '   ';
+    } else if (traversals[i].hasOwnProperty('traversalFlags')) {
+      line += optify(traversals[i].traversalFlags, true) + pad(1 + maxOptionsLen - optify(traversals[i].traversalFlags, false).length) + '   ';
     } else {
       line += pad(1 + maxOptionsLen) + '   ';
     }
@@ -856,7 +864,13 @@ function processQuery (query, explain) {
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + (node.reverse ? 'reverse ' : '') + node.index.type + ' index scan */');
 
       case 'TraversalNode':
-        node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
+        if (node.hasOwnProperty("options")) {
+          node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
+        } else if (node.hasOwnProperty("traversalFlags")) {
+          node.minMaxDepth = node.traversalFlags.minDepth + '..' + node.traversalFlags.maxDepth;
+        } else {
+          node.minMaxDepth = '1..1';
+        }
         node.minMaxDepthLen = node.minMaxDepth.length;
 
         rc = keyword('FOR ');
