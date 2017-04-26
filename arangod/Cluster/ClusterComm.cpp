@@ -1123,6 +1123,19 @@ void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>*
   }
 }
 
+std::vector<Ticket> ClusterComm::activeServerTickets(std::vector<std::string> const& servers) {
+  std::vector<Ticket> tickets;
+  CONDITION_LOCKER(locker, somethingReceived);
+  for (auto const& it: responses) {
+    for (auto const& server: servers) {
+      if (it.second.result && it.second.result->serverID == server) {
+        tickets.push_back(it.first);
+      }
+    }
+  }
+  return tickets;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
 ////////////////////////////////////////////////////////////////////////////////
@@ -1130,18 +1143,10 @@ void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>*
 void ClusterCommThread::abortRequestsToFailedServers() {
   ClusterInfo* ci = ClusterInfo::instance();
   auto failedServers = ci->getFailedServers();
-  std::vector<std::string> failedServerEndpoints;
-  failedServerEndpoints.reserve(failedServers.size());
-
-  for (auto const& failedServer: failedServers) {
-    failedServerEndpoints.push_back(_cc->createCommunicatorDestination(ci->getServerEndpoint(failedServer), "/").url());
-  }
-
-  for (auto const& request: _cc->communicator()->requestsInProgress()) {
-    for (auto const& failedServerEndpoint: failedServerEndpoints) {
-      if (request->_destination.url().substr(0, failedServerEndpoint.length()) == failedServerEndpoint) {
-        _cc->communicator()->abortRequest(request->_ticketId);
-      }
+  if (failedServers.size() > 0) {
+    auto ticketIds = _cc->activeServerTickets(failedServers);
+    for (auto const& ticketId: ticketIds) {
+      _cc->communicator()->abortRequest(ticketId);
     }
   }
 }
