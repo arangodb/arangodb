@@ -1578,6 +1578,7 @@
     },
 
     checkExpand: function (data, origin) {
+      console.log(1);
       var self = this;
       var newNodes = data.nodes;
       var newEdges = data.edges;
@@ -1606,14 +1607,14 @@
           newNode.originalColor = newNode.color;
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
+        }
+      });
 
-          _.each(newEdges, function (edge) {
-            if (edge.source === newNode.id || edge.target === newNode.id) {
-              edge.originalColor = edge.color;
-              self.currentGraph.graph.addEdge(edge);
-              newEdgeCounter++;
-            }
-          });
+      _.each(newEdges, function (edge) {
+        if (self.currentGraph.graph.edges(edge.id) === undefined) {
+          edge.originalColor = edge.color;
+          self.currentGraph.graph.addEdge(edge);
+          newEdgeCounter++;
         }
       });
 
