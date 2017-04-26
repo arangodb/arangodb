@@ -1271,23 +1271,20 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         // we only need to hash we are in the range
         if (cmp1 == 0) {
           foundLowKey = true;
-        } else if (!foundLowKey && cmp1 > 0) {
-          rangeUnequal = true;
-          nextChunk = true;
         }
 
+        markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
+        // don't bother hashing if we have't found lower key
         if (foundLowKey) {
           VPackSlice revision = doc.get(StaticStrings::RevString);
           localHash ^= key.hashString();
           localHash ^= revision.hash();
 
-          markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
-
           if (cmp2 == 0) {  // found highKey
             rangeUnequal = std::to_string(localHash) != hashString;
             nextChunk = true;
           }
-        } else if (cmp2 == 0) {
+        } else if (cmp2 == 0) {// found high key, but not low key
           rangeUnequal = true;
           nextChunk = true;
         }
@@ -1456,12 +1453,11 @@ int InitialSyncer::syncChunkRocksDB(
       continue;
     }
 
-    std::string const keyString = keySlice.copyString();
     // remove keys not present anymore
     while (nextStart < markers.size()) {
       std::string const& localKey = markers[nextStart].first;
 
-      int res = localKey.compare(keyString);
+      int res = keySlice.compareString(localKey);
       if (res != 0) {
         // we have a local key that is not present remotely
         keyBuilder->clear();
@@ -1479,7 +1475,7 @@ int InitialSyncer::syncChunkRocksDB(
 
     // see if key exists
     DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
-    if (!token._data) {
+    if (token._data == 0) {
       // key not found locally
       toFetch.emplace_back(i);
     } else if (TRI_RidToString(token._data) != pair.at(1).copyString()) {

@@ -281,6 +281,9 @@ void V8Task::start(boost::asio::io_service* ioService) {
 }
 
 void V8Task::cancel() {
+  // this will prevent the task from dispatching itself again
+  _periodic = false;
+
   boost::system::error_code ec;
   _timer->cancel(ec);
 }

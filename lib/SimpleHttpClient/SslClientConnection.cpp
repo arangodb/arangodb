@@ -325,7 +325,7 @@ bool SslClientConnection::connectSocket() {
     _errorDetails.append("SSL: during SSL_connect: ");
 
     int errorDetail;
-    int certError;
+    long certError;
 
     errorDetail = SSL_get_error(_ssl, ret);
     if ((errorDetail == SSL_ERROR_WANT_READ) ||
@@ -543,7 +543,6 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
     return false;
   }
 
-  int errorDetail;
   int written = SSL_write(_ssl, buffer, (int)length);
   int err = SSL_get_error(_ssl, written);
   switch (err) {
@@ -569,16 +568,16 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
       break;
     }
 
-    case SSL_ERROR_SSL:
+    case SSL_ERROR_SSL:{
       /*  A failure in the SSL library occurred, usually a protocol error.
           The OpenSSL error queue contains more information on the error. */
-      errorDetail = ERR_get_error();
+      unsigned long errorDetail = ERR_get_error();
       char errorBuffer[256];
       ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
       _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
-
       break;
-
+    }
+      
     default:
       /* a true error */
       _errorDetails =

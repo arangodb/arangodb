@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -156,6 +157,11 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksWriteOptions, rocksdb::TransactionOptions()));
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
+    
+    RocksDBLogValue header = RocksDBLogValue::BeginTransaction(_vocbase->id(),
+                                                               _id);
+    _rocksTransaction->PutLogData(header.slice());
+    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -183,12 +189,21 @@ Result RocksDBTransactionState::commitTransaction(
         _rocksWriteOptions.sync = true;
         _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
       }
+      
+      rocksdb::SequenceNumber prevSeq =
+      rocksutils::globalRocksDB()->GetLatestSequenceNumber();
 
       // TODO wait for response on github issue to see how we can use the
       // sequence number
       result = rocksutils::convertStatus(_rocksTransaction->Commit());
       rocksdb::SequenceNumber latestSeq =
           rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      if (prevSeq + 1 != latestSeq) {
+        LOG_TOPIC(FATAL, Logger::FIXME) << "commits slipped between commits";
+      }
+#endif
+      
       if (!result.ok()) {
         abortTransaction(activeTrx);
         return result;
