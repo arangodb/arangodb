@@ -23,6 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -133,7 +134,7 @@ void stripObjectIds(VPackBuilder& builder, VPackSlice const& slice) {
     builder.openObject();
     for (auto it = arangodb::velocypack::ObjectIterator(slice); it.valid();
          it++) {
-      if (it.key().copyString() == "objectId") {
+      if (arangodb::StringRef(it.key()) == "objectId") {
         continue;
       }
       builder.add(it.key());
