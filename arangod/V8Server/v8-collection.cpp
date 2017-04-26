@@ -1053,6 +1053,102 @@ static void JS_IsLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+#ifdef DEBUG_SYNC_REPLICATION
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock getFollowers
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_AddFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("addFollower(<name>)");
+  }
+
+  ServerID const serverId = TRI_ObjectToString(args[0]);
+
+  if (ServerState::instance()->isDBServer()) {
+    arangodb::LogicalCollection const* v8Collection =
+        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                                     WRP_VOCBASE_COL_TYPE);
+
+    if (v8Collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+    }
+
+    TRI_vocbase_t* vocbase = v8Collection->vocbase();
+    if (vocbase == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+
+    std::string collectionName = v8Collection->name();
+    auto collection = vocbase->lookupCollection(collectionName);
+    if (collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+    collection->followers()->add(serverId);
+  }
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock removeFollower
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_RemoveFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("removeFollower(<name>)");
+  }
+
+  ServerID const serverId = TRI_ObjectToString(args[0]);
+
+  if (ServerState::instance()->isDBServer()) {
+    arangodb::LogicalCollection const* v8Collection =
+        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                                     WRP_VOCBASE_COL_TYPE);
+
+    if (v8Collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+    }
+
+    TRI_vocbase_t* vocbase = v8Collection->vocbase();
+    if (vocbase == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+
+    std::string collectionName = v8Collection->name();
+    auto collection = vocbase->lookupCollection(collectionName);
+    if (collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+    collection->followers()->remove(serverId);
+  }
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock getFollowers
 ////////////////////////////////////////////////////////////////////////////////
@@ -2977,6 +3073,12 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_AssumeLeadership, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isLeader"),
                        JS_IsLeader, true);
+#ifdef DEBUG_SYNC_REPLICATION
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("addFollower"),
+                       JS_AddFollower, true);
+#endif
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("removeFollower"),
+                       JS_RemoveFollower, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getFollowers"),
                        JS_GetFollowers, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("load"),
