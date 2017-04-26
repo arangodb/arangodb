@@ -349,6 +349,7 @@ class ClusterInfo {
                                   std::string const& collectionID,
                                   uint64_t numberOfShards,
                                   uint64_t replicationFactor,
+                                  bool waitForReplication,
                                   arangodb::velocypack::Slice const& json,
                                   std::string& errorMsg, double timeout);
 

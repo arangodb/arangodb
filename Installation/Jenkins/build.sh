@@ -254,6 +254,7 @@ while [ $# -gt 0 ];  do
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
              CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Release"
+             export _IsNativeEnvironment=true
              ;;
 
         --symsrv)
