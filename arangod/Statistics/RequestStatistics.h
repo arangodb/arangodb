@@ -152,7 +152,7 @@ class RequestStatistics {
   void trace_log();
 
  private:
-  static size_t const QUEUE_SIZE = 1000;
+  static size_t const QUEUE_SIZE = 64 * 1024 - 2; // current (1.62) boost maximum
 
   static arangodb::Mutex _dataLock;
 

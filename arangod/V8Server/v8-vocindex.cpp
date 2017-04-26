@@ -27,6 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
@@ -669,12 +670,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  // ...........................................................................
-  // We require exactly 1 or exactly 2 arguments -- anything else is an error
-  // ...........................................................................
-
-  if (args.Length() < 1 || args.Length() > 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>, <type>)");
+  if (args.Length() < 1 || args.Length() > 4) {
+    TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>, <type>, <options>)");
   }
 
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
@@ -682,7 +679,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   // optional, third parameter can override collection type
-  if (args.Length() == 3 && args[2]->IsString()) {
+  if (args.Length() >= 3 && args[2]->IsString()) {
     std::string typeString = TRI_ObjectToString(args[2]);
     if (typeString == "edge") {
       collectionType = TRI_COL_TYPE_EDGE;
@@ -690,6 +687,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
       collectionType = TRI_COL_TYPE_DOCUMENT;
     }
   }
+
 
   PREVENT_EMBEDDED_TRANSACTION();
 
@@ -725,9 +723,19 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   infoSlice = builder.slice();
 
   if (ServerState::instance()->isCoordinator()) {
+    bool createWaitsForSyncReplication = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
+
+    if (args.Length() >= 3 && args[args.Length()-1]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[args.Length()-1]->ToObject();
+      auto v8WaitForSyncReplication = obj->Get(TRI_V8_ASCII_STRING("waitForSyncReplication"));
+      if (!v8WaitForSyncReplication->IsUndefined()) {
+        createWaitsForSyncReplication = TRI_ObjectToBoolean(v8WaitForSyncReplication);
+      }
+    }
+
     std::unique_ptr<LogicalCollection> col =
         ClusterMethods::createCollectionOnCoordinator(collectionType, vocbase,
-                                                      infoSlice);
+                                                      infoSlice, true, createWaitsForSyncReplication);
     TRI_V8_RETURN(WrapCollection(isolate, col.release()));
   }
 

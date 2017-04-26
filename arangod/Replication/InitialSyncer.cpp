@@ -1072,8 +1072,6 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
   sendExtendBatch();
   sendExtendBarrier();
 
-  std::vector<size_t> toFetch;
-
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const baseUrl = BaseUrl + "/keys";
 
@@ -1258,7 +1256,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
     std::function<void(VPackSlice, VPackSlice)> parseDoc = [&](VPackSlice doc,
                                                                VPackSlice key) {
 
-      bool rangeUneqal = false;
+      bool rangeUnequal = false;
       bool nextChunk = false;
 
       int cmp1 = key.compareString(lowKey.data(), lowKey.length());
@@ -1274,7 +1272,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         if (cmp1 == 0) {
           foundLowKey = true;
         } else if (!foundLowKey && cmp1 > 0) {
-          rangeUneqal = true;
+          rangeUnequal = true;
           nextChunk = true;
         }
 
@@ -1286,28 +1284,28 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
           markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
 
           if (cmp2 == 0) {  // found highKey
-            rangeUneqal = std::to_string(localHash) != hashString;
+            rangeUnequal = std::to_string(localHash) != hashString;
             nextChunk = true;
           }
         } else if (cmp2 == 0) {
-          rangeUneqal = true;
+          rangeUnequal = true;
           nextChunk = true;
         }
       } else if (cmp2 > 0) {  // higher than highKey
         // current range was unequal and we did not find the
         // high key. Load range and skip to next
-        rangeUneqal = true;
+        rangeUnequal = true;
         nextChunk = true;
       }
 
-      if (rangeUneqal) {
+      if (rangeUnequal) {
         int res = syncChunkRocksDB(&trx, keysId, currentChunkId, lowKey,
                                    highKey, markers, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(res);
         }
       }
-      TRI_ASSERT(!rangeUneqal || (rangeUneqal && nextChunk));  // A => B
+      TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
       if (nextChunk && currentChunkId + 1 < numChunks) {
         currentChunkId++;  // we are out of range, see next chunk
         resetChunk();

@@ -33,6 +33,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
@@ -55,6 +56,7 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _mdr(),
       _customTypeHandler(),
       _vpackOptions(Options::Defaults),
+      _lastChunkOffset(0),
       _expires(TRI_microtime() + DefaultTTL),
       _isDeleted(false),
       _isUsed(true),
@@ -390,10 +392,13 @@ void RocksDBReplicationContext::releaseDumpingResources() {
     _iter.reset();
   }
   _collection = nullptr;
+  _guard.reset();
 }
 
 std::unique_ptr<transaction::Methods>
 RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
+  _guard.reset(new DatabaseGuard(vocbase));
+
   double lockTimeout = transaction::Methods::DefaultLockTimeout;
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(vocbase);
@@ -401,6 +406,7 @@ RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
       ctx, {}, {}, {}, lockTimeout, false, true));
   Result res = trx->begin();
   if (!res.ok()) {
+    _guard.reset();
     THROW_ARANGO_EXCEPTION(res);
   }
   _customTypeHandler = ctx->orderCustomTypeHandler();
