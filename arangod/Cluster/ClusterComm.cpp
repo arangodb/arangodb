@@ -577,7 +577,7 @@ bool ClusterComm::match(ClientTransactionID const& clientTransactionID,
 /// from deleting `result` and `answer`.
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult const ClusterComm::enquire(Ticket const ticketId) {
+ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId) {
   ResponseIterator i;
   AsyncResponse response;
 
@@ -614,7 +614,7 @@ ClusterCommResult const ClusterComm::enquire(Ticket const ticketId) {
 
 ClusterCommResult const ClusterComm::wait(
     ClientTransactionID const& clientTransactionID,
-    CoordTransactionID const coordTransactionID, Ticket const ticketId,
+    CoordTransactionID const coordTransactionID, communicator::Ticket const ticketId,
     ShardID const& shardID, ClusterCommTimeout timeout) {
 
   ResponseIterator i;
@@ -1123,8 +1123,8 @@ void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>*
   }
 }
 
-std::vector<Ticket> ClusterComm::activeServerTickets(std::vector<std::string> const& servers) {
-  std::vector<Ticket> tickets;
+std::vector<communicator::Ticket> ClusterComm::activeServerTickets(std::vector<std::string> const& servers) {
+  std::vector<communicator::Ticket> tickets;
   CONDITION_LOCKER(locker, somethingReceived);
   for (auto const& it: responses) {
     for (auto const& server: servers) {

@@ -620,7 +620,7 @@ class ClusterComm {
   /// @brief activeServerTickets for a list of servers
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<Ticket> activeServerTickets(std::vector<std::string> const& servers);
+  std::vector<communicator::Ticket> activeServerTickets(std::vector<std::string> const& servers);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our background communications thread
