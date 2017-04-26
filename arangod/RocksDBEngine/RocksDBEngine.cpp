@@ -675,7 +675,17 @@ void RocksDBEngine::destroyCollection(TRI_vocbase_t* vocbase,
 void RocksDBEngine::changeCollection(
     TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
     arangodb::LogicalCollection const* parameters, bool doSync) {
-  createCollection(vocbase, id, parameters);
+  VPackBuilder builder = parameters->toVelocyPackIgnore(
+      {"path", "statusString"}, /*translate cid*/ true,
+      /*for persistence*/ true);
+
+  int res = writeCreateCollectionMarker(
+      vocbase->id(), id, builder.slice(),
+      RocksDBLogValue::CollectionChange(vocbase->id(), id));
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 arangodb::Result RocksDBEngine::renameCollection(

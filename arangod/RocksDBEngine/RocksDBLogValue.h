@@ -24,11 +24,14 @@
 #ifndef ARANGO_ROCKSDB_ROCKSDB_LOG_VALUE_H
 #define ARANGO_ROCKSDB_ROCKSDB_LOG_VALUE_H 1
 
+#include "Basics/Common.h"
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/slice.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -40,20 +43,27 @@ class RocksDBLogValue {
   // parameter in an appropriate format into the underlying string buffer.
   //----------------------------------------------------------------------------
 
-  static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId, TRI_voc_tid_t trxId);
+  static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId,
+                                          TRI_voc_tid_t trxId);
   static RocksDBLogValue DatabaseCreate();
   static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t vocbaseId);
   static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId);
-  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
-  static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid, std::string const& newName);
-  static RocksDBLogValue CollectionChange(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
-  
-  static RocksDBLogValue IndexCreate(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid, TRI_idx_iid_t indexId);
-  static RocksDBLogValue IndexDrop(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid, TRI_idx_iid_t indexId);
-  
+  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId,
+                                        TRI_voc_cid_t cid);
+  static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId,
+                                          TRI_voc_cid_t cid,
+                                          std::string const& newName);
+  static RocksDBLogValue CollectionChange(TRI_voc_tick_t vocbaseId,
+                                          TRI_voc_cid_t cid);
+
+  static RocksDBLogValue IndexCreate(TRI_voc_tick_t vocbaseId,
+                                     TRI_voc_cid_t cid,
+                                     VPackSlice const& indexInfo);
+  static RocksDBLogValue IndexDrop(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
+                                   TRI_idx_iid_t indexId);
+
   static RocksDBLogValue ViewCreate(TRI_voc_cid_t, TRI_idx_iid_t);
   static RocksDBLogValue ViewDrop(TRI_voc_cid_t, TRI_idx_iid_t);
-  
   static RocksDBLogValue DocumentOpsPrologue(TRI_voc_cid_t cid);
   static RocksDBLogValue DocumentRemove(arangodb::StringRef const&);
 
@@ -75,22 +85,24 @@ class RocksDBLogValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.
   //////////////////////////////////////////////////////////////////////////////
-  std::string const& string() const { return _buffer; } // to be used with put
+  std::string const& string() const { return _buffer; }  // to be used with put
   /*VPackSlice slice() const { return VPackSlice(
       reinterpret_cast<uint8_t const*>(_buffer.data())
-  ); }*/      // return a slice
+  ); }*/                                                 // return a slice
 
   RocksDBLogType type() const {
     return static_cast<RocksDBLogType>(*(_buffer.data()));
   }
   rocksdb::Slice slice() const { return rocksdb::Slice(_buffer); }
-  
+
  private:
   explicit RocksDBLogValue(RocksDBLogType type);
   RocksDBLogValue(RocksDBLogType type, uint64_t);
   RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, uint64_t);
-  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, std::string const& data);
+  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, VPackSlice const&);
+  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t,
+                  std::string const& data);
   RocksDBLogValue(RocksDBLogType type, StringRef const& data);
 
  private:

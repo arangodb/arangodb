@@ -341,6 +341,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
             ->forceSyncProperties();
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
         {"path", "statusString"}, true, /*forPersistence*/ false);
+    auto rtrx = rocksTransaction(trx);
+    rtrx->PutLogData(
+        RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
+                                     _logicalCollection->cid(), info)
+            .slice());
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
   created = true;
@@ -1140,6 +1145,9 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
+  rtrx->PutLogData(RocksDBLogValue::DocumentRemove(
+                       StringRef(doc.get(StaticStrings::KeyString)))
+                       .slice());
   auto status = rtrx->Delete(key.string());
   if (!status.ok()) {
     auto converted = rocksutils::convertStatus(status);
