@@ -34,8 +34,8 @@ RocksDBLogValue RocksDBLogValue::BeginTransaction(TRI_voc_tick_t dbid, TRI_voc_t
   return RocksDBLogValue(RocksDBLogType::BeginTransaction, dbid, tid);
 }
 
-RocksDBLogValue RocksDBLogValue::DatabaseCreate(TRI_voc_tick_t dbid) {
-  return RocksDBLogValue(RocksDBLogType::BeginTransaction, dbid);
+RocksDBLogValue RocksDBLogValue::DatabaseCreate() {
+  return RocksDBLogValue(RocksDBLogType::DatabaseCreate);
 }
 
 RocksDBLogValue RocksDBLogValue::DatabaseDrop(TRI_voc_tick_t dbid) {
@@ -46,24 +46,24 @@ RocksDBLogValue RocksDBLogValue::CollectionCreate(TRI_voc_cid_t cid) {
   return RocksDBLogValue(RocksDBLogType::CollectionCreate, cid);
 }
 
-RocksDBLogValue RocksDBLogValue::CollectionDrop(TRI_voc_cid_t cid) {
-  return RocksDBLogValue(RocksDBLogType::CollectionDrop, cid);
+RocksDBLogValue RocksDBLogValue::CollectionDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
+  return RocksDBLogValue(RocksDBLogType::CollectionDrop, dbid, cid);
 }
 
-RocksDBLogValue RocksDBLogValue::CollectionRename(TRI_voc_cid_t cid) {
-  return RocksDBLogValue(RocksDBLogType::CollectionRename, cid);
+RocksDBLogValue RocksDBLogValue::CollectionRename(TRI_voc_tick_t dbid, TRI_voc_cid_t cid, std::string const& newName) {
+  return RocksDBLogValue(RocksDBLogType::CollectionRename, dbid, cid, newName);
 }
 
-RocksDBLogValue RocksDBLogValue::CollectionChange(TRI_voc_cid_t cid) {
-  return RocksDBLogValue(RocksDBLogType::CollectionChange, cid);
+RocksDBLogValue RocksDBLogValue::CollectionChange(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
+  return RocksDBLogValue(RocksDBLogType::CollectionChange, dbid, cid);
 }
 
-RocksDBLogValue RocksDBLogValue::IndexCreate(TRI_voc_cid_t cid, TRI_idx_iid_t iid) {
-  return RocksDBLogValue(RocksDBLogType::IndexCreate, cid, iid);
+RocksDBLogValue RocksDBLogValue::IndexCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t cid, TRI_idx_iid_t iid) {
+  return RocksDBLogValue(RocksDBLogType::IndexCreate, dbid, cid, iid);
 }
 
-RocksDBLogValue RocksDBLogValue::IndexDrop(TRI_voc_cid_t cid, TRI_idx_iid_t iid) {
-  return RocksDBLogValue(RocksDBLogType::IndexDrop, cid, iid);
+RocksDBLogValue RocksDBLogValue::IndexDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid, TRI_idx_iid_t iid) {
+  return RocksDBLogValue(RocksDBLogType::IndexDrop, dbid, cid, iid);
 
 }
 
@@ -79,15 +79,21 @@ RocksDBLogValue RocksDBLogValue::DocumentRemove(arangodb::StringRef const& key) 
   return RocksDBLogValue(RocksDBLogType::DocumentRemove, key);
 }
 
+RocksDBLogValue::RocksDBLogValue(RocksDBLogType type) : _buffer() {
+  switch (type) {
+    case RocksDBLogType::DatabaseCreate:
+      _buffer.reserve(sizeof(RocksDBLogType));
+      _buffer += static_cast<char>(type);
+      break;
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
 
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t val) : _buffer() {
   switch (type) {
-    case RocksDBLogType::DatabaseCreate:
     case RocksDBLogType::DatabaseDrop:
-    case RocksDBLogType::CollectionCreate:
-    case RocksDBLogType::CollectionDrop:
-    case RocksDBLogType::CollectionRename:
-    case RocksDBLogType::CollectionChange:{
+    case RocksDBLogType::CollectionCreate: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t));
       _buffer += static_cast<char>(type);
       uint64ToPersistent(_buffer, val);// database or collection ID
@@ -104,7 +110,9 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId, uint64_t ci
     : _buffer() {
   switch (type) {
       
-    case RocksDBLogType::BeginTransaction: {
+    case RocksDBLogType::BeginTransaction:
+    case RocksDBLogType::CollectionChange: 
+    case RocksDBLogType::CollectionDrop: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
       _buffer += static_cast<char>(type);
       uint64ToPersistent(_buffer, dbId);
@@ -115,6 +123,35 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId, uint64_t ci
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+}
+
+RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId, uint64_t cid, uint64_t iid)
+    : _buffer() {
+  switch (type) {
+    case RocksDBLogType::IndexCreate:
+    case RocksDBLogType::IndexDrop: {
+      _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 3);
+      _buffer += static_cast<char>(type);
+      uint64ToPersistent(_buffer, dbId);
+      uint64ToPersistent(_buffer, cid);
+      uint64ToPersistent(_buffer, iid);
+      break;
+    }
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId, uint64_t cid, std::string const& data)
+  : _buffer() {
+  if (type != RocksDBLogType::CollectionRename) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+  _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2 + data.length());
+  _buffer += static_cast<char>(type);
+  uint64ToPersistent(_buffer, dbId);
+  uint64ToPersistent(_buffer, cid);
+  _buffer.append(data.data(), data.length());  // primary key
 }
 
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, StringRef const& data)
