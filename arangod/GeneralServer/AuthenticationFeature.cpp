@@ -22,10 +22,16 @@
 
 #include "AuthenticationFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Ldap/LdapAuthenticationHandler.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -160,4 +166,13 @@ void AuthenticationFeature::prepare() {
 }
 
 void AuthenticationFeature::stop() {
+}
+
+AuthenticationHandler* AuthenticationFeature::getHandler() {
+#if USE_ENTERPRISE
+  if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
+    return new LdapAuthenticationHandler();
+  }
+#endif
+  return new DefaultAuthenticationHandler();
 }

@@ -539,6 +539,26 @@
 /// - 1753: @LIT{service upload failed}
 ///   Will be raised when a service upload from the client to the ArangoDB
 ///   server failed.
+/// - 1800: @LIT{cannot init a LDAP connection}
+///   can not init a LDAP connection
+/// - 1801: @LIT{cannot set a LDAP option}
+///   can not set a LDAP option
+/// - 1802: @LIT{cannot bind to a LDAP server}
+///   can not bind to a LDAP server
+/// - 1803: @LIT{cannot unbind from a LDAP server}
+///   can not unbind from a LDAP server
+/// - 1804: @LIT{cannot issue a LDAP search}
+///   can not search the LDAP server
+/// - 1805: @LIT{cannot start a TLS LDAP session}
+///   can not star a TLS LDAP session
+/// - 1806: @LIT{LDAP didn't found any objects}
+///   LDAP didn't found any objects with the specified search query
+/// - 1807: @LIT{LDAP found zero ore more than one user}
+///   LDAP found zero ore more than one user
+/// - 1808: @LIT{LDAP found a user, but its not the desired one}
+///   LDAP found a user, but its not the desired one
+/// - 1820: @LIT{invalid ldap mode}
+///   cant distinguish a valid mode for provided ldap configuration
 /// - 1850: @LIT{invalid task id}
 ///   Will be raised when a task is created with an invalid id.
 /// - 1851: @LIT{duplicate task id}
@@ -2920,6 +2940,106 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SERVICE_UPLOAD_FAILED                                   (1753)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1800: ERROR_LDAP_CANNOT_INIT
+///
+/// cannot init a LDAP connection
+///
+/// can not init a LDAP connection
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_INIT                                        (1800)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1801: ERROR_LDAP_CANNOT_SET_OPTION
+///
+/// cannot set a LDAP option
+///
+/// can not set a LDAP option
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_SET_OPTION                                  (1801)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1802: ERROR_LDAP_CANNOT_BIND
+///
+/// cannot bind to a LDAP server
+///
+/// can not bind to a LDAP server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_BIND                                        (1802)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1803: ERROR_LDAP_CANNOT_UNBIND
+///
+/// cannot unbind from a LDAP server
+///
+/// can not unbind from a LDAP server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_UNBIND                                      (1803)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1804: ERROR_LDAP_CANNOT_SEARCH
+///
+/// cannot issue a LDAP search
+///
+/// can not search the LDAP server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_SEARCH                                      (1804)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1805: ERROR_LDAP_CANNOT_START_TLS
+///
+/// cannot start a TLS LDAP session
+///
+/// can not star a TLS LDAP session
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_START_TLS                                   (1805)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1806: ERROR_LDAP_FOUND_NO_OBJECTS
+///
+/// LDAP didn't found any objects
+///
+/// LDAP didn't found any objects with the specified search query
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_FOUND_NO_OBJECTS                                   (1806)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1807: ERROR_LDAP_NOT_ONE_USER_FOUND
+///
+/// LDAP found zero ore more than one user
+///
+/// LDAP found zero ore more than one user
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_NOT_ONE_USER_FOUND                                 (1807)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1808: ERROR_LDAP_USER_NOT_IDENTIFIED
+///
+/// LDAP found a user, but its not the desired one
+///
+/// LDAP found a user, but its not the desired one
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_USER_NOT_IDENTIFIED                                (1808)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1820: ERROR_LDAP_INVALID_MODE
+///
+/// invalid ldap mode
+///
+/// cant distinguish a valid mode for provided ldap configuration
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_INVALID_MODE                                       (1820)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1850: ERROR_TASK_INVALID_ID

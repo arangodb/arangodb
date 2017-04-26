@@ -207,6 +207,7 @@ SET(ARANGOD_SOURCES
   Cluster/v8-cluster.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
+  GeneralServer/AuthenticationHandler.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp
@@ -405,6 +406,19 @@ target_link_libraries(arangoserver
   boost_system
   ${SYSTEM_LIBRARIES}
 )
+
+if (USE_ENTERPRISE)
+  if (MSVC)
+    target_link_libraries(arangoserver
+      Wldap32.lib
+    )
+  else()
+    target_link_libraries(arangoserver
+      ldap
+      lber
+    )
+  endif()
+endif()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
