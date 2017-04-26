@@ -274,9 +274,8 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
         errorMsg = "got invalid response from master at " +
                    _masterInfo._endpoint + ": invalid JSON";
       } else {
-        VPackBuilder stripBuilder;
-        stripObjectIds(stripBuilder, slice);
-        res = handleInventoryResponse(stripBuilder.slice(), incremental,
+        auto pair = stripObjectIds(slice);
+        res = handleInventoryResponse(pair.first, incremental,
                                       errorMsg);
       }
     }

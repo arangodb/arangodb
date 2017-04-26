@@ -76,7 +76,8 @@ macro (install_readme input output)
   endif ()
 
   install(
-    CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \"${PROJECT_BINARY_DIR}/${output}\" NEWLINE_STYLE ${CRLFSTYLE})"
+    CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \"${PROJECT_BINARY_DIR}/${output}\" NEWLINE_STYLE ${CRLFSTYLE})")
+  install(
     FILES "${PROJECT_BINARY_DIR}/${output}"
     DESTINATION "${where}"
     )
