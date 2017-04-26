@@ -36,10 +36,6 @@ class ShortestPathFinder;
 class ShortestPathResult;
 }
 
-namespace traverser {
-class EdgeCollectionInfo;
-}
-
 namespace aql {
 
 class ShortestPathNode;
