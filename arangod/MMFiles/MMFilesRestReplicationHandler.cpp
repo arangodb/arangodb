@@ -29,6 +29,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "GeneralServer/GeneralServer.h"
@@ -1680,8 +1681,9 @@ int MMFilesRestReplicationHandler::processRestoreCollectionCoordinator(
   VPackSlice const merged = mergedBuilder.slice();
 
   try {
+    bool createWaitsForSyncReplication = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
     auto col = ClusterMethods::createCollectionOnCoordinator(
-      collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors);
+      collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors, createWaitsForSyncReplication);
     TRI_ASSERT(col != nullptr);
   } catch (basics::Exception const& e) {
     // Error, report it.
