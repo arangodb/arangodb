@@ -54,6 +54,7 @@ class RocksDBLogValue {
   static RocksDBLogValue ViewCreate(TRI_voc_cid_t, TRI_idx_iid_t);
   static RocksDBLogValue ViewDrop(TRI_voc_cid_t, TRI_idx_iid_t);
   
+  static RocksDBLogValue DocumentOpsPrologue(TRI_voc_cid_t cid);
   static RocksDBLogValue DocumentRemove(arangodb::StringRef const&);
 
  public:

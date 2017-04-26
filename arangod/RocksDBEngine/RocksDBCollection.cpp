@@ -38,6 +38,7 @@
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -435,19 +436,22 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   iter->Seek(documentBounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
+    
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    
+    // add possible log statement
+    state->prepareOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
     rocksdb::Status s = rtrx->Delete(iter->key());
     if (!s.ok()) {
       auto converted = convertStatus(s);
       THROW_ARANGO_EXCEPTION(converted);
     }
-
-    // transaction size limit reached -- fail
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
     // report size of key
     RocksDBOperationResult result =
         state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                             0, iter->key().size());
 
+    // transaction size limit reached -- fail
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
@@ -696,8 +700,8 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
   mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                         TRI_RidToString(revisionId), options.mergeObjects,
                         options.keepNull, *builder.get());
-
-  if (trx->state()->isDBServer()) {
+  RocksDBTransactionState* state = static_cast<RocksDBTransactionState*>(trx->state());
+  if (state->isDBServer()) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                    trx->resolver()->getCollectionNameCluster(
@@ -709,9 +713,11 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   RocksDBSavePoint guard(rocksTransaction(trx),
                          trx->isSingleOperationTransaction());
-
+  
+  // add possible log statement under guard
+  state->prepareOperation(_logicalCollection->cid(), revisionId,
+                          TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   VPackSlice const newDoc(builder->slice());
-
   res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
                        options.waitForSync);
 
@@ -724,8 +730,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     TRI_ASSERT(!mdr.empty());
 
     // report document and key size
-    result = static_cast<RocksDBTransactionState*>(trx->state())
-                 ->addOperation(_logicalCollection->cid(), revisionId,
+    result = state ->addOperation(_logicalCollection->cid(), revisionId,
                                 TRI_VOC_DOCUMENT_OPERATION_UPDATE,
                                 newDoc.byteSize(), res.keySize());
 
@@ -796,7 +801,8 @@ int RocksDBCollection::replace(
                       isEdgeCollection, TRI_RidToString(revisionId),
                       *builder.get());
 
-  if (trx->state()->isDBServer()) {
+  RocksDBTransactionState* state = static_cast<RocksDBTransactionState*>(trx->state());
+  if (state->isDBServer()) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                    trx->resolver()->getCollectionNameCluster(
@@ -808,6 +814,10 @@ int RocksDBCollection::replace(
 
   RocksDBSavePoint guard(rocksTransaction(trx),
                          trx->isSingleOperationTransaction());
+  
+  // add possible log statement under guard
+  state->prepareOperation(_logicalCollection->cid(), revisionId,
+                          TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   RocksDBOperationResult opResult =
       updateDocument(trx, oldRevisionId, oldDoc, revisionId,
@@ -822,8 +832,7 @@ int RocksDBCollection::replace(
     TRI_ASSERT(!mdr.empty());
 
     // report document and key size
-    result = static_cast<RocksDBTransactionState*>(trx->state())
-                 ->addOperation(_logicalCollection->cid(), revisionId,
+    result = state->addOperation(_logicalCollection->cid(), revisionId,
                                 TRI_VOC_DOCUMENT_OPERATION_REPLACE,
                                 VPackSlice(builder->slice()).byteSize(),
                                 opResult.keySize());
@@ -894,12 +903,16 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   RocksDBSavePoint guard(rocksTransaction(trx),
                          trx->isSingleOperationTransaction());
 
+  // add possible log statement under guard
+  RocksDBTransactionState* state = static_cast<RocksDBTransactionState*>(trx->state());
+  state->prepareOperation(_logicalCollection->cid(), revisionId,
+                          TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+  //RocksDBLogValue val = RocksDBLogValue::DocumentRemove(StringRef(key));
+  //state->rocksTransaction()->PutLogData(val.slice());
   res = removeDocument(trx, oldRevisionId, oldDoc, options.waitForSync);
   if (res.ok()) {
     // report key size
-    res =
-        static_cast<RocksDBTransactionState*>(trx->state())
-            ->addOperation(_logicalCollection->cid(), revisionId,
+    res = state->addOperation(_logicalCollection->cid(), revisionId,
                            TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0, res.keySize());
     // transaction size limit reached -- fail
     if (res.fail()) {

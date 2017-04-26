@@ -1687,7 +1687,7 @@ int32_t int32(std::string const& str) {
   struct reent buffer;
   return _strtol_r(&buffer, str.c_str(), 0, 10);
 #else
-  return strtol(str.c_str(), 0, 10);
+  return (int32_t)strtol(str.c_str(), 0, 10);
 #endif
 #endif
 }
@@ -1713,7 +1713,7 @@ int32_t int32(char const* value, size_t size) {
   struct reent buffer;
   return _strtol_r(&buffer, value, 0, 10);
 #else
-  return strtol(value, 0, 10);
+  return (int32_t)strtol(value, 0, 10);
 #endif
 #endif
 }
@@ -1727,7 +1727,7 @@ uint32_t uint32(std::string const& str) {
   struct reent buffer;
   return _strtoul_r(&buffer, str.c_str(), 0, 10);
 #else
-  return strtoul(str.c_str(), 0, 10);
+  return (uint32_t)strtoul(str.c_str(), 0, 10);
 #endif
 #endif
 }
@@ -1741,7 +1741,7 @@ uint32_t unhexUint32(std::string const& str) {
   struct reent buffer;
   return _strtoul_r(&buffer, str.c_str(), 0, 16);
 #else
-  return strtoul(str.c_str(), 0, 16);
+  return (uint32_t)strtoul(str.c_str(), 0, 16);
 #endif
 #endif
 }
@@ -1767,7 +1767,7 @@ uint32_t uint32(char const* value, size_t size) {
   struct reent buffer;
   return _strtoul_r(&buffer, value, 0, 10);
 #else
-  return strtoul(value, 0, 10);
+  return (uint32_t)strtoul(value, 0, 10);
 #endif
 #endif
 }
@@ -1793,7 +1793,7 @@ uint32_t unhexUint32(char const* value, size_t size) {
   struct reent buffer;
   return _strtoul_r(&buffer, value, 0, 16);
 #else
-  return strtoul(value, 0, 16);
+  return (uint32_t)strtoul(value, 0, 16);
 #endif
 #endif
 }
