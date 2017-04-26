@@ -45,6 +45,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void start() override final;
   void unprepare() override final;
 
+  std::string agencyPrefix() {
+    return _agencyPrefix;
+  }
+
  private:
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
@@ -58,6 +62,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _dbserverConfig;
   std::string _coordinatorConfig;
   uint32_t _systemReplicationFactor = 2;
+  bool _createWaitsForSyncReplication = false;
 
  private:
   void reportRole(ServerState::RoleEnum);
@@ -72,6 +77,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   };
 
   void setUnregisterOnShutdown(bool);
+  bool createWaitsForSyncReplication() { return _createWaitsForSyncReplication; };
 
   void stop() override final;
 

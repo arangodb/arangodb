@@ -230,7 +230,12 @@ void RocksDBEngine::start() {
   }
 }
 
-void RocksDBEngine::stop() {}
+void RocksDBEngine::stop() {
+  if (!isEnabled()) {
+    return;
+  }
+  replicationManager()->dropAll();
+}
 
 void RocksDBEngine::unprepare() {
   if (!isEnabled()) {
@@ -486,7 +491,7 @@ TRI_vocbase_t* RocksDBEngine::openDatabase(
   return openExistingDatabase(id, name, true, isUpgrade);
 }
 
-RocksDBEngine::Database* RocksDBEngine::createDatabase(
+TRI_vocbase_t* RocksDBEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
   status = TRI_ERROR_NO_ERROR;
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id,
@@ -519,10 +524,6 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
 
 void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
                                         bool useWriteMarker, int& status) {
-  // probably not required
-  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
-
-  // status = saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
   VPackBuilder builder;
   builder.openObject();
   builder.add("id", VPackValue(std::to_string(vocbase->id())));
@@ -533,7 +534,8 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
   status = writeCreateDatabaseMarker(vocbase->id(), builder.slice());
 }
 
-Result RocksDBEngine::dropDatabase(Database* database) {
+Result RocksDBEngine::dropDatabase(TRI_vocbase_t* database) {
+  replicationManager()->drop(database);
   return dropDatabase(database->id());
 }
 

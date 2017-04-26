@@ -152,7 +152,7 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
 MMFilesEngine::~MMFilesEngine() {}
 
 // perform a physical deletion of the database
-Result MMFilesEngine::dropDatabase(Database* database) {
+Result MMFilesEngine::dropDatabase(TRI_vocbase_t* database) {
   // delete persistent indexes for this database
   MMFilesPersistentIndexFeature::dropDatabase(database->id());
 

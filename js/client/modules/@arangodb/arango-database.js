@@ -339,7 +339,7 @@ ArangoDatabase.prototype._collection = function (id) {
 // / @brief creates a new collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._create = function (name, properties, type) {
+ArangoDatabase.prototype._create = function (name, properties, type, options) {
   var body = {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT
@@ -355,12 +355,23 @@ ArangoDatabase.prototype._create = function (name, properties, type) {
       }
     });
   }
+  
+  let urlAddon = '';
+  if (typeof options === "object" && options !== null) {
+    if (options.hasOwnProperty('waitForSyncReplication')) {
+      if (options.waitForSyncReplication) {
+        urlAddon = '?waitForSyncReplication=1';
+      } else {
+        urlAddon = '?waitForSyncReplication=0';
+      }
+    }
+  }
 
   if (type !== undefined) {
     body.type = type;
   }
 
-  var requestResult = this._connection.POST(this._collectionurl(),
+  var requestResult = this._connection.POST(this._collectionurl() + urlAddon,
     JSON.stringify(body));
 
   arangosh.checkRequestResult(requestResult);
