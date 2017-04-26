@@ -65,9 +65,7 @@ class RocksDBLogValue {
   static RocksDBLogValue ViewCreate(TRI_voc_cid_t, TRI_idx_iid_t);
   static RocksDBLogValue ViewDrop(TRI_voc_cid_t, TRI_idx_iid_t);
 
-  static RocksDBLogValue DocumentInsert(TRI_voc_tick_t, TRI_voc_cid_t);
-  static RocksDBLogValue DocumentRemove(TRI_voc_tick_t, TRI_voc_cid_t,
-                                        arangodb::StringRef const&);
+  static RocksDBLogValue DocumentRemove(arangodb::StringRef const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -105,8 +103,7 @@ class RocksDBLogValue {
   RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, VPackSlice const&);
   RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t,
                   std::string const& data);
-  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t,
-                  StringRef const& data);
+  RocksDBLogValue(RocksDBLogType type, StringRef const& data);
 
  private:
   std::string _buffer;
