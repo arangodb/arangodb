@@ -1,7 +1,7 @@
 devel
 -----
 
-* --server.maximal-queue-size is now an absolute maximum. If the queue is
+* `--server.maximal-queue-size` is now an absolute maximum. If the queue is
   full, then 503 is returned. Setting it to 0 means "no limit".
 
 
