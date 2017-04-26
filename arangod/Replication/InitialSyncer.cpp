@@ -1453,12 +1453,11 @@ int InitialSyncer::syncChunkRocksDB(
       continue;
     }
 
-    std::string const keyString = keySlice.copyString();
     // remove keys not present anymore
     while (nextStart < markers.size()) {
       std::string const& localKey = markers[nextStart].first;
 
-      int res = localKey.compare(keyString);
+      int res = keySlice.compareString(localKey);
       if (res != 0) {
         // we have a local key that is not present remotely
         keyBuilder->clear();
@@ -1476,7 +1475,7 @@ int InitialSyncer::syncChunkRocksDB(
 
     // see if key exists
     DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
-    if (!token._data) {
+    if (token._data == 0) {
       // key not found locally
       toFetch.emplace_back(i);
     } else if (TRI_RidToString(token._data) != pair.at(1).copyString()) {

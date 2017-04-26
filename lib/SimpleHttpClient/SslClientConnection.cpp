@@ -325,7 +325,7 @@ bool SslClientConnection::connectSocket() {
     _errorDetails.append("SSL: during SSL_connect: ");
 
     int errorDetail;
-    int certError;
+    long certError;
 
     errorDetail = SSL_get_error(_ssl, ret);
     if ((errorDetail == SSL_ERROR_WANT_READ) ||
