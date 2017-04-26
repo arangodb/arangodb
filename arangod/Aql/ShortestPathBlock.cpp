@@ -59,7 +59,6 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _usedConstant(false),
       _engines(nullptr) {
   _opts = static_cast<ShortestPathOptions*>(ep->options());
-  _mmdr.reset(new ManagedDocumentResult);
 
   if (!ep->usesStartInVariable()) {
     _startVertexId = ep->getStartVertex();
