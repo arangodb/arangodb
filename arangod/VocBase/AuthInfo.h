@@ -205,7 +205,7 @@ class AuthInfo {
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult> _authJwtCache;
   std::string _jwtSecret;
   aql::QueryRegistry* _queryRegistry;
-  AuthenticationHandler* _authenticationHandler;
+  std::unique_ptr<AuthenticationHandler> _authenticationHandler;
 };
 }
 

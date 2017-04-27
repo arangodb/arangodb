@@ -16,7 +16,7 @@ Memory management
   This will also lower the chances of the arangod process being killed by the
   operation system's OOM killer.
 
-  Note: these options are only available in all builds and environments.
+  Note: these options are not available in all builds and environments.
 
 * make arangod start with less V8 JavaScript contexts
 
