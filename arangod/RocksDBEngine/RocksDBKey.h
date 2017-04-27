@@ -41,9 +41,8 @@ class RocksDBKey {
  public:
   RocksDBKey() = delete;
   RocksDBKey(rocksdb::Slice slice)
-    : _type(static_cast<RocksDBEntryType>(slice.data()[0]))
-    , _buffer(slice.data(),slice.size())
-  {};
+      : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
+        _buffer(slice.data(), slice.size()){};
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified database key
@@ -59,7 +58,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified document key
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKey Document(uint64_t collectionId, TRI_voc_rid_t revisionId);
+  static RocksDBKey Document(uint64_t objectId, TRI_voc_rid_t revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a primary index
@@ -69,7 +68,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey PrimaryIndexValue(uint64_t indexId,
                                       arangodb::StringRef const& primaryKey);
-  
+
   static RocksDBKey PrimaryIndexValue(uint64_t indexId, char const* primaryKey);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -108,12 +107,12 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for a view
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a settings value
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey SettingsValue();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a counter value
   //////////////////////////////////////////////////////////////////////////////
@@ -127,14 +126,14 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBEntryType type(RocksDBKey const&);
   static RocksDBEntryType type(rocksdb::Slice const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the object id
   ///
   /// May be called on any valid key (in our keyspace)
   //////////////////////////////////////////////////////////////////////////////
   static uint64_t counterObjectId(rocksdb::Slice const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the databaseId from a key
   ///
@@ -152,6 +151,15 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static TRI_voc_cid_t collectionId(RocksDBKey const&);
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the objectId from a key
+  ///
+  /// May be called only on the the following key types: Document.
+  /// Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
+  static uint64_t objectId(RocksDBKey const&);
+  static uint64_t objectId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the viewId from a key
@@ -207,9 +215,10 @@ class RocksDBKey {
   RocksDBKey(RocksDBEntryType type, uint64_t first);
   RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second);
   RocksDBKey(RocksDBEntryType type, uint64_t first, VPackSlice const& slice);
-  RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& docKey,
-             VPackSlice const& indexData);
-  RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second);
+  RocksDBKey(RocksDBEntryType type, uint64_t first,
+             arangodb::StringRef const& docKey, VPackSlice const& indexData);
+  RocksDBKey(RocksDBEntryType type, uint64_t first,
+             arangodb::StringRef const& second);
   RocksDBKey(RocksDBEntryType type, uint64_t first, std::string const& second,
              std::string const& third);
 
@@ -217,6 +226,7 @@ class RocksDBKey {
   static RocksDBEntryType type(char const* data, size_t size);
   static TRI_voc_tick_t databaseId(char const* data, size_t size);
   static TRI_voc_cid_t collectionId(char const* data, size_t size);
+  static TRI_voc_cid_t objectId(char const* data, size_t size);
   static TRI_voc_cid_t viewId(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(char const* data, size_t size);
   static StringRef primaryKey(char const* data, size_t size);

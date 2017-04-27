@@ -95,12 +95,13 @@ RocksDBLogValue RocksDBLogValue::DocumentRemove(
   return RocksDBLogValue(RocksDBLogType::DocumentRemove, key);
 }
 
-
-RocksDBLogValue RocksDBLogValue::SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid) {
+RocksDBLogValue RocksDBLogValue::SinglePut(TRI_voc_tick_t vocbaseId,
+                                           TRI_voc_cid_t cid) {
   return RocksDBLogValue(RocksDBLogType::SinglePut, vocbaseId, cid);
 }
-RocksDBLogValue RocksDBLogValue::SingleRemove(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
-                                    arangodb::StringRef const& key) {
+RocksDBLogValue RocksDBLogValue::SingleRemove(TRI_voc_tick_t vocbaseId,
+                                              TRI_voc_cid_t cid,
+                                              arangodb::StringRef const& key) {
   return RocksDBLogValue(RocksDBLogType::SingleRemove, vocbaseId, cid, key);
 }
 
@@ -139,7 +140,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
     case RocksDBLogType::CollectionChange:
     case RocksDBLogType::CollectionDrop:
     case RocksDBLogType::BeginTransaction:
-    case RocksDBLogType::SinglePut:{
+    case RocksDBLogType::SinglePut: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
       _buffer += static_cast<char>(type);
       uint64ToPersistent(_buffer, dbId);
@@ -257,12 +258,12 @@ TRI_voc_cid_t RocksDBLogValue::collectionId(rocksdb::Slice const& slice) {
              type == RocksDBLogType::DocumentOperationsPrologue ||
              type == RocksDBLogType::SinglePut ||
              type == RocksDBLogType::SingleRemove);
-  if (type == RocksDBLogType::DocumentOperationsPrologue) {// only exception
+  if (type == RocksDBLogType::DocumentOperationsPrologue) {  // only exception
     return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType));
   } else {
     TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
-    return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t));
-
+    return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                                sizeof(uint64_t));
   }
 }
 
@@ -270,7 +271,8 @@ TRI_voc_tid_t RocksDBLogValue::transactionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::BeginTransaction);
-  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + sizeof(TRI_voc_tick_t));
+  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                              sizeof(TRI_voc_tick_t));
 }
 
 TRI_idx_iid_t RocksDBLogValue::indexId(rocksdb::Slice const& slice) {
@@ -286,10 +288,12 @@ VPackSlice RocksDBLogValue::indexSlice(rocksdb::Slice const& slice) {
   TRI_ASSERT(type == RocksDBLogType::IndexCreate ||
              type == RocksDBLogType::ViewCreate ||
              type == RocksDBLogType::ViewChange);
-  return VPackSlice(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
+  return VPackSlice(slice.data() + sizeof(RocksDBLogType) +
+                    sizeof(uint64_t) * 2);
 }
 
-arangodb::StringRef RocksDBLogValue::newCollectionName(rocksdb::Slice const& slice) {
+arangodb::StringRef RocksDBLogValue::newCollectionName(
+    rocksdb::Slice const& slice) {
   size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
   TRI_ASSERT(slice.size() >= off);
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
@@ -299,8 +303,8 @@ arangodb::StringRef RocksDBLogValue::newCollectionName(rocksdb::Slice const& sli
 
 arangodb::StringRef RocksDBLogValue::documentKey(rocksdb::Slice const& slice) {
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
-  TRI_ASSERT(type == RocksDBLogType::SingleRemove
-             || type == RocksDBLogType::DocumentRemove);
+  TRI_ASSERT(type == RocksDBLogType::SingleRemove ||
+             type == RocksDBLogType::DocumentRemove);
   size_t off = sizeof(RocksDBLogType);
   if (type == RocksDBLogType::SingleRemove) {
     off += sizeof(uint64_t) * 2;

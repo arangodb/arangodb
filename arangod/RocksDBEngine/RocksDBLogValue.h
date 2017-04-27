@@ -43,7 +43,6 @@ class RocksDBLogValue {
   // parameter in an appropriate format into the underlying string buffer.
   //----------------------------------------------------------------------------
 
-  
   static RocksDBLogValue DatabaseCreate();
   static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t vocbaseId);
   static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId,
@@ -64,14 +63,15 @@ class RocksDBLogValue {
 
   static RocksDBLogValue ViewCreate(TRI_voc_cid_t, TRI_idx_iid_t);
   static RocksDBLogValue ViewDrop(TRI_voc_cid_t, TRI_idx_iid_t);
-  
+
   static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId,
                                           TRI_voc_tid_t trxId);
   static RocksDBLogValue DocumentOpsPrologue(TRI_voc_cid_t cid);
   static RocksDBLogValue DocumentRemove(arangodb::StringRef const&);
 
   static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
-  static RocksDBLogValue SingleRemove(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
+  static RocksDBLogValue SingleRemove(TRI_voc_tick_t vocbaseId,
+                                      TRI_voc_cid_t cid,
                                       arangodb::StringRef const&);
 
  public:

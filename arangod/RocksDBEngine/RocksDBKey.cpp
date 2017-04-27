@@ -118,6 +118,13 @@ TRI_voc_cid_t RocksDBKey::collectionId(rocksdb::Slice const& slice) {
   return collectionId(slice.data(), slice.size());
 }
 
+uint64_t RocksDBKey::objectId(RocksDBKey const& key) {
+  return objectId(key._buffer.data(), key._buffer.size());
+}
+uint64_t RocksDBKey::objectId(rocksdb::Slice const& slice) {
+  return objectId(slice.data(), slice.size());
+}
+
 TRI_voc_cid_t RocksDBKey::viewId(RocksDBKey const& key) {
   return viewId(key._buffer.data(), key._buffer.size());
 }
@@ -160,8 +167,7 @@ VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
 
 std::string const& RocksDBKey::string() const { return _buffer; }
 
-RocksDBKey::RocksDBKey(RocksDBEntryType type)
-    : _type(type), _buffer() {
+RocksDBKey::RocksDBKey(RocksDBEntryType type) : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::SettingsValue: {
       _buffer.push_back(static_cast<char>(_type));
@@ -337,6 +343,25 @@ TRI_voc_cid_t RocksDBKey::collectionId(char const* data, size_t size) {
     case RocksDBEntryType::Collection: {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
       return uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t));
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+  }
+}
+
+TRI_voc_cid_t RocksDBKey::objectId(char const* data, size_t size) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(size >= sizeof(char));
+  RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
+  switch (type) {
+    case RocksDBEntryType::Document:
+    case RocksDBEntryType::PrimaryIndexValue:
+    case RocksDBEntryType::EdgeIndexValue:
+    case RocksDBEntryType::IndexValue:
+    case RocksDBEntryType::UniqueIndexValue: {
+      TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
+      return uint64FromPersistent(data + sizeof(char));
     }
 
     default:
