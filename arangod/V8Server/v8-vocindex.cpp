@@ -734,8 +734,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
 
     std::unique_ptr<LogicalCollection> col =
-        ClusterMethods::createCollectionOnCoordinator(collectionType, vocbase,
-                                                      infoSlice, true, createWaitsForSyncReplication);
+        ClusterMethods::createCollectionOnCoordinator(
+          collectionType, vocbase, infoSlice, false,
+          createWaitsForSyncReplication);
     TRI_V8_RETURN(WrapCollection(isolate, col.release()));
   }
 

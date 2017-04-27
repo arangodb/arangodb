@@ -2284,7 +2284,7 @@ ClusterMethods::persistCollectionInAgency(
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> dbServers;
   std::vector<std::string> avoid = col->avoidServers();
-    
+
   ClusterInfo* ci = ClusterInfo::instance();
   if (!distributeShardsLike.empty()) {
     CollectionNameResolver resolver(col->vocbase());
