@@ -528,6 +528,11 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir) 
     exe = ARANGORESTORE_BIN;
   }
 
+  if(options.extremeVerbosity === true){
+    print(exe);
+    print(args);
+  }
+
   return executeAndWait(exe, toArgv(args), options, 'arangorestore', instanceInfo.rootDir);
 }
 
