@@ -529,8 +529,8 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir) 
   }
 
   if(options.extremeVerbosity === true){
-    print(exe)
-    print(args)
+    print(exe);
+    print(args);
   }
 
   return executeAndWait(exe, toArgv(args), options, 'arangorestore', instanceInfo.rootDir);
