@@ -134,11 +134,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "replication factor for system collections",
                      new UInt32Parameter(&_systemReplicationFactor));
 
-options->addOption("--cluster.create-waits-for-sync-replication",
-                     "active coordinator will wait for all replicas to create collection",
-                     new BooleanParameter(&_createWaitsForSyncReplication));
-
-options->addOption("--cluster.create-waits-for-sync-replication",
+  options->addHiddenOption("--cluster.create-waits-for-sync-replication",
                      "active coordinator will wait for all replicas to create collection",
                      new BooleanParameter(&_createWaitsForSyncReplication));
 }
