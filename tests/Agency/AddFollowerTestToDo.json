@@ -4,7 +4,7 @@ R"=(
   "type" : "addFollower",
   "database" : "database",
   "collection" : "collection",
-  "shard" : "shard",
+  "shard" : "s99",
   "jobId" : "1" ,
   "timeCreated" : "2017-01-01 00:00:00"
 }

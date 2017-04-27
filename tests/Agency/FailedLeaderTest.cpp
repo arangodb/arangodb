@@ -51,7 +51,7 @@ namespace failed_leader_test {
 const std::string PREFIX = "arango";
 const std::string DATABASE = "database";
 const std::string COLLECTION = "collection";
-const std::string SHARD = "shard";
+const std::string SHARD = "s99";
 const std::string SHARD_LEADER = "leader";
 const std::string SHARD_FOLLOWER1 = "follower1";
 const std::string SHARD_FOLLOWER2 = "follower2";
@@ -97,7 +97,7 @@ Node createRootNode() {
 
 char const* todo = R"=({
   "creator":"1", "type":"failedLeader", "database":"database",
-  "collection":"collection", "shard":"shard", "fromServer":"leader",
+  "collection":"collection", "shard":"s99", "fromServer":"leader",
   "jobId":"1", "timeCreated":"2017-01-01 00:00:00"
   })=";
 
@@ -400,18 +400,18 @@ SECTION("the job must not be started if there if one of the linked shards (distr
       if (path == "/arango/Current/Collections/" + DATABASE) {
         // we fake that follower2 is in sync
         char const* json1 =
-          R"=({"linkedshard1":{"servers":["leader","follower2"]}})=";
+          R"=({"s100":{"servers":["leader","follower2"]}})=";
         builder->add("linkedcollection1", createBuilder(json1).slice());
         // for the other shard there is only follower1 in sync
         char const* json2 =
-          R"=({"linkedshard2":{"servers":["leader","follower1"]}})=";
+          R"=({"s101":{"servers":["leader","follower1"]}})=";
         builder->add("linkedcollection2", createBuilder(json2).slice());
       } else if (path == "/arango/Plan/Collections/" + DATABASE) {
         char const* json1 = R"=({"distributeShardsLike":"collection","shards":
-          {"linkedshard1":["leader","follower1","follower2"]}})=";
+          {"s100":["leader","follower1","follower2"]}})=";
         builder->add("linkedcollection1", createBuilder(json1).slice());
         char const* json2 = R"=({"distributeShardsLike":"collection","shards":
-          {"linkedshard2":["leader","follower1","follower2"]}})=";
+          {"s101":["leader","follower1","follower2"]}})=";
         builder->add("linkedcollection2", createBuilder(json2).slice());
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createBuilder(todo).slice());

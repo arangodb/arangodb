@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Job.h"
+#include <numeric>
+
 
 static std::string const DBServer = "DBServer";
 
@@ -231,6 +233,38 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   
 }
 
+template<typename T> std::vector<size_t> idxsort (const std::vector<T> &v) {
+
+  std::vector<size_t> idx(v.size());
+  
+  std::iota(idx.begin(), idx.end(), 0);
+  std::sort(idx.begin(), idx.end(),
+       [&v](size_t i, size_t j) {return v[i] < v[j];});
+  
+  return idx;
+  
+}
+
+std::vector<std::string> sortedShardList(Node const& shards) {
+
+  std::vector<size_t> sids;
+  auto const& shardMap = shards.children();
+  for (const auto& shard : shardMap) {
+    sids.push_back(std::stoul(shard.first.substr(1)));
+  }
+
+  std::vector<size_t> idx(idxsort(sids));
+  std::vector<std::string> sorted;
+  for (const auto& i : idx) {
+    auto x = shardMap.begin();
+    std::advance(x,i);
+    sorted.push_back(x->first);
+  }
+
+  return sorted;
+
+}
+
 std::vector<Job::shard_t> Job::clones(
   Node const& snapshot, std::string const& database,
   std::string const& collection, std::string const& shard) {
@@ -238,34 +272,24 @@ std::vector<Job::shard_t> Job::clones(
   std::vector<shard_t> ret;
   ret.emplace_back(collection, shard);  // add (collection, shard) as first item
 
-  try {
-    std::string databasePath = planColPrefix + database,
-      planPath = databasePath + "/" + collection + "/shards";
-
-    auto myshards = snapshot(planPath).children();
-    auto steps = std::distance(myshards.begin(), myshards.find(shard));
-
-    for (const auto& colptr : snapshot(databasePath).children()) { // collections
-
-      auto const col = *colptr.second;
-      auto const otherCollection = colptr.first;
-
-      try {
-        std::string const& prototype =
-          col("distributeShardsLike").slice().copyString();
-        if (otherCollection != collection && prototype == collection) {
-          auto othershards = col("shards").children();
-          auto opos = othershards.begin();
-          std::advance(opos, steps);
-          auto const& otherShard = opos->first;
-          ret.emplace_back(otherCollection, otherShard);
-        }
-      } catch(...) {}
-      
+  std::string databasePath = planColPrefix + database,
+    planPath = databasePath + "/" + collection + "/shards";
+  
+  auto myshards = sortedShardList(snapshot(planPath));
+  auto steps = std::distance(
+    myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
+  
+  for (const auto& colptr : snapshot(databasePath).children()) { // collections
+    
+    auto const col = *colptr.second;
+    auto const otherCollection = colptr.first;
+    
+    if (otherCollection != collection &&
+        col.has("distributeShardsLike") &&
+        col("distributeShardsLike").slice().copyString() == collection) {
+      ret.emplace_back(otherCollection, sortedShardList(col("shards"))[steps]);
     }
-  } catch (...) {
-    ret.clear();
-    ret.emplace_back(collection, shard);
+    
   }
   
   return ret;
