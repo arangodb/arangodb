@@ -60,7 +60,7 @@ function shellReplication (options) {
 function replicationOngoing (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
-  let localOptions = options;
+  let localOptions = _.clone(options);
   localOptions.replication = true;
   localOptions.test = 'replication-ongoing';
   let startStopHandlers = {
@@ -88,10 +88,10 @@ function replicationOngoing (options) {
     },
 
     preStop: function (options,
-                           serverOptions,
-                           instanceInfo,
-                           customInstanceInfos,
-                           startStopHandlers) {
+                       serverOptions,
+                       instanceInfo,
+                       customInstanceInfos,
+                       startStopHandlers) {
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
 
       return {};
@@ -108,7 +108,7 @@ function replicationOngoing (options) {
 function replicationStatic (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
-  let localOptions = options;
+  let localOptions = _.clone(options);
   localOptions.replication = true;
   localOptions.test = 'replication-static';
   let startStopHandlers = {
@@ -153,10 +153,10 @@ function replicationStatic (options) {
     },
 
     preStop: function (options,
-                           serverOptions,
-                           instanceInfo,
-                           customInstanceInfos,
-                           startStopHandlers) {
+                       serverOptions,
+                       instanceInfo,
+                       customInstanceInfos,
+                       startStopHandlers) {
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
       return {};
     }
@@ -180,7 +180,7 @@ function replicationStatic (options) {
 function replicationSync (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
-  let localOptions = options;
+  let localOptions = _.clone(options);
   localOptions.replication = true;
   localOptions.test = 'replication-sync';
   let startStopHandlers = {
@@ -224,10 +224,10 @@ function replicationSync (options) {
     },
 
     preStop: function (options,
-                           serverOptions,
-                           instanceInfo,
-                           customInstanceInfos,
-                           startStopHandlers) {
+                       serverOptions,
+                       instanceInfo,
+                       customInstanceInfos,
+                       startStopHandlers) {
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
 
       return {};
