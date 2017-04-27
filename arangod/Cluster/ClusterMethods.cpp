@@ -2320,7 +2320,6 @@ ClusterMethods::persistCollectionInAgency(
       }
       col->distributeShardsLike(otherCidString);
     } else {
-      LOG_TOPIC(WARN, Logger::CLUSTER) << "WTF? " << ignoreDistributeShardsLikeErrors;
       if (ignoreDistributeShardsLikeErrors) {
         col->distributeShardsLike(std::string());
       } else {
