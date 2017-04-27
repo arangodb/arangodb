@@ -185,12 +185,19 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Authorization header: " << authStr;
 
     try {
+      rest::ResponseCode resCode;
       // note that these methods may throw in case of an error
       if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
-        return basicAuthentication(auth);
+        resCode = basicAuthentication(auth);
       } 
-      if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
-        return jwtAuthentication(std::string(auth));
+      if (resCode != rest::ResponseCode::OK && TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
+        resCode = jwtAuthentication(std::string(auth));
+      }
+
+      if (resCode == rest::ResponseCode::OK) {
+        // get auth context for user - database combination
+        // and set it into _request
+        return resCode;
       }
       // fallthrough intentional
     } catch (arangodb::basics::Exception const& ex) {
@@ -203,7 +210,7 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
       return rest::ResponseCode::SERVER_ERROR;
     }
   }
-    
+
   events::UnknownAuthenticationMethod(_request);
   return rest::ResponseCode::UNAUTHORIZED;
 }
