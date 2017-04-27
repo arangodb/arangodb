@@ -31,18 +31,16 @@
 
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the condition variable
 ///
 /// The constructors locks the condition variable, the destructors unlocks
 /// the condition variable
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_SHOW_LOCK_TIME
 
 ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable,
                                  char const* file, int line)
     : _conditionVariable(conditionVariable),
+      _isLocked(true),
       _file(file),
       _line(line),
       _time(0.0) {
@@ -54,18 +52,17 @@ ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable,
 #else
 
 ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable)
-    : _conditionVariable(conditionVariable) {
+    : _conditionVariable(conditionVariable), _isLocked(true) {
   _conditionVariable->lock();
 }
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the condition variable
-////////////////////////////////////////////////////////////////////////////////
-
 ConditionLocker::~ConditionLocker() {
-  _conditionVariable->unlock();
+  if (_isLocked) {
+    unlock();
+  }
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
@@ -74,41 +71,33 @@ ConditionLocker::~ConditionLocker() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for an event to occur
-////////////////////////////////////////////////////////////////////////////////
-
 void ConditionLocker::wait() { _conditionVariable->wait(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for an event to occur, with a timeout in microseconds
 /// returns true when the condition was signaled, false on timeout 
-////////////////////////////////////////////////////////////////////////////////
-
 bool ConditionLocker::wait(uint64_t delay) {
   return _conditionVariable->wait(delay);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief broadcasts an event
-////////////////////////////////////////////////////////////////////////////////
-
 void ConditionLocker::broadcast() { _conditionVariable->broadcast(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief signals an event
-////////////////////////////////////////////////////////////////////////////////
-
 void ConditionLocker::signal() { _conditionVariable->signal(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the variable (handle with care, no exception allowed)
-////////////////////////////////////////////////////////////////////////////////
+void ConditionLocker::unlock() {
+  if (_isLocked) {
+    _conditionVariable->unlock(); 
+    _isLocked = false;
+  }
+}
 
-void ConditionLocker::unlock() { _conditionVariable->unlock(); }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief relock the variable after unlock
-////////////////////////////////////////////////////////////////////////////////
+void ConditionLocker::lock() { 
+  TRI_ASSERT(!_isLocked);
+  _conditionVariable->lock(); 
+  _isLocked = true;
+}
 
-void ConditionLocker::lock() { _conditionVariable->lock(); }
