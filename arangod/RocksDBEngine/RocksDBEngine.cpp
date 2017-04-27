@@ -565,7 +565,7 @@ void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
 }
 
 std::string RocksDBEngine::createCollection(
-    TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+    TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
     arangodb::LogicalCollection const* parameters) {
   VPackBuilder builder = parameters->toVelocyPackIgnore(
       {"path", "statusString"}, /*translate cid*/ true,
@@ -580,8 +580,8 @@ std::string RocksDBEngine::createCollection(
   }
 
   int res = writeCreateCollectionMarker(
-      vocbase->id(), id, builder.slice(),
-      RocksDBLogValue::CollectionCreate(vocbase->id()));
+      vocbase->id(), cid, builder.slice(),
+      RocksDBLogValue::CollectionCreate(vocbase->id(), cid));
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -609,7 +609,7 @@ arangodb::Result RocksDBEngine::persistCollection(
 
   int res = writeCreateCollectionMarker(
       vocbase->id(), cid, slice,
-      RocksDBLogValue::CollectionCreate(vocbase->id()));
+      RocksDBLogValue::CollectionCreate(vocbase->id(), cid));
   result.reset(res);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -696,7 +696,7 @@ arangodb::Result RocksDBEngine::renameCollection(
   int res = writeCreateCollectionMarker(
       vocbase->id(), collection->cid(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase->id(), collection->cid(),
-                                        collection->name()));
+                                        StringRef(collection->name())));
   return arangodb::Result(res);
 }
 
