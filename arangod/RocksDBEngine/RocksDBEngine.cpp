@@ -372,13 +372,21 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
     THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
 
-  builder.add("parameters", VPackSlice(value.buffer()->data()));
+  VPackSlice fullParameters = VPackSlice(value.buffer()->data());
+
+  builder.add("parameters", fullParameters);
 
   if (includeIndexes) {
     // dump index information
-    builder.add("indexes", VPackValue(VPackValueType::Array));
-    // TODO
-    builder.close();
+    VPackSlice indexes = fullParameters.get("indexes");
+    builder.add(VPackValue("indexes"));
+    if (indexes.isArray()) {
+      builder.add(indexes);
+    } else {
+      // Insert an empty array instead
+      builder.openArray();
+      builder.close();
+    }
   }
 
   builder.close();
