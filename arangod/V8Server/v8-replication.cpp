@@ -128,8 +128,7 @@ static void JS_TickRangesLoggerReplication(
   for (auto& it : ranges) {
     v8::Handle<v8::Object> df = v8::Object::New(isolate);
 
-    df->ForceSet(TRI_V8_ASCII_STRING("datafile"),
-                 TRI_V8_STD_STRING(it.filename));
+    df->ForceSet(TRI_V8_ASCII_STRING("datafile"), TRI_V8_STD_STRING(it.filename));
     df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(it.state));
     df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMin));
     df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMax));

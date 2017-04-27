@@ -331,6 +331,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
   auto res = globalRocksEngine()->createLoggerState(_vocbase, builder);
   if (res.fail()) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state" << res.errorMessage();
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   res.errorMessage());
     return;
@@ -1484,9 +1485,11 @@ void RocksDBRestReplicationHandler::handleCommandApplierStop() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandApplierGetState() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "applier-state get API is not implemented for RocksDB yet");
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+
+  std::shared_ptr<VPackBuilder> result =
+      _vocbase->replicationApplier()->toVelocyPack();
+  generateResult(rest::ResponseCode::OK, result->slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1494,9 +1497,16 @@ void RocksDBRestReplicationHandler::handleCommandApplierGetState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandApplierDeleteState() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "applier-state delete API is not implemented for RocksDB yet");
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+
+  int res = _vocbase->replicationApplier()->forget();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "unable to delete applier state";
+    THROW_ARANGO_EXCEPTION_MESSAGE(res,"unable to delete applier state");
+  }
+
+  handleCommandApplierGetState();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
