@@ -635,7 +635,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       length = data.byteSize();
     }
 
-    if (data.length()) {
+    if (length == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       resetResponse(rest::ResponseCode::OK);

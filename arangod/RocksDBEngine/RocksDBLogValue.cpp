@@ -109,7 +109,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type) : _buffer() {
   switch (type) {
     case RocksDBLogType::DatabaseCreate:
       _buffer.reserve(sizeof(RocksDBLogType));
-      _buffer += static_cast<char>(type);
+      _buffer.push_back(static_cast<char>(type));
       break;
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -122,7 +122,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t val)
     case RocksDBLogType::DatabaseDrop:
     case RocksDBLogType::DocumentOperationsPrologue: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t));
-      _buffer += static_cast<char>(type);
+      _buffer.push_back(static_cast<char>(type));
       uint64ToPersistent(_buffer, val);  // database or collection ID
       break;
     }
@@ -142,7 +142,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
     case RocksDBLogType::BeginTransaction:
     case RocksDBLogType::SinglePut: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
-      _buffer += static_cast<char>(type);
+      _buffer.push_back(static_cast<char>(type));
       uint64ToPersistent(_buffer, dbId);
       uint64ToPersistent(_buffer, val2);
       break;
@@ -159,7 +159,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
   switch (type) {
     case RocksDBLogType::IndexDrop: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 3);
-      _buffer += static_cast<char>(type);
+      _buffer.push_back(static_cast<char>(type));
       uint64ToPersistent(_buffer, dbId);
       uint64ToPersistent(_buffer, cid);
       uint64ToPersistent(_buffer, iid);
@@ -177,7 +177,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
     case RocksDBLogType::IndexCreate: {
       _buffer.reserve(sizeof(RocksDBLogType) + (sizeof(uint64_t) * 2) +
                       indexInfo.byteSize());
-      _buffer += static_cast<char>(type);
+      _buffer.push_back(static_cast<char>(type));
       uint64ToPersistent(_buffer, dbId);
       uint64ToPersistent(_buffer, cid);
       _buffer.append(reinterpret_cast<char const*>(indexInfo.begin()),
@@ -196,7 +196,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
     case RocksDBLogType::CollectionRename: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2 +
                       data.length());
-      _buffer += static_cast<char>(type);
+      _buffer.push_back(static_cast<char>(type));
       uint64ToPersistent(_buffer, dbId);
       uint64ToPersistent(_buffer, cid);
       _buffer.append(data.data(), data.length());  // primary key
@@ -212,7 +212,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, StringRef const& data)
   switch (type) {
     case RocksDBLogType::DocumentRemove: {
       _buffer.reserve(data.length() + sizeof(RocksDBLogType));
-      _buffer += static_cast<char>(type);
+      _buffer.push_back(static_cast<char>(type));
       _buffer.append(data.data(), data.length());  // primary key
       break;
     }
@@ -225,7 +225,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, StringRef const& data)
 // ================= Instance Methods ===================
 
 RocksDBLogType RocksDBLogValue::type(rocksdb::Slice const& slice) {
-  TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
+  TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType));
   return static_cast<RocksDBLogType>(slice.data()[0]);
 }
 

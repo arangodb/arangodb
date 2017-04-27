@@ -86,6 +86,118 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _includeSystem(includeSystem),
         _builder(builder) {}
 
+  void LogData(rocksdb::Slice const& blob) override {
+    RocksDBLogType type = RocksDBLogValue::type(blob);
+    TRI_DEFER(_lastLogType = type);
+    switch (type) {
+      case RocksDBLogType::DatabaseCreate: {
+        // FIXME: do we have to print something?
+        break;
+      }
+      case RocksDBLogType::DatabaseDrop: {
+        _currentDbId = RocksDBLogValue::databaseId(blob);
+        // FIXME: do we have to print something?
+        break;
+      }
+      case RocksDBLogType::CollectionRename: {
+        _oldCollectionName =
+            RocksDBLogValue::newCollectionName(blob).toString();
+        // intentional fallthrough
+      }
+      case RocksDBLogType::CollectionCreate:
+      case RocksDBLogType::CollectionChange:
+      case RocksDBLogType::CollectionDrop: {
+        if (_lastLogType == RocksDBLogType::IndexCreate) {
+          TRI_ASSERT(_currentDbId == RocksDBLogValue::databaseId(blob));
+          TRI_ASSERT(_currentCollectionId ==
+                     RocksDBLogValue::collectionId(blob));
+        }
+        _currentDbId = RocksDBLogValue::databaseId(blob);
+        _currentCollectionId = RocksDBLogValue::collectionId(blob);
+        break;
+      }
+      case RocksDBLogType::IndexCreate: {
+        _currentDbId = RocksDBLogValue::databaseId(blob);
+        _currentCollectionId = RocksDBLogValue::collectionId(blob);
+        VPackSlice indexSlice = RocksDBLogValue::indexSlice(blob);
+        _builder.openObject();
+        _builder.add(
+            "type",
+            VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
+        _builder.add("database", VPackValue(_currentDbId));
+        _builder.add("cid", VPackValue(_currentCollectionId));
+        _builder.add("data", indexSlice);
+        _builder.close();
+        break;
+      }
+      case RocksDBLogType::IndexDrop: {
+        _currentDbId = RocksDBLogValue::databaseId(blob);
+        _currentCollectionId = RocksDBLogValue::collectionId(blob);
+        TRI_idx_iid_t iid = RocksDBLogValue::indexId(blob);
+        _builder.openObject();
+        _builder.add(
+            "type",
+            VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
+        _builder.add("database", VPackValue(_currentDbId));
+        _builder.add("cid", VPackValue(_currentCollectionId));
+        _builder.add("data", VPackValue(VPackValueType::Object));
+        _builder.add("id", VPackValue(std::to_string(iid)));
+        _builder.close();
+        _builder.close();
+        break;
+      }
+      case RocksDBLogType::ViewCreate: {
+        // TODO
+        break;
+      }
+      case RocksDBLogType::ViewDrop: {
+        // TODO
+        break;
+      }
+      case RocksDBLogType::ViewChange: {
+        // TODO
+        break;
+      }
+      case RocksDBLogType::BeginTransaction: {
+        _seenBeginTransaction = true;
+        _currentDbId = RocksDBLogValue::databaseId(blob);
+        _currentTrxId = RocksDBLogValue::transactionId(blob);
+
+        _builder.openObject();
+        _builder.add("tick", VPackValue(_currentSequence));
+        _builder.add(
+            "type",
+            VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_START)));
+        _builder.add("database", VPackValue(_currentDbId));
+        _builder.add("tid", VPackValue(_currentTrxId));
+        _builder.close();
+        break;
+      }
+      case RocksDBLogType::DocumentOperationsPrologue: {
+        _currentCollectionId = RocksDBLogValue::collectionId(blob);
+        break;
+      }
+      case RocksDBLogType::DocumentRemove: {
+        _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
+        break;
+      }
+      case RocksDBLogType::SingleRemove: {
+        _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
+        // intentionall fall through
+      }
+      case RocksDBLogType::SinglePut: {
+        _singleOpTransaction = true;
+        _currentDbId = RocksDBLogValue::databaseId(blob);
+        _currentCollectionId = RocksDBLogValue::collectionId(blob);
+        _currentTrxId = RocksDBLogValue::collectionId(blob);
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
+
   void Put(rocksdb::Slice const& key, rocksdb::Slice const& value) override {
     if (!shouldHandleKey(key)) {
       return;
@@ -204,118 +316,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  void PutLogData(rocksdb::Slice const& blob) {
-    RocksDBLogType type = RocksDBLogValue::type(blob);
-    TRI_DEFER(_lastLogType = type);
-    switch (type) {
-      case RocksDBLogType::DatabaseCreate: {
-        // FIXME: do we have to print something?
-        break;
-      }
-      case RocksDBLogType::DatabaseDrop: {
-        _currentDbId = RocksDBLogValue::databaseId(blob);
-        // FIXME: do we have to print something?
-        break;
-      }
-      case RocksDBLogType::CollectionRename: {
-        _oldCollectionName =
-            RocksDBLogValue::newCollectionName(blob).toString();
-        // intentional fallthrough
-      }
-      case RocksDBLogType::CollectionCreate:
-      case RocksDBLogType::CollectionChange:
-      case RocksDBLogType::CollectionDrop: {
-        if (_lastLogType == RocksDBLogType::IndexCreate) {
-          TRI_ASSERT(_currentDbId == RocksDBLogValue::databaseId(blob));
-          TRI_ASSERT(_currentCollectionId ==
-                     RocksDBLogValue::collectionId(blob));
-        }
-        _currentDbId = RocksDBLogValue::databaseId(blob);
-        _currentCollectionId = RocksDBLogValue::collectionId(blob);
-        break;
-      }
-      case RocksDBLogType::IndexCreate: {
-        _currentDbId = RocksDBLogValue::databaseId(blob);
-        _currentCollectionId = RocksDBLogValue::collectionId(blob);
-        VPackSlice indexSlice = RocksDBLogValue::indexSlice(blob);
-        _builder.openObject();
-        _builder.add(
-            "type",
-            VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("cid", VPackValue(_currentCollectionId));
-        _builder.add("data", indexSlice);
-        _builder.close();
-        break;
-      }
-      case RocksDBLogType::IndexDrop: {
-        _currentDbId = RocksDBLogValue::databaseId(blob);
-        _currentCollectionId = RocksDBLogValue::collectionId(blob);
-        TRI_idx_iid_t iid = RocksDBLogValue::indexId(blob);
-        _builder.openObject();
-        _builder.add(
-            "type",
-            VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("cid", VPackValue(_currentCollectionId));
-        _builder.add("data", VPackValue(VPackValueType::Object));
-        _builder.add("id", VPackValue(std::to_string(iid)));
-        _builder.close();
-        _builder.close();
-        break;
-      }
-      case RocksDBLogType::ViewCreate: {
-        // TODO
-        break;
-      }
-      case RocksDBLogType::ViewDrop: {
-        // TODO
-        break;
-      }
-      case RocksDBLogType::ViewChange: {
-        // TODO
-        break;
-      }
-      case RocksDBLogType::BeginTransaction: {
-        _seenBeginTransaction = true;
-        _currentDbId = RocksDBLogValue::databaseId(blob);
-        _currentTrxId = RocksDBLogValue::collectionId(blob);
-
-        _builder.openObject();
-        _builder.add("tick", VPackValue(_currentSequence));
-        _builder.add(
-            "type",
-            VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_START)));
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("tid", VPackValue(_currentTrxId));
-        _builder.close();
-        break;
-      }
-      case RocksDBLogType::DocumentOperationsPrologue: {
-        _currentCollectionId = RocksDBLogValue::collectionId(blob);
-        break;
-      }
-      case RocksDBLogType::DocumentRemove: {
-        _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
-        break;
-      }
-      case RocksDBLogType::SingleRemove: {
-        _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
-        // intentionall fall through
-      }
-      case RocksDBLogType::SinglePut: {
-        _singleOpTransaction = true;
-        _currentDbId = RocksDBLogValue::databaseId(blob);
-        _currentCollectionId = RocksDBLogValue::collectionId(blob);
-        _currentTrxId = RocksDBLogValue::collectionId(blob);
-        break;
-      }
-
-      default:
-        break;
-    }
-  }
-
   void startNewBatch(rocksdb::SequenceNumber currentSequence) {
     // starting new write batch
     // TODO: reset state?
@@ -357,7 +357,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         break;
       }
       case RocksDBEntryType::Document: {
-        uint64_t objectId = RocksDBKey::collectionId(key);
+        uint64_t objectId = RocksDBKey::objectId(key);
         auto mapping = mapObjectToCollection(objectId);
         if (mapping.first != _vocbase->id()) {
           return false;
