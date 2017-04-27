@@ -54,8 +54,8 @@ enum class AuthSource {
 
 class HexHashResult : public arangodb::Result {
   public:
-    HexHashResult(int errorNumber) : Result(errorNumber) {}
-    HexHashResult(std::string const& hexHash) : Result(0),  _hexHash(hexHash) {}
+    explicit HexHashResult(int errorNumber) : Result(errorNumber) {}
+    explicit HexHashResult(std::string const& hexHash) : Result(0),  _hexHash(hexHash) {}
     std::string const& hexHash() { return _hexHash; }
 
   protected:
@@ -64,7 +64,12 @@ class HexHashResult : public arangodb::Result {
 
 class AuthEntry {
  public:
-  AuthEntry() : _active(false), _mustChange(false), _allDatabases(AuthLevel::NONE) {}
+  AuthEntry() 
+      : _active(false), 
+        _mustChange(false), 
+        _created(TRI_microtime()), 
+        _source(AuthSource::COLLECTION), 
+        _allDatabases(AuthLevel::NONE) {}
 
   AuthEntry(std::string&& username, std::string&& passwordMethod,
             std::string&& passwordSalt, std::string&& passwordHash,
@@ -205,7 +210,7 @@ class AuthInfo {
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult> _authJwtCache;
   std::string _jwtSecret;
   aql::QueryRegistry* _queryRegistry;
-  AuthenticationHandler* _authenticationHandler;
+  std::unique_ptr<AuthenticationHandler> _authenticationHandler;
 };
 }
 

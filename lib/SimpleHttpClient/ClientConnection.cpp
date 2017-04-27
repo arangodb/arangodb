@@ -326,15 +326,15 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 
 #if defined(__APPLE__)
   // MSG_NOSIGNAL not supported on apple platform
-  int status = TRI_send(_socket, buffer, length, 0);
+  long status = TRI_send(_socket, buffer, length, 0);
 #elif defined(_WIN32)
   // MSG_NOSIGNAL not supported on windows platform
-  int status = TRI_send(_socket, buffer, length, 0);
+  long status = TRI_send(_socket, buffer, length, 0);
 #elif defined(__sun)
   // MSG_NOSIGNAL not supported on solaris platform
-  int status = TRI_send(_socket, buffer, length, 0);
+  long status = TRI_send(_socket, buffer, length, 0);
 #else
-  int status = TRI_send(_socket, buffer, length, MSG_NOSIGNAL);
+  long status = TRI_send(_socket, buffer, length, MSG_NOSIGNAL);
 #endif
 
   if (status < 0) {

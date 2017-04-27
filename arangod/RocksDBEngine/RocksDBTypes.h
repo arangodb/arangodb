@@ -57,7 +57,8 @@ enum class RocksDBLogType : char {
   ViewCreate = '9',
   ViewDrop = ':',
   ViewChange = ';',
-  DocumentRemove = '<'
+  DocumentOperationsPrologue = '<', 
+  DocumentRemove = '='
 };
 
 

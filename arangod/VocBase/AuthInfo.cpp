@@ -147,9 +147,7 @@ AuthInfo::AuthInfo()
     : _outdated(true),
     _authJwtCache(16384),
     _jwtSecret(""),
-    _queryRegistry(nullptr),
-    _authenticationHandler(nullptr) {
-}
+    _queryRegistry(nullptr) {}
 
 void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _authJwtLock);
@@ -245,7 +243,7 @@ void AuthInfo::reload() {
 
   // TODO: is this correct?
   if (_authenticationHandler == nullptr) {
-    _authenticationHandler = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication")->getHandler();
+    _authenticationHandler.reset(application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication")->getHandler());
   }
   
   {
@@ -347,7 +345,7 @@ HexHashResult AuthInfo::hexHashFromData(std::string const& hashMethod, char cons
   }
 
   if (crypted == nullptr ||
-      cryptedLength <= 0) {
+      cryptedLength == 0) {
     delete[] crypted;
     return HexHashResult(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -383,6 +381,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
 
   if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) { // && it->second.created() < TRI_microtime() - 60)) {
+    TRI_ASSERT(_authenticationHandler != nullptr);
     AuthenticationResult authResult = _authenticationHandler->authenticate(username, password);
 
     if (!authResult.ok()) {
