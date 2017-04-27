@@ -1445,9 +1445,16 @@ void RocksDBRestReplicationHandler::handleCommandServerId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandApplierGetConfig() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "GET applier-config API is not implemented for RocksDB yet");
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+
+  TRI_replication_applier_configuration_t config;
+
+  {
+    READ_LOCKER(readLocker, _vocbase->replicationApplier()->_statusLock);
+    config.update(&_vocbase->replicationApplier()->_configuration);
+  }
+  std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
+  generateResult(rest::ResponseCode::OK, configBuilder->slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1455,9 +1462,121 @@ void RocksDBRestReplicationHandler::handleCommandApplierGetConfig() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandApplierSetConfig() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "set applier-config API is not implemented for RocksDB yet");
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+
+  TRI_replication_applier_configuration_t config;
+
+  bool success;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+
+  {
+    READ_LOCKER(readLocker, _vocbase->replicationApplier()->_statusLock);
+    config.update(&_vocbase->replicationApplier()->_configuration);
+  }
+
+  std::string const endpoint =
+      VelocyPackHelper::getStringValue(body, "endpoint", "");
+
+  if (!endpoint.empty()) {
+    config._endpoint = endpoint;
+  }
+
+  config._database =
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
+
+  VPackSlice const username = body.get("username");
+  if (username.isString()) {
+    config._username = username.copyString();
+  }
+
+  VPackSlice const password = body.get("password");
+  if (password.isString()) {
+    config._password = password.copyString();
+  }
+
+  VPackSlice const jwt = body.get("jwt");
+  if (jwt.isString()) {
+    config._jwt = jwt.copyString();
+  }
+
+  config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
+      body, "requestTimeout", config._requestTimeout);
+  config._connectTimeout = VelocyPackHelper::getNumericValue<double>(
+      body, "connectTimeout", config._connectTimeout);
+  config._ignoreErrors = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "ignoreErrors", config._ignoreErrors);
+  config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "maxConnectRetries", config._maxConnectRetries);
+  config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
+      body, "sslProtocol", config._sslProtocol);
+  config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "chunkSize", config._chunkSize);
+  config._autoStart =
+      VelocyPackHelper::getBooleanValue(body, "autoStart", config._autoStart);
+  config._adaptivePolling = VelocyPackHelper::getBooleanValue(
+      body, "adaptivePolling", config._adaptivePolling);
+  config._autoResync =
+      VelocyPackHelper::getBooleanValue(body, "autoResync", config._autoResync);
+  config._includeSystem = VelocyPackHelper::getBooleanValue(
+      body, "includeSystem", config._includeSystem);
+  config._verbose =
+      VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
+  config._incremental = VelocyPackHelper::getBooleanValue(body, "incremental",
+                                                          config._incremental);
+  config._requireFromPresent = VelocyPackHelper::getBooleanValue(
+      body, "requireFromPresent", config._requireFromPresent);
+  config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType",
+                                                          config._restrictType);
+  config._connectionRetryWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "connectionRetryWaitTime",
+          static_cast<double>(config._connectionRetryWaitTime) /
+              (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "initialSyncMaxWaitTime",
+          static_cast<double>(config._initialSyncMaxWaitTime) /
+              (1000.0 * 1000.0)));
+  config._idleMinWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "idleMinWaitTime",
+          static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "idleMaxWaitTime",
+          static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._autoResyncRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "autoResyncRetries", config._autoResyncRetries);
+
+  VPackSlice const restriction = body.get("restrictCollections");
+  if (restriction.isArray()) {
+    config._restrictCollections.clear();
+    for (VPackSlice const& collection : VPackArrayIterator(restriction)) {
+      if (collection.isString()) {
+        config._restrictCollections.emplace(
+            std::make_pair(collection.copyString(), true));
+      }
+    }
+  }
+
+  int res =
+      TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  handleCommandApplierGetConfig();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1465,9 +1584,36 @@ void RocksDBRestReplicationHandler::handleCommandApplierSetConfig() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandApplierStart() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "applier-start API is not implemented for RocksDB yet");
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+
+  bool found;
+  std::string const& value1 = _request->value("from", found);
+
+  TRI_voc_tick_t initialTick = 0;
+  bool useTick = false;
+
+  if (found) {
+    // query parameter "from" specified
+    initialTick = (TRI_voc_tick_t)StringUtils::uint64(value1);
+    useTick = true;
+  }
+
+  TRI_voc_tick_t barrierId = 0;
+  std::string const& value2 = _request->value("barrierId", found);
+
+  if (found) {
+    // query parameter "barrierId" specified
+    barrierId = (TRI_voc_tick_t)StringUtils::uint64(value2);
+  }
+
+  int res =
+      _vocbase->replicationApplier()->start(initialTick, useTick, barrierId);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  handleCommandApplierGetState();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1475,9 +1621,15 @@ void RocksDBRestReplicationHandler::handleCommandApplierStart() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandApplierStop() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "applier-stop API is not implemented for RocksDB yet");
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+
+  int res = _vocbase->replicationApplier()->stop(true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  handleCommandApplierGetState();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
