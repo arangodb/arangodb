@@ -209,6 +209,7 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
   let failedSuite = 0;
   let failedTests = 0;
 
+  let onlyFailedMessages = '';
   let failedMessages = '';
   let SuccessMessages = '';
   try {
@@ -278,7 +279,9 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
           }
         }
       } else {
-        failedMessages += '* Test "' + testrunName + '"\n';
+        let m = '* Test "' + testrunName + '"\n';
+        onlyFailedMessages += m;
+        failedMessages += m;
 
         for (let name in successCases) {
           if (!successCases.hasOwnProperty(name)) {
@@ -289,6 +292,7 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
 
           if (details.skipped) {
             failedMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
+            onlyFailedMessages += '    [SKIPPED] ' + name + '\n';
           } else {
             failedMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
           }
@@ -300,6 +304,7 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
           }
 
           failedMessages += RED + '    [FAILED]  ' + name + RESET + '\n\n';
+          onlyFailedMessages += '    [FAILED]  ' + name + '\n\n';
 
           let details = failedCases[name];
 
@@ -311,8 +316,10 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
 
             if (count > 0) {
               failedMessages += '\n';
+              onlyFailedMessages += '\n';
             }
             failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n';
+            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n';
             count++;
           }
         }
@@ -337,7 +344,7 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
       print(color + failText + RESET);
     }
 
-    failedMessages = failedMessages + crashedText + cu.GDB_OUTPUT + failText + '\n';
+    failedMessages = onlyFailedMessages + crashedText + cu.GDB_OUTPUT + failText + '\n';
     fs.write(testOutputDirectory + options.testFailureText, failedMessages);
   } catch (x) {
     print('exception caught while pretty printing result: ');
@@ -510,7 +517,7 @@ function unitTest (cases, options) {
       pu.cleanupDBDirectories(options);
     } else {
       print('not cleaning up as some tests weren\'t successful:\n' +
-            pu.getCleanupDBDirectories);
+            pu.getCleanupDBDirectories());
     }
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");
