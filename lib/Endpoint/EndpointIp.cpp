@@ -228,7 +228,7 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
     setTimeout(listenSocket, connectTimeout);
 
     int result = TRI_connect(listenSocket, (const struct sockaddr*)aip->ai_addr,
-                             (int)aip->ai_addrlen);
+                             aip->ai_addrlen);
 
     if (result != 0) {
       pErr = STR_ERROR();

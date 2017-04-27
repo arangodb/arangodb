@@ -6,6 +6,110 @@ ArangoDB 3.2. ArangoDB 3.2 also contains several bugfixes that are not listed
 here.
 
 
+Storage engines
+---------------
+
+ArangoDB 3.2 offers two storage engines:
+
+* the always-existing memory-mapped files storage engine
+* a new storage engine based on [RocksDB](https://www.github.com/facebook/rocksdb/)
+
+### Memory-mapped files storage engine (MMFiles)
+
+The former storage engine (named MMFiles engine henceforth) persists data in memory-mapped 
+files. 
+
+Any data changes are done first in the engine's write-ahead log (WAL). The WAL 
+is replayed after a crash so the engine offers durability and crash-safety. Data
+from the WAL is eventually moved to collection-specific datafiles. The files are
+always written in an append-only fashion, so data in files is never overwritten.
+Obsolete data in files will eventually be purged by background compaction threads.
+
+Most of this engine's indexes are built in RAM. When a collection is loaded, this requires 
+rebuilding the indexes in RAM from the data stored on disk. The MMFiles engine has 
+collection-level locking.
+
+This storage engine is a good choice when data (including the indexes) can fit in the 
+server's available RAM. If the size of data plus the in-memory indexes exceeds the size
+of the available RAM, then this engine may try to allocate more memory than available.
+This will either make the operating system swap out parts of the data (and cause disk I/O)
+or, when no swap space is configured, invoke the operating system's out-of-memory process 
+killer.
+
+The locking strategy allows parallel reads and is often good enough in read-mostly
+workloads. Writes need exclusive locks on the collections, so they can block other
+operations in the same collection. The locking strategy also provides transactional consistency
+and isolation.
+
+### RocksDB storage engine
+
+The RocksDB storage engine is new in ArangoDB 3.2. It is designed to store datasets
+that are bigger than the server's available RAM. It persists all data (including the
+indexes) in a RocksDB instance.
+
+That means any document read or write operations will be answered by RocksDB under the
+hood. RocksDB will serve the data from its own in-RAM caches or from disk.
+The RocksDB engine has a write-ahead log (WAL) and uses background threads for compaction.
+It supports data compression.
+
+The RocksDB storage engine has document-level locking. Read operations do not block and
+are never blocked by other operations. Write operations only block writes on the same 
+documents/index values. Because multiple writers can operate in parallel on the same
+collection, there is the possibility of write-write conflicts. If such write conflict
+is detected, one of the write operations is aborted with error 1200 ("conflict").
+Client applications can then either abort the operation or retry, based on the required
+consistency semantics.
+
+### Storage engine selection
+
+The storage engine to use in an ArangoDB cluster or a single-server instance must be
+selected initially. The default storage engine in ArangoDB 3.2 is the MMFiles engine if
+no storage engine is selected explicitly. This ensures all users upgrading from earlier
+versions can continue with the well-known MMFiles engine.
+
+To select the storage-engine, there is the configuration option `--server.storage-engine`.
+It can be set to either `mmfiles`, `rocksdb` or `auto`. While the first two values will
+explicitly select a storage engine, the `auto` option will automatically choose the
+storage engine based on which storage engine was previously selected. If no engine was
+selected previously, `auto` will select the MMFiles engine. If an engine was previously
+selected, the selection will be written to a file `ENGINE` in the server's database
+directory and will be read from there at any subsequent server starts.
+
+Once the storage engine was selected, the selection cannot be changed by adjusting
+`--server.storage-engine`. In order to switch to another storage engine, it is required
+to re-start the server with another (empty) database directory. In order to use data
+created with the other storage engine, it is required to dump the data first with the
+old engine and restore it using the new storage engine. This can be achieved via 
+invoking arangodump and arangorestore.
+
+Unlike in MySQL, the storage engine selection in ArangoDB is for an entire cluster or
+an entire single-server instance. All databases and collections will use the same storage 
+engine. 
+
+### RocksDB storage engine: known issues
+
+The RocksDB storage engine in this release has a few known issues and missing features.
+These will be resolved in the following releases:
+
+* index selectivity estimates are missing. All indexes will report their selectivity
+  estimate as `0.2`. This may lead to a non-optimal index being used in a query.
+
+* geo and fulltext indexes are not yet implemented
+
+* the number of documents reported for collections (`db.<collection>.count()`) may be
+  slightly wrong during transactions.
+
+* the engine may produce spurious `unique constraint violation` errors for auto-generated
+  `_key` values. 
+
+* transactions are de facto limited in size, but no size restriction is currently
+  enforced. These restrictions will be implemented in a future release.
+
+* the engine is not yet performance-optimized and well configured.
+
+* replication as well as cluster dump/restore are not fully working
+
+
 Memory management
 -----------------
 
@@ -16,7 +120,7 @@ Memory management
   This will also lower the chances of the arangod process being killed by the
   operation system's OOM killer.
 
-  Note: these options are only available in all builds and environments.
+  Note: these options are not available in all builds and environments.
 
 * make arangod start with less V8 JavaScript contexts
 
@@ -100,6 +204,10 @@ JavaScript
   `print`/`printShell` functions in ArangoShell and arangod. This will emit longer
   prefixes of string values before truncating them with `...`, which is helpful
   for debugging. This change is mostly useful when using the ArangoShell (arangosh).
+
+
+Pregel
+------
 
 
 AQL

@@ -499,15 +499,7 @@ std::string LogicalCollection::name() const {
 }
 
 std::string const LogicalCollection::distributeShardsLike() const {
-  if (!_distributeShardsLike.empty()) {
-    CollectionNameResolver resolver(_vocbase);
-    TRI_voc_cid_t shardLike =
-        resolver.getCollectionIdCluster(_distributeShardsLike);
-    if (shardLike != 0) {
-      return basics::StringUtils::itoa(shardLike);
-    }
-  }
-  return "";
+  return _distributeShardsLike;
 }
 
 void LogicalCollection::distributeShardsLike(std::string const& cid) {

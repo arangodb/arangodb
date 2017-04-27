@@ -17,6 +17,8 @@ if (USE_JEMALLOC)
     set(JEMALLOC_LIB         ${JEMALLOC_HOME}/lib/libjemalloc.a CACHE PATH "library file")
     set(THIRDPARTY_LIBS      ${JEMALLOC_LIB})
   endif ()
+else ()
+  set(WITH_JEMALLOC OFF CACHE BOOL "enable jemalloc")
 endif ()
 
 # snappy settings
