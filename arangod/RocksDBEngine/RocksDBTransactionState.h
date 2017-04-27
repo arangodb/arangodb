@@ -42,7 +42,7 @@ namespace rocksdb {
 class Transaction;
 class Slice;
 class Iterator;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 namespace cache {
@@ -62,6 +62,7 @@ class RocksDBSavePoint {
   ~RocksDBSavePoint();
 
   void commit();
+
  private:
   void rollback();
 
@@ -101,6 +102,9 @@ class RocksDBTransactionState final : public TransactionState {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
+  void prepareOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+                        TRI_voc_document_operation_e operationType);
+
   /// @brief add an operation for a transaction collection
   RocksDBOperationResult addOperation(
       TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
@@ -135,7 +139,10 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t _numUpdates;
   uint64_t _numRemoves;
   bool _intermediateTransactionEnabled;
+
+  /// Last collection used for transaction
+  TRI_voc_cid_t _lastUsedCollection;
 };
-}
+}  // namespace arangodb
 
 #endif
