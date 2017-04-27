@@ -50,18 +50,22 @@ void RocksDBBackgroundThread::run() {
       CONDITION_LOCKER(guard, _condition);
       guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
     }
-    
+
+    _engine->counterManager()->writeSettings();
+
     if (!isStopping()) {
       _engine->counterManager()->sync(false);
     }
 
     bool force = isStopping();
     _engine->replicationManager()->garbageCollect(force);
-    
+
     if (!isStopping()) {
-      DatabaseFeature::DATABASE->enumerateDatabases([force] (TRI_vocbase_t *vocbase) {
-        vocbase->cursorRepository()->garbageCollect(force);
-      });
+      DatabaseFeature::DATABASE->enumerateDatabases(
+          [force](TRI_vocbase_t* vocbase) {
+            vocbase->cursorRepository()->garbageCollect(force);
+          });
     }
   }
+  _engine->counterManager()->writeSettings();  // final write on shutdown
 }
