@@ -1265,8 +1265,7 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         // smaller values than lowKey mean they don't exist remotely
         trx.remove(collectionName, key, options);
         return;
-      }
-      if (cmp1 >= 0 && cmp2 <= 0) {
+      } else if (cmp1 >= 0 && cmp2 <= 0) {
         // we only need to hash we are in the range
         if (cmp1 == 0) {
           foundLowKey = true;
@@ -1294,21 +1293,23 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         nextChunk = true;
       }
 
-      if (rangeUnequal) {
-        int res = syncChunkRocksDB(&trx, keysId, currentChunkId, lowKey,
-                                   highKey, markers, errorMsg);
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-      }
+      
       TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
-      if (nextChunk && currentChunkId + 1 < numChunks) {
-        currentChunkId++;  // we are out of range, see next chunk
-        resetChunk();
-
-        // key is higher than upper bound, recheck the current document
-        if (cmp2 > 0) {
-          parseDoc(doc, key);
+      if (nextChunk) {// we are out of range, see next chunk
+        if (rangeUnequal && currentChunkId < numChunks) {
+          int res = syncChunkRocksDB(&trx, keysId, currentChunkId, lowKey,
+                                     highKey, markers, errorMsg);
+          if (res != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+        }
+        currentChunkId++;
+        if (currentChunkId < numChunks) {
+          resetChunk();
+          // key is higher than upper bound, recheck the current document
+          if (cmp2 > 0) {
+            parseDoc(doc, key);
+          }
         }
       }
     };
@@ -1325,6 +1326,19 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
           parseDoc(doc, key);
         },
         UINT64_MAX);
+    
+    // we might have missed chunks, if the keys don't exist at all locally
+    while (currentChunkId < numChunks) {
+      int res = syncChunkRocksDB(&trx, keysId, currentChunkId, lowKey,
+                                 highKey, markers, errorMsg);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      currentChunkId++;
+      if (currentChunkId < numChunks) {
+        resetChunk();
+      }
+    }
 
     res = trx.commit();
     if (!res.ok()) {
@@ -1423,8 +1437,8 @@ int InitialSyncer::syncChunkRocksDB(
   size_t const numKeys = static_cast<size_t>(responseBody.length());
   if (numKeys == 0) {
     errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
-               ": response contains an empty chunk. ChunkId: " +
-               std::to_string(chunkId);
+               ": response contains an empty chunk. Collection: " + collectionName +
+              " Chunk: " + std::to_string(chunkId);
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   TRI_ASSERT(numKeys > 0);
@@ -1493,6 +1507,23 @@ int InitialSyncer::syncChunkRocksDB(
     }
 
     i++;
+  }
+  
+  // delete all keys at end of the range
+  while (nextStart < markers.size()) {
+    std::string const& localKey = markers[nextStart].first;
+    
+    TRI_ASSERT(localKey.compare(highString) > 0);
+    //if (localKey.compare(highString) > 0) {
+      // we have a local key that is not present remotely
+      keyBuilder->clear();
+      keyBuilder->openObject();
+      keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
+      keyBuilder->close();
+      
+      trx->remove(collectionName, keyBuilder->slice(), options);
+    //}
+    ++nextStart;
   }
 
   if (!toFetch.empty()) {
