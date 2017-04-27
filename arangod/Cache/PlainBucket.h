@@ -54,7 +54,7 @@ struct PlainBucket {
 
 // padding, if necessary?
 #ifdef TRI_PADDING_32
-  uint32_t _padding[3];
+  uint32_t _padding[slotsData];
 #endif
 
   //////////////////////////////////////////////////////////////////////////////
