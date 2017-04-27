@@ -345,7 +345,7 @@ HexHashResult AuthInfo::hexHashFromData(std::string const& hashMethod, char cons
   }
 
   if (crypted == nullptr ||
-      cryptedLength <= 0) {
+      cryptedLength == 0) {
     delete[] crypted;
     return HexHashResult(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -364,9 +364,6 @@ HexHashResult AuthInfo::hexHashFromData(std::string const& hashMethod, char cons
   return result;
 }
 
-
-
-
 // public
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
@@ -379,13 +376,12 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   WRITE_LOCKER(writeLocker, _authInfoLock);
   auto it = _authInfo.find(username);
 
-
   if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) { // && it->second.created() < TRI_microtime() - 60)) {
     TRI_ASSERT(_authenticationHandler != nullptr);
     AuthenticationResult authResult = _authenticationHandler->authenticate(username, password);
 
     if (!authResult.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(authResult.errorNumber(), authResult.errorMessage());
+      return result;
     }
 
     if (authResult.source() == AuthSource::LDAP) { // user authed, add to _authInfo and _users
@@ -521,7 +517,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   HexHashResult hexHash = hexHashFromData(auth.passwordMethod(), salted.data(), salted.size());
 
   if (!hexHash.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "hexcalc did not work");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "hexcalc did not work");
   }
 
   result._authorized = auth.checkPasswordHash(hexHash.hexHash());

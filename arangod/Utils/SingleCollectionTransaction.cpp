@@ -44,6 +44,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 
   // add the (sole) collection
   addCollection(cid, _accessType);
+  addHint(transaction::Hints::Hint::NO_DLD);
 }
 
 /// @brief create the transaction, using a collection name
@@ -58,6 +59,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
   // add the (sole) collection
   _cid = resolver()->getCollectionId(name);
   addCollection(_cid, name.c_str(), _accessType);
+  addHint(transaction::Hints::Hint::NO_DLD);
 }
 
 /// @brief get the underlying transaction collection

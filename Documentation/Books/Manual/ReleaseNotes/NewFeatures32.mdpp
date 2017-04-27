@@ -109,6 +109,18 @@ These will be resolved in the following releases:
 
 * replication as well as cluster dump/restore are not fully working
 
+The existing indexes in the RocksDB engine are all persistent. The following indexes are
+supported there:
+
+* primary: automatically created, indexes `_id` / `_key`
+
+* edge: automatically created for edge collections, indexes `_from` and `_to`
+
+* hash, skiplist, persistent: user-defined index, technically it is neither a hash
+  nor a skiplist index. All these index types map to the same RocksDB-based
+  sorted index implementation. The names "hash", "skiplist" and "persistent" are
+  only used for compatibility with the MMFiles engine.
+
 
 Memory management
 -----------------

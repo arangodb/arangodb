@@ -45,7 +45,8 @@ class Hints {
     TRY_LOCK = 64,
     NO_COMPACTION_LOCK = 128,
     NO_USAGE_LOCK = 256,
-    RECOVERY = 512
+    RECOVERY = 512,
+    NO_DLD = 1024 // disable deadlock detection
   };
 
   Hints() : _value(0) {}

@@ -640,6 +640,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     CONDITION_LOCKER(guard, _contextCondition);
 
     while (_freeContexts.empty() && !_stopping) {
+      TRI_ASSERT(guard.isLocked());
+
       LOG_TOPIC(TRACE, arangodb::Logger::V8) << "waiting for unused V8 context";
 
       if (!_dirtyContexts.empty()) {
@@ -653,10 +655,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       if (_contexts.size() + _nrInflightContexts < _nrMaxContexts) {
         ++_nrInflightContexts;
 
+        TRI_ASSERT(guard.isLocked());
         guard.unlock();
 
         try {
-          LOG_TOPIC(TRACE, Logger::V8) << "creating additional V8 context";
+          LOG_TOPIC(DEBUG, Logger::V8) << "creating additional V8 context";
           context = addContext();
         } catch (...) {
           guard.lock();
@@ -666,6 +669,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         }
 
         // must re-lock
+        TRI_ASSERT(!guard.isLocked());
         guard.lock();
 
         --_nrInflightContexts;
@@ -674,6 +678,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         } catch (...) {
           // oops
           delete context;
+          context = nullptr;
           continue;
         }
 
@@ -683,6 +688,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         } catch (...) {
           TRI_ASSERT(!_contexts.empty());
           _contexts.pop_back();
+          TRI_ASSERT(context != nullptr);
           delete context;
         }
 
@@ -693,6 +699,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         JobGuard jobGuard(SchedulerFeature::SCHEDULER);
         jobGuard.block();
         
+        TRI_ASSERT(guard.isLocked());
         guard.wait(100000);
       }
 
@@ -701,6 +708,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         return nullptr;
       }
     }
+      
+    TRI_ASSERT(guard.isLocked());
 
     // in case we are in the shutdown phase, do not enter a context!
     // the context might have been deleted by the shutdown

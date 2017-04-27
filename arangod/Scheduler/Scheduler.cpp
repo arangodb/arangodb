@@ -137,9 +137,14 @@ class SchedulerThread : public Thread {
 
       LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped ("
                                         << _scheduler->infoStatus() << ")";
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::THREADS)
+          << "restarting scheduler loop after caught exception: " << ex.what();
+      _scheduler->decRunning();
+      _scheduler->startNewThread();
     } catch (...) {
       LOG_TOPIC(ERR, Logger::THREADS)
-          << "scheduler loop caught an error, restarting";
+          << "restarting scheduler loop after unknown exception";
       _scheduler->decRunning();
       _scheduler->startNewThread();
     }

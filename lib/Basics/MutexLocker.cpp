@@ -31,12 +31,9 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
 ///
 /// The constructor aquires a lock, the destructors releases the lock.
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_SHOW_LOCK_TIME
 
 MutexLocker::MutexLocker(Mutex* mutex, char const* file, int line)
@@ -54,10 +51,7 @@ MutexLocker::MutexLocker(Mutex* mutex) : _mutex(mutex), _isLocked(true) {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
-////////////////////////////////////////////////////////////////////////////////
-
 MutexLocker::~MutexLocker() {
   if (_isLocked) {
     _mutex->unlock();
@@ -68,6 +62,12 @@ MutexLocker::~MutexLocker() {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
   }
 #endif
+}
+
+void MutexLocker::lock() {
+  TRI_ASSERT(!_isLocked);
+  _mutex->lock();
+  _isLocked = true;
 }
 
 void MutexLocker::unlock() {
@@ -81,10 +81,7 @@ TryMutexLocker::TryMutexLocker(Mutex* mutex) : _mutex(mutex), _isLocked(true) {
   _isLocked = _mutex->tryLock();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
-////////////////////////////////////////////////////////////////////////////////
-
 TryMutexLocker::~TryMutexLocker() {
   if (_isLocked) {
     _mutex->unlock();

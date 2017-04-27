@@ -51,7 +51,7 @@ namespace add_follower_test {
 const std::string PREFIX = "arango";
 const std::string DATABASE = "database";
 const std::string COLLECTION = "collection";
-const std::string SHARD = "shard";
+const std::string SHARD = "s99";
 const std::string SHARD_LEADER = "leader";
 const std::string SHARD_FOLLOWER1 = "follower1";
 const std::string SHARD_FOLLOWER2 = "follower2";

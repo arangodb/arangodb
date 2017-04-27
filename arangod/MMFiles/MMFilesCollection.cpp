@@ -54,6 +54,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -1889,7 +1890,7 @@ int MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
   }
 
   bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   MMFilesCollectionReadLocker collectionLocker(this, useDeadlockDetector, lock);
 
   int res = lookupDocument(trx, key, result);
@@ -2772,7 +2773,7 @@ int MMFilesCollection::insert(transaction::Methods* trx, VPackSlice const slice,
   {
     // use lock?
     bool const useDeadlockDetector =
-        (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
     try {
       // TODO Do we use the CollectionLocker on LogicalCollections
       // or do we use it on the SE specific one?
@@ -3115,7 +3116,7 @@ int MMFilesCollection::update(
   TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
 
   bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   arangodb::MMFilesCollectionWriteLocker collectionLocker(
       this, useDeadlockDetector, lock);
 
@@ -3253,7 +3254,7 @@ int MMFilesCollection::replace(
   }
 
   bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   arangodb::MMFilesCollectionWriteLocker collectionLocker(
       this, useDeadlockDetector, lock);
 
@@ -3420,7 +3421,7 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx,
                                      TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   arangodb::MMFilesCollectionWriteLocker collectionLocker(
       this, useDeadlockDetector, lock);
 

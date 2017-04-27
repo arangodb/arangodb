@@ -94,7 +94,7 @@ static inline TRI_socket_t TRI_accept(TRI_socket_t s, struct sockaddr* address,
 static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
                            size_t addr_len) {
 #ifdef _WIN32
-  return bind(s.fileHandle, address, addr_len);
+  return bind(s.fileHandle, address, static_cast<int>(addr_len));
 #else
   return bind(s.fileDescriptor, address, (socklen_t)addr_len);
 #endif

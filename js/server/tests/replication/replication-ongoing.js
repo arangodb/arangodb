@@ -139,6 +139,9 @@ function ReplicationSuite() {
     connectToMaster();
     masterFunc2(state);
 
+    // use lastLogTick as of now
+    var lastLogTick = replication.logger.state().state.lastLogTick;
+
     applierConfiguration = applierConfiguration || {};
     applierConfiguration.endpoint = masterEndpoint;
     applierConfiguration.username = "root";
@@ -177,10 +180,10 @@ function ReplicationSuite() {
         break;
       }
 
-      if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
-          compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) { // ||
+      if (compareTicks(slaveState.state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
+          compareTicks(slaveState.state.lastProcessedContinuousTick, lastLogTick) >= 0) { // ||
         //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
-        console.log("slave has caught up. syncResult.lastLogTick:", syncResult.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
+        console.log("slave has caught up. syncResult.lastLogTick:", lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
         break;
       }
 
