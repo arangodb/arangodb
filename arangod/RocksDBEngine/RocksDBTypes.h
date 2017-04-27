@@ -45,7 +45,7 @@ enum class RocksDBEntryType : char {
 };
   
 enum class RocksDBLogType : char {
-  BeginTransaction = '0',
+  Invalid = 0,
   DatabaseCreate = '1',
   DatabaseDrop = '2',
   CollectionCreate = '3',
@@ -57,8 +57,11 @@ enum class RocksDBLogType : char {
   ViewCreate = '9',
   ViewDrop = ':',
   ViewChange = ';',
-  DocumentOperationsPrologue = '<', 
-  DocumentRemove = '='
+  BeginTransaction = '<',
+  DocumentOperationsPrologue = '=',
+  DocumentRemove = '>',
+  SinglePut = '?',
+  SingleRemove = '@'
 };
 
 

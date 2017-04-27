@@ -635,7 +635,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       length = data.byteSize();
     }
 
-    if (data.length()) {
+    if (length == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       resetResponse(rest::ResponseCode::OK);
@@ -698,9 +698,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
-  generateError(
-      rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_YET_IMPLEMENTED,
-      "determine-open-transactions API is not implemented for RocksDB yet");
+  generateResult(rest::ResponseCode::OK, VelocyPackHelper::EmptyArrayValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1299,9 +1297,176 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandMakeSlave() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "make-slave API is not implemented for RocksDB yet");
+  // NOTE: Complete copy of MMFiles
+  bool success;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+
+  std::string const endpoint =
+      VelocyPackHelper::getStringValue(body, "endpoint", "");
+
+  if (endpoint.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "<endpoint> must be a valid endpoint");
+    return;
+  }
+
+  std::string const database =
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
+  std::string const username =
+      VelocyPackHelper::getStringValue(body, "username", "");
+  std::string const password =
+      VelocyPackHelper::getStringValue(body, "password", "");
+  std::string const jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
+  std::string const restrictType =
+      VelocyPackHelper::getStringValue(body, "restrictType", "");
+
+  // initialize some defaults to copy from
+  TRI_replication_applier_configuration_t defaults;
+
+  // initialize target configuration
+  TRI_replication_applier_configuration_t config;
+
+  config._endpoint = endpoint;
+  config._database = database;
+  config._username = username;
+  config._password = password;
+  config._jwt = jwt;
+  config._includeSystem =
+      VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
+  config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
+      body, "requestTimeout", defaults._requestTimeout);
+  config._connectTimeout = VelocyPackHelper::getNumericValue<double>(
+      body, "connectTimeout", defaults._connectTimeout);
+  config._ignoreErrors = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "ignoreErrors", defaults._ignoreErrors);
+  config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "maxConnectRetries", defaults._maxConnectRetries);
+  config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
+      body, "sslProtocol", defaults._sslProtocol);
+  config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "chunkSize", defaults._chunkSize);
+  config._autoStart = true;
+  config._adaptivePolling = VelocyPackHelper::getBooleanValue(
+      body, "adaptivePolling", defaults._adaptivePolling);
+  config._autoResync = VelocyPackHelper::getBooleanValue(body, "autoResync",
+                                                         defaults._autoResync);
+  config._verbose =
+      VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
+  config._incremental = VelocyPackHelper::getBooleanValue(
+      body, "incremental", defaults._incremental);
+  config._useCollectionId = VelocyPackHelper::getBooleanValue(
+      body, "useCollectionId", defaults._useCollectionId);
+  config._requireFromPresent = VelocyPackHelper::getBooleanValue(
+      body, "requireFromPresent", defaults._requireFromPresent);
+  config._restrictType = VelocyPackHelper::getStringValue(
+      body, "restrictType", defaults._restrictType);
+  config._connectionRetryWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "connectionRetryWaitTime",
+          static_cast<double>(defaults._connectionRetryWaitTime) /
+              (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "initialSyncMaxWaitTime",
+          static_cast<double>(defaults._initialSyncMaxWaitTime) /
+              (1000.0 * 1000.0)));
+  config._idleMinWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "idleMinWaitTime",
+          static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime = static_cast<uint64_t>(
+      1000.0 * 1000.0 *
+      VelocyPackHelper::getNumericValue<double>(
+          body, "idleMaxWaitTime",
+          static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._autoResyncRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "autoResyncRetries", defaults._autoResyncRetries);
+
+  VPackSlice const restriction = body.get("restrictCollections");
+
+  if (restriction.isArray()) {
+    VPackValueLength const n = restriction.length();
+
+    for (VPackValueLength i = 0; i < n; ++i) {
+      VPackSlice const cname = restriction.at(i);
+      if (cname.isString()) {
+        config._restrictCollections.emplace(cname.copyString(), true);
+      }
+    }
+  }
+
+  // now the configuration is complete
+
+  if ((restrictType.empty() && !config._restrictCollections.empty()) ||
+      (!restrictType.empty() && config._restrictCollections.empty()) ||
+      (!restrictType.empty() && restrictType != "include" &&
+       restrictType != "exclude")) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid value for <restrictCollections> or <restrictType>");
+    return;
+  }
+
+  // forget about any existing replication applier configuration
+  int res = _vocbase->replicationApplier()->forget();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // start initial synchronization
+  TRI_voc_tick_t lastLogTick = 0;
+  TRI_voc_tick_t barrierId = 0;
+  std::string errorMsg = "";
+  {
+    InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
+                         restrictType, false);
+
+    res = TRI_ERROR_NO_ERROR;
+
+    try {
+      res = syncer.run(errorMsg, false);
+
+      // steal the barrier from the syncer
+      barrierId = syncer.stealBarrier();
+    } catch (...) {
+      errorMsg = "caught an exception";
+      res = TRI_ERROR_INTERNAL;
+    }
+
+    lastLogTick = syncer.getLastLogTick();
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, errorMsg);
+    return;
+  }
+
+  res =
+      TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+    return;
+  }
+
+  res = _vocbase->replicationApplier()->start(lastLogTick, true, barrierId);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+    return;
+  }
+
+  std::shared_ptr<VPackBuilder> result =
+      _vocbase->replicationApplier()->toVelocyPack();
+  generateResult(rest::ResponseCode::OK, result->slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1666,9 +1831,46 @@ void RocksDBRestReplicationHandler::handleCommandApplierDeleteState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandAddFollower() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "add follower API is not implemented for RocksDB yet");
+  // NOTE: Identical to MMFiles
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'followerId' "
+                  "and 'shard'");
+    return;
+  }
+  VPackSlice const followerId = body.get("followerId");
+  VPackSlice const shard = body.get("shard");
+  if (!followerId.isString() || !shard.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'followerId' and 'shard' attributes must be strings");
+    return;
+  }
+
+  auto col = _vocbase->lookupCollection(shard.copyString());
+
+  if (col == nullptr) {
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "did not find collection");
+    return;
+  }
+
+  col->followers()->add(followerId.copyString());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1676,9 +1878,45 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandRemoveFollower() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "remove follower API is not implemented for RocksDB yet");
+  // Identical to MMFiles
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'followerId' "
+                  "and 'shard'");
+    return;
+  }
+  VPackSlice const followerId = body.get("followerId");
+  VPackSlice const shard = body.get("shard");
+  if (!followerId.isString() || !shard.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'followerId' and 'shard' attributes must be strings");
+    return;
+  }
+
+  auto col = _vocbase->lookupCollection(shard.copyString());
+
+  if (col == nullptr) {
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "did not find collection");
+    return;
+  }
+  col->followers()->remove(followerId.copyString());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1686,9 +1924,118 @@ void RocksDBRestReplicationHandler::handleCommandRemoveFollower() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "hold read lock API is not implemented for RocksDB yet");
+  // NOTE: Complete copy of MMFiles
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'collection', "
+                  "'ttl' and 'id'");
+    return;
+  }
+  VPackSlice const collection = body.get("collection");
+  VPackSlice const ttlSlice = body.get("ttl");
+  VPackSlice const idSlice = body.get("id");
+  if (!collection.isString() || !ttlSlice.isNumber() || !idSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'collection' must be a string and 'ttl' a number and "
+                  "'id' a string");
+    return;
+  }
+  std::string id = idSlice.copyString();
+
+  auto col = _vocbase->lookupCollection(collection.copyString());
+
+  if (col == nullptr) {
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "did not find collection");
+    return;
+  }
+
+  double ttl = 0.0;
+  if (ttlSlice.isInteger()) {
+    try {
+      ttl = static_cast<double>(ttlSlice.getInt());
+    } catch (...) {
+    }
+  } else {
+    try {
+      ttl = ttlSlice.getDouble();
+    } catch (...) {
+    }
+  }
+
+  if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
+                  "collection not loaded");
+    return;
+  }
+
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    _holdReadLockJobs.emplace(id, false);
+  }
+
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(trxContext, col->cid(),
+                                  AccessMode::Type::EXCLUSIVE);
+  trx.addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
+  Result res = trx.begin();
+  if (!res.ok()) {
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_TRANSACTION_INTERNAL,
+                  "cannot begin read transaction");
+    return;
+  }
+
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    auto it = _holdReadLockJobs.find(id);
+    if (it == _holdReadLockJobs.end()) {
+      // Entry has been removed since, so we cancel the whole thing
+      // right away and generate an error:
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_TRANSACTION_INTERNAL,
+                    "read transaction was cancelled");
+      return;
+    }
+    it->second = true;  // mark the read lock as acquired
+  }
+
+  double now = TRI_microtime();
+  double startTime = now;
+  double endTime = startTime + ttl;
+
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    while (now < endTime) {
+      _condVar.wait(100000);
+      auto it = _holdReadLockJobs.find(id);
+      if (it == _holdReadLockJobs.end()) {
+        break;
+      }
+      now = TRI_microtime();
+    }
+    auto it = _holdReadLockJobs.find(id);
+    if (it != _holdReadLockJobs.end()) {
+      _holdReadLockJobs.erase(it);
+    }
+  }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1696,9 +2043,50 @@ void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "check hold read lock API is not implemented for RocksDB yet");
+  // NOTE Comple copy of MMFiles
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attribute 'id'");
+    return;
+  }
+  VPackSlice const idSlice = body.get("id");
+  if (!idSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'id' needs to be a string");
+    return;
+  }
+  std::string id = idSlice.copyString();
+
+  bool lockHeld = false;
+
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    auto it = _holdReadLockJobs.find(id);
+    if (it == _holdReadLockJobs.end()) {
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                    "no hold read lock job found for 'id'");
+      return;
+    }
+    if (it->second) {
+      lockHeld = true;
+    }
+  }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+    b.add("lockHeld", VPackValue(lockHeld));
+  }
+
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1707,9 +2095,51 @@ void RocksDBRestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
 
 void RocksDBRestReplicationHandler::
     handleCommandCancelHoldReadLockCollection() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "cancel hold read lock API is not implemented for RocksDB yet");
+  // NOTE complete copy of MMFiles
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attribute 'id'");
+    return;
+  }
+  VPackSlice const idSlice = body.get("id");
+  if (!idSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'id' needs to be a string");
+    return;
+  }
+  std::string id = idSlice.copyString();
+
+  bool lockHeld = false;
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    auto it = _holdReadLockJobs.find(id);
+    if (it != _holdReadLockJobs.end()) {
+      // Note that this approach works if the lock has been acquired
+      // as well as if we still wait for the read lock, in which case
+      // it will eventually be acquired but immediately released:
+      if (it->second) {
+        lockHeld = true;
+      }
+      _holdReadLockJobs.erase(it);
+      _condVar.broadcast();
+    }
+  }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+    b.add("lockHeld", VPackValue(lockHeld));
+  }
+
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1717,9 +2147,16 @@ void RocksDBRestReplicationHandler::
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandGetIdForReadLockCollection() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_YET_IMPLEMENTED,
-                "get id for read lock API is not implemented for RocksDB yet");
+  // NOTE: Complete copy of MMFiles
+  std::string id = std::to_string(TRI_NewTickServer());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add("id", VPackValue(id));
+  }
+
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2627,3 +3064,17 @@ uint64_t RocksDBRestReplicationHandler::determineChunkSize() const {
 
   return chunkSize;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief condition locker to wake up holdReadLockCollection jobs
+//////////////////////////////////////////////////////////////////////////////
+
+arangodb::basics::ConditionVariable RocksDBRestReplicationHandler::_condVar;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief global table of flags to cancel holdReadLockCollection jobs, if
+/// the flag is set of the ID of a job, the job is cancelled
+//////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<std::string, bool>
+    RocksDBRestReplicationHandler::_holdReadLockJobs;

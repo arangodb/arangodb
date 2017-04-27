@@ -62,7 +62,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _dbserverConfig;
   std::string _coordinatorConfig;
   uint32_t _systemReplicationFactor = 2;
-  bool _createWaitsForSyncReplication = false;
+  bool _createWaitsForSyncReplication = true;
 
  private:
   void reportRole(ServerState::RoleEnum);

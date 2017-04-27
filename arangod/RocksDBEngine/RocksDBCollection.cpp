@@ -444,9 +444,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
   while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    VPackSlice key = VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
+    TRI_ASSERT(key.isString());
 
     // add possible log statement
-    state->prepareOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    state->prepareOperation(cid, revisionId, StringRef(key),
+                            TRI_VOC_DOCUMENT_OPERATION_REMOVE);
     rocksdb::Status s = rtrx->Delete(iter->key());
     if (!s.ok()) {
       auto converted = convertStatus(s);
@@ -620,6 +623,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   RocksDBTransactionState* state =
       static_cast<RocksDBTransactionState*>(trx->state());
   state->prepareOperation(_logicalCollection->cid(), revisionId,
+                          StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
@@ -724,7 +728,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
                          trx->isSingleOperationTransaction());
 
   // add possible log statement under guard
-  state->prepareOperation(_logicalCollection->cid(), revisionId,
+  state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   VPackSlice const newDoc(builder->slice());
   res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
@@ -826,7 +830,7 @@ int RocksDBCollection::replace(
                          trx->isSingleOperationTransaction());
 
   // add possible log statement under guard
-  state->prepareOperation(_logicalCollection->cid(), revisionId,
+  state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   RocksDBOperationResult opResult =
@@ -917,9 +921,8 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   RocksDBTransactionState* state =
       static_cast<RocksDBTransactionState*>(trx->state());
   state->prepareOperation(_logicalCollection->cid(), revisionId,
+                          StringRef(key),
                           TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-  // RocksDBLogValue val = RocksDBLogValue::DocumentRemove(StringRef(key));
-  // state->rocksTransaction()->PutLogData(val.slice());
   res = removeDocument(trx, oldRevisionId, oldDoc, options.waitForSync);
   if (res.ok()) {
     // report key size
