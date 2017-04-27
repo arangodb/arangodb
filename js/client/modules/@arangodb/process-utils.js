@@ -301,7 +301,8 @@ function makeArgsArangod (options, appDir, role) {
     'define': 'TOP_DIR=' + TOP_DIR,
     'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
-    'http.trusted-origin': options.httpTrustedOrigin || 'all'
+    'http.trusted-origin': options.httpTrustedOrigin || 'all',
+    'cluster.create-waits-for-sync-replication': false,
   };
   if (options.storageEngine !== 'mmfiles') {
     args['server.storage-engine'] = 'rocksdb';
