@@ -51,7 +51,7 @@ namespace failed_follower_test {
 const std::string PREFIX = "arango";
 const std::string DATABASE = "database";
 const std::string COLLECTION = "collection";
-const std::string SHARD = "shard";
+const std::string SHARD = "s99";
 const std::string SHARD_LEADER = "leader";
 const std::string SHARD_FOLLOWER1 = "follower1";
 const std::string SHARD_FOLLOWER2 = "follower2";
@@ -71,10 +71,10 @@ VPackBuilder createJob() {
   {
     builder.add("creator", VPackValue("1"));
     builder.add("type", VPackValue("failedFollower"));
-    builder.add("database", VPackValue("database"));
-    builder.add("collection", VPackValue("collection"));
-    builder.add("shard", VPackValue("shard"));
-    builder.add("fromServer", VPackValue("follower1"));
+    builder.add("database", VPackValue(DATABASE));
+    builder.add("collection", VPackValue(COLLECTION));
+    builder.add("shard", VPackValue(SHARD));
+    builder.add("fromServer", VPackValue(SHARD_FOLLOWER1));
     builder.add("jobId", VPackValue("1"));
     builder.add("timeCreated", VPackValue(
                            timepointToString(std::chrono::system_clock::now())));
@@ -554,7 +554,7 @@ SECTION("a successfully started job should finish immediately and set everything
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[1].copyString() == "follower1");
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[2].copyString() == "follower2");
     REQUIRE(preconditions.get("/arango/Supervision/DBServers/free").get("oldEmpty").getBool() == true);
-    REQUIRE(preconditions.get("/arango/Supervision/Shards/shard").get("oldEmpty").getBool() == true);
+    REQUIRE(preconditions.get("/arango/Supervision/Shards/s99").get("oldEmpty").getBool() == true);
 
     return fakeTransResult;
   });
@@ -586,18 +586,18 @@ SECTION("the job should handle distributeShardsLike") {
       if (path == "/arango/Current/Collections/" + DATABASE) {
         // we fake that follower2 is in sync
         char const* json1 =
-          R"=({"linkedshard1":{"servers":["leader","follower2"]}})=";
+          R"=({"s100":{"servers":["leader","follower2"]}})=";
         builder->add("linkedcollection1", createBuilder(json1).slice());
         // for the other shard there is only follower1 in sync
         char const* json2 =
-          R"=({"linkedshard2":{"servers":["leader","follower1"]}})=";
+          R"=({"s101":{"servers":["leader","follower1"]}})=";
         builder->add("linkedcollection2", createBuilder(json2).slice());
       } else if (path == "/arango/Plan/Collections/" + DATABASE) {
         char const* json1 = R"=({"distributeShardsLike":"collection","shards":
-          {"linkedshard1":["leader","follower1","follower2"]}})=";
+          {"s100":["leader","follower1","follower2"]}})=";
         builder->add("linkedcollection1", createBuilder(json1).slice());
         char const* json2 = R"=({"distributeShardsLike":"collection","shards":
-          {"linkedshard2":["leader","follower1","follower2"]}})=";
+          {"s101":["leader","follower1","follower2"]}})=";
         builder->add("linkedcollection2", createBuilder(json2).slice());
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createJob().slice());
@@ -631,16 +631,16 @@ SECTION("the job should handle distributeShardsLike") {
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[0].copyString() == "leader");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[1].copyString() == "free");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[2].copyString() == "follower2");
-    REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/linkedshard1").typeName()) == "array");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/linkedshard1").length() == 3);
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/linkedshard1")[0].copyString() == "leader");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/linkedshard1")[1].copyString() == "free");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/linkedshard1")[2].copyString() == "follower2");
-    REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/linkedshard2").typeName()) == "array");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/linkedshard2").length() == 3);
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/linkedshard2")[0].copyString() == "leader");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/linkedshard2")[1].copyString() == "free");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/linkedshard2")[2].copyString() == "follower2");
+    REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").typeName()) == "array");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").length() == 3);
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[0].copyString() == "leader");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[1].copyString() == "free");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[2].copyString() == "follower2");
+    REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").typeName()) == "array");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").length() == 3);
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[0].copyString() == "leader");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[1].copyString() == "free");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[2].copyString() == "follower2");
 
     REQUIRE(writes.get("/arango/Plan/Version").get("op").copyString() == "increment");
     REQUIRE(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
@@ -653,7 +653,7 @@ SECTION("the job should handle distributeShardsLike") {
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[1].copyString() == "follower1");
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[2].copyString() == "follower2");
     REQUIRE(preconditions.get("/arango/Supervision/DBServers/free").get("oldEmpty").getBool() == true);
-    REQUIRE(preconditions.get("/arango/Supervision/Shards/shard").get("oldEmpty").getBool() == true);
+    REQUIRE(preconditions.get("/arango/Supervision/Shards/s99").get("oldEmpty").getBool() == true);
 
     return fakeTransResult;
   });
