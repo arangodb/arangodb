@@ -31,10 +31,13 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Mutex.h"
 #include "Basics/LruCache.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
+#include "GeneralServer/AuthenticationHandler.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -44,21 +47,42 @@ class Slice;
 enum class AuthLevel {
   NONE, RO, RW
 };
-  
+
+enum class AuthSource {
+  COLLECTION, LDAP
+};
+
+class HexHashResult : public arangodb::Result {
+  public:
+    explicit HexHashResult(int errorNumber) : Result(errorNumber) {}
+    explicit HexHashResult(std::string const& hexHash) : Result(0),  _hexHash(hexHash) {}
+    std::string const& hexHash() { return _hexHash; }
+
+  protected:
+    std::string const _hexHash;
+};
+
 class AuthEntry {
  public:
-  AuthEntry() : _active(false), _mustChange(false), _allDatabases(AuthLevel::NONE) {}
+  AuthEntry() 
+      : _active(false), 
+        _mustChange(false), 
+        _created(TRI_microtime()), 
+        _source(AuthSource::COLLECTION), 
+        _allDatabases(AuthLevel::NONE) {}
 
   AuthEntry(std::string&& username, std::string&& passwordMethod,
             std::string&& passwordSalt, std::string&& passwordHash,
             std::unordered_map<std::string, AuthLevel>&& databases, AuthLevel allDatabases,
-            bool active, bool mustChange)
+            bool active, bool mustChange, AuthSource source)
       : _username(std::move(username)),
         _passwordMethod(std::move(passwordMethod)),
         _passwordSalt(std::move(passwordSalt)),
         _passwordHash(std::move(passwordHash)),
         _active(active),
         _mustChange(mustChange),
+        _created(TRI_microtime()),
+        _source(source),
         _databases(std::move(databases)),
         _allDatabases(allDatabases) {}
   
@@ -71,6 +95,8 @@ class AuthEntry {
         _passwordHash(std::move(other._passwordHash)),
         _active(other._active),
         _mustChange(other._mustChange),
+        _created(other._created),
+        _source(other._source),
         _databases(std::move(other._databases)),
         _allDatabases(other._allDatabases) {}
 
@@ -81,6 +107,8 @@ class AuthEntry {
   std::string const& passwordHash() const { return _passwordHash; }
   bool isActive() const { return _active; }
   bool mustChange() const { return _mustChange; }
+  double created() const { return _created; }
+  AuthSource source() const { return _source; }
 
   bool checkPasswordHash(std::string const& hash) const {
     return _passwordHash == hash;
@@ -95,6 +123,8 @@ class AuthEntry {
   std::string const _passwordHash;
   bool const _active;
   bool _mustChange;
+  double _created;
+  AuthSource _source;
   std::unordered_map<std::string, AuthLevel> const _databases;
   AuthLevel const _allDatabases;
 };
@@ -119,6 +149,9 @@ class AuthJwtResult: public AuthResult {
   std::chrono::system_clock::time_point _expireTime;
 };
 
+
+class AuthenticationHandler;
+
 class AuthInfo {
  public:
   enum class AuthType {
@@ -126,13 +159,8 @@ class AuthInfo {
   };
 
  public:
-  AuthInfo()
-    : _outdated(true),
-    _authJwtCache(16384),
-    _jwtSecret(""),
-    _queryRegistry(nullptr) {
-  }
-  
+  AuthInfo();
+
  public:
   void setQueryRegistry(aql::QueryRegistry* registry) {
     TRI_ASSERT(registry != nullptr);
@@ -167,6 +195,10 @@ class AuthInfo {
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
   std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
 
+
+  HexHashResult hexHashFromData(std::string const& hashMethod, char const* data, size_t len);
+
+
  private:
   basics::ReadWriteLock _authInfoLock;
   basics::ReadWriteLock _authJwtLock;
@@ -178,6 +210,7 @@ class AuthInfo {
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult> _authJwtCache;
   std::string _jwtSecret;
   aql::QueryRegistry* _queryRegistry;
+  std::unique_ptr<AuthenticationHandler> _authenticationHandler;
 };
 }
 

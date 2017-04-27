@@ -92,11 +92,11 @@ static inline TRI_socket_t TRI_accept(TRI_socket_t s, struct sockaddr* address,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
-                           int addr_len) {
+                           size_t addr_len) {
 #ifdef _WIN32
-  return bind(s.fileHandle, address, addr_len);
+  return bind(s.fileHandle, address, static_cast<int>(addr_len));
 #else
-  return bind(s.fileDescriptor, address, addr_len);
+  return bind(s.fileDescriptor, address, (socklen_t)addr_len);
 #endif
 }
 
@@ -105,11 +105,11 @@ static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
-                              int addr_len) {
+                              size_t addr_len) {
 #ifdef _WIN32
-  return connect(s.fileHandle, address, addr_len);
+  return connect(s.fileHandle, address, (int)addr_len);
 #else
-  return connect(s.fileDescriptor, address, addr_len);
+  return connect(s.fileDescriptor, address, (socklen_t)addr_len);
 #endif
 }
 
@@ -117,7 +117,7 @@ static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
 /// @brief send abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_send(TRI_socket_t s, const void* buffer, size_t length,
+static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length,
                            int flags) {
 #ifdef _WIN32
   return send(s.fileHandle, (char*)buffer, (int)length, flags);

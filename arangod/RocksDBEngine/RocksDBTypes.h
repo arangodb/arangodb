@@ -43,6 +43,24 @@ enum class RocksDBEntryType : char {
   View = '8',
   SettingsValue = '9'
 };
+  
+enum class RocksDBLogType : char {
+  BeginTransaction = '0',
+  DatabaseCreate = '1',
+  DatabaseDrop = '2',
+  CollectionCreate = '3',
+  CollectionDrop = '4',
+  CollectionRename = '5',
+  CollectionChange = '6',
+  IndexCreate = '7',
+  IndexDrop = '8',
+  ViewCreate = '9',
+  ViewDrop = ':',
+  ViewChange = ';',
+  DocumentOperationsPrologue = '<', 
+  DocumentRemove = '='
+};
+
 
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }

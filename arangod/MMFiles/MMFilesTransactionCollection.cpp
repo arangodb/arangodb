@@ -343,7 +343,8 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
     timeout = 0.00000001;
   }
   
-  bool const useDeadlockDetector = !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  bool const useDeadlockDetector = (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) && 
+                                    !_transaction->hasHint(transaction::Hints::Hint::NO_DLD));
 
   int res;
   if (!AccessMode::isWriteOrExclusive(type)) {
@@ -404,7 +405,8 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
     return TRI_ERROR_INTERNAL;
   }
 
-  bool const useDeadlockDetector = !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  bool const useDeadlockDetector = (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) &&
+                                    !_transaction->hasHint(transaction::Hints::Hint::NO_DLD));
 
   LogicalCollection* collection = _collection;
   TRI_ASSERT(collection != nullptr);

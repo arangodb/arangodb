@@ -5,17 +5,17 @@ R"=(
       "Collections": {
         "database": {
           "collection1": {
-            "shard1": {
+            "s1": {
               "servers": ["leader", "follower1", "follower2"]
             }
           },
           "collection2": {
-            "shard2": {
+            "s2": {
               "servers": ["leader"]
             }
           },
           "collection3": {
-            "shard3": {
+            "s3": {
               "servers": ["leader", "follower1"]
             }
           }
@@ -28,19 +28,19 @@ R"=(
           "collection1": {
             "replicationFactor" : 2,
             "shards": {
-              "shard1": ["leader", "follower1", "follower2"]
+              "s1": ["leader", "follower1", "follower2"]
             }
           },
           "collection2": {
             "replicationFactor" : 2,
             "shards": {
-              "shard2": ["leader", "follower1", "follower2"]
+              "s2": ["leader", "follower1", "follower2"]
             }
           },
           "collection3": {
             "replicationFactor" : 2,
             "shards": {
-              "shard3": ["leader", "follower1", "follower2"]
+              "s3": ["leader", "follower1", "follower2"]
             }
           }
         }

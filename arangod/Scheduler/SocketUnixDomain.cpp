@@ -44,7 +44,7 @@ void SocketUnixDomain::shutdownReceive(boost::system::error_code& ec) {
 void SocketUnixDomain::shutdownSend(boost::system::error_code& ec) {
   _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_send, ec);
 }
-int SocketUnixDomain::available(boost::system::error_code& ec) {
+std::size_t SocketUnixDomain::available(boost::system::error_code& ec) {
   return _socket.available(ec);
 }
 void SocketUnixDomain::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {

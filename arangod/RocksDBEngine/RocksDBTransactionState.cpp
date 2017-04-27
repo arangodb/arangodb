@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -51,7 +52,7 @@
 
 using namespace arangodb;
 
-// for the RocksDB engine we do not need any additional data 
+// for the RocksDB engine we do not need any additional data
 struct RocksDBTransactionData final : public TransactionData {};
 
 RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx)
@@ -97,7 +98,8 @@ RocksDBTransactionState::RocksDBTransactionState(
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
-      _intermediateTransactionEnabled(intermediateTransactionEnabled) {}
+      _intermediateTransactionEnabled(intermediateTransactionEnabled),
+      _lastUsedCollection(UINT64_MAX) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -110,9 +112,9 @@ RocksDBTransactionState::~RocksDBTransactionState() {
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type)
-                               << " transaction";
-  
+  LOG_TRX(this, _nestingLevel)
+      << "beginning " << AccessMode::typeString(_type) << " transaction";
+
   Result result = useCollections(_nestingLevel);
 
   if (result.ok()) {
@@ -156,18 +158,23 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksWriteOptions, rocksdb::TransactionOptions()));
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
+
+    RocksDBLogValue header =
+        RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
+    _rocksTransaction->PutLogData(header.slice());
+
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
-  
+
   return result;
 }
 
 /// @brief commit a transaction
 Result RocksDBTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel) << "committing " << AccessMode::typeString(_type)
-                               << " transaction";
+  LOG_TRX(this, _nestingLevel)
+      << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
@@ -239,8 +246,8 @@ Result RocksDBTransactionState::commitTransaction(
 /// @brief abort and rollback a transaction
 Result RocksDBTransactionState::abortTransaction(
     transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel) << "aborting " << AccessMode::typeString(_type)
-                               << " transaction";
+  LOG_TRX(this, _nestingLevel)
+      << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   Result result;
 
@@ -271,6 +278,26 @@ Result RocksDBTransactionState::abortTransaction(
   return result;
 }
 
+void RocksDBTransactionState::prepareOperation(
+    TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+    TRI_voc_document_operation_e operationType) {
+  switch (operationType) {
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+    case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
+      if (collectionId != _lastUsedCollection) {
+        RocksDBLogValue logValue =
+            RocksDBLogValue::DocumentOpsPrologue(collectionId);
+        //_rocksTransaction->PutLogData(logValue.slice());
+        _lastUsedCollection = collectionId;
+      }
+    } break;
+  }
+}
+
 /// @brief add an operation for a transaction collection
 RocksDBOperationResult RocksDBTransactionState::addOperation(
     TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
@@ -292,7 +319,7 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
       static_cast<RocksDBTransactionCollection*>(findCollection(cid));
 
   if (collection == nullptr) {
-    std::string message = "collection '" + std::to_string(cid) + 
+    std::string message = "collection '" + std::to_string(cid) +
                           "' not found in transaction state";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }

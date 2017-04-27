@@ -146,7 +146,7 @@ class Socket {
   virtual void shutdownReceive() = 0;
   virtual void shutdownReceive(boost::system::error_code& ec) = 0;
   virtual void shutdownSend(boost::system::error_code& ec) = 0;
-  virtual int available(boost::system::error_code& ec) = 0;
+  virtual std::size_t available(boost::system::error_code& ec) = 0;
   virtual void asyncRead(boost::asio::mutable_buffers_1 const& buffer,
                          AsyncHandler const& handler) = 0;
 

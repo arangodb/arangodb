@@ -255,6 +255,11 @@ else ()
   )
 endif ()
 
+if (CROSS_COMPILING)
+# curently off, need additional params to configure like --hoast=triple <params>
+  SET(USE_JEMALLOC OFF)
+endif()
+
 ################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################

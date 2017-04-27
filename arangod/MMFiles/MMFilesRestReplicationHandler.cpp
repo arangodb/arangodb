@@ -3276,7 +3276,8 @@ void MMFilesRestReplicationHandler::handleCommandApplierDeleteState() {
   int res = _vocbase->replicationApplier()->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "unable to delete applier state";
+    THROW_ARANGO_EXCEPTION_MESSAGE(res,"unable to delete applier state");
   }
 
   handleCommandApplierGetState();

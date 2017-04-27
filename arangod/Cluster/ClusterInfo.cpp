@@ -1100,31 +1100,26 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
         if (result.isObject() && result.length() == (size_t)numberOfShards) {
+          std::string tmpError = "";
           for (auto const& p : VPackObjectIterator(result)) {
             if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                     p.value, "error", false)) {
-              std::string tmpMsg = "";
-
-              tmpMsg += " shardID:" + p.key.copyString() + ":";
-              tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
+              tmpError += " shardID:" + p.key.copyString() + ":";
+              tmpError += arangodb::basics::VelocyPackHelper::getStringValue(
                   p.value, "errorMessage", "");
               if (p.value.hasKey("errorNum")) {
                 VPackSlice const errorNum = p.value.get("errorNum");
                 if (errorNum.isNumber()) {
-                  tmpMsg += " (errNum=";
-                  tmpMsg += basics::StringUtils::itoa(
+                  tmpError += " (errNum=";
+                  tmpError += basics::StringUtils::itoa(
                       errorNum.getNumericValue<uint32_t>());
-                  tmpMsg += ")";
+                  tmpError += ")";
                 }
               }
-              *errMsg = "Error in creation of collection:" + tmpMsg + " "
-                  + __FILE__ + std::to_string(__LINE__);
-              *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
-              return true;
             }
             
             // wait that all followers have created our new collection
-            if (waitForReplication) {
+            if (tmpError.empty() && waitForReplication) {
               uint64_t mutableReplicationFactor = replicationFactor;
               if (mutableReplicationFactor == 0) {
                 mutableReplicationFactor = dbServers.size();
@@ -1136,7 +1131,13 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
               }
             }
           }
-          *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
+          if (!tmpError.empty()) {
+            *errMsg = "Error in creation of collection:" + tmpError + " "
+                + __FILE__ + std::to_string(__LINE__);
+            *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+          } else {
+            *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
+          }
         }
         return true;
       };
@@ -1315,17 +1316,17 @@ int ClusterInfo::dropCollectionCoordinator(
       clones.push_back(p->name());
     }
   }
-    if (!clones.empty()){
-      errorMsg += "Collection must not be dropped while it is sharding "
-        "prototype for collection[s]";
-      for (auto const& i : clones) {
+
+  if (!clones.empty()){
+    errorMsg += "Collection must not be dropped while it is sharding "
+      "prototype for collection[s]";
+    for (auto const& i : clones) {
         errorMsg +=  std::string(" ") + i;
-      }
-      errorMsg += ".";
-      return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
-
     }
-
+    errorMsg += ".";
+    return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
+  }
+  
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();

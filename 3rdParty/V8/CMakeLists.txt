@@ -34,9 +34,11 @@ endif()
 
 if ("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "armv7")
   set(V8_PROC_ARCH "arm")
+  set(QEMU_ARCH "qemu-arm")
   list(APPEND V8_GYP_ARGS -Darm_version=7 -Darm_fpu=default -Darm_float_abi=default)
 elseif("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "aarch64")
   set(V8_PROC_ARCH "arm64")
+  set(QEMU_ARCH "qemu-aarch64")
   list(APPEND V8_GYP_ARGS -Darm_fpu=default -Darm_float_abi=default)
 else ()
   if ("${BITS}" STREQUAL "64")
@@ -64,7 +66,21 @@ list(APPEND V8_GYP_ARGS
 if (CROSS_COMPILING)
   list(APPEND V8_GYP_ARGS
   -Dhost_arch=${V8_PROC_ARCH}
-  -DGYP_CROSSCOMPILE=1)
+  -DGYP_CROSSCOMPILE=1
+  -DEXECUTABLE_PREFIX=${V8_PROC_ARCH}.
+  )
+  configure_file (
+    "${CMAKE_SOURCE_DIR}/lib/V8/v8-mkpeephole.in"
+    "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mkpeephole"
+    NEWLINE_STYLE UNIX
+    @ONLY
+  )
+  configure_file (
+    "${CMAKE_SOURCE_DIR}/lib/V8/v8-mksnapshot.in"
+    "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mksnapshot"
+    NEWLINE_STYLE UNIX
+    @ONLY
+  )
 endif()
 
 ################################################################################

@@ -805,6 +805,58 @@ describe('Cluster sync', function() {
       db._useDatabase('test');
       expect(db._collection('s100001').isLeader()).to.equal(true);
     });
+    it('should kill any unplanned server from current', function() {
+      let collection = db._create('s100001');
+      collection.assumeLeadership();
+      collection.addFollower('test');
+      collection.addFollower('test2');
+      let plan = {
+        test: {
+          "100001": {
+            "deleted": false,
+            "doCompact": true,
+            "id": "100001",
+            "indexBuckets": 8,
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "isSystem": false,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "allowUserKeys": true,
+              "type": "traditional"
+            },
+            "name": "testi",
+            "numberOfShards": 1,
+            "replicationFactor": 2,
+            "shardKeys": [
+              "_key"
+            ],
+            "shards": {
+              "s100001": [
+                "repltest",
+                "test2",
+              ]
+            },
+            "status": 2,
+            "type": 2,
+            "waitForSync": false
+          }
+        }
+      };
+      cluster.executePlanForCollections(plan);
+      db._useDatabase('test');
+      expect(collection.getFollowers()).to.deep.equal(['test2']);
+    });
   });
   describe('Update current database', function() {
     beforeEach(function() {
@@ -972,7 +1024,7 @@ describe('Cluster sync', function() {
       let collection = db._create('testi', props);
       let current = {
       };
-      let result = cluster.updateCurrentForCollections({}, current);
+      let result = cluster.updateCurrentForCollections({}, {}, current);
       expect(Object.keys(result)).to.have.lengthOf(0);
     });
     it('should not delete any collections for which we are not a leader locally', function() {
@@ -983,7 +1035,7 @@ describe('Cluster sync', function() {
           },
         }
       };
-      let result = cluster.updateCurrentForCollections({}, current);
+      let result = cluster.updateCurrentForCollections({}, {}, current);
       expect(Object.keys(result)).to.have.lengthOf(0);
     });
     it('should resign leadership for which we are no more leader locally', function() {
@@ -996,7 +1048,7 @@ describe('Cluster sync', function() {
           },
         }
       };
-      let result = cluster.updateCurrentForCollections({}, current);
+      let result = cluster.updateCurrentForCollections({}, {}, current);
       expect(result).to.be.an('object');
       expect(Object.keys(result)).to.have.lengthOf(1);
       expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi/servers')
@@ -1016,7 +1068,7 @@ describe('Cluster sync', function() {
           },
         }
       };
-      let result = cluster.updateCurrentForCollections({}, current);
+      let result = cluster.updateCurrentForCollections({}, {}, current);
       expect(result).to.be.an('object');
       expect(Object.keys(result)).to.have.lengthOf(1);
       expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
@@ -1033,7 +1085,7 @@ describe('Cluster sync', function() {
           },
         }
       };
-      let result = cluster.updateCurrentForCollections({}, current);
+      let result = cluster.updateCurrentForCollections({}, {}, current);
       expect(result).to.be.an('object');
       expect(Object.keys(result)).to.have.lengthOf(1);
       expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
@@ -1051,7 +1103,7 @@ describe('Cluster sync', function() {
           },
         }
       };
-      let result = cluster.updateCurrentForCollections({}, current);
+      let result = cluster.updateCurrentForCollections({}, {}, current);
       expect(result).to.be.an('object');
       expect(Object.keys(result)).to.have.lengthOf(1);
       expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')

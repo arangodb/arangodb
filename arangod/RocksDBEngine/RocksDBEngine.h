@@ -39,10 +39,11 @@
 namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
+class RocksDBBackgroundThread;
 class RocksDBComparator;
 class RocksDBCounterManager;
 class RocksDBReplicationManager;
-class RocksDBBackgroundThread;
+class RocksDBLogValue;
 class TransactionCollection;
 class TransactionState;
 
@@ -243,7 +244,7 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBComparator* cmp() const { return _cmp.get(); }
 
   int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                  VPackSlice const& slice);
+                                  VPackSlice const& slice, RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
   std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);

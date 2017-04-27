@@ -369,7 +369,7 @@
       <div id="collectionsThumbnailsIn" class="tileList pure-g">
         <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
           <div class="fullBorderBox">
-            <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
+            <a id="createCollection" class="add"><span id="newCollection" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
 </span> Add Collection</a>
           </div>
         </div>
@@ -815,9 +815,8 @@ if (list.length > 0) {
       <input type="hidden" id="newEdgeDefinitions<%= number%>" value="" placeholder="Edge definitions" tabindex="-1" class="select2-offscreen">
       <button id="remove_newEdgeDefinitions<%= number%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
     </th><th>
-    <a class="modalTooltips" title="Some info for edge definitions">
-      <span class="arangoicon icon_arangodb_info"></span>
-    </a>
+    <span class="modalTooltips arangoicon icon_arangodb_info" title="Some info for edge definitions">
+    </span>
     </th>
   </tr>
   <tr class="tableRow" id="row_fromCollections<%= number%>">
@@ -825,9 +824,8 @@ if (list.length > 0) {
     <th class="collectionTh">
       <input type="hidden" id="fromCollections<%= number%>" value="" placeholder="fromCollections" tabindex="-1" class="select2-offscreen">
     </th><th>
-    <a class="modalTooltips" title="The collection that contain the start vertices of the relation.">
-      <span class="arangoicon icon_arangodb_info"></span>
-    </a>
+    <span class="modalTooltips arangoicon icon_arangodb_info" title="The collection that contain the start vertices of the relation.">
+    </span>
   </th>
   </tr>
   <tr class="tableRow" id="row_toCollections<%= number%>">
@@ -835,9 +833,8 @@ if (list.length > 0) {
     <th class="collectionTh">
       <input type="hidden" id="toCollections<%= number%>" value="" placeholder="toCollections" tabindex="-1" class="select2-offscreen">
     </th><th>
-    <a class="modalTooltips" title="The collection that contain the end vertices of the relation.">
-      <span class="arangoicon icon_arangodb_info"></span>
-    </a>
+    <span class="modalTooltips arangoicon icon_arangodb_info" title="The collection that contain the end vertices of the relation.">
+    </span>
   </th>
   </tr></script><script id="editListEntryView.ejs" type="text/template"><td class="writable sorting_1"> <% if (isReadOnly) { %> <span class="key"><%=key%></span> <% } else { %> <input type="text" class="key" placeholder="attribute" <%=key?"value=" + key:""%>></input> <% } %> </td>
 <td class="writeable rightCell"> <% if (isReadOnly) { %> <span class="val"><%=value%></span> <% } else { %> <textarea class="val" placeholder="value"><%=value?value:""%></textarea> <% } %> </td>
@@ -846,7 +843,19 @@ if (list.length > 0) {
   <a class="deleteAttribute">
     <span class="icon_arangodb_roundminus" data-original-title="Delete attribute"></span>
   </a>
-</td></script><script id="footerView.ejs" type="text/template"> <%
+</td></script><script id="filterSelect.ejs" type="text/template"><div class="filterSelectBox">
+  <div class="filterLabel"><%=name%><span><i class="fa fa-close" id="closeFilter"></i></span></div>
+
+  <div class="filterInput">
+    <input type="text" id="<%=name%>-filter" placeholder="Filter <%=name%>" aria-label="Filter labels" autocomplete="off">
+  </div>
+
+  <div class="filterOptions">
+    <div id="showAll"><strong>Show all</strong></div> <% var cssClass; %> <% _.each(options, function (option) { %> <% if (option.active) { %> <%  cssClass = 'active'; %> <% } else { %> <% cssClass = 'inactive'; %> <% } %> <div class="<%=cssClass%>" name="<%=option.name%>" id="<%=option.name%>-option"> <% var color = option.color || '#f6f8fa'; %> <% if (cssClass === 'active') { %> <span class="marked"><i class="fa fa-check"/></span> <% } else { %> <span style="visibility: hidden;" class="marked"><i class="fa fa-check"/></span> <% } %> <span class="color" style="background-color: <%=color%>">&nbsp;</span>
+        <span class="name"><%=option.name%></span>
+      </div> <% }); %> </div>
+
+</div></script><script id="footerView.ejs" type="text/template"> <%
   var n,v,db;
   if (name) {
     n = name || "";
@@ -896,7 +905,7 @@ if (list.length > 0) {
       <tr>
         <th class="collectionTh">Mount:</th>
         <th class="collectionTh"><input type="text" id="change-mount-point" name="mountpoint" value="<%=attributes.mount%>"/></th>
-        <th><a class="modalTooltips" title="The path where the app can be reached."><i class="arangoicon icon_arangodb_info"></i></a></th>
+        <th><span class="modalTooltips arangoicon icon_arangodb_info" title="The path where the app can be reached."></span></th>
       </tr>
       <tr>
         <th class="collectionTh">Version:</th>
@@ -1135,13 +1144,7 @@ if (list.length > 0) {
           <tr>
             <th class="collectionTh">Type:</th>
             <th class="">
-              <select id="newIndexType">
-                <option value="Geo">Geo Index</option>
-                <option value="Hash">Hash Index</option>
-                <option value="Persistent">Persistent Index</option>
-                <option value="Fulltext">Fulltext Index</option>
-                <option value="Skiplist">Skip-List Index</option>
-              </select>
+              <select id="newIndexType"> <% if (supported.indexOf('geo') > -1) { %> <option value="Geo">Geo Index</option> <% } %> <% if (supported.indexOf('hash') > -1) { %> <option value="Hash">Hash Index</option> <% } %> <% if (supported.indexOf('persistent') > -1) { %> <option value="Persistent">Persistent Index</option> <% } %> <% if (supported.indexOf('fulltext') > -1) { %> <option value="Fulltext">Fulltext Index</option> <% } %> <% if (supported.indexOf('skiplist') > -1) { %> <option value="Skiplist">Skip-List Index</option> <% } %> </select>
             </th>
             <th class="" style="width: 18px"/>
           </tr>
@@ -1353,7 +1356,50 @@ if (list.length > 0) {
   <tr class="odd">
     <td valign="top" class="dataTables_empty">Loading...</td>
   </tr>
-</tbody></script><script id="loginView.ejs" type="text/template"><div class="loginFixedWindow">
+</tbody></script><script id="loggerView.ejs" type="text/template"><div id="loggerContent" class="logger-content-id innerContent">
+
+    <div class="arangoToolbar arangoToolbarTop">
+
+      <div class="pull-left">
+      </div>
+
+      <div class="pull-right">
+        <button id="logTopicSelection" class="button-default filterSelect">Topic <i class="fa fa-caret-down"></i></button>
+        <button id="logLevelSelection" class="button-default filterSelect">Level <i class="fa fa-caret-down"></i></button>
+        <button style="display: none" class="button-default filterSelect" id="logFilters">
+          <i class="fa fa-close"></i>Clear current <a id="filterDesc"></a> filter
+        </button>
+      </div>
+
+    </div>
+
+    <div id="noLogEntries" style="display: none">
+      <span>No suitable log entries found </span>
+    </div>
+
+    <div id="logEntries">
+    </div>
+
+    <div class="actions">
+      <button id="loadMoreEntries" class="button-success">Load older entries</button>
+    </div>
+
+  </div></script><script id="loggerViewEntries.ejs" type="text/template"> <% _.each(entries, function (entry) { %> <div class="pure-g" level="<%=entry.status.toLowerCase()%>" topic="<%=entry.topic.toLowerCase()%>">
+      <div class="pure-u-1-24">
+        <p class="labels"> <% var lcolor = arangoHelper.statusColors[entry.status.toLowerCase()];%> <% var tcolor = arangoHelper.alphabetColors[entry.topic.charAt(0).toLowerCase()];%> <span class="tippy level" title="Level: <%=entry.status%>" style="background: <%=lcolor%>"></span>
+          <span class="tippy topic" title="Topic: <%=entry.topic%>" style="background: <%=tcolor%>"></span>
+        </p>
+      </div>
+      <div class="pure-u-19-24 desc">
+        <p class="msg"><%=entry.msg%></p>
+      </div>
+      <div class="pure-u-4-24 date">
+        <p> <% var x = moment(entry.timestamp, "X").fromNow() %> <i class="fa fa-clock-o" aria-hidden="true"></i>
+          <span class="tippy" title="<%=entry.date%>"><%= x %></span>
+        </p>
+      </div>
+      <div class="logBorder"></div>
+    </div> <% }); %> </script><script id="loginView.ejs" type="text/template"><div class="loginFixedWindow">
 
   <div id="loginWindow" class="login-window">
     <div class="login-logo-round">
@@ -1385,9 +1431,7 @@ if (list.length > 0) {
       <button id="logout" class="button-danger pull-right">Logout</button>
     </div>
   </div>
-</div></script><script id="logsView.ejs" type="text/template"><div id="logContent" class="log-content-id innerContent">
-  </div>
-  <!-- <div id="logPaginationDiv" class="pagination-line"></div> --></script><script id="modalApplicationMount.ejs" type="text/template"><table>
+</div></script><script id="modalApplicationMount.ejs" type="text/template"><table>
     <tr class="tableRow"> <% if (content === true) { %> <th class="collectionInfoTh">
           Run teardown:
         </th>
@@ -1400,9 +1444,8 @@ if (list.length > 0) {
           <input type="text" id="new-app-mount" value="" placeholder="/my/foxx"></input>
         </th>
         <th>
-          <a class="modalTooltips" title="The path the app will be mounted. Has to start with /. Is not allowed to start with /_">
-            <span class="arangoicon icon_arangodb_info"></span>
-          </a>
+          <span class="modalTooltips arangoicon icon_arangodb_info" title="The path the app will be mounted. Has to start with /. Is not allowed to start with /_">
+          </span>
         </th> <% } %> </tr>
   </table>
 
@@ -1467,9 +1510,8 @@ if (list.length > 0) {
             <input type="hidden" id="new-app-document-collections" value="" placeholder="Document Collections"></input>
           </th>
           <th>
-            <a class="modalTooltips" title="A list of document collections that will be created specifically for this Service. A CRUD API for these will be generated.">
-              <span class="arangoicon icon_arangodb_info"></span>
-            </a>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="A list of document collections that will be created specifically for this Service. A CRUD API for these will be generated.">
+            </span>
           </th>
         </tr>
         <tr class="tableRow">
@@ -1480,9 +1522,8 @@ if (list.length > 0) {
             <input type="hidden" id="new-app-edge-collections" value="" placeholder="Edge Collections"></input>
           </th>
           <th>
-            <a class="modalTooltips" title="A list of edge collections that will be created specifically for this Service. A CRUD API for these will be generated.">
-              <span class="arangoicon icon_arangodb_info"></span>
-            </a>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="A list of edge collections that will be created specifically for this Service. A CRUD API for these will be generated.">
+            </span>
           </th>
         </tr>
       </table>
@@ -1526,9 +1567,8 @@ if (list.length > 0) {
               <input type="checkbox" id="github-app-islegacy" value="true">
             </th>
           <th>
-            <a class="modalTooltips" title="Legacy Compatibility Mode allows mounting some Foxx services written for ArangoDB 2.8 or older. This overrides the ArangoDB version specified in the service manifest. See the Foxx documentation for more information on running legacy services in ArangoDB 3.">
-              <span class="arangoicon icon_arangodb_info"></span>
-            </a>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="Legacy Compatibility Mode allows mounting some Foxx services written for ArangoDB 2.8 or older. This overrides the ArangoDB version specified in the service manifest. See the Foxx documentation for more information on running legacy services in ArangoDB 3.">
+            </span>
           </th>
           </tr>
         </table>
@@ -1552,9 +1592,8 @@ if (list.length > 0) {
               <input type="checkbox" id="zip-app-islegacy" value="true">
             </th>
           <th>
-            <a class="modalTooltips" title="Legacy Compatibility Mode allows mounting some Foxx services written for ArangoDB 2.8 or older. This overrides the ArangoDB version specified in the service manifest. See the Foxx documentation for more information on running legacy services in ArangoDB 3.">
-              <span class="arangoicon icon_arangodb_info"></span>
-            </a>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="Legacy Compatibility Mode allows mounting some Foxx services written for ArangoDB 2.8 or older. This overrides the ArangoDB version specified in the service manifest. See the Foxx documentation for more information on running legacy services in ArangoDB 3.">
+            </span>
           </th>
           </tr>
         </table>
@@ -1593,9 +1632,8 @@ if (list.length > 0) {
             </th>
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="The maximal size of a journal or datafile (in MB). Must be at least 1.">
-                  <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                </a>
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="The maximal size of a journal or datafile (in MB). Must be at least 1.">
+                </span>
               </div>
             </th>
           </tr>
@@ -1606,9 +1644,8 @@ if (list.length > 0) {
             </th>
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Synchronize to disk before returning from a create or update of a document.">
-                  <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                </a>
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="Synchronize to disk before returning from a create or update of a document.">
+                </span>
               </div>
             </th>
           </tr>
@@ -1706,9 +1743,8 @@ if (list.length > 0) {
             <th class="modal-text"> <%=prettyBytes(figuresData.figures.alive.size)%> </th>
             <th class="modal-text"> -</th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number and size of all living documents.">
-                <span class="arangoicon icon_arangodb_info"></span>
-              </a>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="Total number and size of all living documents.">
+              </span>
             </th>
           </tr>
           <tr>
@@ -1719,9 +1755,8 @@ if (list.length > 0) {
 
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalTooltips" title="Total number and size of all dead documents.">
-                <span class="arangoicon icon_arangodb_info"></span>
-                </a>
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="Total number and size of all dead documents.">
+                </span>
             </div>
             </th>
 
@@ -1744,9 +1779,8 @@ if (list.length > 0) {
             <th class="modal-text">&nbsp;</th>
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Number and total size of active datafiles.">
-                  <span class="arangoicon icon_arangodb_info"></span>
-                </a>
+                <span class="modalTooltips arangoicon icon_arangodb_info" data-toggle="tooltip" data-placement="left" title="Number and total size of active datafiles.">
+                </span>
               </div>
             </th>
           </tr>
@@ -1756,8 +1790,8 @@ if (list.length > 0) {
             <th class="modal-text"> <%=prettyBytes(figuresData.figures.journals.fileSize)%> </th>
             <th class="modal-text">&nbsp;</th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total size of journal files.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="Number and total size of journal files.">
+              </span>
             </th>
           </tr>
           <tr>
@@ -1766,8 +1800,7 @@ if (list.length > 0) {
             <th class="modal-text"> <%=prettyBytes(figuresData.figures.compactors.fileSize)%> </th>
             <th class="modal-text">&nbsp;</th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total size of compactor files.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="Number and total size of compactor files."></span>
             </th>
           </tr>
           <tr>
@@ -1776,8 +1809,7 @@ if (list.length > 0) {
             <th class="modal-text"> <%=prettyBytes(figuresData.figures.indexes.size)%> </th>
             <th class="modal-text">&nbsp;</th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total memory usage of indexes.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="Number and total memory usage of indexes."></span>
             </th>
           </tr>
         </table>
@@ -1796,8 +1828,8 @@ if (list.length > 0) {
             <th class="modal-text">&nbsp;</th>
             <th class="modal-text">&nbsp;</th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of uncollected WAL entries">
-                <span class="arangoicon icon_arangodb_info"></span></a>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="Total number of uncollected WAL entries">
+              </span>
             </th>
           </tr>
           <tr>
@@ -1806,8 +1838,8 @@ if (list.length > 0) {
             <th class="modal-text">&nbsp;</th>
             <th class="modal-text">&nbsp;</th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of objects pointing to documents in collection datafiles">
-                <span class="arangoicon icon_arangodb_info"></span></a>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="Total number of objects pointing to documents in collection datafiles">
+              </span>
             </th>
           </tr>
         </table></script><script id="modalDownloadFoxx.ejs" type="text/template"><div>
@@ -1902,9 +1934,8 @@ if (list.length > 0) {
 
               if (row.info) {
             %> <th>
-            <a class="modalTooltips" title="<%=row.info%>">
-              <span class="arangoicon icon_arangodb_info"></span>
-            </a>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="<%=row.info%>">
+            </span>
           </th> <%
           }
         %> </tr> <%
@@ -1982,9 +2013,8 @@ if (list.length > 0) {
         }
         %> <% if (row.info) { %> </th>
         <th>
-          <a class="modalTooltips" title="<%=row.info%>">
-            <span class="arangoicon icon_arangodb_info"></span>
-          </a> <% } %> </th>
+          <span class="modalTooltips arangoicon icon_arangodb_info" title="<%=row.info%>">
+          </span> <% } %> </th>
     </tr> <%
   };
   %> <% if (content) { %> <table>
@@ -2099,7 +2129,21 @@ if (list.length > 0) {
     <p><a href="https://slack.arangodb.com" target="_blank"><i class="fa fa-slack"></i></a></p>
     <p><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank"><i class="fa fa-stack-overflow"></i></a></p>
     <p><a href="https://groups.google.com/group/arangodb" target="_blank"><i class="fa fa-google"></i></a></p>
-  </div></script><script id="nodesView.ejs" type="text/template"><div id="nodesContent" class="innerContent"> <% if (Object.keys(coords).length > 0) { %> <% var disabled = ''; %> <div class="pure-g">
+  </div></script><script id="nodeInfoView.ejs" type="text/template"><div class="nodeInfoView">
+  <div class="modal-body">
+    <table id="serverInfoTable" class="arango-table">
+      <tbody> <% _.each(entries, function (entry, name) { %> <tr>
+            <th class="collectionInfoTh2"><%=name%></th>
+            <th class="collectionInfoTh">
+              <div id="server-<%=name%>" class="modal-text"><%=entry%></div>
+            </th>
+            <th> <% if (entry.description) { %> <th class="tooltipInfoTh">
+                  <span class="tippy" title="<%=entry.description%>"></span>
+                </th> <% } %> </th>
+          </tr> <% }); %> </tbody>
+    </table>
+  </div>
+</div></script><script id="nodesView.ejs" type="text/template"><div id="nodesContent" class="innerContent"> <% if (Object.keys(coords).length > 0) { %> <% var disabled = ''; %> <div class="pure-g">
 
     <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
 
@@ -2127,18 +2171,19 @@ if (list.length > 0) {
     <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
       <div class="pure-table-row">
         <div class="pure-u-9-24 left">Name</div>
-        <div class="pure-u-8-24 left">Endpoint</div>
-        <div class="pure-u-3-24 mid hide-small">Heartbeat</div>
-        <div class="pure-u-3-24 mid">Status</div>
-        <div class="pure-u-1-24 mid"></div>
+        <div class="pure-u-9-24 left">Endpoint</div>
+        <div class="pure-u-2-24 mid hide-small">Since</div>
+        <div class="pure-u-2-24 mid">Info</div>
+        <div class="pure-u-2-24 mid">Status</div>
       </div>
     </div>
 
     <div class="pure-g cluster-nodes coords-nodes pure-table pure-table-body"> <% _.each(coords, function(node, name) { %> <% var id = name + "-node"; %> <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
           <div class="pure-u-9-24 left"> <%= node.ShortName %> <i class="fa fa-bar-chart"></i> <% if(node.Status === 'FAILED') { %> <i class="fa fa-trash-o"></i> <% } %> </div>
-          <div class="pure-u-8-24 left"><%= node.Endpoint %></div> <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> <div class="pure-u-3-24 hide-small mid"><%= formatted %></div>
-          <div class="pure-u-3-24 mid"><%= node.LastHeartbeatStatus %></div> <% if(node.Status === 'GOOD') { %> <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle"></i></div> <% } else { %> <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div> <% } %> </div> <% }); %> </div>
+          <div class="pure-u-9-24 left"><%= node.Endpoint %></div> <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> <div class="pure-u-2-24 hide-small mid"><%= formatted %></div>
+          
+          <div class="pure-u-2-24 mid"><i class="fa fa-info-circle"></i></div> <% if(node.Status === 'GOOD') { %> <div class="pure-u-2-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.LastHeartbeatStatus %>"></i></div> <% } else { %> <div class="pure-u-2-24 mid state"><i class="fa fa-exclamation-circle"></i></div> <% } %> </div> <% }); %> </div>
   </div> <% } %> <% if (Object.keys(dbs).length > 0) { %> <% var disabled = ''; %> <% disabled = " disabled"; %> <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
       <div class="sectionHeader pure-g">
         <div class="pure-u-1-5">
@@ -2164,16 +2209,17 @@ if (list.length > 0) {
     <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title">
       <div class="pure-table-row">
         <div class="pure-u-9-24 left">Name</div>
-        <div class="pure-u-8-24 left">Endpoint</div>
-        <div class="pure-u-3-24 mid hide-small">Heartbeat</div>
-        <div class="pure-u-3-24 mid">Status</div>
-        <div class="pure-u-1-24 mid"></div>
+        <div class="pure-u-9-24 left">Endpoint</div>
+        <div class="pure-u-2-24 mid hide-small">Since</div>
+        <div class="pure-u-2-24 mid">Info</div>
+        <div class="pure-u-2-24 mid">Status</div>
       </div>
-    </div> <% } %> <div class="pure-g cluster-nodes dbs-nodes pure-table pure-table-body"> <% _.each(dbs, function(node, name) { %> <% var id = name + "-node"; %> <div class="pure-table-row <%= disabled %>" id="<%= id %>">
+    </div> <% } %> <div class="pure-g cluster-nodes dbs-nodes pure-table pure-table-body"> <% _.each(dbs, function(node, name) { %> <% var id = name + "-node"; %> <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
           <div class="pure-u-9-24 left"><%= node.ShortName %></div>
-          <div class="pure-u-8-24 left"><%= node.Endpoint %></div> <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> <div class="pure-u-3-24 mid hide-small"><%= formatted %></div>
-          <div class="pure-u-3-24 mid"><%= node.LastHeartbeatStatus %></div> <% if(node.Status === 'GOOD') { %> <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle"></i></div> <% } else { %> <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div> <% } %> </div> <% }); %> </div>
+          <div class="pure-u-9-24 left"><%= node.Endpoint %></div> <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> <div class="pure-u-2-24 mid hide-small"><%= formatted %></div>
+          
+          <div class="pure-u-2-24 mid"><i class="fa fa-info-circle"></i></div> <% if(node.Status === 'GOOD') { %> <div class="pure-u-2-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.LastHeartbeatStatus %>"></i></div> <% } else { %> <div class="pure-u-2-24 mid state"><i class="fa fa-exclamation-circle"></i></div> <% } %> </div> <% }); %> </div>
   </div>
 
   </div>
@@ -2385,7 +2431,7 @@ if (list.length > 0) {
               <div class="<%= genClass1 %> left">Sync</div>
             </div>
           </div> <% var counter = 0; var shardClass; %> <% _.each(collection.Plan, function(shard, name) { %> <div class="pure-g pure-table pure-table-body"> <% if (shard.progress) { %> <%   shardClass = 'disabled';%> <% } %> <div class="pure-table-row noHover <%= shardClass %>" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>"> <% if (shard.leader.substring(0,1) === '_') { %> <%   shard.leader = shard.leader.slice(1) %> <% } %> <div class="<%= genClass1 %> left"><%= name %></div>
-                <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div> <% var found = null;  %> <% _.each(shard.followers, function(db) {  %> <% if (db === shard.leader) { %> <% found = true; %> <% } %> <% }); %> <% if (found) { %> <div class="<%= genClass2 %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div> <% } else { %> <% if (shard.followers.length === 0) { %> <div class="<%= genClass2 %> left"> no followers </div> <% } else { %> <% var string = ''; %> <% var counter2 = 0; %> <% _.each(shard.followers, function(db) {  %> <% if (shard.followers.length === 1) { %> <% string += '<span>' + db + '</span> '; %> <% } else { %> <% if (counter2 === 0) { %> <% string += '<span>' + db + '</span>'; counter2++; %> <% } else { %> <% string += ", " + '<span>' + db + '</span>'; %> <% } %> <% } %> <% });  %> <div class="shardFollowers <%= genClass2 %> left"><%= string %></div> <% } %> <% if (shard.progress) { %> <% var percent = numeral(shard.progress.current / shard.progress.total).format('0.00%'); %> <div class="<%= genClass1 %> left"><%= percent %></div> <% } else { %> <div class="<%= genClass1 %> left"><i style="margin-left: 10px;" class="fa fa-check-circle"></i></div> <% } %> <% } %> </div>
+                <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div> <% var found = null;  %> <% _.each(shard.followers, function(db) {  %> <% if (db === shard.leader) { %> <% found = true; %> <% } %> <% }); %> <% if (found) { %> <div class="<%= genClass2 %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div> <% } else { %> <% if (shard.followers.length === 0) { %> <div class="<%= genClass2 %> left"> no followers </div> <% } else { %> <% var string = ''; %> <% var counter2 = 0; %> <% _.each(shard.followers, function(db) {  %> <% if (shard.followers.length === 1) { %> <% string += '<span>' + db + '</span> '; %> <% } else { %> <% if (counter2 === 0) { %> <% string += '<span>' + db + '</span>'; counter2++; %> <% } else { %> <% string += ", " + '<span>' + db + '</span>'; %> <% } %> <% } %> <% });  %> <div class="shardFollowers <%= genClass2 %> left"><%= string %></div> <% } %> <% if (shard.progress) { %> <% var percent; %> <% if (shard.progress.total === 0) { %> <% percent = numeral(0).format('0.00%'); %> <% } else { %> <% percent = numeral(shard.progress.current / shard.progress.total).format('0.00%'); %> <% } %> <div class="<%= genClass1 %> left"><%= percent %></div> <% } else { %> <div class="<%= genClass1 %> left"><i style="margin-left: 10px;" class="fa fa-check-circle"></i></div> <% } %> <% } %> </div>
             </div> <% counter++; %> <% }); %> <% } %> <% }); %> <button id="rebalanceShards" style="margin-top: 20px;" class="button-success pull-right">Rebalance Shards</button>
   </div></script><script id="shellView.ejs" type="text/template"><div class="headerBar">
     <a class="arangoHeader">JS Shell</a>
@@ -2685,7 +2731,7 @@ var cutByResolution = function (str) {
     <div id="userManagementThumbnailsIn" class="tileList pure-u">
       <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
         <div class="fullBorderBox">
-          <a href="#" id="createUser" class="add">
+          <a id="createUser" class="add">
             <span id="newUser" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
             Add User
           </a>
@@ -2748,4 +2794,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb-edition-optimized.svg"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1490207594829"></script><script src="app.js?version=1490207594829"></script></body></html>
+  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb-edition-optimized.svg"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="filterSelectDiv" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1493213897414"></script><script src="app.js?version=1493213897414"></script></body></html>

@@ -15,6 +15,7 @@ function help() {
   echo "  -g/--gossip-mode   Integer     (0: Announce first endpoint to all"
   echo "                                  1: Grow list of known endpoints for each"
   echo "                                  2: Cyclic        default: 0)"
+  echo "  -b/--offset-ports  Offsetports (default: 0, i.e. A:5001)"
   echo ""
   echo "EXAMPLES:"
   echo "  scripts/startStandaloneAgency.sh"
@@ -53,12 +54,20 @@ WAIT_FOR_SYNC="true"
 USE_MICROTIME="false"
 GOSSIP_MODE=0
 START_DELAYS=0
+INTERACTIVE_MODE=""
+XTERM="xterm"
+XTERMOPTIONS=""
+BUILD="build"
 
 while [[ ${1} ]]; do
   case "${1}" in
     -a|--agency-size)
       NRAGENTS=${2}
       shift;;
+    -i|--interactive)
+      INTERACTIVE_MODE=${2}
+      shift
+      ;;
     -p|--pool-size)
       POOLSZ=${2}
       shift;;
@@ -95,6 +104,10 @@ while [[ ${1} ]]; do
     -s|--start-delays)
       START_DELAYS=${2}
       shift;;
+    -b|--port-offset)
+      PORT_OFFSET=${2}
+      shift
+      ;;
     -h|--help)
       help; exit 1  
       ;;
@@ -148,15 +161,28 @@ if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
   exit 1
 fi
 
-MINP=0.5
-MAXP=2.5
+
+if [ ! -z "$INTERACTIVE_MODE" ] ; then
+    if [ "$INTERACTIVE_MODE" == "C" ] ; then
+        ARANGOD="${BUILD}/bin/arangod "
+        CO_ARANGOD="$XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod --console "
+        echo "Starting one coordinator in terminal with --console"
+    elif [ "$INTERACTIVE_MODE" == "R" ] ; then
+        ARANGOD="$XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod --console "
+        CO_ARANGOD=$ARANGOD
+        echo Running cluster in rr with --console.
+    fi
+else
+    ARANGOD="${BUILD}/bin/arangod "
+    CO_ARANGOD=$ARANGOD
+fi
+
 SFRE=2.5
 COMP=200000
-KEEP=500
-BASE=5000
+BASE=$(( $PORT_OFFSET + 5000 ))
 
 if [ "$GOSSIP_MODE" = "0" ]; then
-   GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$BASE"
+   GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://[::1]:$BASE"
 fi
 
 rm -rf agency
@@ -168,13 +194,14 @@ shuffle
 
 count=1
 
+
 for aid in "${aaid[@]}"; do
 
   port=$(( $BASE + $aid ))
 
   if [ "$GOSSIP_MODE" = "2" ]; then
     nport=$(( $BASE + $(( $(( $aid + 1 )) % 3 ))))
-    GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$nport"
+    GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://[::1]:$nport"
   fi
 
   if [ "$GOSSIP_MODE" = "3" ]; then
@@ -182,21 +209,18 @@ for aid in "${aaid[@]}"; do
     for id in "${aaid[@]}"; do
       if [ ! "$id" = "$aid" ]; then
         nport=$(( $BASE + $(( $id )) ))
-        GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://localhost:$nport"
+        GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://[::1]:$nport"
       fi
     done
   fi
   
   printf "    starting agent %s " "$aid"
-  build/bin/arangod \
+  $ARANGOD \
     -c none \
     --agency.activate true \
     $GOSSIP_PEERS \
-    --agency.my-address $TRANSPORT://localhost:$port \
+    --agency.my-address $TRANSPORT://[::1]:$port \
     --agency.compaction-step-size $COMP \
-    --agency.compaction-keep-size $KEEP \
-    --agency.election-timeout-min $MINP \
-    --agency.election-timeout-max $MAXP \
     --agency.pool-size $POOLSZ \
     --agency.size $NRAGENTS \
     --agency.supervision true \
@@ -211,14 +235,14 @@ for aid in "${aaid[@]}"; do
     $LOG_LEVEL \
     --log.use-microtime $USE_MICROTIME \
     --server.authentication false \
-    --server.endpoint $TRANSPORT://0.0.0.0:$port \
+    --server.endpoint $TRANSPORT://[::]:$port \
     --server.statistics false \
     $SSLKEYFILE \
-    > agency/$port.stdout 2>&1 &
+    | tee cluster/$PORT.stdout 2>&1 &
   PIDS+=$!
   PIDS+=" "
   if [ "$GOSSIP_MODE" == "1" ]; then
-    GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://localhost:$port"
+    GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://[::1]:$port"
   fi
   if [ $count -lt $POOLSZ ]; then
     if isuint $START_DELAYS; then
@@ -237,6 +261,6 @@ done
 
 echo "  done. Your agents are ready at port $BASE onward."
 #echo "Process ids: $PIDS"
-echo "Try ${CURL}localhost:5000/_api/agency/config."
+echo "Try ${CURL}[::1]:5000/_api/agency/config."
 
 

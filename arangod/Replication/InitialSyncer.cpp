@@ -191,8 +191,8 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
           << "client: got master state: " << res << " " << errorMsg;
       return res;
     }
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: got master state: " << res
-                                          << " " << errorMsg;
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "client: got master state: " << res << " " << errorMsg;
 
     if (incremental) {
       if (_masterInfo._majorVersion == 1 ||
@@ -275,8 +275,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
                    _masterInfo._endpoint + ": invalid JSON";
       } else {
         auto pair = stripObjectIds(slice);
-        res = handleInventoryResponse(pair.first, incremental,
-                                      errorMsg);
+        res = handleInventoryResponse(pair.first, incremental, errorMsg);
       }
     }
 
@@ -664,9 +663,9 @@ int InitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col,
     std::string const progress =
         "fetching master collection dump for collection '" + collectionName +
         "', type: " + typeString + ", id " + cid + ", batch " +
-        StringUtils::itoa(batch) + ", markers processed: " +
-        StringUtils::itoa(markersProcessed) + ", bytes received: " +
-        StringUtils::itoa(bytesReceived);
+        StringUtils::itoa(batch) +
+        ", markers processed: " + StringUtils::itoa(markersProcessed) +
+        ", bytes received: " + StringUtils::itoa(bytesReceived);
 
     setProgress(progress);
 
@@ -856,9 +855,9 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
   sendExtendBarrier();
 
   std::string const baseUrl = BaseUrl + "/keys";
-  std::string url = baseUrl + "?collection=" + cid + "&to=" +
-                    std::to_string(maxTick) + "&batchId=" +
-                    std::to_string(_batchId);
+  std::string url = baseUrl + "?collection=" + cid +
+                    "&to=" + std::to_string(maxTick) +
+                    "&batchId=" + std::to_string(_batchId);
 
   std::string progress = "fetching collection keys for collection '" +
                          collectionName + "' from " + url;
@@ -1017,8 +1016,8 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
     OperationResult opRes = trx.truncate(collectionName, options);
 
     if (!opRes.successful()) {
-      errorMsg = "unable to truncate collection '" + collectionName + "': " +
-                 TRI_errno_string(opRes.code);
+      errorMsg = "unable to truncate collection '" + collectionName +
+                 "': " + TRI_errno_string(opRes.code);
       return opRes.code;
     }
 
@@ -1266,28 +1265,24 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         // smaller values than lowKey mean they don't exist remotely
         trx.remove(collectionName, key, options);
         return;
-      }
-      if (cmp1 >= 0 && cmp2 <= 0) {
+      } else if (cmp1 >= 0 && cmp2 <= 0) {
         // we only need to hash we are in the range
         if (cmp1 == 0) {
           foundLowKey = true;
-        } else if (!foundLowKey && cmp1 > 0) {
-          rangeUnequal = true;
-          nextChunk = true;
         }
 
+        markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
+        // don't bother hashing if we have't found lower key
         if (foundLowKey) {
           VPackSlice revision = doc.get(StaticStrings::RevString);
           localHash ^= key.hashString();
           localHash ^= revision.hash();
 
-          markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
-
           if (cmp2 == 0) {  // found highKey
             rangeUnequal = std::to_string(localHash) != hashString;
             nextChunk = true;
           }
-        } else if (cmp2 == 0) {
+        } else if (cmp2 == 0) {  // found high key, but not low key
           rangeUnequal = true;
           nextChunk = true;
         }
@@ -1298,21 +1293,23 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
         nextChunk = true;
       }
 
-      if (rangeUnequal) {
-        int res = syncChunkRocksDB(&trx, keysId, currentChunkId, lowKey,
-                                   highKey, markers, errorMsg);
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-      }
+      
       TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
-      if (nextChunk && currentChunkId + 1 < numChunks) {
-        currentChunkId++;  // we are out of range, see next chunk
-        resetChunk();
-
-        // key is higher than upper bound, recheck the current document
-        if (cmp2 > 0) {
-          parseDoc(doc, key);
+      if (nextChunk) {// we are out of range, see next chunk
+        if (rangeUnequal && currentChunkId < numChunks) {
+          int res = syncChunkRocksDB(&trx, keysId, currentChunkId, lowKey,
+                                     highKey, markers, errorMsg);
+          if (res != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+        }
+        currentChunkId++;
+        if (currentChunkId < numChunks) {
+          resetChunk();
+          // key is higher than upper bound, recheck the current document
+          if (cmp2 > 0) {
+            parseDoc(doc, key);
+          }
         }
       }
     };
@@ -1329,6 +1326,19 @@ int InitialSyncer::handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
           parseDoc(doc, key);
         },
         UINT64_MAX);
+    
+    // we might have missed chunks, if the keys don't exist at all locally
+    while (currentChunkId < numChunks) {
+      int res = syncChunkRocksDB(&trx, keysId, currentChunkId, lowKey,
+                                 highKey, markers, errorMsg);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      currentChunkId++;
+      if (currentChunkId < numChunks) {
+        resetChunk();
+      }
+    }
 
     res = trx.commit();
     if (!res.ok()) {
@@ -1356,9 +1366,9 @@ int InitialSyncer::syncChunkRocksDB(
 
   // no match
   // must transfer keys for non-matching range
-  std::string url = baseUrl + "/" + keysId + "?type=keys&chunk=" +
-                    std::to_string(chunkId) + "&chunkSize=" +
-                    std::to_string(chunkSize);
+  std::string url = baseUrl + "/" + keysId +
+                    "?type=keys&chunk=" + std::to_string(chunkId) +
+                    "&chunkSize=" + std::to_string(chunkSize);
 
   std::string progress =
       "fetching keys chunk '" + std::to_string(chunkId) + "' from " + url;
@@ -1425,6 +1435,12 @@ int InitialSyncer::syncChunkRocksDB(
   std::vector<size_t> toFetch;
 
   size_t const numKeys = static_cast<size_t>(responseBody.length());
+  if (numKeys == 0) {
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
+               ": response contains an empty chunk. Collection: " + collectionName +
+              " Chunk: " + std::to_string(chunkId);
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
   TRI_ASSERT(numKeys > 0);
 
   size_t i = 0;
@@ -1456,12 +1472,11 @@ int InitialSyncer::syncChunkRocksDB(
       continue;
     }
 
-    std::string const keyString = keySlice.copyString();
     // remove keys not present anymore
     while (nextStart < markers.size()) {
       std::string const& localKey = markers[nextStart].first;
 
-      int res = localKey.compare(keyString);
+      int res = keySlice.compareString(localKey);
       if (res != 0) {
         // we have a local key that is not present remotely
         keyBuilder->clear();
@@ -1479,7 +1494,7 @@ int InitialSyncer::syncChunkRocksDB(
 
     // see if key exists
     DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
-    if (!token._data) {
+    if (token._data == 0) {
       // key not found locally
       toFetch.emplace_back(i);
     } else if (TRI_RidToString(token._data) != pair.at(1).copyString()) {
@@ -1493,6 +1508,23 @@ int InitialSyncer::syncChunkRocksDB(
 
     i++;
   }
+  
+  // delete all keys at end of the range
+  while (nextStart < markers.size()) {
+    std::string const& localKey = markers[nextStart].first;
+    
+    TRI_ASSERT(localKey.compare(highString) > 0);
+    //if (localKey.compare(highString) > 0) {
+      // we have a local key that is not present remotely
+      keyBuilder->clear();
+      keyBuilder->openObject();
+      keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
+      keyBuilder->close();
+      
+      trx->remove(collectionName, keyBuilder->slice(), options);
+    //}
+    ++nextStart;
+  }
 
   if (!toFetch.empty()) {
     VPackBuilder keysBuilder;
@@ -1502,9 +1534,9 @@ int InitialSyncer::syncChunkRocksDB(
     }
     keysBuilder.close();
 
-    std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" +
-                      std::to_string(chunkId) + "&chunkSize=" +
-                      std::to_string(chunkSize);
+    std::string url = baseUrl + "/" + keysId +
+                      "?type=docs&chunk=" + std::to_string(chunkId) +
+                      "&chunkSize=" + std::to_string(chunkSize);
     progress = "fetching documents chunk " + std::to_string(chunkId) +
                " for collection '" + collectionName + "' from " + url;
     setProgress(progress);
@@ -1697,30 +1729,31 @@ int InitialSyncer::handleSyncKeysMMFiles(arangodb::LogicalCollection* col,
     setProgress(progress);
 
     // sort all our local keys
-    std::sort(markers.begin(), markers.end(), [](uint8_t const* lhs,
-                                                 uint8_t const* rhs) -> bool {
-      VPackSlice const l(lhs);
-      VPackSlice const r(rhs);
+    std::sort(
+        markers.begin(), markers.end(),
+        [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
+          VPackSlice const l(lhs);
+          VPackSlice const r(rhs);
 
-      VPackValueLength lLength, rLength;
-      char const* lKey = l.get(StaticStrings::KeyString).getString(lLength);
-      char const* rKey = r.get(StaticStrings::KeyString).getString(rLength);
+          VPackValueLength lLength, rLength;
+          char const* lKey = l.get(StaticStrings::KeyString).getString(lLength);
+          char const* rKey = r.get(StaticStrings::KeyString).getString(rLength);
 
-      size_t const length =
-          static_cast<size_t>(lLength < rLength ? lLength : rLength);
-      int res = memcmp(lKey, rKey, length);
+          size_t const length =
+              static_cast<size_t>(lLength < rLength ? lLength : rLength);
+          int res = memcmp(lKey, rKey, length);
 
-      if (res < 0) {
-        // left is smaller than right
-        return true;
-      }
-      if (res == 0 && lLength < rLength) {
-        // left is equal to right, but of shorter length
-        return true;
-      }
+          if (res < 0) {
+            // left is smaller than right
+            return true;
+          }
+          if (res == 0 && lLength < rLength) {
+            // left is equal to right, but of shorter length
+            return true;
+          }
 
-      return false;
-    });
+          return false;
+        });
   }
 
   if (checkAborted()) {
@@ -1951,9 +1984,9 @@ int InitialSyncer::handleSyncKeysMMFiles(arangodb::LogicalCollection* col,
     } else {
       // no match
       // must transfer keys for non-matching range
-      std::string url = baseUrl + "/" + keysId + "?type=keys&chunk=" +
-                        std::to_string(i) + "&chunkSize=" +
-                        std::to_string(chunkSize);
+      std::string url = baseUrl + "/" + keysId +
+                        "?type=keys&chunk=" + std::to_string(i) +
+                        "&chunkSize=" + std::to_string(chunkSize);
       progress = "fetching keys chunk " + std::to_string(currentChunkId) +
                  " for collection '" + collectionName + "' from " + url;
       setProgress(progress);
@@ -2117,9 +2150,9 @@ int InitialSyncer::handleSyncKeysMMFiles(arangodb::LogicalCollection* col,
         }
         keysBuilder.close();
 
-        std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" +
-                          std::to_string(currentChunkId) + "&chunkSize=" +
-                          std::to_string(chunkSize);
+        std::string url = baseUrl + "/" + keysId +
+                          "?type=docs&chunk=" + std::to_string(currentChunkId) +
+                          "&chunkSize=" + std::to_string(chunkSize);
         progress = "fetching documents chunk " +
                    std::to_string(currentChunkId) + " for collection '" +
                    collectionName + "' from " + url;

@@ -2284,7 +2284,7 @@ ClusterMethods::persistCollectionInAgency(
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> dbServers;
   std::vector<std::string> avoid = col->avoidServers();
-    
+
   ClusterInfo* ci = ClusterInfo::instance();
   if (!distributeShardsLike.empty()) {
     CollectionNameResolver resolver(col->vocbase());
@@ -2320,7 +2320,6 @@ ClusterMethods::persistCollectionInAgency(
       }
       col->distributeShardsLike(otherCidString);
     } else {
-      LOG_TOPIC(WARN, Logger::CLUSTER) << "WTF? " << ignoreDistributeShardsLikeErrors;
       if (ignoreDistributeShardsLikeErrors) {
         col->distributeShardsLike(std::string());
       } else {

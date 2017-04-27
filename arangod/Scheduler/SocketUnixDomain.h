@@ -65,8 +65,8 @@ class SocketUnixDomain final : public Socket {
     
     void shutdownSend(boost::system::error_code& ec) override;
     
-    int available(boost::system::error_code& ec) override;
-    
+    std::size_t available(boost::system::error_code& ec) override;
+  
     void asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
 
   public:

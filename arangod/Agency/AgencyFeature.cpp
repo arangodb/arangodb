@@ -208,6 +208,15 @@ void AgencyFeature::start() {
     return;
   }
 
+  // Find the agency prefix:
+  auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  if (!feature->agencyPrefix().empty()) {
+    arangodb::consensus::Supervision::setAgencyPrefix(
+      std::string("/") + feature->agencyPrefix());
+    arangodb::consensus::Job::agencyPrefix
+      = std::string("/") + feature->agencyPrefix();
+  }
+  
   // TODO: Port this to new options handling
   std::string endpoint;
 

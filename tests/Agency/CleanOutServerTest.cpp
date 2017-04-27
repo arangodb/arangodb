@@ -67,7 +67,7 @@ VPackBuilder createMoveShardJob() {
     builder.add("toServer", VPackValue("test2"));
     builder.add("isLeader", VPackValue(true));
     builder.add("collection", VPackValue("test"));
-    builder.add("shard", VPackValue("test"));
+    builder.add("shard", VPackValue("s99"));
     builder.add("creator", VPackValue("unittest"));
     builder.add("jobId", VPackValue(JOBID + "-0"));
     builder.add("database", VPackValue("test"));
@@ -377,7 +377,7 @@ SECTION("cleanout server should fail if the server is failed") {
       if (path == "/arango/Target/ToDo") {
         builder->add(JOBID, createJob(SERVER).slice());
       } else if (path == "/arango/Target/FailedServers") {
-        builder->add(SERVER, VPackValue("shard"));
+        builder->add(SERVER, VPackValue("s99"));
       }
       builder->close();
     } else {
@@ -424,9 +424,9 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
       if (path == "/arango/Target/ToDo") {
         builder->add(JOBID, createJob(SERVER).slice());
       } else if (path == "/arango/Target/FailedServers") {
-        builder->add("follower1", VPackValue("shard"));
-        builder->add("follower2", VPackValue("shard"));
-        builder->add("free", VPackValue("shard"));
+        builder->add("follower1", VPackValue("s99"));
+        builder->add("follower2", VPackValue("s99"));
+        builder->add("free", VPackValue("s99"));
       }
       builder->close();
     } else {

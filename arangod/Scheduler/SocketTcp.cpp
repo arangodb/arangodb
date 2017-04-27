@@ -69,9 +69,9 @@ void SocketTcp::shutdownSend(boost::system::error_code& ec) {
   _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
 }
 
-int SocketTcp::available(boost::system::error_code& ec) {
+std::size_t SocketTcp::available(boost::system::error_code& ec) {
   MUTEX_LOCKER(guard, _lock);
-  return static_cast<int>(_socket.available(ec));
+  return static_cast<size_t>(_socket.available(ec));
 }
 
 void SocketTcp::asyncRead(boost::asio::mutable_buffers_1 const& buffer,

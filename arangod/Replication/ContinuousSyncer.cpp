@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -867,6 +868,18 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
   else if (type == REPLICATION_INDEX_DROP) {
     return dropIndex(slice);
   }
+  
+  else if (type == REPLICATION_VIEW_CREATE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view create not yet implemented");
+  }
+  
+  else if (type == REPLICATION_VIEW_DROP) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view drop not yet implemented");
+  }
+  
+  else if (type == REPLICATION_VIEW_CHANGE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view change not yet implemented");
+  }
 
   errorMsg = "unexpected marker type " + StringUtils::itoa(type);
 
@@ -1366,6 +1379,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   bool checkMore = false;
   bool active = false;
   bool fromIncluded = false;
+  bool bumpTick = false;
   TRI_voc_tick_t tick = 0;
 
   bool found;
@@ -1391,10 +1405,10 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     header =
         response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (found) {
-      tick = StringUtils::uint64(header);
+      TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
 
-      if (tick > fetchTick) {
-        fetchTick = tick;
+      if (lastIncludedTick > fetchTick) {
+        fetchTick = lastIncludedTick;
         worked = true;
       } else {
         // we got the same tick again, this indicates we're at the end
@@ -1404,6 +1418,13 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
       if (found) {
         tick = StringUtils::uint64(header);
+        if (!checkMore && tick > lastIncludedTick) {
+          // the master has a tick value which is not contained in this result
+          // but it claims it does not have any more data
+          // so it's probably a tick from an invisible operation (such as closing
+          // a WAL file)
+          bumpTick = true;
+        }
 
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
         _applier->_state._lastAvailableContinuousTick = tick;
@@ -1434,7 +1455,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     TRI_voc_tick_t lastAppliedTick;
 
     {
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+      READ_LOCKER(locker, _applier->_statusLock);
       lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
     }
 
@@ -1450,6 +1471,22 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       _applier->_state._totalEvents += processedMarkers;
 
       if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
+        _hasWrittenState = true;
+        saveApplierState();
+      }
+    } else if (bumpTick) {
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+      
+      if (_applier->_state._lastProcessedContinuousTick < tick) {
+        _applier->_state._lastProcessedContinuousTick = tick;
+      }
+      
+      if (_ongoingTransactions.empty() &&
+          _applier->_state._safeResumeTick == 0) {
+        _applier->_state._safeResumeTick = tick;
+      }
+
+      if (!_hasWrittenState) {
         _hasWrittenState = true;
         saveApplierState();
       }

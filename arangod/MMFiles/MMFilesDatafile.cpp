@@ -1134,9 +1134,8 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
   }
 
   char zero = 0;
-  int res = TRI_WRITE(fd, &zero, 1);
-
-  if (res < 0) {
+  long written = TRI_WRITE(fd, &zero, 1);
+  if (written < 0) {
     TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_TRACKED_CLOSE_FILE(fd);
@@ -1150,8 +1149,8 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
   }
 
   // memory map the data
-  res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd,
-                   &mmHandle, 0, &data);
+  int res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd,
+                       &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_SYSTEM_ERROR();

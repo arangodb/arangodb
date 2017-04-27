@@ -218,6 +218,16 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_SERVICE_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_SERVICE_DOWNLOAD_FAILED, "service download failed");
   REG_ERROR(ERROR_SERVICE_UPLOAD_FAILED, "service upload failed");
+  REG_ERROR(ERROR_LDAP_CANNOT_INIT, "cannot init a LDAP connection");
+  REG_ERROR(ERROR_LDAP_CANNOT_SET_OPTION, "cannot set a LDAP option");
+  REG_ERROR(ERROR_LDAP_CANNOT_BIND, "cannot bind to a LDAP server");
+  REG_ERROR(ERROR_LDAP_CANNOT_UNBIND, "cannot unbind from a LDAP server");
+  REG_ERROR(ERROR_LDAP_CANNOT_SEARCH, "cannot issue a LDAP search");
+  REG_ERROR(ERROR_LDAP_CANNOT_START_TLS, "cannot start a TLS LDAP session");
+  REG_ERROR(ERROR_LDAP_FOUND_NO_OBJECTS, "LDAP didn't found any objects");
+  REG_ERROR(ERROR_LDAP_NOT_ONE_USER_FOUND, "LDAP found zero ore more than one user");
+  REG_ERROR(ERROR_LDAP_USER_NOT_IDENTIFIED, "LDAP found a user, but its not the desired one");
+  REG_ERROR(ERROR_LDAP_INVALID_MODE, "invalid ldap mode");
   REG_ERROR(ERROR_TASK_INVALID_ID, "invalid task id");
   REG_ERROR(ERROR_TASK_DUPLICATE_ID, "duplicate task id");
   REG_ERROR(ERROR_TASK_NOT_FOUND, "task not found");
