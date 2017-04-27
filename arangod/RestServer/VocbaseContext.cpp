@@ -29,11 +29,13 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "Rest/GeneralResponse.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/Events.h"
@@ -182,13 +184,24 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
 
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Authorization header: " << authStr;
 
-    if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
-      return basicAuthentication(auth);
-    } 
-    if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
-      return jwtAuthentication(std::string(auth));
+    try {
+      // note that these methods may throw in case of an error
+      if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
+        return basicAuthentication(auth);
+      } 
+      if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
+        return jwtAuthentication(std::string(auth));
+      }
+      // fallthrough intentional
+    } catch (arangodb::basics::Exception const& ex) {
+      // translate error
+      if (ex.code() == TRI_ERROR_USER_NOT_FOUND) {
+        return rest::ResponseCode::UNAUTHORIZED;
+      }
+      return GeneralResponse::responseCode(ex.what());
+    } catch (...) {
+      return rest::ResponseCode::SERVER_ERROR;
     }
-    // fallthrough intentional
   }
     
   events::UnknownAuthenticationMethod(_request);
