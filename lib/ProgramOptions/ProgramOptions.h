@@ -515,8 +515,7 @@ class ProgramOptions {
   }
   
   void failNotice(std::string const& message) {
-    // only allowed to call if we already failed
-    TRI_ASSERT(_processingResult.failed());
+    _processingResult.failed(true);
     std::cerr << "  " << message << std::endl;
   }
 

@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
@@ -86,6 +87,58 @@ class WBReader : public rocksdb::WriteBatch::Handler {
   void Delete(rocksdb::Slice const& key) override { handleDeletion(key); }
 
   void SingleDelete(rocksdb::Slice const& key) override { handleDeletion(key); }
+
+  void PutLogData(rocksdb::Slice const& blob) {
+    auto type = RocksDBLogValue::type(blob);
+    switch (type) {
+      case RocksDBLogType::BeginTransaction: {
+        break;
+      }
+      case RocksDBLogType::DatabaseCreate: {
+        break;
+      }
+      case RocksDBLogType::DatabaseDrop: {
+        break;
+      }
+      case RocksDBLogType::CollectionCreate: {
+        break;
+      }
+      case RocksDBLogType::CollectionDrop: {
+        break;
+      }
+      case RocksDBLogType::CollectionRename: {
+        break;
+      }
+      case RocksDBLogType::CollectionChange: {
+        break;
+      }
+      case RocksDBLogType::IndexCreate: {
+        break;
+      }
+      case RocksDBLogType::IndexDrop: {
+        break;
+      }
+      case RocksDBLogType::ViewCreate: {
+        break;
+      }
+      case RocksDBLogType::ViewDrop: {
+        break;
+      }
+      case RocksDBLogType::ViewChange: {
+        break;
+      }
+      case RocksDBLogType::DocumentRemove: {
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  void startNewBatch() {
+    // starting new write batch
+    // TODO: reset state?
+  }
 
  private:
   bool shouldHandleKey(rocksdb::Slice const& key) {
@@ -203,8 +256,8 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
         fromTickIncluded = true;
       }
       s = batch.writeBatchPtr->Iterate(handler.get());
-    }
-    if (!s.ok()) {
+      handler->startNewBatch();
+    } else {
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
       auto converted = convertStatus(s);
       auto result = RocksDBReplicationResult(converted.errorNumber(), lastTick);

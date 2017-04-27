@@ -63,7 +63,7 @@
                 }
               } else {
                 if (availableDbs) {
-                  if (availableDbs.indexOf(db) > -1) {
+                  if (availableDbs.indexOf(rule) > -1) {
                     $('#loginDatabase').append(
                       '<option>' + rule + '</option>'
                     );
@@ -87,7 +87,6 @@
               successFunc(availableDbs);
             });
           } catch (ignore) {
-            console.log(ignore);
             successFunc();
           }
         }).error(function () {

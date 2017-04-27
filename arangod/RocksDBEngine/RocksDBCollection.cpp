@@ -38,6 +38,7 @@
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -340,6 +341,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
             ->forceSyncProperties();
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
         {"path", "statusString"}, true, /*forPersistence*/ false);
+    auto rtrx = rocksTransaction(trx);
+    rtrx->PutLogData(
+        RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
+                                     _logicalCollection->cid(), info)
+            .slice());
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
   created = true;
@@ -380,7 +386,9 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
         int res =
             static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
                 _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
-                builder.slice());
+                builder.slice(),
+                RocksDBLogValue::IndexDrop(_logicalCollection->vocbase()->id(),
+                                           _logicalCollection->cid(), iid));
         return res == TRI_ERROR_NO_ERROR;
       }
 
@@ -467,9 +475,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // don't do anything beyond deleting their contents
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
-  
-    RocksDBKeyBounds indexBounds =
-        RocksDBKeyBounds::Empty();
+
+    RocksDBKeyBounds indexBounds = RocksDBKeyBounds::Empty();
     switch (rindex->type()) {
       case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
         indexBounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
@@ -1120,6 +1127,9 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 
   rocksdb::Transaction* rtrx = rocksTransaction(trx);
 
+  rtrx->PutLogData(RocksDBLogValue::DocumentRemove(
+                       StringRef(doc.get(StaticStrings::KeyString)))
+                       .slice());
   auto status = rtrx->Delete(key.string());
   if (!status.ok()) {
     auto converted = rocksutils::convertStatus(status);
