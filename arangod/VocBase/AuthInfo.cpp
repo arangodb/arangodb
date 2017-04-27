@@ -345,7 +345,7 @@ HexHashResult AuthInfo::hexHashFromData(std::string const& hashMethod, char cons
   }
 
   if (crypted == nullptr ||
-      cryptedLength <= 0) {
+      cryptedLength == 0) {
     delete[] crypted;
     return HexHashResult(TRI_ERROR_OUT_OF_MEMORY);
   }
