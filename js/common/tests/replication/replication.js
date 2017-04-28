@@ -262,6 +262,10 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFirstTick : function () {
+      if (db._engine().name === "mmfiles") {
+        return;
+      }
+      
       var state = replication.logger.state().state;
       assertTrue(state.running);
       var tick = state.lastLogTick;
@@ -279,6 +283,10 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTickRanges : function () {
+      if (db._engine().name === "mmfiles") {
+        return;
+      }
+      
       var state = replication.logger.state().state;
       assertTrue(state.running);
       var tick = state.lastLogTick;

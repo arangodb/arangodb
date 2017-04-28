@@ -27,6 +27,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
@@ -617,8 +618,11 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   if (found) {
     limit = static_cast<size_t>(StringUtils::uint64(value5));
   }
-
-  VPackBuilder builder;
+  
+  std::shared_ptr<transaction::Context> transactionContext =
+  transaction::StandaloneContext::Create(_vocbase);
+  
+  VPackBuilder builder(transactionContext->getVPackOptions());
   builder.openArray();
   auto result = tailWal(_vocbase, tickStart, limit, includeSystem, builder);
   builder.close();
@@ -654,10 +658,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
     if (length > 0) {
       if (useVpp) {
-        auto iter = arangodb::velocypack::ArrayIterator(data);
-        auto opts = arangodb::velocypack::Options::Defaults;
-        for (auto message : iter) {
-          _response->addPayload(VPackSlice(message), &opts, true);
+        for (auto message : arangodb::velocypack::ArrayIterator(data)) {
+          _response->addPayload(VPackSlice(message),
+                                transactionContext->getVPackOptions(), true);
         }
       } else {
         HttpResponse* httpResponse =
@@ -668,8 +671,13 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                                          "invalid response type");
         }
 
-        if (length > 0) {
-          httpResponse->body().appendText(data.toJson());
+        basics::StringBuffer& buffer = httpResponse->body();
+        arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+        VPackDumper dumper(&adapter,
+                           transactionContext->getVPackOptions()); // note: we need the CustomTypeHandler here
+        for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
+          dumper.dump(marker);
+          httpResponse->body().appendChar('\n');
         }
       }
       // add client
@@ -756,8 +764,8 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));
   builder.add("lastUncommittedLogTick",
-              VPackValue(std::to_string(0)));  // s.lastAssignedTick
-  builder.add("totalEvents", VPackValue(0));   // s.numEvents + s.numEventsSync
+              VPackValue(std::to_string(ctx->lastTick())));  // s.lastAssignedTick
+  builder.add("totalEvents", VPackValue(ctx->lastTick()));   // s.numEvents + s.numEventsSync
   builder.add("time", VPackValue(utilities::timeString()));
   builder.close();  // state
 

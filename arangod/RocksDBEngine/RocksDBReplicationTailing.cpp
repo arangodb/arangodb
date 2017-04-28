@@ -45,8 +45,8 @@ static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
     //      return REPLICATION_MARKER_DOCUMENT;
     //    case TRI_DF_MARKER_VPACK_REMOVE:
     //      return REPLICATION_MARKER_REMOVE;
-    case RocksDBLogType::BeginTransaction:
-      return REPLICATION_TRANSACTION_START;
+    //case RocksDBLogType::BeginTransaction:
+    //  return REPLICATION_TRANSACTION_START;
     //    case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
     //      return REPLICATION_TRANSACTION_COMMIT;
     //    case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION:
@@ -124,8 +124,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _builder.add(
             "type",
             VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("cid", VPackValue(_currentCollectionId));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         _builder.add("data", indexSlice);
         _builder.close();
         break;
@@ -138,8 +138,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _builder.add(
             "type",
             VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("cid", VPackValue(_currentCollectionId));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         _builder.add("data", VPackValue(VPackValueType::Object));
         _builder.add("id", VPackValue(std::to_string(iid)));
         _builder.close();
@@ -164,12 +164,12 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _currentTrxId = RocksDBLogValue::transactionId(blob);
 
         _builder.openObject();
-        _builder.add("tick", VPackValue(_currentSequence));
+        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
         _builder.add(
             "type",
             VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_START)));
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("tid", VPackValue(_currentTrxId));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         _builder.close();
         break;
       }
@@ -205,15 +205,20 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     int res = TRI_ERROR_NO_ERROR;
     switch (RocksDBKey::type(key)) {
       case RocksDBEntryType::Collection: {
+        usleep(1000000);
+        usleep(1000000);
+        
         TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionCreate ||
                    _lastLogType == RocksDBLogType::CollectionChange ||
-                   _lastLogType == RocksDBLogType::CollectionRename);
+                   _lastLogType == RocksDBLogType::CollectionRename ||
+                   _lastLogType == RocksDBLogType::IndexCreate ||
+                   _lastLogType == RocksDBLogType::IndexDrop);
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
         _builder.openObject();
-        _builder.add("tick", VPackValue(_currentSequence));
+        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
         _builder.add("type", VPackValue(convertLogType(_lastLogType)));
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("cid", VPackValue(_currentCollectionId));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
 
         if (_lastLogType == RocksDBLogType::CollectionRename) {
           VPackSlice collectionData(value.data());
@@ -236,12 +241,12 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _builder.openObject();
         _builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
         // auto containers = getContainerIds(key);
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("cid", VPackValue(_currentCollectionId));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         if (_singleOpTransaction) {  // single op is defined to 0
-          _builder.add("tid", VPackValue(0));
+          _builder.add("tid", VPackValue("0"));
         } else {
-          _builder.add("tid", VPackValue(_currentTrxId));
+          _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
         }
         _builder.add("data", RocksDBValue::data(value));
         _builder.close();
@@ -272,12 +277,12 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
 
         _builder.openObject();
-        _builder.add("tick", VPackValue(_currentSequence));
+        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
         _builder.add("type", VPackValue(REPLICATION_INDEX_DROP));
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("cid", VPackValue(_currentCollectionId));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         _builder.add("data", VPackValue(VPackValueType::Object));
-        _builder.add("id", VPackValue(_currentCollectionId));
+        _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
         _builder.add("name", VPackValue(""));  // not used at all
         _builder.close();
         _builder.close();
@@ -294,8 +299,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _builder.add(
             "type",
             VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
-        _builder.add("database", VPackValue(_currentDbId));
-        _builder.add("cid", VPackValue(_currentCollectionId));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         if (_singleOpTransaction) {  // single op is defined to 0
           _builder.add("tid", VPackValue(0));
         } else {
@@ -333,12 +338,12 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   void endBatch() {
     if (_seenBeginTransaction) {
       _builder.openObject();
-      _builder.add("tick", VPackValue(_currentSequence));
+      _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
       _builder.add(
           "type",
           VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
-      _builder.add("database", VPackValue(_currentDbId));
-      _builder.add("tid", VPackValue(_currentTrxId));
+      _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+      _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
       _builder.close();
     }
     _seenBeginTransaction = false;

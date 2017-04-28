@@ -963,7 +963,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
   builder.add("lastUncommittedLogTick", VPackValue(std::to_string(lastTick)));
-  builder.add("totalEvents", VPackValue(0));  // s.numEvents + s.numEventsSync
+  builder.add("totalEvents", VPackValue(lastTick));  // s.numEvents + s.numEventsSync
   builder.add("time", VPackValue(utilities::timeString()));
   builder.close();
 

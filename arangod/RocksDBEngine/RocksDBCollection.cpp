@@ -110,29 +110,9 @@ arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
 }
 
 arangodb::Result RocksDBCollection::persistProperties() {
-  Result res;
-  try {
-    VPackBuilder infoBuilder = _logicalCollection->toVelocyPackIgnore(
-        {"path", "statusString"}, true, true);
-
-    RocksDBKey key(RocksDBKey::Collection(_logicalCollection->vocbase()->id(),
-                                          _logicalCollection->cid()));
-    RocksDBValue value(RocksDBValue::Document(infoBuilder.slice()));
-    res = globalRocksDBPut(key.string(), value.string());
-
-  } catch (arangodb::basics::Exception const& ex) {
-    res.reset(ex.code());
-  } catch (...) {
-    res.reset(TRI_ERROR_INTERNAL);
-  }
-
-  if (res.fail()) {
-    // TODO: what to do here
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-        << "could not save collection change marker in log: "
-        << res.errorMessage();
-  }
-  return res;
+  // only code path calling this causes these properties to be
+  // already written in RocksDBEngine::changeCollection()
+  return arangodb::Result{};
 }
 
 PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical,
