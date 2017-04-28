@@ -82,7 +82,7 @@ int RocksDBIndex::unload() {
   }
   return TRI_ERROR_NO_ERROR;
 }
-  
+
 /// @brief return a VelocyPack representation of the index
 void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                 bool forPersistence) const {
@@ -101,7 +101,8 @@ void RocksDBIndex::createCache() {
 
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-  _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
+  _cache = CacheManagerFeature::MANAGER->createCache(
+      cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
 }
 

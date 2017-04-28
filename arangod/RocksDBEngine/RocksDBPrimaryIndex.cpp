@@ -166,7 +166,8 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
 }
 
 /// special method to expose the document key for incremental replication
-bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb, size_t limit) {
+bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb,
+                                          size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -175,13 +176,13 @@ bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb, size_t lim
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
-  
+
   while (limit > 0) {
     RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
     StringRef key = RocksDBKey::primaryKey(_iterator->key());
     cb(token, key);
     --limit;
-    
+
     if (_reverse) {
       _iterator->Prev();
     } else {
@@ -379,9 +380,9 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 }
 
 // TODO: remove this method?
-RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
-                                            VPackSlice slice,
-                                            ManagedDocumentResult& result) const {
+RocksDBToken RocksDBPrimaryIndex::lookupKey(
+    transaction::Methods* trx, VPackSlice slice,
+    ManagedDocumentResult& result) const {
   return lookupKey(trx, StringRef(slice));
 }
 
@@ -551,7 +552,7 @@ IndexIterator* RocksDBPrimaryIndex::anyIterator(
   return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
 }
 
-void RocksDBPrimaryIndex::invokeOnAllElements (
+void RocksDBPrimaryIndex::invokeOnAllElements(
     transaction::Methods* trx,
     std::function<bool(DocumentIdentifierToken const&)> callback) const {
   ManagedDocumentResult mmdr;

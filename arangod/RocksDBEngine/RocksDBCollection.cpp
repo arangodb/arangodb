@@ -176,8 +176,8 @@ void RocksDBCollection::open(bool ignoreErrors) {
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   auto counterValue = engine->counterManager()->loadCounter(this->objectId());
-  LOG_TOPIC(ERR, Logger::DEVEL)
-      << " number of documents: " << counterValue.added();
+  LOG_TOPIC(ERR, Logger::DEVEL) << " number of documents: "
+                                << counterValue.added();
   _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
   //_numberDocuments = countKeyRange(db, readOptions,
@@ -316,16 +316,15 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   addIndex(idx);
   {
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
-        {"path", "statusString"}, true, /*forPersistence*/ false);
-    
+        {"path", "statusString"}, true, /*forPersistence*/ true);
+
     VPackBuilder indexInfo;
     idx->toVelocyPack(indexInfo, false, true);
-    int res =
-        static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
-            _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
-            builder.slice(),
-            RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
-                                         _logicalCollection->cid(), indexInfo.slice()));
+    int res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
+        _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
+        builder.slice(), RocksDBLogValue::IndexCreate(
+                             _logicalCollection->vocbase()->id(),
+                             _logicalCollection->cid(), indexInfo.slice()));
     if (res != TRI_ERROR_NO_ERROR) {
       // We could not persist the index creation. Better abort
       // Remove the Index in the local list again.
@@ -372,7 +371,6 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   }
   TRI_ASSERT(newIdx != nullptr);
 
-
   auto const id = newIdx->id();
 
   TRI_UpdateTickServer(id);
@@ -400,15 +398,15 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
         {"path", "statusString"}, true, /*forPersistence*/ false);
     VPackBuilder indexInfo;
     newIdx->toVelocyPack(indexInfo, false, true);
-    
+
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     TRI_ASSERT(engine != nullptr);
     int res = engine->writeCreateCollectionMarker(
         _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
-        builder.slice(),
-        RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
-                                     _logicalCollection->cid(), indexInfo.slice()));
+        builder.slice(), RocksDBLogValue::IndexCreate(
+                             _logicalCollection->vocbase()->id(),
+                             _logicalCollection->cid(), indexInfo.slice()));
     if (res != TRI_ERROR_NO_ERROR) {
       // We could not persist the index creation. Better abort
       // Remove the Index in the local list again.
@@ -427,7 +425,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
 
   idx = newIdx;
   // We need to write the IndexMarker
-   
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -515,7 +513,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
   while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
-    VPackSlice key = VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
+    VPackSlice key =
+        VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
     TRI_ASSERT(key.isString());
 
     // add possible log statement
@@ -687,7 +686,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   TRI_voc_rid_t revisionId =
       transaction::helpers::extractRevFromDocument(newSlice);
-  
+
   RocksDBTransactionState* state =
       static_cast<RocksDBTransactionState*>(trx->state());
 
@@ -695,8 +694,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
 
-  state->prepareOperation(_logicalCollection->cid(), revisionId,
-                          StringRef(),
+  state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
@@ -988,7 +986,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
       return res;
     }
   }
-  
+
   RocksDBTransactionState* state =
       static_cast<RocksDBTransactionState*>(trx->state());
 
@@ -997,8 +995,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
                          [&state]() { state->resetLogState(); });
 
   // add possible log statement under guard
-  state->prepareOperation(_logicalCollection->cid(), revisionId,
-                          StringRef(key),
+  state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(key),
                           TRI_VOC_DOCUMENT_OPERATION_REMOVE);
   res = removeDocument(trx, oldRevisionId, oldDoc, options.waitForSync);
   if (res.ok()) {
