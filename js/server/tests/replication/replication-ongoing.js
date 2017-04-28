@@ -164,8 +164,14 @@ function ReplicationSuite() {
     var printed = false;
 
     while (true) {
-      if (!slaveFuncOngoing(state)) {
-        return;
+      var r = slaveFuncOngoing(state);
+      if (r === "wait") { 
+        // special return code that tells us to hang on
+        internal.wait(0.5, false);
+        continue;
+      }
+      if (!r) {
+        break;
       }
 
       var slaveState = replication.applier.state();
@@ -664,6 +670,9 @@ function ReplicationSuite() {
           try {
             require("@arangodb/tasks").get(state.task);
             // task exists
+            connectToSlave();
+            internal.wait(0.5, false);
+            return "wait";
           } catch (err) {
             // task does not exist. we're done
             state.checksum = collectionChecksum(cn);
@@ -672,10 +681,6 @@ function ReplicationSuite() {
             connectToSlave();
             return false;
           }
-
-          connectToSlave();
-          internal.wait(0.5, false);
-          return true;
         },
 
         function(state) {
@@ -743,6 +748,12 @@ function ReplicationSuite() {
           try {
             require("@arangodb/tasks").get(state.task);
             // task exists
+            connectToSlave();
+
+            internal.wait(0.5, false);
+            replication.applier.start();
+            assertTrue(replication.applier.state().state.running);
+            return "wait";
           } catch (err) {
             // task does not exist. we're done
             state.checksum = collectionChecksum(cn);
@@ -751,13 +762,6 @@ function ReplicationSuite() {
             connectToSlave();
             return false;
           }
-
-          connectToSlave();
-
-          internal.wait(0.5, false);
-          replication.applier.start();
-          assertTrue(replication.applier.state().state.running);
-          return true;
         },
 
         function(state) {
