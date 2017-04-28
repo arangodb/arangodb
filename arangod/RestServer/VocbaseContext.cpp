@@ -52,7 +52,8 @@ double VocbaseContext::ServerSessionTtl =
 VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase)
     : RequestContext(request),
     _vocbase(vocbase),
-    _authentication(nullptr) {
+    _authentication(nullptr),
+    _execContext(nullptr) {
   TRI_ASSERT(_vocbase != nullptr);
   _authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(_authentication != nullptr);
@@ -185,7 +186,7 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Authorization header: " << authStr;
 
     try {
-      rest::ResponseCode resCode;
+      rest::ResponseCode resCode = rest::ResponseCode::UNAUTHORIZED;
       // note that these methods may throw in case of an error
       if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
         resCode = basicAuthentication(auth);

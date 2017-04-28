@@ -28,7 +28,7 @@ class AuthContext {
 
   protected:
     std::string _databaseAccess; // AuthLevel
-    map<std::string, std::string> _collectionAccess; // AuthLevel
+    std::map<std::string, std::string> _collectionAccess; // AuthLevel
 
 };
 
@@ -39,6 +39,6 @@ class ExecContext {
   protected:
     std::string _user;
     std::string _database;
-    shared_ptr<AuthContext> _auth;
+    std::shared_ptr<AuthContext> _auth;
 };
 }
