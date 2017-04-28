@@ -580,41 +580,41 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   if (_request->transportType() == Endpoint::TransportType::VPP) {
     useVpp = true;
   }
-
+  
   // determine start and end tick
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = UINT64_MAX;
-
+  
   bool found;
   std::string const& value1 = _request->value("from", found);
-
+  
   if (found) {
     tickStart = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value1));
   }
-
+  
   // determine end tick for dump
   std::string const& value2 = _request->value("to", found);
-
+  
   if (found) {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
-
+  
   if (found && (tickStart > tickEnd || tickEnd == 0)) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
   }
-
+  
   bool includeSystem = true;
   std::string const& value4 = _request->value("includeSystem", found);
-
+  
   if (found) {
     includeSystem = StringUtils::boolean(value4);
   }
-
+  
   size_t limit = 10000;  // TODO: determine good default value?
   std::string const& value5 = _request->value("chunkSize", found);
-
+  
   if (found) {
     limit = static_cast<size_t>(StringUtils::uint64(value5));
   }
@@ -627,69 +627,72 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   auto result = tailWal(_vocbase, tickStart, limit, includeSystem, builder);
   builder.close();
   auto data = builder.slice();
-
-  if (result.ok()) {
-    bool const checkMore =
-        (result.maxTick() > 0 && result.maxTick() < latestSequenceNumber());
-
-    // generate the result
-    size_t length = data.length();
-
-    if (length == 0) {
-      resetResponse(rest::ResponseCode::NO_CONTENT);
-    } else {
-      resetResponse(rest::ResponseCode::OK);
-    }
-
-    // transfer ownership of the buffer contents
-    _response->setContentType(rest::ContentType::DUMP);
-
-    // set headers
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
-                           checkMore ? "true" : "false");
-    _response->setHeaderNC(
-        TRI_REPLICATION_HEADER_LASTINCLUDED,
-        StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                           StringUtils::itoa(latestSequenceNumber()));
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-                           result.fromTickIncluded() ? "true" : "false");
-
-    if (length > 0) {
-      if (useVpp) {
-        for (auto message : arangodb::velocypack::ArrayIterator(data)) {
-          _response->addPayload(VPackSlice(message),
-                                transactionContext->getVPackOptions(), true);
-        }
-      } else {
-        HttpResponse* httpResponse =
-            dynamic_cast<HttpResponse*>(_response.get());
-
-        if (httpResponse == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "invalid response type");
-        }
-
-        basics::StringBuffer& buffer = httpResponse->body();
-        arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-        VPackDumper dumper(&adapter,
-                           transactionContext->getVPackOptions()); // note: we need the CustomTypeHandler here
-        for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
-          dumper.dump(marker);
-          httpResponse->body().appendChar('\n');
-        }
+  
+  if (result.fail()) {
+    generateError(rest::ResponseCode::SERVER_ERROR, result.errorNumber(), result.errorMessage());
+    return;
+  }
+  
+  bool const checkMore =
+  (result.maxTick() > 0 && result.maxTick() < latestSequenceNumber());
+  
+  // generate the result
+  size_t length = data.length();
+  
+  if (length == 0) {
+    resetResponse(rest::ResponseCode::NO_CONTENT);
+  } else {
+    resetResponse(rest::ResponseCode::OK);
+  }
+  
+  // transfer ownership of the buffer contents
+  _response->setContentType(rest::ContentType::DUMP);
+  
+  // set headers
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+                         checkMore ? "true" : "false");
+  _response->setHeaderNC(
+                         TRI_REPLICATION_HEADER_LASTINCLUDED,
+                         StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+                         StringUtils::itoa(latestSequenceNumber()));
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+                         result.fromTickIncluded() ? "true" : "false");
+  
+  if (length > 0) {
+    if (useVpp) {
+      for (auto message : arangodb::velocypack::ArrayIterator(data)) {
+        _response->addPayload(VPackSlice(message),
+                              transactionContext->getVPackOptions(), true);
       }
-      // add client
-      bool found;
-      std::string const& value = _request->value("serverId", found);
-
-      if (found) {
-        TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
-
-        if (serverId > 0) {
-          _vocbase->updateReplicationClient(serverId, result.maxTick());
-        }
+    } else {
+      HttpResponse* httpResponse =
+      dynamic_cast<HttpResponse*>(_response.get());
+      
+      if (httpResponse == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid response type");
+      }
+      
+      basics::StringBuffer& buffer = httpResponse->body();
+      arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+      VPackDumper dumper(&adapter,
+                         transactionContext->getVPackOptions()); // note: we need the CustomTypeHandler here
+      for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
+        dumper.dump(marker);
+        httpResponse->body().appendChar('\n');
+      }
+    }
+    // add client
+    bool found;
+    std::string const& value = _request->value("serverId", found);
+    
+    if (found) {
+      TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
+      
+      if (serverId > 0) {
+        _vocbase->updateReplicationClient(serverId, result.maxTick());
       }
     }
   }
@@ -703,7 +706,30 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
-  generateResult(rest::ResponseCode::OK, VelocyPackHelper::EmptyArrayValue());
+  bool useVpp = false;
+  if (_request->transportType() == Endpoint::TransportType::VPP) {
+    useVpp = true;
+  }
+  //_response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, StringUtils::itoa(dump._lastFoundTick));
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, "0");
+  _response->setContentType(rest::ContentType::DUMP);
+  //_response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, dump._fromTickIncluded ? "true" : "false");
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, "true");
+  VPackSlice slice = VelocyPackHelper::EmptyArrayValue();
+  if (useVpp) {
+    _response->addPayload(slice, &VPackOptions::Defaults, false);
+  } else {
+    HttpResponse* httpResponse =
+        dynamic_cast<HttpResponse*>(_response.get());
+
+    if (httpResponse == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid response type");
+    }
+
+    httpResponse->body().appendText(slice.toJson());
+  }
+  _response->setResponseCode(rest::ResponseCode::OK);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

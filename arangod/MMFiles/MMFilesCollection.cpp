@@ -2453,7 +2453,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
       std::this_thread::yield();
     } else {
       usleep(static_cast<TRI_usleep_t>(waitTime));
-      if (waitTime < 500000) {
+      if (waitTime < 32) {
         waitTime *= 2;
       }
     }
@@ -2566,7 +2566,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
       std::this_thread::yield();
     } else {
       usleep(static_cast<TRI_usleep_t>(waitTime));
-      if (waitTime < 500000) {
+      if (waitTime < 32) {
         waitTime *= 2;
       }
     }

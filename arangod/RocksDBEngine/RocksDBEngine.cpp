@@ -380,13 +380,19 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
     // dump index information
     VPackSlice indexes = fullParameters.get("indexes");
     builder.add(VPackValue("indexes"));
+    builder.openArray();
     if (indexes.isArray()) {
-      builder.add(indexes);
-    } else {
-      // Insert an empty array instead
-      builder.openArray();
-      builder.close();
+      for (auto const idx : VPackArrayIterator(indexes)) {
+        // This is only allowed to contain user-defined indexes.
+        // So we have to exclude Primary + Edge Types
+        VPackSlice type = idx.get("type");
+        TRI_ASSERT(type.isString());
+        if (!type.isEqualString("primary") && !type.isEqualString("edge")) {
+          builder.add(idx);
+        }
+      }
     }
+    builder.close();
   }
 
   builder.close();
