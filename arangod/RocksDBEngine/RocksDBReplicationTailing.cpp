@@ -282,22 +282,23 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         break;
       }
       case RocksDBEntryType::Document: {
-        // onl
-        if (!shouldHandleKey(key)) {
+        // document removes, because of a drop is not transactional and
+        // should not appear in the WAL
+        if (!shouldHandleKey(key) ||
+            !(_seenBeginTransaction || _singleOpTransaction)) {
           return;
         }
-        
-        TRI_ASSERT(_seenBeginTransaction || _singleOpTransaction);
+
         TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
         TRI_ASSERT(!_removeDocumentKey.empty());
-
+        
         uint64_t revisionId = RocksDBKey::revisionId(key);
         _builder.openObject();
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
         _builder.add(
-            "type",
-            VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
+                     "type",
+                     VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
         _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         if (_singleOpTransaction) {  // single op is defined to 0
