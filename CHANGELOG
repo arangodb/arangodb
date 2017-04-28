@@ -18,6 +18,8 @@ v3.1.19 (XXXX-XX-XX)
 
 * fix occasional hanging shutdowns on OS X
 
+* reduce the maximal wait time in exponential backoff when waiting for locks.
+  This improves fairness of the collection locks under high load.
 
 v3.1.18 (2017-04-18)
 --------------------
