@@ -1404,14 +1404,28 @@ AgencyCommResult AgencyComm::sendWithFailover(
         "Failed agency comm (" << result._statusCode << ")! " <<
         "Inquiring about clientId " << clientId << ".";
       
-      AgencyCommResult inq = send(
-        connection.get(), method, conTimeout, "/_api/agency/inquire",
-        b.toJson(), "");
+      AgencyCommResult inq;
+      std::shared_ptr<VPackBuilder> bodyBuilder;
+      VPackSlice outer;
+
+      while (true) {
+        inq = send(
+          connection.get(), method, conTimeout, "/_api/agency/inquire",
+          b.toJson(), "");
+        if (!inq.successful()) {
+          break;
+        }
+        bodyBuilder = VPackParser::fromJson(inq._body);
+        outer = bodyBuilder->slice();
+        if (!outer.isString() || outer.copyString() != "ongoing") {
+          break;
+        }
+        // We do not really know what has happened, so we have to ask
+        // again later!
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
       
       if (inq.successful()) {
-        auto bodyBuilder = VPackParser::fromJson(inq._body);
-        auto const& outer = bodyBuilder->slice();
-
         if (outer.isArray() && outer.length() > 0) {
           bool success = false;
           for (auto const& inner : VPackArrayIterator(outer)) {
