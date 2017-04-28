@@ -317,12 +317,15 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   {
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
         {"path", "statusString"}, true, /*forPersistence*/ false);
+    
+    VPackBuilder indexInfo;
+    idx->toVelocyPack(indexInfo, false, true);
     int res =
         static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
             _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
             builder.slice(),
             RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
-                                         _logicalCollection->cid(), info));
+                                         _logicalCollection->cid(), indexInfo.slice()));
     if (res != TRI_ERROR_NO_ERROR) {
       // We could not persist the index creation. Better abort
       // Remove the Index in the local list again.
@@ -395,6 +398,9 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   {
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
         {"path", "statusString"}, true, /*forPersistence*/ false);
+    VPackBuilder indexInfo;
+    idx->toVelocyPack(indexInfo, false, true);
+    
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     TRI_ASSERT(engine != nullptr);
@@ -402,7 +408,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
         _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
         builder.slice(),
         RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
-                                     _logicalCollection->cid(), info));
+                                     _logicalCollection->cid(), indexInfo.slice()));
     if (res != TRI_ERROR_NO_ERROR) {
       // We could not persist the index creation. Better abort
       // Remove the Index in the local list again.

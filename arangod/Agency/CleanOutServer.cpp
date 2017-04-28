@@ -392,7 +392,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         }
 
         toServer = serversCopy.at(arangodb::RandomGenerator::interval(
-            0, serversCopy.size()-1));
+            static_cast<int64_t>(0), serversCopy.size()-1));
 
         // Schedule move into trx:
         MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),

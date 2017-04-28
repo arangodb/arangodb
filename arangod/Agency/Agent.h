@@ -108,6 +108,15 @@ class Agent : public arangodb::Thread,
   /// @brief Attempt read/write transaction
   trans_ret_t transact(query_t const&) override;
 
+  /// @brief Put trxs into list of ongoing ones.
+  void addTrxsOngoing(Slice trxs);
+
+  /// @brief Remove trxs from list of ongoing ones.
+  void removeTrxsOngoing(Slice trxs);
+
+  /// @brief Check whether a trx is ongoing.
+  bool isTrxOngoing(std::string& id);
+
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
   bool recvAppendEntriesRPC(term_t term, std::string const& leaderId,
@@ -343,6 +352,12 @@ class Agent : public arangodb::Thread,
   /// @brief Keep track of when I last took on leadership
   TimePoint _leaderSince;
   
+  /// @brief Ids of ongoing transactions, used for inquire:
+  std::set<std::string> _ongoingTrxs;
+
+  // lock for _ongoingTrxs
+  arangodb::Mutex _trxsLock;
+
 };
 }
 }
