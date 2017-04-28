@@ -618,14 +618,7 @@ describe ArangoDB do
         parameters["name"].should eq("UnitTestsReplication")
         parameters["waitForSync"].should eq(false)
 
-        indexes = c['indexes']
-        indexes.length.should eq(1)
-
-        idx = indexes[0]
-        idx["id"].should match(/^\d+$/)
-        idx["type"].should eq("primary")
-        idx["unique"].should eq(true)
-        idx["fields"].should eq([ "_key" ])
+        c['indexes'].should eq([ ])
 
         # second collection
         c = filtered[1]
@@ -642,26 +635,7 @@ describe ArangoDB do
         parameters["name"].should eq("UnitTestsReplication2")
         parameters["waitForSync"].should eq(true)
 
-        indexes = c['indexes']
-        indexes.length.should eq(3)
-
-        idx = indexes[0]
-        idx["id"].should match(/^\d+$/)
-        idx["type"].should eq("primary")
-        idx["unique"].should eq(true)
-        idx["fields"].should eq([ "_key" ])
-
-        idx = indexes[1]
-        idx["id"].should match(/^\d+$/)
-        idx["type"].should eq("edge")
-        idx["unique"].should eq(false)
-        idx["fields"].should eq([ "_from" ])
-
-        idx = indexes[2]
-        idx["id"].should match(/^\d+$/)
-        idx["type"].should eq("edge")
-        idx["unique"].should eq(false)
-        idx["fields"].should eq([ "_to" ])
+        c['indexes'].should eq([ ])
       end
 
       it "checks the inventory with indexes" do
@@ -719,21 +693,15 @@ describe ArangoDB do
         parameters["waitForSync"].should eq(false)
 
         indexes = c['indexes']
-        indexes.length.should eq(3)
+        indexes.length.should eq(2)
 
         idx = indexes[0]
-        idx["id"].should match(/^\d+$/)
-        idx["type"].should eq("primary")
-        idx["unique"].should eq(true)
-        idx["fields"].should eq([ "_key" ])
-
-        idx = indexes[1]
         idx["id"].should match(/^\d+$/)
         idx["type"].should eq("hash")
         idx["unique"].should eq(false)
         idx["fields"].should eq([ "a", "b" ])
 
-        idx = indexes[2]
+        idx = indexes[1]
         idx["id"].should match(/^\d+$/)
         idx["type"].should eq("skiplist")
         idx["unique"].should eq(false)
@@ -755,15 +723,9 @@ describe ArangoDB do
         parameters["waitForSync"].should eq(false)
 
         indexes = c['indexes']
-        indexes.length.should eq(2)
+        indexes.length.should eq(1)
 
         idx = indexes[0]
-        idx["id"].should match(/^\d+$/)
-        idx["type"].should eq("primary")
-        idx["unique"].should eq(true)
-        idx["fields"].should eq([ "_key" ])
-
-        idx = indexes[1]
         idx["id"].should match(/^\d+$/)
         idx["type"].should eq("skiplist")
         idx["unique"].should eq(true)
@@ -926,69 +888,9 @@ describe ArangoDB do
           part = body.slice(0, position)
 
           document = JSON.parse(part)
-          document['type'].should eq(2301)
+          document['type'].should eq(2300)
           document['data']['_key'].should match(/^test[0-9]+$/)
           document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
-          document['data']['_from'].should eq("UnitTestsReplication/foo")
-          document['data']['_to'].should eq("UnitTestsReplication/bar")
-          document['data'].should have_key('test1')
-          document['data']['test2'].should eq(false)
-          document['data']['test3'].should eq([ ])
-          document['data']['test4'].should eq({ })
-
-          body = body.slice(position + 1, body.length)
-          i = i + 1
-        end
-
-        i.should eq(100)
-      end
-
-      it "checks the dump for an edge collection, 2.8 compat mode" do
-        cid = ArangoDB.create_collection("UnitTestsReplication", false)
-        cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3)
-
-        (0...100).each{|i|
-          body = "{ \"_key\" : \"test" + i.to_s + "\", \"_from\" : \"UnitTestsReplication/foo\", \"_to\" : \"UnitTestsReplication/bar\", \"test1\" : " + i.to_s + ", \"test2\" : false, \"test3\" : [ ], \"test4\" : { } }"
-          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication2", :body => body)
-          doc.code.should eq(202)
-        }
-
-        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
-        doc.code.should eq(200)
-
-        ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
-        doc0 = ArangoDB.post(api + "/batch", :body => "{}")
-        @batchId = doc0.parsed_response["id"]
-        @batchId.should  match(/^\d+$/)
-
-        cmd = api + "/dump?collection=UnitTestsReplication2&chunkSize=65536&compat28=true&batchId=#{@batchId}"
-        doc = ArangoDB.log_get("#{prefix}-dump-edge", cmd, :body => "", :format => :plain)
-
-        doc.code.should eq(200)
-
-        doc.headers["x-arango-replication-checkmore"].should eq("false")
-        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
-        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
-        doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
-
-        body = doc.response.body
-        i = 0
-        while 1
-          position = body.index("\n")
-
-          break if position == nil
-
-          part = body.slice(0, position)
-
-          document = JSON.parse(part)
-          document['type'].should eq(2301)
-          document.should have_key("key")
-          document['key'].should match(/^test[0-9]+$/)
-          document.should have_key("rev")
-          document['rev'].should match(/^[a-zA-Z0-9_\-]+$/)
-
-          document['data']['_key'].should eq("test" + i.to_s)
-          document['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
           document['data']['_from'].should eq("UnitTestsReplication/foo")
           document['data']['_to'].should eq("UnitTestsReplication/bar")
           document['data'].should have_key('test1')
@@ -1179,7 +1081,7 @@ describe ArangoDB do
         @batchId = doc0.parsed_response["id"]
         @batchId.should  match(/^\d+$/)
 
-        cmd = api + "/dump?collection=UnitTestsReplication&compat28=false&batchId=#{@batchId}"
+        cmd = api + "/dump?collection=UnitTestsReplication&batchId=#{@batchId}"
         doc = ArangoDB.log_get("#{prefix}-dump-non-empty", cmd, :body => "", :format => :plain)
 
         doc.code.should eq(200)
@@ -1198,52 +1100,6 @@ describe ArangoDB do
           doc.should_not have_key("key")
           doc.should_not have_key("rev")
           doc['data']['_key'].should match(/^test[0-9]+$/)
-          doc['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
-          doc['data'].should have_key('test')
-
-          body = body.slice(position + 1, body.length)
-          i = i + 1
-        end
-
-        i.should eq(100)
-      end
-
-      it "checks the dump for a non-empty collection, 2.8 compat mode" do
-        cid = ArangoDB.create_collection("UnitTestsReplication", false)
-
-        (0...100).each{|i|
-          body = "{ \"_key\" : \"test" + i.to_s + "\", \"test\" : " + i.to_s + " }"
-          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication", :body => body)
-          doc.code.should eq(202)
-        }
-
-        ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
-        doc0 = ArangoDB.post(api + "/batch", :body => "{}")
-        @batchId = doc0.parsed_response["id"]
-        @batchId.should  match(/^\d+$/)
-
-        cmd = api + "/dump?collection=UnitTestsReplication&compat28=true&batchId=#{@batchId}"
-        doc = ArangoDB.log_get("#{prefix}-dump-non-empty", cmd, :body => "", :format => :plain)
-
-        doc.code.should eq(200)
-
-        body = doc.response.body
-        i = 0
-        while 1
-          position = body.index("\n")
-
-          break if position == nil
-
-          part = body.slice(0, position)
-
-          doc = JSON.parse(part)
-          doc['type'].should eq(2300)
-          doc.should have_key("key")
-          doc['key'].should match(/^test[0-9]+$/)
-          doc.should have_key("rev")
-          doc['rev'].should match(/^[a-zA-Z0-9_\-]+$/)
-
-          doc['data']['_key'].should eq("test" + i.to_s)
           doc['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
           doc['data'].should have_key('test')
 
