@@ -310,12 +310,13 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
     return false;
   }
 
-  void storeMaxTick(uint64_t tick){
-    // ukpdateMaxTickHelper
+  void storeMaxTick(uint64_t tick) {
+    // updateMaxTickHelper
     if (tick > _maxTick){
       _maxTick = tick;
     }
   }
+
   void updateMaxTick(const rocksdb::Slice& key, const rocksdb::Slice& value) {
     // RETURN (side-effect): update _maxTick
     //
@@ -328,22 +329,19 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
 
     if (RocksDBKey::type(key) == RocksDBEntryType::Document) {
       storeMaxTick(RocksDBKey::revisionId(key));
-    }
-    if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
+    } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
       storeMaxTick(RocksDBKey::collectionId(key));
       VPackSlice slice(value.data());
-      storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice,"objectId"));
+      storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice, "objectId"));
       VPackSlice indexes = slice.get("indexes");
       for (VPackSlice const& idx : VPackArrayIterator(indexes)) {
-        storeMaxTick(std::max(basics::VelocyPackHelper::stringUInt64(idx,"objectId")
-                             ,basics::VelocyPackHelper::stringUInt64(idx,"id")
+        storeMaxTick(std::max(basics::VelocyPackHelper::stringUInt64(idx, "objectId")
+                             ,basics::VelocyPackHelper::stringUInt64(idx, "id")
                              ));
       }
-    }
-    if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
+    } else if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
       storeMaxTick(RocksDBKey::databaseId(key));
-    }
-    if (RocksDBKey::type(key) == RocksDBEntryType::View) {
+    } else if (RocksDBKey::type(key) == RocksDBEntryType::View) {
       LOG_TOPIC(ERR, Logger::STARTUP) << "tick update for views needs to be implemented";
     }
   }
