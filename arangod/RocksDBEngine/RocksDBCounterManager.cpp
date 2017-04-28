@@ -229,10 +229,8 @@ void RocksDBCounterManager::readSettings() {
 
     if (!result.empty()) {
       try {
-        std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(result);
-        VPackSlice s = builder->slice();
-      
-        uint64_t lastTick = basics::VelocyPackHelper::stringUInt64(s.get("tick"));
+        uint64_t lastTick = basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
+        LOG_TOPIC(TRACE, Logger::ENGINES) << "using last tick: " << lastTick;
         TRI_UpdateTickServer(lastTick);
       } catch (...) {
         LOG_TOPIC(WARN, Logger::ENGINES) << "unable to read initial settings: invalid data";

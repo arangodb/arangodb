@@ -121,8 +121,10 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  TRI_ASSERT(state != nullptr);
+
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto& options = state->readOptions();
+  auto const& options = state->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
 
   _iterator.reset(rtrx->GetIterator(options));
@@ -134,6 +136,8 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
 }
 
 bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -163,6 +167,8 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
 /// special method to expose the document key for incremental replication
 bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -189,6 +195,8 @@ bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb, size_t lim
 }
 
 void RocksDBAllIndexIterator::reset() {
+  TRI_ASSERT(_trx->state()->isRunning());
+
   if (_reverse) {
     _iterator->SeekForPrev(_bounds.end());
   } else {
@@ -197,6 +205,8 @@ void RocksDBAllIndexIterator::reset() {
 }
 
 bool RocksDBAllIndexIterator::outOfRange() const {
+  TRI_ASSERT(_trx->state()->isRunning());
+
   if (_reverse) {
     return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
   } else {
@@ -216,8 +226,10 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
       _returned(0) {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  TRI_ASSERT(state != nullptr);
+
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto& options = state->readOptions();
+  auto const& options = state->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
 
   _iterator.reset(rtrx->GetIterator(options));
@@ -244,6 +256,8 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
 }
 
 bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -272,6 +286,7 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
 void RocksDBAnyIndexIterator::reset() { _iterator->Seek(_bounds.start()); }
 
 bool RocksDBAnyIndexIterator::outOfRange() const {
+  TRI_ASSERT(_trx->state()->isRunning());
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
 }
 
