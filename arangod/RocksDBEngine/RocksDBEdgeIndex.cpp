@@ -66,6 +66,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
   keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
+  TRI_ASSERT(state != nullptr);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   _iterator.reset(rtrx->GetIterator(state->readOptions()));
   updateBounds();
@@ -95,6 +96,8 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 }
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+   
   if (limit == 0 || !_keysIterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
