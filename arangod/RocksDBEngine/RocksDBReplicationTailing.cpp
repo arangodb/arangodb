@@ -183,13 +183,13 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::SingleRemove: {
         _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
-        // intentionall fall through
+        // intentional fall through
       }
       case RocksDBLogType::SinglePut: {
         _singleOpTransaction = true;
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentCollectionId = RocksDBLogValue::collectionId(blob);
-        _currentTrxId = RocksDBLogValue::collectionId(blob);
+        _currentTrxId = 0;
         break;
       }
 
@@ -282,11 +282,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         break;
       }
       case RocksDBEntryType::Document: {
-        // onl
         if (!shouldHandleKey(key)) {
           return;
         }
-        
+       
         TRI_ASSERT(_seenBeginTransaction || _singleOpTransaction);
         TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
@@ -301,9 +300,9 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
         _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         if (_singleOpTransaction) {  // single op is defined to 0
-          _builder.add("tid", VPackValue(0));
+          _builder.add("tid", VPackValue("0"));
         } else {
-          _builder.add("tid", VPackValue(_currentTrxId));
+          _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
         }
         _builder.add("data", VPackValue(VPackValueType::Object));
         _builder.add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
@@ -348,6 +347,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       _builder.close();
     }
     _seenBeginTransaction = false;
+    _singleOpTransaction = false;
   }
 
  private:
