@@ -681,12 +681,14 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   TRI_voc_rid_t revisionId =
       transaction::helpers::extractRevFromDocument(newSlice);
-
-  RocksDBSavePoint guard(rocksTransaction(trx),
-                         trx->isSingleOperationTransaction());
-
+  
   RocksDBTransactionState* state =
       static_cast<RocksDBTransactionState*>(trx->state());
+
+  RocksDBSavePoint guard(rocksTransaction(trx),
+                         trx->isSingleOperationTransaction(),
+                         [&state]() { state->resetLogState(); });
+
   state->prepareOperation(_logicalCollection->cid(), revisionId,
                           StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_INSERT);
@@ -790,7 +792,8 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
   }
 
   RocksDBSavePoint guard(rocksTransaction(trx),
-                         trx->isSingleOperationTransaction());
+                         trx->isSingleOperationTransaction(),
+                         [&state]() { state->resetLogState(); });
 
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
@@ -892,7 +895,8 @@ int RocksDBCollection::replace(
   }
 
   RocksDBSavePoint guard(rocksTransaction(trx),
-                         trx->isSingleOperationTransaction());
+                         trx->isSingleOperationTransaction(),
+                         [&state]() { state->resetLogState(); });
 
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
@@ -978,13 +982,15 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
       return res;
     }
   }
-
-  RocksDBSavePoint guard(rocksTransaction(trx),
-                         trx->isSingleOperationTransaction());
-
-  // add possible log statement under guard
+  
   RocksDBTransactionState* state =
       static_cast<RocksDBTransactionState*>(trx->state());
+
+  RocksDBSavePoint guard(rocksTransaction(trx),
+                         trx->isSingleOperationTransaction(),
+                         [&state]() { state->resetLogState(); });
+
+  // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), revisionId,
                           StringRef(key),
                           TRI_VOC_DOCUMENT_OPERATION_REMOVE);

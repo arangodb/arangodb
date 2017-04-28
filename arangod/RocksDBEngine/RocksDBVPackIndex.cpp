@@ -90,7 +90,8 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
                                                             left, right)) {
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
+  TRI_ASSERT(state != nullptr);
+  auto const& options = state->readOptions();
 
   _iterator.reset(rtrx->GetIterator(options));
   if (reverse) {
@@ -102,6 +103,8 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
 
 /// @brief Reset the cursor
 void RocksDBVPackIndexIterator::reset() {
+  TRI_ASSERT(_trx->state()->isRunning());
+  
   if (_reverse) {
     _iterator->SeekForPrev(_bounds.end());
   } else {
@@ -110,6 +113,8 @@ void RocksDBVPackIndexIterator::reset() {
 }
 
 bool RocksDBVPackIndexIterator::outOfRange() const {
+  TRI_ASSERT(_trx->state()->isRunning());
+
   if (_reverse) {
     return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
   } else {
@@ -118,6 +123,8 @@ bool RocksDBVPackIndexIterator::outOfRange() const {
 }
 
 bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
