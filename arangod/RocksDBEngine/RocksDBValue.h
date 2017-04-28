@@ -112,7 +112,7 @@ class RocksDBValue {
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
-  static TRI_voc_rid_t revisionId(char const* data, size_t size);
+  static TRI_voc_rid_t revisionId(char const* data, uint64_t size);
   static StringRef primaryKey(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
 
