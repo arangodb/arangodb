@@ -288,8 +288,13 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqStart;
   std::unordered_map<uint64_t, RocksDBCounterManager::CounterAdjustment> deltas;
   rocksdb::SequenceNumber currentSeqNum;
+  uint64_t _maxTick = 0;
 
   explicit WBReader() : currentSeqNum(0) {}
+  virtual ~WBReader() {
+    //update ticks after parsing wal
+    TRI_UpdateTickServer(std::max(_maxTick,TRI_CurrentTickServer()));
+  }
 
   bool prepKey(const rocksdb::Slice& key) {
     if (RocksDBKey::type(key) == RocksDBEntryType::Document) {
@@ -305,8 +310,47 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
     return false;
   }
 
+  void storeMaxTick(uint64_t tick){
+    // ukpdateMaxTickHelper
+    if (tick > _maxTick){
+      _maxTick = tick;
+    }
+  }
+  void updateMaxTick(const rocksdb::Slice& key, const rocksdb::Slice& value) {
+    // RETURN (side-effect): update _maxTick
+    //
+    // extract max tick from Markers and store them as side-effect in
+    // _maxTick memeber variable that can be used later (dtor) to call
+    // TRI_UpdateTickServer (ticks.h)
+    // Markers: - collections (id,objectid) as tick and max tick in indexes array
+    //          - documents - _rev (revision as maxtick)
+    //          - databases
+
+    if (RocksDBKey::type(key) == RocksDBEntryType::Document) {
+      storeMaxTick(RocksDBKey::revisionId(key));
+    }
+    if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
+      storeMaxTick(RocksDBKey::collectionId(key));
+      VPackSlice slice(value.data());
+      storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice,"objectId"));
+      VPackSlice indexes = slice.get("indexes");
+      for (VPackSlice const& idx : VPackArrayIterator(indexes)) {
+        storeMaxTick(std::max(basics::VelocyPackHelper::stringUInt64(idx,"objectId")
+                             ,basics::VelocyPackHelper::stringUInt64(idx,"id")
+                             ));
+      }
+    }
+    if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
+      storeMaxTick(RocksDBKey::databaseId(key));
+    }
+    if (RocksDBKey::type(key) == RocksDBEntryType::View) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "tick update for views needs to be implemented";
+    }
+  }
+
   void Put(const rocksdb::Slice& key,
-           const rocksdb::Slice& /*value*/) override {
+           const rocksdb::Slice& value) override {
+    updateMaxTick(key, value);
     if (prepKey(key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
