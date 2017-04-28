@@ -105,9 +105,11 @@ function rubyTests (options, ssl) {
                     'end\n';
 
   fs.write(tmpname, rspecConfig);
-  if (options.extremeVerbosity === true){
-      print("rspecConfig: \n" + rspecConfig);
+
+  if (options.extremeVerbosity === true) {
+    print('rspecConfig: \n' + rspecConfig);
   }
+
   try {
     fs.makeDirectory(pu.LOGS_DIR);
   } catch (err) {}
@@ -146,6 +148,7 @@ function rubyTests (options, ssl) {
       const msg = yaml.safeDump(testCase)
             .replace(/.*rspec\/core.*\n/gm, '')
             .replace(/.*rspec\\core.*\n/gm, '')
+            .replace(/.*lib\/ruby.*\n/, '')
             .replace(/.*- >-.*\n/gm, '')
             .replace(/\n *`/gm, ' `');
       print('RSpec test case falied: \n' + msg);

@@ -41,6 +41,8 @@
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Task.h"
 
+#include <thread>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -429,8 +431,11 @@ void Scheduler::shutdown() {
   bool done = false;
 
   while (!done) {
-    MUTEX_LOCKER(guard, _threadsLock);
-    done = _threads.empty();
+    {
+      MUTEX_LOCKER(guard, _threadsLock);
+      done = _threads.empty();
+    }
+    std::this_thread::yield();
   }
 
   deleteOldThreads();

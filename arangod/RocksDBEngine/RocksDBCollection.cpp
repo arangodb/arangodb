@@ -1125,8 +1125,8 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
       waitForSync = true;  // output parameter (by ref)
     }
 
-    LOG_TOPIC(ERR, Logger::DEVEL)
-        << std::boolalpha << "waitForSync during insert: " << waitForSync;
+    // LOG_TOPIC(ERR, Logger::DEVEL)
+    //    << std::boolalpha << "waitForSync during insert: " << waitForSync;
 
     if (waitForSync) {
       trx->state()->waitForSync(true);
