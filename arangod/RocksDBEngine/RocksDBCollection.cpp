@@ -399,7 +399,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
         {"path", "statusString"}, true, /*forPersistence*/ false);
     VPackBuilder indexInfo;
-    idx->toVelocyPack(indexInfo, false, true);
+    newIdx->toVelocyPack(indexInfo, false, true);
     
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
