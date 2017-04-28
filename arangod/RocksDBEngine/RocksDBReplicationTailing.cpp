@@ -204,11 +204,13 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
     switch (RocksDBKey::type(key)) {
       case RocksDBEntryType::Collection: {
+        if (_lastLogType == RocksDBLogType::IndexCreate ||
+            _lastLogType == RocksDBLogType::IndexDrop) {
+          return;
+        }
         TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionCreate ||
                    _lastLogType == RocksDBLogType::CollectionChange ||
-                   _lastLogType == RocksDBLogType::CollectionRename ||
-                   _lastLogType == RocksDBLogType::IndexCreate ||
-                   _lastLogType == RocksDBLogType::IndexDrop);
+                   _lastLogType == RocksDBLogType::CollectionRename);
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
         _builder.openObject();
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
