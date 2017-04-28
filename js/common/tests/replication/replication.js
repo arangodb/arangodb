@@ -807,7 +807,7 @@ function ReplicationLoggerSuite () {
 
       tick = getLastLogTick();
       c.remove("12345");
-      entry = ssss[0];
+      entry = getLogEntries(tick, 2302)[0];
 
       assertEqual(2302, entry.type);
       assertEqual(c._id, entry.cid, JSON.stringify(entry));
