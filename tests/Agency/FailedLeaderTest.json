@@ -5,7 +5,7 @@ R"=(
       "Collections": {
         "database": {
           "collection": {
-            "s99": {
+            "shard": {
               "servers": [
                 "leader",
                 "follower1",
@@ -21,7 +21,7 @@ R"=(
         "database": {
           "collection": {
             "shards": {
-              "s99": [
+              "shard": [
                 "leader",
                 "follower1",
                 "follower2"
