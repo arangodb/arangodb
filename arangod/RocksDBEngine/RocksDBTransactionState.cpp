@@ -55,11 +55,8 @@ using namespace arangodb;
 // for the RocksDB engine we do not need any additional data
 struct RocksDBTransactionData final : public TransactionData {};
 
-RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx)
-    : RocksDBSavePoint(trx, false) {}
-
-RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx, bool handled)
-    : _trx(trx), _handled(handled) {
+RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx, bool handled, std::function<void()> const& rollbackCallback)
+    : _trx(trx), _rollbackCallback(rollbackCallback), _handled(handled) {
   TRI_ASSERT(trx != nullptr);
   if (!_handled) {
     _trx->SetSavePoint();
@@ -81,6 +78,7 @@ void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
   _trx->RollbackToSavePoint();
   _handled = true;  // in order to not roll back again by accident
+  _rollbackCallback();
 }
 
 /// @brief transaction type
@@ -187,12 +185,17 @@ Result RocksDBTransactionState::commitTransaction(
 
   if (_nestingLevel == 0) {
     if (_rocksTransaction != nullptr) {
+      if (!hasOperations()) {
+        // don't write anything if the transaction is empty
+        return abortTransaction(activeTrx);
+      }
+
       // set wait for sync flag if required
       if (waitForSync()) {
         _rocksWriteOptions.sync = true;
         _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
       }
-
+      
       // TODO wait for response on github issue to see how we can use the
       // sequence number
       result = rocksutils::convertStatus(_rocksTransaction->Commit());
@@ -283,7 +286,9 @@ Result RocksDBTransactionState::abortTransaction(
 void RocksDBTransactionState::prepareOperation(
     TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
     StringRef const& key, TRI_voc_document_operation_e operationType) {
-  
+
+  TRI_ASSERT(!isReadOnlyTransaction());
+   
   bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   // single operations should never call this method twice
   TRI_ASSERT(!singleOp  || _lastUsedCollection == 0);
@@ -321,7 +326,7 @@ void RocksDBTransactionState::prepareOperation(
     _lastUsedCollection = collectionId;
   }
   
-  // we need to the remove log entry, if we don't have the single optimization
+  // we need to log the remove log entry, if we don't have the single optimization
   if (!singleOp && operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     RocksDBLogValue logValue =
     RocksDBLogValue::DocumentRemove(key);

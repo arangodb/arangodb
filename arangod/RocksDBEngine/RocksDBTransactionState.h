@@ -57,8 +57,7 @@ class TransactionCollection;
 
 class RocksDBSavePoint {
  public:
-  explicit RocksDBSavePoint(rocksdb::Transaction* trx);
-  RocksDBSavePoint(rocksdb::Transaction* trx, bool handled);
+  RocksDBSavePoint(rocksdb::Transaction* trx, bool handled, std::function<void()> const& rollbackCallback);
   ~RocksDBSavePoint();
 
   void commit();
@@ -68,6 +67,7 @@ class RocksDBSavePoint {
 
  private:
   rocksdb::Transaction* _trx;
+  std::function<void()> const _rollbackCallback;
   bool _handled;
 };
 
@@ -93,6 +93,9 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
+
+  /// @brief reset previous log state after a rollback to safepoint
+  void resetLogState() { _lastUsedCollection = 0; }
 
   inline bool hasOperations() const {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
