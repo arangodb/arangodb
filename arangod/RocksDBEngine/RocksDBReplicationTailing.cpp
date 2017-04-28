@@ -87,6 +87,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   _builder(builder) {}
 
   void LogData(rocksdb::Slice const& blob) override {
+    if (_currentSequence < _from) {
+      return;
+    }
+    
     RocksDBLogType type = RocksDBLogValue::type(blob);
     TRI_DEFER(_lastLogType = type);
     switch (type) {
@@ -199,7 +203,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   }
 
   void Put(rocksdb::Slice const& key, rocksdb::Slice const& value) override {
-    if (!shouldHandleKey(key)) {
+    if (!shouldHandleKey(key) || _currentSequence < _from) {
       return;
     }
     switch (RocksDBKey::type(key)) {
@@ -266,6 +270,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   void SingleDelete(rocksdb::Slice const& key) override { handleDeletion(key); }
 
   void handleDeletion(rocksdb::Slice const& key) {
+    if (_currentSequence < _from) {
+      return;
+    }
+    
     switch (RocksDBKey::type(key)) {
       case RocksDBEntryType::Collection: {
         TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionDrop);
@@ -327,11 +335,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
   void startNewBatch(rocksdb::SequenceNumber currentSequence) {
     // starting new write batch
-    // TODO: reset state?
+    _currentSequence = currentSequence;
     _lastLogType = RocksDBLogType::Invalid;
     _seenBeginTransaction = false;
     _singleOpTransaction = false;
-    _currentSequence = currentSequence;
     _currentDbId = 0;
     _currentTrxId = 0;
     _currentCollectionId = 0;

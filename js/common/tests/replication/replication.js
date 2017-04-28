@@ -807,7 +807,7 @@ function ReplicationLoggerSuite () {
 
       tick = getLastLogTick();
       c.remove("12345");
-      entry = getLogEntries(tick, 2302)[0];
+      entry = ssss[0];
 
       assertEqual(2302, entry.type);
       assertEqual(c._id, entry.cid, JSON.stringify(entry));
@@ -1280,6 +1280,9 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionWrite3 : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
       db._create(cn);
 
       var tick = getLastLogTick();
