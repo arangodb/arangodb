@@ -45,7 +45,7 @@ static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
     //      return REPLICATION_MARKER_DOCUMENT;
     //    case TRI_DF_MARKER_VPACK_REMOVE:
     //      return REPLICATION_MARKER_REMOVE;
-    //case RocksDBLogType::BeginTransaction:
+    //  case RocksDBLogType::BeginTransaction:
     //  return REPLICATION_TRANSACTION_START;
     //    case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
     //      return REPLICATION_TRANSACTION_COMMIT;
@@ -80,11 +80,11 @@ class WALParser : public rocksdb::WriteBatch::Handler {
  public:
   explicit WALParser(TRI_vocbase_t* vocbase, uint64_t from, size_t& limit,
                      bool includeSystem, VPackBuilder& builder)
-      : _vocbase(vocbase),
-        _from(from),
-        _limit(limit),
-        _includeSystem(includeSystem),
-        _builder(builder) {}
+  : _vocbase(vocbase),
+  _from(from),
+  _limit(limit),
+  _includeSystem(includeSystem),
+  _builder(builder) {}
 
   void LogData(rocksdb::Slice const& blob) override {
     RocksDBLogType type = RocksDBLogValue::type(blob);
@@ -137,7 +137,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _builder.openObject();
         _builder.add(
             "type",
-            VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
+            VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_DROP)));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
         _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         _builder.add("data", VPackValue(VPackValueType::Object));
@@ -169,7 +169,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
             "type",
             VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_START)));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         _builder.close();
         break;
       }
@@ -202,12 +201,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     if (!shouldHandleKey(key)) {
       return;
     }
-    int res = TRI_ERROR_NO_ERROR;
     switch (RocksDBKey::type(key)) {
       case RocksDBEntryType::Collection: {
-        usleep(1000000);
-        usleep(1000000);
-        
         TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionCreate ||
                    _lastLogType == RocksDBLogType::CollectionChange ||
                    _lastLogType == RocksDBLogType::CollectionRename ||
@@ -257,7 +252,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         break;  // shouldn't get here?
     }
 
-    if (res == TRI_ERROR_NO_ERROR && _limit > 0) {
+    if (_limit > 0) {
       _limit--;
     }
   }
@@ -267,10 +262,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   void SingleDelete(rocksdb::Slice const& key) override { handleDeletion(key); }
 
   void handleDeletion(rocksdb::Slice const& key) {
-    if (!shouldHandleKey(key)) {
-      return;
-    }
-    int res = TRI_ERROR_NO_ERROR;
     switch (RocksDBKey::type(key)) {
       case RocksDBEntryType::Collection: {
         TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionDrop);
@@ -278,7 +269,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
         _builder.openObject();
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-        _builder.add("type", VPackValue(REPLICATION_INDEX_DROP));
+        _builder.add("type", VPackValue(REPLICATION_COLLECTION_DROP));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
         _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         _builder.add("data", VPackValue(VPackValueType::Object));
@@ -289,6 +280,11 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         break;
       }
       case RocksDBEntryType::Document: {
+        // onl
+        if (!shouldHandleKey(key)) {
+          return;
+        }
+        
         TRI_ASSERT(_seenBeginTransaction || _singleOpTransaction);
         TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
@@ -311,12 +307,14 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _builder.add(StaticStrings::RevString,
                      VPackValue(std::to_string(revisionId)));
         _builder.close();
+        _builder.close();
         break;
       }
       default:
         break;  // shouldn't get here?
     }
-    if (res == TRI_ERROR_NO_ERROR) {
+    
+    if (_limit > 0) {
       _limit--;
     }
   }
@@ -343,7 +341,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
           "type",
           VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
       _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-      _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
+      //_builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
       _builder.close();
     }
     _seenBeginTransaction = false;
@@ -353,6 +351,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   bool shouldHandleKey(rocksdb::Slice const& key) {
     if (_limit == 0) {
       return false;
+    } else if (_includeSystem) {
+      return true;
     }
 
     TRI_voc_cid_t cid;
@@ -374,11 +374,11 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         return false;
     }
 
+    // allow document removes of dropped collections
     std::string const collectionName = _vocbase->collectionName(cid);
     if (collectionName.size() == 0) {
-      return false;
+      return true;
     }
-
     if (!_includeSystem && collectionName[0] == '_') {
       return false;
     }
@@ -411,6 +411,13 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
                                              uint64_t from, size_t limit,
                                              bool includeSystem,
                                              VPackBuilder& builder) {
+  
+  usleep(1000000);
+  usleep(1000000);
+  usleep(1000000);
+  usleep(1000000);
+  usleep(1000000);
+  
   uint64_t lastTick = from;
   std::unique_ptr<WALParser> handler(
       new WALParser(vocbase, from, limit, includeSystem, builder));

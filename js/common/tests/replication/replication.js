@@ -383,7 +383,9 @@ function ReplicationLoggerSuite () {
       assertEqual(cn, entry.data.name);
       assertEqual(2, entry.data.type);
       assertEqual(false, entry.data.deleted);
-      assertEqual(2097152, entry.data.journalSize);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(2097152, entry.data.journalSize);
+      }
       assertEqual(true, entry.data.waitForSync);
     },
 
