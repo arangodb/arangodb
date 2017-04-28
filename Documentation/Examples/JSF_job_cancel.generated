@@ -6,20 +6,23 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 149253070035337
+x-content-type-options: nosniff
+x-arango-async-id: 149337683995372
 
 shell> curl --dump - http://localhost:8529/_api/job/pending
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"149253070035337"</span> 
+  <span class="hljs-string">"149337683995372"</span> 
 ]
-shell> curl -X PUT --dump - http://localhost:8529/_api/job/149253070035337/cancel
+shell> curl -X PUT --dump - http://localhost:8529/_api/job/149337683995372/cancel
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : <span class="hljs-literal">true</span> 
@@ -28,7 +31,8 @@ shell> curl --dump - http://localhost:8529/_api/job/pending
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"149253070035337"</span> 
+  <span class="hljs-string">"149337683995372"</span> 
 ]

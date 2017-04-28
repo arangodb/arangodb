@@ -7,12 +7,13 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
-    <span class="hljs-string">"products/9983"</span>, 
-    <span class="hljs-string">"products/9980"</span>, 
-    <span class="hljs-string">"products/9976"</span> 
+    <span class="hljs-string">"products/10009"</span>, 
+    <span class="hljs-string">"products/10005"</span>, 
+    <span class="hljs-string">"products/10012"</span> 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span>, 
@@ -23,7 +24,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0003330707550048828</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00023603439331054688</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

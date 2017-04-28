@@ -12,14 +12,15 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11201"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11201"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U2FCrSu--A"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11225"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11225"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U5OxvDK--_"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.002</span>, 
         <span class="hljs-number">0</span> 
@@ -28,9 +29,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     }, 
     { 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11207"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11207"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U2FCrSy--_"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11231"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11231"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U5OxvDO---"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
         <span class="hljs-number">0</span> 
@@ -39,9 +40,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     }, 
     { 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">444.779706578235</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11198"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11198"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U2FCrSu--_"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11222"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11222"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U5OxvDK---"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.004</span>, 
         <span class="hljs-number">0</span> 
