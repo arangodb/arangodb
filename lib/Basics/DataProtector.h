@@ -146,22 +146,7 @@ class DataProtector {
     _list[id]._count--;  // this is implicitly using memory_order_seq_cst
   }
 
-  int getMyId() {
-    int id = _mySlot;
-    if (id >= 0) {
-      return id;
-    }
-    while (true) {
-      int newId = _last + 1;
-      if (newId >= DATA_PROTECTOR_MULTIPLICITY) {
-        newId = 0;
-      }
-      if (_last.compare_exchange_strong(id, newId)) {
-        _mySlot = newId;
-        return newId;
-      }
-    }
-  }
+    int getMyId();
 };
 
 }  // namespace arangodb::basics

@@ -39,3 +39,20 @@ std::atomic<int> arangodb::basics::DataProtector::_last(0);
 
 // TODO: Reactivate this template instantiation once everybody has gcc >= 4.9.2
 // template class arangodb::basics::DataProtector<64>;
+
+int arangodb::basics::DataProtector::getMyId() {
+  int id = _mySlot;
+  if (id >= 0) {
+    return id;
+  }
+  while (true) {
+    int newId = _last + 1;
+    if (newId >= DATA_PROTECTOR_MULTIPLICITY) {
+      newId = 0;
+    }
+    if (_last.compare_exchange_strong(id, newId)) {
+      _mySlot = newId;
+      return newId;
+    }
+  }
+}
