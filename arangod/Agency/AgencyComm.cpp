@@ -1316,7 +1316,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
   AgencyCommResult result;
   std::string url = initialUrl;
 
-  std::chrono::duration<double> waitInterval (.25); // seconds
+  std::chrono::duration<double> waitInterval (.0); // seconds
   auto started = std::chrono::steady_clock::now();
   auto timeOut = std::chrono::steady_clock::now() +
     std::chrono::duration<double>(timeout);
