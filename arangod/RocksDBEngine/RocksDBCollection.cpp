@@ -1401,7 +1401,7 @@ int RocksDBCollection::lockWrite(double timeout) {
       std::this_thread::yield();
     } else {
       usleep(static_cast<TRI_usleep_t>(waitTime));
-      if (waitTime < 500000) {
+      if (waitTime < 32) {
         waitTime *= 2;
       }
     }
@@ -1452,7 +1452,7 @@ int RocksDBCollection::lockRead(double timeout) {
       std::this_thread::yield();
     } else {
       usleep(static_cast<TRI_usleep_t>(waitTime));
-      if (waitTime < 500000) {
+      if (waitTime < 32) {
         waitTime *= 2;
       }
     }
