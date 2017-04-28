@@ -565,7 +565,7 @@ function ReplicationSuite() {
                 });
 
                 // intentionally delay the transaction
-                wait(0.75, false);
+                wait(3.0, false);
               }
             },
             params: {
@@ -590,7 +590,6 @@ function ReplicationSuite() {
             require("@arangodb/tasks").get(state.task);
             // task exists
             connectToSlave();
-            internal.wait(0.5, false);
             return "wait";
           } catch (err) {
             // task does not exist. we're done
