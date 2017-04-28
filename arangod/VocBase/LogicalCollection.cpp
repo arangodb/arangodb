@@ -3247,7 +3247,7 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector,
 #else
       usleep(waitTime);
 #endif
-      if (waitTime < 500000) {
+      if (waitTime < 32) {
         waitTime *= 2;
       }
     }
@@ -3355,7 +3355,7 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
 #else
       usleep(waitTime);
 #endif
-      if (waitTime < 500000) {
+      if (waitTime < 32) {
         waitTime *= 2;
       }
     }
