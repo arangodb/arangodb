@@ -43,7 +43,7 @@ using namespace fakeit;
 const std::string PREFIX = "arango";
 const std::string DATABASE = "database";
 const std::string COLLECTION = "collection";
-const std::string SHARD = "shard";
+const std::string SHARD = "s99";
 const std::string SHARD_LEADER = "leader";
 const std::string SHARD_FOLLOWER1 = "follower1";
 const std::string FREE_SERVER = "free";
@@ -751,7 +751,7 @@ SECTION("when moving a shard that is a distributeShardsLike leader move the rest
         builder->add(VPackValue("linkedcollection1"));
         {
           VPackObjectBuilder f(builder.get());
-          builder->add(VPackValue("linkedshard1"));
+          builder->add(VPackValue("s100"));
           {
             VPackObjectBuilder f(builder.get());
             builder->add(VPackValue("servers"));
@@ -766,7 +766,7 @@ SECTION("when moving a shard that is a distributeShardsLike leader move the rest
         builder->add(VPackValue("linkedcollection2"));
         {
           VPackObjectBuilder f(builder.get());
-          builder->add(VPackValue("linkedshard2"));
+          builder->add(VPackValue("s101"));
           {
             VPackObjectBuilder f(builder.get());
             builder->add(VPackValue("servers"));
@@ -785,7 +785,7 @@ SECTION("when moving a shard that is a distributeShardsLike leader move the rest
           builder->add(VPackValue("shards"));
           {
             VPackObjectBuilder f(builder.get());
-            builder->add(VPackValue("linkedshard1"));
+            builder->add(VPackValue("s100"));
             {
               VPackArrayBuilder g(builder.get());
               builder->add(VPackValue(SHARD_LEADER));
@@ -800,7 +800,7 @@ SECTION("when moving a shard that is a distributeShardsLike leader move the rest
           builder->add(VPackValue("shards"));
           {
             VPackObjectBuilder f(builder.get());
-            builder->add(VPackValue("linkedshard2"));
+            builder->add(VPackValue("s101"));
             {
               VPackArrayBuilder g(builder.get());
               builder->add(VPackValue(SHARD_LEADER));
@@ -837,8 +837,8 @@ SECTION("when moving a shard that is a distributeShardsLike leader move the rest
     CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).length() == 3); // leader, oldFollower, newLeader
 
     auto json = writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).toJson();
-    CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/linkedshard1").toJson() == json);
-    CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/linkedshard2").toJson() == json);
+    CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").toJson() == json);
+    CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").toJson() == json);
     CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/unrelatedcollection/shards/unrelatedshard").isNone());
     CHECK(writes.get("/arango/Supervision/Shards/" + SHARD).copyString() == "1");
     CHECK(writes.get("/arango/Supervision/Shards/unrelatedshard").isNone());
@@ -1226,7 +1226,7 @@ SECTION("the job should not finish itself when only parts of distributeShardsLik
         builder->add(VPackValue("linkedcollection1"));
         {
           VPackObjectBuilder f(builder.get());
-          builder->add(VPackValue("linkedshard1"));
+          builder->add(VPackValue("s100"));
           {
             VPackObjectBuilder f(builder.get());
             builder->add(VPackValue("servers"));
@@ -1242,7 +1242,7 @@ SECTION("the job should not finish itself when only parts of distributeShardsLik
         builder->add(VPackValue("linkedcollection2"));
         {
           VPackObjectBuilder f(builder.get());
-          builder->add(VPackValue("linkedshard2"));
+          builder->add(VPackValue("s101"));
           {
             VPackObjectBuilder f(builder.get());
             builder->add(VPackValue("servers"));
@@ -1261,7 +1261,7 @@ SECTION("the job should not finish itself when only parts of distributeShardsLik
           builder->add(VPackValue("shards"));
           {
             VPackObjectBuilder f(builder.get());
-            builder->add(VPackValue("linkedshard1"));
+            builder->add(VPackValue("s100"));
             {
               VPackArrayBuilder g(builder.get());
               builder->add(VPackValue(SHARD_LEADER));
@@ -1277,7 +1277,7 @@ SECTION("the job should not finish itself when only parts of distributeShardsLik
           builder->add(VPackValue("shards"));
           {
             VPackObjectBuilder f(builder.get());
-            builder->add(VPackValue("linkedshard2"));
+            builder->add(VPackValue("s101"));
             {
               VPackArrayBuilder g(builder.get());
               builder->add(VPackValue(SHARD_LEADER));
@@ -1365,7 +1365,7 @@ SECTION("the job should finish when all distributeShardsLike shards have adapted
         builder->add(VPackValue("linkedcollection1"));
         {
           VPackObjectBuilder f(builder.get());
-          builder->add(VPackValue("linkedshard1"));
+          builder->add(VPackValue("s100"));
           {
             VPackObjectBuilder f(builder.get());
             builder->add(VPackValue("servers"));
@@ -1381,7 +1381,7 @@ SECTION("the job should finish when all distributeShardsLike shards have adapted
         builder->add(VPackValue("linkedcollection2"));
         {
           VPackObjectBuilder f(builder.get());
-          builder->add(VPackValue("linkedshard2"));
+          builder->add(VPackValue("s101"));
           {
             VPackObjectBuilder f(builder.get());
             builder->add(VPackValue("servers"));
@@ -1416,7 +1416,7 @@ SECTION("the job should finish when all distributeShardsLike shards have adapted
           builder->add(VPackValue("shards"));
           {
             VPackObjectBuilder f(builder.get());
-            builder->add(VPackValue("linkedshard1"));
+            builder->add(VPackValue("s100"));
             {
               VPackArrayBuilder g(builder.get());
               builder->add(VPackValue(SHARD_LEADER));
@@ -1432,7 +1432,7 @@ SECTION("the job should finish when all distributeShardsLike shards have adapted
           builder->add(VPackValue("shards"));
           {
             VPackObjectBuilder f(builder.get());
-            builder->add(VPackValue("linkedshard2"));
+            builder->add(VPackValue("s101"));
             {
               VPackArrayBuilder g(builder.get());
               builder->add(VPackValue(SHARD_LEADER));
@@ -1475,15 +1475,15 @@ SECTION("the job should finish when all distributeShardsLike shards have adapted
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
     CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).toJson() == "[\"leader\",\"free\"]");
-    CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/linkedshard1").toJson() == "[\"leader\",\"free\"]");
-    CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/linkedshard2").toJson() == "[\"leader\",\"free\"]");
+    CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").toJson() == "[\"leader\",\"free\"]");
+    CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").toJson() == "[\"leader\",\"free\"]");
     CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/unrelatedcollection/shards/unrelatedshard").isNone());
-    CHECK(writes.get("/arango/Supervision/Shards/linkedshard1").isNone());
+    CHECK(writes.get("/arango/Supervision/Shards/s100").isNone());
 
     auto preconditions = q->slice()[0][1];
     CHECK(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old").length() == 3);
-    CHECK(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/linkedshard1").get("old").length() == 3);
-    CHECK(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/linkedshard2").get("old").length() == 3);
+    CHECK(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").get("old").length() == 3);
+    CHECK(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").get("old").length() == 3);
     CHECK(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/unrelatedcollection/shards/unrelatedshard").isNone());
 
     return fakeWriteResult;
