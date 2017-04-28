@@ -155,9 +155,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   }
 }
 
-TRI_voc_rid_t RocksDBValue::revisionId(char const* data, size_t size) {
+TRI_voc_rid_t RocksDBValue::revisionId(char const* data, uint64_t size) {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size == sizeof(uint64_t));
   return uint64FromPersistent(data);
 }
 
