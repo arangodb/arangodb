@@ -169,7 +169,7 @@ function ReplicationSuite() {
       }
 
       var slaveState = replication.applier.state();
-      
+
       if (slaveState.state.lastError.errorNum > 0) {
         console.log("slave has errored:", JSON.stringify(slaveState.state.lastError));
         break;
@@ -321,7 +321,9 @@ function ReplicationSuite() {
         },
 
         function(state) {
-          var idx = db._collection(cn).getIndexes();
+          var col = db._collection(cn);
+          assertNotNull(col, "collection does not exist");
+          var idx = col.getIndexes();
           assertEqual(2, idx.length);
           assertEqual("primary", idx[0].type);
           assertEqual("hash", idx[1].type);
