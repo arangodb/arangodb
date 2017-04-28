@@ -274,7 +274,8 @@ static void JS_LastLoggerReplication(
     builder.close();
     
     if (rep.ok()) {
-      result = TRI_VPackToV8(isolate, builder.slice());
+      result = TRI_VPackToV8(isolate, builder.slice(),
+                             transactionContext->getVPackOptions());
     } else {
       result = v8::Null(isolate);
     }

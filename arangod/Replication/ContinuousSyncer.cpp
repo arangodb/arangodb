@@ -935,7 +935,6 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
     p = q + 1;
 
     VPackSlice const slice = builder->slice();
-    LOG_TOPIC(ERR, Logger::FIXME) << builder->slice().toJson();
 
     if (!slice.isObject()) {
       errorMsg = "received invalid JSON data";
@@ -946,7 +945,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
     int res;
     bool skipped;
 
-    LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
+    //LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
 
     if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped

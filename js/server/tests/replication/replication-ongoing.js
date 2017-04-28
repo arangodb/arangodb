@@ -140,7 +140,7 @@ function ReplicationSuite() {
     masterFunc2(state);
 
     // use lastLogTick as of now
-    var lastLogTick = replication.logger.state().state.lastLogTick;
+    state.lastLogTick = replication.logger.state().state.lastLogTick;
 
     applierConfiguration = applierConfiguration || {};
     applierConfiguration.endpoint = masterEndpoint;
@@ -186,10 +186,10 @@ function ReplicationSuite() {
         break;
       }
 
-      if (compareTicks(slaveState.state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
-          compareTicks(slaveState.state.lastProcessedContinuousTick, lastLogTick) >= 0) { // ||
+      if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
+          compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
         //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
-        console.log("slave has caught up. syncResult.lastLogTick:", lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
+        console.log("slave has caught up. syncResult.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
         break;
       }
 
@@ -677,6 +677,7 @@ function ReplicationSuite() {
             return "wait";
           } catch (err) {
             // task does not exist. we're done
+            state.lastLogTick = replication.logger.state().state.lastLogTick;
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
@@ -758,6 +759,7 @@ function ReplicationSuite() {
             return "wait";
           } catch (err) {
             // task does not exist. we're done
+            state.lastLogTick = replication.logger.state().state.lastLogTick;
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
