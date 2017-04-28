@@ -41,9 +41,10 @@ enum class RocksDBEntryType : char {
   IndexValue = '6',
   UniqueIndexValue = '7',
   View = '8',
-  SettingsValue = '9'
+  SettingsValue = '9',
+  ReplicationApplierConfig = ':'
 };
-  
+
 enum class RocksDBLogType : char {
   Invalid = 0,
   DatabaseCreate = '1',
@@ -63,7 +64,6 @@ enum class RocksDBLogType : char {
   SinglePut = '?',
   SingleRemove = '@'
 };
-
 
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }

@@ -40,7 +40,9 @@ static rocksdb::Slice Collection(
 
 static RocksDBEntryType counterVal = RocksDBEntryType::CounterValue;
 static rocksdb::Slice CounterValue(
-                           reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&counterVal), 1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &counterVal),
+    1);
 
 static RocksDBEntryType document = RocksDBEntryType::Document;
 static rocksdb::Slice Document(
@@ -77,7 +79,16 @@ static rocksdb::Slice View(
 
 static RocksDBEntryType settingsValue = RocksDBEntryType::SettingsValue;
 static rocksdb::Slice SettingsValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&settingsValue), 1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &settingsValue),
+    1);
+
+static RocksDBEntryType replicationApplierConfig =
+    RocksDBEntryType::ReplicationApplierConfig;
+static rocksdb::Slice ReplicationApplierConfig(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &replicationApplierConfig),
+    1);
 }
 
 rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
@@ -102,6 +113,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return View;
     case RocksDBEntryType::SettingsValue:
       return SettingsValue;
+    case RocksDBEntryType::ReplicationApplierConfig:
+      return ReplicationApplierConfig;
   }
 
   return Document;  // avoids warning - errorslice instead ?!

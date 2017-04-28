@@ -89,6 +89,10 @@ RocksDBKey RocksDBKey::SettingsValue() {
   return RocksDBKey(RocksDBEntryType::SettingsValue);
 }
 
+RocksDBKey RocksDBKey::ReplicationApplierConfig(TRI_voc_tick_t databaseId) {
+  return RocksDBKey(RocksDBEntryType::ReplicationApplierConfig, databaseId);
+}
+
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
   return type(key._buffer.data(), key._buffer.size());
 }
@@ -183,7 +187,8 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::Database:
-    case RocksDBEntryType::CounterValue: {
+    case RocksDBEntryType::CounterValue:
+    case RocksDBEntryType::ReplicationApplierConfig: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
@@ -325,7 +330,8 @@ TRI_voc_tick_t RocksDBKey::databaseId(char const* data, size_t size) {
   switch (type) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::View: {
+    case RocksDBEntryType::View:
+    case RocksDBEntryType::ReplicationApplierConfig: {
       TRI_ASSERT(size >= (sizeof(char) + sizeof(uint64_t)));
       return uint64FromPersistent(data + sizeof(char));
     }

@@ -168,6 +168,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
     builder.add(VPackValue("data"));
     _mdr.addToBuilder(builder, false);
+    builder.add("key", builder.slice().get(StaticStrings::KeyString));
     builder.close();
 
     VPackDumper dumper(
@@ -256,8 +257,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder& b,
                                                      size_t chunkSize) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
-  
-  
+
   // Position the iterator correctly
   size_t from = chunk * chunkSize;
   if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
@@ -311,7 +311,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     VPackBuilder& b, size_t chunk, size_t chunkSize, VPackSlice const& ids) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
-  
+
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
   size_t from = chunk * chunkSize;

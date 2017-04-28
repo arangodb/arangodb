@@ -331,7 +331,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
   auto res = globalRocksEngine()->createLoggerState(_vocbase, builder);
   if (res.fail()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state" << res.errorMessage();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state"
+                                          << res.errorMessage();
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   res.errorMessage());
     return;
@@ -628,12 +629,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
         (result.maxTick() > 0 && result.maxTick() < latestSequenceNumber());
 
     // generate the result
-    size_t length = 0;
-    if (useVpp) {
-      length = data.length();
-    } else {
-      length = data.byteSize();
-    }
+    size_t length = data.length();
 
     if (length == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
@@ -647,8 +643,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     // set headers
     _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
                            checkMore ? "true" : "false");
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                           StringUtils::itoa(result.maxTick()));
+    _response->setHeaderNC(
+        TRI_REPLICATION_HEADER_LASTINCLUDED,
+        StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
                            StringUtils::itoa(latestSequenceNumber()));
     _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
@@ -1282,8 +1279,9 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
                          (context->more() ? "true" : "false"));
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                         StringUtils::itoa(result.maxTick()));
+  _response->setHeaderNC(
+      TRI_REPLICATION_HEADER_LASTINCLUDED,
+      StringUtils::itoa((dump.length() == 0) ? 0 : result.maxTick()));
 
   // transfer ownership of the buffer contents
   response->body().set(dump.stringBuffer());
@@ -1820,7 +1818,7 @@ void RocksDBRestReplicationHandler::handleCommandApplierDeleteState() {
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "unable to delete applier state";
-    THROW_ARANGO_EXCEPTION_MESSAGE(res,"unable to delete applier state");
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, "unable to delete applier state");
   }
 
   handleCommandApplierGetState();
@@ -2332,7 +2330,8 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
       int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
       if (res == TRI_ERROR_FORBIDDEN ||
-          res == TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
+          res ==
+              TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
         // some collections must not be dropped
         res = truncateCollectionOnCoordinator(dbName, name);
         if (res != TRI_ERROR_NO_ERROR) {
@@ -2419,9 +2418,12 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
   VPackSlice const merged = mergedBuilder.slice();
 
   try {
-    bool createWaitsForSyncReplication = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
-    auto col = ClusterMethods::createCollectionOnCoordinator(collectionType,
-                                                             _vocbase, merged, true, createWaitsForSyncReplication);
+    bool createWaitsForSyncReplication =
+        application_features::ApplicationServer::getFeature<ClusterFeature>(
+            "Cluster")
+            ->createWaitsForSyncReplication();
+    auto col = ClusterMethods::createCollectionOnCoordinator(
+        collectionType, _vocbase, merged, true, createWaitsForSyncReplication);
     TRI_ASSERT(col != nullptr);
   } catch (basics::Exception const& e) {
     // Error, report it.
