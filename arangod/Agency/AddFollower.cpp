@@ -184,7 +184,8 @@ bool AddFollower::start() {
   // Randomly choose enough servers:
   std::vector<std::string> chosen;
   for (size_t i = 0; i < desiredReplFactor - actualReplFactor; ++i) {
-    size_t pos = arangodb::RandomGenerator::interval(0, available.size() - 1);
+    size_t pos = arangodb::RandomGenerator::interval(static_cast<int64_t>(0),
+                                                     available.size() - 1);
     chosen.push_back(available[pos]);
     if (pos < available.size() - 1) {
       available[pos] = available[available.size() - 1];
