@@ -26,6 +26,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "VocBase/replication-common.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -140,10 +141,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   }
 
   // set type
-  int type = 2300;  // documents
-  if (_collection->type() == TRI_COL_TYPE_EDGE) {
-    type = 2301;  // edge documents
-  }
+  int type = REPLICATION_MARKER_DOCUMENT;  // documents
 
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
 
@@ -167,8 +165,9 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     }
 
     builder.add(VPackValue("data"));
+    auto key = VPackSlice(_mdr.vpack()).get(StaticStrings::KeyString);
     _mdr.addToBuilder(builder, false);
-    builder.add("key", builder.slice().get(StaticStrings::KeyString));
+    builder.add("key", key);
     builder.close();
 
     VPackDumper dumper(

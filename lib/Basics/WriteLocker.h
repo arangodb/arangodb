@@ -28,7 +28,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Locking.h"
-#include "Basics/ReadWriteLock.h"
 
 #ifdef TRI_SHOW_LOCK_TIME
 #include "Logger/Logger.h"
@@ -38,16 +37,16 @@
 
 /// @brief construct locker with file and line information
 #define WRITE_LOCKER(obj, lock) \
-  arangodb::basics::WriteLocker<std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+  arangodb::basics::WriteLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 #define WRITE_LOCKER_EVENTUAL(obj, lock) \
-  arangodb::basics::WriteLocker<std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
+  arangodb::basics::WriteLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
 
 #define TRY_WRITE_LOCKER(obj, lock) \
-  arangodb::basics::WriteLocker<std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
+  arangodb::basics::WriteLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
 
 #define CONDITIONAL_WRITE_LOCKER(obj, lock, condition) \
-  arangodb::basics::WriteLocker<std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
+  arangodb::basics::WriteLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
 
 namespace arangodb {
 namespace basics {
@@ -62,7 +61,7 @@ class WriteLocker {
 
  public:
 
-  /// @brief aquires a write-lock
+  /// @brief acquires a write-lock
   /// The constructors acquire a write lock, the destructor unlocks the lock.
   WriteLocker(LockType* readWriteLock, LockerType type, bool condition, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line), 

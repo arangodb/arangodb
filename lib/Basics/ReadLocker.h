@@ -28,7 +28,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Locking.h"
-#include "Basics/ReadWriteLock.h"
 
 #ifdef TRI_SHOW_LOCK_TIME
 #include "Logger/Logger.h"
@@ -38,16 +37,16 @@
 
 /// @brief construct locker with file and line information
 #define READ_LOCKER(obj, lock) \
-  arangodb::basics::ReadLocker<std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+  arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 #define READ_LOCKER_EVENTUAL(obj, lock, t) \
-  arangodb::basics::ReadLocker<std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
+  arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
 
 #define TRY_READ_LOCKER(obj, lock) \
-  arangodb::basics::ReadLocker<std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
+  arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
 
 #define CONDITIONAL_READ_LOCKER(obj, lock, condition) \
-  arangodb::basics::ReadLocker<std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
+  arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
 
 namespace arangodb {
 namespace basics {
@@ -61,8 +60,8 @@ class ReadLocker {
   ReadLocker& operator=(ReadLocker const&) = delete;
 
  public:
-  /// @brief aquires a read-lock
-  /// The constructors acquire a read lock, the destructor unlocks the lock.
+  /// @brief acquires a read-lock
+  /// The constructor acquires a read lock, the destructor unlocks the lock.
   ReadLocker(LockType* readWriteLock, LockerType type, bool condition, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line), 
 #ifdef TRI_SHOW_LOCK_TIME

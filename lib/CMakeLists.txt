@@ -132,7 +132,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
-  Basics/MutexLocker.cpp
   Basics/Nonce.cpp
   Basics/OpenFilesTracker.cpp
   Basics/ReadWriteLockCPP11.cpp

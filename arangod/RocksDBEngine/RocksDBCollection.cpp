@@ -335,29 +335,114 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
 
   addIndex(idx);
   {
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
         {"path", "statusString"}, true, /*forPersistence*/ false);
-    auto rtrx = rocksTransaction(trx);
-    rtrx->PutLogData(
-        RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
-                                     _logicalCollection->cid(), info)
-            .slice());
-    _logicalCollection->updateProperties(builder.slice(), doSync);
+    int res =
+        static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
+            _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
+            builder.slice(),
+            RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
+                                         _logicalCollection->cid(), info));
+    if (res != TRI_ERROR_NO_ERROR) {
+      // We could not persist the index creation. Better abort
+      // Remove the Index in the local list again.
+      size_t i = 0;
+      // TODO: need to protect _indexes with an RW-lock!!
+      for (auto index : getIndexes()) {
+        if (index == idx) {
+          _indexes.erase(_indexes.begin() + i);
+          break;
+        }
+        ++i;
+      }
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
   created = true;
   return idx;
 }
 
 /// @brief Restores an index from VelocyPack.
-int RocksDBCollection::restoreIndex(transaction::Methods*,
-                                    velocypack::Slice const&,
-                                    std::shared_ptr<Index>&) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+int RocksDBCollection::restoreIndex(transaction::Methods* trx,
+                                    velocypack::Slice const& info,
+                                    std::shared_ptr<Index>& idx) {
+  // The coordinator can never get into this state!
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  idx.reset();  // Clear it to make sure.
+  if (!info.isObject()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // We create a new Index object to make sure that the index
+  // is not handed out except for a successful case.
+  std::shared_ptr<Index> newIdx;
+  try {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    IndexFactory const* idxFactory = engine->indexFactory();
+    TRI_ASSERT(idxFactory != nullptr);
+    newIdx = idxFactory->prepareIndexFromSlice(info, false, _logicalCollection,
+                                               false);
+  } catch (arangodb::basics::Exception const& e) {
+    // Something with index creation went wrong.
+    // Just report.
+    return e.code();
+  }
+  TRI_ASSERT(newIdx != nullptr);
+
+
+  auto const id = newIdx->id();
+
+  TRI_UpdateTickServer(id);
+
+  for (auto& it : _indexes) {
+    if (it->id() == id) {
+      // index already exists
+      idx = it;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  TRI_ASSERT(newIdx.get()->type() !=
+             Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+
+  Result res = fillIndexes(trx, newIdx);
+
+  if (!res.ok()) {
+    return res.errorNumber();
+  }
+
+  addIndex(newIdx);
+  {
+    VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
+        {"path", "statusString"}, true, /*forPersistence*/ false);
+    RocksDBEngine* engine =
+        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    TRI_ASSERT(engine != nullptr);
+    int res = engine->writeCreateCollectionMarker(
+        _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
+        builder.slice(),
+        RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
+                                     _logicalCollection->cid(), info));
+    if (res != TRI_ERROR_NO_ERROR) {
+      // We could not persist the index creation. Better abort
+      // Remove the Index in the local list again.
+      size_t i = 0;
+      // TODO: need to protect _indexes with an RW-lock!!
+      for (auto index : getIndexes()) {
+        if (index == newIdx) {
+          _indexes.erase(_indexes.begin() + i);
+          break;
+        }
+        ++i;
+      }
+      return res;
+    }
+  }
+
+  idx = newIdx;
+  // We need to write the IndexMarker
+   
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Drop an index with the given iid.
@@ -1316,7 +1401,7 @@ int RocksDBCollection::lockWrite(double timeout) {
       std::this_thread::yield();
     } else {
       usleep(static_cast<TRI_usleep_t>(waitTime));
-      if (waitTime < 500000) {
+      if (waitTime < 32) {
         waitTime *= 2;
       }
     }
@@ -1367,7 +1452,7 @@ int RocksDBCollection::lockRead(double timeout) {
       std::this_thread::yield();
     } else {
       usleep(static_cast<TRI_usleep_t>(waitTime));
-      if (waitTime < 500000) {
+      if (waitTime < 32) {
         waitTime *= 2;
       }
     }
