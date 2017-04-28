@@ -9,7 +9,6 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : { 
@@ -18,13 +17,13 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U5OxzLW---"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U2FCuDK---"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U5OxzLa---"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U2FCuDO---"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         } 
       ], 
@@ -35,7 +34,7 @@ x-content-type-options: nosniff
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U5OxzLW---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U2FCuDK---"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             } 
           ] 
@@ -43,24 +42,24 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11850"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/11850"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11819"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/11819"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U5OxzLe--_"</span> 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U2FCuDW---"</span> 
             } 
           ], 
           <span class="hljs-string">"vertices"</span> : [ 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U5OxzLW---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U2FCuDK---"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U5OxzLa---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U2FCuDO---"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             } 
           ] 
