@@ -1,5 +1,4 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual */
+/*global describe, it, ArangoAgency, afterEach */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster collection creation tests
@@ -38,7 +37,7 @@ var db = require("org/arangodb").db;
 describe('Cluster collection creation options', function() {
     afterEach(function() {
         db._drop('testi');
-    })
+    });
     it('should wait for all followers to get in sync when waiting for replication', function() {
         db._create("testi", {replicationFactor: 2, numberOfShards: 16}, {waitForSyncReplication: true});
         let current = ArangoAgency.get('Current/Collections/_system');
@@ -48,14 +47,14 @@ describe('Cluster collection creation options', function() {
                 return result;
             }
 
-            if (collectionDef.name == 'testi') {
+            if (collectionDef.name === 'testi') {
                 return collectionDef.id;
             }
         }, undefined);
 
         Object.values(current.arango.Current.Collections['_system'][collectionId]).forEach(entry => {
             expect(entry.servers).to.have.lengthOf(2);
-        })
+        });
     });
     it('should not wait for all followers to get in sync when waiting for replication', function() {
         db._create("testi", {replicationFactor: 2, numberOfShards: 16}, {waitForSyncReplication: false});
@@ -66,7 +65,7 @@ describe('Cluster collection creation options', function() {
                 return result;
             }
 
-            if (collectionDef.name == 'testi') {
+            if (collectionDef.name === 'testi') {
                 return collectionDef.id;
             }
         }, undefined);

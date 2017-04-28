@@ -61,6 +61,10 @@ RocksDBValue RocksDBValue::View(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::View, data);
 }
 
+RocksDBValue RocksDBValue::ReplicationApplierConfig(VPackSlice const& data) {
+  return RocksDBValue(RocksDBEntryType::ReplicationApplierConfig, data);
+}
+
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
@@ -138,7 +142,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::Document:
-    case RocksDBEntryType::View: {
+    case RocksDBEntryType::View:
+    case RocksDBEntryType::ReplicationApplierConfig: {
       _buffer.reserve(static_cast<size_t>(data.byteSize()));
       _buffer.append(reinterpret_cast<char const*>(data.begin()),
                      static_cast<size_t>(data.byteSize()));

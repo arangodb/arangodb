@@ -29,6 +29,8 @@
 #include "Cache/Common.h"
 #include "Cache/State.h"
 
+#include <stddef.h>
+
 #include <stdint.h>
 #include <atomic>
 
@@ -53,15 +55,15 @@ struct TransactionalBucket {
   uint32_t _cachedHashes[slotsData];
   CachedValue* _cachedData[slotsData];
 
+// padding, if necessary?
+#ifdef TRI_PADDING_32
+  uint32_t _padding[slotsData];
+#endif
+
   // blacklist entries for transactional semantics
   static constexpr size_t slotsBlacklist = 4;
   uint32_t _blacklistHashes[slotsBlacklist];
   uint64_t _blacklistTerm;
-
-// padding, if necessary?
-#ifdef TRI_PADDING_32
-  uint32_t _padding[3];
-#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize an empty bucket.

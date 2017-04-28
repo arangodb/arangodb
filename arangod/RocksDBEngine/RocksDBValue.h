@@ -53,6 +53,7 @@ class RocksDBValue {
   static RocksDBValue IndexValue();
   static RocksDBValue UniqueIndexValue(arangodb::StringRef const& primaryKey);
   static RocksDBValue View(VPackSlice const& data);
+  static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -93,14 +94,15 @@ class RocksDBValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.
   //////////////////////////////////////////////////////////////////////////////
-  std::string const& string() { return _buffer; } // to be used with put
-  std::string* buffer() { return &_buffer; }      // to be used with get
-  VPackSlice slice() const { return VPackSlice(
-      reinterpret_cast<uint8_t const*>(_buffer.data())
-  ); }      // return a slice
+  std::string const& string() { return _buffer; }  // to be used with put
+  std::string* buffer() { return &_buffer; }       // to be used with get
+  VPackSlice slice() const {
+    return VPackSlice(reinterpret_cast<uint8_t const*>(_buffer.data()));
+  }  // return a slice
 
   RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
-    : _type(type), _buffer(slice.data(),slice.size()) {}
+      : _type(type), _buffer(slice.data(), slice.size()) {}
+
  private:
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);

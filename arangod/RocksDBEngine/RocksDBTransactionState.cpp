@@ -99,7 +99,7 @@ RocksDBTransactionState::RocksDBTransactionState(
       _numUpdates(0),
       _numRemoves(0),
       _intermediateTransactionEnabled(intermediateTransactionEnabled),
-      _lastUsedCollection(UINT64_MAX) {}
+      _lastUsedCollection(0) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -159,10 +159,12 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
 
-    RocksDBLogValue header =
-        RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
-    _rocksTransaction->PutLogData(header.slice());
-
+    if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+      RocksDBLogValue header =
+      RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
+      _rocksTransaction->PutLogData(header.slice());
+    }
+    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -280,21 +282,50 @@ Result RocksDBTransactionState::abortTransaction(
 
 void RocksDBTransactionState::prepareOperation(
     TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-    TRI_voc_document_operation_e operationType) {
-  switch (operationType) {
-    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
-      break;
-    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
-    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
-    case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
-      if (collectionId != _lastUsedCollection) {
-        RocksDBLogValue logValue =
-            RocksDBLogValue::DocumentOpsPrologue(collectionId);
-        //_rocksTransaction->PutLogData(logValue.slice());
-        _lastUsedCollection = collectionId;
+    StringRef const& key, TRI_voc_document_operation_e operationType) {
+  
+  bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  // single operations should never call this method twice
+  TRI_ASSERT(!singleOp  || _lastUsedCollection == 0);
+  if (collectionId != _lastUsedCollection) {
+    switch (operationType) {
+      case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+      case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
+        if (singleOp) {
+          RocksDBLogValue logValue = RocksDBLogValue::SinglePut(_vocbase->id(),
+                                                                collectionId);
+          _rocksTransaction->PutLogData(logValue.slice());
+        } else {
+          RocksDBLogValue logValue =
+          RocksDBLogValue::DocumentOpsPrologue(collectionId);
+          _rocksTransaction->PutLogData(logValue.slice());
+        }
+        break;
       }
-    } break;
+      case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
+        if (singleOp) {
+          RocksDBLogValue logValue = RocksDBLogValue::SinglePut(_vocbase->id(),
+                                                                collectionId);
+          _rocksTransaction->PutLogData(logValue.slice());
+        } else {
+          RocksDBLogValue logValue =
+          RocksDBLogValue::DocumentOpsPrologue(collectionId);
+          _rocksTransaction->PutLogData(logValue.slice());
+          
+        }
+      } break;
+      case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+        break;
+    }
+    _lastUsedCollection = collectionId;
+  }
+  
+  // we need to the remove log entry, if we don't have the single optimization
+  if (!singleOp && operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+    RocksDBLogValue logValue =
+    RocksDBLogValue::DocumentRemove(key);
+    _rocksTransaction->PutLogData(logValue.slice());
   }
 }
 

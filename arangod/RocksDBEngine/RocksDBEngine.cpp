@@ -372,13 +372,21 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
     THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
 
-  builder.add("parameters", VPackSlice(value.buffer()->data()));
+  VPackSlice fullParameters = VPackSlice(value.buffer()->data());
+
+  builder.add("parameters", fullParameters);
 
   if (includeIndexes) {
     // dump index information
-    builder.add("indexes", VPackValue(VPackValueType::Array));
-    // TODO
-    builder.close();
+    VPackSlice indexes = fullParameters.get("indexes");
+    builder.add(VPackValue("indexes"));
+    if (indexes.isArray()) {
+      builder.add(indexes);
+    } else {
+      // Insert an empty array instead
+      builder.openArray();
+      builder.close();
+    }
   }
 
   builder.close();
@@ -462,20 +470,46 @@ void RocksDBEngine::waitForSync(TRI_voc_tick_t tick) {
 std::shared_ptr<arangodb::velocypack::Builder>
 RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                                   int& status) {
-  // TODO!
-  status = TRI_ERROR_FILE_NOT_FOUND;
-  return std::shared_ptr<arangodb::velocypack::Builder>();
+  auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
+  auto value = RocksDBValue::Empty(RocksDBEntryType::ReplicationApplierConfig);
+
+  auto db = rocksutils::globalRocksDB();
+  auto opts = rocksdb::ReadOptions();
+  auto s = db->Get(opts, key.string(), value.buffer());
+  if (!s.ok()) {
+    status = TRI_ERROR_FILE_NOT_FOUND;
+    return std::shared_ptr<arangodb::velocypack::Builder>();
+  }
+
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->add(RocksDBValue::data(value));
+
+  status = TRI_ERROR_NO_ERROR;
+  return builder;
 }
 
 int RocksDBEngine::removeReplicationApplierConfiguration(
     TRI_vocbase_t* vocbase) {
-  // TODO!
+  auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
+
+  auto status = rocksutils::globalRocksDBRemove(key.string());
+  if (!status.ok()) {
+    return status.errorNumber();
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
 int RocksDBEngine::saveReplicationApplierConfiguration(
     TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) {
-  // TODO!
+  auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
+  auto value = RocksDBValue::ReplicationApplierConfig(slice);
+
+  auto status = rocksutils::globalRocksDBPut(key.string(), value.string());
+  if (!status.ok()) {
+    return status.errorNumber();
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -565,7 +599,7 @@ void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
 }
 
 std::string RocksDBEngine::createCollection(
-    TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+    TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
     arangodb::LogicalCollection const* parameters) {
   VPackBuilder builder = parameters->toVelocyPackIgnore(
       {"path", "statusString"}, /*translate cid*/ true,
@@ -580,8 +614,8 @@ std::string RocksDBEngine::createCollection(
   }
 
   int res = writeCreateCollectionMarker(
-      vocbase->id(), id, builder.slice(),
-      RocksDBLogValue::CollectionCreate(vocbase->id()));
+      vocbase->id(), cid, builder.slice(),
+      RocksDBLogValue::CollectionCreate(vocbase->id(), cid));
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -609,7 +643,7 @@ arangodb::Result RocksDBEngine::persistCollection(
 
   int res = writeCreateCollectionMarker(
       vocbase->id(), cid, slice,
-      RocksDBLogValue::CollectionCreate(vocbase->id()));
+      RocksDBLogValue::CollectionCreate(vocbase->id(), cid));
   result.reset(res);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -633,20 +667,25 @@ arangodb::Result RocksDBEngine::dropCollection(
   //   * if this fails the collection will remain!
   //   * if this succeeds the collection is gone from user point
   // 2. Drop all Documents
-  //   * If this fails we give up => We have data-garbage in RocksDB, Collection is gone.
+  //   * If this fails we give up => We have data-garbage in RocksDB, Collection
+  //   is gone.
   // 3. Drop all Indexes
-  //   * If this fails we give up => We have data-garbage in RocksDB, Collection is gone.
+  //   * If this fails we give up => We have data-garbage in RocksDB, Collection
+  //   is gone.
   // 4. If all succeeds we do not have data-garbage, all is gone.
   //
-  // (NOTE: The above fails can only occur on full HDD or Machine dying. No write conflicts possible)
+  // (NOTE: The above fails can only occur on full HDD or Machine dying. No
+  // write conflicts possible)
 
   TRI_ASSERT(collection->status() == TRI_VOC_COL_STATUS_DELETED);
 
   // Prepare collection remove batch
-  RocksDBLogValue logValue = RocksDBLogValue::CollectionDrop(vocbase->id(), collection->cid());
+  RocksDBLogValue logValue =
+      RocksDBLogValue::CollectionDrop(vocbase->id(), collection->cid());
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Delete(RocksDBKey::Collection(vocbase->id(), collection->cid()).string());
+  batch.Delete(
+      RocksDBKey::Collection(vocbase->id(), collection->cid()).string());
   rocksdb::Status res = _db->Write(options, &batch);
 
   // TODO FAILURE Simulate !res.ok()
@@ -663,7 +702,6 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   // Unregister counter
   _counterManager->removeCounter(coll->objectId());
-
 
   // delete documents
   RocksDBKeyBounds bounds =
@@ -690,7 +728,7 @@ arangodb::Result RocksDBEngine::dropCollection(
       return TRI_ERROR_NO_ERROR;
     }
   }
-  
+
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.
   return TRI_ERROR_NO_ERROR;
@@ -725,7 +763,7 @@ arangodb::Result RocksDBEngine::renameCollection(
   int res = writeCreateCollectionMarker(
       vocbase->id(), collection->cid(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase->id(), collection->cid(),
-                                        collection->name()));
+                                        StringRef(collection->name())));
   return arangodb::Result(res);
 }
 

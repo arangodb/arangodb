@@ -103,6 +103,7 @@ class RocksDBTransactionState final : public TransactionState {
   }
 
   void prepareOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+                        StringRef const& key,
                         TRI_voc_document_operation_e operationType);
 
   /// @brief add an operation for a transaction collection

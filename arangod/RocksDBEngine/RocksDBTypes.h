@@ -41,11 +41,12 @@ enum class RocksDBEntryType : char {
   IndexValue = '6',
   UniqueIndexValue = '7',
   View = '8',
-  SettingsValue = '9'
+  SettingsValue = '9',
+  ReplicationApplierConfig = ':'
 };
-  
+
 enum class RocksDBLogType : char {
-  BeginTransaction = '0',
+  Invalid = 0,
   DatabaseCreate = '1',
   DatabaseDrop = '2',
   CollectionCreate = '3',
@@ -57,10 +58,12 @@ enum class RocksDBLogType : char {
   ViewCreate = '9',
   ViewDrop = ':',
   ViewChange = ';',
-  DocumentOperationsPrologue = '<', 
-  DocumentRemove = '='
+  BeginTransaction = '<',
+  DocumentOperationsPrologue = '=',
+  DocumentRemove = '>',
+  SinglePut = '?',
+  SingleRemove = '@'
 };
-
 
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }
