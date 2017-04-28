@@ -54,7 +54,7 @@ class RocksDBReplicationContext {
   TRI_voc_tick_t id() const;
   uint64_t lastTick() const;
   uint64_t count() const;
-  
+
   TRI_vocbase_t* vocbase() const {
     if (_trx == nullptr) {
       return nullptr;
@@ -74,7 +74,8 @@ class RocksDBReplicationContext {
   // creating a new iterator if one does not exist for this collection
   RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
                                 std::string const& collectionName,
-                                basics::StringBuffer&, uint64_t chunkSize);
+                                basics::StringBuffer&, uint64_t chunkSize,
+                                bool compat28);
 
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash

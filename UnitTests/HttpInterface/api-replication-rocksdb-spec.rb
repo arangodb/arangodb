@@ -985,32 +985,11 @@ describe ArangoDB do
 
         cmd = api + "/dump?collection=UnitTestsReplication&batchId=#{@batchId}"
         doc = ArangoDB.log_get("#{prefix}-deleted", cmd, :body => "", :format => :plain)
-        doc.code.should eq(200)
+        doc.code.should eq(204)
 
         doc.headers["x-arango-replication-checkmore"].should eq("false")
-        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
-        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+        doc.headers["x-arango-replication-lastincluded"].should eq("0")
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
-
-        body = doc.response.body
-        i = 0
-        while 1
-          position = body.index("\n")
-
-          break if position == nil
-
-          part = body.slice(0, position)
-
-          document = JSON.parse(part)
-
-          document['type'].should eq(2302)
-          document['data']['_key'].should match(/^test[0-9]+$/)
-
-          body = body.slice(position + 1, body.length)
-          i = i + 1
-        end
-
-        i.should eq(10)
       end
 
       it "checks the dump for a truncated collection" do
@@ -1037,34 +1016,11 @@ describe ArangoDB do
 
         cmd = api + "/dump?collection=UnitTestsReplication&batchId=#{@batchId}"
         doc = ArangoDB.log_get("#{prefix}-truncated", cmd, :body => "", :format => :plain)
-        doc.code.should eq(200)
+        doc.code.should eq(204)
 
         doc.headers["x-arango-replication-checkmore"].should eq("false")
-        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
-        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+        doc.headers["x-arango-replication-lastincluded"].should eq("0")
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
-
-        body = doc.response.body
-        i = 0
-        while 1
-          position = body.index("\n")
-
-          break if position == nil
-
-          part = body.slice(0, position)
-
-          document = JSON.parse(part)
-
-          document['type'].should eq(2302)
-          # truncate order is undefined
-          document['data']['_key'].should match(/^test\d+$/)
-          document['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
-
-          body = body.slice(position + 1, body.length)
-          i = i + 1
-        end
-
-        i.should eq(10)
       end
 
       it "checks the dump for a non-empty collection, 3.0 mode" do

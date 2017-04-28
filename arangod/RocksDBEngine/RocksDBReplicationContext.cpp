@@ -26,7 +26,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
-#include "VocBase/replication-common.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -130,7 +129,7 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationResult RocksDBReplicationContext::dump(
     TRI_vocbase_t* vocbase, std::string const& collectionName,
-    basics::StringBuffer& buff, uint64_t chunkSize) {
+    basics::StringBuffer& buff, uint64_t chunkSize, bool compat28) {
   TRI_ASSERT(vocbase != nullptr);
   if (_trx.get() == nullptr) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
@@ -142,12 +141,15 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
   // set type
   int type = REPLICATION_MARKER_DOCUMENT;  // documents
+  if (compat28 && (_collection->type() == TRI_COL_TYPE_EDGE)) {
+    type = 2301;  // 2.8 compatibility edges
+  }
 
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
 
   VPackBuilder builder(&_vpackOptions);
 
-  auto cb = [this, &type, &buff, &adapter,
+  auto cb = [this, &type, &buff, &adapter, &compat28,
              &builder](DocumentIdentifierToken const& token) {
     builder.clear();
 
@@ -167,7 +169,9 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     builder.add(VPackValue("data"));
     auto key = VPackSlice(_mdr.vpack()).get(StaticStrings::KeyString);
     _mdr.addToBuilder(builder, false);
-    builder.add("key", key);
+    if (compat28) {
+      builder.add("key", key);
+    }
     builder.close();
 
     VPackDumper dumper(
@@ -180,7 +184,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
   while (_hasMore && buff.length() < chunkSize) {
     try {
-      _hasMore = _iter->next(cb, 10);  // TODO: adjust limit?
+      _hasMore = _iter->next(cb, 1);  // TODO: adjust limit?
     } catch (std::exception const& ex) {
       _hasMore = false;
       return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
