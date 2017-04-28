@@ -355,6 +355,9 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
   }
 
   if (iid == 0 && !isClusterConstructor) {
+    if (!generateKey) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << info.toJson();
+    }
     // Restore is not allowed to generate an id
     TRI_ASSERT(generateKey);
     iid = arangodb::Index::generateId();
