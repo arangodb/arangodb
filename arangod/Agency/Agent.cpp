@@ -639,6 +639,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
   // Apply to spearhead and get indices for log entries
   auto qs = queries->slice();
+  addTrxsOngoing(qs);    // remember that these are ongoing
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
   size_t failed = 0;
   ret->openArray();
@@ -669,6 +670,8 @@ trans_ret_t Agent::transact(query_t const& queries) {
       }
     }
     
+    removeTrxsOngoing(qs);
+
     // (either no writes or all preconditions failed)
 /*    if (maxind == 0) {
       ret->clear();
@@ -741,22 +744,37 @@ inquire_ret_t Agent::inquire(query_t const& query) {
 
   auto si = _state.inquire(query);
 
+  bool found = false;
   auto builder = std::make_shared<VPackBuilder>();
   {
     VPackArrayBuilder b(builder.get());
     for (auto const& i : si) {
       VPackArrayBuilder bb(builder.get());
       for (auto const& j : i) {
+        found = true;
         VPackObjectBuilder bbb(builder.get());
         builder->add("index", VPackValue(j.index));
         builder->add("term", VPackValue(j.term));
         builder->add("query", VPackSlice(j.entry->data()));
-        builder->add("index", VPackValue(j.index));
       }
     }
   }
   
   ret = inquire_ret_t(true, id(), builder);
+
+  if (!found) {
+    return ret;
+  }
+
+  // Check ongoing ones:
+  for (auto const& s : VPackArrayIterator(query->slice())) {
+    std::string ss = s.copyString();
+    if (isTrxOngoing(ss)) {
+      ret.result->clear();
+      ret.result->add(VPackValue("ongoing"));
+    }
+  }
+
   return ret;
 }
 
@@ -773,6 +791,8 @@ write_ret_t Agent::write(query_t const& query) {
     return write_ret_t(false, leader);
   }
   
+  addTrxsOngoing(query->slice());    // remember that these are ongoing
+
   // Apply to spearhead and get indices for log entries
   {
     MUTEX_LOCKER(ioLocker, _ioLock);
@@ -785,8 +805,9 @@ write_ret_t Agent::write(query_t const& query) {
     
     applied = _spearhead.apply(query);
     indices = _state.log(query, applied, term());
-    
   }
+
+  removeTrxsOngoing(query->slice());
 
   // Maximum log index
   index_t maxind = 0;
@@ -1434,6 +1455,42 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
   
   return builder;
   
+}
+
+void Agent::addTrxsOngoing(Slice trxs) {
+  try {
+    MUTEX_LOCKER(guard,_trxsLock);
+    for (auto const& trx : VPackArrayIterator(trxs)) {
+      if (trx[0].isObject() && trx.length() == 3 && trx[2].isString()) {
+        // only those are interesting:
+        _ongoingTrxs.insert(trx[2].copyString());
+      }
+    }
+  } catch (...) {
+  }
+}
+
+void Agent::removeTrxsOngoing(Slice trxs) {
+  try {
+    MUTEX_LOCKER(guard, _trxsLock);
+    for (auto const& trx : VPackArrayIterator(trxs)) {
+      if (trx[0].isObject() && trx.length() == 3 && trx[2].isString()) {
+        // only those are interesting:
+        _ongoingTrxs.erase(trx[2].copyString());
+      }
+    }
+  } catch (...) {
+  }
+}
+
+bool Agent::isTrxOngoing(std::string& id) {
+  try {
+    MUTEX_LOCKER(guard, _trxsLock);
+    auto it = _ongoingTrxs.find(id);
+    return it != _ongoingTrxs.end();
+  } catch (...) {
+    return false;
+  }
 }
 
 }}  // namespace
