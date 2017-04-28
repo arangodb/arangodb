@@ -203,7 +203,7 @@ void RocksDBEngine::start() {
   _options.comparator = _cmp.get();
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
-  _options.WAL_ttl_seconds = 60;  //(uint64_t)(counter_sync_seconds * 2.0);
+  _options.WAL_ttl_seconds = 600;  //(uint64_t)(counter_sync_seconds * 2.0);
   double counter_sync_seconds = 2.5;
   // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
 
@@ -969,7 +969,8 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
   builder.add("lastUncommittedLogTick", VPackValue(std::to_string(lastTick)));
-  builder.add("totalEvents", VPackValue(lastTick));  // s.numEvents + s.numEventsSync
+  builder.add("totalEvents",
+              VPackValue(lastTick));  // s.numEvents + s.numEventsSync
   builder.add("time", VPackValue(utilities::timeString()));
   builder.close();
 

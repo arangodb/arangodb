@@ -120,7 +120,7 @@ function ReplicationSuite() {
 
     var keepBarrier = false;
     if (applierConfiguration.hasOwnProperty("keepBarrier")) {
-      keepBarrier = applierConfiguration.keepBarrier; 
+      keepBarrier = applierConfiguration.keepBarrier;
     }
 
     var syncResult = replication.sync({
@@ -165,7 +165,7 @@ function ReplicationSuite() {
 
     while (true) {
       var r = slaveFuncOngoing(state);
-      if (r === "wait") { 
+      if (r === "wait") {
         // special return code that tells us to hang on
         internal.wait(0.5, false);
         continue;
@@ -242,7 +242,7 @@ function ReplicationSuite() {
       db._drop(cn);
       db._drop(cn2);
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection creation
     ////////////////////////////////////////////////////////////////////////////////
@@ -273,7 +273,7 @@ function ReplicationSuite() {
         }
       );
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection dropping
     ////////////////////////////////////////////////////////////////////////////////
@@ -305,7 +305,7 @@ function ReplicationSuite() {
         }
       );
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test index creation
     ////////////////////////////////////////////////////////////////////////////////
@@ -337,7 +337,7 @@ function ReplicationSuite() {
         }
       );
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test index dropping
     ////////////////////////////////////////////////////////////////////////////////
@@ -366,7 +366,7 @@ function ReplicationSuite() {
         }
       );
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test renaming
     ////////////////////////////////////////////////////////////////////////////////
@@ -393,7 +393,7 @@ function ReplicationSuite() {
         }
       );
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test renaming
     ////////////////////////////////////////////////////////////////////////////////
@@ -425,89 +425,6 @@ function ReplicationSuite() {
     /// @brief test require from present
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRequireFromPresentFalse: function() {
-      connectToMaster();
-
-      compare(
-        function(state) {
-          db._create(cn);
-        },
-
-        function(state) {
-          // flush the wal logs on the master so the start tick is not available
-          // anymore when we start replicating
-          for (var i = 0; i < 30; ++i) {
-            db._collection(cn).save({
-              value: i
-            });
-            internal.wal.flush(); //true, true);
-          }
-          db._collection(cn).save({
-            value: i
-          });
-          internal.wal.flush(true, true);
-          internal.wait(6, false);
-        },
-
-        function(state) {
-          return true;
-        },
-
-        function(state) {
-          // data loss on slave!
-          assertTrue(db._collection(cn).count() < 25);
-        }, {
-          requireFromPresent: false,
-          keepBarrier: false
-        }
-      );
-    },
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test require from present, no barrier
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testRequireFromPresentTrueNoBarrier : function () {
-      connectToMaster();
-
-      compare(
-        function (state) {
-          db._create(cn);
-        },
-
-        function (state) {
-          // flush the wal logs on the master so the start tick is not available
-          // anymore when we start replicating
-          for (var i = 0; i < 30; ++i) {
-            db._collection(cn).save({ value: i });
-            internal.wal.flush(); //true, true);
-          }
-          internal.wal.flush(true, true);
-          internal.wait(6, false);
-        },
-
-        function (state) {
-          // wait for slave applier to have started and detect the mess
-          return replication.applier.state().state.running;
-        },
-
-        function (state) {
-          // slave should have failed
-          assertFalse(replication.applier.state().state.running);
-          // data loss on slave!
-          assertTrue(db._collection(cn).count() < 25);
-        },
-        { 
-          requireFromPresent: true,
-          keepBarrier: false
-        }
-      );
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test require from present
-    ////////////////////////////////////////////////////////////////////////////////
-
     testRequireFromPresentTrue : function () {
       connectToMaster();
 
@@ -525,7 +442,7 @@ function ReplicationSuite() {
           }
           internal.wal.flush(true, true);
           internal.wait(6, false);
-          
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(30, state.count);
@@ -544,9 +461,9 @@ function ReplicationSuite() {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
-        { 
+        {
           requireFromPresent: true,
-          keepBarrier: true 
+          keepBarrier: true
         }
       );
     },
