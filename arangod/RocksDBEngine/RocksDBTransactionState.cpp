@@ -316,14 +316,15 @@ void RocksDBTransactionState::prepareOperation(
       }
       case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
         if (singleOp) {
-          RocksDBLogValue logValue = RocksDBLogValue::SinglePut(_vocbase->id(),
-                                                                collectionId);
+          TRI_ASSERT(!key.empty());
+          RocksDBLogValue logValue = RocksDBLogValue::SingleRemove(_vocbase->id(),
+                                                                   collectionId,
+                                                                   key);
           _rocksTransaction->PutLogData(logValue.slice());
         } else {
           RocksDBLogValue logValue =
           RocksDBLogValue::DocumentOpsPrologue(collectionId);
           _rocksTransaction->PutLogData(logValue.slice());
-          
         }
       } break;
       case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
