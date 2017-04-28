@@ -276,10 +276,11 @@ TRI_voc_tid_t RocksDBLogValue::transactionId(rocksdb::Slice const& slice) {
 }
 
 TRI_idx_iid_t RocksDBLogValue::indexId(rocksdb::Slice const& slice) {
-  TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
+  TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (3 * sizeof(uint64_t)));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::IndexDrop);
-  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType));
+  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                              (2 * sizeof(uint64_t)));
 }
 
 VPackSlice RocksDBLogValue::indexSlice(rocksdb::Slice const& slice) {
