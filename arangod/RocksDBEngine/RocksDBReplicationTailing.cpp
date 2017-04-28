@@ -169,6 +169,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
             "type",
             VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_START)));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
         _builder.close();
         break;
       }
@@ -341,7 +342,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
           "type",
           VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
       _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-      //_builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
+      _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
       _builder.close();
     }
     _seenBeginTransaction = false;
@@ -411,13 +412,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
                                              uint64_t from, size_t limit,
                                              bool includeSystem,
                                              VPackBuilder& builder) {
-  
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  
+
   uint64_t lastTick = from;
   std::unique_ptr<WALParser> handler(
       new WALParser(vocbase, from, limit, includeSystem, builder));
