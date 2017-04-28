@@ -74,8 +74,12 @@ macro (install_readme input output)
   if (MSVC)
     set(CRLFSTYLE "CRLF")
   endif ()
+
   install(
-    CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \$ENV{DESTDIR}/${where}${PKG_VERSION}/${output} NEWLINE_STYLE ${CRLFSTYLE})"
+    CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \"${PROJECT_BINARY_DIR}/${output}\" NEWLINE_STYLE ${CRLFSTYLE})")
+  install(
+    FILES "${PROJECT_BINARY_DIR}/${output}"
+    DESTINATION "${where}"
     )
 endmacro ()
 
