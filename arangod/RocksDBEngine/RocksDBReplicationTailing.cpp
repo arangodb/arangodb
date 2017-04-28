@@ -235,6 +235,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
 
         _builder.openObject();
+        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
         _builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
         // auto containers = getContainerIds(key);
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
@@ -293,6 +294,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
         uint64_t revisionId = RocksDBKey::revisionId(key);
         _builder.openObject();
+        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
         _builder.add(
             "type",
             VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
