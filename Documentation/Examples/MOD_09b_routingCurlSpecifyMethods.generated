@@ -2,7 +2,6 @@ shell> curl --dump - http://localhost:8529/hello/world
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
@@ -12,12 +11,12 @@ x-content-type-options: nosniff
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">12106</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">60108</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">54585</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149337683991803"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">54450</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149253070031744"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
@@ -45,7 +44,6 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
@@ -55,12 +53,12 @@ x-content-type-options: nosniff
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">12106</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">60108</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">54585</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149337683991803"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">54450</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149253070031744"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
@@ -89,7 +87,6 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
@@ -99,12 +96,12 @@ x-content-type-options: nosniff
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">12106</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">60108</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">54585</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149337683991803"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">54450</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149253070031744"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
@@ -131,7 +128,6 @@ shell> curl -X DELETE --dump - http://localhost:8529/hello/world
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
