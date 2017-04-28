@@ -28,7 +28,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
-#include "Utils/ExecContext.h"
 
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -81,7 +80,6 @@ class VocbaseContext final : public arangodb::RequestContext {
  private:
   TRI_vocbase_t* _vocbase;
   AuthenticationFeature* _authentication;
-  std::shared_ptr<ExecContext> _execContext;
 
 };
 }

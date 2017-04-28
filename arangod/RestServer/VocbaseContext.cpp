@@ -52,8 +52,7 @@ double VocbaseContext::ServerSessionTtl =
 VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase)
     : RequestContext(request),
     _vocbase(vocbase),
-    _authentication(nullptr),
-    _execContext(nullptr) {
+    _authentication(nullptr) {
   TRI_ASSERT(_vocbase != nullptr);
   _authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(_authentication != nullptr);
