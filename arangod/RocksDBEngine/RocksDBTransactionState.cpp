@@ -157,7 +157,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
 
-    if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+    if (!isReadOnlyTransaction() && !hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
       RocksDBLogValue header =
       RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
       _rocksTransaction->PutLogData(header.slice());
