@@ -239,6 +239,11 @@ static void JS_LastLoggerReplication(
   }
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
+  if (tickEnd <= tickStart) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+                                 "tickStart < tickEnd");
+  }
+  
   
   v8::Handle<v8::Value> result;
   std::string engineName = EngineSelectorFeature::ENGINE->typeName();
@@ -261,7 +266,7 @@ static void JS_LastLoggerReplication(
 
   } else if (engineName == "rocksdb") {
     bool includeSystem = true;
-    size_t limit = 10000;  // TODO: determine good default value?
+    size_t limit = tickEnd - tickStart;  // TODO: determine good default value?
     
     // construct vocbase with proper handler
     std::shared_ptr<transaction::Context> transactionContext =
