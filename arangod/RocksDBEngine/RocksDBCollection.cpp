@@ -134,7 +134,7 @@ void RocksDBCollection::getPropertiesVPackCoordinator(
 
 /// @brief closes an open collection
 int RocksDBCollection::close() {
-  for (auto& it : _indexes) {
+  for (auto it : getIndexes()) {
     it->unload();
   }
   return TRI_ERROR_NO_ERROR;
@@ -183,7 +183,7 @@ void RocksDBCollection::open(bool ignoreErrors) {
   //_numberDocuments = countKeyRange(db, readOptions,
   // RocksDBKeyBounds::CollectionDocuments(_objectId));
 
-  for (auto& it : _indexes) {
+  for (auto it : getIndexes()) {
     static_cast<RocksDBIndex*>(it.get())->load();
   }
 }
@@ -237,7 +237,7 @@ void RocksDBCollection::prepareIndexes(
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "got invalid indexes for collection '" << _logicalCollection->name()
         << "'";
-    for (auto const& it : _indexes) {
+    for (auto it : getIndexes()) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
     }
   }
@@ -262,7 +262,7 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
 
   for (auto const& idx : _indexes) {
     if (idx->type() == type) {
-      // Only check relevant indices
+      // Only check relevant indexes
       if (idx->matchesDefinition(info)) {
         // We found an index for this definition.
         return idx;
@@ -275,7 +275,7 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
-  // TODO Get LOCK for the vocbase
+
   auto idx = lookupIndex(info);
   if (idx != nullptr) {
     created = false;
@@ -435,7 +435,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     // invalid index id or primary index
     return true;
   }
-
+  
   size_t i = 0;
   // TODO: need to protect _indexes with an RW-lock!!
   for (auto index : getIndexes()) {
