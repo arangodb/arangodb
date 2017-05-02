@@ -1368,7 +1368,8 @@ int InitialSyncer::syncChunkRocksDB(
   // must transfer keys for non-matching range
   std::string url = baseUrl + "/" + keysId +
                     "?type=keys&chunk=" + std::to_string(chunkId) +
-                    "&chunkSize=" + std::to_string(chunkSize);
+                    "&chunkSize=" + std::to_string(chunkSize) +
+                    "&low=" + lowString;// send over low chunk for seeking
 
   std::string progress =
       "fetching keys chunk '" + std::to_string(chunkId) + "' from " + url;
@@ -1536,7 +1537,8 @@ int InitialSyncer::syncChunkRocksDB(
 
     std::string url = baseUrl + "/" + keysId +
                       "?type=docs&chunk=" + std::to_string(chunkId) +
-                      "&chunkSize=" + std::to_string(chunkSize);
+                      "&chunkSize=" + std::to_string(chunkSize) +
+                      "&low=" + lowString;// send over low chunk for seeking
     progress = "fetching documents chunk " + std::to_string(chunkId) +
                " for collection '" + collectionName + "' from " + url;
     setProgress(progress);

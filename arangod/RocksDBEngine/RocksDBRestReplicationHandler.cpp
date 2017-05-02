@@ -1173,12 +1173,14 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     }
   }
 
+  // chunk is supplied by old clients, low is an optimization
+  // for rocksdb, because seeking should be cheaper
   std::string const& value2 = _request->value("chunk", found);
-
   size_t chunk = 0;
   if (found) {
     chunk = static_cast<size_t>(StringUtils::uint64(value2));
   }
+  std::string const& lowKey = _request->value("low", found);
 
   std::string const& value3 = _request->value("type", found);
 
@@ -1192,6 +1194,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "invalid 'type' value");
     return;
   }
+  
 
   std::string const& id = suffixes[1];
 
@@ -1210,7 +1213,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
 
   VPackBuilder resultBuilder(transactionContext->getVPackOptions());
   if (keys) {
-    ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize));
+    ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey);
   } else {
     bool success;
     std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
@@ -1219,7 +1222,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       return;
     }
     ctx->dumpDocuments(resultBuilder, chunk, static_cast<size_t>(chunkSize),
-                       parsedIds->slice());
+                       lowKey, parsedIds->slice());
   }
 
   generateResult(rest::ResponseCode::OK, resultBuilder.slice(),

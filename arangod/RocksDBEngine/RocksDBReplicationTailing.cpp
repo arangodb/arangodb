@@ -68,16 +68,14 @@ static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
 /// WAL parser
 class WALParser : public rocksdb::WriteBatch::Handler {
  public:
-  explicit WALParser(TRI_vocbase_t* vocbase,
-                     bool includeSystem, TRI_voc_cid_t collectionId,
-                     VPackBuilder& builder)
+  explicit WALParser(TRI_vocbase_t* vocbase, bool includeSystem,
+                     TRI_voc_cid_t collectionId, VPackBuilder& builder)
       : _vocbase(vocbase),
         _includeSystem(includeSystem),
         _onlyCollectionId(collectionId),
         _builder(builder) {}
 
   void LogData(rocksdb::Slice const& blob) override {
-
     RocksDBLogType type = RocksDBLogValue::type(blob);
     TRI_DEFER(_lastLogType = type);
     switch (type) {
@@ -111,12 +109,13 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentCollectionId = RocksDBLogValue::collectionId(blob);
         // only print markers from this collection if it is set
-        if (_onlyCollectionId != 0 && _currentCollectionId == _onlyCollectionId) {
+        if (_onlyCollectionId != 0 &&
+            _currentCollectionId == _onlyCollectionId) {
           VPackSlice indexSlice = RocksDBLogValue::indexSlice(blob);
           _builder.openObject();
           _builder.add(
-                       "type",
-                       VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
+              "type",
+              VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
           _builder.add("database", VPackValue(std::to_string(_currentDbId)));
           _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
           _builder.add("data", indexSlice);
@@ -129,10 +128,12 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _currentCollectionId = RocksDBLogValue::collectionId(blob);
         TRI_idx_iid_t iid = RocksDBLogValue::indexId(blob);
         // only print markers from this collection if it is set
-        if (_onlyCollectionId != 0 && _currentCollectionId == _onlyCollectionId) {
+        if (_onlyCollectionId != 0 &&
+            _currentCollectionId == _onlyCollectionId) {
           _builder.openObject();
-          _builder.add("type",
-                       VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_DROP)));
+          _builder.add(
+              "type",
+              VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_DROP)));
           _builder.add("database", VPackValue(std::to_string(_currentDbId)));
           _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
           _builder.add("data", VPackValue(VPackValueType::Object));
@@ -208,7 +209,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
                    _lastLogType == RocksDBLogType::CollectionChange ||
                    _lastLogType == RocksDBLogType::CollectionRename);
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
-        
+
         VPackSlice collectionData = RocksDBValue::data(value);
         _builder.openObject();
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -260,6 +261,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   void SingleDelete(rocksdb::Slice const& key) override { handleDeletion(key); }
 
   void handleDeletion(rocksdb::Slice const& key) {
+    if (!shouldHandleKey(key)) {
+      return;
+    }
+
     switch (RocksDBKey::type(key)) {
       case RocksDBEntryType::Collection: {
         TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionDrop);
@@ -385,11 +390,11 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
     return true;
   }
-  
+
  private:
   // these parameters are relevant to determine if we can print
   // a specific marker from the WAL
-  TRI_vocbase_t *const _vocbase;
+  TRI_vocbase_t* const _vocbase;
   bool const _includeSystem;
   TRI_voc_cid_t const _onlyCollectionId;
   /// result builder
@@ -412,8 +417,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 // from the corresponding database
 RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
                                              uint64_t tickStart,
-                                             uint64_t tickEnd,
-                                             size_t chunkSize,
+                                             uint64_t tickEnd, size_t chunkSize,
                                              bool includeSystem,
                                              TRI_voc_cid_t collectionId,
                                              VPackBuilder& builder) {
@@ -421,7 +425,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   std::unique_ptr<WALParser> handler(
       new WALParser(vocbase, includeSystem, collectionId, builder));
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
-  
+
   rocksdb::Status s = static_cast<rocksdb::DB*>(globalRocksDB())
                           ->GetUpdatesSince(tickStart, &iterator);
   if (!s.ok()) {  // TODO do something?
@@ -432,9 +436,9 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   bool fromTickIncluded = false;
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
-  // never read the full writebatch 
-  while (iterator->Valid() && tickEnd <= lastTick && builder.buffer()->size() < chunkSize) {
-    
+  // never read the full writebatch
+  while (iterator->Valid() && lastTick <= tickEnd &&
+         builder.buffer()->size() < chunkSize) {
     s = iterator->status();
     if (s.ok()) {
       rocksdb::BatchResult batch = iterator->GetBatch();
