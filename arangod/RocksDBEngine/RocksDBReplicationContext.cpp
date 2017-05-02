@@ -266,13 +266,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   // Position the iterator correctly
   size_t from = chunk * chunkSize;
   if (from != _lastIteratorOffset && !lowKey.empty()) {
-    primary->seek(lowKey);
-    _hasMore = true;
+    primary->seek(StringRef(lowKey));
     _lastIteratorOffset = from;
   } else {  // no low key supplied, we can not use seek
     if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
       _iter->reset();
-      _hasMore = true;
       _lastIteratorOffset = 0;
     }
     if (from > _lastIteratorOffset) {
@@ -296,13 +294,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 
   b.openArray();
   // chunkSize is going to be ignored here
-  if (_hasMore) {
-    try {
-      _hasMore = primary->nextWithKey(cb, chunkSize);
-      _lastIteratorOffset++;
-    } catch (std::exception const& ex) {
-      return Result(TRI_ERROR_INTERNAL);
-    }
+  try {
+    _hasMore = primary->nextWithKey(cb, chunkSize);
+    _lastIteratorOffset++;
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL);
   }
   b.close();
 
@@ -322,13 +318,11 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   // after calls to dumpKeys moved it forwards
   size_t from = chunk * chunkSize;
   if (from != _lastIteratorOffset && !lowKey.empty()) {
-    primary->seek(lowKey);
-    _hasMore = true;
+    primary->seek(StringRef(lowKey));
     _lastIteratorOffset = from;
   } else {  // no low key supplied, we can not use seek
     if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
       _iter->reset();
-      _hasMore = true;
       _lastIteratorOffset = 0;
     }
     if (from > _lastIteratorOffset) {
@@ -353,8 +347,8 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     b.add(current);
   };
 
-  b.openArray();
   bool hasMore = true;
+  b.openArray();
   size_t oldPos = from;
   for (auto const& it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
@@ -362,6 +356,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
     if (!hasMore) {
       LOG_TOPIC(ERR, Logger::REPLICATION) << "Not enough data";
+      b.close();
       return Result(TRI_ERROR_FAILED);
     }
 
@@ -376,6 +371,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     _lastIteratorOffset++;
   }
   b.close();
+  _hasMore = hasMore;
 
   return Result();
 }

@@ -88,7 +88,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   
   // engine specific optimizations
   bool nextWithKey(TokenKeyCallback const& cb, size_t limit);
-  void seek(std::string const& key);
+  void seek(StringRef const& key);
 
  private:
   bool outOfRange() const;
