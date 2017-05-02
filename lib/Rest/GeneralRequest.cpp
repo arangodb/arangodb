@@ -206,6 +206,12 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext,
   _isRequestContextOwner = isRequestContextOwner;
 }
 
+void GeneralRequest::setExecContext(ExecContext* execContext) {
+  TRI_ASSERT(execContext != nullptr);
+
+  _execContext = execContext;
+}
+
 void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   TRI_ASSERT(begin != nullptr);
   TRI_ASSERT(end != nullptr);
