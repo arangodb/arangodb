@@ -9,7 +9,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/PhysicalCollection.h"
+#include "StorageEngine/PhysicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

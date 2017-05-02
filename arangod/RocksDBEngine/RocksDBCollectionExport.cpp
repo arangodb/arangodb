@@ -25,13 +25,13 @@
 #include "Basics/WriteLocker.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

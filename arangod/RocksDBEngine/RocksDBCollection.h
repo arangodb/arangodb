@@ -27,10 +27,10 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexLookupContext.h"
-#include "RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/PhysicalCollection.h"
 
 namespace arangodb {
 class LogicalCollection;

@@ -195,6 +195,16 @@ bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb,
   return true;
 }
 
+void RocksDBAllIndexIterator::seek(std::string const& key) {
+  TRI_ASSERT(_trx->state()->isRunning());
+  
+  if (_reverse) {
+    _iterator->SeekForPrev(key);
+  } else {
+    _iterator->Seek(key);
+  }
+}
+
 void RocksDBAllIndexIterator::reset() {
   TRI_ASSERT(_trx->state()->isRunning());
 

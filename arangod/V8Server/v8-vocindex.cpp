@@ -136,7 +136,7 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
-  return idxFactory->enhanceIndexDefinition(input.slice(), builder, create);
+  return idxFactory->enhanceIndexDefinition(input.slice(), builder, create, ServerState::instance()->isCoordinator());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +169,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(),
-      create ? AccessMode::Type::WRITE : AccessMode::Type::READ);
+      create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
 
   Result res = trx.begin();
 
@@ -465,7 +465,7 @@ static void JS_DropIndexVocbaseCol(
 
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),
-      collection->cid(), AccessMode::Type::WRITE);
+      collection->cid(), AccessMode::Type::EXCLUSIVE);
 
   Result res = trx.begin();
 

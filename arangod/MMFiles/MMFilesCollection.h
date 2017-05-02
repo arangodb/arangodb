@@ -32,9 +32,9 @@
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesRevisionsCache.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/PhysicalCollection.h"
 
 struct MMFilesDatafile;
 struct MMFilesMarker;
@@ -509,8 +509,8 @@ class MMFilesCollection final : public PhysicalCollection {
  private:
   mutable arangodb::MMFilesDitches _ditches;
 
-  // lock protecting the indexes
-  mutable basics::ReadWriteLock _idxLock;
+  // lock protecting the indexes and data
+  mutable basics::ReadWriteLock _dataLock;
 
   arangodb::basics::ReadWriteLock _filesLock;
   std::vector<MMFilesDatafile*> _datafiles;   // all datafiles

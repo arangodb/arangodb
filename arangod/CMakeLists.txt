@@ -325,6 +325,7 @@ SET(ARANGOD_SOURCES
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
   Transaction/Context.cpp
@@ -365,7 +366,6 @@ SET(ARANGOD_SOURCES
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
   VocBase/PathEnumerator.cpp
-  VocBase/PhysicalCollection.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/TransactionManager.cpp
   VocBase/Traverser.cpp

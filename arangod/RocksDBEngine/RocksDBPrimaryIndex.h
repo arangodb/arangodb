@@ -84,9 +84,11 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "all-index-iterator"; }
 
   bool next(TokenCallback const& cb, size_t limit) override;
-  bool nextWithKey(TokenKeyCallback const& cb, size_t limit);
-
   void reset() override;
+  
+  // engine specific optimizations
+  bool nextWithKey(TokenKeyCallback const& cb, size_t limit);
+  void seek(std::string const& key);
 
  private:
   bool outOfRange() const;
