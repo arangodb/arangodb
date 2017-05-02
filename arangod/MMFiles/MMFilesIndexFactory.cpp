@@ -239,7 +239,7 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
 ////////////////////////////////////////////////////////////////////////////////
 
 int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
-    VPackBuilder& enhanced, bool create) const {
+    VPackBuilder& enhanced, bool create, bool isCoordinator) const {
 
   // extract index type
   Index::IndexType type = Index::TRI_IDX_TYPE_UNKNOWN;
