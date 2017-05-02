@@ -319,7 +319,7 @@ function syncCollectionFinalize (database, collname, from, config) {
     } else {
       // all else, including dropping and creating the collection
       // throw 'Found collection drop, create or rename marker.';
-      console.warn('Found collection drop, create or rename marker:', entry);
+      console.debug('Found collection drop, create or rename marker:', entry);
     }
   }
 
