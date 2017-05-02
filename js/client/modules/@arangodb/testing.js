@@ -198,6 +198,117 @@ function testCaseMessage (test) {
   }
 }
 
+function unwurst(r) {
+  function skipInternalMember (r, a) {
+    return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
+  }
+
+  let testSuites = [];
+  /* jshint forin: false */
+  for (let testrunName in r) {
+    if (skipInternalMember(r, testrunName)) {
+      continue;
+    }
+
+    let testrun = r[testrunName];
+
+    let successCases = {};
+    let failedCases = {};
+    let isSuccess = true;
+
+    let suiteDefinition = {
+      suiteName: testrunName,
+      tests: [],
+    }
+
+    for (let testName in testrun) {
+      if (skipInternalMember(testrun, testName)) {
+        continue;
+      }
+
+      let test = testrun[testName];
+
+      if (test.status) {
+        successCases[testName] = test;
+      } else {
+        isSuccess = false;
+        ++failedSuite;
+
+        if (test.hasOwnProperty('message')) {
+          ++failedTests;
+          failedCases[testName] = {
+            test: testCaseMessage(test)
+          };
+        } else {
+          let fails = failedCases[testName] = {};
+
+          for (let oneName in test) {
+            if (skipInternalMember(test, oneName)) {
+              continue;
+            }
+
+            let oneTest = test[oneName];
+
+            if (!oneTest.status) {
+              ++failedTests;
+              fails[oneName] = testCaseMessage(oneTest);
+            }
+          }
+        }
+      }
+    }
+
+    for (let name in successCases) {
+      if (!successCases.hasOwnProperty(name)) {
+        continue;
+      }
+      let thisTest = {
+        testName: name,
+      }
+      let details = successCases[name];
+
+      if (details.skipped) {
+        thisTest.skipped = true;
+      }
+
+      suiteDefinition.tests.push(thisTest);
+    }
+
+    for (let name in failedCases) {
+      if (!failedCases.hasOwnProperty(name)) {
+        continue;
+      }
+
+      let details = failedCases[name];
+      let message = '';
+      for (let one in details) {
+        if (!details.hasOwnProperty(one)) {
+          continue;
+        }
+        message += details[one];
+      }
+      
+      suiteDefinition.tests.push({
+        testName: name,
+        failure: message,
+      });
+    }
+    testSuites.push(suiteDefinition);
+  }
+  
+  let arangodStatusBogusTest = {
+    testName: 'arangod',
+  }
+  if (r.crashed) {
+    arangodStatusBogusTest.error = 'arangod crashed during execution!';
+  }
+  testSuites.push({
+    suiteName: 'arangod-status',
+    tests: [arangodStatusBogusTest],
+  });
+  return testSuites;
+}
+
 function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
@@ -546,6 +657,7 @@ function unitTest (cases, options) {
 exports.unitTest = unitTest;
 
 exports.internalMembers = internalMembers;
+exports.unwurst = unwurst;
 exports.testFuncs = testFuncs;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
 
