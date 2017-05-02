@@ -57,6 +57,7 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBView.h"
+#include "RocksDBEngine/RocksDBInitialSync.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
@@ -1210,4 +1211,14 @@ RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
   return _replicationManager.get();
 }
 
+int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
+                                  arangodb::LogicalCollection* col,
+                                  std::string const& keysId,
+                                  std::string const& cid,
+                                  std::string const& collectionName,
+                                  TRI_voc_tick_t maxTick,
+                                  std::string& errorMsg) {
+  return handleSyncKeysRocksDB(syncer, col, keysId, cid, collectionName,
+                               maxTick, errorMsg);
+}
 }  // namespace

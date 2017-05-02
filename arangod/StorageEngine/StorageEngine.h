@@ -48,6 +48,7 @@ class PhysicalView;
 class Result;
 class TransactionCollection;
 class TransactionState;
+class InitialSyncer;
 
 namespace rest {
 class RestHandlerFactory;
@@ -405,6 +406,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t*, int& status) = 0;
   virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
   virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) = 0; 
+
+  virtual int handleSyncKeys(arangodb::InitialSyncer& syncer,
+                          arangodb::LogicalCollection* col,
+                          std::string const& keysId,
+                          std::string const& cid,
+                          std::string const& collectionName,
+                          TRI_voc_tick_t maxTick,
+                          std::string& errorMsg) = 0;
   
   void getCapabilities(VPackBuilder& builder) const {
     builder.openObject();
