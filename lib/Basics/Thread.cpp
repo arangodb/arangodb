@@ -73,7 +73,9 @@ void Thread::startThread(void* arg) {
   LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);
 #endif
 
+  TRI_ASSERT(arg != nullptr);
   Thread* ptr = static_cast<Thread*>(arg);
+  TRI_ASSERT(ptr != nullptr);
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
 
@@ -81,6 +83,13 @@ void Thread::startThread(void* arg) {
 
   try {
     ptr->runMe();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::THREADS) << "caught exception in thread '" << ptr->_name
+                                     << "': " << ex.what();
+    if (pushed) {
+      WorkMonitor::popThread(ptr);
+    }
+    throw;
   } catch (...) {
     if (pushed) {
       WorkMonitor::popThread(ptr);
