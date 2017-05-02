@@ -109,7 +109,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentCollectionId = RocksDBLogValue::collectionId(blob);
         // only print markers from this collection if it is set
-        if (_onlyCollectionId != 0 &&
+        if (_onlyCollectionId == 0 ||
             _currentCollectionId == _onlyCollectionId) {
           VPackSlice indexSlice = RocksDBLogValue::indexSlice(blob);
           _builder.openObject();
@@ -128,7 +128,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _currentCollectionId = RocksDBLogValue::collectionId(blob);
         TRI_idx_iid_t iid = RocksDBLogValue::indexId(blob);
         // only print markers from this collection if it is set
-        if (_onlyCollectionId != 0 &&
+        if (_onlyCollectionId == 0 ||
             _currentCollectionId == _onlyCollectionId) {
           _builder.openObject();
           _builder.add(
@@ -267,19 +267,21 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
     switch (RocksDBKey::type(key)) {
       case RocksDBEntryType::Collection: {
-        TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionDrop);
-        TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
+        // a database DROP will not set this flag
+        if(_lastLogType == RocksDBLogType::CollectionDrop) {
+          TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
 
-        _builder.openObject();
-        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-        _builder.add("type", VPackValue(REPLICATION_COLLECTION_DROP));
-        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-        _builder.add("data", VPackValue(VPackValueType::Object));
-        _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
-        _builder.add("name", VPackValue(""));  // not used at all
-        _builder.close();
-        _builder.close();
+          _builder.openObject();
+          _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+          _builder.add("type", VPackValue(REPLICATION_COLLECTION_DROP));
+          _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+          _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
+          _builder.add("data", VPackValue(VPackValueType::Object));
+          _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
+          _builder.add("name", VPackValue(""));  // not used at all
+          _builder.close();
+          _builder.close();
+        }
         break;
       }
       case RocksDBEntryType::Document: {
