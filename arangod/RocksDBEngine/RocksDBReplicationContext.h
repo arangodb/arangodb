@@ -85,10 +85,10 @@ class RocksDBReplicationContext {
 
   /// dump all keys from collection
   arangodb::Result dumpKeys(velocypack::Builder& outBuilder, size_t chunk,
-                            size_t chunkSize);
+                            size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
   arangodb::Result dumpDocuments(velocypack::Builder& b, size_t chunk,
-                                 size_t chunkSize,
+                                 size_t chunkSize, std::string const& lowKey,
                                  velocypack::Slice const& ids);
 
   double expires() const;
@@ -122,6 +122,7 @@ class RocksDBReplicationContext {
   ManagedDocumentResult _mdr;
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
   arangodb::velocypack::Options _vpackOptions;
+
   uint64_t _lastIteratorOffset;
   std::unique_ptr<DatabaseGuard> _guard;
 

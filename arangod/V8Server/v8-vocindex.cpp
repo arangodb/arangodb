@@ -136,7 +136,7 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
-  return idxFactory->enhanceIndexDefinition(input.slice(), builder, create);
+  return idxFactory->enhanceIndexDefinition(input.slice(), builder, create, ServerState::instance()->isCoordinator());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

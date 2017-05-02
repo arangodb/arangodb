@@ -612,11 +612,25 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     includeSystem = StringUtils::boolean(value4);
   }
 
-  size_t limit = 10000;  // TODO: determine good default value?
+  size_t chunkSize = 1024 * 1024;  // TODO: determine good default value?
   std::string const& value5 = _request->value("chunkSize", found);
-
   if (found) {
-    limit = static_cast<size_t>(StringUtils::uint64(value5));
+    chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
+  }
+  
+  // extract collection
+  TRI_voc_cid_t cid = 0;
+  std::string const& value6 = _request->value("collection", found);
+  if (found) {
+    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    
+    if (c == nullptr) {
+      generateError(rest::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return;
+    }
+    
+    cid = c->cid();
   }
 
   std::shared_ptr<transaction::Context> transactionContext =
@@ -624,7 +638,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   VPackBuilder builder(transactionContext->getVPackOptions());
   builder.openArray();
-  auto result = tailWal(_vocbase, tickStart, limit, includeSystem, builder);
+  auto result = tailWal(_vocbase, tickStart, tickEnd,
+                        chunkSize, includeSystem, cid, builder);
   builder.close();
   auto data = builder.slice();
 
@@ -1158,12 +1173,14 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     }
   }
 
+  // chunk is supplied by old clients, low is an optimization
+  // for rocksdb, because seeking should be cheaper
   std::string const& value2 = _request->value("chunk", found);
-
   size_t chunk = 0;
   if (found) {
     chunk = static_cast<size_t>(StringUtils::uint64(value2));
   }
+  std::string const& lowKey = _request->value("low", found);
 
   std::string const& value3 = _request->value("type", found);
 
@@ -1177,6 +1194,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "invalid 'type' value");
     return;
   }
+  
 
   std::string const& id = suffixes[1];
 
@@ -1195,7 +1213,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
 
   VPackBuilder resultBuilder(transactionContext->getVPackOptions());
   if (keys) {
-    ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize));
+    ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey);
   } else {
     bool success;
     std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
@@ -1204,7 +1222,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       return;
     }
     ctx->dumpDocuments(resultBuilder, chunk, static_cast<size_t>(chunkSize),
-                       parsedIds->slice());
+                       lowKey, parsedIds->slice());
   }
 
   generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
@@ -2532,6 +2550,9 @@ int RocksDBRestReplicationHandler::createCollection(
   VPackBuilder patch;
   patch.openObject();
   patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  engine->addParametersForNewCollection(patch, slice);
   patch.close();
 
   VPackBuilder builder = VPackCollection::merge(slice, patch.slice(), false);

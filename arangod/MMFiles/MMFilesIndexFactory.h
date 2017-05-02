@@ -36,7 +36,8 @@ class MMFilesIndexFactory final : public IndexFactory {
 
   int enhanceIndexDefinition(
       arangodb::velocypack::Slice const definition,
-      arangodb::velocypack::Builder& enhanced, bool isCreation) const override;
+      arangodb::velocypack::Builder& enhanced, bool isCreation,
+      bool isCoordinator) const override;
 
   std::shared_ptr<arangodb::Index> prepareIndexFromSlice(
       arangodb::velocypack::Slice info, bool generateKey,

@@ -36,8 +36,9 @@ namespace rocksutils {
 
 // iterates over WAL starting at 'from' and returns up to 'limit' documents
 // from the corresponding database; releases dumping resources
-RocksDBReplicationResult tailWal(TRI_vocbase_t* vocbase, uint64_t from,
-                                 size_t limit, bool includeSystem,
+RocksDBReplicationResult tailWal(TRI_vocbase_t* vocbase, uint64_t tickStart,
+                                 uint64_t tickEnd, size_t chunkSize,
+                                 bool includeSystem, TRI_voc_cid_t collectionId,
                                  VPackBuilder& builder);
 
 }  // namespace rocksutils

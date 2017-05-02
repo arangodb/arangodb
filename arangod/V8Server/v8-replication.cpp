@@ -266,7 +266,7 @@ static void JS_LastLoggerReplication(
 
   } else if (engineName == "rocksdb") {
     bool includeSystem = true;
-    size_t limit = tickEnd - tickStart;  // TODO: determine good default value?
+    size_t chunkSize = 32 * 1024 * 1024; // TODO: determine good default value?
     
     // construct vocbase with proper handler
     std::shared_ptr<transaction::Context> transactionContext =
@@ -274,8 +274,9 @@ static void JS_LastLoggerReplication(
     VPackBuilder builder(transactionContext->getVPackOptions());
     
     builder.openArray();
-    RocksDBReplicationResult rep = rocksutils::tailWal(vocbase, tickStart, limit,
-                                                       includeSystem, builder);
+    RocksDBReplicationResult rep = rocksutils::tailWal(vocbase, tickStart,
+                                                       tickEnd, chunkSize,
+                                                       includeSystem, 0, builder);
     builder.close();
     
     if (rep.ok()) {

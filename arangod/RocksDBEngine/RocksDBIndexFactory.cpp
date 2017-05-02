@@ -212,7 +212,7 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
 
 int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
                                                 VPackBuilder& enhanced,
-                                                bool create) const {
+                                                bool create, bool isCoordinator) const {
   // extract index type
   Index::IndexType type = Index::TRI_IDX_TYPE_UNKNOWN;
   VPackSlice current = definition.get("type");
@@ -259,7 +259,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       enhanced.add("id", VPackValue(std::to_string(id)));
     }
 
-    if (create) {
+    if (create && !isCoordinator) {
       if (!definition.hasKey("objectId")) {
         enhanced.add("objectId",
                      VPackValue(std::to_string(TRI_NewTickServer())));

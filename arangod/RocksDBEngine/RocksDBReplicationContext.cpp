@@ -255,36 +255,36 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
 }
 
 /// dump all keys from collection
-arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder& b,
-                                                     size_t chunk,
-                                                     size_t chunkSize) {
+arangodb::Result RocksDBReplicationContext::dumpKeys(
+    VPackBuilder& b, size_t chunk, size_t chunkSize,
+    std::string const& lowKey) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
+  RocksDBAllIndexIterator* primary =
+      static_cast<RocksDBAllIndexIterator*>(_iter.get());
 
   // Position the iterator correctly
   size_t from = chunk * chunkSize;
-  if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
-    _iter->reset();
+  if (from != _lastIteratorOffset && !lowKey.empty()) {
+    primary->seek(lowKey);
     _hasMore = true;
-    _lastIteratorOffset = 0;
-  }
-  if (from > _lastIteratorOffset) {
-    TRI_ASSERT(from >= chunkSize);
-    uint64_t diff = from - _lastIteratorOffset;
-    uint64_t to = 0;  // = (chunk + 1) * chunkSize;
-    _iter->skip(diff, to);
-    _lastIteratorOffset += to;
-    TRI_ASSERT(to == diff);
-  } else if (from < _lastIteratorOffset) {
-    // no jumping back in time fix the intitial syncer if you see this
-    LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "Trying to request a chunk the rocksdb "
-        << "iterator already passed over";
-    return Result(TRI_ERROR_INTERNAL);
+    _lastIteratorOffset = from;
+  } else {  // no low key supplied, we can not use seek
+    if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
+      _iter->reset();
+      _hasMore = true;
+      _lastIteratorOffset = 0;
+    }
+    if (from > _lastIteratorOffset) {
+      TRI_ASSERT(from >= chunkSize);
+      uint64_t diff = from - _lastIteratorOffset;
+      uint64_t to = 0;  // = (chunk + 1) * chunkSize;
+      _iter->skip(diff, to);
+      _lastIteratorOffset += to;
+    }
+    TRI_ASSERT(_lastIteratorOffset == from);
   }
 
-  RocksDBAllIndexIterator* primary =
-      static_cast<RocksDBAllIndexIterator*>(_iter.get());
   auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
     RocksDBToken const& rt = static_cast<RocksDBToken const&>(token);
 
@@ -311,25 +311,35 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder& b,
 
 /// dump keys and document
 arangodb::Result RocksDBReplicationContext::dumpDocuments(
-    VPackBuilder& b, size_t chunk, size_t chunkSize, VPackSlice const& ids) {
+    VPackBuilder& b, size_t chunk, size_t chunkSize, std::string const& lowKey,
+    VPackSlice const& ids) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
+  RocksDBAllIndexIterator* primary =
+      static_cast<RocksDBAllIndexIterator*>(_iter.get());
 
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
   size_t from = chunk * chunkSize;
-  if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
-    _iter->reset();
+  if (from != _lastIteratorOffset && !lowKey.empty()) {
+    primary->seek(lowKey);
     _hasMore = true;
-    _lastIteratorOffset = 0;
-  }
-  if (from > _lastIteratorOffset) {
-    TRI_ASSERT(from >= chunkSize);
-    uint64_t diff = from - _lastIteratorOffset;
-    uint64_t to = 0;  // = (chunk + 1) * chunkSize;
-    _iter->skip(diff, to);
-    _lastIteratorOffset += to;
-    TRI_ASSERT(to == diff);
+    _lastIteratorOffset = from;
+  } else {  // no low key supplied, we can not use seek
+    if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
+      _iter->reset();
+      _hasMore = true;
+      _lastIteratorOffset = 0;
+    }
+    if (from > _lastIteratorOffset) {
+      TRI_ASSERT(from >= chunkSize);
+      uint64_t diff = from - _lastIteratorOffset;
+      uint64_t to = 0;  // = (chunk + 1) * chunkSize;
+      _iter->skip(diff, to);
+      _lastIteratorOffset += to;
+      TRI_ASSERT(to == diff);
+    }
+    TRI_ASSERT(_lastIteratorOffset == from);
   }
 
   auto cb = [&](DocumentIdentifierToken const& token) {
@@ -358,7 +368,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     size_t newPos = from + it.getNumber<size_t>();
     if (oldPos != from && newPos > oldPos + 1) {
       uint64_t ignore = 0;
-      _iter->skip(newPos - oldPos, ignore);
+      primary->skip(newPos - oldPos, ignore);
       TRI_ASSERT(ignore == newPos - oldPos);
       _lastIteratorOffset += ignore;
     }
