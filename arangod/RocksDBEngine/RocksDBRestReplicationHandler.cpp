@@ -2532,6 +2532,9 @@ int RocksDBRestReplicationHandler::createCollection(
   VPackBuilder patch;
   patch.openObject();
   patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  engine->addParametersForNewCollection(patch, slice);
   patch.close();
 
   VPackBuilder builder = VPackCollection::merge(slice, patch.slice(), false);
