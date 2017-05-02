@@ -38,6 +38,7 @@
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexFactory.h"
+#include "MMFiles/MMFilesInitialSync.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesOptimizerRules.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
@@ -3339,4 +3340,14 @@ int MMFilesEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, a
   } 
   
   return TRI_ERROR_NO_ERROR;
+}
+
+int MMFilesEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
+                          arangodb::LogicalCollection* col,
+                          std::string const& keysId,
+                          std::string const& cid,
+                          std::string const& collectionName,
+                          TRI_voc_tick_t maxTick,
+                          std::string& errorMsg) {
+  return handleSyncKeysMMFiles(syncer, col, keysId, cid, collectionName,maxTick, errorMsg);
 }

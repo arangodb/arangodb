@@ -57,6 +57,7 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBView.h"
+#include "RocksDBEngine/RocksDBInitialSync.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
@@ -655,7 +656,7 @@ arangodb::Result RocksDBEngine::persistCollection(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (result.ok()) {
     RocksDBCollection* rcoll =
-        RocksDBCollection::toRocksDBCollection(collection->getPhysical());
+        toRocksDBCollection(collection->getPhysical());
     TRI_ASSERT(rcoll->numberDocuments() == 0);
   }
 #endif
@@ -704,7 +705,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // Cleanup data-mess
 
   RocksDBCollection* coll =
-      RocksDBCollection::toRocksDBCollection(collection->getPhysical());
+      toRocksDBCollection(collection->getPhysical());
 
   // Unregister counter
   _counterManager->removeCounter(coll->objectId());
@@ -1210,4 +1211,14 @@ RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
   return _replicationManager.get();
 }
 
+int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
+                                  arangodb::LogicalCollection* col,
+                                  std::string const& keysId,
+                                  std::string const& cid,
+                                  std::string const& collectionName,
+                                  TRI_voc_tick_t maxTick,
+                                  std::string& errorMsg) {
+  return handleSyncKeysRocksDB(syncer, col, keysId, cid, collectionName,
+                               maxTick, errorMsg);
+}
 }  // namespace

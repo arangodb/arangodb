@@ -126,6 +126,14 @@ class RocksDBKeyBounds {
   /// iterators may check that the current key is less than this value.
   //////////////////////////////////////////////////////////////////////////////
   rocksdb::Slice const end() const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the object ID for these bounds
+  ///
+  /// This method is only valid for certain types of bounds: Documents and
+  /// Index entries.
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t objectId() const;
 
  private:
   RocksDBKeyBounds();

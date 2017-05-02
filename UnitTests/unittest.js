@@ -71,78 +71,38 @@ function resultsToXml(results, baseName, cluster) {
     clprefix = 'CL_';
   }
 
-  const isSignificant = function(a, b) {
-    return (internalMembers.indexOf(b) === -1) && a.hasOwnProperty(b);
-  };
+  let cleanedResults = UnitTest.unwurst(results);
+  cleanedResults.forEach(suite => {
+    print(suite.suiteName);
+    let xml = buildXml();
+    xml.elem('testsuite', {
+      errors: suite.tests.filter(test => test.hasOwnProperty('error')).length,
+      failures: suite.tests.filter(test => test.hasOwnProperty('failure')).length,
+      tests: suite.tests.length,
+      name: suite.suiteName,
+    });
 
-  for (let resultName in results) {
-    if (isSignificant(results, resultName)) {
-      let run = results[resultName];
-
-      for (let runName in run) {
-        if (isSignificant(run, runName)) {
-          const xmlName = clprefix + resultName + "_" + runName;
-          const current = run[runName];
-
-          if (current.skipped) {
-            continue;
-          }
-
-          let xml = buildXml();
-          let total = 0;
-
-          if (current.hasOwnProperty('total')) {
-            total = current.total;
-          }
-
-          let failuresFound = current.failed;
-          xml.elem("testsuite", {
-            errors: 0,
-            failures: failuresFound,
-            tests: total,
-            name: xmlName,
-            time: 0 + current.duration
-          });
-
-          let seen = false;
-
-          for (let oneTestName in current) {
-            if (isSignificant(current, oneTestName)) {
-              const oneTest = current[oneTestName];
-              const success = (oneTest.status === true);
-
-              seen = true;
-
-              xml.elem("testcase", {
-                name: clprefix + oneTestName,
-                time: 0 + oneTest.duration
-              }, success);
-
-              if (!success) {
-                xml.elem("failure");
-                xml.text('<![CDATA[' + oneTest.message + ']]>\n');
-                xml.elem("/failure");
-                xml.elem("/testcase");
-              }
-            }
-          }
-
-          if (!seen) {
-            xml.elem("testcase", {
-              name: 'all_tests_in_' + xmlName,
-              time: 0 + current.duration
-            }, true);
-          }
-
-          xml.elem("/testsuite");
-
-          const fn = makePathGeneric(baseName + xmlName + ".xml").join('_');
-
-          fs.write(testOutputDirectory + fn, xml.join(""));
-        }
+    suite.tests.forEach(test => {
+      xml.elem('testcase', {
+        name: test.testName,
+      });
+      if (test.error) {
+        xml.elem('error');
+        xml.text('<![CDATA[' + test.error + ']]>\n');
+        xml.elem('/error');
       }
-    }
-  }
+      if (test.failure) {
+        xml.elem('failure');
+        xml.text('<![CDATA[' + test.failure + ']]>\n');
+        xml.elem('/failure');
+      }
+      xml.elem('/testcase');
+    });
+    xml.elem('/testsuite');
+
+    const fn = makePathGeneric(baseName + suite.suiteName + ".xml").join('_');
+    fs.write(testOutputDirectory + fn, xml.join(""));
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
