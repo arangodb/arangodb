@@ -48,9 +48,11 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -275,7 +277,6 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
-
   auto idx = lookupIndex(info);
   if (idx != nullptr) {
     created = false;
@@ -435,7 +436,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     // invalid index id or primary index
     return true;
   }
-  
+
   size_t i = 0;
   // TODO: need to protect _indexes with an RW-lock!!
   for (auto index : getIndexes()) {
@@ -1455,7 +1456,13 @@ int RocksDBCollection::unlockRead() {
   return TRI_ERROR_NO_ERROR;
 }
 
-uint64_t RocksDBCollection::recalculateCounts(){
+uint64_t RocksDBCollection::recalculateCounts() {
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(
+          _logicalCollection->vocbase()),
+      _logicalCollection->cid(), AccessMode::Type::EXCLUSIVE);
+
+
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
