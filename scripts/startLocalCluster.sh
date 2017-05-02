@@ -8,11 +8,10 @@ fi
 
 if [ -z "$USE_ROCKSDB" ] ; then
   STORAGE_ENGINE=""
-  DEFAULT_REPLICATION=""
 else
   STORAGE_ENGINE="--server.storage-engine=rocksdb"
-  DEFAULT_REPLICATION="--cluster.system-replication-factor=1"
 fi
+DEFAULT_REPLICATION=""
 
 printf "Starting agency ... \n"
 printf "  # agents: %s," "$NRAGENTS"
