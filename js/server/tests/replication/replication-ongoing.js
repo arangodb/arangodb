@@ -170,9 +170,6 @@ function ReplicationSuite() {
         internal.wait(0.5, false);
         continue;
       }
-      if (!r) {
-        break;
-      }
 
       var slaveState = replication.applier.state();
 
@@ -574,7 +571,7 @@ function ReplicationSuite() {
           });
 
           state.task = require("@arangodb/tasks").register({
-            name: "replication-test",
+            name: "replication-test-async",
             command: String(func),
             params: {
               cn: cn
@@ -598,7 +595,7 @@ function ReplicationSuite() {
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
             connectToSlave();
-            return false;
+            return true;
           }
         },
 
@@ -649,7 +646,7 @@ function ReplicationSuite() {
           });
 
           state.task = require("@arangodb/tasks").register({
-            name: "replication-test",
+            name: "replication-test-async-with-restart",
             command: String(func),
             params: {
               cn: cn
@@ -680,7 +677,7 @@ function ReplicationSuite() {
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
             connectToSlave();
-            return false;
+            return true;
           }
         },
 
