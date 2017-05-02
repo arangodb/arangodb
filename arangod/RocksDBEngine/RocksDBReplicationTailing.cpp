@@ -21,7 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBReplicationTailing.h"
+#include "RocksDBReplicationTailing.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Logger/Logger.h"
@@ -41,16 +41,6 @@ using namespace arangodb::velocypack;
 /// an incomplete convert function, basically only use for DDL ops
 static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
   switch (t) {
-    //    case Rocks:
-    //      return REPLICATION_MARKER_DOCUMENT;
-    //    case TRI_DF_MARKER_VPACK_REMOVE:
-    //      return REPLICATION_MARKER_REMOVE;
-    //  case RocksDBLogType::BeginTransaction:
-    //  return REPLICATION_TRANSACTION_START;
-    //    case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
-    //      return REPLICATION_TRANSACTION_COMMIT;
-    //    case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION:
-    //      return REPLICATION_TRANSACTION_ABORT;
     case RocksDBLogType::CollectionCreate:
       return REPLICATION_COLLECTION_CREATE;
     case RocksDBLogType::CollectionDrop:
