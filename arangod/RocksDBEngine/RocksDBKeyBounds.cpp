@@ -102,6 +102,23 @@ rocksdb::Slice const RocksDBKeyBounds::end() const {
   return rocksdb::Slice(_endBuffer);
 }
 
+uint64_t RocksDBKeyBounds::objectId() const {
+  RocksDBEntryType type = static_cast<RocksDBEntryType>(_startBuffer[0]);
+  switch (type) {
+    case RocksDBEntryType::Document:
+    case RocksDBEntryType::PrimaryIndexValue:
+    case RocksDBEntryType::EdgeIndexValue:
+    case RocksDBEntryType::IndexValue:
+    case RocksDBEntryType::UniqueIndexValue: {
+      TRI_ASSERT(_startBuffer.size() >= (sizeof(char) + sizeof(uint64_t)));
+      return uint64FromPersistent(_startBuffer.data() + sizeof(char));
+    }
+      
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+  }
+}
+
 // constructor for an empty bound. do not use for anything but to
 // default-construct a key bound!
 RocksDBKeyBounds::RocksDBKeyBounds() 

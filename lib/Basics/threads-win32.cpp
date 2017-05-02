@@ -30,23 +30,32 @@
 /// @brief data block for thread starter
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct thread_data_s {
-  void (*starter)(void*);
+struct thread_data_t {
+  void (*_starter)(void*);
   void* _data;
-  char* _name;
-} thread_data_t;
+  std::string _name;
+  
+  thread_data_t(void (*starter)(void*), void* data, char const* name) 
+      : _starter(starter),
+        _data(data),
+        _name(name) {}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starter function for thread
 ////////////////////////////////////////////////////////////////////////////////
 
 static DWORD __stdcall ThreadStarter(void* data) {
-  thread_data_t* d;
+  TRI_ASSERT(data != nullptr);
 
-  d = (thread_data_t*)data;
-  d->starter(d->_data);
+  // this will automatically free the thread struct when leaving this function
+  std::unique_ptr<thread_data_t> d(static_cast<thread_data_t*>(data));
 
-  TRI_Free(TRI_CORE_MEM_ZONE, d);
+  try {
+    d->_starter(d->_data);
+  } catch (...) {
+    // we must not throw from here
+  }
 
   return 0;
 }
@@ -63,26 +72,24 @@ void TRI_InitThread(TRI_thread_t* thread) { *thread = 0; }
 
 bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
                      char const* name, void (*starter)(void*), void* data) {
-  thread_data_t* d = static_cast<thread_data_t*>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false));
+  std::unique_ptr<thread_data_t> d;
 
-  if (d == nullptr) {
+  try {
+    d.reset(new thread_data_t(starter, data, name));
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: out of memory";
     return false;
   }
 
-  d->starter = starter;
-  d->_data = data;
-  d->_name = TRI_DuplicateString(name);
-
+  TRI_ASSERT(d != nullptr);
   *thread = CreateThread(0,              // default security attributes
                          0,              // use default stack size
                          ThreadStarter,  // thread function name
-                         d,              // argument to thread function
+                         d.release(),    // argument to thread function
                          0,              // use default creation flags
                          threadId);      // returns the thread identifier
 
   if (*thread == 0) {
-    TRI_Free(TRI_CORE_MEM_ZONE, d);
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: " << strerror(errno) << " ";
     return false;
   }
