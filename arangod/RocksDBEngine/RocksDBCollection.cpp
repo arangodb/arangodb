@@ -1454,3 +1454,8 @@ int RocksDBCollection::unlockRead() {
 
   return TRI_ERROR_NO_ERROR;
 }
+
+uint64_t RocksDBCollection::recalculateCounts(){
+  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  return 0;
+}

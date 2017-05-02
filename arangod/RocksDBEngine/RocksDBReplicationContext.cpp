@@ -74,7 +74,7 @@ uint64_t RocksDBReplicationContext::count() const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_collection != nullptr);
   RocksDBCollection* rcoll =
-      RocksDBCollection::toRocksDBCollection(_collection->getPhysical());
+      toRocksDBCollection(_collection->getPhysical());
   return rcoll->numberDocuments(_trx.get());
 }
 

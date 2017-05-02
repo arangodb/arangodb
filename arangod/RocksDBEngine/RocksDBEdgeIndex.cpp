@@ -106,7 +106,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   }
 
   // acquire rocksdb collection
-  auto rocksColl = RocksDBCollection::toRocksDBCollection(_collection);
+  auto rocksColl = toRocksDBCollection(_collection);
   
   while (true) {
     TRI_ASSERT(limit > 0);

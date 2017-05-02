@@ -656,7 +656,7 @@ arangodb::Result RocksDBEngine::persistCollection(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (result.ok()) {
     RocksDBCollection* rcoll =
-        RocksDBCollection::toRocksDBCollection(collection->getPhysical());
+        toRocksDBCollection(collection->getPhysical());
     TRI_ASSERT(rcoll->numberDocuments() == 0);
   }
 #endif
@@ -705,7 +705,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // Cleanup data-mess
 
   RocksDBCollection* coll =
-      RocksDBCollection::toRocksDBCollection(collection->getPhysical());
+      toRocksDBCollection(collection->getPhysical());
 
   // Unregister counter
   _counterManager->removeCounter(coll->objectId());
