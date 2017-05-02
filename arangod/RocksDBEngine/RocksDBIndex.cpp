@@ -88,6 +88,8 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                 bool forPersistence) const {
   Index::toVelocyPack(builder, withFigures, forPersistence);
   if (forPersistence) {
+    // If we store it, it cannot be 0
+    TRI_ASSERT(_objectId != 0);
     builder.add("objectId", VPackValue(std::to_string(_objectId)));
   }
 }
