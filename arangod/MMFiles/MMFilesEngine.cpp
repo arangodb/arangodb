@@ -142,7 +142,7 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new MMFilesIndexFactory()),
       _isUpgrade(false),
       _maxTick(0) {
-  startsAfter("MMFilesPersistentIndex");
+  startsAfter("MMFilesPersistentIndex"); // yes, intentional!
     
   server->addFeature(new MMFilesWalRecoveryFeature(server));
   server->addFeature(new MMFilesLogfileManager(server));

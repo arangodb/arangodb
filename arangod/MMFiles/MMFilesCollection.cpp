@@ -2314,7 +2314,7 @@ int MMFilesCollection::cleanupIndexes() {
   // cleaning indexes is expensive, so only do it if the flag is set for the
   // collection
   if (_cleanupIndexes > 0) {
-    WRITE_LOCKER(writeLocker, _idxLock);
+    WRITE_LOCKER(writeLocker, _dataLock);
     for (auto& idx : _indexes) {
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         res = idx->cleanup();
@@ -2367,7 +2367,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
   double startTime = 0.0;
 
   while (true) {
-    TRY_READ_LOCKER(locker, _idxLock);
+    TRY_READ_LOCKER(locker, _dataLock);
 
     if (locker.isLocked()) {
       // when we are here, we've got the read lock
@@ -2482,7 +2482,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
   double startTime = 0.0;
 
   while (true) {
-    TRY_WRITE_LOCKER(locker, _idxLock);
+    TRY_WRITE_LOCKER(locker, _dataLock);
 
     if (locker.isLocked()) {
       // register writer
@@ -2597,7 +2597,7 @@ int MMFilesCollection::unlockRead(bool useDeadlockDetector) {
 
   // LOCKING-DEBUG
   // std::cout << "EndRead: " << _name << std::endl;
-  _idxLock.unlockRead();
+  _dataLock.unlockRead();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2628,7 +2628,7 @@ int MMFilesCollection::unlockWrite(bool useDeadlockDetector) {
 
   // LOCKING-DEBUG
   // std::cout << "EndWrite: " << _name << std::endl;
-  _idxLock.unlockWrite();
+  _dataLock.unlockWrite();
 
   return TRI_ERROR_NO_ERROR;
 }
