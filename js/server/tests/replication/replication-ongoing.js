@@ -419,53 +419,6 @@ function ReplicationSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test require from present
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testRequireFromPresentTrue : function () {
-      connectToMaster();
-
-      compare(
-        function (state) {
-          db._create(cn);
-        },
-
-        function (state) {
-          // flush the wal logs on the master so the start tick is not available
-          // anymore when we start replicating
-          for (var i = 0; i < 30; ++i) {
-            db._collection(cn).save({ value: i });
-            internal.wal.flush(); //true, true);
-          }
-          internal.wal.flush(true, true);
-          internal.wait(6, false);
-
-          state.checksum = collectionChecksum(cn);
-          state.count = collectionCount(cn);
-          assertEqual(30, state.count);
-        },
-
-        function (state) {
-          // wait for slave applier to have started and run
-          internal.wait(5, false);
-
-          // slave should not have stopped
-          assertTrue(replication.applier.state().state.running);
-          return true;
-        },
-
-        function (state) {
-          assertEqual(state.count, collectionCount(cn));
-          assertEqual(state.checksum, collectionChecksum(cn));
-        },
-        {
-          requireFromPresent: true,
-          keepBarrier: true
-        }
-      );
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief test long transaction, blocking
     ////////////////////////////////////////////////////////////////////////////////
 
