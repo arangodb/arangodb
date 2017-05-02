@@ -24,12 +24,6 @@
 
 #include "ClusterInfo.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -41,14 +35,21 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/PhysicalCollection.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartVertexCollection.h"
 #include "Enterprise/VocBase/VirtualCollection.h"
 #endif
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
