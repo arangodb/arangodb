@@ -72,6 +72,7 @@ function resultsToXml(results, baseName, cluster) {
   }
 
   let cleanedResults = UnitTest.unwurst(results);
+  print(JSON.stringify(cleanedResults));
   cleanedResults.forEach(suite => {
     print(suite.suiteName);
     let xml = buildXml();
