@@ -612,11 +612,25 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     includeSystem = StringUtils::boolean(value4);
   }
 
-  size_t limit = 10000;  // TODO: determine good default value?
+  size_t chunkSize = 1024 * 1024;  // TODO: determine good default value?
   std::string const& value5 = _request->value("chunkSize", found);
-
   if (found) {
-    limit = static_cast<size_t>(StringUtils::uint64(value5));
+    chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
+  }
+  
+  // extract collection
+  TRI_voc_cid_t cid = 0;
+  std::string const& value6 = _request->value("collection", found);
+  if (found) {
+    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    
+    if (c == nullptr) {
+      generateError(rest::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return;
+    }
+    
+    cid = c->cid();
   }
 
   std::shared_ptr<transaction::Context> transactionContext =
@@ -624,7 +638,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   VPackBuilder builder(transactionContext->getVPackOptions());
   builder.openArray();
-  auto result = tailWal(_vocbase, tickStart, limit, includeSystem, builder);
+  auto result = tailWal(_vocbase, tickStart, chunkSize, includeSystem, cid, builder);
   builder.close();
   auto data = builder.slice();
 
