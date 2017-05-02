@@ -411,7 +411,9 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 // iterates over WAL starting at 'from' and returns up to 'limit' documents
 // from the corresponding database
 RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
-                                             uint64_t tickStart, size_t chunkSize,
+                                             uint64_t tickStart,
+                                             uint64_t tickEnd,
+                                             size_t chunkSize,
                                              bool includeSystem,
                                              TRI_voc_cid_t collectionId,
                                              VPackBuilder& builder) {
@@ -431,7 +433,8 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch 
-  while (iterator->Valid() && builder.buffer()->size() < chunkSize) {
+  while (iterator->Valid() && tickEnd <= lastTick && builder.buffer()->size() < chunkSize) {
+    
     s = iterator->status();
     if (s.ok()) {
       rocksdb::BatchResult batch = iterator->GetBatch();
@@ -439,12 +442,10 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
       if (lastTick == tickStart) {
         fromTickIncluded = true;
       }
-      if (tickStart <= batch.sequence) {
+      if (tickStart <= lastTick && lastTick <= tickEnd) {
         handler->startNewBatch(batch.sequence);
         s = batch.writeBatchPtr->Iterate(handler.get());
-        if (s.ok()) {
-          handler->endBatch();
-        }
+        handler->endBatch();
       }
     } else {
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";

@@ -638,7 +638,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   VPackBuilder builder(transactionContext->getVPackOptions());
   builder.openArray();
-  auto result = tailWal(_vocbase, tickStart, chunkSize, includeSystem, cid, builder);
+  auto result = tailWal(_vocbase, tickStart, tickEnd,
+                        chunkSize, includeSystem, cid, builder);
   builder.close();
   auto data = builder.slice();
 
