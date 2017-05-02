@@ -78,6 +78,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter("EngineSelector");
     startsAfter("FileDescriptors");
     startsAfter("Temp");
+    startsAfter("TransactionManager");
   }
 
   virtual void start() {}
