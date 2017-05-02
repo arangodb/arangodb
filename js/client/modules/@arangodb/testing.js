@@ -219,7 +219,7 @@ function unwurst(r) {
     let suiteDefinition = {
       suiteName: testrunName,
       tests: [],
-    }
+    };
 
     for (let testName in testrun) {
       if (skipInternalMember(testrun, testName)) {
@@ -232,10 +232,8 @@ function unwurst(r) {
         successCases[testName] = test;
       } else {
         isSuccess = false;
-        ++failedSuite;
 
         if (test.hasOwnProperty('message')) {
-          ++failedTests;
           failedCases[testName] = {
             test: testCaseMessage(test)
           };
@@ -250,7 +248,6 @@ function unwurst(r) {
             let oneTest = test[oneName];
 
             if (!oneTest.status) {
-              ++failedTests;
               fails[oneName] = testCaseMessage(oneTest);
             }
           }
@@ -264,7 +261,7 @@ function unwurst(r) {
       }
       let thisTest = {
         testName: name,
-      }
+      };
       let details = successCases[name];
 
       if (details.skipped) {
@@ -298,7 +295,7 @@ function unwurst(r) {
   
   let arangodStatusBogusTest = {
     testName: 'arangod',
-  }
+  };
   if (r.crashed) {
     arangodStatusBogusTest.error = 'arangod crashed during execution!';
   }
