@@ -75,6 +75,8 @@ class RocksDBEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void unprepare() override;
+  
+  bool supportsDfdb() const override { return false; }
 
   transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;

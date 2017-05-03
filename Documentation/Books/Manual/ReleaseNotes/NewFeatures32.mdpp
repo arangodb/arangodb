@@ -97,12 +97,14 @@ These will be resolved in the following releases:
 * geo and fulltext indexes are not yet implemented
 
 * the number of documents reported for collections (`db.<collection>.count()`) may be
-  slightly wrong during transactions.
+  slightly wrong during transactions
 
 * transactions are de facto limited in size, but no size restriction is currently
-  enforced. These restrictions will be implemented in a future release.
+  enforced. These restrictions will be implemented in a future release
 
-* the engine is not yet performance-optimized and well configured.
+* the engine is not yet performance-optimized and well configured
+
+* the datafile debugger (arango-dfdb) cannot be used with this storage engine
 
 
 ### RocksDB storage engine: supported index types
