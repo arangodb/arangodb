@@ -451,7 +451,9 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
       if (tickStart <= lastTick && lastTick <= tickEnd) {
         handler->startNewBatch(batch.sequence);
         s = batch.writeBatchPtr->Iterate(handler.get());
-        handler->endBatch();
+        if (s.ok()) {
+          handler->endBatch();
+        }
       }
     } else {
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";

@@ -195,13 +195,15 @@ bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb,
   return true;
 }
 
-void RocksDBAllIndexIterator::seek(std::string const& key) {
+void RocksDBAllIndexIterator::seek(StringRef const& key) {
   TRI_ASSERT(_trx->state()->isRunning());
-  
+  // don't want to get the index pointer just for this
+  uint64_t objectId = _bounds.objectId();
+  RocksDBKey val = RocksDBKey::PrimaryIndexValue(objectId, key);
   if (_reverse) {
-    _iterator->SeekForPrev(key);
+    _iterator->SeekForPrev(val.string());
   } else {
-    _iterator->Seek(key);
+    _iterator->Seek(val.string());
   }
 }
 

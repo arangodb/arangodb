@@ -58,6 +58,8 @@ class Syncer {
   Syncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*);
 
   virtual ~Syncer();
+  
+  TRI_vocbase_t* vocbase() { return _vocbase; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sleeps (nanoseconds)
