@@ -430,6 +430,11 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.close(); // supports
     builder.close(); // object
   }
+  
+  virtual void getStatistics(VPackBuilder& builder) const {
+    builder.openObject();
+    builder.close();
+  }
 
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,

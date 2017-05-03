@@ -1212,7 +1212,7 @@ RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
   return _replicationManager.get();
 }
   
-void RocksDBEngine::rocksdbProperties(VPackBuilder &builder) {
+void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   builder.openObject();
   // add int properties
   auto c1 = [&](std::string const& s) {

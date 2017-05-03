@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesV8Functions.h"
+#include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
