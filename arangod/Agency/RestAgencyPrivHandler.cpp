@@ -161,7 +161,9 @@ RestStatus RestAgencyPrivHandler::execute() {
         query_t query = _request->toVelocyPackBuilderPtr();
         try {
           query_t ret = _agent->gossip(query);
-          result.add("pool", ret->slice().get("pool"));
+          for (auto const& obj : VPackObjectIterator(ret->slice())) {
+            result.add(obj.key.copyString(), obj.value);
+          }
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());
         }
