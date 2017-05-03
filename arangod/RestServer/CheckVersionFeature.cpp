@@ -22,6 +22,7 @@
 
 #include "CheckVersionFeature.h"
 
+#include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -97,13 +98,17 @@ void CheckVersionFeature::start() {
 
   // and force shutdown
   server()->beginShutdown();
+  
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "checking version on an empty database";
+  usleep(1 * 1000 * 1000);  
+  TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
 }
 
 void CheckVersionFeature::checkVersion() {
   *_result = 1;
 
   // run version check
-  LOG(TRACE) << "starting version check";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "starting version check";
 
   auto* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
@@ -113,7 +118,7 @@ void CheckVersionFeature::checkVersion() {
         V8DealerFeature::DEALER->enterContext(vocbase, true, 0);
 
     if (context == nullptr) {
-      LOG(FATAL) << "could not enter context #0";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not enter context #0";
       FATAL_ERROR_EXIT();
     }
 
@@ -129,7 +134,7 @@ void CheckVersionFeature::checkVersion() {
         v8::Context::Scope contextScope(localContext);
 
         // run version-check script
-        LOG(DEBUG) << "running database version check";
+        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "running database version check";
 
         // can do this without a lock as this is the startup
         DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
@@ -143,10 +148,10 @@ void CheckVersionFeature::checkVersion() {
           // all) but for all databases
           int status = TRI_CheckDatabaseVersion(vocbase, localContext);
 
-          LOG(DEBUG) << "version check return status " << status;
+          LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "version check return status " << status;
 
           if (status < 0) {
-            LOG(FATAL) << "Database version check failed for '"
+            LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database version check failed for '"
                        << vocbase->name()
                        << "'. Please inspect the logs for any errors";
             FATAL_ERROR_EXIT();

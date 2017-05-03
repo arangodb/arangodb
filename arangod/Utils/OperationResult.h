@@ -25,31 +25,67 @@
 #define ARANGOD_UTILS_OPERATION_RESULT_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/Result.h"
 #include <velocypack/Buffer.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-
+  
+//TODO FIXME -- This class shoulb be based on the arangodb::Result class
 struct OperationResult {
 
-  OperationResult() {
-  }
-
+  OperationResult() 
+      : code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
+  
   explicit OperationResult(int code) 
-      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), customTypeHandler(), code(code), wasSynchronous(false) { 
+      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
+        customTypeHandler(), 
+        code(code), 
+        wasSynchronous(false) { 
     if (code != TRI_ERROR_NO_ERROR) {
       errorMessage = TRI_errno_string(code);
     }
   }
+  
+  OperationResult(OperationResult&& other)
+      : buffer(std::move(other.buffer)),
+        customTypeHandler(std::move(other.customTypeHandler)),
+        errorMessage(std::move(other.errorMessage)),
+        code(other.code),
+        wasSynchronous(other.wasSynchronous),
+        countErrorCodes(std::move(other.countErrorCodes)) {}
+  
+  OperationResult& operator=(OperationResult&& other) {
+    if (this != &other) {
+      buffer = std::move(other.buffer);
+      customTypeHandler = std::move(other.customTypeHandler);
+      errorMessage = std::move(other.errorMessage);
+      code = other.code;
+      wasSynchronous = other.wasSynchronous;
+      countErrorCodes = std::move(other.countErrorCodes);
+    }
+    return *this;
+  }
 
   OperationResult(int code, std::string const& message) 
-      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), customTypeHandler(), errorMessage(message), code(code),
+      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
+        customTypeHandler(), 
+        errorMessage(message), 
+        code(code),
         wasSynchronous(false) { 
     TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   }
+  
+
+  //TODO FIXME -- more and better ctors for creation from Result
+  explicit OperationResult(Result const& other) 
+      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
+        customTypeHandler(), 
+        errorMessage(other.errorMessage()), 
+        code(other.errorNumber()),
+        wasSynchronous(false) {}
 
   OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
                   std::shared_ptr<VPackCustomTypeHandler> handler,
@@ -71,8 +107,7 @@ struct OperationResult {
         wasSynchronous(wasSynchronous),
         countErrorCodes(countErrorCodes) {}
 
-  virtual ~OperationResult() {
-  }
+  ~OperationResult() {}
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
@@ -82,7 +117,7 @@ struct OperationResult {
     return !successful();
   }
 
-  VPackSlice slice() const {
+  inline VPackSlice slice() const {
     TRI_ASSERT(buffer != nullptr); 
     return VPackSlice(buffer->data());
   }

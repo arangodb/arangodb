@@ -120,7 +120,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ConsoleFeature::prepare() {
 #if _WIN32
-  if (getenv("SHELL") != nullptr) {
+  if (_is_cyg_tty (STDOUT_FILENO) || getenv("SHELL") != nullptr) {
     _cygwinShell = true;
   }
 #endif
@@ -362,7 +362,6 @@ void ConsoleFeature::printWelcomeInfo() {
 
 void ConsoleFeature::printByeBye() {
   if (!_quiet) {
-    printLine("<ctrl-D>");
     printLine(TRI_BYE_MESSAGE);
   }
 }
@@ -523,7 +522,7 @@ void ConsoleFeature::startPager() {
     _toPager = popen(_pagerCommand.c_str(), "w");
 
     if (_toPager == nullptr) {
-      LOG(ERR) << "popen() for pager failed! Using stdout instead!";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "popen() for pager failed! Using stdout instead!";
       _toPager = stdout;
       _pager = false;
     }

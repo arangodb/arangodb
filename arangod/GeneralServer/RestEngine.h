@@ -27,12 +27,13 @@
 
 #include "GeneralServer/RestStatus.h"
 #include "Scheduler/EventLoop.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb {
 class RestEngine;
 
 namespace rest {
-class RequestStatisticsAgent;
 class RestHandler;
 }
 
@@ -44,10 +45,7 @@ class RestEngine {
   RestEngine() {}
 
  public:
-  void init(EventLoop loop, rest::RequestStatisticsAgent* agent) {
-    _loop = loop;
-    _agent = agent;
-  }
+  void init(EventLoop loop) { _loop = loop; }
 
   int asyncRun(std::shared_ptr<rest::RestHandler>);
   int syncRun(std::shared_ptr<rest::RestHandler>);
@@ -56,7 +54,7 @@ class RestEngine {
   void appendRestStatus(std::shared_ptr<RestStatusElement>);
 
   void queue(std::function<void()> callback) {
-    _loop._ioService->post(callback);
+    _loop._scheduler->post(callback);
   }
 
   bool hasSteps() { return !_elements.empty(); }
@@ -68,14 +66,13 @@ class RestEngine {
   }
 
  private:
-  int run(std::shared_ptr<rest::RestHandler>, bool synchron);
+  int run(std::shared_ptr<rest::RestHandler>, bool synchronous);
 
  private:
   State _state = State::PREPARE;
   std::vector<std::shared_ptr<RestStatusElement>> _elements;
 
   EventLoop _loop;
-  rest::RequestStatisticsAgent* _agent = nullptr;
 };
 }
 

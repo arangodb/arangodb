@@ -25,14 +25,15 @@
 #define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
 #include "Basics/Common.h"
-#include "Cluster/AgencyComm.h"
+#include "Basics/StringRef.h"
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Agency/AgencyComm.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace velocypack {
@@ -40,10 +41,6 @@ template <typename T>
 class Buffer;
 class Builder;
 class Slice;
-}
-
-namespace traverser {
-class TraverserExpression;
 }
 
 struct OperationOptions;
@@ -79,11 +76,11 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                          std::shared_ptr<arangodb::velocypack::Builder>&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief counts number of documents in a coordinator
+/// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
-                       uint64_t& result);
+                       std::vector<std::pair<std::string, uint64_t>>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
@@ -119,20 +116,26 @@ int getDocumentOnCoordinator(
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a list of filtered documents in a coordinator
-///        All found documents will be inserted into result.
-///        After execution documentIds will contain all id's of documents
-///        that could not be found.
-////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch edges from TraverserEngines
+///        Contacts all TraverserEngines placed
+///        on the DBServers for the given list
+///        of vertex _id's.
+///        All non-empty and non-cached results
+///        of DBServers will be inserted in the
+///        datalake. Slices used in the result
+///        point to content inside of this lake
+///        only and do not run out of scope unless
+///        the lake is cleared.
+///        TraversalVariant
 
-int getFilteredDocumentsOnCoordinator(
-    std::string const& dbname,
-    std::vector<traverser::TraverserExpression*> const& expressions,
-    std::unordered_set<std::string>& documentIds,
-    std::unordered_map<std::string,
-                       std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&
-        result);
+int fetchEdgesFromEngines(
+    std::string const&,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+    arangodb::velocypack::Slice vertexId, size_t,
+    std::unordered_map<StringRef, arangodb::velocypack::Slice>&,
+    std::vector<arangodb::velocypack::Slice>&,
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>&,
+    arangodb::velocypack::Builder&, size_t&, size_t&);
 
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -144,16 +147,17 @@ int getFilteredDocumentsOnCoordinator(
 ///        point to content inside of this lake
 ///        only and do not run out of scope unless
 ///        the lake is cleared.
+///        ShortestPathVariant
 
 int fetchEdgesFromEngines(
-    std::string const&,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    arangodb::velocypack::Slice const, size_t,
-    std::unordered_map<arangodb::velocypack::Slice,
-                       arangodb::velocypack::Slice>&,
-    std::vector<arangodb::velocypack::Slice>&,
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>&,
-    arangodb::velocypack::Builder&, size_t&, size_t&);
+    std::string const& dbname,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+    arangodb::velocypack::Slice vertexId,
+    bool backward,
+    std::unordered_map<StringRef, arangodb::velocypack::Slice>& cache,
+    std::vector<arangodb::velocypack::Slice>& result,
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
+    arangodb::velocypack::Builder& builder, size_t& read);
 
 /// @brief fetch vertices from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -167,10 +171,28 @@ int fetchEdgesFromEngines(
 void fetchVerticesFromEngines(
     std::string const&,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    std::unordered_set<arangodb::velocypack::Slice>&,
-    std::unordered_map<arangodb::velocypack::Slice,
-                       std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
+    std::unordered_set<StringRef>&,
+    std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
     arangodb::velocypack::Builder&);
+
+/// @brief fetch vertices from TraverserEngines
+///        Contacts all TraverserEngines placed
+///        on the DBServers for the given list
+///        of vertex _id's.
+///        If any server responds with a document
+///        it will be inserted into the result.
+///        If no server responds with a document
+///        a 'null' will be inserted into the result.
+///        ShortestPath Variant
+
+void fetchVerticesFromEngines(
+    std::string const&,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+    std::unordered_set<StringRef>&,
+    std::unordered_map<StringRef, arangodb::velocypack::Slice>& result,
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
+    arangodb::velocypack::Builder&);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a filtered set of edges on Coordinator.
@@ -180,7 +202,6 @@ void fetchVerticesFromEngines(
 int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
-    std::vector<traverser::TraverserExpression*> const& expressions,
     arangodb::rest::ResponseCode& responseCode,
     arangodb::velocypack::Builder& result);
 
@@ -222,6 +243,34 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     uint64_t numberOfShards,
     uint64_t replicationFactor,
     std::vector<std::string>& dbServers);
+
+class ClusterMethods {
+ public:
+  // wrapper Class for static functions.
+  // Cannot be instanciated.
+  ClusterMethods() = delete;
+  ~ClusterMethods() = delete;
+
+  // @brief Create a new collection on coordinator from a parameter VPack
+  // Note that this returns a newly allocated object and ownership is
+  // transferred
+  // to the caller, which is expressed by the returned unique_ptr.
+  static std::unique_ptr<LogicalCollection> createCollectionOnCoordinator(
+      TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
+      arangodb::velocypack::Slice parameters,
+      bool ignoreDistributeShardsLikeErrors,
+      bool waitForSyncReplication);
+
+ private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Persist collection in Agency and trigger shard creation process
+////////////////////////////////////////////////////////////////////////////////
+
+  static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
+    LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
+    bool waitForSyncReplication);
+};
 
 }  // namespace arangodb
 

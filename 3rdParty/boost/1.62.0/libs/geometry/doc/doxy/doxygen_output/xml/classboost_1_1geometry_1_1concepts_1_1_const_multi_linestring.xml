@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1concepts_1_1_const_multi_linestring" kind="class" prot="public">
+    <compoundname>boost::geometry::concepts::ConstMultiLinestring</compoundname>
+    <includes local="no">multi_linestring_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>concept for multi-linestring (const version) </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/multi_linestring_concept.hpp" line="72" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/multi_linestring_concept.hpp" bodystart="71" bodyend="86"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

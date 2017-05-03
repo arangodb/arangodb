@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1de9im_1_1push__back" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::de9im::push_back</compoundname>
+    <includes local="no">de9im.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Seq</declname>
+        <defname>Seq</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>T</declname>
+        <defname>T</defname>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>IsSeq</declname>
+        <defname>IsSeq</defname>
+        <defval>boost::mpl::is_sequence&lt;Seq&gt;::value</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1detail_1_1de9im_1_1push__back_1a0f1db69f3000b1391b28afaf02443e4b" prot="public" static="no">
+        <type>boost::mpl::push_back&lt; Seq, T &gt;::<ref refid="structboost_1_1geometry_1_1detail_1_1de9im_1_1push__back_1a0f1db69f3000b1391b28afaf02443e4b" kindref="member">type</ref></type>
+        <definition>typedef boost::mpl::push_back&lt; Seq, T &gt;::type boost::geometry::detail::de9im::push_back&lt; Seq, T, IsSeq &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="178" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="178" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="173" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="172" bodyend="179"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1detail_1_1de9im_1_1push__back_1a0f1db69f3000b1391b28afaf02443e4b" prot="public" virt="non-virtual"><scope>boost::geometry::detail::de9im::push_back</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

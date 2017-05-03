@@ -1,0 +1,66 @@
+[/
+  (C) Copyright 2012 Vicente J. Botet Escriba.
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:tutorial Tutorial]
+
+
+[@http://web.archive.org/web/20140531071228/http://home.roadrunner.com/~hinnant/mutexes/locking.html Handling mutexes in C++] is an excellent tutorial. You need just replace std and ting by boost.
+
+
+[@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2406.html Mutex, Lock, Condition Variable Rationale] adds rationale for the design decisions made for mutexes, locks and condition variables.
+
+
+In addition to the C++11 standard locks, Boost.Thread provides other locks and some utilities that help the user to make their code thread-safe.
+
+[include internal_locking.qbk]
+
+[include external_locking.qbk]
+
+[section:with Executing Around a Function]
+
+In particular, the library provides a way to lock around the execution of a function.
+
+  template <class Lockable, class Function, class... Args>
+  auto with_lock_guard(
+      Lockable& m,
+      Function&& func,
+      Args&&... args
+  ) -> decltype(func(boost::forward<Args>(args)...)) {
+    boost::lock_guard<Lockable> lock(m);
+    return func(boost::forward<Args>(args)...);
+  }
+
+that can be used with regular functions:
+
+  int func(int, int&);
+  //...
+  boost::mutex m;
+  int a;
+  int result = boost::with_lock_guard(m, func, 1, boost::ref(a));
+
+with boost::bind:
+
+  int result = boost::with_lock_guard(
+      m, boost::bind(func, 2, boost::ref(a))
+  );
+
+or with lambda expression:
+
+  int a;
+  int result = boost::with_lock_guard(
+      m,
+      [&a](int x) {
+        // this scope is protected by mutex m
+        a = 3;
+        return x + 4;
+      },
+      5
+  );
+
+[endsect] [/ With]
+
+[endsect] [/ Tutorial]

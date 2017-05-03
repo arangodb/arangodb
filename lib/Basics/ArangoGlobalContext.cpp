@@ -28,16 +28,36 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Rest/InitializeRest.h"
 
+#include <regex>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static void AbortHandler(int signum) {
+namespace {
+
+/// @brief quick test of regex functionality of the underlying stdlib
+static bool supportsStdRegex() {
+  try {
+    // compile a relatively simple regex... 
+    std::regex re("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
+    // ...and test whether it matches a static string
+    std::string test(" # ArangoDB");
+    if (std::regex_match(test, re)) {
+      // compiler properly supports std::regex
+      return true;
+    }
+  } catch (...) {
+  }
+  // compiler does not support std::regex properly, though pretending to
+  return false;
+}
+
+static void abortHandler(int signum) {
   TRI_PrintBacktrace();
 #ifdef _WIN32
   exit(255 + signum);
@@ -108,15 +128,21 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 }
 #endif
 
+}
+
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
-                                         const char* InstallDirectory)
+                                         char const* InstallDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
+      _binaryPath(TRI_LocateBinaryPath(argv[0])),
       _runRoot(
           TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
       _ret(EXIT_FAILURE),
       _useEventLog(true) {
+  // allow failing memory allocations for the global context thread (i.e. main program thread)
+  TRI_AllowMemoryFailures();
+
   static char const* serverName = "arangod";
   if (_binaryName.size() < strlen(serverName) ||
       _binaryName.substr(_binaryName.size() - strlen(serverName)) !=
@@ -130,7 +156,7 @@ ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
   ADB_WindowsEntryFunction();
 
 #ifdef _WIN32
-  SetUnhandledExceptionFilter(unhandledExceptionHandler);
+  // SetUnhandledExceptionFilter(unhandledExceptionHandler);
 #endif
 
   TRIAGENS_REST_INITIALIZE();
@@ -159,7 +185,7 @@ void ArangoGlobalContext::installHup() {
 #endif
 }
 
-void ArangoGlobalContext::installSegv() { signal(SIGSEGV, AbortHandler); }
+void ArangoGlobalContext::installSegv() { signal(SIGSEGV, abortHandler); }
 
 void ArangoGlobalContext::maskAllSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -179,8 +205,8 @@ void ArangoGlobalContext::unmaskStandardSignals() {
 
 void ArangoGlobalContext::runStartupChecks() {
   // test if this binary uses and stdlib that supports std::regex properly
-  if (!TRI_SupportsRegexDebugging()) {
-    LOG(FATAL) << "the required std::regex functionality required to run "
+  if (!supportsStdRegex()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "the required std::regex functionality required to run "
                << "ArangoDB is not provided by this build. please try "
                << "rebuilding ArangoDB in a build environment that properly "
                << "supports std::regex";
@@ -190,6 +216,8 @@ void ArangoGlobalContext::runStartupChecks() {
 #ifdef __arm__
   // detect alignment settings for ARM
   {
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "running CPU alignment check";
     // To change the alignment trap behavior, simply echo a number into
     // /proc/cpu/alignment.  The number is made up from various bits:
     //
@@ -236,7 +264,7 @@ void ArangoGlobalContext::runStartupChecks() {
         int64_t alignment =
             std::stol(std::string(cpuAlignment.c_str() + start, end - start));
         if ((alignment & 2) == 0) {
-          LOG(FATAL)
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
               << "possibly incompatible CPU alignment settings found in '"
               << filename << "'. this may cause arangod to abort with "
                              "SIGBUS. please set the value in '"
@@ -249,18 +277,35 @@ void ArangoGlobalContext::runStartupChecks() {
 
     } catch (...) {
       // ignore that we cannot detect the alignment
-      LOG(TRACE)
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "unable to detect CPU alignment settings. could not process file '"
           << filename << "'";
     }
 
     if (!alignmentDetected) {
-      LOG(WARN)
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "unable to detect CPU alignment settings. could not process file '"
           << filename
           << "'. this may cause arangod to abort with SIGBUS. it may be "
              "necessary to set the value in '"
           << filename << "' to 2";
+    }
+    std::string const proc_cpuinfo_filename("/proc/cpuinfo");
+    try {
+      std::string const cpuInfo =
+          arangodb::basics::FileUtils::slurp(proc_cpuinfo_filename);
+      auto start = cpuInfo.find("ARMv6");
+
+      if (start != std::string::npos) {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+              << "possibly incompatible ARMv6 CPU detected.";
+          FATAL_ERROR_EXIT();
+        }
+    } catch (...) {
+      // ignore that we cannot detect the alignment
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "unable to detect CPU type '"
+          << filename << "'";
     }
   }
 #endif
@@ -271,31 +316,30 @@ void ArangoGlobalContext::createMiniDumpFilename() {
   miniDumpFilename = TRI_GetTempPath();
 
   miniDumpFilename +=
-      "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
+    "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
 #endif
 }
 
 void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
-                                        const char* whichPath, bool fatal) {
+                                        char const* whichPath, bool fatal) {
   for (auto& path : paths) {
     normalizePath(path, whichPath, fatal);
   }
 }
 
 void ArangoGlobalContext::normalizePath(std::string& path,
-                                        const char* whichPath, bool fatal) {
+                                        char const* whichPath, bool fatal) {
   StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
 
   if (!arangodb::basics::FileUtils::exists(path)) {
-    std::string directory;
-    directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
+    std::string directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
     if (!arangodb::basics::FileUtils::exists(directory)) {
       if (!fatal) {
         return;
       }
-      LOG(ERR) << "failed to locate " << whichPath
-               << " directory, its neither available in  '" << path
-               << "' nor in '" << directory << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to locate " << whichPath
+                 << " directory, its neither available in '" << path
+                 << "' nor in '" << directory << "'";
       FATAL_ERROR_EXIT();
     }
     arangodb::basics::FileUtils::normalizePath(directory);

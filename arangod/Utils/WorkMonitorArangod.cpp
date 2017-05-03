@@ -31,8 +31,10 @@
 #include "Basics/ConditionLocker.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/RequestStatistics.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -158,6 +160,8 @@ void WorkMonitor::pushHandler(std::shared_ptr<RestHandler> handler) {
   WorkDescription* desc = createWorkDescription(WorkType::HANDLER);
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
+  desc->_context = handler->context();
+
   new (&desc->_data._handler._handler) std::shared_ptr<RestHandler>(handler);
   new (&desc->_data._handler._canceled) std::atomic<bool>(false);
 
@@ -194,13 +198,13 @@ bool WorkMonitor::cancelAql(WorkDescription* desc) {
   if (vocbase != nullptr) {
     uint64_t id = desc->_data._aql._id;
 
-    LOG(WARN) << "cancel query " << id << " in " << vocbase;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cancel query " << id << " in " << vocbase;
 
     auto queryList = vocbase->queryList();
     auto res = queryList->kill(id);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(DEBUG) << "cannot kill query " << id;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot kill query " << id;
     }
   }
 
@@ -213,9 +217,9 @@ void WorkMonitor::deleteHandler(WorkDescription* desc) {
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
   desc->_data._handler._handler
-      .std::shared_ptr<rest::RestHandler>::~shared_ptr<rest::RestHandler>();
+      .std::shared_ptr<rest::RestHandler>::~shared_ptr();
 
-  desc->_data._handler._canceled.std::atomic<bool>::~atomic<bool>();
+  desc->_data._handler._canceled.std::atomic<bool>::~atomic();
 }
 
 void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
@@ -232,11 +236,12 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   b->add("user", VPackValue(request->user()));
   b->add("taskId", VPackValue(request->clientTaskId()));
 
-  if (handler->_statistics != nullptr) {
-    b->add("startTime", VPackValue(handler->_statistics->_requestStart));
+  auto statistics = handler->statistics();
+
+  if (statistics != nullptr) {
+    b->add("startTime", VPackValue(statistics->requestStart()));
   } else {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "WorkMonitor::vpackHandler - missing statistics";
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "missing statistics";
   }
 
   auto& info = request->connectionInfo();

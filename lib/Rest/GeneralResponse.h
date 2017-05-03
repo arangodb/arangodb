@@ -31,6 +31,7 @@
 #include "Basics/StringUtils.h"
 #include "GeneralRequest.h"
 #include "Endpoint/Endpoint.h"
+#include "Logger/Logger.h"
 #include "Rest/CommonDefines.h"
 
 namespace arangodb {
@@ -106,7 +107,7 @@ class GeneralResponse {
   std::unordered_map<std::string, std::string> headers() const {
     return _headers;
   }
-
+  
   // adds a header. the header field name will be lower-cased
   void setHeader(std::string const& key, std::string const& value) {
     _headers[basics::StringUtils::tolower(key)] = value;
@@ -121,7 +122,16 @@ class GeneralResponse {
   void setHeaderNC(std::string const& key, std::string&& value) {
     _headers[key] = std::move(value);
   }
-
+  
+  // adds a header if not set. the header field name must be lower-cased
+  void setHeaderNCIfNotSet(std::string const& key, std::string const& value) {
+    if (_headers.find(key) != _headers.end()) {
+      // already set
+      return;
+    }
+    _headers.emplace(key, value);
+  }
+  
  public:
   virtual uint64_t messageId() const { return 1; }
 
@@ -147,7 +157,7 @@ class GeneralResponse {
 
   void addPayloadPreconditions() { 
     if (_vpackPayloads.size() != 0) {
-      LOG(ERR) << "Payload set twice";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Payload set twice";
       TRI_ASSERT(_vpackPayloads.size() == 0);
     }
   }

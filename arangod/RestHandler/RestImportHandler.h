@@ -118,7 +118,6 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
   bool createFromKeyValueList();
   bool createFromKeyValueListVPack() {
-    LOG(ERR) << " not implemented";
     return false;
   }
 

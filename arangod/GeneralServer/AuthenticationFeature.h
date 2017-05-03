@@ -24,7 +24,9 @@
 #define APPLICATION_FEATURES_AUTHENTICATION_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "AuthenticationHandler.h"
 #include "VocBase/AuthInfo.h"
+
 
 namespace arangodb {
 class AuthenticationFeature final
@@ -56,8 +58,11 @@ class AuthenticationFeature final
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
   std::string jwtSecret() { return authInfo()->jwtSecret(); }
   std::string generateNewJwtSecret();
+  bool hasUserdefinedJwt() { return !_jwtSecretProgramOption.empty(); }
   void setJwtSecret(std::string const& jwtSecret) { authInfo()->setJwtSecret(jwtSecret); }
   AuthInfo* authInfo();
+  AuthLevel canUseDatabase(std::string const& username, std::string const& dbname);
+  AuthenticationHandler* getHandler();
 };
 };
 

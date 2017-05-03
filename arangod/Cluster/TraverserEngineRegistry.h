@@ -24,6 +24,7 @@
 #ifndef ARANGOD_CLUSTER_TRAVERSER_ENGINE_REGISTRY_H
 #define ARANGOD_CLUSTER_TRAVERSER_ENGINE_REGISTRY_H 1
 
+#include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
@@ -32,7 +33,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace traverser {
 
-class BaseTraverserEngine;
+class BaseEngine;
 
 /// @brief type of a Traverser Engine Id
 typedef TRI_voc_tick_t TraverserEngineID;
@@ -48,20 +49,32 @@ class TraverserEngineRegistry {
   ///        It can be referred to by the returned
   ///        ID. If the returned ID is 0 something
   ///        internally went wrong.
-  TraverserEngineID createNew(TRI_vocbase_t*, arangodb::velocypack::Slice);
+  TraverserEngineID createNew(TRI_vocbase_t*, arangodb::velocypack::Slice,
+                              double ttl = 600.0);
 
   /// @brief Get the engine with the given ID.
   ///        TODO Test what happens if this pointer
   ///        is requested twice in parallel?
-  BaseTraverserEngine* get(TraverserEngineID);
+  BaseEngine* get(TraverserEngineID);
 
   /// @brief Destroys the engine with the given id.
   void destroy(TraverserEngineID);
 
   /// @brief Returns the engine with the given id.
   ///        NOTE: Caller is NOT allowed to use the
-  ///        engine after this return.
-  void returnEngine(TraverserEngineID);
+  ///        engine after this return. If the ttl
+  ///        is negative (the default), then the old
+  ///        one is taken again.
+  void returnEngine(TraverserEngineID, double ttl = -1.0);
+
+  /// @brief expireEngines, this deletes all expired engines from the registry
+  void expireEngines();
+
+  /// @brief return number of registered engines
+  size_t numberRegisteredEngines();
+
+  /// @brief destroy all registered engines
+  void destroyAll();
 
  private:
   
@@ -71,7 +84,7 @@ class TraverserEngineRegistry {
     bool _isInUse;                                 // Flag if this engine is in use
     bool _toBeDeleted;                             // Should be deleted after
                                                    // next return
-    std::unique_ptr<BaseTraverserEngine> _engine;  // The real engine
+    std::unique_ptr<BaseEngine> _engine;           // The real engine
 
     double _timeToLive;                            // in seconds
     double _expires;                               // UNIX UTC timestamp for expiration
@@ -85,6 +98,9 @@ class TraverserEngineRegistry {
 
   /// @brief _lock, the read/write lock for access
   basics::ReadWriteLock _lock;
+
+  /// @brief variable for traverser engines already in use
+  basics::ConditionVariable _cv;
 };
 
 } // namespace traverser

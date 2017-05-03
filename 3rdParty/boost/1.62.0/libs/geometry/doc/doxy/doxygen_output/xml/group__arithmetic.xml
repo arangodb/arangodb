@@ -1,0 +1,704 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__arithmetic" kind="group">
+    <compoundname>arithmetic</compoundname>
+    <title>arithmetic: arithmetic operations on points</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__arithmetic_1ga4be53645868644bb6c5a455450d4d00e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::add_point</definition>
+        <argsstring>(Point1 &amp;p1, Point2 const &amp;p2)</argsstring>
+        <name>add_point</name>
+        <param>
+          <type>Point1 &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Adds a point to another. </para>        </briefdescription>
+        <detaileddescription>
+<para>The coordinates of the second point will be added to those of the first point. The second point is not modified. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>p2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="163" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="163" bodyend="169"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1ga9c6f97e8be0aea5a989b10282cfdfcd1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::add_value</definition>
+        <argsstring>(Point &amp;p, typename detail::param&lt; Point &gt;::type value)</argsstring>
+        <name>add_value</name>
+        <param>
+          <type>Point &amp;</type>
+          <declname>p</declname>
+        </param>
+        <param>
+          <type>typename detail::param&lt; Point &gt;::type</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Adds the same value to each coordinate of a point. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>value to add </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="140" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="140" bodyend="150"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1gaa595e4f32e834533b6299e08449afc6c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::assign_point</definition>
+        <argsstring>(Point1 &amp;p1, Point2 const &amp;p2)</argsstring>
+        <name>assign_point</name>
+        <param>
+          <type>Point1 &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Assign a point with another. </para>        </briefdescription>
+        <detaileddescription>
+<para>The coordinates of the first point will be assigned those of the second point. The second point is not modified. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>p2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="323" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="323" bodyend="329"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1gaa6e3bfda2aa04de193ee936a93663c7d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::assign_value</definition>
+        <argsstring>(Point &amp;p, typename detail::param&lt; Point &gt;::type value)</argsstring>
+        <name>assign_value</name>
+        <param>
+          <type>Point &amp;</type>
+          <declname>p</declname>
+        </param>
+        <param>
+          <type>typename detail::param&lt; Point &gt;::type</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Assign each coordinate of a point the same value. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>value to assign </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="301" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="301" bodyend="310"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1gac1db64902c8bb77241db98a1805d941e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename ResultP</type>
+          </param>
+          <param>
+            <type>typename P1</type>
+          </param>
+          <param>
+            <type>typename P2</type>
+          </param>
+        </templateparamlist>
+        <type>ResultP</type>
+        <definition>ResultP boost::geometry::cross_product</definition>
+        <argsstring>(P1 const &amp;p1, P2 const &amp;p2)</argsstring>
+        <name>cross_product</name>
+        <param>
+          <type>P1 const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>P2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Computes the cross product of two vectors. </para>        </briefdescription>
+        <detaileddescription>
+<para>All vectors should have the same dimension, 3 or 2.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first vector </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>p2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second vector </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>the cross product vector </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/cross_product.hpp" line="95" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/cross_product.hpp" bodystart="95" bodyend="104"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1gaac070750570068100488f1411025a083" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename P</type>
+          </param>
+        </templateparamlist>
+        <type>P</type>
+        <definition>P boost::geometry::cross_product</definition>
+        <argsstring>(P const &amp;p1, P const &amp;p2)</argsstring>
+        <name>cross_product</name>
+        <param>
+          <type>P const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>P const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Computes the cross product of two vectors. </para>        </briefdescription>
+        <detaileddescription>
+<para>All vectors should have the same dimension, 3 or 2.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first vector </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>p2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second vector </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>the cross product vector </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/cross_product.hpp" line="115" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/cross_product.hpp" bodystart="115" bodyend="123"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1ga8141e616132d8d614da3428863336dc9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::divide_point</definition>
+        <argsstring>(Point1 &amp;p1, Point2 const &amp;p2)</argsstring>
+        <name>divide_point</name>
+        <param>
+          <type>Point1 &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Divides a point by another. </para>        </briefdescription>
+        <detaileddescription>
+<para>The coordinates of the first point will be divided by those of the second point. The second point is not modified. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>p2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="284" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="284" bodyend="290"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1ga98645f15cfba3e9e9e9e83c72e0f98e3" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::divide_value</definition>
+        <argsstring>(Point &amp;p, typename detail::param&lt; Point &gt;::type value)</argsstring>
+        <name>divide_value</name>
+        <param>
+          <type>Point &amp;</type>
+          <declname>p</declname>
+        </param>
+        <param>
+          <type>typename detail::param&lt; Point &gt;::type</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Divides each coordinate of the same point by a value. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>value to divide by </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="261" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="261" bodyend="271"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1gaf962409b64cd5023d9e439c4468db1d2" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+        </templateparamlist>
+        <type>select_coordinate_type&lt; Point1, Point2 &gt;::type</type>
+        <definition>select_coordinate_type&lt;Point1, Point2&gt;::type boost::geometry::dot_product</definition>
+        <argsstring>(Point1 const &amp;p1, Point2 const &amp;p2)</argsstring>
+        <name>dot_product</name>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Computes the dot product (or scalar product) of 2 vectors (points). </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>p2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>the dot product </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/dot_product.hpp" line="69" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/dot_product.hpp" bodystart="69" bodyend="80"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1ga3ce5cfd812427c46ac5a319a34fe33b1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::multiply_point</definition>
+        <argsstring>(Point1 &amp;p1, Point2 const &amp;p2)</argsstring>
+        <name>multiply_point</name>
+        <param>
+          <type>Point1 &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Multiplies a point by another. </para>        </briefdescription>
+        <detaileddescription>
+<para>The coordinates of the first point will be multiplied by those of the second point. The second point is not modified. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>p2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="note"><para>This is <emphasis>not</emphasis> a dot, cross or wedge product. It is a mere field-by-field multiplication. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="244" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="244" bodyend="250"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1gaee0fa23a64414a4781e08965653c0b81" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::multiply_value</definition>
+        <argsstring>(Point &amp;p, typename detail::param&lt; Point &gt;::type value)</argsstring>
+        <name>multiply_value</name>
+        <param>
+          <type>Point &amp;</type>
+          <declname>p</declname>
+        </param>
+        <param>
+          <type>typename detail::param&lt; Point &gt;::type</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Multiplies each coordinate of a point by the same value. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>value to multiply by </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="220" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="220" bodyend="230"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1ga2aaca98906e1978d00ea55b40a1a39ea" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::subtract_point</definition>
+        <argsstring>(Point1 &amp;p1, Point2 const &amp;p2)</argsstring>
+        <name>subtract_point</name>
+        <param>
+          <type>Point1 &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Subtracts a point to another. </para>        </briefdescription>
+        <detaileddescription>
+<para>The coordinates of the second point will be subtracted to those of the first point. The second point is not modified. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>p2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="203" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="203" bodyend="209"/>
+      </memberdef>
+      <memberdef kind="function" id="group__arithmetic_1gaf0ffb395ff5f6359d8da055decddd385" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::subtract_value</definition>
+        <argsstring>(Point &amp;p, typename detail::param&lt; Point &gt;::type value)</argsstring>
+        <name>subtract_value</name>
+        <param>
+          <type>Point &amp;</type>
+          <declname>p</declname>
+        </param>
+        <param>
+          <type>typename detail::param&lt; Point &gt;::type</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Subtracts the same value to each coordinate of a point. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>value to subtract </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" line="180" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/arithmetic.hpp" bodystart="180" bodyend="190"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

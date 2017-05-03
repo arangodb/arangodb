@@ -6,7 +6,9 @@ var baseClone = require('./_baseClone'),
  * value at `path` of a given object to `srcValue`, returning `true` if the
  * object value is equivalent, else `false`.
  *
- * **Note:** This method supports comparing the same values as `_.isEqual`.
+ * **Note:** Partial comparisons will match empty array and empty object
+ * `srcValue` values against any array or object value, respectively. See
+ * `_.isEqual` for a list of supported value comparisons.
  *
  * @static
  * @memberOf _
@@ -17,13 +19,13 @@ var baseClone = require('./_baseClone'),
  * @returns {Function} Returns the new spec function.
  * @example
  *
- * var users = [
- *   { 'user': 'barney' },
- *   { 'user': 'fred' }
+ * var objects = [
+ *   { 'a': 1, 'b': 2, 'c': 3 },
+ *   { 'a': 4, 'b': 5, 'c': 6 }
  * ];
  *
- * _.find(users, _.matchesProperty('user', 'fred'));
- * // => { 'user': 'fred' }
+ * _.find(objects, _.matchesProperty('a', 4));
+ * // => { 'a': 4, 'b': 5, 'c': 6 }
  */
 function matchesProperty(path, srcValue) {
   return baseMatchesProperty(path, baseClone(srcValue, true));

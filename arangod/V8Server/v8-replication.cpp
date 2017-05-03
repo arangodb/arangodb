@@ -21,7 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-replication.h"
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -33,9 +32,15 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
-#include "VocBase/replication-dump.h"
-#include "Wal/LogfileManager.h"
+#include "v8-replication.h"
 
+// FIXME to be removed (should be storage engine independent - get it working now)
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/mmfiles-replication-dump.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
@@ -51,32 +56,48 @@ using namespace arangodb::rest;
 
 static void JS_StateLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+  // FIXME: use code in RestReplicationHandler and get rid of storage-engine
+  //        depended code here
+  //        
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::wal::LogfileManagerState const s =
-      arangodb::wal::LogfileManager::instance()->state();
-
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  v8::Handle<v8::Object> state = v8::Object::New(isolate);
-  state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
-  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, s.lastCommittedTick));
-  state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), V8TickId(isolate, s.lastAssignedTick));
-  state->Set(TRI_V8_ASCII_STRING("totalEvents"),
+  if(engineName == "mmfiles"){
+    v8::Handle<v8::Object> state = v8::Object::New(isolate);
+    MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
+    state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
+    state->Set(TRI_V8_ASCII_STRING("lastLogTick"),
+               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
+    state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"),
+               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
+    state->Set(TRI_V8_ASCII_STRING("totalEvents"),
              v8::Number::New(isolate, static_cast<double>(s.numEvents + s.numEventsSync)));
-  state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
-  result->Set(TRI_V8_ASCII_STRING("state"), state);
+    state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
+    result->Set(TRI_V8_ASCII_STRING("state"), state);
 
-  v8::Handle<v8::Object> server = v8::Object::New(isolate);
-  server->Set(TRI_V8_ASCII_STRING("version"),
-              TRI_V8_ASCII_STRING(ARANGODB_VERSION));
-  server->Set(TRI_V8_ASCII_STRING("serverId"),
-              TRI_V8_STD_STRING(StringUtils::itoa(ServerIdFeature::getId())));
-  result->Set(TRI_V8_ASCII_STRING("server"), server);
+    v8::Handle<v8::Object> server = v8::Object::New(isolate);
+    server->Set(TRI_V8_ASCII_STRING("version"),
+                TRI_V8_ASCII_STRING(ARANGODB_VERSION));
+    server->Set(TRI_V8_ASCII_STRING("serverId"),
+                TRI_V8_STD_STRING(StringUtils::itoa(ServerIdFeature::getId())));
+    result->Set(TRI_V8_ASCII_STRING("server"), server);
 
-  v8::Handle<v8::Object> clients = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("clients"), clients);
+    v8::Handle<v8::Object> clients = v8::Object::New(isolate);
+    result->Set(TRI_V8_ASCII_STRING("clients"), clients);
+  } else if (engineName == "rocksdb") {
+    VPackBuilder builder;
+    auto res = rocksutils::globalRocksEngine()->createLoggerState(nullptr,builder);
+    if(res.fail()){
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+    v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
+    result = v8::Handle<v8::Object>::Cast(resultValue);
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  }
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -90,24 +111,62 @@ static void JS_TickRangesLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
-
-  v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)ranges.size());
-  uint32_t i = 0;
-
-  for (auto& it : ranges) {
-    v8::Handle<v8::Object> df = v8::Object::New(isolate);
-
-    df->ForceSet(TRI_V8_ASCII_STRING("datafile"),
-                 TRI_V8_STD_STRING(it.filename));
-    df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(it.state));
-    df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), V8TickId(isolate, it.tickMin));
-    df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), V8TickId(isolate, it.tickMax));
-
-    result->Set(i++, df);
+  v8::Handle<v8::Array> result;
+  
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if(engineName == "mmfiles"){
+    auto const& ranges = MMFilesLogfileManager::instance()->ranges();
+    result = v8::Array::New(isolate, (int)ranges.size());
+    
+    uint32_t i = 0;
+    
+    for (auto& it : ranges) {
+      v8::Handle<v8::Object> df = v8::Object::New(isolate);
+      
+      df->ForceSet(TRI_V8_ASCII_STRING("datafile"), TRI_V8_STD_STRING(it.filename));
+      df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(it.state));
+      df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMin));
+      df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMax));
+      
+      result->Set(i++, df);
+    }
+  } else if (engineName == "rocksdb") {
+    rocksdb::TransactionDB *tdb = rocksutils::globalRocksDB();
+    rocksdb::VectorLogPtr walFiles;
+    rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
+    if (!s.ok()) {
+      Result r = rocksutils::convertStatus(s);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
+    
+    result = v8::Array::New(isolate, (int)walFiles.size());
+    for(uint32_t i = 0; i < walFiles.size(); i++) {
+      std::unique_ptr<rocksdb::LogFile>& logfile = walFiles[i];
+      
+      v8::Handle<v8::Object> df = v8::Object::New(isolate);
+      df->ForceSet(TRI_V8_ASCII_STRING("datafile"), TRI_V8_STD_STRING(logfile->PathName()));
+      // setting state of each file
+      if (logfile->Type() == rocksdb::WalFileType::kAliveLogFile) {
+        df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STRING("open"));
+      } else if (logfile->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+        df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STRING("collected"));
+      }
+      rocksdb::SequenceNumber min = logfile->StartSequence();
+      df->ForceSet(TRI_V8_ASCII_STRING("tickMin"),
+                   TRI_V8UInt64String<TRI_voc_tick_t>(isolate, min));
+      
+      rocksdb::SequenceNumber max = UINT64_MAX;
+      if (i+1 < walFiles.size()) {
+        max = walFiles[i+1]->StartSequence();
+      }
+      df->ForceSet(TRI_V8_ASCII_STRING("tickMax"),
+                   TRI_V8UInt64String<rocksdb::SequenceNumber>(isolate, max));
+      
+      result->Set(i++, df);
+    }
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
-
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -121,25 +180,41 @@ static void JS_FirstTickLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
-
   TRI_voc_tick_t tick = UINT64_MAX;
-
-  for (auto& it : ranges) {
-    if (it.tickMin == 0) {
-      continue;
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if(engineName == "mmfiles"){
+    auto const& ranges = MMFilesLogfileManager::instance()->ranges();
+    
+    
+    for (auto& it : ranges) {
+      if (it.tickMin == 0) {
+        continue;
+      }
+      
+      if (it.tickMin < tick) {
+        tick = it.tickMin;
+      }
     }
-
-    if (it.tickMin < tick) {
-      tick = it.tickMin;
+  } else if (engineName == "rocksdb") {
+    rocksdb::TransactionDB *tdb = rocksutils::globalRocksDB();
+    rocksdb::VectorLogPtr walFiles;
+    rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
+    if (!s.ok()) {
+      Result r = rocksutils::convertStatus(s);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
+    // read minium possible tick
+    if (!walFiles.empty()) {
+      tick = walFiles[0]->StartSequence();
+    }
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
-
   if (tick == UINT64_MAX) {
     TRI_V8_RETURN(v8::Null(isolate));
   }
-
-  TRI_V8_RETURN(V8TickId(isolate, tick));
+  
+  TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_tick_t>(isolate, tick));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -151,37 +226,68 @@ static void JS_LastLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
+  
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
+  
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
+                                 "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
-    
-  auto transactionContext = std::make_shared<StandaloneTransactionContext>(vocbase);
-
-  TRI_replication_dump_t dump(transactionContext, 0, true, 0);
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
-
-  int res = TRI_DumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
-                                   0, tickStart, tickEnd, true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+  if (tickEnd <= tickStart) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+                                 "tickStart < tickEnd");
   }
+  
+  
+  v8::Handle<v8::Value> result;
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if(engineName == "mmfiles"){
+    auto transactionContext = std::make_shared<transaction::StandaloneContext>(vocbase);
+    
+    MMFilesReplicationDumpContext dump(transactionContext, 0, true, 0);
+    
+    
+    int res = MMFilesDumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
+                                        0, tickStart, tickEnd, true);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+    // parsing JSON
+    VPackParser parser;
+    parser.parse(dump._buffer->_buffer);
+    result = TRI_VPackToV8(isolate, VPackSlice(parser.start()));
 
-  VPackParser parser;
-  parser.parse(dump._buffer->_buffer);
- 
-  std::shared_ptr<VPackBuilder> builder = parser.steal();
-
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
+  } else if (engineName == "rocksdb") {
+    bool includeSystem = true;
+    size_t chunkSize = 32 * 1024 * 1024; // TODO: determine good default value?
+    
+    // construct vocbase with proper handler
+    std::shared_ptr<transaction::Context> transactionContext =
+    transaction::StandaloneContext::Create(vocbase);
+    VPackBuilder builder(transactionContext->getVPackOptions());
+    
+    builder.openArray();
+    RocksDBReplicationResult rep = rocksutils::tailWal(vocbase, tickStart,
+                                                       tickEnd, chunkSize,
+                                                       includeSystem, 0, builder);
+    builder.close();
+    
+    if (rep.ok()) {
+      result = TRI_VPackToV8(isolate, builder.slice(),
+                             transactionContext->getVPackOptions());
+    } else {
+      result = v8::Null(isolate);
+    }
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  }
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -209,7 +315,11 @@ void addReplicationAuthentication(v8::Isolate* isolate,
   if (!hasUsernamePassword) {
     auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
     if (cluster->isEnabled()) {
-      config._jwt = ClusterComm::instance()->jwt();
+      auto cc = ClusterComm::instance();
+      if (cc != nullptr) {
+        // nullptr happens only during controlled shutdown
+        config._jwt = ClusterComm::instance()->jwt();
+      }
     }
   }
 }
@@ -247,7 +357,6 @@ static void JS_SynchronizeReplication(
   } else {
     database = vocbase->name();
   }
-
 
   std::unordered_map<std::string, bool> restrictCollections;
   if (object->Has(TRI_V8_ASCII_STRING("restrictCollections")) &&
@@ -348,11 +457,11 @@ static void JS_SynchronizeReplication(
 
     if (keepBarrier) {
       result->Set(TRI_V8_ASCII_STRING("barrierId"),
-                  V8TickId(isolate, syncer.stealBarrier()));
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.stealBarrier()));
     }
 
     result->Set(TRI_V8_ASCII_STRING("lastLogTick"),
-                V8TickId(isolate, syncer.getLastLogTick()));
+                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.getLastLogTick()));
 
     std::map<TRI_voc_cid_t, std::string>::const_iterator it;
     std::map<TRI_voc_cid_t, std::string> const& c =
@@ -371,15 +480,29 @@ static void JS_SynchronizeReplication(
     }
 
     result->Set(TRI_V8_ASCII_STRING("collections"), collections);
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+    if (errorMsg.empty()) {
+      errorMsg = std::string("caught exception: ") + ex.what();
+    }
+  } catch (std::exception const& ex) {
+    res = TRI_ERROR_INTERNAL;
+    if (errorMsg.empty()) {
+      errorMsg = std::string("caught exception: ") + ex.what();
+    }
   } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+    if (errorMsg.empty()) {
+      errorMsg = "caught unknown exception";
+    }
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint. last progress message was '" + syncer.progress() + "'");
     } else {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
-          res, "cannot sync from remote endpoint: " + errorMsg);
+          res, "cannot sync from remote endpoint: " + errorMsg + ". last progress message was '" + syncer.progress() + "'");
     }
   }
 
@@ -420,7 +543,7 @@ static void JS_ConfigureApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   if (args.Length() == 0) {
@@ -689,7 +812,7 @@ static void JS_StartApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   if (args.Length() > 2) {
@@ -740,7 +863,7 @@ static void JS_ShutdownApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   int res = vocbase->replicationApplier()->shutdown();
@@ -773,7 +896,7 @@ static void JS_StateApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   std::shared_ptr<VPackBuilder> builder = vocbase->replicationApplier()->toVelocyPack();
@@ -804,7 +927,7 @@ static void JS_ForgetApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   int res = vocbase->replicationApplier()->forget();
@@ -822,37 +945,37 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
                            TRI_vocbase_t* vocbase,
                            size_t threadNumber, TRI_v8_global_t* v8g) {
   // replication functions. not intended to be used by end users
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_LOGGER_STATE"),
                                JS_StateLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_LOGGER_LAST"),
                                JS_LastLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_TICK_RANGES"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_TICK_RANGES"),
       JS_TickRangesLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_FIRST_TICK"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_FIRST_TICK"),
       JS_FirstTickLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_SYNCHRONIZE"),
                                JS_SynchronizeReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_SERVER_ID"),
                                JS_ServerIdReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_CONFIGURE"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_CONFIGURE"),
       JS_ConfigureApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_APPLIER_START"),
                                JS_StartApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_SHUTDOWN"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_SHUTDOWN"),
       JS_ShutdownApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_APPLIER_STATE"),
                                JS_StateApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_FORGET"),
+      isolate, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_FORGET"),
       JS_ForgetApplierReplication, true);
 }

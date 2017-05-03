@@ -2,34 +2,15 @@
 # these are the install targets for the client package.
 # we can't use RUNTIME DESTINATION here.
 
-install(
-  PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/${BIN_ARANGOBENCH}${CMAKE_EXECUTABLE_SUFFIX}
-  DESTINATION ${CMAKE_INSTALL_BINDIR})
-install_config(arangobench)
-
-install(
-  PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/${BIN_ARANGODUMP}${CMAKE_EXECUTABLE_SUFFIX}
-  DESTINATION ${CMAKE_INSTALL_BINDIR})
-install_config(arangodump)
-
-install(
-  PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/${BIN_ARANGOIMP}${CMAKE_EXECUTABLE_SUFFIX}
-  DESTINATION ${CMAKE_INSTALL_BINDIR})
-install_config(arangoimp)
-
-install(
-  PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/${BIN_ARANGORESTORE}${CMAKE_EXECUTABLE_SUFFIX}
-  DESTINATION ${CMAKE_INSTALL_BINDIR})
-install_config(arangorestore)
-
-install(
-  PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/${BIN_ARANGOSH}${CMAKE_EXECUTABLE_SUFFIX}
-  DESTINATION ${CMAKE_INSTALL_BINDIR})
-install_config(arangosh)
-
-install(
-  PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/${BIN_ARANGOVPACK}${CMAKE_EXECUTABLE_SUFFIX}
-  DESTINATION ${CMAKE_INSTALL_BINDIR})
+set(STRIP_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/cstrip")
+add_custom_target(strip_install_client ALL)
+strip_install_bin_and_config(arangobench   ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
+strip_install_bin_and_config(arangodump    ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
+strip_install_bin_and_config(arangoimp     ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
+strip_install_bin_and_config(arangorestore ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
+strip_install_bin_and_config(arangoexport  ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
+strip_install_bin_and_config(arangosh      ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
+strip_install_bin_and_config(arangovpack   ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
 
 install_command_alias(${BIN_ARANGOSH}
   ${CMAKE_INSTALL_BINDIR}

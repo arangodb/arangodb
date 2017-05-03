@@ -1,0 +1,366 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygenindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="index.xsd" version="1.8.6">
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__min__elements__s" kind="struct"><name>boost::geometry::index::detail::default_min_elements_s</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__min__elements__s_1af10c4bcd2b2dc1244d9e1e4c9dd257c6" kind="variable"><name>raw_value</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__min__elements__s_1a3c73e751e7446d6b34869353c42a638d" kind="variable"><name>value</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__rstar__reinserted__elements__s" kind="struct"><name>boost::geometry::index::detail::default_rstar_reinserted_elements_s</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__rstar__reinserted__elements__s_1ae7e8b4fa48d63d489a56dccbd93335be" kind="variable"><name>value</name></member>
+  </compound>
+  <compound refid="classboost_1_1geometry_1_1index_1_1dynamic__linear" kind="class"><name>boost::geometry::index::dynamic_linear</name>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__linear_1afcb84aef0eb4466d0a46c9ca6fc8d9ee" kind="variable"><name>m_max_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__linear_1a14f5d244b8af42704953c6a67f094701" kind="variable"><name>m_min_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__linear_1a01a756ed100c5ac7364a487c40d33f2b" kind="function"><name>dynamic_linear</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__linear_1ab2c51d35e52037987d638ca741b4e55f" kind="function"><name>get_max_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__linear_1ac8a733e65ef73be1de39139aeba776af" kind="function"><name>get_min_elements</name></member>
+  </compound>
+  <compound refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic" kind="class"><name>boost::geometry::index::dynamic_quadratic</name>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a0251388f2b11ec68bc17a1146f5f8e77" kind="variable"><name>m_max_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a8a51ad23cb443573fdb0c115a8006af1" kind="variable"><name>m_min_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a84a1db438cd93666082b7ff736a2189d" kind="function"><name>dynamic_quadratic</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a23d1392e9667550cf0015ae67c64e80c" kind="function"><name>get_max_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1aee2d6c976ad9c212d8151f4c3250afc3" kind="function"><name>get_min_elements</name></member>
+  </compound>
+  <compound refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar" kind="class"><name>boost::geometry::index::dynamic_rstar</name>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1af1522ca426e8d0f972d80e45f536c40f" kind="variable"><name>m_max_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a84c8aa4b320d6d07e4cbb07099ed6d0f" kind="variable"><name>m_min_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a60a979c3cfc285753ba87b3d363eea2f" kind="variable"><name>m_reinserted_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1ada2c471547b8d768b9d6072ac3a25a05" kind="variable"><name>m_overlap_cost_threshold</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1ad5115c769752603a179bf158f02fdb1c" kind="function"><name>dynamic_rstar</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a234974b799dbcc4c7a58946acc341722" kind="function"><name>get_max_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1ab904ec3ca5cd56e2214fda5b654d450c" kind="function"><name>get_min_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a728b89e0f26d1fa7c33bf7a286bd529c" kind="function"><name>get_reinserted_elements</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a57ece2090dcb3733a56af29165b56b13" kind="function"><name>get_overlap_cost_threshold</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to" kind="struct"><name>boost::geometry::index::detail::equal_to</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_1afb53f9416414ba2c5faa0cf372fd8f16" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_1a2fcd9ed3a5085a2dc4914976c0a1cabb" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1equal__to" kind="struct"><name>boost::geometry::index::equal_to</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1equal__to_1ae6a986988e380c2ba4afa646294cfd93" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1equal__to_1adb497915885d69df9aff938d16922ff3" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01boost_1_1tuple_3_01_t0_00_01_t1_00_05575411b27cb3dcedde3865d7b2e05da" kind="struct"><name>boost::geometry::index::detail::equal_to&lt; boost::tuple&lt; T0, T1, T2, T3, T4, T5, T6, T7, T8, T9 &gt;, false &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01boost_1_1tuple_3_01_t0_00_01_t1_00_05575411b27cb3dcedde3865d7b2e05da_1a2b7549ae7427a703a5f905e81a16461a" kind="typedef"><name>value_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01boost_1_1tuple_3_01_t0_00_01_t1_00_05575411b27cb3dcedde3865d7b2e05da_1a4d7dd6a6b127c6435d9deb1749ec332a" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01boost_1_1tuple_3_01_t0_00_01_t1_00_05575411b27cb3dcedde3865d7b2e05da_1a007c1018ef887a3da0a5a0bae5757f6f" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01std_1_1pair_3_01_t1_00_01_t2_01_4_00_01false_01_4" kind="struct"><name>boost::geometry::index::detail::equal_to&lt; std::pair&lt; T1, T2 &gt;, false &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01std_1_1pair_3_01_t1_00_01_t2_01_4_00_01false_01_4_1ab24ff0b27bea9ad27d54815910921d50" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01std_1_1pair_3_01_t1_00_01_t2_01_4_00_01false_01_4_1a32056d7b999b3b56f84b1ecd8388257f" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01std_1_1tuple_3_01_args_8_8_8_4_00_01false_01_4" kind="struct"><name>boost::geometry::index::detail::equal_to&lt; std::tuple&lt; Args...&gt;, false &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01std_1_1tuple_3_01_args_8_8_8_4_00_01false_01_4_1a89748fc95d86d0a0bbcd2641971b161e" kind="typedef"><name>value_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01std_1_1tuple_3_01_args_8_8_8_4_00_01false_01_4_1ade999b268ed996e34fa75f9cad3f9c29" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01std_1_1tuple_3_01_args_8_8_8_4_00_01false_01_4_1ae906c9dff80a6a3793ac7863636fe09c" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals" kind="struct"><name>boost::geometry::index::detail::equals</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_1a9616facd7b5651d1895f3f27404c3897" kind="function"><name>apply</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_geometry_01_5_00_01_tag_01_4" kind="struct"><name>boost::geometry::index::detail::equals&lt; Geometry *, Tag &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_geometry_01_5_00_01_tag_01_4_1ace99def116207a342faa07fa916b7e42" kind="function"><name>apply</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_t_00_01void_01_4" kind="struct"><name>boost::geometry::index::detail::equals&lt; T, void &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_t_00_01void_01_4_1a1032c90cf671bad1593dd3764ed0b0a7" kind="function"><name>apply</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable" kind="struct"><name>boost::geometry::index::detail::indexable</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1a5d9b0405e7f8a0d7596b73bf5fcf7ce9" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1a6bc3d13759253370873ca5b39457eac6" kind="function"><name>BOOST_MPL_ASSERT_MSG</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1ae3140efa415e00f13a57e17b3438f30c" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1indexable" kind="struct"><name>boost::geometry::index::indexable</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1indexable_1af6f21324f6484330b9deb0ee0629f4b4" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1indexable_1afa5f2cdc3390a6f1f394890e479df794" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01boost_1_1tuple_3_01_indexable_00_01_14b3825c25bf3c35358f568ca3f4ddd2" kind="struct"><name>boost::geometry::index::detail::indexable&lt; boost::tuple&lt; Indexable, T1, T2, T3, T4, T5, T6, T7, T8, T9 &gt;, false &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01boost_1_1tuple_3_01_indexable_00_01_14b3825c25bf3c35358f568ca3f4ddd2_1a60551f63c393d3a63d5277b792706341" kind="typedef"><name>value_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01boost_1_1tuple_3_01_indexable_00_01_14b3825c25bf3c35358f568ca3f4ddd2_1a00a74fa272af854d27e185a8285126d1" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01boost_1_1tuple_3_01_indexable_00_01_14b3825c25bf3c35358f568ca3f4ddd2_1aad812673c1ac27cec7811bf448b0ebc3" kind="function"><name>BOOST_MPL_ASSERT_MSG</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01boost_1_1tuple_3_01_indexable_00_01_14b3825c25bf3c35358f568ca3f4ddd2_1ac424c58009c72e14a1b271550a583b8b" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01std_1_1pair_3_01_indexable_00_01_t2_01_4_00_01false_01_4" kind="struct"><name>boost::geometry::index::detail::indexable&lt; std::pair&lt; Indexable, T2 &gt;, false &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01std_1_1pair_3_01_indexable_00_01_t2_01_4_00_01false_01_4_1a1ca41b24660b0efe5442bc282210edda" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01std_1_1pair_3_01_indexable_00_01_t2_01_4_00_01false_01_4_1a93b628d9f35dbb1733a32a54ac85b22f" kind="function"><name>BOOST_MPL_ASSERT_MSG</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01std_1_1pair_3_01_indexable_00_01_t2_01_4_00_01false_01_4_1ac65bb96f9fc0c3ca45c9a89d9fa33b8a" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01std_1_1tuple_3_01_indexable_00_01_args_8_8_8_4_00_01false_01_4" kind="struct"><name>boost::geometry::index::detail::indexable&lt; std::tuple&lt; Indexable, Args...&gt;, false &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01std_1_1tuple_3_01_indexable_00_01_args_8_8_8_4_00_01false_01_4_1ad5fe0ce7798c5e0e9edac47eddc6b01b" kind="typedef"><name>value_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01std_1_1tuple_3_01_indexable_00_01_args_8_8_8_4_00_01false_01_4_1a98418665305c4d9c35a3616e5a571f8c" kind="typedef"><name>result_type</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01std_1_1tuple_3_01_indexable_00_01_args_8_8_8_4_00_01false_01_4_1a394809029d804b06d49902cb369e2aa5" kind="function"><name>BOOST_MPL_ASSERT_MSG</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_3_01std_1_1tuple_3_01_indexable_00_01_args_8_8_8_4_00_01false_01_4_1afd60f911077242e0486557f7f01d2f92" kind="function"><name>operator()</name></member>
+  </compound>
+  <compound refid="classboost_1_1geometry_1_1index_1_1insert__iterator" kind="class"><name>boost::geometry::index::insert_iterator</name>
+    <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1a409b4c7ae762f42b7ef518aed5d5e745" kind="typedef"><name>container_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1a591b8e0b91f6af992050b129308c1c00" kind="variable"><name>container</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1abb46e7f869d453d5eb48885273ad3117" kind="function"><name>insert_iterator</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1a48fcdd18cf538b78c965d332ae643672" kind="function"><name>operator=</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1abbbcbb6d42b9d21af2b33ac70e507910" kind="function"><name>operator*</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1a2fc4597aa37cf185ed132884b3beb90d" kind="function"><name>operator++</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1aa4b211bf68b91e847451fbdaaf7188f4" kind="function"><name>operator++</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1linear" kind="struct"><name>boost::geometry::index::linear</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1linear_1a36a79c7ea313fa87b0dbd7ec549f982f" kind="variable"><name>max_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1linear_1a4d38e783069dfbf9a511ba49c7ce5315" kind="variable"><name>min_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1linear_1ac6f32e160803ac3b96e435558f1c9c3a" kind="function"><name>BOOST_MPL_ASSERT_MSG</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1linear_1acbe123037c8dcebc6657000f4f2ec6a4" kind="function"><name>get_max_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1linear_1a6bd4b1d2e3e370785f164fb8046bff88" kind="function"><name>get_min_elements</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder" kind="struct"><name>boost::geometry::index::rtree::members_holder</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a79495f9743ff4a7b10a38253d34af7a5" kind="variable"><name>values_count</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a54532ebe6aa8f0633aa0103ce1580495" kind="variable"><name>leafs_level</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a4e250d88faad0f2a4fd4603dd5ab4589" kind="variable"><name>root</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a1139a63b774f54f26555339b4b99c4d3" kind="function"><name>members_holder</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aa9a01bcefa1e37a6d3ef01db40df5e4c" kind="function"><name>operator=</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a3ac59b9f486200ca525fd9122babc9f1" kind="function"><name>members_holder</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a3e51cdb565f14bc21214d333f36bd45e" kind="function"><name>members_holder</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a12ce0d3553ddf72a0d70fb720d6e33dc" kind="function"><name>translator</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aaa989763b79c594b4680168b7fa8daaf" kind="function"><name>indexable_getter</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a5dde5e61c9925590efa4dc9a7e7a8bc1" kind="function"><name>indexable_getter</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aaf410c561483831a4b24a82bb3034773" kind="function"><name>equal_to</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a83b1737faa23d4d5ddaa4638c99e0c38" kind="function"><name>equal_to</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1ade9a0bb6acb201c061014eb5809d5250" kind="function"><name>parameters</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aefb71c6ca0fda211fd3e4416a95b22be" kind="function"><name>parameters</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a0f3486692427b058904953d8a37af61f" kind="function"><name>allocators</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1ac9ff09e4f6113a40e267bc95cd2593af" kind="function"><name>allocators</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1quadratic" kind="struct"><name>boost::geometry::index::quadratic</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1adb91881a291dbbb125a2e295e22c8094" kind="variable"><name>max_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1a6e65a539f0d3e302fee68059370c40d2" kind="variable"><name>min_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1ab2bbeeae7f53bc4401910bef0622a229" kind="function"><name>BOOST_MPL_ASSERT_MSG</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1a3147d00376f0763b9591cbcd877699bd" kind="function"><name>get_max_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1aa7064e08f5793d46b78389f39110217f" kind="function"><name>get_min_elements</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query" kind="struct"><name>boost::geometry::index::adaptors::detail::query</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query_1a9c1b7faa9516e0a1e357adf1885b32c7" kind="variable"><name>predicates</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query_1a505dfc58abfee39836e698a5289fa46a" kind="function"><name>query</name></member>
+  </compound>
+  <compound refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range" kind="class"><name>boost::geometry::index::adaptors::detail::query_range</name>
+    <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1aa15b32dec2ec2d7f23703864cc79d197" kind="typedef"><name>iterator</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a93d63a42f939505b746f8248e39896e8" kind="typedef"><name>const_iterator</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a1cc5b35ad59744a4d4776a000fecdfb7" kind="function"><name>BOOST_MPL_ASSERT_MSG</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a1b66699c911e6ed588f08be24a093941" kind="function"><name>query_range</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a256889ea4df8406bbaf6e109917f6cc1" kind="function"><name>begin</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a78a04d2df33e70135ff84c58be339086" kind="function"><name>end</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1ad3fddae943b6a196f4edf30c481cb406" kind="function"><name>begin</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1ab1931e9cefb6c4357da677b4bed4ba51" kind="function"><name>end</name></member>
+  </compound>
+  <compound refid="structboost_1_1range__mutable__iterator_3_01boost_1_1geometry_1_1index_1_1rtree_3_01_value_00_01377110862522c8f6142f1a65b06f20fa" kind="struct"><name>boost::range_mutable_iterator&lt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt; &gt;</name>
+    <member refid="structboost_1_1range__mutable__iterator_3_01boost_1_1geometry_1_1index_1_1rtree_3_01_value_00_01377110862522c8f6142f1a65b06f20fa_1a31fb3372014914ca450efcc0aadb5736" kind="typedef"><name>type</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1rstar" kind="struct"><name>boost::geometry::index::rstar</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1rstar_1a95a7115404848fce8d09bb2b42271cd0" kind="variable"><name>max_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rstar_1a2b1dbc3eb46a97257b2c80650cf31abe" kind="variable"><name>min_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rstar_1ab1423e5c0fc461db5490af15b8fb4483" kind="variable"><name>reinserted_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rstar_1a168a5cc1555cf598a35c6844443f27f1" kind="variable"><name>overlap_cost_threshold</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rstar_1a265a4b8112f7ed2f32e3010ef2cd0cf0" kind="function"><name>BOOST_MPL_ASSERT_MSG</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rstar_1a3256c967833680dc205c32a999e6920d" kind="function"><name>get_max_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rstar_1afc2516f278b3a75871a22cb559ed9a4f" kind="function"><name>get_min_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rstar_1a7561bb5427a6db5cbec4894a49dd8c9f" kind="function"><name>get_reinserted_elements</name></member>
+    <member refid="structboost_1_1geometry_1_1index_1_1rstar_1ab1b41eb286b2396a836ad03b9c581c86" kind="function"><name>get_overlap_cost_threshold</name></member>
+  </compound>
+  <compound refid="classboost_1_1geometry_1_1index_1_1rtree" kind="class"><name>boost::geometry::index::rtree</name>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kind="typedef"><name>value_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" kind="typedef"><name>parameters_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" kind="typedef"><name>indexable_getter</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" kind="typedef"><name>value_equal</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kind="typedef"><name>allocator_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a28e88e55d260a454688fe1bd5e5af96b" kind="typedef"><name>indexable_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a12e80f9da4c68e0e687f1c2012321147" kind="typedef"><name>bounds_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a5301c3d7ee3589751579e0573a9e8165" kind="typedef"><name>reference</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a615e622930be97ab1f3b8ceee641feaf" kind="typedef"><name>const_reference</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a762ced6b98d2cc6503e2b00549c6a89a" kind="typedef"><name>pointer</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1abad30462044d5d8fb607c24a05e8c9c2" kind="typedef"><name>const_pointer</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ac256168e9371a070515fc61f29c691ed" kind="typedef"><name>difference_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kind="typedef"><name>size_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a701f65f0d6cf2e8b7be7f1c4b8fb7fde" kind="typedef"><name>const_iterator</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad144a7704ad878caaa84cda79b140855" kind="typedef"><name>const_query_iterator</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a2c212d76f2fc484f38d3d8d635bcc9f5" kind="typedef"><name>translator_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1acf9b7d882c6a636b39af2f0d262ab54b" kind="typedef"><name>box_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a6fb844a6a428b99e7e60d56f7af432c8" kind="typedef"><name>options_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a3f48e5da98a8e1cf1289928d1d923152" kind="typedef"><name>node_tag</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a1376189d019e031652df06290992cf0a" kind="typedef"><name>allocators_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a8fd02414dda5f4dd246ba35d4213115c" kind="typedef"><name>node</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a868d2270e32fb91daf1308d33db11cee" kind="typedef"><name>internal_node</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a8e091464e1ff8a0264c5ffb72419ea4d" kind="typedef"><name>leaf</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1adc98bac42f71145e64c4ca711aeee3c4" kind="typedef"><name>node_pointer</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aa9dc5d830362e77b6de638f676285e1a" kind="typedef"><name>allocator_traits_type</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a9e5026a4c2b01c5e99919ce1fa2e9a9c" kind="typedef"><name>subtree_destroyer</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a28393873e6c248e3af569ceff95c7fd5" kind="friend"><name>detail::rtree::utilities::view&lt; rtree &gt;</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aed6afa99c9a2922bda52b4345f3949f3" kind="variable"><name>m_members</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a55d5fd5d205df08db5267253689ccf0c" kind="function"><name>rtree</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a1a6b696d4855cbf1866196fe058c3a87" kind="function"><name>rtree</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a037f17d8a1dfa4a818ff471dec61c912" kind="function"><name>rtree</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a7b96b715c52ddc13d7a81db344825848" kind="function"><name>rtree</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1af8db72811d2be53c409240204e63fb5a" kind="function"><name>~rtree</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a826fc3236e181ad718d5283e95d7866f" kind="function"><name>rtree</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a72b6b75e083eea2ed26f54d4a2265375" kind="function"><name>rtree</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aa8b27db8cb783282ab5274e6769da26a" kind="function"><name>rtree</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a8508c4236d17ff39a1caef058aac8486" kind="function"><name>rtree</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad0db5e9e41e1553f944b7e740dbbb883" kind="function"><name>operator=</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1af0bf9622ed3e901580b73ed39b746fb7" kind="function"><name>operator=</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aedb719dfece91d298e9ee56878524c9b" kind="function"><name>swap</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad47980467e66b8644df18a480dbf9d86" kind="function"><name>insert</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a60d4c8790fd8810ff8b57f049e6bed8d" kind="function"><name>insert</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a5db294b14ebf1319edcfc92e78c8167e" kind="function"><name>insert</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a1ce933b0b833faec5349bfc27bde15d4" kind="function"><name>remove</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aa97084231d17564a94f0142d095cecaa" kind="function"><name>remove</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a320cd1861ba7b43364ed53e1f93a4411" kind="function"><name>remove</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a7baa88eb4e7a5c640ab847513de45b3e" kind="function"><name>query</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a63d15f3b5b157a47045fcac3fec3b7a0" kind="function"><name>qbegin</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1af3b16f4732fa8113c0b2187005182513" kind="function"><name>qend</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a23219a7705ac491862c67be8baa34f0d" kind="function"><name>begin</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a513f1bd9dfcd022acb208e62115b29b1" kind="function"><name>end</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ac9f152c8c96525e3735b81635d8171b1" kind="function"><name>size</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aa5302ce1c26105d722aac20793e83f0e" kind="function"><name>empty</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a1bec40977c175983f585c4488cf8fe3c" kind="function"><name>clear</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a0dad06d0f117f45ed54b5c123cb41d6e" kind="function"><name>bounds</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aaa834c241c191ac9de67f134564f36fa" kind="function"><name>count</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a9076baef90a3a9c6018871fa25115a73" kind="function"><name>parameters</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1af391fd642a218c5fb10fc68d643a62b5" kind="function"><name>indexable_get</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a16424563d0973960ac01f7a1969eeebe" kind="function"><name>value_eq</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a17d9cef211feb7f674a5b4602f4cc81e" kind="function"><name>get_allocator</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aaa5f00d72591322a8675cbb0136a028c" kind="function"><name>qbegin_</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a2dadc011f8051f812d7bb81bbffed4a3" kind="function"><name>qend_</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a034f29dc509db845ac798f63daae071d" kind="function"><name>qend_</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a87046ed7c96647c69f8d75de5adc8d76" kind="function"><name>translator</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a3c1db7f535737a58679d8e792061c186" kind="function"><name>apply_visitor</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad91d5e7416b0c72ffa6ab69c879a4ede" kind="function"><name>depth</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ae2a3b7b3d3072ffe84050e80fb921578" kind="function"><name>raw_insert</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a26abf079e0206a85a54504b25b0b5329" kind="function"><name>raw_remove</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a5a638d6bdbf89fae4fb6468aa7c03cd3" kind="function"><name>raw_create</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a08b36c40bfbe841d8d3061068f3baafa" kind="function"><name>raw_destroy</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a3caca679e5a8666f0c6bbf2fd85834f6" kind="function"><name>raw_copy</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a87ec74e61941db57f918874898f9fadb" kind="function"><name>insert_dispatch</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aea5bccf7dba972d1f5bef98234bc35c2" kind="function"><name>insert_dispatch</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1afe790f9ceee3c658cd984356e853215b" kind="function"><name>remove_dispatch</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ae2850f6421dfd0034565d5ec8ddf4644" kind="function"><name>remove_dispatch</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aaccf7698b52dcf1542c9dca42fa441c4" kind="function"><name>query_dispatch</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad5fdcc1561738afdb8f7eebf09d5ba76" kind="function"><name>query_dispatch</name></member>
+    <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a51dfe21d383cd6cfe51417c95725f7f7" kind="function"><name>raw_count</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1std__tuple__equals" kind="struct"><name>boost::geometry::index::detail::std_tuple_equals</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1std__tuple__equals_1adcc250b04e32838afc4b1b6315f81467" kind="function"><name>apply</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1std__tuple__equals_3_01_tuple_00_01_i_00_01_i_01_4" kind="struct"><name>boost::geometry::index::detail::std_tuple_equals&lt; Tuple, I, I &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1std__tuple__equals_3_01_tuple_00_01_i_00_01_i_01_4_1aa58941438b5f6fd03372782fad7fa70c" kind="function"><name>apply</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1tuple__equals" kind="struct"><name>boost::geometry::index::detail::tuple_equals</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1tuple__equals_1a26bdb0ab0394e64d8f848949e769de32" kind="function"><name>apply</name></member>
+  </compound>
+  <compound refid="structboost_1_1geometry_1_1index_1_1detail_1_1tuple__equals_3_01_tuple_00_01_i_00_01_i_01_4" kind="struct"><name>boost::geometry::index::detail::tuple_equals&lt; Tuple, I, I &gt;</name>
+    <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1tuple__equals_3_01_tuple_00_01_i_00_01_i_01_4_1a8835d6ae4badd577f283921011ec421b" kind="function"><name>apply</name></member>
+  </compound>
+  <compound refid="namespaceboost" kind="namespace"><name>boost</name>
+  </compound>
+  <compound refid="namespaceboost_1_1geometry" kind="namespace"><name>boost::geometry</name>
+  </compound>
+  <compound refid="namespaceboost_1_1geometry_1_1index" kind="namespace"><name>boost::geometry::index</name>
+    <member refid="group__inserters_1gab22c33d31b9805250e54ee6d6d240a47" kind="function"><name>inserter</name></member>
+    <member refid="group__predicates_1gac52a6557110425d4ece53fbd6f9ff866" kind="function"><name>contains</name></member>
+    <member refid="group__predicates_1ga02dbb7cca47de0b921ef96af464d9590" kind="function"><name>covered_by</name></member>
+    <member refid="group__predicates_1ga0e92e4a20dd19185584fe85847439108" kind="function"><name>covers</name></member>
+    <member refid="group__predicates_1ga0aa114ab16f40c8caeb3338adba5d6da" kind="function"><name>disjoint</name></member>
+    <member refid="group__predicates_1ga78cb2ef221b951867c591ffb51b7d8c5" kind="function"><name>intersects</name></member>
+    <member refid="group__predicates_1ga4a6d33e6f61ad5bff3bdee50a972d54b" kind="function"><name>overlaps</name></member>
+    <member refid="group__predicates_1gaabce901b82af2aab10ebbd0dda12f4d5" kind="function"><name>within</name></member>
+    <member refid="group__predicates_1ga3213772dd3e54ad03340c2ca66b4f58c" kind="function"><name>satisfies</name></member>
+    <member refid="group__predicates_1ga8772d9d3e5b12b3292f7d94d47310e3e" kind="function"><name>nearest</name></member>
+    <member refid="group__rtree__functions_1gada4f62111ed22eb2860ea30995c1ce60" kind="function"><name>insert</name></member>
+    <member refid="group__rtree__functions_1ga056469ea699e609e67762fe1b789997f" kind="function"><name>insert</name></member>
+    <member refid="group__rtree__functions_1gab4edad000d63eb103f2dad3813ceb2b3" kind="function"><name>insert</name></member>
+    <member refid="group__rtree__functions_1gaf353d90fd933e6110b031f63166fb45a" kind="function"><name>remove</name></member>
+    <member refid="group__rtree__functions_1gaa460a8985496cf133f63f245527ac6e7" kind="function"><name>remove</name></member>
+    <member refid="group__rtree__functions_1ga700c922f8b4d5ebd073e999e12b55249" kind="function"><name>remove</name></member>
+    <member refid="group__rtree__functions_1gadb43b211d5d743ebe2ef256328286e95" kind="function"><name>query</name></member>
+    <member refid="group__rtree__functions_1ga45c2b7b112bf730d10367e10df62aa3c" kind="function"><name>qbegin</name></member>
+    <member refid="group__rtree__functions_1ga5c9a1eb0421bf2c702392247d48143e5" kind="function"><name>qend</name></member>
+    <member refid="group__rtree__functions_1ga2467dc6ac90303496abd6ebd136eba18" kind="function"><name>begin</name></member>
+    <member refid="group__rtree__functions_1ga8fd1e53d8492643cbc9840ff715bb736" kind="function"><name>end</name></member>
+    <member refid="group__rtree__functions_1gabaca6c24c3838a8164aa3700c459e7a4" kind="function"><name>clear</name></member>
+    <member refid="group__rtree__functions_1gaa19a09e7b5f0a86a4b74ef2342de1d68" kind="function"><name>size</name></member>
+    <member refid="group__rtree__functions_1gaba44e2fb12fdc7b528bfee56a88e0844" kind="function"><name>empty</name></member>
+    <member refid="group__rtree__functions_1ga4e43e7720c66e88959ff511a7462a3ff" kind="function"><name>bounds</name></member>
+    <member refid="group__rtree__functions_1gaa1250318a78d7e27ba8f3537eb0ddb3f" kind="function"><name>swap</name></member>
+  </compound>
+  <compound refid="namespaceboost_1_1geometry_1_1index_1_1adaptors" kind="namespace"><name>boost::geometry::index::adaptors</name>
+    <member refid="group__adaptors_1ga4716cd5423bfed3ff3e69e9ec274ac81" kind="function"><name>queried</name></member>
+  </compound>
+  <compound refid="namespaceboost_1_1geometry_1_1index_1_1adaptors_1_1detail" kind="namespace"><name>boost::geometry::index::adaptors::detail</name>
+    <member refid="namespaceboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1a69da1430ca201fd6bd34809d7047c535" kind="function"><name>operator|</name></member>
+  </compound>
+  <compound refid="namespaceboost_1_1geometry_1_1index_1_1detail" kind="namespace"><name>boost::geometry::index::detail</name>
+    <member refid="namespaceboost_1_1geometry_1_1index_1_1detail_1a7f54e005e1a7f71e95be739cd413be70" kind="function"><name>default_min_elements_d</name></member>
+    <member refid="namespaceboost_1_1geometry_1_1index_1_1detail_1afa2e901a7e1c9b82e92f77c776878188" kind="function"><name>default_min_elements_d_calc</name></member>
+    <member refid="namespaceboost_1_1geometry_1_1index_1_1detail_1a286e31fa5a6fc42b353d9b6787f5a863" kind="function"><name>default_rstar_reinserted_elements_d</name></member>
+    <member refid="namespaceboost_1_1geometry_1_1index_1_1detail_1ac8029ee78398bace2910e60e71fe9132" kind="function"><name>default_rstar_reinserted_elements_d_calc</name></member>
+  </compound>
+  <compound refid="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates" kind="namespace"><name>boost::geometry::index::detail::predicates</name>
+    <member refid="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates_1aa7ee927c5d5afe88feb8852f4500a30d" kind="function"><name>operator!</name></member>
+    <member refid="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates_1ad776359ad093e85915a91c01a0671215" kind="function"><name>operator!</name></member>
+    <member refid="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates_1ad4ff57f02a9efce689daf1b89c8d1971" kind="function"><name>operator&amp;&amp;</name></member>
+    <member refid="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates_1a3d938db1fde01e0999fe68ffad47c200" kind="function"><name>operator&amp;&amp;</name></member>
+  </compound>
+  <compound refid="namespacestd" kind="namespace"><name>std</name>
+  </compound>
+  <compound refid="query_8hpp" kind="file"><name>query.hpp</name>
+  </compound>
+  <compound refid="distance__predicates_8hpp" kind="file"><name>distance_predicates.hpp</name>
+  </compound>
+  <compound refid="equal__to_8hpp" kind="file"><name>equal_to.hpp</name>
+  </compound>
+  <compound refid="indexable_8hpp" kind="file"><name>indexable.hpp</name>
+  </compound>
+  <compound refid="inserter_8hpp" kind="file"><name>inserter.hpp</name>
+  </compound>
+  <compound refid="parameters_8hpp" kind="file"><name>parameters.hpp</name>
+  </compound>
+  <compound refid="predicates_8hpp" kind="file"><name>predicates.hpp</name>
+  </compound>
+  <compound refid="rtree_8hpp" kind="file"><name>rtree.hpp</name>
+  </compound>
+  <compound refid="group__nearest__relations" kind="group"><name>nearest_relations</name>
+  </compound>
+  <compound refid="group__inserters" kind="group"><name>inserters</name>
+    <member refid="group__inserters_1gab22c33d31b9805250e54ee6d6d240a47" kind="function"><name>inserter</name></member>
+  </compound>
+  <compound refid="group__predicates" kind="group"><name>predicates</name>
+    <member refid="group__predicates_1gac52a6557110425d4ece53fbd6f9ff866" kind="function"><name>contains</name></member>
+    <member refid="group__predicates_1ga02dbb7cca47de0b921ef96af464d9590" kind="function"><name>covered_by</name></member>
+    <member refid="group__predicates_1ga0e92e4a20dd19185584fe85847439108" kind="function"><name>covers</name></member>
+    <member refid="group__predicates_1ga0aa114ab16f40c8caeb3338adba5d6da" kind="function"><name>disjoint</name></member>
+    <member refid="group__predicates_1ga78cb2ef221b951867c591ffb51b7d8c5" kind="function"><name>intersects</name></member>
+    <member refid="group__predicates_1ga4a6d33e6f61ad5bff3bdee50a972d54b" kind="function"><name>overlaps</name></member>
+    <member refid="group__predicates_1gaabce901b82af2aab10ebbd0dda12f4d5" kind="function"><name>within</name></member>
+    <member refid="group__predicates_1ga3213772dd3e54ad03340c2ca66b4f58c" kind="function"><name>satisfies</name></member>
+    <member refid="group__predicates_1ga8772d9d3e5b12b3292f7d94d47310e3e" kind="function"><name>nearest</name></member>
+  </compound>
+  <compound refid="group__rtree__functions" kind="group"><name>rtree_functions</name>
+    <member refid="group__rtree__functions_1gada4f62111ed22eb2860ea30995c1ce60" kind="function"><name>insert</name></member>
+    <member refid="group__rtree__functions_1ga056469ea699e609e67762fe1b789997f" kind="function"><name>insert</name></member>
+    <member refid="group__rtree__functions_1gab4edad000d63eb103f2dad3813ceb2b3" kind="function"><name>insert</name></member>
+    <member refid="group__rtree__functions_1gaf353d90fd933e6110b031f63166fb45a" kind="function"><name>remove</name></member>
+    <member refid="group__rtree__functions_1gaa460a8985496cf133f63f245527ac6e7" kind="function"><name>remove</name></member>
+    <member refid="group__rtree__functions_1ga700c922f8b4d5ebd073e999e12b55249" kind="function"><name>remove</name></member>
+    <member refid="group__rtree__functions_1gadb43b211d5d743ebe2ef256328286e95" kind="function"><name>query</name></member>
+    <member refid="group__rtree__functions_1ga45c2b7b112bf730d10367e10df62aa3c" kind="function"><name>qbegin</name></member>
+    <member refid="group__rtree__functions_1ga5c9a1eb0421bf2c702392247d48143e5" kind="function"><name>qend</name></member>
+    <member refid="group__rtree__functions_1ga2467dc6ac90303496abd6ebd136eba18" kind="function"><name>begin</name></member>
+    <member refid="group__rtree__functions_1ga8fd1e53d8492643cbc9840ff715bb736" kind="function"><name>end</name></member>
+    <member refid="group__rtree__functions_1gabaca6c24c3838a8164aa3700c459e7a4" kind="function"><name>clear</name></member>
+    <member refid="group__rtree__functions_1gaa19a09e7b5f0a86a4b74ef2342de1d68" kind="function"><name>size</name></member>
+    <member refid="group__rtree__functions_1gaba44e2fb12fdc7b528bfee56a88e0844" kind="function"><name>empty</name></member>
+    <member refid="group__rtree__functions_1ga4e43e7720c66e88959ff511a7462a3ff" kind="function"><name>bounds</name></member>
+    <member refid="group__rtree__functions_1gaa1250318a78d7e27ba8f3537eb0ddb3f" kind="function"><name>swap</name></member>
+  </compound>
+  <compound refid="group__adaptors" kind="group"><name>adaptors</name>
+    <member refid="group__adaptors_1ga4716cd5423bfed3ff3e69e9ec274ac81" kind="function"><name>queried</name></member>
+  </compound>
+  <compound refid="dir_0d70c6d27e6ac49e78cf999cef868997" kind="dir"><name>/home/travis/build/boostorg/boost/boost/geometry/index/adaptors</name>
+  </compound>
+  <compound refid="dir_a3f3934fe93618c2e6f3527095116c07" kind="dir"><name>/home/travis/build/boostorg/boost/boost</name>
+  </compound>
+  <compound refid="dir_1db53b2a0b4206971f8a07039331107d" kind="dir"><name>/home/travis/build/boostorg/boost/boost/geometry</name>
+  </compound>
+  <compound refid="dir_fdbe8c75440c2b51ea0bcda5afe8de82" kind="dir"><name>/home/travis/build/boostorg/boost/boost/geometry/index</name>
+  </compound>
+</doxygenindex>

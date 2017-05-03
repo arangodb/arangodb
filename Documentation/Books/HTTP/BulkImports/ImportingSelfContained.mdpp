@@ -1,4 +1,5 @@
-!CHAPTER Importing Self-Contained JSON Documents
+Importing Self-Contained JSON Documents
+=======================================
 
 This import method allows uploading self-contained JSON documents. The documents
 must be uploaded in the body of the HTTP POST request. Each line of the body

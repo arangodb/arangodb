@@ -39,13 +39,15 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
@@ -81,7 +83,8 @@ Expression::Expression(Ast* ast, AstNode* node)
       _isDeterministic(false),
       _hasDeterminedAttributes(false),
       _built(false),
-      _attributes() {
+      _attributes(),
+      _expressionContext(nullptr) {
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
@@ -126,7 +129,7 @@ void Expression::variables(std::unordered_set<Variable const*>& result) const {
 }
 
 /// @brief execute the expression
-AqlValue Expression::execute(arangodb::Transaction* trx, ExpressionContext* ctx,
+AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
                              bool& mustDestroy) {
   if (!_built) {
     buildExpression(trx);
@@ -176,7 +179,7 @@ AqlValue Expression::execute(arangodb::Transaction* trx, ExpressionContext* ctx,
 
 /// @brief execute the expression
 /// TODO DEPRECATED
-AqlValue Expression::execute(arangodb::Transaction* trx,
+AqlValue Expression::execute(transaction::Methods* trx,
                              AqlItemBlock const* argv, size_t startPos,
                              std::vector<Variable const*> const& vars,
                              std::vector<RegisterId> const& regs,
@@ -254,13 +257,13 @@ void Expression::invalidate() {
 /// this performs either a binary search (if the node is sorted) or a
 /// linear search (if the node is not sorted)
 bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
-                             arangodb::Transaction* trx,
+                             transaction::Methods* trx,
                              AstNode const* node) const {
   TRI_ASSERT(right.isArray());
 
   size_t const n = right.length();
 
-  if (n > 3 && 
+  if (n >= AstNode::SortNumberThreshold && 
       (node->getMember(1)->isSorted() ||
       ((node->type == NODE_TYPE_OPERATOR_BINARY_IN || 
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) && node->getBoolValue()))) {
@@ -407,7 +410,7 @@ void Expression::analyzeExpression() {
 }
 
 /// @brief build the expression
-void Expression::buildExpression(arangodb::Transaction* trx) {
+void Expression::buildExpression(transaction::Methods* trx) {
   TRI_ASSERT(!_built);
 
   if (_type == UNPROCESSED) {
@@ -417,7 +420,7 @@ void Expression::buildExpression(arangodb::Transaction* trx) {
   if (_type == JSON) {
     TRI_ASSERT(_data == nullptr);
     // generate a constant value
-    TransactionBuilderLeaser builder(trx);
+    transaction::BuilderLeaser builder(trx);
     _node->toVelocyPackValue(*builder.get());
 
     _data = new uint8_t[static_cast<size_t>(builder->size())];
@@ -439,7 +442,7 @@ void Expression::buildExpression(arangodb::Transaction* trx) {
 /// @brief execute an expression of type SIMPLE, the convention is that
 /// the resulting AqlValue will be destroyed outside eventually
 AqlValue Expression::executeSimpleExpression(
-    AstNode const* node, arangodb::Transaction* trx, 
+    AstNode const* node, transaction::Methods* trx, 
     bool& mustDestroy, bool doCopy) {
 
   switch (node->type) {
@@ -466,8 +469,9 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_UNARY_MINUS:
       return executeSimpleExpressionMinus(node, trx, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_AND:
+      return executeSimpleExpressionAnd(node, trx, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_OR:
-      return executeSimpleExpressionAndOr(node, trx, mustDestroy);
+      return executeSimpleExpressionOr(node, trx, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_NE:
     case NODE_TYPE_OPERATOR_BINARY_LT:
@@ -539,7 +543,7 @@ void Expression::stringifyIfNotTooLong(
 /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
 /// always creates a copy
 AqlValue Expression::executeSimpleExpressionAttributeAccess(
-    AstNode const* node, arangodb::Transaction* trx,
+    AstNode const* node, transaction::Methods* trx,
     bool& mustDestroy) {
   // object lookup, e.g. users.name
   TRI_ASSERT(node->numMembers() == 1);
@@ -555,7 +559,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
 
 /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
 AqlValue Expression::executeSimpleExpressionIndexedAccess(
-    AstNode const* node, arangodb::Transaction* trx,
+    AstNode const* node, transaction::Methods* trx,
     bool& mustDestroy) {
   // array lookup, e.g. users[0]
   // note: it depends on the type of the value whether an array lookup or an
@@ -624,13 +628,13 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
 
 /// @brief execute an expression of type SIMPLE with ARRAY
 AqlValue Expression::executeSimpleExpressionArray(
-    AstNode const* node, arangodb::Transaction* trx,
+    AstNode const* node, transaction::Methods* trx,
     bool& mustDestroy) {
   
   mustDestroy = false;
   if (node->isConstant()) {
     // this will not create a copy
-    return AqlValue(node->computeValue(trx).begin()); 
+    return AqlValue(node->computeValue().begin()); 
   }
 
   size_t const n = node->numMembers();
@@ -639,7 +643,7 @@ AqlValue Expression::executeSimpleExpressionArray(
     return AqlValue(VelocyPackHelper::EmptyArrayValue());
   }
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   builder->openArray();
 
   for (size_t i = 0; i < n; ++i) {
@@ -658,13 +662,13 @@ AqlValue Expression::executeSimpleExpressionArray(
 
 /// @brief execute an expression of type SIMPLE with OBJECT
 AqlValue Expression::executeSimpleExpressionObject(
-    AstNode const* node, arangodb::Transaction* trx,
+    AstNode const* node, transaction::Methods* trx,
     bool& mustDestroy) {
 
   mustDestroy = false;
   if (node->isConstant()) {
     // this will not create a copy
-    return AqlValue(node->computeValue(trx).begin()); 
+    return AqlValue(node->computeValue().begin()); 
   }
   
   size_t const n = node->numMembers();
@@ -678,7 +682,7 @@ AqlValue Expression::executeSimpleExpressionObject(
   bool isUnique = true;
   bool const mustCheckUniqueness = node->mustCheckUniqueness();
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   builder->openObject();
 
   for (size_t i = 0; i < n; ++i) {
@@ -691,7 +695,7 @@ AqlValue Expression::executeSimpleExpressionObject(
       AqlValueGuard guard(result, localMustDestroy);
 
       // make sure key is a string, and convert it if not
-      StringBufferLeaser buffer(trx);
+      transaction::StringBufferLeaser buffer(trx);
       arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
       AqlValueMaterializer materializer(trx);
@@ -699,10 +703,11 @@ AqlValue Expression::executeSimpleExpressionObject(
 
       Functions::Stringify(trx, adapter, slice);
       
-      std::string key(buffer->begin(), buffer->length());
-      builder->add(VPackValue(key));
+      builder->add(VPackValuePair(buffer->begin(), buffer->length(), VPackValueType::String));
 
       if (mustCheckUniqueness) {
+        std::string key(buffer->begin(), buffer->length());
+
         // note each individual object key name with latest value position
         auto it = uniqueKeyValues.find(key);
 
@@ -721,9 +726,10 @@ AqlValue Expression::executeSimpleExpressionObject(
     } else {
       TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
 
+      builder->add(VPackValuePair(member->getStringValue(), member->getStringLength(), VPackValueType::String));
+
       if (mustCheckUniqueness) {
         std::string key(member->getString());
-        builder->add(VPackValue(key));
 
         // note each individual object key name with latest value position
         auto it = uniqueKeyValues.find(key);
@@ -736,10 +742,6 @@ AqlValue Expression::executeSimpleExpressionObject(
           (*it).second = i;
           isUnique = false;
         }
-      
-      } else {
-        // object has only one key or multiple unique keys. no need to de-duplicate
-        builder->add(VPackValuePair(member->getStringValue(), member->getStringLength(), VPackValueType::String));
       }
     
       // value
@@ -764,7 +766,7 @@ AqlValue Expression::executeSimpleExpressionObject(
     
     VPackSlice nonUnique = builder->slice();
      
-    TransactionBuilderLeaser unique(trx);
+    transaction::BuilderLeaser unique(trx);
     unique->openObject();
 
     size_t pos = 0;
@@ -799,16 +801,16 @@ AqlValue Expression::executeSimpleExpressionObject(
 
 /// @brief execute an expression of type SIMPLE with VALUE
 AqlValue Expression::executeSimpleExpressionValue(AstNode const* node,
-                                                  arangodb::Transaction* trx,
+                                                  transaction::Methods* trx,
                                                   bool& mustDestroy) {
   // this will not create a copy
   mustDestroy = false;
-  return AqlValue(node->computeValue(trx).begin()); 
+  return AqlValue(node->computeValue().begin()); 
 }
 
 /// @brief execute an expression of type SIMPLE with REFERENCE
 AqlValue Expression::executeSimpleExpressionReference(
-    AstNode const* node, arangodb::Transaction* trx,
+    AstNode const* node, transaction::Methods* trx,
     bool& mustDestroy, bool doCopy) {
 
   mustDestroy = false;
@@ -828,7 +830,7 @@ AqlValue Expression::executeSimpleExpressionReference(
 
 /// @brief execute an expression of type SIMPLE with RANGE
 AqlValue Expression::executeSimpleExpressionRange(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
   auto low = node->getMember(0);
   auto high = node->getMember(1);
@@ -849,11 +851,11 @@ AqlValue Expression::executeSimpleExpressionRange(
 
 /// @brief execute an expression of type SIMPLE with FCALL
 AqlValue Expression::executeSimpleExpressionFCall(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
   mustDestroy = false;
-  // some functions have C++ handlers
-  // check if the called function has one
+  // only some functions have C++ handlers
+  // check that the called function actually has one
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func->implementation != nullptr);
 
@@ -862,8 +864,15 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
   size_t const n = member->numMembers();
 
-  VPackFunctionParameters parameters;
-  std::vector<bool> destroyParameters;
+  // use stack-based allocation for the first few function call
+  // parameters. this saves a few heap allocations per function
+  // call invocation 
+  SmallVector<AqlValue>::allocator_type::arena_type arena;
+  VPackFunctionParameters parameters{arena};
+ 
+  // same here
+  SmallVector<uint64_t>::allocator_type::arena_type arena2;
+  SmallVector<uint64_t> destroyParameters{arena2};
   parameters.reserve(n);
   destroyParameters.reserve(n);
 
@@ -872,22 +881,23 @@ AqlValue Expression::executeSimpleExpressionFCall(
       auto arg = member->getMemberUnchecked(i);
 
       if (arg->type == NODE_TYPE_COLLECTION) {
-        parameters.emplace_back(AqlValue(arg->getString()));
-        destroyParameters.push_back(true);
+        parameters.emplace_back(arg->getStringValue(), arg->getStringLength());
+        destroyParameters.push_back(1);
       } else {
         bool localMustDestroy;
         AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
         parameters.emplace_back(a);
-        destroyParameters.push_back(localMustDestroy);
+        destroyParameters.push_back(localMustDestroy ? 1 : 0);
       }
     }
 
     TRI_ASSERT(parameters.size() == destroyParameters.size());
+    TRI_ASSERT(parameters.size() == n);
 
     AqlValue a = func->implementation(_ast->query(), trx, parameters);
     mustDestroy = true; // function result is always dynamic
 
-    for (size_t i = 0; i < parameters.size(); ++i) {
+    for (size_t i = 0; i < n; ++i) {
       if (destroyParameters[i]) {
         parameters[i].destroy();
       }
@@ -906,7 +916,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
 /// @brief execute an expression of type SIMPLE with NOT
 AqlValue Expression::executeSimpleExpressionNot(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
   mustDestroy = false;
   AqlValue operand =
@@ -921,7 +931,7 @@ AqlValue Expression::executeSimpleExpressionNot(
 
 /// @brief execute an expression of type SIMPLE with +
 AqlValue Expression::executeSimpleExpressionPlus(AstNode const* node,
-                                                 arangodb::Transaction* trx,
+                                                 transaction::Methods* trx,
                                                  bool& mustDestroy) {
   mustDestroy = false;
   AqlValue operand =
@@ -955,7 +965,7 @@ AqlValue Expression::executeSimpleExpressionPlus(AstNode const* node,
 
 /// @brief execute an expression of type SIMPLE with -
 AqlValue Expression::executeSimpleExpressionMinus(AstNode const* node,
-                                                  arangodb::Transaction* trx,
+                                                  transaction::Methods* trx,
                                                   bool& mustDestroy) {
   mustDestroy = false;
   AqlValue operand =
@@ -989,39 +999,43 @@ AqlValue Expression::executeSimpleExpressionMinus(AstNode const* node,
   return AqlValue(-value);
 }
 
-/// @brief execute an expression of type SIMPLE with AND or OR
-AqlValue Expression::executeSimpleExpressionAndOr(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+/// @brief execute an expression of type SIMPLE with AND
+AqlValue Expression::executeSimpleExpressionAnd(
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
   AqlValue left =
-      executeSimpleExpression(node->getMember(0), trx, mustDestroy, true);
+      executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, true);
 
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-    // AND
-    if (left.toBoolean()) {
-      // left is true => return right
-      if (mustDestroy) { left.destroy(); }
-      return executeSimpleExpression(node->getMember(1), trx, mustDestroy, true);
-    }
+  if (left.toBoolean()) {
+    // left is true => return right
+    if (mustDestroy) { left.destroy(); }
+    return executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, true);
+  }
 
-    // left is false, return left
-    return left;
-  } 
-    
-  // OR
+  // left is false, return left
+  return left;
+}
+
+/// @brief execute an expression of type SIMPLE with OR
+AqlValue Expression::executeSimpleExpressionOr(
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
+
+  AqlValue left =
+      executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, true);
+
   if (left.toBoolean()) {
     // left is true => return left
     return left;
   }
 
   // left is false => return right
-  left.destroy();
-  return executeSimpleExpression(node->getMember(1), trx, mustDestroy, true);
+  if (mustDestroy) { left.destroy(); }
+  return executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, true);
 }
 
 /// @brief execute an expression of type SIMPLE with AND or OR
 AqlValue Expression::executeSimpleExpressionNaryAndOr(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
   size_t count = node->numMembers();
   if (count == 0) {
     // There is nothing to evaluate. So this is always true
@@ -1033,7 +1047,7 @@ AqlValue Expression::executeSimpleExpressionNaryAndOr(
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
     for (size_t i = 0; i < count; ++i) {
       AqlValue check =
-          executeSimpleExpression(node->getMember(i), trx, mustDestroy, true);
+          executeSimpleExpression(node->getMemberUnchecked(i), trx, mustDestroy, true);
       if (!check.toBoolean()) {
         // Check is false. Return it.
         return check;
@@ -1050,7 +1064,7 @@ AqlValue Expression::executeSimpleExpressionNaryAndOr(
   // OR
   for (size_t i = 0; i < count; ++i) {
     AqlValue check =
-        executeSimpleExpression(node->getMember(i), trx, mustDestroy, true);
+        executeSimpleExpression(node->getMemberUnchecked(i), trx, mustDestroy, true);
     if (check.toBoolean()) {
       // Check is true. Return it.
       return check;
@@ -1066,14 +1080,14 @@ AqlValue Expression::executeSimpleExpressionNaryAndOr(
 
 /// @brief execute an expression of type SIMPLE with COMPARISON
 AqlValue Expression::executeSimpleExpressionComparison(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
   AqlValue left =
-      executeSimpleExpression(node->getMember(0), trx, mustDestroy, false);
+      executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, false);
   AqlValueGuard guardLeft(left, mustDestroy);
     
   AqlValue right =
-      executeSimpleExpression(node->getMember(1), trx, mustDestroy, false);
+      executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, false);
   AqlValueGuard guardRight(right, mustDestroy);
 
   mustDestroy = false; // we're returning a boolean only
@@ -1128,7 +1142,7 @@ AqlValue Expression::executeSimpleExpressionComparison(
 
 /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
 AqlValue Expression::executeSimpleExpressionArrayComparison(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
   AqlValue left =
       executeSimpleExpression(node->getMember(0), trx, mustDestroy, false);
@@ -1257,7 +1271,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
 
 /// @brief execute an expression of type SIMPLE with TERNARY
 AqlValue Expression::executeSimpleExpressionTernary(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
   AqlValue condition =
       executeSimpleExpression(node->getMember(0), trx, mustDestroy, false);
@@ -1274,12 +1288,12 @@ AqlValue Expression::executeSimpleExpressionTernary(
     position = 2;
   }
 
-  return executeSimpleExpression(node->getMember(position), trx, mustDestroy, true);
+  return executeSimpleExpression(node->getMemberUnchecked(position), trx, mustDestroy, true);
 }
 
 /// @brief execute an expression of type SIMPLE with EXPANSION
 AqlValue Expression::executeSimpleExpressionExpansion(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
   TRI_ASSERT(node->numMembers() == 5);
 
   // LIMIT
@@ -1468,7 +1482,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
 /// @brief execute an expression of type SIMPLE with ITERATOR
 AqlValue Expression::executeSimpleExpressionIterator(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -1477,12 +1491,12 @@ AqlValue Expression::executeSimpleExpressionIterator(
 
 /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
 AqlValue Expression::executeSimpleExpressionArithmetic(
-    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
-  AqlValue lhs = executeSimpleExpression(node->getMember(0), trx, mustDestroy, true);
+  AqlValue lhs = executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, true);
   AqlValueGuard guardLhs(lhs, mustDestroy);
 
-  AqlValue rhs = executeSimpleExpression(node->getMember(1), trx, mustDestroy, true);
+  AqlValue rhs = executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, true);
   AqlValueGuard guardRhs(rhs, mustDestroy);
 
   mustDestroy = false;
@@ -1516,6 +1530,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
     }
   }
 
+  mustDestroy = false;
   double result;
 
   switch (node->type) {
@@ -1535,18 +1550,9 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
       result = fmod(l, r);
       break;
     default:
-      mustDestroy = false;
       return AqlValue(VelocyPackHelper::ZeroValue());
   }
-      
-  if (std::isnan(result) || !std::isfinite(result) || result == HUGE_VAL || result == -HUGE_VAL) {
-    // convert NaN, +inf & -inf to null
-    mustDestroy = false;
-    return AqlValue(VelocyPackHelper::NullValue());
-  }
-
-  TransactionBuilderLeaser builder(trx);
-  mustDestroy = true; // builder = dynamic data
-  builder->add(VPackValue(result));
-  return AqlValue(*builder.get());
+  
+  // this will convert NaN, +inf & -inf to null
+  return AqlValue(result);
 }

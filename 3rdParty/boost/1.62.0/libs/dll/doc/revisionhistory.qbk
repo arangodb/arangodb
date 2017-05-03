@@ -1,0 +1,43 @@
+[/
+    Copyright 2014 Renato Tegon Forti, Antony Polukhin.
+    Copyright 2015 Antony Polukhin.
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+/]
+
+[section Revision History]
+
+
+[h5 1.0 (First Boost release)]
+
+* Removed `shared_library::load_self()`
+* Renamed `shared_library::path()` to `shared_library::location()`
+* `import_function*` and `import_variable*` functions were refactored into `import*` functions
+* Dropped dependency to 'boost::string_ref'
+* Multiple MacOS and Android fixes
+* Performance and memory optimizations for `import*` functions
+* Refactored `shared_library::load()` implementation, unified `load_mode::append_decorations` behavior across platforms
+* Renamed `shared_library::search_symbol()` to `shared_library::has()`
+* Dropped support for useless Windows specific `load_library_as_*` flags
+* Improved error reporting for failed library loads
+* Implemented a copy constructor and assignment operator for `shared_library`
+
+[h5 0.2]
+
+Applied comments from "Boost query interest" mails and Boost Incubator, implemented new features:
+
+* Project was renamed to Boost.DLL.
+* Improved docs.
+* Added library_info class.
+* Aliases macro for explicit specification of sections.
+* Aliases now use "boostdll" section.
+* Added `symbol_location()` methods.
+* Added `this_line_location()` method.
+
+[h5 0.1]
+
+Boost.Plugin 0.1 (Initial Solo Prototype taken from
+[@https://github.com/retf/Boost.Application Boost.Application] with many improvements)
+
+[endsect]
+

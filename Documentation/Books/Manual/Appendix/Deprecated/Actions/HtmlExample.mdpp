@@ -1,4 +1,5 @@
-!SECTION A Hello World Example
+A Hello World Example
+---------------------
 
 The client API or browser sends a HTTP request to the ArangoDB server and the
 server returns a HTTP response to the client. A HTTP request consists of a
@@ -67,7 +68,8 @@ You should see the *Hello World* in our browser:
     @endDocuBlock HTML_03_routingCurlHtml
 
 
-!SECTION Matching a URL
+Matching a URL
+--------------
 
 There are a lot of options for the *url* attribute. If you define different
 routing for the same path, then the following simple rule is applied in order to
@@ -75,7 +77,7 @@ determine which match wins: If there are two matches, then the more specific
 wins. I. e, if there is a wildcard match and an exact match, the exact match is
 preferred. If there is a short and a long match, the longer match wins.
 
-!SUBSECTION Exact Match
+### Exact Match
 
 If the definition is
 
@@ -106,7 +108,7 @@ HTTP *HEAD* only, with all other HTTP methods being disabled. Calling a URL
 with an unsupported or disabled HTTP method will result in an HTTP 501 
 (not implemented) error.
 
-!SUBSECTION Prefix Match
+### Prefix Match
 
 If the definition is
 
@@ -134,7 +136,7 @@ If you define two routes
 then the second route will be used for */hello/world/emil* because it is more
 specific.
 
-!SUBSECTION Parameterized Match
+### Parameterized Match
 
 A parameterized match is similar to a prefix match, but the parameters are also
 allowed inside the URL path.
@@ -151,7 +153,7 @@ then the URL must have three parts, the first part being *hello* and the third
 part *world*. For example, */hello/emil/world* will match, while
 */hello/emil/meyer/world* will not.
 
-!SUBSECTION Constraint Match
+### Constraint Match
 
 A constraint match is similar to a parameterized match, but the parameters can
 carry constraints.
@@ -181,7 +183,7 @@ It is possible to use more then one constraint for the same URL part.
       }
     }
 
-!SUBSECTION Optional Match
+### Optional Match
 
 An optional match is similar to a parameterized match, but the last parameter is
 optional.
@@ -209,7 +211,7 @@ then the URL */hello/world* will be matched by the first route, because it is
 the most specific. The URL */hello/you* will be matched by the second route,
 because it is more specific than the prefix match.
 
-!SUBSECTION Method Restriction
+### Method Restriction
 
 You can restrict the match to specific HTTP methods.
 
@@ -233,7 +235,7 @@ disabled:
       url: "/hello/world" 
     }
 
-!SUBSECTION More on Matching
+### More on Matching
 
 Remember that the more specific match wins. 
 

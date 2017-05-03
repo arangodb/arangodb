@@ -1,0 +1,134 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="is__areal_8hpp" kind="file">
+    <compoundname>is_areal.hpp</compoundname>
+    <includes local="no">boost/type_traits/integral_constant.hpp</includes>
+    <includes refid="tag_8hpp" local="no">boost/geometry/core/tag.hpp</includes>
+    <includes refid="core_2tags_8hpp" local="no">boost/geometry/core/tags.hpp</includes>
+    <includedby refid="union_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/union.hpp</includedby>
+    <includedby refid="multi_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/multi.hpp</includedby>
+    <includedby refid="intersection__insert_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/intersection_insert.hpp</includedby>
+    <incdepgraph>
+      <node id="50128">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="50123">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/core/is_areal.hpp</label>
+        <link refid="is_areal.hpp"/>
+        <childnode refid="50124" relation="include">
+        </childnode>
+        <childnode refid="50125" relation="include">
+        </childnode>
+        <childnode refid="50126" relation="include">
+        </childnode>
+      </node>
+      <node id="50130">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="50126">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="50124">
+        <label>boost/type_traits/integral_constant.hpp</label>
+      </node>
+      <node id="50125">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="50126" relation="include">
+        </childnode>
+        <childnode refid="50127" relation="include">
+        </childnode>
+      </node>
+      <node id="50127">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="50128" relation="include">
+        </childnode>
+        <childnode refid="50129" relation="include">
+        </childnode>
+        <childnode refid="50130" relation="include">
+        </childnode>
+      </node>
+      <node id="50129">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="50139">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/interface.hpp</label>
+        <link refid="intersection_2interface_8hpp"/>
+        <childnode refid="50136" relation="include">
+        </childnode>
+        <childnode refid="50140" relation="include">
+        </childnode>
+        <childnode refid="50134" relation="include">
+        </childnode>
+      </node>
+      <node id="50135">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/implementation.hpp</label>
+        <link refid="intersection_2implementation_8hpp"/>
+        <childnode refid="50136" relation="include">
+        </childnode>
+      </node>
+      <node id="50136">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/intersection.hpp</label>
+        <link refid="algorithms_2intersection_8hpp"/>
+        <childnode refid="50133" relation="include">
+        </childnode>
+      </node>
+      <node id="50131">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/core/is_areal.hpp</label>
+        <link refid="is_areal.hpp"/>
+        <childnode refid="50132" relation="include">
+        </childnode>
+        <childnode refid="50134" relation="include">
+        </childnode>
+        <childnode refid="50137" relation="include">
+        </childnode>
+      </node>
+      <node id="50132">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/union.hpp</label>
+        <link refid="union_8hpp"/>
+        <childnode refid="50133" relation="include">
+        </childnode>
+      </node>
+      <node id="50137">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/intersection_insert.hpp</label>
+        <link refid="intersection__insert_8hpp"/>
+        <childnode refid="50138" relation="include">
+        </childnode>
+        <childnode refid="50139" relation="include">
+        </childnode>
+      </node>
+      <node id="50138">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/difference.hpp</label>
+        <link refid="difference_8hpp"/>
+      </node>
+      <node id="50134">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/multi.hpp</label>
+        <link refid="multi_8hpp"/>
+        <childnode refid="50135" relation="include">
+        </childnode>
+      </node>
+      <node id="50133">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/sym_difference.hpp</label>
+        <link refid="sym__difference_8hpp"/>
+      </node>
+      <node id="50140">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/box_box.hpp</label>
+        <link refid="intersection_2box__box_8hpp"/>
+        <childnode refid="50135" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structboost_1_1geometry_1_1is__areal" prot="public">boost::geometry::is_areal</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/is_areal.hpp"/>
+  </compounddef>
+</doxygen>

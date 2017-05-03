@@ -31,6 +31,7 @@
 #include "velocypack/Dumper.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Sink.h"
+#include "velocypack/StringRef.h"
 
 using namespace arangodb::velocypack;
   
@@ -359,7 +360,8 @@ Builder& Builder::close() {
   std::vector<ValueLength>& index = _index[_stack.size() - 1];
 
   if (index.empty()) {
-    return closeEmptyArrayOrObject(tos, isArray);
+    closeEmptyArrayOrObject(tos, isArray);
+    return *this;
   }
 
   // From now on index.size() > 0
@@ -376,14 +378,15 @@ Builder& Builder::close() {
   }
 
   if (isArray) {
-    return closeArray(tos, index);
+    closeArray(tos, index);
+    return *this;
   }
 
   // fix head byte in case a compact Array / Object was originally requested
   _start[tos] = 0x0b;
 
   // First determine byte length and its format:
-  unsigned int offsetSize;
+  unsigned int offsetSize = 8;
   // can be 1, 2, 4 or 8 for the byte width of the offsets,
   // the byte length and the number of subvalues:
   if (_pos - tos + index.size() - 6 <= 0xff) {
@@ -392,16 +395,8 @@ Builder& Builder::close() {
     // case we would win back 6 bytes but would need one byte per subvalue
     // for the index table
     offsetSize = 1;
-  } else if (_pos - tos + 2 * index.size() <= 0xffff) {
-    offsetSize = 2;
-  } else if (_pos - tos + 4 * index.size() <= 0xffffffffu) {
-    offsetSize = 4;
-  } else {
-    offsetSize = 8;
-  }
 
-  // Maybe we need to move down data:
-  if (offsetSize == 1) {
+    // Maybe we need to move down data:
     ValueLength targetPos = 3;
     if (_pos > (tos + 9)) {
       ValueLength len = _pos - (tos + 9);
@@ -413,15 +408,19 @@ Builder& Builder::close() {
     for (size_t i = 0; i < n; i++) {
       index[i] -= diff;
     }
+
+    // One could move down things in the offsetSize == 2 case as well,
+    // since we only need 4 bytes in the beginning. However, saving these
+    // 4 bytes has been sacrificed on the Altar of Performance.
+  } else if (_pos - tos + 2 * index.size() <= 0xffff) {
+    offsetSize = 2;
+  } else if (_pos - tos + 4 * index.size() <= 0xffffffffu) {
+    offsetSize = 4;
   }
-  // One could move down things in the offsetSize == 2 case as well,
-  // since we only need 4 bytes in the beginning. However, saving these
-  // 4 bytes has been sacrificed on the Altar of Performance.
 
   // Now build the table:
-  ValueLength tableBase;
   reserveSpace(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
-  tableBase = _pos;
+  ValueLength tableBase = _pos;
   _pos += offsetSize * index.size();
   // Object
   if (index.size() >= 2) {
@@ -572,7 +571,7 @@ uint8_t* Builder::set(Value const& item) {
       reserveSpace(1 + sizeof(double));
       _start[_pos++] = 0x1b;
       memcpy(&x, &v, sizeof(double));
-      appendLength<8>(x);
+      appendLength<sizeof(double)>(x);
       break;
     }
     case ValueType::External: {
@@ -844,13 +843,14 @@ uint8_t* Builder::set(ValuePair const& pair) {
 
 void Builder::checkAttributeUniqueness(Slice const& obj) const {
   VELOCYPACK_ASSERT(options->checkAttributeUniqueness == true);
-  ValueLength const n = obj.length();
 
   if (obj.isSorted()) {
     // object attributes are sorted
     Slice previous = obj.keyAt(0);
     ValueLength len;
     char const* p = previous.getString(len);
+  
+    ValueLength const n = obj.length();
 
     // compare each two adjacent attribute names
     for (ValueLength i = 1; i < n; ++i) {
@@ -870,17 +870,17 @@ void Builder::checkAttributeUniqueness(Slice const& obj) const {
       p = q;
     }
   } else {
-    std::unordered_set<std::string> keys;
+    std::unordered_set<StringRef> keys;
+    ObjectIterator it(obj, true);
 
-    for (ValueLength i = 0; i < n; ++i) {
-      // note: keyAt() already translates integer attributes
-      Slice key = obj.keyAt(i);
-      // keyAt() guarantees a string as returned type
+    while (it.valid()) {
+      Slice const key = it.key(true);
+      // key() guarantees a string as returned type
       VELOCYPACK_ASSERT(key.isString());
-
-      if (!keys.emplace(key.copyString()).second) {
+      if (!keys.emplace(StringRef(key)).second) {
         throw Exception(Exception::DuplicateAttributeName);
       }
+      it.next();
     }
   }
 }

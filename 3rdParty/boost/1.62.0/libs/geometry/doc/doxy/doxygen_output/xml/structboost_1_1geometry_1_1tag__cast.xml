@@ -1,0 +1,119 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1tag__cast" kind="struct" prot="public">
+    <compoundname>boost::geometry::tag_cast</compoundname>
+    <includes local="no">tag_cast.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Tag</type>
+      </param>
+      <param>
+        <type>typename BaseTag</type>
+      </param>
+      <param>
+        <type>typename BaseTag2</type>
+        <defval>void</defval>
+      </param>
+      <param>
+        <type>typename BaseTag3</type>
+        <defval>void</defval>
+      </param>
+      <param>
+        <type>typename BaseTag4</type>
+        <defval>void</defval>
+      </param>
+      <param>
+        <type>typename BaseTag5</type>
+        <defval>void</defval>
+      </param>
+      <param>
+        <type>typename BaseTag6</type>
+        <defval>void</defval>
+      </param>
+      <param>
+        <type>typename BaseTag7</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1tag__cast_1a6332f99a833c59cb7f7c5edb16913c99" prot="public" static="no">
+        <type>boost::mpl::if_&lt; typename boost::is_base_of&lt; BaseTag, Tag &gt;::<ref refid="structboost_1_1geometry_1_1tag__cast_1a6332f99a833c59cb7f7c5edb16913c99" kindref="member">type</ref>, BaseTag, typename <ref refid="structboost_1_1geometry_1_1tag__cast" kindref="compound">tag_cast</ref>&lt; Tag, BaseTag2, BaseTag3, BaseTag4, BaseTag5, BaseTag6, BaseTag7, void &gt;::<ref refid="structboost_1_1geometry_1_1tag__cast_1a6332f99a833c59cb7f7c5edb16913c99" kindref="member">type</ref> &gt;::<ref refid="structboost_1_1geometry_1_1tag__cast_1a6332f99a833c59cb7f7c5edb16913c99" kindref="member">type</ref></type>
+        <definition>typedef boost::mpl::if_&lt; typename boost::is_base_of&lt;BaseTag, Tag&gt;::type, BaseTag, typename tag_cast &lt; Tag, BaseTag2, BaseTag3, BaseTag4, BaseTag5, BaseTag6, BaseTag7, void &gt;::type &gt;::type boost::geometry::tag_cast&lt; Tag, BaseTag, BaseTag2, BaseTag3, BaseTag4, BaseTag5, BaseTag6, BaseTag7 &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tag_cast.hpp" line="66" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tag_cast.hpp" bodystart="66" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Metafunction defining a type being either the specified tag, or one of the specified basetags if the type inherits from them. </para>    </briefdescription>
+    <detaileddescription>
+<para>Tags can inherit each other. A multi_point inherits, for example, both the <ref refid="structboost_1_1geometry_1_1multi__tag" kindref="compound">multi_tag</ref> and the <ref refid="structboost_1_1geometry_1_1pointlike__tag" kindref="compound">pointlike_tag</ref>. Often behaviour can be shared between different geometry types. A tag, found by the metafunction tag, can be casted to a more basic tag, and then dispatched by that tag.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Tag</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The tag to be casted to one of the base tags </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>BaseTag</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>First base tag </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>BaseTag2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Optional second base tag </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>BaseTag3</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Optional third base tag </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>BaseTag4</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Optional fourth base tag </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>BaseTag5</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Optional fifth base tag </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>BaseTag6</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Optional sixth base tag </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>BaseTag7</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Optional seventh base tag</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/core/tag_cast.qbk]</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tag_cast.hpp" line="55" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tag_cast.hpp" bodystart="54" bodyend="67"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1tag__cast_1a6332f99a833c59cb7f7c5edb16913c99" prot="public" virt="non-virtual"><scope>boost::geometry::tag_cast</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

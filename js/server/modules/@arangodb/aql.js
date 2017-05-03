@@ -352,7 +352,7 @@ msPerUnit.year = msPerUnit.y;
 function clearCaches () {
   'use strict';
 
-  RegexCache = { 'i': { }, '': { } };
+  RegexCache = { 'gi': { }, 'g': { }, 'i': { }, '': { } };
   LikeCache = { 'i': { }, '': { } };
   ISODurationCache = { };
 }
@@ -559,28 +559,6 @@ function INDEX_FULLTEXT (collection, attribute) {
     var index = indexes[i];
     if (index.type === 'fulltext' && index.fields && index.fields[0] === attribute) {
       return index.id;
-    }
-  }
-
-  return null;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief find an index of a certain type for a collection
-// //////////////////////////////////////////////////////////////////////////////
-
-function INDEX (collection, indexTypes) {
-  'use strict';
-
-  var indexes = collection.getIndexes(), i, j;
-
-  for (i = 0; i < indexes.length; ++i) {
-    var index = indexes[i];
-
-    for (j = 0; j < indexTypes.length; ++j) {
-      if (index.type === indexTypes[j]) {
-        return index;
-      }
     }
   }
 
@@ -1178,6 +1156,10 @@ function AQL_DOCUMENT (collection, id) {
   }
 
   try {
+    if (TYPEWEIGHT(collection) !== TYPEWEIGHT_STRING) {
+      WARN('DOCUMENT', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return null;
+    }
     return COLLECTION(collection, 'DOCUMENT').document(id);
   } catch (e2) {
     return null;
@@ -2162,7 +2144,33 @@ function AQL_REGEX_TEST (value, regex, caseInsensitive) {
 
     return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
   } catch (err) {
-    WARN('REGEX', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    WARN('REGEX_TEST', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    return false;
+  }
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replaces a substring in a string, using a regex
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_REGEX_REPLACE (value, regex, replacement, caseInsensitive) {
+  'use strict';
+
+  var modifiers = 'g';
+  if (caseInsensitive) {
+    modifiers += 'i';
+  }
+
+  regex = AQL_TO_STRING(regex);
+
+  try {
+    if (RegexCache[modifiers][regex] === undefined) {
+      RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+    }
+
+    return AQL_TO_STRING(value).replace(RegexCache[modifiers][regex], AQL_TO_STRING(replacement));
+  } catch (err) {
+    WARN('REGEX_REPLACE', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
     return false;
   }
 }
@@ -3132,11 +3140,8 @@ function AQL_UNIQUE (values) {
 
     if (!keys.hasOwnProperty(key)) {
       keys[key] = normalized;
+      result.push(value);
     }
-  });
-
-  Object.keys(keys).forEach(function (k) {
-    result.push(keys[k]);
   });
 
   return result;
@@ -3392,6 +3397,10 @@ function AQL_APPEND (list, values, unique) {
     return list;
   } else if (type !== TYPEWEIGHT_ARRAY) {
     values = [ values ];
+  }
+
+  if (unique) {
+    list = AQL_UNIQUE(list);
   }
 
   if (values.length === 0) {
@@ -4099,19 +4108,9 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     THROW('NEAR', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
 
-  if (isCoordinator) {
-    var query = COLLECTION(collection, 'NEAR').near(latitude, longitude);
-    query._distance = distanceAttribute;
-    return query.limit(limit).toArray();
-  }
-
-  var idx = INDEX(COLLECTION(collection, 'NEAR'), [ 'geo1', 'geo2' ]);
-
-  if (idx === null) {
-    THROW('NEAR', INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
-  }
-
-  return COLLECTION(collection, 'NEAR').NEAR(idx.id, latitude, longitude, limit, distanceAttribute);
+  var query = COLLECTION(collection, 'NEAR').near(latitude, longitude);
+  query._distance = distanceAttribute;
+  return query.limit(limit).toArray();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -4132,19 +4131,10 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
   }
   radius = AQL_TO_NUMBER(radius);
 
-  if (isCoordinator) {
-    var query = COLLECTION(collection, 'WITHIN').within(latitude, longitude, radius);
-    query._distance = distanceAttribute;
-    return query.toArray();
-  }
-
-  var idx = INDEX(COLLECTION(collection, 'WITHIN'), [ 'geo1', 'geo2' ]);
-
-  if (idx === null) {
-    THROW('WITHIN', INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
-  }
-
-  return COLLECTION(collection, 'WITHIN').WITHIN(idx.id, latitude, longitude, radius, distanceAttribute);
+  // Just start a simple query
+  var query = COLLECTION(collection, 'WITHIN').within(latitude, longitude, radius);
+  query._distance = distanceAttribute;
+  return query.toArray();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -4270,14 +4260,11 @@ function AQL_FULLTEXT (collection, attribute, query, limit) {
     THROW('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
   }
 
-  if (isCoordinator) {
-    if (limit !== undefined && limit !== null && limit > 0) {
-      return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).limit(limit).toArray();
-    }
-    return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).toArray();
+  // Just start a simple query
+  if (limit !== undefined && limit !== null && limit > 0) {
+    return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).limit(limit).toArray();
   }
-
-  return COLLECTION(collection, 'FULLTEXT').FULLTEXT(idx, query, limit).documents;
+  return COLLECTION(collection, 'FULLTEXT').fulltext(attribute, query, idx).toArray();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -5442,6 +5429,21 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     return null;
   }
 }
+        
+        
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return at most <limit> documents near a certain point
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_PREGEL_RESULT (executionNr) {
+  'use strict';
+
+  if (isCoordinator) {
+      return INTERNAL.db._pregelAqlResult(executionNr);
+  } else {
+    THROW('PREGEL_RESULT', INTERNAL.errors.ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+  }
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief format a date (numerical values only)
@@ -5560,6 +5562,7 @@ exports.AQL_SUBSTRING = AQL_SUBSTRING;
 exports.AQL_CONTAINS = AQL_CONTAINS;
 exports.AQL_LIKE = AQL_LIKE;
 exports.AQL_REGEX_TEST = AQL_REGEX_TEST;
+exports.AQL_REGEX_REPLACE = AQL_REGEX_REPLACE;
 exports.AQL_LEFT = AQL_LEFT;
 exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;
@@ -5698,6 +5701,7 @@ exports.AQL_DATE_SUBTRACT = AQL_DATE_SUBTRACT;
 exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
 exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
+exports.AQL_PREGEL_RESULT = AQL_PREGEL_RESULT;
 
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;

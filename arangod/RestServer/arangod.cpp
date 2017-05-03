@@ -31,16 +31,22 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/JemallocFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
+#include "ApplicationFeatures/RocksDBOptionFeature.h"
+#include "Pregel/PregelFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -48,38 +54,36 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/RevisionCacheFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "RestServer/WorkMonitorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/MMFilesEngine.h"
+
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/IndexPoolFeature.h"
-#include "Wal/LogfileManager.h"
-#include "Wal/RecoveryFeature.h"
-
-#include "Indexes/RocksDBFeature.h"
 
 #ifdef _WIN32
 #include "ApplicationFeatures/WindowsServiceFeature.h"
@@ -89,122 +93,140 @@
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
+// storage engine
+#include "MMFiles/MMFilesEngine.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+
 using namespace arangodb;
-using namespace arangodb::wal;
 
 static int runServer(int argc, char** argv) {
-  ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
-  context.installSegv();
-  context.runStartupChecks();
+  try {
+    ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
+    context.installSegv();
+    context.runStartupChecks();
 
-  std::string name = context.binaryName();
+    std::string name = context.binaryName();
 
-  auto options = std::make_shared<options::ProgramOptions>(
-      argv[0], "Usage: " + name + " [<options>]", "For more information use:",
-      SBIN_DIRECTORY);
+    auto options = std::make_shared<options::ProgramOptions>(
+        argv[0], "Usage: " + name + " [<options>]", "For more information use:",
+        SBIN_DIRECTORY);
 
-  application_features::ApplicationServer server(options, SBIN_DIRECTORY);
+    application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
-  std::vector<std::string> nonServerFeatures = {
-      "Action",        "Affinity",
-      "Agency",        "Authentication",
-      "Cluster",       "Daemon",
-      "Dispatcher",    "FoxxQueues",
-      "GeneralServer", "LoggerBufferFeature",
-      "Server",        "Scheduler",
-      "SslServer",     "Statistics",
-      "Supervisor"};
+    std::vector<std::string> nonServerFeatures = {
+        "Action",        "Affinity",
+        "Agency",        "Authentication",
+        "Cluster",       "Daemon",
+        "Dispatcher",    "FoxxQueues",
+        "GeneralServer", "LoggerBufferFeature",
+        "Server",        "SslServer",
+        "Statistics",    "Supervisor"};
 
-  int ret = EXIT_FAILURE;
+    int ret = EXIT_FAILURE;
 
-  server.addFeature(new ActionFeature(&server));
-  server.addFeature(new AgencyFeature(&server));
-  server.addFeature(new AuthenticationFeature(&server));
-  server.addFeature(new BootstrapFeature(&server));
-  server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
-  server.addFeature(new ClusterFeature(&server));
-  server.addFeature(new ConfigFeature(&server, name));
-  server.addFeature(new ConsoleFeature(&server));
-  server.addFeature(new DatabaseFeature(&server));
-  server.addFeature(new DatabasePathFeature(&server));
-  server.addFeature(new EndpointFeature(&server));
-  server.addFeature(new EngineSelectorFeature(&server));
-  server.addFeature(new FileDescriptorsFeature(&server));
-  server.addFeature(new FoxxQueuesFeature(&server));
-  server.addFeature(new FrontendFeature(&server));
-  server.addFeature(new GeneralServerFeature(&server));
-  server.addFeature(new GreetingsFeature(&server, "arangod"));
-  server.addFeature(new IndexPoolFeature(&server));
-  server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
-  server.addFeature(new LanguageFeature(&server));
-  server.addFeature(new LockfileFeature(&server));
-  server.addFeature(new LogfileManager(&server));
-  server.addFeature(new LoggerBufferFeature(&server));
-  server.addFeature(new LoggerFeature(&server, true));
-  server.addFeature(new NonceFeature(&server));
-  server.addFeature(new PageSizeFeature(&server));
-  server.addFeature(new PrivilegeFeature(&server));
-  server.addFeature(new QueryRegistryFeature(&server));
-  server.addFeature(new TraverserEngineRegistryFeature(&server));
-  server.addFeature(new RandomFeature(&server));
-  server.addFeature(new RecoveryFeature(&server));
-  server.addFeature(new RevisionCacheFeature(&server));
-  server.addFeature(new RocksDBFeature(&server));
-  server.addFeature(new SchedulerFeature(&server));
-  server.addFeature(new ScriptFeature(&server, &ret));
-  server.addFeature(new ServerFeature(&server, &ret));
-  server.addFeature(new ServerIdFeature(&server));
-  server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
-  server.addFeature(new SslFeature(&server));
-  server.addFeature(new StatisticsFeature(&server));
-  server.addFeature(new TempFeature(&server, name));
-  server.addFeature(new UnitTestsFeature(&server, &ret));
-  server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
-  server.addFeature(new V8DealerFeature(&server));
-  server.addFeature(new V8PlatformFeature(&server));
-  server.addFeature(new VersionFeature(&server));
-  server.addFeature(new WorkMonitorFeature(&server));
+    server.addFeature(new ActionFeature(&server));
+    server.addFeature(new AgencyFeature(&server));
+    server.addFeature(new aql::AqlFunctionFeature(&server));
+    server.addFeature(new aql::OptimizerRulesFeature(&server));
+    server.addFeature(new AuthenticationFeature(&server));
+    server.addFeature(new AqlFeature(&server));
+    server.addFeature(new BootstrapFeature(&server));
+    server.addFeature(new CacheManagerFeature(&server));
+    server.addFeature(
+        new CheckVersionFeature(&server, &ret, nonServerFeatures));
+    server.addFeature(new ClusterFeature(&server));
+    server.addFeature(new ConfigFeature(&server, name));
+    server.addFeature(new ConsoleFeature(&server));
+    server.addFeature(new DatabaseFeature(&server));
+    server.addFeature(new DatabasePathFeature(&server));
+    server.addFeature(new EndpointFeature(&server));
+    server.addFeature(new EngineSelectorFeature(&server));
+    server.addFeature(new FeatureCacheFeature(&server));
+    server.addFeature(new FileDescriptorsFeature(&server));
+    server.addFeature(new FoxxQueuesFeature(&server));
+    server.addFeature(new FrontendFeature(&server));
+    server.addFeature(new GeneralServerFeature(&server));
+    server.addFeature(new GreetingsFeature(&server));
+    server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
+    server.addFeature(new JemallocFeature(&server));
+    server.addFeature(new LanguageFeature(&server));
+    server.addFeature(new LockfileFeature(&server));
+    server.addFeature(new LoggerBufferFeature(&server));
+    server.addFeature(new LoggerFeature(&server, true));
+    server.addFeature(new NonceFeature(&server));
+    server.addFeature(new PageSizeFeature(&server));
+    server.addFeature(new pregel::PregelFeature(&server));
+    server.addFeature(new PrivilegeFeature(&server));
+    server.addFeature(new RandomFeature(&server));
+    server.addFeature(new QueryRegistryFeature(&server));
+    server.addFeature(new SchedulerFeature(&server));
+    server.addFeature(new ScriptFeature(&server, &ret));
+    server.addFeature(new ServerFeature(&server, &ret));
+    server.addFeature(new ServerIdFeature(&server));
+    server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
+    server.addFeature(new SslFeature(&server));
+    server.addFeature(new StatisticsFeature(&server));
+    server.addFeature(new TempFeature(&server, name));
+    server.addFeature(new TransactionManagerFeature(&server));
+    server.addFeature(new TraverserEngineRegistryFeature(&server));
+    server.addFeature(new UnitTestsFeature(&server, &ret));
+    server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
+    server.addFeature(new V8DealerFeature(&server));
+    server.addFeature(new V8PlatformFeature(&server));
+    server.addFeature(new VersionFeature(&server));
+    server.addFeature(new ViewTypesFeature(&server));
+    server.addFeature(new WorkMonitorFeature(&server));
+    server.addFeature(new RocksDBOptionFeature(&server));
 
 #ifdef ARANGODB_HAVE_FORK
-  server.addFeature(new DaemonFeature(&server));
-
-  std::unique_ptr<SupervisorFeature> supervisor =
-      std::make_unique<SupervisorFeature>(&server);
-  supervisor->supervisorStart({"Logger"});
-  server.addFeature(supervisor.release());
+    server.addFeature(new DaemonFeature(&server));
+    server.addFeature(new SupervisorFeature(&server));
 #endif
 
 #ifdef _WIN32
-  server.addFeature(new WindowsServiceFeature(&server));
+    server.addFeature(new WindowsServiceFeature(&server));
 #endif
 
 #ifdef USE_ENTERPRISE
-  setupServerEE(&server);
+    setupServerEE(&server);
 #else
-  server.addFeature(new SslServerFeature(&server));
+    server.addFeature(new SslServerFeature(&server));
 #endif
 
-  // storage engines
-  server.addFeature(new MMFilesEngine(&server));
+    // storage engines
+    server.addFeature(new MMFilesEngine(&server));
+    server.addFeature(new RocksDBEngine(&server));
 
-  try {
-    server.run(argc, argv);
-    if (server.helpShown()) {
-      // --help was displayed
-      ret = EXIT_SUCCESS;
+    try {
+      server.run(argc, argv);
+      if (server.helpShown()) {
+        // --help was displayed
+        ret = EXIT_SUCCESS;
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "arangod terminated because of an exception: "
+          << ex.what();
+      ret = EXIT_FAILURE;
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "arangod terminated because of an exception of "
+             "unknown type";
+      ret = EXIT_FAILURE;
     }
-  } catch (std::exception const& ex) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception: "
-             << ex.what();
-    ret = EXIT_FAILURE;
-  } catch (...) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception of "
-                "unknown type";
-    ret = EXIT_FAILURE;
-  }
-  Logger::flush();
+    Logger::flush();
 
-  return context.exit(ret);
+    return context.exit(ret);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "arangod terminated because of an exception: "
+        << ex.what();
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "arangod terminated because of an xception of "
+           "unknown type";
+  }
+  exit(EXIT_FAILURE);
 }
 
 #if _WIN32
@@ -238,11 +260,11 @@ int main(int argc, char* argv[]) {
     ARGV = argv;
 
     SERVICE_TABLE_ENTRY ste[] = {
-        {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
+      {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
-                << GetLastError() << std::endl;
+        << GetLastError() << std::endl;
       exit(EXIT_FAILURE);
     }
   } else

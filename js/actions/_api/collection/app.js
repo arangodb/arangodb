@@ -1,4 +1,5 @@
 /* jshint strict: false */
+/*global ArangoClusterInfo */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief querying and managing collections
@@ -45,7 +46,7 @@ function databasePrefix (req, url) {
 // / @brief collection representation
 // //////////////////////////////////////////////////////////////////////////////
 
-function collectionRepresentation (collection, showProperties, showCount, showFigures) {
+function collectionRepresentation(collection, showProperties, showCount, showFigures) {
   var result = {};
 
   result.id = collection._id;
@@ -63,14 +64,18 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
     result.indexBuckets = properties.indexBuckets;
 
     if (cluster.isCoordinator()) {
-      result.shardKeys = properties.shardKeys;
+      result.avoidServers = properties.avoidServers;
       result.numberOfShards = properties.numberOfShards;
       result.replicationFactor = properties.replicationFactor;
+      result.avoidServers = properties.avoidServers;
+      result.distributeShardsLike = properties.distributeShardsLike;
+      result.shardKeys = properties.shardKeys;
     }
   }
 
   if (showCount) {
-    result.count = collection.count();
+    // show either the count value as a number or the detailed shard counts
+    result.count = collection.count(showCount === 'details');
   }
 
   if (showFigures) {
@@ -158,6 +163,10 @@ function parseBodyForCreateCollection (req, res) {
       r.parameters.distributeShardsLike = body.distributeShardsLike || '';
     }
 
+    if (body.hasOwnProperty('avoidServers')) {
+      r.parameters.avoidServers = body.avoidServers || [];
+    }
+
     if (body.hasOwnProperty('isSmart')) {
       r.parameters.isSmart = body.isSmart || '';
     }
@@ -196,6 +205,15 @@ function post_api_collection (req, res) {
   }
 
   try {
+    var options = {};
+    if (req.parameters.hasOwnProperty('waitForSyncReplication')) {
+      var value = req.parameters.waitForSyncReplication.toLowerCase();
+      if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
+        options.waitForSyncReplication = true;
+      } else {
+        options.waitForSyncReplication = false;
+      }
+    }
     var collection;
     if (typeof (r.type) === 'string') {
       if (r.type.toLowerCase() === 'edge' || r.type === '3') {
@@ -203,9 +221,9 @@ function post_api_collection (req, res) {
       }
     }
     if (r.type === arangodb.ArangoCollection.TYPE_EDGE) {
-      collection = arangodb.db._createEdgeCollection(r.name, r.parameters);
+      collection = arangodb.db._createEdgeCollection(r.name, r.parameters, options);
     } else {
-      collection = arangodb.db._createDocumentCollection(r.name, r.parameters);
+      collection = arangodb.db._createDocumentCollection(r.name, r.parameters, options);
     }
 
     var result = {};
@@ -307,7 +325,7 @@ function get_api_collection (req, res) {
   // /_api/collection/<name>
   // .............................................................................
 
-  name = decodeURIComponent(req.suffix[0]);
+  name = req.suffix[0];
 
   var collection = arangodb.db._collection(name);
 
@@ -332,7 +350,7 @@ function get_api_collection (req, res) {
   }
 
   if (req.suffix.length === 2) {
-    sub = decodeURIComponent(req.suffix[1]);
+    sub = req.suffix[1];
 
     // .............................................................................
     // /_api/collection/<identifier>/checksum
@@ -378,7 +396,12 @@ function get_api_collection (req, res) {
     // /_api/collection/<identifier>/count
     // .............................................................................
     else if (sub === 'count') {
-      result = collectionRepresentation(collection, true, true, false);
+      // show either the count value as a number or the detailed shard counts
+      if (req.parameters.details === 'true') {
+        result = collectionRepresentation(collection, true, 'details', false);
+      } else {
+        result = collectionRepresentation(collection, true, true, false);
+      }
       headers = {
         location: databasePrefix(req, '/_api/collection/' + collection.name() + '/count')
       };
@@ -403,10 +426,17 @@ function get_api_collection (req, res) {
       result = collectionRepresentation(collection, false, false, false);
       result.revision = collection.revision();
       actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    
+    else if (sub === 'shards') {
+      result = collectionRepresentation(collection, false, false, false);
+      result.shards = Object.keys(ArangoClusterInfo.getCollectionInfo(arangodb.db._name(), collection.name()).shardShorts);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+
     } else {
       actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
-        "expecting one of the resources 'count',"
-        + " 'figures', 'properties', 'parameter'");
+        "expecting one of the resources 'checksum', 'count',"
+        + " 'figures', 'properties', 'revision', 'shards'");
     }
   } else {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
@@ -558,7 +588,7 @@ function put_api_collection (req, res) {
     return;
   }
 
-  var name = decodeURIComponent(req.suffix[0]);
+  var name = req.suffix[0];
   var collection = arangodb.db._collection(name);
 
   if (collection === null) {
@@ -566,7 +596,7 @@ function put_api_collection (req, res) {
     return;
   }
 
-  var sub = decodeURIComponent(req.suffix[1]);
+  var sub = req.suffix[1];
 
   if (sub === 'load') {
     put_api_collection_load(req, res, collection);
@@ -599,7 +629,7 @@ function delete_api_collection (req, res) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
       'expected DELETE /_api/collection/<collection-name>');
   } else {
-    var name = decodeURIComponent(req.suffix[0]);
+    var name = req.suffix[0];
     var collection = arangodb.db._collection(name);
 
     if (collection === null) {

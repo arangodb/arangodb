@@ -3,17 +3,10 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
-var _create = require('babel-runtime/core-js/object/create');
-
-var _create2 = _interopRequireDefault(_create);
-
 exports.duplicateInputFieldMessage = duplicateInputFieldMessage;
 exports.UniqueInputFieldNames = UniqueInputFieldNames;
 
 var _error = require('../../error');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
  *  Copyright (c) 2015, Facebook, Inc.
@@ -36,13 +29,13 @@ function duplicateInputFieldMessage(fieldName) {
  */
 function UniqueInputFieldNames(context) {
   var knownNameStack = [];
-  var knownNames = (0, _create2.default)(null);
+  var knownNames = Object.create(null);
 
   return {
     ObjectValue: {
       enter: function enter() {
         knownNameStack.push(knownNames);
-        knownNames = (0, _create2.default)(null);
+        knownNames = Object.create(null);
       },
       leave: function leave() {
         knownNames = knownNameStack.pop();

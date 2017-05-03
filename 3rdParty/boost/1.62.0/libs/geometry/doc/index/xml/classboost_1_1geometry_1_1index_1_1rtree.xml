@@ -1,0 +1,2278 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1index_1_1rtree" kind="class" prot="public">
+    <compoundname>boost::geometry::index::rtree</compoundname>
+    <includes refid="rtree_8hpp" local="no">rtree.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder" prot="private">boost::geometry::index::rtree::members_holder</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Value</declname>
+        <defname>Value</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>Parameters</declname>
+        <defname>Parameters</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>IndexableGetter</declname>
+        <defname>IndexableGetter</defname>
+        <defval><ref refid="structboost_1_1geometry_1_1index_1_1indexable" kindref="compound">index::indexable</ref>&lt;Value&gt;</defval>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>EqualTo</declname>
+        <defname>EqualTo</defname>
+        <defval><ref refid="structboost_1_1geometry_1_1index_1_1equal__to" kindref="compound">index::equal_to</ref>&lt;Value&gt;</defval>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>Allocator</declname>
+        <defname>Allocator</defname>
+        <defval>std::allocator&lt;Value&gt;</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" prot="public" static="no">
+        <type>Value</type>
+        <definition>typedef Value boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::value_type</definition>
+        <argsstring></argsstring>
+        <name>value_type</name>
+        <briefdescription>
+<para>The type of Value stored in the container. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="161" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="161" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" prot="public" static="no">
+        <type>Parameters</type>
+        <definition>typedef Parameters boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::parameters_type</definition>
+        <argsstring></argsstring>
+        <name>parameters_type</name>
+        <briefdescription>
+<para>R-tree parameters type. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="163" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="163" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" prot="public" static="no">
+        <type>IndexableGetter</type>
+        <definition>typedef IndexableGetter boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::indexable_getter</definition>
+        <argsstring></argsstring>
+        <name>indexable_getter</name>
+        <briefdescription>
+<para>The function object extracting Indexable from Value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="165" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="165" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" prot="public" static="no">
+        <type>EqualTo</type>
+        <definition>typedef EqualTo boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::value_equal</definition>
+        <argsstring></argsstring>
+        <name>value_equal</name>
+        <briefdescription>
+<para>The function object comparing objects of type Value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="167" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="167" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" prot="public" static="no">
+        <type>Allocator</type>
+        <definition>typedef Allocator boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::allocator_type</definition>
+        <argsstring></argsstring>
+        <name>allocator_type</name>
+        <briefdescription>
+<para>The type of allocator used by the container. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="169" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="169" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a28e88e55d260a454688fe1bd5e5af96b" prot="public" static="no">
+        <type>index::detail::indexable_type&lt; detail::translator&lt; IndexableGetter, EqualTo &gt; &gt;::type</type>
+        <definition>typedef index::detail::indexable_type&lt; detail::translator&lt;IndexableGetter, EqualTo&gt; &gt;::type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::indexable_type</definition>
+        <argsstring></argsstring>
+        <name>indexable_type</name>
+        <briefdescription>
+<para>The Indexable type to which Value is translated. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="175" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="175" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a12e80f9da4c68e0e687f1c2012321147" prot="public" static="no">
+        <type>geometry::model::box&lt; geometry::model::point&lt; typename coordinate_type&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a28e88e55d260a454688fe1bd5e5af96b" kindref="member">indexable_type</ref> &gt;::type, dimension&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a28e88e55d260a454688fe1bd5e5af96b" kindref="member">indexable_type</ref> &gt;::value, typename coordinate_system&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a28e88e55d260a454688fe1bd5e5af96b" kindref="member">indexable_type</ref> &gt;::type &gt; &gt;</type>
+        <definition>typedef geometry::model::box&lt; geometry::model::point&lt; typename coordinate_type&lt;indexable_type&gt;::type, dimension&lt;indexable_type&gt;::value, typename coordinate_system&lt;indexable_type&gt;::type &gt; &gt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::bounds_type</definition>
+        <argsstring></argsstring>
+        <name>bounds_type</name>
+        <briefdescription>
+<para>The Box type used by the R-tree. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="185" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="185" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a5301c3d7ee3589751579e0573a9e8165" prot="public" static="no">
+        <type>allocators_type::reference</type>
+        <definition>typedef allocators_type::reference boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::reference</definition>
+        <argsstring></argsstring>
+        <name>reference</name>
+        <briefdescription>
+<para>Type of reference to Value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="213" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="213" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a615e622930be97ab1f3b8ceee641feaf" prot="public" static="no">
+        <type>allocators_type::const_reference</type>
+        <definition>typedef allocators_type::const_reference boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::const_reference</definition>
+        <argsstring></argsstring>
+        <name>const_reference</name>
+        <briefdescription>
+<para>Type of reference to const Value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="215" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="215" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a762ced6b98d2cc6503e2b00549c6a89a" prot="public" static="no">
+        <type>allocators_type::pointer</type>
+        <definition>typedef allocators_type::pointer boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::pointer</definition>
+        <argsstring></argsstring>
+        <name>pointer</name>
+        <briefdescription>
+<para>Type of pointer to Value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="217" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="217" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1abad30462044d5d8fb607c24a05e8c9c2" prot="public" static="no">
+        <type>allocators_type::const_pointer</type>
+        <definition>typedef allocators_type::const_pointer boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::const_pointer</definition>
+        <argsstring></argsstring>
+        <name>const_pointer</name>
+        <briefdescription>
+<para>Type of pointer to const Value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="219" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="219" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1ac256168e9371a070515fc61f29c691ed" prot="public" static="no">
+        <type>allocators_type::difference_type</type>
+        <definition>typedef allocators_type::difference_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::difference_type</definition>
+        <argsstring></argsstring>
+        <name>difference_type</name>
+        <briefdescription>
+<para>Type of difference type. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="221" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="221" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" prot="public" static="no">
+        <type>allocators_type::size_type</type>
+        <definition>typedef allocators_type::size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::size_type</definition>
+        <argsstring></argsstring>
+        <name>size_type</name>
+        <briefdescription>
+<para>Unsigned integral type used by the container. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="223" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="223" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a701f65f0d6cf2e8b7be7f1c4b8fb7fde" prot="public" static="no">
+        <type>index::detail::rtree::iterators::iterator&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, options_type, translator_type, box_type, allocators_type &gt;</type>
+        <definition>typedef index::detail::rtree::iterators::iterator&lt; value_type, options_type, translator_type, box_type, allocators_type &gt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::const_iterator</definition>
+        <argsstring></argsstring>
+        <name>const_iterator</name>
+        <briefdescription>
+<para>Type of const iterator, category ForwardIterator. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="229" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="229" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1ad144a7704ad878caaa84cda79b140855" prot="public" static="no">
+        <type>index::detail::rtree::iterators::query_iterator&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, allocators_type &gt;</type>
+        <definition>typedef index::detail::rtree::iterators::query_iterator&lt; value_type, allocators_type &gt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::const_query_iterator</definition>
+        <argsstring></argsstring>
+        <name>const_query_iterator</name>
+        <briefdescription>
+<para>Type of const query iterator, category ForwardIterator. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="235" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="235" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a2c212d76f2fc484f38d3d8d635bcc9f5" prot="private" static="no">
+        <type>detail::translator&lt; IndexableGetter, EqualTo &gt;</type>
+        <definition>typedef detail::translator&lt;IndexableGetter, EqualTo&gt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::translator_type</definition>
+        <argsstring></argsstring>
+        <name>translator_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="189" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="189" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1acf9b7d882c6a636b39af2f0d262ab54b" prot="private" static="no">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a12e80f9da4c68e0e687f1c2012321147" kindref="member">bounds_type</ref></type>
+        <definition>typedef bounds_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::box_type</definition>
+        <argsstring></argsstring>
+        <name>box_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="191" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="191" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a6fb844a6a428b99e7e60d56f7af432c8" prot="private" static="no">
+        <type>detail::rtree::options_type&lt; Parameters &gt;::type</type>
+        <definition>typedef detail::rtree::options_type&lt;Parameters&gt;::type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::options_type</definition>
+        <argsstring></argsstring>
+        <name>options_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="192" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="192" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a3f48e5da98a8e1cf1289928d1d923152" prot="private" static="no">
+        <type>options_type::node_tag</type>
+        <definition>typedef options_type::node_tag boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::node_tag</definition>
+        <argsstring></argsstring>
+        <name>node_tag</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="193" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="193" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a1376189d019e031652df06290992cf0a" prot="private" static="no">
+        <type>detail::rtree::allocators&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kindref="member">allocator_type</ref>, <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, typename options_type::parameters_type, box_type, node_tag &gt;</type>
+        <definition>typedef detail::rtree::allocators&lt;allocator_type, value_type, typename options_type::parameters_type, box_type, node_tag&gt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::allocators_type</definition>
+        <argsstring></argsstring>
+        <name>allocators_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="194" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="194" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a8fd02414dda5f4dd246ba35d4213115c" prot="private" static="no">
+        <type>detail::rtree::node&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, typename options_type::parameters_type, box_type, allocators_type, node_tag &gt;::type</type>
+        <definition>typedef detail::rtree::node&lt;value_type, typename options_type::parameters_type, box_type, allocators_type, node_tag&gt;::type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::node</definition>
+        <argsstring></argsstring>
+        <name>node</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="196" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="196" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a868d2270e32fb91daf1308d33db11cee" prot="private" static="no">
+        <type>detail::rtree::internal_node&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, typename options_type::parameters_type, box_type, allocators_type, node_tag &gt;::type</type>
+        <definition>typedef detail::rtree::internal_node&lt;value_type, typename options_type::parameters_type, box_type, allocators_type, node_tag&gt;::type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::internal_node</definition>
+        <argsstring></argsstring>
+        <name>internal_node</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="197" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="197" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a8e091464e1ff8a0264c5ffb72419ea4d" prot="private" static="no">
+        <type>detail::rtree::leaf&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, typename options_type::parameters_type, box_type, allocators_type, node_tag &gt;::type</type>
+        <definition>typedef detail::rtree::leaf&lt;value_type, typename options_type::parameters_type, box_type, allocators_type, node_tag&gt;::type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::leaf</definition>
+        <argsstring></argsstring>
+        <name>leaf</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="198" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="198" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1adc98bac42f71145e64c4ca711aeee3c4" prot="private" static="no">
+        <type>allocators_type::node_pointer</type>
+        <definition>typedef allocators_type::node_pointer boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::node_pointer</definition>
+        <argsstring></argsstring>
+        <name>node_pointer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="200" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="200" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1aa9dc5d830362e77b6de638f676285e1a" prot="private" static="no">
+        <type>::boost::container::allocator_traits&lt; Allocator &gt;</type>
+        <definition>typedef ::boost::container::allocator_traits&lt;Allocator&gt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::allocator_traits_type</definition>
+        <argsstring></argsstring>
+        <name>allocator_traits_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="201" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="201" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1rtree_1a9e5026a4c2b01c5e99919ce1fa2e9a9c" prot="private" static="no">
+        <type>detail::rtree::subtree_destroyer&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, options_type, translator_type, box_type, allocators_type &gt;</type>
+        <definition>typedef detail::rtree::subtree_destroyer&lt;value_type, options_type, translator_type, box_type, allocators_type&gt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::subtree_destroyer</definition>
+        <argsstring></argsstring>
+        <name>subtree_destroyer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="202" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="202" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1index_1_1rtree_1a28393873e6c248e3af569ceff95c7fd5" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>friend class</type>
+        <definition>friend class detail::rtree::utilities::view&lt; rtree &gt;</definition>
+        <argsstring></argsstring>
+        <name>detail::rtree::utilities::view&lt; rtree &gt;</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="202" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="204" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1index_1_1rtree_1aed6afa99c9a2922bda52b4345f3949f3" prot="private" static="no" mutable="no">
+        <type>members_holder</type>
+        <definition>members_holder boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::m_members</definition>
+        <argsstring></argsstring>
+        <name>m_members</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1773" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1773" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a55d5fd5d205df08db5267253689ccf0c" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::rtree</definition>
+        <argsstring>(parameters_type const &amp;parameters=parameters_type(), indexable_getter const &amp;getter=indexable_getter(), value_equal const &amp;equal=value_equal())</argsstring>
+        <name>rtree</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" kindref="member">parameters_type</ref> const &amp;</type>
+          <declname>parameters</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" kindref="member">parameters_type</ref>()</defval>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" kindref="member">indexable_getter</ref> const &amp;</type>
+          <declname>getter</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" kindref="member">indexable_getter</ref>()</defval>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" kindref="member">value_equal</ref> const &amp;</type>
+          <declname>equal</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" kindref="member">value_equal</ref>()</defval>
+        </param>
+        <briefdescription>
+<para>The constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>parameters</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The parameters object. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>getter</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object extracting Indexable from Value. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>equal</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object comparing Values.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para>If allocator default constructor throws. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="249" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="249" bodyend="253"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a1a6b696d4855cbf1866196fe058c3a87" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::rtree</definition>
+        <argsstring>(parameters_type const &amp;parameters, indexable_getter const &amp;getter, value_equal const &amp;equal, allocator_type const &amp;allocator)</argsstring>
+        <name>rtree</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" kindref="member">parameters_type</ref> const &amp;</type>
+          <declname>parameters</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" kindref="member">indexable_getter</ref> const &amp;</type>
+          <declname>getter</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" kindref="member">value_equal</ref> const &amp;</type>
+          <declname>equal</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kindref="member">allocator_type</ref> const &amp;</type>
+          <declname>allocator</declname>
+        </param>
+        <briefdescription>
+<para>The constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>parameters</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The parameters object. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>getter</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object extracting Indexable from Value. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>equal</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object comparing Values. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>allocator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The allocator object.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para>If allocator copy constructor throws. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="266" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="266" bodyend="271"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a037f17d8a1dfa4a818ff471dec61c912" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Iterator</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::rtree</definition>
+        <argsstring>(Iterator first, Iterator last, parameters_type const &amp;parameters=parameters_type(), indexable_getter const &amp;getter=indexable_getter(), value_equal const &amp;equal=value_equal(), allocator_type const &amp;allocator=allocator_type())</argsstring>
+        <name>rtree</name>
+        <param>
+          <type>Iterator</type>
+          <declname>first</declname>
+        </param>
+        <param>
+          <type>Iterator</type>
+          <declname>last</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" kindref="member">parameters_type</ref> const &amp;</type>
+          <declname>parameters</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" kindref="member">parameters_type</ref>()</defval>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" kindref="member">indexable_getter</ref> const &amp;</type>
+          <declname>getter</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" kindref="member">indexable_getter</ref>()</defval>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" kindref="member">value_equal</ref> const &amp;</type>
+          <declname>equal</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" kindref="member">value_equal</ref>()</defval>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kindref="member">allocator_type</ref> const &amp;</type>
+          <declname>allocator</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kindref="member">allocator_type</ref>()</defval>
+        </param>
+        <briefdescription>
+<para>The constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para>The tree is created using packing algorithm.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>first</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The beginning of the range of Values. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>last</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The end of the range of Values. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>parameters</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The parameters object. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>getter</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object extracting Indexable from Value. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>equal</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object comparing Values. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>allocator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The allocator object.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If allocator copy constructor throws. </para></listitem>
+<listitem><para>If Value copy constructor or copy assignment throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value. </para></listitem>
+</itemizedlist>
+</para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="291" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="291" bodyend="304"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a7b96b715c52ddc13d7a81db344825848" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Range</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::rtree</definition>
+        <argsstring>(Range const &amp;rng, parameters_type const &amp;parameters=parameters_type(), indexable_getter const &amp;getter=indexable_getter(), value_equal const &amp;equal=value_equal(), allocator_type const &amp;allocator=allocator_type())</argsstring>
+        <name>rtree</name>
+        <param>
+          <type>Range const &amp;</type>
+          <declname>rng</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" kindref="member">parameters_type</ref> const &amp;</type>
+          <declname>parameters</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" kindref="member">parameters_type</ref>()</defval>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" kindref="member">indexable_getter</ref> const &amp;</type>
+          <declname>getter</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" kindref="member">indexable_getter</ref>()</defval>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" kindref="member">value_equal</ref> const &amp;</type>
+          <declname>equal</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" kindref="member">value_equal</ref>()</defval>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kindref="member">allocator_type</ref> const &amp;</type>
+          <declname>allocator</declname>
+          <defval><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kindref="member">allocator_type</ref>()</defval>
+        </param>
+        <briefdescription>
+<para>The constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para>The tree is created using packing algorithm.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>rng</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The range of Values. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>parameters</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The parameters object. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>getter</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object extracting Indexable from Value. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>equal</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object comparing Values. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>allocator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The allocator object.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If allocator copy constructor throws. </para></listitem>
+<listitem><para>If Value copy constructor or copy assignment throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value. </para></listitem>
+</itemizedlist>
+</para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="323" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="323" bodyend="336"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1af8db72811d2be53c409240204e63fb5a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::~rtree</definition>
+        <argsstring>()</argsstring>
+        <name>~rtree</name>
+        <briefdescription>
+<para>The destructor. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="344" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="344" bodyend="347"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a826fc3236e181ad718d5283e95d7866f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::rtree</definition>
+        <argsstring>(rtree const &amp;src)</argsstring>
+        <name>rtree</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> const &amp;</type>
+          <declname>src</declname>
+        </param>
+        <briefdescription>
+<para>The copy constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para>It uses parameters, translator and allocator from the source tree.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The rtree which content will be copied.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If allocator copy constructor throws. </para></listitem>
+<listitem><para>If Value copy constructor throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value. </para></listitem>
+</itemizedlist>
+</para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="361" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="361" bodyend="368"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a72b6b75e083eea2ed26f54d4a2265375" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::rtree</definition>
+        <argsstring>(rtree const &amp;src, allocator_type const &amp;allocator)</argsstring>
+        <name>rtree</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> const &amp;</type>
+          <declname>src</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kindref="member">allocator_type</ref> const &amp;</type>
+          <declname>allocator</declname>
+        </param>
+        <briefdescription>
+<para>The copy constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para>It uses Parameters and translator from the source tree.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The rtree which content will be copied. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>allocator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The allocator which will be used.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If allocator copy constructor throws. </para></listitem>
+<listitem><para>If Value copy constructor throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value. </para></listitem>
+</itemizedlist>
+</para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="383" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="383" bodyend="389"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1aa8b27db8cb783282ab5274e6769da26a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::rtree</definition>
+        <argsstring>(rtree &amp;&amp;src)</argsstring>
+        <name>rtree</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> &amp;&amp;</type>
+          <declname>src</declname>
+        </param>
+        <briefdescription>
+<para>The moving constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para>It uses parameters, translator and allocator from the source tree.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The rtree which content will be moved.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="401" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="401" bodyend="410"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a8508c4236d17ff39a1caef058aac8486" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::rtree</definition>
+        <argsstring>(rtree &amp;&amp;src, allocator_type const &amp;allocator)</argsstring>
+        <name>rtree</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> &amp;&amp;</type>
+          <declname>src</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kindref="member">allocator_type</ref> const &amp;</type>
+          <declname>allocator</declname>
+        </param>
+        <briefdescription>
+<para>The moving constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para>It uses parameters and translator from the source tree.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The rtree which content will be moved. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>allocator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The allocator.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If allocator copy constructor throws. </para></listitem>
+<listitem><para>If Value copy constructor throws (only if allocators aren&apos;t equal). </para></listitem>
+<listitem><para>If allocation throws or returns invalid value (only if allocators aren&apos;t equal). </para></listitem>
+</itemizedlist>
+</para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="425" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="425" bodyend="441"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1ad0db5e9e41e1553f944b7e740dbbb883" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> &amp;</type>
+        <definition>rtree&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::operator=</definition>
+        <argsstring>(rtree const &amp;src)</argsstring>
+        <name>operator=</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> const &amp;</type>
+          <declname>src</declname>
+        </param>
+        <briefdescription>
+<para>The assignment operator. </para>        </briefdescription>
+        <detaileddescription>
+<para>It uses parameters and translator from the source tree.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The rtree which content will be copied.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If Value copy constructor throws. </para></listitem>
+<listitem><para>If allocation throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value. </para></listitem>
+</itemizedlist>
+</para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="455" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="455" bodyend="479"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1af0bf9622ed3e901580b73ed39b746fb7" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> &amp;</type>
+        <definition>rtree&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::operator=</definition>
+        <argsstring>(rtree &amp;&amp;src)</argsstring>
+        <name>operator=</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> &amp;&amp;</type>
+          <declname>src</declname>
+        </param>
+        <briefdescription>
+<para>The moving assignment. </para>        </briefdescription>
+        <detaileddescription>
+<para>It uses parameters and translator from the source tree.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The rtree which content will be moved.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para>Only if allocators aren&apos;t equal. <itemizedlist>
+<listitem><para>If Value copy constructor throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value. </para></listitem>
+</itemizedlist>
+</para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="493" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="493" bodyend="531"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1aedb719dfece91d298e9ee56878524c9b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::swap</definition>
+        <argsstring>(rtree &amp;other)</argsstring>
+        <name>swap</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+<para>Swaps contents of two rtrees. </para>        </briefdescription>
+        <detaileddescription>
+<para>Parameters, translator and allocators are swapped as well.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>other</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The rtree which content will be swapped with this rtree content.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para>If allocators swap throws. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="543" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="543" bodyend="561"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1ad47980467e66b8644df18a480dbf9d86" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::insert</definition>
+        <argsstring>(value_type const &amp;value)</argsstring>
+        <name>insert</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref> const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Insert a value to the index. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The value which will be stored in the container.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If Value copy constructor or copy assignment throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value.</para></listitem>
+</itemizedlist>
+</para></simplesect>
+<simplesect kind="warning"><para>This operation only guarantees that there will be no memory leaks. After an exception is thrown the R-tree may be left in an inconsistent state, elements must not be inserted or removed. Other operations are allowed however some of them may return invalid data. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="578" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="578" bodyend="584"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a60d4c8790fd8810ff8b57f049e6bed8d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Iterator</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::insert</definition>
+        <argsstring>(Iterator first, Iterator last)</argsstring>
+        <name>insert</name>
+        <param>
+          <type>Iterator</type>
+          <declname>first</declname>
+        </param>
+        <param>
+          <type>Iterator</type>
+          <declname>last</declname>
+        </param>
+        <briefdescription>
+<para>Insert a range of values to the index. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>first</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The beginning of the range of values. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>last</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The end of the range of values.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If Value copy constructor or copy assignment throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value.</para></listitem>
+</itemizedlist>
+</para></simplesect>
+<simplesect kind="warning"><para>This operation only guarantees that there will be no memory leaks. After an exception is thrown the R-tree may be left in an inconsistent state, elements must not be inserted or removed. Other operations are allowed however some of them may return invalid data. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="603" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="603" bodyend="610"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a5db294b14ebf1319edcfc92e78c8167e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename ConvertibleOrRange</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::insert</definition>
+        <argsstring>(ConvertibleOrRange const &amp;conv_or_rng)</argsstring>
+        <name>insert</name>
+        <param>
+          <type>ConvertibleOrRange const &amp;</type>
+          <declname>conv_or_rng</declname>
+        </param>
+        <briefdescription>
+<para>Insert a value created using convertible object or a range of values to the index. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>conv_or_rng</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>An object of type convertible to value_type or a range of values.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If Value copy constructor or copy assignment throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value.</para></listitem>
+</itemizedlist>
+</para></simplesect>
+<simplesect kind="warning"><para>This operation only guarantees that there will be no memory leaks. After an exception is thrown the R-tree may be left in an inconsistent state, elements must not be inserted or removed. Other operations are allowed however some of them may return invalid data. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="628" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="628" bodyend="639"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a1ce933b0b833faec5349bfc27bde15d4" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::remove</definition>
+        <argsstring>(value_type const &amp;value)</argsstring>
+        <name>remove</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref> const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Remove a value from the container. </para>        </briefdescription>
+        <detaileddescription>
+<para>In contrast to the <computeroutput>std::set</computeroutput> or <computeroutput>std::map erase()</computeroutput> method this method removes only one value from the container.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The value which will be removed from the container.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>1 if the value was removed, 0 otherwise.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If Value copy constructor or copy assignment throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value.</para></listitem>
+</itemizedlist>
+</para></simplesect>
+<simplesect kind="warning"><para>This operation only guarantees that there will be no memory leaks. After an exception is thrown the R-tree may be left in an inconsistent state, elements must not be inserted or removed. Other operations are allowed however some of them may return invalid data. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="661" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="661" bodyend="667"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1aa97084231d17564a94f0142d095cecaa" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Iterator</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::remove</definition>
+        <argsstring>(Iterator first, Iterator last)</argsstring>
+        <name>remove</name>
+        <param>
+          <type>Iterator</type>
+          <declname>first</declname>
+        </param>
+        <param>
+          <type>Iterator</type>
+          <declname>last</declname>
+        </param>
+        <briefdescription>
+<para>Remove a range of values from the container. </para>        </briefdescription>
+        <detaileddescription>
+<para>In contrast to the <computeroutput>std::set</computeroutput> or <computeroutput>std::map erase()</computeroutput> method it doesn&apos;t take iterators pointing to values stored in this container. It removes values equal to these passed as a range. Furthermore this method removes only one value for each one passed in the range, not all equal values.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>first</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The beginning of the range of values. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>last</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The end of the range of values.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The number of removed values.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If Value copy constructor or copy assignment throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value.</para></listitem>
+</itemizedlist>
+</para></simplesect>
+<simplesect kind="warning"><para>This operation only guarantees that there will be no memory leaks. After an exception is thrown the R-tree may be left in an inconsistent state, elements must not be inserted or removed. Other operations are allowed however some of them may return invalid data. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="693" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="693" bodyend="703"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a320cd1861ba7b43364ed53e1f93a4411" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename ConvertibleOrRange</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::remove</definition>
+        <argsstring>(ConvertibleOrRange const &amp;conv_or_rng)</argsstring>
+        <name>remove</name>
+        <param>
+          <type>ConvertibleOrRange const &amp;</type>
+          <declname>conv_or_rng</declname>
+        </param>
+        <briefdescription>
+<para>Remove value corresponding to an object convertible to it or a range of values from the container. </para>        </briefdescription>
+        <detaileddescription>
+<para>In contrast to the <computeroutput>std::set</computeroutput> or <computeroutput>std::map erase()</computeroutput> method it removes values equal to these passed as a range. Furthermore, this method removes only one value for each one passed in the range, not all equal values.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>conv_or_rng</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The object of type convertible to value_type or a range of values.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The number of removed values.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para><itemizedlist>
+<listitem><para>If Value copy constructor or copy assignment throws. </para></listitem>
+<listitem><para>If allocation throws or returns invalid value.</para></listitem>
+</itemizedlist>
+</para></simplesect>
+<simplesect kind="warning"><para>This operation only guarantees that there will be no memory leaks. After an exception is thrown the R-tree may be left in an inconsistent state, elements must not be inserted or removed. Other operations are allowed however some of them may return invalid data. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="727" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="727" bodyend="738"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a7baa88eb4e7a5c640ab847513de45b3e" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Predicates</type>
+          </param>
+          <param>
+            <type>typename OutIter</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::query</definition>
+        <argsstring>(Predicates const &amp;predicates, OutIter out_it) const </argsstring>
+        <name>query</name>
+        <param>
+          <type>Predicates const &amp;</type>
+          <declname>predicates</declname>
+        </param>
+        <param>
+          <type>OutIter</type>
+          <declname>out_it</declname>
+        </param>
+        <briefdescription>
+<para>Finds values meeting passed predicates e.g. nearest to some Point and/or intersecting some Box. </para>        </briefdescription>
+        <detaileddescription>
+<para>This query function performs spatial and k-nearest neighbor searches. It allows to pass a set of predicates. Values will be returned only if all predicates are met.</para><para><bold>Spatial predicates</bold></para><para>Spatial predicates may be generated by one of the functions listed below: <itemizedlist>
+<listitem><para><computeroutput><ref refid="group__predicates_1gac52a6557110425d4ece53fbd6f9ff866" kindref="member">boost::geometry::index::contains()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="group__predicates_1ga02dbb7cca47de0b921ef96af464d9590" kindref="member">boost::geometry::index::covered_by()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="group__predicates_1ga0e92e4a20dd19185584fe85847439108" kindref="member">boost::geometry::index::covers()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="group__predicates_1ga0aa114ab16f40c8caeb3338adba5d6da" kindref="member">boost::geometry::index::disjoint()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="group__predicates_1ga78cb2ef221b951867c591ffb51b7d8c5" kindref="member">boost::geometry::index::intersects()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="group__predicates_1ga4a6d33e6f61ad5bff3bdee50a972d54b" kindref="member">boost::geometry::index::overlaps()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="group__predicates_1gaabce901b82af2aab10ebbd0dda12f4d5" kindref="member">boost::geometry::index::within()</ref></computeroutput>,</para></listitem>
+</itemizedlist>
+It is possible to negate spatial predicates: <itemizedlist>
+<listitem><para><computeroutput>! <ref refid="group__predicates_1gac52a6557110425d4ece53fbd6f9ff866" kindref="member">boost::geometry::index::contains()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput>! <ref refid="group__predicates_1ga02dbb7cca47de0b921ef96af464d9590" kindref="member">boost::geometry::index::covered_by()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput>! <ref refid="group__predicates_1ga0e92e4a20dd19185584fe85847439108" kindref="member">boost::geometry::index::covers()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput>! <ref refid="group__predicates_1ga0aa114ab16f40c8caeb3338adba5d6da" kindref="member">boost::geometry::index::disjoint()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput>! <ref refid="group__predicates_1ga78cb2ef221b951867c591ffb51b7d8c5" kindref="member">boost::geometry::index::intersects()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput>! <ref refid="group__predicates_1ga4a6d33e6f61ad5bff3bdee50a972d54b" kindref="member">boost::geometry::index::overlaps()</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput>! <ref refid="group__predicates_1gaabce901b82af2aab10ebbd0dda12f4d5" kindref="member">boost::geometry::index::within()</ref></computeroutput></para></listitem>
+</itemizedlist>
+<bold>Satisfies predicate</bold></para><para>This is a special kind of predicate which allows to pass a user-defined function or function object which checks if Value should be returned by the query. It&apos;s generated by: <itemizedlist>
+<listitem><para><computeroutput><ref refid="group__predicates_1ga3213772dd3e54ad03340c2ca66b4f58c" kindref="member">boost::geometry::index::satisfies()</ref></computeroutput>.</para></listitem>
+</itemizedlist>
+<bold>Nearest predicate</bold></para><para>If the nearest predicate is passed a k-nearest neighbor search will be performed. This query will result in returning k values to the output iterator. Only one nearest predicate may be passed to the query. It may be generated by: <itemizedlist>
+<listitem><para><computeroutput><ref refid="group__predicates_1ga8772d9d3e5b12b3292f7d94d47310e3e" kindref="member">boost::geometry::index::nearest()</ref></computeroutput>.</para></listitem>
+</itemizedlist>
+<bold>Connecting predicates</bold></para><para>Predicates may be passed together connected with <computeroutput>operator&amp;&amp;()</computeroutput>.</para><para><simplesect kind="par"><title>Example</title><para><verbatim>// return elements intersecting box
+tree.query(bgi::intersects(box), std::back_inserter(result));
+// return elements intersecting poly but not within box
+tree.query(bgi::intersects(poly) &amp;&amp; !bgi::within(box), std::back_inserter(result));
+// return elements overlapping box and meeting my_fun unary predicate
+tree.query(bgi::overlaps(box) &amp;&amp; bgi::satisfies(my_fun), std::back_inserter(result));
+// return 5 elements nearest to pt and elements are intersecting box
+tree.query(bgi::nearest(pt, 5) &amp;&amp; bgi::intersects(box), std::back_inserter(result));
+
+// For each found value do_something (it is a type of function object)
+tree.query(bgi::intersects(box),
+           boost::make_function_output_iterator(do_something()));
+
+// For each value stored in the rtree do_something
+// always_true is a type of function object always returning true
+tree.query(bgi::satisfies(always_true()),
+           boost::make_function_output_iterator(do_something()));
+
+// C++11 (lambda expression)
+tree.query(bgi::intersects(box),
+           boost::make_function_output_iterator([](value_type const&amp; val){
+               // do something
+           }));
+
+// C++14 (generic lambda expression)
+tree.query(bgi::intersects(box),
+           boost::make_function_output_iterator([](auto const&amp; val){
+               // do something
+           }));
+</verbatim></para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>If Value copy constructor or copy assignment throws. If predicates copy throws.</para></simplesect>
+<simplesect kind="warning"><para>Only one <computeroutput><ref refid="group__predicates_1ga8772d9d3e5b12b3292f7d94d47310e3e" kindref="member">nearest()</ref></computeroutput> perdicate may be passed to the query. Passing more of them results in compile-time error.</para></simplesect>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>predicates</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Predicates. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>out_it</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The output iterator, e.g. generated by std::back_inserter().</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The number of values found. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="829" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="829" bodyend="839"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a63d15f3b5b157a47045fcac3fec3b7a0" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Predicates</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad144a7704ad878caaa84cda79b140855" kindref="member">const_query_iterator</ref></type>
+        <definition>const_query_iterator boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::qbegin</definition>
+        <argsstring>(Predicates const &amp;predicates) const </argsstring>
+        <name>qbegin</name>
+        <param>
+          <type>Predicates const &amp;</type>
+          <declname>predicates</declname>
+        </param>
+        <briefdescription>
+<para>Returns a query iterator pointing at the begin of the query range. </para>        </briefdescription>
+        <detaileddescription>
+<para>This method returns an iterator which may be used to perform iterative queries. For the information about predicates which may be passed to this method see <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a7baa88eb4e7a5c640ab847513de45b3e" kindref="member">query()</ref>.</para><para><simplesect kind="par"><title>Example</title><para><verbatim>for ( Rtree::const_query_iterator it = tree.qbegin(bgi::nearest(pt, 10000)) ;
+      it != tree.qend() ; ++it )
+{
+    // do something with value
+    if ( has_enough_nearest_values() )
+        break;
+}
+
+// C++11 (auto)
+for ( auto it = tree.qbegin(bgi::nearest(pt, 3)) ; it != tree.qend() ; ++it )
+{
+    // do something with value
+}
+
+// C++14 (generic lambda expression)
+std::for_each(tree.qbegin(bgi::nearest(pt, 3)), tree.qend(), [](auto const&amp; val){
+    // do something with value
+});
+</verbatim></para></simplesect>
+<simplesect kind="par"><title>Iterator category</title><para>ForwardIterator</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>If predicates copy throws. If allocation throws.</para></simplesect>
+<simplesect kind="warning"><para>The modification of the rtree may invalidate the iterators.</para></simplesect>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>predicates</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Predicates.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The iterator pointing at the begin of the query range. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="884" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="884" bodyend="887"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1af3b16f4732fa8113c0b2187005182513" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad144a7704ad878caaa84cda79b140855" kindref="member">const_query_iterator</ref></type>
+        <definition>const_query_iterator boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::qend</definition>
+        <argsstring>() const </argsstring>
+        <name>qend</name>
+        <briefdescription>
+<para>Returns a query iterator pointing at the end of the query range. </para>        </briefdescription>
+        <detaileddescription>
+<para>This method returns an iterator which may be used to check if the query has ended.</para><para><simplesect kind="par"><title>Example</title><para><verbatim>for ( Rtree::const_query_iterator it = tree.qbegin(bgi::nearest(pt, 10000)) ;
+      it != tree.qend() ; ++it )
+{
+    // do something with value
+    if ( has_enough_nearest_values() )
+        break;
+}
+
+// C++11 (auto)
+for ( auto it = tree.qbegin(bgi::nearest(pt, 3)) ; it != tree.qend() ; ++it )
+{
+    // do something with value
+}
+
+// C++14 (generic lambda expression)
+std::for_each(tree.qbegin(bgi::nearest(pt, 3)), tree.qend(), [](auto const&amp; val){
+    // do something with value
+});
+</verbatim></para></simplesect>
+<simplesect kind="par"><title>Iterator category</title><para>ForwardIterator</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing</para></simplesect>
+<simplesect kind="warning"><para>The modification of the rtree may invalidate the iterators.</para></simplesect>
+<simplesect kind="return"><para>The iterator pointing at the end of the query range. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="927" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="927" bodyend="930"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a23219a7705ac491862c67be8baa34f0d" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a701f65f0d6cf2e8b7be7f1c4b8fb7fde" kindref="member">const_iterator</ref></type>
+        <definition>const_iterator boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::begin</definition>
+        <argsstring>() const </argsstring>
+        <name>begin</name>
+        <briefdescription>
+<para>Returns the iterator pointing at the begin of the rtree values range. </para>        </briefdescription>
+        <detaileddescription>
+<para>This method returns the iterator which may be used to iterate over all values stored in the rtree.</para><para><simplesect kind="par"><title>Example</title><para><verbatim>// Copy all values into the vector
+std::copy(tree.begin(), tree.end(), std::back_inserter(vec));
+
+for ( Rtree::const_iterator it = tree.begin() ; it != tree.end() ; ++it )
+{
+    // do something with value
+}
+
+// C++11 (auto)
+for ( auto it = tree.begin() ; it != tree.end() ; ++it )
+{
+    // do something with value
+}
+
+// C++14 (generic lambda expression)
+std::for_each(tree.begin(), tree.end(), [](auto const&amp; val){
+    // do something with value
+})
+</verbatim></para></simplesect>
+<simplesect kind="par"><title>Iterator category</title><para>ForwardIterator</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>If allocation throws.</para></simplesect>
+<simplesect kind="warning"><para>The modification of the rtree may invalidate the iterators.</para></simplesect>
+<simplesect kind="return"><para>The iterator pointing at the begin of the range. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1171" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1171" bodyend="1177"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a513f1bd9dfcd022acb208e62115b29b1" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a701f65f0d6cf2e8b7be7f1c4b8fb7fde" kindref="member">const_iterator</ref></type>
+        <definition>const_iterator boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::end</definition>
+        <argsstring>() const </argsstring>
+        <name>end</name>
+        <briefdescription>
+<para>Returns the iterator pointing at the end of the rtree values range. </para>        </briefdescription>
+        <detaileddescription>
+<para>This method returns the iterator which may be compared with the iterator returned by <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a23219a7705ac491862c67be8baa34f0d" kindref="member">begin()</ref> in order to check if the iteration has ended.</para><para><simplesect kind="par"><title>Example</title><para><verbatim>for ( Rtree::const_iterator it = tree.begin() ; it != tree.end() ; ++it )
+{
+    // do something with value
+}
+
+// C++11 (lambda expression)
+std::for_each(tree.begin(), tree.end(), [](value_type const&amp; val){
+    // do something with value
+})
+</verbatim></para></simplesect>
+<simplesect kind="par"><title>Iterator category</title><para>ForwardIterator</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing.</para></simplesect>
+<simplesect kind="warning"><para>The modification of the rtree may invalidate the iterators.</para></simplesect>
+<simplesect kind="return"><para>The iterator pointing at the end of the range. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1209" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1209" bodyend="1212"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1ac9f152c8c96525e3735b81635d8171b1" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::size</definition>
+        <argsstring>() const </argsstring>
+        <name>size</name>
+        <briefdescription>
+<para>Returns the number of stored values. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>The number of stored values.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1222" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1222" bodyend="1225"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1aa5302ce1c26105d722aac20793e83f0e" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::empty</definition>
+        <argsstring>() const </argsstring>
+        <name>empty</name>
+        <briefdescription>
+<para>Query if the container is empty. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>true if the container is empty.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1235" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1235" bodyend="1238"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a1bec40977c175983f585c4488cf8fe3c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::clear</definition>
+        <argsstring>()</argsstring>
+        <name>clear</name>
+        <briefdescription>
+<para>Removes all values stored in the container. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1246" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1246" bodyend="1249"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a0dad06d0f117f45ed54b5c123cb41d6e" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a12e80f9da4c68e0e687f1c2012321147" kindref="member">bounds_type</ref></type>
+        <definition>bounds_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::bounds</definition>
+        <argsstring>() const </argsstring>
+        <name>bounds</name>
+        <briefdescription>
+<para>Returns the box able to contain all values stored in the container. </para>        </briefdescription>
+        <detaileddescription>
+<para>Returns the box able to contain all values stored in the container. If the container is empty the result of <computeroutput>geometry::assign_inverse()</computeroutput> is returned.</para><para><simplesect kind="return"><para>The box able to contain all values stored in the container or an invalid box if there are no values in the container.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1263" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1263" bodyend="1277"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1aaa834c241c191ac9de67f134564f36fa" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename ValueOrIndexable</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::count</definition>
+        <argsstring>(ValueOrIndexable const &amp;vori) const </argsstring>
+        <name>count</name>
+        <param>
+          <type>ValueOrIndexable const &amp;</type>
+          <declname>vori</declname>
+        </param>
+        <briefdescription>
+<para>Count Values or Indexables stored in the container. </para>        </briefdescription>
+        <detaileddescription>
+<para>For indexable_type it returns the number of values which indexables equals the parameter. For value_type it returns the number of values which equals the parameter.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>vori</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The value or indexable which will be counted.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The number of values found.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1293" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1293" bodyend="1328"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a9076baef90a3a9c6018871fa25115a73" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" kindref="member">parameters_type</ref></type>
+        <definition>parameters_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::parameters</definition>
+        <argsstring>() const </argsstring>
+        <name>parameters</name>
+        <briefdescription>
+<para>Returns parameters. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>The parameters object.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1338" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1338" bodyend="1341"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1af391fd642a218c5fb10fc68d643a62b5" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" kindref="member">indexable_getter</ref></type>
+        <definition>indexable_getter boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::indexable_get</definition>
+        <argsstring>() const </argsstring>
+        <name>indexable_get</name>
+        <briefdescription>
+<para>Returns function retrieving Indexable from Value. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>The indexable_getter object.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1351" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1351" bodyend="1354"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a16424563d0973960ac01f7a1969eeebe" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" kindref="member">value_equal</ref></type>
+        <definition>value_equal boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::value_eq</definition>
+        <argsstring>() const </argsstring>
+        <name>value_eq</name>
+        <briefdescription>
+<para>Returns function comparing Values. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>The value_equal function.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1364" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1364" bodyend="1367"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a17d9cef211feb7f674a5b4602f4cc81e" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" kindref="member">allocator_type</ref></type>
+        <definition>allocator_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::get_allocator</definition>
+        <argsstring>() const </argsstring>
+        <name>get_allocator</name>
+        <briefdescription>
+<para>Returns allocator used by the rtree. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>The allocator.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>If allocator copy constructor throws. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1377" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1377" bodyend="1380"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1aaa5f00d72591322a8675cbb0136a028c" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Predicates</type>
+          </param>
+        </templateparamlist>
+        <type>boost::mpl::if_c&lt; detail::predicates_count_distance&lt; Predicates &gt;::value==0, detail::rtree::iterators::spatial_query_iterator&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, options_type, translator_type, box_type, allocators_type, Predicates &gt;, detail::rtree::iterators::distance_query_iterator&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, options_type, translator_type, box_type, allocators_type, Predicates, detail::predicates_find_distance&lt; Predicates &gt;::value &gt; &gt;::type</type>
+        <definition>boost::mpl::if_c&lt; detail::predicates_count_distance&lt;Predicates&gt;::value == 0, detail::rtree::iterators::spatial_query_iterator&lt;value_type, options_type, translator_type, box_type, allocators_type, Predicates&gt;, detail::rtree::iterators::distance_query_iterator&lt; value_type, options_type, translator_type, box_type, allocators_type, Predicates, detail::predicates_find_distance&lt;Predicates&gt;::value &gt; &gt;::type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::qbegin_</definition>
+        <argsstring>(Predicates const &amp;predicates) const </argsstring>
+        <name>qbegin_</name>
+        <param>
+          <type>Predicates const &amp;</type>
+          <declname>predicates</declname>
+        </param>
+        <briefdescription>
+<para>Returns a query iterator pointing at the begin of the query range. </para>        </briefdescription>
+        <detaileddescription>
+<para>This method returns an iterator which may be used to perform iterative queries. For the information about predicates which may be passed to this method see <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a7baa88eb4e7a5c640ab847513de45b3e" kindref="member">query()</ref>.</para><para>The type of the returned iterator depends on the type of passed Predicates but the iterator of this type may be assigned to the variable of const_query_iterator type. If you&apos;d like to use the type of the iterator returned by this method you may get the type e.g. by using C++11 decltype or Boost.Typeof library. This iterator may be compared with iterators returned by both versions of <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1af3b16f4732fa8113c0b2187005182513" kindref="member">qend()</ref> method.</para><para><simplesect kind="par"><title>Example</title><para><verbatim>// Store the result in the container using std::copy() - it requires both iterators of the same type
+std::copy(tree.qbegin_(bgi::intersects(box)), tree.qend_(bgi::intersects(box)), std::back_inserter(result));
+
+// Store the result in the container using std::copy() and type-erased iterators
+Rtree::const_query_iterator first = tree.qbegin_(bgi::intersects(box));
+Rtree::const_query_iterator last = tree.qend_();
+std::copy(first, last, std::back_inserter(result));
+
+// Boost.Typeof
+typedef BOOST_TYPEOF(tree.qbegin(bgi::nearest(pt, 10000))) Iter;
+for ( Iter it = tree.qbegin_(bgi::nearest(pt, 10000)) ; it != tree.qend_() ; ++it )
+{
+    // do something with value
+    if ( has_enough_nearest_values() )
+        break;
+}
+
+// C++11 (auto)
+for ( auto it = tree.qbegin_(bgi::nearest(pt, 10000)) ; it != tree.qend_() ; ++it )
+{
+    // do something with value
+    if ( has_enough_nearest_values() )
+        break;
+}
+</verbatim></para></simplesect>
+<simplesect kind="par"><title>Iterator category</title><para>ForwardIterator</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>If predicates copy throws. If allocation throws.</para></simplesect>
+<simplesect kind="warning"><para>The modification of the rtree may invalidate the iterators.</para></simplesect>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>predicates</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Predicates.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The iterator pointing at the begin of the query range. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="997" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="997" bodyend="1015"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a2dadc011f8051f812d7bb81bbffed4a3" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Predicates</type>
+          </param>
+        </templateparamlist>
+        <type>boost::mpl::if_c&lt; detail::predicates_count_distance&lt; Predicates &gt;::value==0, detail::rtree::iterators::spatial_query_iterator&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, options_type, translator_type, box_type, allocators_type, Predicates &gt;, detail::rtree::iterators::distance_query_iterator&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, options_type, translator_type, box_type, allocators_type, Predicates, detail::predicates_find_distance&lt; Predicates &gt;::value &gt; &gt;::type</type>
+        <definition>boost::mpl::if_c&lt; detail::predicates_count_distance&lt;Predicates&gt;::value == 0, detail::rtree::iterators::spatial_query_iterator&lt;value_type, options_type, translator_type, box_type, allocators_type, Predicates&gt;, detail::rtree::iterators::distance_query_iterator&lt; value_type, options_type, translator_type, box_type, allocators_type, Predicates, detail::predicates_find_distance&lt;Predicates&gt;::value &gt; &gt;::type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::qend_</definition>
+        <argsstring>(Predicates const &amp;predicates) const </argsstring>
+        <name>qend_</name>
+        <param>
+          <type>Predicates const &amp;</type>
+          <declname>predicates</declname>
+        </param>
+        <briefdescription>
+<para>Returns the query iterator pointing at the end of the query range. </para>        </briefdescription>
+        <detaileddescription>
+<para>This method returns the iterator which may be used to perform iterative queries. For the information about the predicates which may be passed to this method see <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a7baa88eb4e7a5c640ab847513de45b3e" kindref="member">query()</ref>.</para><para>The type of the returned iterator depends on the type of passed Predicates but the iterator of this type may be assigned to the variable of const_query_iterator type. If you&apos;d like to use the type of the iterator returned by this method you may get the type e.g. by using C++11 decltype or Boost.Typeof library.</para><para>The type of the iterator returned by this method is the same as the one returned by <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a63d15f3b5b157a47045fcac3fec3b7a0" kindref="member">qbegin()</ref> to which the same predicates were passed.</para><para><simplesect kind="par"><title>Example</title><para><verbatim>// Store the result in the container using std::copy() - it requires both iterators of the same type
+std::copy(tree.qbegin_(bgi::intersects(box)), tree.qend_(bgi::intersects(box)), std::back_inserter(result));
+</verbatim></para></simplesect>
+<simplesect kind="par"><title>Iterator category</title><para>ForwardIterator</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>If predicates copy throws.</para></simplesect>
+<simplesect kind="warning"><para>The modification of the rtree may invalidate the iterators.</para></simplesect>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>predicates</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Predicates.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The iterator pointing at the end of the query range. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1058" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1058" bodyend="1073"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a034f29dc509db845ac798f63daae071d" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>detail::rtree::iterators::end_query_iterator&lt; <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref>, allocators_type &gt;</type>
+        <definition>detail::rtree::iterators::end_query_iterator&lt;value_type, allocators_type&gt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::qend_</definition>
+        <argsstring>() const </argsstring>
+        <name>qend_</name>
+        <briefdescription>
+<para>Returns the query iterator pointing at the end of the query range. </para>        </briefdescription>
+        <detaileddescription>
+<para>This method returns the iterator which may be compared with the iterator returned by <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a63d15f3b5b157a47045fcac3fec3b7a0" kindref="member">qbegin()</ref> in order to check if the query has ended.</para><para>The type of the returned iterator is different than the type returned by <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a63d15f3b5b157a47045fcac3fec3b7a0" kindref="member">qbegin()</ref> but the iterator of this type may be assigned to the variable of const_query_iterator type. If you&apos;d like to use the type of the iterator returned by this method, which most certainly will be faster than the type-erased iterator, you may get the type e.g. by using C++11 decltype or Boost.Typeof library.</para><para>The type of the iterator returned by this method is dfferent than the type returned by <ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a63d15f3b5b157a47045fcac3fec3b7a0" kindref="member">qbegin()</ref>.</para><para><simplesect kind="par"><title>Example</title><para><verbatim>// Store the result in the container using std::copy() and type-erased iterators
+Rtree::const_query_iterator first = tree.qbegin_(bgi::intersects(box));
+Rtree::const_query_iterator last = tree.qend_();
+std::copy(first, last, std::back_inserter(result));
+
+// Boost.Typeof
+typedef BOOST_TYPEOF(tree.qbegin(bgi::nearest(pt, 10000))) Iter;
+for ( Iter it = tree.qbegin_(bgi::nearest(pt, 10000)) ; it != tree.qend_() ; ++it )
+{
+    // do something with value
+    if ( has_enough_nearest_values() )
+        break;
+}
+
+// C++11 (auto)
+for ( auto it = tree.qbegin_(bgi::nearest(pt, 10000)) ; it != tree.qend_() ; ++it )
+{
+    // do something with value
+    if ( has_enough_nearest_values() )
+        break;
+}
+</verbatim></para></simplesect>
+<simplesect kind="par"><title>Iterator category</title><para>ForwardIterator</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing</para></simplesect>
+<simplesect kind="warning"><para>The modification of the rtree may invalidate the iterators.</para></simplesect>
+<simplesect kind="return"><para>The iterator pointing at the end of the query range. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1125" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1125" bodyend="1128"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a87046ed7c96647c69f8d75de5adc8d76" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>translator_type</type>
+        <definition>translator_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::translator</definition>
+        <argsstring>() const </argsstring>
+        <name>translator</name>
+        <briefdescription>
+<para>Returns the translator object. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>The translator object.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1392" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1392" bodyend="1395"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a3c1db7f535737a58679d8e792061c186" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Visitor</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::apply_visitor</definition>
+        <argsstring>(Visitor &amp;visitor) const </argsstring>
+        <name>apply_visitor</name>
+        <param>
+          <type>Visitor &amp;</type>
+          <declname>visitor</declname>
+        </param>
+        <briefdescription>
+<para>Apply a visitor to the nodes structure in order to perform some operator. </para>        </briefdescription>
+        <detaileddescription>
+<para>This function is not a part of the &apos;official&apos; interface. However it makes possible e.g. to pass a visitor drawing the tree structure.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>visitor</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The visitor object.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Throws</title><para>If Visitor::operator() throws. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1409" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1409" bodyend="1413"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1ad91d5e7416b0c72ffa6ab69c879a4ede" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::depth</definition>
+        <argsstring>() const </argsstring>
+        <name>depth</name>
+        <briefdescription>
+<para>Returns the depth of the R-tree. </para>        </briefdescription>
+        <detaileddescription>
+<para>This function is not a part of the &apos;official&apos; interface.</para><para><simplesect kind="return"><para>The depth of the R-tree.</para></simplesect>
+<simplesect kind="par"><title>Throws</title><para>Nothing. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1425" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1425" bodyend="1428"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1ae2a3b7b3d3072ffe84050e80fb921578" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::raw_insert</definition>
+        <argsstring>(value_type const &amp;value)</argsstring>
+        <name>raw_insert</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref> const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Insert a value to the index. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="pre"><para>Root node must exist - m_root != 0.</para></simplesect>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The value which will be stored in the container.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Exception-safety</title><para>basic </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1442" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1442" bodyend="1464"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a26abf079e0206a85a54504b25b0b5329" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::raw_remove</definition>
+        <argsstring>(value_type const &amp;value)</argsstring>
+        <name>raw_remove</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" kindref="member">value_type</ref> const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Remove the value from the container. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The value which will be removed from the container.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Exception-safety</title><para>basic </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1474" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1474" bodyend="1498"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a5a638d6bdbf89fae4fb6468aa7c03cd3" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::raw_create</definition>
+        <argsstring>()</argsstring>
+        <name>raw_create</name>
+        <briefdescription>
+<para>Create an empty R-tree i.e. new empty root node and clear other attributes. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="par"><title>Exception-safety</title><para>strong </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1506" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1506" bodyend="1513"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a08b36c40bfbe841d8d3061068f3baafa" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::raw_destroy</definition>
+        <argsstring>(rtree &amp;t)</argsstring>
+        <name>raw_destroy</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> &amp;</type>
+          <declname>t</declname>
+        </param>
+        <briefdescription>
+<para>Destroy the R-tree i.e. all nodes and clear attributes. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>t</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The container which is going to be destroyed.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Exception-safety</title><para>nothrow </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1523" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1523" bodyend="1535"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a3caca679e5a8666f0c6bbf2fd85834f6" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::raw_copy</definition>
+        <argsstring>(rtree const &amp;src, rtree &amp;dst, bool copy_tr_and_params) const </argsstring>
+        <name>raw_copy</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> const &amp;</type>
+          <declname>src</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree" kindref="compound">rtree</ref> &amp;</type>
+          <declname>dst</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>copy_tr_and_params</declname>
+        </param>
+        <briefdescription>
+<para>Copy the R-tree i.e. whole nodes structure, values and other attributes. It uses destination&apos;s allocators to create the new structure. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The source R-tree. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>dst</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The destination R-tree. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>copy_tr_and_params</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>If true, translator and parameters will also be copied.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Exception-safety</title><para>strong </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1548" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1548" bodyend="1575"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a87ec74e61941db57f918874898f9fadb" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename ValueConvertible</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::insert_dispatch</definition>
+        <argsstring>(ValueConvertible const &amp;val_conv, boost::mpl::bool_&lt; true &gt; const &amp;)</argsstring>
+        <name>insert_dispatch</name>
+        <param>
+          <type>ValueConvertible const &amp;</type>
+          <declname>val_conv</declname>
+        </param>
+        <param>
+          <type>boost::mpl::bool_&lt; true &gt; const &amp;</type>
+        </param>
+        <briefdescription>
+<para>Insert a value corresponding to convertible object into the index. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>val_conv</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The object convertible to value.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Exception-safety</title><para>basic </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1586" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1586" bodyend="1590"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1aea5bccf7dba972d1f5bef98234bc35c2" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Range</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::insert_dispatch</definition>
+        <argsstring>(Range const &amp;rng, boost::mpl::bool_&lt; false &gt; const &amp;)</argsstring>
+        <name>insert_dispatch</name>
+        <param>
+          <type>Range const &amp;</type>
+          <declname>rng</declname>
+        </param>
+        <param>
+          <type>boost::mpl::bool_&lt; false &gt; const &amp;</type>
+        </param>
+        <briefdescription>
+<para>Insert a range of values into the index. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>rng</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The range of values.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Exception-safety</title><para>basic </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1601" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1601" bodyend="1611"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1afe790f9ceee3c658cd984356e853215b" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename ValueConvertible</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::remove_dispatch</definition>
+        <argsstring>(ValueConvertible const &amp;val_conv, boost::mpl::bool_&lt; true &gt; const &amp;)</argsstring>
+        <name>remove_dispatch</name>
+        <param>
+          <type>ValueConvertible const &amp;</type>
+          <declname>val_conv</declname>
+        </param>
+        <param>
+          <type>boost::mpl::bool_&lt; true &gt; const &amp;</type>
+        </param>
+        <briefdescription>
+<para>Remove a value corresponding to convertible object from the index. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>val_conv</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The object convertible to value.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Exception-safety</title><para>basic </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1622" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1622" bodyend="1626"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1ae2850f6421dfd0034565d5ec8ddf4644" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Range</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::remove_dispatch</definition>
+        <argsstring>(Range const &amp;rng, boost::mpl::bool_&lt; false &gt; const &amp;)</argsstring>
+        <name>remove_dispatch</name>
+        <param>
+          <type>Range const &amp;</type>
+          <declname>rng</declname>
+        </param>
+        <param>
+          <type>boost::mpl::bool_&lt; false &gt; const &amp;</type>
+        </param>
+        <briefdescription>
+<para>Remove a range of values from the index. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>rng</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The range of values which will be removed from the container.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Exception-safety</title><para>basic </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1637" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1637" bodyend="1649"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1aaccf7698b52dcf1542c9dca42fa441c4" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Predicates</type>
+          </param>
+          <param>
+            <type>typename OutIter</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::query_dispatch</definition>
+        <argsstring>(Predicates const &amp;predicates, OutIter out_it, boost::mpl::bool_&lt; false &gt; const &amp;) const </argsstring>
+        <name>query_dispatch</name>
+        <param>
+          <type>Predicates const &amp;</type>
+          <declname>predicates</declname>
+        </param>
+        <param>
+          <type>OutIter</type>
+          <declname>out_it</declname>
+        </param>
+        <param>
+          <type>boost::mpl::bool_&lt; false &gt; const &amp;</type>
+        </param>
+        <briefdescription>
+<para>Return values meeting predicates. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="par"><title>Exception-safety</title><para>strong </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1658" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1658" bodyend="1666"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1ad5fdcc1561738afdb8f7eebf09d5ba76" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Predicates</type>
+          </param>
+          <param>
+            <type>typename OutIter</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::query_dispatch</definition>
+        <argsstring>(Predicates const &amp;predicates, OutIter out_it, boost::mpl::bool_&lt; true &gt; const &amp;) const </argsstring>
+        <name>query_dispatch</name>
+        <param>
+          <type>Predicates const &amp;</type>
+          <declname>predicates</declname>
+        </param>
+        <param>
+          <type>OutIter</type>
+          <declname>out_it</declname>
+        </param>
+        <param>
+          <type>boost::mpl::bool_&lt; true &gt; const &amp;</type>
+        </param>
+        <briefdescription>
+<para>Perform nearest neighbour search. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="par"><title>Exception-safety</title><para>strong </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1675" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1675" bodyend="1694"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1rtree_1a51dfe21d383cd6cfe51417c95725f7f7" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename ValueOrIndexable</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::raw_count</definition>
+        <argsstring>(ValueOrIndexable const &amp;vori) const </argsstring>
+        <name>raw_count</name>
+        <param>
+          <type>ValueOrIndexable const &amp;</type>
+          <declname>vori</declname>
+        </param>
+        <briefdescription>
+<para>Count elements corresponding to value or indexable. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="par"><title>Exception-safety</title><para>strong </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1703" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1703" bodyend="1720"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>The R-tree spatial index. </para>    </briefdescription>
+    <detaileddescription>
+<para>This is self-balancing spatial index capable to store various types of Values and balancing algorithms.</para><para><simplesect kind="par"><title>Parameters</title><para>The user must pass a type defining the Parameters which will be used in rtree creation process. This type is used e.g. to specify balancing algorithm with specific parameters like min and max number of elements in node.</para></simplesect>
+<simplesect kind="par"><title></title><para>Predefined algorithms with compile-time parameters are: <itemizedlist>
+<listitem><para><computeroutput><ref refid="structboost_1_1geometry_1_1index_1_1linear" kindref="compound">boost::geometry::index::linear</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="structboost_1_1geometry_1_1index_1_1quadratic" kindref="compound">boost::geometry::index::quadratic</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="structboost_1_1geometry_1_1index_1_1rstar" kindref="compound">boost::geometry::index::rstar</ref></computeroutput>.</para></listitem>
+</itemizedlist>
+</para></simplesect>
+<simplesect kind="par"><title></title><para>Predefined algorithms with run-time parameters are: <itemizedlist>
+<listitem><para><computeroutput><ref refid="classboost_1_1geometry_1_1index_1_1dynamic__linear" kindref="compound">boost::geometry::index::dynamic_linear</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic" kindref="compound">boost::geometry::index::dynamic_quadratic</ref></computeroutput>, </para></listitem>
+<listitem><para><computeroutput><ref refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar" kindref="compound">boost::geometry::index::dynamic_rstar</ref></computeroutput>.</para></listitem>
+</itemizedlist>
+</para></simplesect>
+<simplesect kind="par"><title>IndexableGetter</title><para>The object of IndexableGetter type translates from Value to Indexable each time r-tree requires it. This means that this operation is done for each Value access. Therefore the IndexableGetter should return the Indexable by a reference type. The Indexable should not be calculated since it could harm the performance. The default IndexableGetter can translate all types adapted to Point, Box or Segment concepts (called Indexables). Furthermore, it can handle <computeroutput>std::pair&lt;Indexable, T&gt;</computeroutput>, <computeroutput>boost::tuple&lt;Indexable, ...&gt;</computeroutput> and <computeroutput>std::tuple&lt;Indexable, ...&gt;</computeroutput> when possible. For example, for Value of type <computeroutput>std::pair&lt;Box, int&gt;</computeroutput>, the default IndexableGetter translates from <computeroutput>std::pair&lt;Box, int&gt; const&amp;</computeroutput> to <computeroutput>Box const&amp;</computeroutput>.</para></simplesect>
+<simplesect kind="par"><title>EqualTo</title><para>The object of EqualTo type compares Values and returns <computeroutput>true</computeroutput> if they are equal. It&apos;s similar to <computeroutput>std::equal_to&lt;&gt;</computeroutput>. The default EqualTo returns the result of <computeroutput>boost::geometry::equals()</computeroutput> for types adapted to some Geometry concept defined in Boost.Geometry and the result of <computeroutput>operator==</computeroutput> for other types. Components of Pairs and Tuples are compared left-to-right.</para></simplesect>
+<parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The type of objects stored in the container. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Parameters</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Compile-time parameters. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>IndexableGetter</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object extracting Indexable from Value. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>EqualTo</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The function object comparing objects of type Value. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Allocator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The allocator used to allocate/deallocate memory, construct/destroy nodes and Values. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="156" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="155" bodyend="1774"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aa9dc5d830362e77b6de638f676285e1a" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>allocator_traits_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ab6618b5c7e88ed70533233fbac0f5b2e" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>allocator_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a1376189d019e031652df06290992cf0a" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>allocators_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a3c1db7f535737a58679d8e792061c186" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>apply_visitor</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a23219a7705ac491862c67be8baa34f0d" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>begin</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a0dad06d0f117f45ed54b5c123cb41d6e" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>bounds</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a12e80f9da4c68e0e687f1c2012321147" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>bounds_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1acf9b7d882c6a636b39af2f0d262ab54b" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>box_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a1bec40977c175983f585c4488cf8fe3c" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>clear</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a701f65f0d6cf2e8b7be7f1c4b8fb7fde" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>const_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1abad30462044d5d8fb607c24a05e8c9c2" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>const_pointer</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad144a7704ad878caaa84cda79b140855" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>const_query_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a615e622930be97ab1f3b8ceee641feaf" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>const_reference</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aaa834c241c191ac9de67f134564f36fa" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>count</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad91d5e7416b0c72ffa6ab69c879a4ede" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>depth</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a28393873e6c248e3af569ceff95c7fd5" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>detail::rtree::utilities::view&lt; rtree &gt;</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ac256168e9371a070515fc61f29c691ed" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>difference_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aa5302ce1c26105d722aac20793e83f0e" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>empty</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a513f1bd9dfcd022acb208e62115b29b1" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>end</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a17d9cef211feb7f674a5b4602f4cc81e" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>get_allocator</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1af391fd642a218c5fb10fc68d643a62b5" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>indexable_get</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a43a7adb311cafc08e23010ccb4e97fb5" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>indexable_getter</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a28e88e55d260a454688fe1bd5e5af96b" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>indexable_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad47980467e66b8644df18a480dbf9d86" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>insert</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a60d4c8790fd8810ff8b57f049e6bed8d" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>insert</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a5db294b14ebf1319edcfc92e78c8167e" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>insert</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a87ec74e61941db57f918874898f9fadb" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>insert_dispatch</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aea5bccf7dba972d1f5bef98234bc35c2" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>insert_dispatch</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a868d2270e32fb91daf1308d33db11cee" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>internal_node</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a8e091464e1ff8a0264c5ffb72419ea4d" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>leaf</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aed6afa99c9a2922bda52b4345f3949f3" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>m_members</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a8fd02414dda5f4dd246ba35d4213115c" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>node</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1adc98bac42f71145e64c4ca711aeee3c4" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>node_pointer</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a3f48e5da98a8e1cf1289928d1d923152" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>node_tag</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad0db5e9e41e1553f944b7e740dbbb883" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>operator=</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1af0bf9622ed3e901580b73ed39b746fb7" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>operator=</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a6fb844a6a428b99e7e60d56f7af432c8" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>options_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a9076baef90a3a9c6018871fa25115a73" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>parameters</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a80db5532eb59f7a809bd44ded265eb17" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>parameters_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a762ced6b98d2cc6503e2b00549c6a89a" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>pointer</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a63d15f3b5b157a47045fcac3fec3b7a0" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>qbegin</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aaa5f00d72591322a8675cbb0136a028c" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>qbegin_</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1af3b16f4732fa8113c0b2187005182513" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>qend</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a2dadc011f8051f812d7bb81bbffed4a3" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>qend_</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a034f29dc509db845ac798f63daae071d" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>qend_</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a7baa88eb4e7a5c640ab847513de45b3e" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>query</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aaccf7698b52dcf1542c9dca42fa441c4" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>query_dispatch</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad5fdcc1561738afdb8f7eebf09d5ba76" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>query_dispatch</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a3caca679e5a8666f0c6bbf2fd85834f6" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>raw_copy</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a51dfe21d383cd6cfe51417c95725f7f7" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>raw_count</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a5a638d6bdbf89fae4fb6468aa7c03cd3" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>raw_create</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a08b36c40bfbe841d8d3061068f3baafa" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>raw_destroy</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ae2a3b7b3d3072ffe84050e80fb921578" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>raw_insert</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a26abf079e0206a85a54504b25b0b5329" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>raw_remove</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a5301c3d7ee3589751579e0573a9e8165" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>reference</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a1ce933b0b833faec5349bfc27bde15d4" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>remove</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aa97084231d17564a94f0142d095cecaa" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>remove</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a320cd1861ba7b43364ed53e1f93a4411" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>remove</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1afe790f9ceee3c658cd984356e853215b" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>remove_dispatch</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ae2850f6421dfd0034565d5ec8ddf4644" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>remove_dispatch</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a55d5fd5d205df08db5267253689ccf0c" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>rtree</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a1a6b696d4855cbf1866196fe058c3a87" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>rtree</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a037f17d8a1dfa4a818ff471dec61c912" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>rtree</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a7b96b715c52ddc13d7a81db344825848" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>rtree</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a826fc3236e181ad718d5283e95d7866f" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>rtree</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a72b6b75e083eea2ed26f54d4a2265375" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>rtree</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aa8b27db8cb783282ab5274e6769da26a" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>rtree</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a8508c4236d17ff39a1caef058aac8486" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>rtree</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ac9f152c8c96525e3735b81635d8171b1" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>size</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>size_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a9e5026a4c2b01c5e99919ce1fa2e9a9c" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>subtree_destroyer</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1aedb719dfece91d298e9ee56878524c9b" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>swap</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a87046ed7c96647c69f8d75de5adc8d76" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>translator</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a2c212d76f2fc484f38d3d8d635bcc9f5" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>translator_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a16424563d0973960ac01f7a1969eeebe" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>value_eq</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1ad8fe544de514014a1bd87ea1b881ff9b" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>value_equal</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1a5761a41d87b93d4fd548ecb6600ae757" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>value_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1rtree_1af8db72811d2be53c409240204e63fb5a" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree</scope><name>~rtree</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

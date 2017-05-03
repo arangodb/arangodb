@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, window, document, Backbone, $, arangoHelper, templateEngine, Joi*/
+/* global frontendConfig, window, document, Backbone, $, arangoHelper, templateEngine, Joi */
 (function () {
   'use strict';
 
@@ -9,6 +9,14 @@
     el2: '#userManagementThumbnailsIn',
 
     template: templateEngine.createTemplate('userManagementView.ejs'),
+
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
 
     events: {
       'click #createUser': 'createUser',
@@ -176,14 +184,6 @@
         $('#newUsername').closest('th').css('backgroundColor', 'red');
         return false;
       }
-      /*      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
-              arangoHelper.arangoError("Name may only contain numbers, letters, _ and -")
-              return false
-            }
-            if (!user.match(/^[a-zA-Z][a-zA-Z\-]*$/)) {
-              arangoHelper.arangoError("Name may only letters and -")
-              return false
-            }*/
       return true;
     },
 

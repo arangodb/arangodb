@@ -23,11 +23,11 @@ var _definition = require('../../type/definition');
  */
 
 function inlineFragmentOnNonCompositeErrorMessage(type) {
-  return 'Fragment cannot condition on non composite type "' + type + '".';
+  return 'Fragment cannot condition on non composite type "' + String(type) + '".';
 }
 
 function fragmentOnNonCompositeErrorMessage(fragName, type) {
-  return 'Fragment "' + fragName + '" cannot condition on non composite ' + ('type "' + type + '".');
+  return 'Fragment "' + fragName + '" cannot condition on non composite ' + ('type "' + String(type) + '".');
 }
 
 /**

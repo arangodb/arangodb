@@ -26,10 +26,10 @@
 
 #include "Basics/Common.h"
 
+#include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
-#include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
@@ -39,12 +39,10 @@
 #include "SimpleHttpClient/Communicator.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-using namespace communicator;
-
 class ClusterCommThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +61,7 @@ typedef TRI_voc_tick_t CoordTransactionID;
 /// @brief trype of an operation ID
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef Ticket OperationID;
+typedef communicator::Ticket OperationID;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of an (a-)synchronous cluster operation
@@ -205,7 +203,9 @@ struct ClusterCommResult {
   bool sendWasComplete;
 
   ClusterCommResult()
-      : status(CL_COMM_BACKEND_UNAVAILABLE),
+      : coordTransactionID(0),
+        operationID(0),
+        status(CL_COMM_BACKEND_UNAVAILABLE),
         dropped(false),
         single(false),
         answer_code(rest::ResponseCode::PROCESSING),
@@ -338,13 +338,6 @@ struct ClusterCommOperation {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global callback for asynchronous REST handler
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterCommRestCallback(std::string& coordinator,
-                             GeneralResponse* response);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief used to let ClusterComm send a set of requests and look after them
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -403,10 +396,11 @@ class ClusterComm {
   /// @brief get the unique instance
   //////////////////////////////////////////////////////////////////////////////
 
-  static ClusterComm* instance();
+  static std::shared_ptr<ClusterComm> instance();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize function to call once when still single-threaded
+  /// @brief initialize function to call once, instance() can be called
+  /// beforehand but the background thread is only started here.
   //////////////////////////////////////////////////////////////////////////////
 
   static void initialize();
@@ -492,13 +486,6 @@ class ClusterComm {
             OperationID const operationID, ShardID const& shardID);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief process an answer coming in on the HTTP socket
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string processAnswer(std::string const& coordinatorHeader,
-                            std::unique_ptr<GeneralRequest>&& answer);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator
   //////////////////////////////////////////////////////////////////////////////
 
@@ -543,11 +530,21 @@ class ClusterComm {
       std::string const& destination, arangodb::rest::RequestType reqtype,
       std::string const* body,
       std::unordered_map<std::string, std::string> const& headerFields);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
   //////////////////////////////////////////////////////////////////////////////
 
-  static ClusterComm* _theinstance;
+  static std::shared_ptr<ClusterComm> _theInstance;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the following atomic int is 0 in the beginning, is set to 1
+  /// if some thread initializes the singleton and is 2 once _theInstance
+  /// is set. Note that after a shutdown has happened, _theInstance can be
+  /// a nullptr, which means no new ClusterComm operations can be started.
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::atomic<int>             _theInstanceInit;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief produces an operation ID which is unique in this process
@@ -573,8 +570,8 @@ class ClusterComm {
     std::shared_ptr<ClusterCommResult> result;
   };
 
-  typedef std::unordered_map<Ticket, AsyncResponse>::iterator ResponseIterator;
-  std::unordered_map<Ticket, AsyncResponse> responses;
+  typedef std::unordered_map<communicator::Ticket, AsyncResponse>::iterator ResponseIterator;
+  std::unordered_map<communicator::Ticket, AsyncResponse> responses;
 
   // Receiving answers:
   std::list<ClusterCommOperation*> received;
@@ -618,6 +615,12 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanupAllQueues();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief activeServerTickets for a list of servers
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<communicator::Ticket> activeServerTickets(std::vector<std::string> const& servers);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our background communications thread

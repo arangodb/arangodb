@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\..\test\mul_mm_test.cpp">
+        <Filter>qvm\test</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="qvm">
+      <UniqueIdentifier>{4D237030-1A5A-4159-7D97-101F31F072AF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="qvm\test">
+      <UniqueIdentifier>{668B2E9C-59A8-443A-2116-55B9335E5031}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

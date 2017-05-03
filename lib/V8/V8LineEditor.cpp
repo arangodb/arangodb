@@ -315,10 +315,12 @@ class V8Completer : public Completer {
 
       if (funcVal->IsFunction()) {
         v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
-        v8::Handle<v8::Value> args;
+        // assign a dummy entry to the args array even if we don't need it.
+        // this prevents "error C2466: cannot allocate an array of constant size 0" in MSVC
+        v8::Handle<v8::Value> args[] = { v8::Null(isolate) };
 
         try {
-          v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
+          v8::Handle<v8::Value> cpls = func->Call(current, 0, args);
 
           if (cpls->IsArray()) {
             properties = v8::Handle<v8::Array>::Cast(cpls);
@@ -386,7 +388,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE)SignalHandler, true);
 
   if (res == 0) {
-    LOG(ERR) << "unable to install signal handler";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to install signal handler";
   }
 
 #else
@@ -398,7 +400,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   int res = sigaction(SIGINT, &sa, 0);
 
   if (res != 0) {
-    LOG(ERR) << "unable to install signal handler";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to install signal handler";
   }
 #endif
 }

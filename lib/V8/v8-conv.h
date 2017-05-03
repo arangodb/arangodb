@@ -25,25 +25,34 @@
 #define ARANGODB_V8_V8__CONV_H 1
 
 #include "Basics/Common.h"
+#include "Basics/conversions.h"
 #include "V8/v8-globals.h"
 
-/// @brief converts an V8 object to a string
+template<typename T>
+static inline v8::Handle<v8::Value> TRI_V8UInt64String(v8::Isolate* isolate, T value) {
+  char buffer[21];
+  size_t len = TRI_StringUInt64InPlace(static_cast<uint64_t>(value), &buffer[0]);
+
+  return TRI_V8_PAIR_STRING(&buffer[0], static_cast<int>(len));
+}
+
+// converts a V8 object to a string
 std::string TRI_ObjectToString(v8::Handle<v8::Value>);
 std::string TRI_ObjectToString(v8::Isolate* isolate, v8::Handle<v8::Value>);
 
-/// @brief converts an V8 object to an int64_t
+// converts a V8 object to an int64_t
 int64_t TRI_ObjectToInt64(v8::Handle<v8::Value> const);
 
-/// @brief converts an V8 object to a uint64_t
+// converts a V8 object to a uint64_t
 uint64_t TRI_ObjectToUInt64(v8::Handle<v8::Value> const, bool);
 
-/// @brief converts a V8 object to a double
+// converts a V8 object to a double
 double TRI_ObjectToDouble(v8::Handle<v8::Value> const);
 
-/// @brief converts a V8 object to a double with error handling
+// converts a V8 object to a double with error handling
 double TRI_ObjectToDouble(v8::Handle<v8::Value> const, bool& error);
 
-/// @brief converts a V8 object to a boolean
+// converts a V8 object to a boolean
 bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const);
 
 #endif

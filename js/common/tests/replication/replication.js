@@ -183,7 +183,7 @@ function ReplicationLoggerSuite () {
       assertTrue(typeof tick === 'string');
       assertNotEqual("", state.time);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.time);
-      
+
       // query the state again
       state = replication.logger.state().state;
       assertTrue(state.running);
@@ -262,6 +262,10 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFirstTick : function () {
+      if (db._engine().name === "mmfiles") {
+        return;
+      }
+      
       var state = replication.logger.state().state;
       assertTrue(state.running);
       var tick = state.lastLogTick;
@@ -279,6 +283,10 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTickRanges : function () {
+      if (db._engine().name === "mmfiles") {
+        return;
+      }
+      
       var state = replication.logger.state().state;
       assertTrue(state.running);
       var tick = state.lastLogTick;
@@ -375,7 +383,9 @@ function ReplicationLoggerSuite () {
       assertEqual(cn, entry.data.name);
       assertEqual(2, entry.data.type);
       assertEqual(false, entry.data.deleted);
-      assertEqual(2097152, entry.data.journalSize);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(2097152, entry.data.journalSize);
+      }
       assertEqual(true, entry.data.waitForSync);
     },
 
@@ -430,8 +440,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerSystemCollection : function () {
-      db._drop("_unitfoxx");
-      db._drop("_unittests");
+      db._drop("_unittests", true);
 
       var tick = getLastLogTick();
 
@@ -694,143 +703,6 @@ function ReplicationLoggerSuite () {
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("skiplist", entry.data.type);
       assertEqual(true, entry.data.unique);
-      assertEqual(true, entry.data.sparse);
-      assertEqual([ "a" ], entry.data.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerCreateIndexFulltext1 : function () {
-      var c = db._create(cn);
-
-      var tick = getLastLogTick();
-      c.ensureFulltextIndex("a", 5);
-      var idx = c.getIndexes()[1];
-
-      var entry = getLogEntries(tick, 2100)[0];
-      assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid, JSON.stringify(entry));
-      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("fulltext", entry.data.type);
-      assertEqual(false, entry.data.unique);
-      assertEqual(5, entry.data.minLength);
-      assertEqual([ "a" ], entry.data.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerCreateIndexGeo1 : function () {
-      var c = db._create(cn);
-
-      var tick = getLastLogTick();
-
-      c.ensureGeoIndex("a", "b");
-      var idx = c.getIndexes()[1];
-      var entry = getLogEntries(tick, 2100)[0];
-
-      assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid, JSON.stringify(entry));
-      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo2", entry.data.type);
-      assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
-      assertEqual([ "a", "b" ], entry.data.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerCreateIndexGeo2 : function () {
-      var c = db._create(cn);
-
-      var tick = getLastLogTick();
-
-      c.ensureGeoIndex("a", true);
-      var idx = c.getIndexes()[1];
-      var entry = getLogEntries(tick, 2100)[0];
-
-      assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid, JSON.stringify(entry));
-      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo1", entry.data.type);
-      assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
-      assertEqual([ "a" ], entry.data.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerCreateIndexGeo3 : function () {
-      var c = db._create(cn);
-
-      var tick = getLastLogTick();
-
-      c.ensureGeoConstraint("a", "b", true);
-      var idx = c.getIndexes()[1];
-      var entry = getLogEntries(tick, 2100)[0];
-
-      assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid, JSON.stringify(entry));
-      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo2", entry.data.type);
-      assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
-      assertEqual(true, entry.data.ignoreNull);
-      assertEqual(true, entry.data.sparse);
-      assertEqual([ "a", "b" ], entry.data.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerCreateIndexGeo4 : function () {
-      var c = db._create(cn);
-
-      var tick = getLastLogTick();
-
-      c.ensureGeoConstraint("a", "b", false);
-      var idx = c.getIndexes()[1];
-      var entry = getLogEntries(tick, 2100)[0];
-
-      assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid, JSON.stringify(entry));
-      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo2", entry.data.type);
-      assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
-      assertEqual(true, entry.data.ignoreNull);
-      assertEqual(true, entry.data.sparse);
-      assertEqual([ "a", "b" ], entry.data.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerCreateIndexGeo5 : function () {
-      var c = db._create(cn);
-
-      var tick = getLastLogTick();
-
-      c.ensureGeoConstraint("a", true);
-      var idx = c.getIndexes()[1];
-      var entry = getLogEntries(tick, 2100)[0];
-
-      assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid, JSON.stringify(entry));
-      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo1", entry.data.type);
-      assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
-      assertEqual(true, entry.data.ignoreNull);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a" ], entry.data.fields);
     },
@@ -1408,6 +1280,9 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionWrite3 : function () {
+      if (db._engine().name === "rocksdb") {
+        return;
+      }
       db._create(cn);
 
       var tick = getLastLogTick();
@@ -1656,7 +1531,7 @@ function ReplicationApplierSuite () {
 
       // configure && start
       replication.applier.properties({
-        endpoint: "tcp://9.9.9.9:9999", // should not exist
+        endpoint: "tcp://127.0.0.1:0", // should not exist
         connectTimeout: 2,
         maxConnectRetries: 0,
         connectionRetryWaitTime: 1
@@ -1704,7 +1579,7 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
       // configure && start
       replication.applier.properties({
-        endpoint: "tcp://www.arangodb.com:7999", // should not exist
+        endpoint: "tcp://127.0.0.1:0", // should not exist
         connectTimeout: 2,
         maxConnectRetries: 0,
         connectionRetryWaitTime: 1

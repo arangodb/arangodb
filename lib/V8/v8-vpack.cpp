@@ -84,6 +84,7 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
       v8::Local<v8::Value> sub;
       if (v.isString()) {
         char const* p = v.getString(l);
+        // value of _key, _id, _from, _to, and _rev is ASCII too
         sub = TRI_V8_ASCII_PAIR_STRING(p, l);
       } else {
         sub = TRI_VPackToV8(isolate, v, options, &slice);
@@ -408,22 +409,14 @@ static int V8ToVPack(BuilderContext& context,
           v8::Handle<v8::Function> toJson =
               v8::Handle<v8::Function>::Cast(func);
 
-          v8::Handle<v8::Value> args;
-          v8::Handle<v8::Value> converted = toJson->Call(o, 0, &args);
+          // assign a dummy entry to the args array even if we don't need it.
+          // this prevents "error C2466: cannot allocate an array of constant size 0" in MSVC
+          v8::Handle<v8::Value> args[] = { v8::Null(context.isolate) };
+          v8::Handle<v8::Value> converted = toJson->Call(o, 0, args);
 
           if (!converted.IsEmpty()) {
             // return whatever toJSON returned
-            v8::String::Utf8Value str(converted->ToString());
-
-            if (*str == nullptr) {
-              return TRI_ERROR_OUT_OF_MEMORY;
-            }
-
-            // this passes ownership for the utf8 string to the JSON object
-            AddValue<VPackValuePair, inObject>(
-                context, attributeName,
-                VPackValuePair(*str, str.length(), VPackValueType::String));
-            return TRI_ERROR_NO_ERROR;
+            return V8ToVPack<performAllChecks, inObject>(context, converted, attributeName);
           }
         }
 

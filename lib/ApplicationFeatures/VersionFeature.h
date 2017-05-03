@@ -34,6 +34,9 @@ class VersionFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
+ public:
+  bool printVersion() const { return _printVersion; }
+
  private:
   bool _printVersion;
 };

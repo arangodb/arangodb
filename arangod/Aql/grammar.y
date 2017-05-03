@@ -7,13 +7,14 @@
 %error-verbose
 
 %{
+#include "Aql/Aggregator.h"
 #include "Aql/AstNode.h"
-#include "Aql/CollectNode.h"
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "VocBase/AccessMode.h"
 %}
 
 %union {
@@ -1220,6 +1221,9 @@ operator_ternary:
     expression T_QUESTION expression T_COLON expression {
       $$ = parser->ast()->createNodeTernaryOperator($1, $3, $5);
     }
+  | expression T_QUESTION T_COLON expression {
+      $$ = parser->ast()->createNodeTernaryOperator($1, $1, $4);
+    }
   ;
 
 optional_function_call_arguments: 
@@ -1519,7 +1523,7 @@ reference:
 
       if (node == nullptr) {
         // variable not found. so it must have been a collection
-        node = ast->createNodeCollection($1.value, TRI_TRANSACTION_READ);
+        node = ast->createNodeCollection($1.value, arangodb::AccessMode::Type::READ);
       }
 
       TRI_ASSERT(node != nullptr);
@@ -1693,10 +1697,10 @@ value_literal:
 
 collection_name:
     T_STRING {
-      $$ = parser->ast()->createNodeCollection($1.value, TRI_TRANSACTION_WRITE);
+      $$ = parser->ast()->createNodeCollection($1.value, arangodb::AccessMode::Type::WRITE);
     }
   | T_QUOTED_STRING {
-      $$ = parser->ast()->createNodeCollection($1.value, TRI_TRANSACTION_WRITE);
+      $$ = parser->ast()->createNodeCollection($1.value, arangodb::AccessMode::Type::WRITE);
     }
   | T_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {

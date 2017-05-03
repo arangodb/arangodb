@@ -1,0 +1,95 @@
+[/
+          Copyright Oliver Kowalke 2014.
+ Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+          http://www.boost.org/LICENSE_1_0.txt
+]
+
+[section:coroutine Coroutine]
+
+__boost_coroutine__ provides asymmetric coroutines.
+
+Implementations that produce sequences of values typically use asymmetric
+coroutines.
+[footnote Moura, Ana Lucia De and Ierusalimschy, Roberto.
+"Revisiting coroutines". ACM Trans. Program. Lang. Syst., Volume 31 Issue 2,
+February 2009, Article No. 6]
+
+
+[heading stackful]
+Each instance of a coroutine has its own stack.
+
+In contrast to stackless coroutines, stackful coroutines allow invoking the
+suspend operation out of arbitrary sub-stackframes, enabling escape-and-reenter
+recursive operations.
+
+
+[heading move-only]
+A coroutine is moveable-only.
+
+If it were copyable, then its stack with all the objects allocated on it
+would be copied too. That would force undefined behaviour if some of these
+objects were RAII-classes (manage a resource via RAII pattern). When the first
+of the coroutine copies terminates (unwinds its stack), the RAII class
+destructors will release their managed resources. When the second copy
+terminates, the same destructors will try to doubly-release the same resources,
+leading to undefined behaviour.
+
+
+[heading clean-up]
+On coroutine destruction the associated stack will be unwound.
+
+The constructor of coroutine allows you to pass a customized ['stack-allocator].
+['stack-allocator] is free to deallocate the stack or cache it for future usage
+(for coroutines created later).
+
+
+[heading segmented stack]
+__push_coro__ and __pull_coro__ support segmented stacks (growing on demand).
+
+It is not always possible to accurately estimate the required stack size - in
+most cases too much memory is allocated (waste of virtual address-space).
+
+At construction a coroutine starts with a default (minimal) stack size. This
+minimal stack size is the maximum of page size and the canonical size for signal
+stack (macro SIGSTKSZ on POSIX).
+
+At this time of writing only GCC (4.7)
+[footnote [@http://gcc.gnu.org/wiki/SplitStacks Ian Lance Taylor, Split Stacks in GCC]]
+is known to support segmented stacks. With version 1.54 __boost_coroutine__
+provides support for segmented stacks.
+
+The destructor releases the associated stack. The implementer is free to
+deallocate the stack or to cache it for later usage.
+
+
+[heading context switch]
+A coroutine saves and restores registers according to the underlying ABI on
+each context switch (using __boost_context__).
+
+Some applications do not use floating-point registers and can disable preserving
+FPU registers for performance reasons.
+
+[note According to the calling convention the FPU registers are preserved by
+default.]
+
+On POSIX systems, the coroutine context switch does not preserve signal masks
+for performance reasons.
+
+A context switch is done via __push_coro_op__ and __pull_coro_op__.
+
+[warning Calling __push_coro_op__ and __pull_coro_op__ from inside the [_same]
+coroutine results in undefined behaviour.]
+
+As an example, the code below will result in undefined behaviour:
+
+        boost::coroutines2::coroutine<void>::push_type coro(
+            [&](boost::coroutines2::coroutine<void>::pull_type& yield){
+                coro();
+        });
+        coro();
+
+
+[include asymmetric.qbk]
+
+[endsect]

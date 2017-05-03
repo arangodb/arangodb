@@ -34,7 +34,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                   const char *binaryPath) override final;
+                   char const* binaryPath) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
@@ -51,6 +51,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::string _prefix;
   std::string _file;
   bool _lineNumber = false;
+  bool _shortenFilenames = true;
   bool _thread = false;
   bool _performance = false;
   bool _keepLogRotate = false;

@@ -1,4 +1,5 @@
-!CHAPTER Foxx queries
+Foxx queries
+============
 
 The `createQuery` method has been removed. It can be trivially replaced with plain JavaScript functions and direct calls to [the `db._query` method](../Modules.md):
 

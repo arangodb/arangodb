@@ -73,7 +73,9 @@ void Thread::startThread(void* arg) {
   LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);
 #endif
 
+  TRI_ASSERT(arg != nullptr);
   Thread* ptr = static_cast<Thread*>(arg);
+  TRI_ASSERT(ptr != nullptr);
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
 
@@ -81,6 +83,13 @@ void Thread::startThread(void* arg) {
 
   try {
     ptr->runMe();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::THREADS) << "caught exception in thread '" << ptr->_name
+                                     << "': " << ex.what();
+    if (pushed) {
+      WorkMonitor::popThread(ptr);
+    }
+    throw;
   } catch (...) {
     if (pushed) {
       WorkMonitor::popThread(ptr);
@@ -157,6 +166,9 @@ Thread::Thread(std::string const& name)
       _affinity(-1),
       _workDescription(nullptr) {
   TRI_InitThread(&_thread);
+  
+  // allow failing memory allocations for all threads by default 
+  TRI_AllowMemoryFailures();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,14 +188,15 @@ Thread::~Thread() {
     }
 
     _state.store(ThreadState::DETACHED);
+    return;
   }
 
   state = _state.load();
 
   if (state != ThreadState::DETACHED && state != ThreadState::CREATED) {
-    LOG(FATAL) << "thread is not detached but " << stringify(state)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "thread '" << _name << "' is not detached but " << stringify(state)
                << ". shutting down hard";
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_ABORT();
   }
 }
 
@@ -249,8 +262,8 @@ void Thread::shutdown() {
   }
 
   if (_state.load() != ThreadState::STOPPED) {
-    LOG(FATAL) << "cannot shutdown thread, giving up";
-    FATAL_ERROR_EXIT();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot shutdown thread, giving up";
+    FATAL_ERROR_ABORT();
   }
 }
 
@@ -271,12 +284,12 @@ bool Thread::isStopping() const {
 
 bool Thread::start(ConditionVariable* finishedCondition) {
   if (!isSystem() && !ApplicationServer::isPrepared()) {
-    LOG(FATAL) << "trying to start a thread '" << _name
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "trying to start a thread '" << _name
                << "' before prepare has finished, current state: "
                << (ApplicationServer::server == nullptr
                        ? -1
                        : (int)ApplicationServer::server->state());
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_ABORT();
   }
 
   _finishedCondition = finishedCondition;
@@ -286,7 +299,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     LOG_TOPIC(FATAL, Logger::THREADS)
         << "called started on an already started thread, thread is in state "
         << stringify(state);
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_ABORT();
   }
 
   ThreadState expected = ThreadState::CREATED;
@@ -304,12 +317,12 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
   if (ok) {
     if (0 <= _affinity) {
-      TRI_SetProcessorAffinity(&_thread, (size_t)_affinity);
+      TRI_SetProcessorAffinity(&_thread, _affinity);
     }
   } else {
     _state.store(ThreadState::STOPPED);
     LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '" << _name
-                                    << "': " << strerror(errno);
+                                    << "': " << TRI_last_error();
 
     return false;
   }

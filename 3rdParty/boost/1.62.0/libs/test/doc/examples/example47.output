@@ -1,0 +1,7 @@
+//[example_output
+> example
+Running 1 test case...
+test.cpp(8): fatal error in "test": Test is not ready yet
+
+*** 1 failures is detected in test suite "example"
+//]

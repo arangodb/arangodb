@@ -51,9 +51,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       dataType: 'json'
     }).success(
       function (data) {
-        arangoHelper.setCurrentJwt(data.jwt);
-
         var jwtParts = data.jwt.split('.');
+
         if (!jwtParts[1]) {
           throw new Error('Invalid JWT');
         }
@@ -61,14 +60,21 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (!window.atob) {
           throw new Error('base64 support missing in browser');
         }
-        var payload = JSON.parse(atob(jwtParts[1]));
 
+        var payload = JSON.parse(atob(jwtParts[1]));
         self.activeUser = payload.preferred_username;
+
+        if (self.activeUser === undefined) {
+          arangoHelper.setCurrentJwt(data.jwt, null);
+        } else {
+          arangoHelper.setCurrentJwt(data.jwt, self.activeUser);
+        }
+
         callback(false, self.activeUser);
       }
     ).error(
       function () {
-        arangoHelper.setCurrentJwt(null);
+        arangoHelper.setCurrentJwt(null, null);
         self.activeUser = null;
         callback(true, null);
       }

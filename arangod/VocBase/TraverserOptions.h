@@ -24,9 +24,12 @@
 #ifndef ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H
 #define ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H 1
 
-#include "Basics/Common.h"
 #include "Aql/FixedVarExpressionContext.h"
-#include "Utils/Transaction.h"
+#include "Basics/Common.h"
+#include "Basics/StringRef.h"
+#include "Graph/BaseOptions.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -46,65 +49,19 @@ class TraversalNode;
 namespace traverser {
 
 class ClusterTraverser;
+class TraverserCache;
 
-/// @brief Abstract class used in the traversals
-/// to abstract away access to indexes / DBServers.
-/// Returns edges as VelocyPack.
-
-class EdgeCursor {
- public:
-  EdgeCursor() {}
-  virtual ~EdgeCursor() {}
-
-  virtual bool next(std::vector<arangodb::velocypack::Slice>&, size_t&) = 0;
-  virtual bool readAll(std::unordered_set<arangodb::velocypack::Slice>&,
-                       size_t&) = 0;
-};
-
-
-struct TraverserOptions {
+struct TraverserOptions : public graph::BaseOptions {
   friend class arangodb::aql::TraversalNode;
 
  public:
   enum UniquenessLevel { NONE, PATH, GLOBAL };
 
  protected:
-
-  struct LookupInfo {
-    // This struct does only take responsibility for the expression
-    // NOTE: The expression can be nullptr!
-    std::vector<arangodb::Transaction::IndexHandle> idxHandles;
-    aql::Expression* expression;
-    aql::AstNode* indexCondition;
-    // Flag if we have to update _from / _to in the index search condition
-    bool conditionNeedUpdate;
-    // Position of _from / _to in the index search condition
-    size_t conditionMemberToUpdate;
-
-    LookupInfo();
-    ~LookupInfo();
-
-    LookupInfo(LookupInfo const&);
-
-    LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
-               arangodb::velocypack::Slice const&);
-
-    /// @brief Build a velocypack containing all relevant information
-    ///        for DBServer traverser engines.
-    void buildEngineInfo(arangodb::velocypack::Builder&) const;
-  };
-
- public:
-  arangodb::Transaction* _trx;
- protected:
-  std::vector<LookupInfo> _baseLookupInfos;
-  std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
-  std::unordered_map<size_t, aql::Expression*> _vertexExpressions;
+  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
   aql::Expression* _baseVertexExpression;
-  aql::Variable const* _tmpVar;
-  aql::FixedVarExpressionContext* _ctx;
   arangodb::traverser::ClusterTraverser* _traverser;
-  bool const _isCoordinator;
 
  public:
   uint64_t minDepth;
@@ -117,20 +74,9 @@ struct TraverserOptions {
 
   UniquenessLevel uniqueEdges;
 
-  explicit TraverserOptions(arangodb::Transaction* trx)
-      : _trx(trx),
-        _baseVertexExpression(nullptr),
-        _tmpVar(nullptr),
-        _ctx(new aql::FixedVarExpressionContext()),
-        _traverser(nullptr),
-        _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-        minDepth(1),
-        maxDepth(1),
-        useBreadthFirst(false),
-        uniqueVertices(UniquenessLevel::NONE),
-        uniqueEdges(UniquenessLevel::PATH) {}
+  explicit TraverserOptions(transaction::Methods* trx);
 
-  TraverserOptions(arangodb::Transaction*, arangodb::velocypack::Slice const&);
+  TraverserOptions(transaction::Methods* trx, arangodb::velocypack::Slice const& definition);
 
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);
@@ -144,36 +90,35 @@ struct TraverserOptions {
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
+  /// @brief Build a velocypack for indexes
+  void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
+
   /// @brief Build a velocypack containing all relevant information
   ///        for DBServer traverser engines.
   void buildEngineInfo(arangodb::velocypack::Builder&) const;
 
-  bool vertexHasFilter(size_t) const;
+  /// @brief Add a lookup info for specific depth
+  void addDepthLookupInfo(aql::Ast* ast, std::string const& collectionName,
+                          std::string const& attributeName,
+                          aql::AstNode* condition, uint64_t depth);
 
-  bool evaluateEdgeExpression(arangodb::velocypack::Slice,
-                              arangodb::velocypack::Slice, size_t,
-                              size_t) const;
+  bool vertexHasFilter(uint64_t) const;
 
-  bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
+  bool evaluateEdgeExpression(arangodb::velocypack::Slice, StringRef vertexId,
+                              uint64_t, size_t) const;
 
-  EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::Slice, size_t) const;
+  bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
 
-  void clearVariableValues();
-
-  void setVariableValue(aql::Variable const*, aql::AqlValue const);
+  graph::EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
-  void serializeVariables(arangodb::velocypack::Builder&) const;
+  double estimateCost(size_t& nrItems) const;
 
  private:
-  EdgeCursor* nextCursorLocal(ManagedDocumentResult*,
-                              arangodb::velocypack::Slice, size_t,
-                              std::vector<LookupInfo>&) const;
 
-  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, size_t) const;
+  graph::EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
 };
-
 }
 }
 #endif

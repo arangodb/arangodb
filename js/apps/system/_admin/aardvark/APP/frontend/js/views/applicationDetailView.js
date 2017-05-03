@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, ace, arangoHelper, templateEngine, Joi, _*/
+/* global Backbone, $, window, ace, arangoHelper, templateEngine, Joi, _ */
 (function () {
   'use strict';
 
@@ -10,6 +10,14 @@
     navs: ['#service-info', '#service-api', '#service-readme', '#service-settings'],
 
     template: templateEngine.createTemplate('applicationDetailView.ejs'),
+
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
 
     events: {
       'click .open': 'openApp',
@@ -302,7 +310,11 @@
       var contributors = '<p class="mount"><span>Contributors:</span>';
       if (this.model.get('contributors') && this.model.get('contributors').length > 0) {
         _.each(this.model.get('contributors'), function (contributor) {
-          contributors += '<a href="mailto:' + contributor.email + '">' + contributor.name + '</a>';
+          if (contributor.email) {
+            contributors += '<a href="mailto:' + contributor.email + '">' + (contributor.name || contributor.email) + '</a>';
+          } else if (contributor.name) {
+            contributors += '<a>contributor.name</a>';
+          }
         });
       } else {
         contributors += 'No contributors';
@@ -404,7 +416,7 @@
         } else if (opt.type === 'json') {
           cfg[key] = val && JSON.stringify(JSON.parse(val));
         } else {
-          cfg[key] = window.arangoHelper.escapeHtml(val);
+          cfg[key] = val;
           return;
         }
       });

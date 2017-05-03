@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1side__straight" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::buffer::side_straight</compoundname>
+    <includes local="no">buffer_side_straight.hpp</includes>
+    <briefdescription>
+<para>Let the buffer use straight sides along segments (the default) </para>    </briefdescription>
+    <detaileddescription>
+<para>This strategy can be used as SideStrategy for the buffer algorithm. It is currently the only provided strategy for this purpose</para><para> <qbk>
+[heading Example]
+See the examples for other buffer strategies, for example
+[link geometry.reference.strategies.strategy_buffer_join_round join_round]
+[heading See also]
+\* [link geometry.reference.algorithms.buffer.buffer_7_with_strategies buffer (with strategies)]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_side_straight.hpp" line="47" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_side_straight.hpp" bodystart="46" bodyend="129"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

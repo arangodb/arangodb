@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__append" kind="group">
+    <compoundname>append</compoundname>
+    <title>append: append points to geometries</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__append_1gaa3a95c7738229a30f77562cb095b3699" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename RangeOrPoint</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::append</definition>
+        <argsstring>(Geometry &amp;geometry, RangeOrPoint const &amp;range_or_point, int ring_index=-1, int multi_index=0)</argsstring>
+        <name>append</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>RangeOrPoint const &amp;</type>
+          <declname>range_or_point</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>ring_index</declname>
+          <defval>-1</defval>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>multi_index</declname>
+          <defval>0</defval>
+        </param>
+        <briefdescription>
+<para>Appends one or more points to a linestring, ring, polygon, multi-geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>RangeOrPoint</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Either a range or a point, fullfilling Boost.Range concept or Boost.Geometry Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>range_or_point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The point or range to add </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>ring_index</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The index of the ring in case of a polygon: exterior ring (-1, the default) or interior ring index </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>multi_index</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The index of the geometry to which the points are appended</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/algorithms/append.qbk]</qbk>  } </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/append.hpp" line="359" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/append.hpp" bodystart="359" bodyend="364"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

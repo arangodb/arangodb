@@ -1,6 +1,7 @@
-!CHAPTER HTTP Interface for AQL Queries
+HTTP Interface for AQL Queries
+==============================
 
-!SUBSECTION Explaining and parsing queries
+### Explaining and parsing queries
 
 ArangoDB has an HTTP interface to syntactically validate AQL queries.
 Furthermore, it offers an HTTP interface to retrieve the execution plan for any
@@ -15,7 +16,7 @@ inspect it and return meta information about it.
 
 @startDocuBlock PostApiQueryProperties
 
-!SUBSECTION Query tracking
+### Query tracking
 
 ArangoDB has an HTTP interface for retrieving the lists of currently
 executing AQL queries and the list of slow AQL queries. In order to make meaningful
@@ -37,7 +38,7 @@ request is executed for.
 <!--arangod/RestHandler/RestQueryHandler.cpp -->
 @startDocuBlock DeleteApiQuerySlow
 
-!SUBSECTION Killing queries
+### Killing queries
 
 Running AQL queries can also be killed on the server. ArangoDB provides a kill facility
 via an HTTP interface. To kill a running query, its id (as returned for the query in the

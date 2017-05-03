@@ -219,7 +219,7 @@ class SimpleHttpClient {
     _errorMessage = message;
 
     if (_warn || forceWarn) {
-      LOG(WARN) << "" << _errorMessage;
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << _errorMessage;
     }
   }
 
@@ -229,7 +229,7 @@ class SimpleHttpClient {
 
   void setErrorMessage(std::string const& message, int error) {
     if (error != TRI_ERROR_NO_ERROR) {
-      _errorMessage = message + ": " + strerror(error);
+      _errorMessage = message + ": " + TRI_errno_string(error);
     } else {
       setErrorMessage(message);
     }
@@ -293,7 +293,7 @@ class SimpleHttpClient {
   /// the caller has to delete the result object
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* getResult();
+  SimpleHttpResult* getResult(bool haveSentRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the request

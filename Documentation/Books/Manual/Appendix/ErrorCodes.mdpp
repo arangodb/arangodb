@@ -1,4 +1,5 @@
-!CHAPTER Error codes and meanings
+Error codes and meanings
+========================
 
 @startDocuBlock errorCodes
 

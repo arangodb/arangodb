@@ -1,0 +1,166 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1point__iterator" kind="class" prot="public">
+    <compoundname>boost::geometry::point_iterator</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">boost::iterator_adaptor&lt; point_iterator&lt; Geometry &gt;, detail::point_iterator::iterator_type&lt; Geometry &gt;::type &gt;</basecompoundref>
+    <includes local="no">point_iterator.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1point__iterator_1a9478f56046dd8fb708f495fa41fa0246" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename OtherGeometry</type>
+          </param>
+        </templateparamlist>
+        <type>friend class</type>
+        <definition>friend class point_iterator</definition>
+        <argsstring></argsstring>
+        <name>point_iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" line="255" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" bodystart="255" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1point__iterator_1a9d0f9405161b39035b72c29b9df23877" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename G</type>
+          </param>
+        </templateparamlist>
+        <type>friend <ref refid="classboost_1_1geometry_1_1point__iterator" kindref="compound">point_iterator</ref>&lt; G &gt;</type>
+        <definition>point_iterator&lt;G&gt; points_begin</definition>
+        <argsstring>(G &amp;)</argsstring>
+        <name>points_begin</name>
+        <param>
+          <type>G &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" line="256" column="1"/>
+      </memberdef>
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1point__iterator_1a30f1f6bf67225d39f60058a8f18d26ce" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename G</type>
+          </param>
+        </templateparamlist>
+        <type>friend <ref refid="classboost_1_1geometry_1_1point__iterator" kindref="compound">point_iterator</ref>&lt; G &gt;</type>
+        <definition>point_iterator&lt;G&gt; points_end</definition>
+        <argsstring>(G &amp;)</argsstring>
+        <name>points_end</name>
+        <param>
+          <type>G &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" line="257" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1point__iterator_1a1c503df8b4973a9ce7d067cb69668fb9" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::point_iterator&lt; Geometry &gt;::point_iterator</definition>
+        <argsstring>(typename point_iterator::base_type const &amp;base_it)</argsstring>
+        <name>point_iterator</name>
+        <param>
+          <type>typename point_iterator::base_type const &amp;</type>
+          <declname>base_it</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" line="259" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" bodystart="259" bodyend="260"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1point__iterator_1a8ed83cca9445eb3344dafb01fc72ff80" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::point_iterator&lt; Geometry &gt;::point_iterator</definition>
+        <argsstring>()</argsstring>
+        <name>point_iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" line="263" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" bodystart="263" bodyend="263"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1point__iterator_1ac7ecd32527ae76cc56f25763253f2c0b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename OtherGeometry</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::point_iterator&lt; Geometry &gt;::point_iterator</definition>
+        <argsstring>(point_iterator&lt; OtherGeometry &gt; const &amp;other)</argsstring>
+        <name>point_iterator</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1point__iterator" kindref="compound">point_iterator</ref>&lt; OtherGeometry &gt; const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" line="266" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" bodystart="266" bodyend="284"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="619">
+        <label>boost::geometry::point_iterator&lt; Geometry &gt;</label>
+        <link refid="classboost_1_1geometry_1_1point__iterator"/>
+        <childnode refid="620" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="620">
+        <label>boost::iterator_adaptor&lt; point_iterator&lt; Geometry &gt;, detail::point_iterator::iterator_type&lt; Geometry &gt;::type &gt;</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="621">
+        <label>boost::geometry::point_iterator&lt; Geometry &gt;</label>
+        <link refid="classboost_1_1geometry_1_1point__iterator"/>
+        <childnode refid="622" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="622">
+        <label>boost::iterator_adaptor&lt; point_iterator&lt; Geometry &gt;, detail::point_iterator::iterator_type&lt; Geometry &gt;::type &gt;</label>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" line="253" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/point_iterator.hpp" bodystart="247" bodyend="285"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1point__iterator_1a9478f56046dd8fb708f495fa41fa0246" prot="private" virt="non-virtual"><scope>boost::geometry::point_iterator</scope><name>point_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1point__iterator_1a1c503df8b4973a9ce7d067cb69668fb9" prot="private" virt="non-virtual"><scope>boost::geometry::point_iterator</scope><name>point_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1point__iterator_1a8ed83cca9445eb3344dafb01fc72ff80" prot="public" virt="non-virtual"><scope>boost::geometry::point_iterator</scope><name>point_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1point__iterator_1ac7ecd32527ae76cc56f25763253f2c0b" prot="public" virt="non-virtual"><scope>boost::geometry::point_iterator</scope><name>point_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1point__iterator_1a9d0f9405161b39035b72c29b9df23877" prot="private" virt="non-virtual"><scope>boost::geometry::point_iterator</scope><name>points_begin</name></member>
+      <member refid="classboost_1_1geometry_1_1point__iterator_1a30f1f6bf67225d39f60058a8f18d26ce" prot="private" virt="non-virtual"><scope>boost::geometry::point_iterator</scope><name>points_end</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

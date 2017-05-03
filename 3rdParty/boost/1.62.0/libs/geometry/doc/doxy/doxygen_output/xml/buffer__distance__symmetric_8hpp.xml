@@ -1,0 +1,220 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="buffer__distance__symmetric_8hpp" kind="file">
+    <compoundname>buffer_distance_symmetric.hpp</compoundname>
+    <includes local="no">boost/core/ignore_unused.hpp</includes>
+    <includes refid="strategies_2buffer_8hpp" local="no">boost/geometry/strategies/buffer.hpp</includes>
+    <includes refid="math_8hpp" local="no">boost/geometry/util/math.hpp</includes>
+    <includedby refid="strategies_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</includedby>
+    <incdepgraph>
+      <node id="58418">
+        <label>boost/geometry/util/math.hpp</label>
+        <link refid="math_8hpp"/>
+        <childnode refid="58419" relation="include">
+        </childnode>
+        <childnode refid="58420" relation="include">
+        </childnode>
+        <childnode refid="58416" relation="include">
+        </childnode>
+        <childnode refid="58421" relation="include">
+        </childnode>
+        <childnode refid="58422" relation="include">
+        </childnode>
+        <childnode refid="58423" relation="include">
+        </childnode>
+        <childnode refid="58424" relation="include">
+        </childnode>
+        <childnode refid="58425" relation="include">
+        </childnode>
+        <childnode refid="58426" relation="include">
+        </childnode>
+        <childnode refid="58442" relation="include">
+        </childnode>
+      </node>
+      <node id="58433">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="58420">
+        <label>limits</label>
+      </node>
+      <node id="58421">
+        <label>boost/math/constants/constants.hpp</label>
+      </node>
+      <node id="58436">
+        <label>boost/type_traits/is_const.hpp</label>
+      </node>
+      <node id="58419">
+        <label>cmath</label>
+      </node>
+      <node id="58435">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="58422">
+        <label>boost/math/special_functions/fpclassify.hpp</label>
+      </node>
+      <node id="58428">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="58437">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="58430">
+        <label>boost/geometry/core/coordinate_system.hpp</label>
+        <link refid="coordinate__system_8hpp"/>
+        <childnode refid="58428" relation="include">
+        </childnode>
+        <childnode refid="58431" relation="include">
+        </childnode>
+        <childnode refid="58440" relation="include">
+        </childnode>
+      </node>
+      <node id="58416">
+        <label>boost/core/ignore_unused.hpp</label>
+      </node>
+      <node id="58439">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="58415">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp</label>
+        <link refid="buffer_distance_symmetric.hpp"/>
+        <childnode refid="58416" relation="include">
+        </childnode>
+        <childnode refid="58417" relation="include">
+        </childnode>
+        <childnode refid="58418" relation="include">
+        </childnode>
+      </node>
+      <node id="58429">
+        <label>boost/type_traits/integral_constant.hpp</label>
+      </node>
+      <node id="58417">
+        <label>boost/geometry/strategies/buffer.hpp</label>
+        <link refid="strategies_2buffer_8hpp"/>
+      </node>
+      <node id="58424">
+        <label>boost/type_traits/is_fundamental.hpp</label>
+      </node>
+      <node id="58431">
+        <label>boost/geometry/core/point_type.hpp</label>
+        <link refid="point__type_8hpp"/>
+        <childnode refid="58428" relation="include">
+        </childnode>
+        <childnode refid="58432" relation="include">
+        </childnode>
+        <childnode refid="58433" relation="include">
+        </childnode>
+        <childnode refid="58434" relation="include">
+        </childnode>
+        <childnode refid="58438" relation="include">
+        </childnode>
+        <childnode refid="58439" relation="include">
+        </childnode>
+        <childnode refid="58440" relation="include">
+        </childnode>
+      </node>
+      <node id="58432">
+        <label>boost/range/value_type.hpp</label>
+      </node>
+      <node id="58427">
+        <label>cstddef</label>
+      </node>
+      <node id="58434">
+        <label>boost/geometry/core/ring_type.hpp</label>
+        <link refid="ring__type_8hpp"/>
+        <childnode refid="58428" relation="include">
+        </childnode>
+        <childnode refid="58435" relation="include">
+        </childnode>
+        <childnode refid="58432" relation="include">
+        </childnode>
+        <childnode refid="58436" relation="include">
+        </childnode>
+        <childnode refid="58433" relation="include">
+        </childnode>
+        <childnode refid="58437" relation="include">
+        </childnode>
+        <childnode refid="58438" relation="include">
+        </childnode>
+        <childnode refid="58439" relation="include">
+        </childnode>
+      </node>
+      <node id="58425">
+        <label>boost/type_traits/is_integral.hpp</label>
+      </node>
+      <node id="58443">
+        <label>boost/type_traits/is_floating_point.hpp</label>
+      </node>
+      <node id="58438">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="58439" relation="include">
+        </childnode>
+        <childnode refid="58440" relation="include">
+        </childnode>
+      </node>
+      <node id="58426">
+        <label>boost/geometry/core/cs.hpp</label>
+        <link refid="cs_8hpp"/>
+        <childnode refid="58427" relation="include">
+        </childnode>
+        <childnode refid="58428" relation="include">
+        </childnode>
+        <childnode refid="58429" relation="include">
+        </childnode>
+        <childnode refid="58430" relation="include">
+        </childnode>
+        <childnode refid="58439" relation="include">
+        </childnode>
+      </node>
+      <node id="58440">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="58433" relation="include">
+        </childnode>
+        <childnode refid="58441" relation="include">
+        </childnode>
+        <childnode refid="58437" relation="include">
+        </childnode>
+      </node>
+      <node id="58441">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+      <node id="58442">
+        <label>boost/geometry/util/select_most_precise.hpp</label>
+        <link refid="select__most__precise_8hpp"/>
+        <childnode refid="58435" relation="include">
+        </childnode>
+        <childnode refid="58443" relation="include">
+        </childnode>
+        <childnode refid="58424" relation="include">
+        </childnode>
+      </node>
+      <node id="58423">
+        <label>boost/numeric/conversion/cast.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="58445">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</label>
+        <link refid="strategies_8hpp"/>
+      </node>
+      <node id="58444">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp</label>
+        <link refid="buffer_distance_symmetric.hpp"/>
+        <childnode refid="58445" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__symmetric" prot="public">boost::geometry::strategy::buffer::distance_symmetric</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy">boost::geometry::strategy</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1buffer">boost::geometry::strategy::buffer</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp"/>
+  </compounddef>
+</doxygen>

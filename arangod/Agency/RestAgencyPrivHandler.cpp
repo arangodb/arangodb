@@ -22,17 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAgencyPrivHandler.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 
 #include "Agency/Agent.h"
+
+#include <typeinfo>
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <typeinfo>
-
 #include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 
 using namespace arangodb;
 
@@ -84,17 +84,21 @@ RestStatus RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
-    arangodb::velocypack::Options opts;
-    if (_request->suffix().size() == 0) {  // empty request
+    result.add("id", VPackValue(_agent->id()));
+    result.add("endpoint", VPackValue(_agent->endpoint()));
+
+    auto const& suffixes = _request->suffixes();
+
+    if (suffixes.empty()) {  // empty request
       return reportErrorEmptyRequest();
-    } else if (_request->suffix().size() > 1) {  // request too long
+    } else if (suffixes.size() > 1) {  // request too long
       return reportTooManySuffices();
     } else {
       term_t term = 0;
       term_t prevLogTerm = 0;
       std::string id;  // leaderId for appendEntries, cadidateId for requestVote
       arangodb::consensus::index_t prevLogIndex, leaderCommit;
-      if (_request->suffix()[0] == "appendEntries") {  // appendEntries
+      if (suffixes[0] == "appendEntries") {  // appendEntries
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
@@ -104,12 +108,12 @@ RestStatus RestAgencyPrivHandler::execute() {
             readValue("leaderCommit", leaderCommit)) {  // found all values
           bool ret = _agent->recvAppendEntriesRPC(
               term, id, prevLogIndex, prevLogTerm, leaderCommit,
-              _request->toVelocyPackBuilderPtr(&opts));
+              _request->toVelocyPackBuilderPtr());
           result.add("success", VPackValue(ret));
         } else {
           return reportBadQuery();  // bad query
         }
-      } else if (_request->suffix()[0] == "requestVote") {  // requestVote
+      } else if (suffixes[0] == "requestVote") {  // requestVote
         if (readValue("term", term) && readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm)) {
@@ -118,26 +122,25 @@ RestStatus RestAgencyPrivHandler::execute() {
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         }
-      } else if (_request->suffix()[0] == "notifyAll") {  // notify
+      } else if (suffixes[0] == "notifyAll") {  // notify
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
           priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPackBuilderPtr(&opts));
+              term, id, 0, 0, _request->toVelocyPackBuilderPtr());
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         } else {
           return reportBadQuery();  // bad query
         }
-      } else if (_request->suffix()[0] == "activate") {  // notify
+      } else if (suffixes[0] == "activate") {  // notify
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-        arangodb::velocypack::Options options;
         query_t everything;
         try {
-          everything = _request->toVelocyPackBuilderPtr(&options);
+          everything = _request->toVelocyPackBuilderPtr();
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "Failure getting activation body:" <<  e.what();
@@ -151,21 +154,30 @@ RestStatus RestAgencyPrivHandler::execute() {
           LOG_TOPIC(ERR, Logger::AGENCY) << "Activation failed: " << e.what();
         }
         
-      } else if (_request->suffix()[0] == "gossip") {
+      } else if (suffixes[0] == "gossip") {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-        arangodb::velocypack::Options options;
-        query_t query = _request->toVelocyPackBuilderPtr(&options);
+        query_t query = _request->toVelocyPackBuilderPtr();
         try {
           query_t ret = _agent->gossip(query);
-          result.add("id", ret->slice().get("id"));
-          result.add("endpoint", ret->slice().get("endpoint"));
-          result.add("pool", ret->slice().get("pool"));
+          for (auto const& obj : VPackObjectIterator(ret->slice())) {
+            result.add(obj.key.copyString(), obj.value);
+          }
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());
         }
-      } else if (_request->suffix()[0] == "activeAgents") {
+      } else if (suffixes[0] == "measure") {
+        if (_request->requestType() != rest::RequestType::POST) {
+          return reportMethodNotAllowed();
+        }
+        auto query = _request->toVelocyPackBuilderPtr();
+        try {
+          _agent->reportMeasurement(query);
+        } catch (std::exception const& e) {
+          return reportBadQuery(e.what());
+        }
+      } else if (suffixes[0] == "activeAgents") {
         if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
@@ -173,9 +185,8 @@ RestStatus RestAgencyPrivHandler::execute() {
           result.add("active",
                      _agent->config().activeAgentsToBuilder()->slice());
         }
-      } else if (_request->suffix()[0] == "inform") {
-        arangodb::velocypack::Options options;
-        query_t query = _request->toVelocyPackBuilderPtr(&options);
+      } else if (suffixes[0] == "inform") {
+        query_t query = _request->toVelocyPackBuilderPtr();
         try {
           _agent->notify(query);
         } catch (std::exception const& e) {

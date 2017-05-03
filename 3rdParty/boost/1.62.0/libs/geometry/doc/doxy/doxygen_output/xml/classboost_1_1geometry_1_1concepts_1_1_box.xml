@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1concepts_1_1_box" kind="class" prot="public">
+    <compoundname>boost::geometry::concepts::Box</compoundname>
+    <includes local="no">box_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para><ref refid="classboost_1_1geometry_1_1concepts_1_1_box" kindref="compound">Box</ref> concept. </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="par"><title>Formal definition:</title><para>The box concept is defined as following:<itemizedlist>
+<listitem><para>there must be a specialization of <ref refid="structboost_1_1geometry_1_1traits_1_1tag" kindref="compound">traits::tag</ref> defining <ref refid="structboost_1_1geometry_1_1box__tag" kindref="compound">box_tag</ref> as type</para></listitem><listitem><para>there must be a specialization of <ref refid="structboost_1_1geometry_1_1traits_1_1point__type" kindref="compound">traits::point_type</ref> to define the underlying point type (even if it does not consist of points, it should define this type, to indicate the points it can work with)</para></listitem><listitem><para>there must be a specialization of <ref refid="structboost_1_1geometry_1_1traits_1_1indexed__access" kindref="compound">traits::indexed_access</ref>, per index (min_corner, max_corner) and per dimension, with two functions:<itemizedlist>
+<listitem><para>get to get a coordinate value</para></listitem><listitem><para>set to set a coordinate value (this one is not checked for <ref refid="classboost_1_1geometry_1_1concepts_1_1_const_box" kindref="compound">ConstBox</ref>) </para></listitem></itemizedlist>
+</para></listitem></itemizedlist>
+</para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/box_concept.hpp" line="49" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/box_concept.hpp" bodystart="48" bodyend="84"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,84 @@
+R"=(
+{
+  "arango": {
+    "Current": {
+      "Collections": {
+        "database": {
+          "collection1": {
+            "s1": {
+              "servers": ["leader", "follower1", "follower2"]
+            }
+          },
+          "collection2": {
+            "s2": {
+              "servers": ["leader"]
+            }
+          },
+          "collection3": {
+            "s3": {
+              "servers": ["leader", "follower1"]
+            }
+          }
+        }
+      }
+    },
+    "Plan": {
+      "Collections": {
+        "database": {
+          "collection1": {
+            "replicationFactor" : 2,
+            "shards": {
+              "s1": ["leader", "follower1", "follower2"]
+            }
+          },
+          "collection2": {
+            "replicationFactor" : 2,
+            "shards": {
+              "s2": ["leader", "follower1", "follower2"]
+            }
+          },
+          "collection3": {
+            "replicationFactor" : 2,
+            "shards": {
+              "s3": ["leader", "follower1", "follower2"]
+            }
+          }
+        }
+      },
+      "DBServers": {
+        "follower1": "none",
+        "follower2": "none",
+        "free": "none",
+        "free2": "none",
+        "leader": "none"
+      }
+    },
+    "Supervision": {
+      "DBServers": {},
+      "Health": {
+        "follower1": {
+          "Status": "GOOD"
+        },
+        "follower2": {
+          "Status": "GOOD"
+        },
+        "leader": {
+          "Status": "GOOD"
+        },
+        "free": {
+          "Status": "GOOD"
+        },
+        "free2": {
+          "Status": "FAILED"
+        }
+      },
+      "Shards": {}
+    },
+    "Target": {
+      "Failed": {},
+      "Finished": {},
+      "ToDo": {}
+    }
+  }
+}
+)="

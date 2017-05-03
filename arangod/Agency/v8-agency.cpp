@@ -23,6 +23,9 @@
 
 #include "v8-agency.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -31,9 +34,6 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -198,14 +198,13 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8g->AgentTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING("ArangoAgentCtor"));
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("ArangoAgentCtor"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ArangoAgentCtor"),
                                ft->GetFunction(), true);
-
+  
   // register the global object
   v8::Handle<v8::Object> aa = rt->NewInstance();
   if (!aa.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate, context,
+    TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING("ArangoAgent"), aa);
   }
 }

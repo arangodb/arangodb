@@ -12,6 +12,11 @@ network filesystem such as NFS. The reason is that networked filesystems
 might cause inconsistencies when there are multiple parallel readers or
 writers or they lack features required by arangod (e.g. flock()).
 
+Additionally errors have been reported for some filesystems mounted
+with mount option NOEXEC. To be on the safe side, ArangoDB's database 
+directory should reside in a filesystem that has not been mounted with 
+the NOEXEC option.
+
 `directory`
 
 When using the command line version, you can simply supply the database

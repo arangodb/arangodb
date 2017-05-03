@@ -28,15 +28,20 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
+#include "Cluster/ClusterComm.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
-#include "V8Server/V8Traverser.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
+using namespace arangodb::graph;
 
 static void parseNodeInput(AstNode const* node, std::string& id,
                            Variable const*& variable) {
@@ -61,177 +66,74 @@ static void parseNodeInput(AstNode const* node, std::string& id,
   }
 }
 
-static TRI_edge_direction_e parseDirection (uint64_t dirNum) {
-  switch (dirNum) {
-    case 0:
-      return TRI_EDGE_ANY;
-    case 1:
-      return TRI_EDGE_IN;
-    case 2:
-      return TRI_EDGE_OUT;
-    default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_PARSE,
-          "direction can only be INBOUND, OUTBOUND or ANY");
-  }
-}
-
 ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
-                                   TRI_vocbase_t* vocbase, uint64_t direction,
+                                   TRI_vocbase_t* vocbase, AstNode const* direction,
                                    AstNode const* start, AstNode const* target,
                                    AstNode const* graph,
-                                   ShortestPathOptions const& options)
-    : ExecutionNode(plan, id),
-      _vocbase(vocbase),
-      _vertexOutVariable(nullptr),
-      _edgeOutVariable(nullptr),
+                                   std::unique_ptr<BaseOptions>& options)
+    : GraphNode(plan, id, vocbase, direction, graph, options),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
-      _graphObj(nullptr),
-      _options(options) {
-
-  TRI_ASSERT(_vocbase != nullptr);
+      _fromCondition(nullptr),
+      _toCondition(nullptr) {
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(target != nullptr);
   TRI_ASSERT(graph != nullptr);
 
-  TRI_edge_direction_e baseDirection = parseDirection(direction);
-
-  if (graph->type == NODE_TYPE_COLLECTION_LIST) {
-    size_t edgeCollectionCount = graph->numMembers();
-    auto resolver = std::make_unique<CollectionNameResolver>(vocbase);
-    _graphInfo.openArray();
-    _edgeColls.reserve(edgeCollectionCount);
-    _directions.reserve(edgeCollectionCount);
-    // List of edge collection names
-    for (size_t i = 0; i < edgeCollectionCount; ++i) {
-      auto col = graph->getMember(i);
-      if (col->type == NODE_TYPE_DIRECTION) {
-        // We have a collection with special direction.
-        TRI_ASSERT(col->getMember(0)->isIntValue());
-        TRI_edge_direction_e dir = parseDirection(col->getMember(0)->getIntValue());
-        _directions.emplace_back(dir);
-        col = col->getMember(1);
-      } else {
-        _directions.emplace_back(baseDirection);
-      }
-
-      std::string eColName = col->getString();
-      auto eColType = resolver->getCollectionTypeCluster(eColName);
-      if (eColType != TRI_COL_TYPE_EDGE) {
-        std::string msg("collection type invalid for collection '" +
-                        std::string(eColName) +
-                        ": expecting collection type 'edge'");
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-                                       msg);
-      }
-      _graphInfo.add(VPackValue(eColName));
-      _edgeColls.emplace_back(std::move(eColName));
-    }
-
-    _graphInfo.close();
-  } else {
-    if (_edgeColls.empty()) {
-      if (graph->isStringValue()) {
-        std::string graphName = graph->getString();
-        _graphInfo.add(VPackValue(graphName));
-        _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
-
-        if (_graphObj == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
-        }
-
-        auto eColls = _graphObj->edgeCollections();
-        size_t length = eColls.size();
-        if (length == 0) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
-        }
-        _edgeColls.reserve(length);
-        _directions.reserve(length);
-
-        for (const auto& n : eColls) {
-          _edgeColls.push_back(n);
-          _directions.emplace_back(baseDirection);
-        }
-      }
-    }
+  auto ast = _plan->getAst();
+  // Let us build the conditions on _from and _to. Just in case we need them.
+  {
+    auto const* access = ast->createNodeAttributeAccess(
+        getTemporaryRefNode(), StaticStrings::FromString.c_str(),
+        StaticStrings::FromString.length());
+    auto const* cond = ast->createNodeBinaryOperator(
+        NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
+    _fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    _fromCondition->addMember(cond);
   }
+  TRI_ASSERT(_fromCondition != nullptr);
+
+  {
+    auto const* access = ast->createNodeAttributeAccess(
+        getTemporaryRefNode(), StaticStrings::ToString.c_str(),
+        StaticStrings::ToString.length());
+    auto const* cond = ast->createNodeBinaryOperator(
+        NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
+    _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    _toCondition->addMember(cond);
+  }
+  TRI_ASSERT(_toCondition != nullptr);
 
   parseNodeInput(start, _startVertexId, _inStartVariable);
   parseNodeInput(target, _targetVertexId, _inTargetVariable);
 }
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
-                                   TRI_vocbase_t* vocbase,
-                                   std::vector<std::string> const& edgeColls,
-                                   std::vector<TRI_edge_direction_e> const& directions,
-                                   Variable const* inStartVariable,
-                                   std::string const& startVertexId,
-                                   Variable const* inTargetVariable,
-                                   std::string const& targetVertexId,
-                                   ShortestPathOptions const& options)
-    : ExecutionNode(plan, id),
-      _vocbase(vocbase),
-      _vertexOutVariable(nullptr),
-      _edgeOutVariable(nullptr),
+/// @brief Internal constructor to clone the node.
+ShortestPathNode::ShortestPathNode(
+    ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+    std::vector<std::unique_ptr<Collection>> const& edgeColls,
+    std::vector<std::unique_ptr<Collection>> const& vertexColls,
+    std::vector<TRI_edge_direction_e> const& directions,
+    Variable const* inStartVariable, std::string const& startVertexId,
+    Variable const* inTargetVariable, std::string const& targetVertexId,
+    std::unique_ptr<BaseOptions>& options)
+    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, options),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
       _inTargetVariable(inTargetVariable),
       _targetVertexId(targetVertexId),
-      _directions(directions),
-      _graphObj(nullptr),
-      _options(options) {
+      _fromCondition(nullptr),
+      _toCondition(nullptr) {}
 
-  _graphInfo.openArray();
-  for (auto const& it : edgeColls) {
-    _edgeColls.emplace_back(it);
-    _graphInfo.add(VPackValue(it));
-  }
-  _graphInfo.close();
-}
-
-void ShortestPathNode::fillOptions(arangodb::traverser::ShortestPathOptions& opts) const {
-  if (!_options.weightAttribute.empty()) {
-    opts.useWeight = true;
-    opts.weightAttribute = _options.weightAttribute;
-    opts.defaultWeight = _options.defaultWeight;
-  } else {
-    opts.useWeight = false;
-  }
-}
+ShortestPathNode::~ShortestPathNode() {}
 
 ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
-      _vertexOutVariable(nullptr),
-      _edgeOutVariable(nullptr),
+    : GraphNode(plan, base),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
-      _graphObj(nullptr) {
-  // Directions
-  VPackSlice dirList = base.get("directions");
-  for (auto const& it : VPackArrayIterator(dirList)) {
-    uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(it);
-    TRI_edge_direction_e d;
-    switch (dir) {
-      case 0:
-        d = TRI_EDGE_ANY;
-        break;
-      case 1:
-        d = TRI_EDGE_IN;
-        break;
-      case 2:
-        d = TRI_EDGE_OUT;
-        break;
-      default:
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "Invalid direction value");
-        break;
-    }
-    _directions.emplace_back(d);
-  }
-
+      _fromCondition(nullptr),
+      _toCondition(nullptr) {
   // Start Vertex
   if (base.hasKey("startInVariable")) {
     _inStartVariable = varFromVPack(plan->getAst(), base, "startInVariable");
@@ -265,6 +167,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
     }
   }
 
+  // TODO SP Difference is here:
+  /*
   std::string graphName;
   if (base.hasKey("graph") && (base.get("graph").isString())) {
     graphName = base.get("graph").copyString();
@@ -275,9 +179,17 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
       }
 
-      auto eColls = _graphObj->edgeCollections();
-      for (auto const& n : eColls) {
-        _edgeColls.push_back(n);
+      auto const& eColls = _graphObj->edgeCollections();
+      for (auto const& it : eColls) {
+        _edgeColls.push_back(it);
+
+        // if there are twice as many directions as collections, this means we
+        // have a shortest path with direction ANY. we must add each collection
+        // twice then
+        if (_directions.size() == 2 * eColls.size()) {
+          // add collection again
+          _edgeColls.push_back(it);
+        }
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
@@ -303,35 +215,19 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
           "graph has to be a non empty array of strings.");
     }
   }
+  */
 
-  // Out variables
-  if (base.hasKey("vertexOutVariable")) {
-    _vertexOutVariable = varFromVPack(plan->getAst(), base, "vertexOutVariable");
-  }
-  if (base.hasKey("edgeOutVariable")) {
-    _edgeOutVariable = varFromVPack(plan->getAst(), base, "edgeOutVariable");
-  }
+  // Filter Condition Parts
+  TRI_ASSERT(base.hasKey("fromCondition"));
+  _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
 
-  // Flags
-  if (base.hasKey("shortestPathFlags")) {
-    _options = ShortestPathOptions(base);
-  }
+  TRI_ASSERT(base.hasKey("toCondition"));
+  _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
 void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
                                           bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
-  nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("graph", _graphInfo.slice());
-  nodes.add(VPackValue("directions"));
-  {
-    VPackArrayBuilder guard(&nodes);
-    for (auto const& d : _directions) {
-      nodes.add(VPackValue(d));
-    }
-  }
-
+  GraphNode::toVelocyPackHelper(nodes, verbose);  // call base class method
   // In variables
   if (usesStartInVariable()) {
     nodes.add(VPackValue("startInVariable"));
@@ -347,23 +243,14 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
     nodes.add("targetVertexId", VPackValue(_targetVertexId));
   }
 
-  if (_graphObj != nullptr) {
-    nodes.add(VPackValue("graphDefinition"));
-    _graphObj->toVelocyPack(nodes, verbose);
-  }
+  // Filter Conditions
+  TRI_ASSERT(_fromCondition != nullptr);
+  nodes.add(VPackValue("fromCondition"));
+  _fromCondition->toVelocyPack(nodes, verbose);
 
-  // Out variables
-  if (usesVertexOutVariable()) {
-    nodes.add(VPackValue("vertexOutVariable"));
-    vertexOutVariable()->toVelocyPack(nodes);
-  }
-  if (usesEdgeOutVariable()) {
-    nodes.add(VPackValue("edgeOutVariable"));
-    edgeOutVariable()->toVelocyPack(nodes);
-  }
-
-  nodes.add(VPackValue("shortestPathFlags"));
-  _options.toVelocyPack(nodes);
+  TRI_ASSERT(_toCondition != nullptr);
+  nodes.add(VPackValue("toCondition"));
+  _toCondition->toVelocyPack(nodes, verbose);
 
   // And close it:
   nodes.close();
@@ -372,9 +259,13 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
                                        bool withDependencies,
                                        bool withProperties) const {
-  auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _directions,
-                                _inStartVariable, _startVertexId,
-                                _inTargetVariable, _targetVertexId, _options);
+  TRI_ASSERT(!_optionsBuilt);
+  auto oldOpts = static_cast<ShortestPathOptions*>(options());
+  std::unique_ptr<BaseOptions> tmp =
+      std::make_unique<ShortestPathOptions>(*oldOpts);
+  auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
+                                _directions, _inStartVariable, _startVertexId,
+                                _inTargetVariable, _targetVertexId, tmp);
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
@@ -395,48 +286,67 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
     c->setEdgeOutput(edgeOutVariable);
   }
 
+  // Temporary Filter Objects
+  c->_tmpObjVariable = _tmpObjVariable;
+  c->_tmpObjVarNode = _tmpObjVarNode;
+  c->_tmpIdNode = _tmpIdNode;
+
+  // Filter Condition Parts
+  c->_fromCondition = _fromCondition->clone(_plan->getAst());
+  c->_toCondition = _toCondition->clone(_plan->getAst());
+
   cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
 
 double ShortestPathNode::estimateCost(size_t& nrItems) const {
-  // Standard estimation for Shortest path is O(|E| + |V|*LOG(|V|))
-  // At this point we know |E| but do not know |V|.
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  auto trx = _plan->getAst()->query()->trx();
-  auto collections = _plan->getAst()->query()->collections();
-  size_t edgesCount = 0;
-  double nodesEstimate = 0;
+  return depCost + (incoming * _options->estimateCost(nrItems));
+}
 
-  TRI_ASSERT(collections != nullptr);
-
-  for (auto const& it : _edgeColls) {
-    auto collection = collections->get(it);
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "unexpected pointer for collection");
-    }
-    size_t edges = collection->count();
-
-    auto indexes = trx->indexesForCollection(collection->name);
-    for (auto const& index : indexes) {
-      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-        // We can only use Edge Index
-        if (index->hasSelectivityEstimate()) {
-          nodesEstimate += edges * index->selectivityEstimate();
-        } else {
-          // Hard-coded fallback should not happen
-          nodesEstimate += edges * 0.01;
-        }
-        break;
-      }
-    }
-
-    edgesCount += edges;
+void ShortestPathNode::prepareOptions() {
+  if (_optionsBuilt) {
+    return;
   }
-  nrItems = edgesCount + static_cast<size_t>(std::log2(nodesEstimate) * nodesEstimate);
-  return depCost + nrItems;
+  TRI_ASSERT(!_optionsBuilt);
+
+  size_t numEdgeColls = _edgeColls.size();
+  Ast* ast = _plan->getAst();
+  auto opts = static_cast<ShortestPathOptions*>(options());
+  opts->setVariable(getTemporaryVariable());
+
+  // Compute Indexes.
+  for (size_t i = 0; i < numEdgeColls; ++i) {
+    auto dir = _directions[i];
+    switch (dir) {
+      case TRI_EDGE_IN:
+        opts->addLookupInfo(ast, _edgeColls[i]->getName(),
+                            StaticStrings::ToString, _toCondition->clone(ast));
+        opts->addReverseLookupInfo(ast, _edgeColls[i]->getName(),
+                                   StaticStrings::FromString,
+                                   _fromCondition->clone(ast));
+        break;
+      case TRI_EDGE_OUT:
+        opts->addLookupInfo(ast, _edgeColls[i]->getName(),
+                            StaticStrings::FromString,
+                            _fromCondition->clone(ast));
+        opts->addReverseLookupInfo(ast, _edgeColls[i]->getName(),
+                                   StaticStrings::ToString,
+                                   _toCondition->clone(ast));
+        break;
+      case TRI_EDGE_ANY:
+        TRI_ASSERT(false);
+        break;
+    }
+  }
+  // If we use the path output the cache should activate document
+  // caching otherwise it is not worth it.
+  if (ServerState::instance()->isCoordinator()) {
+    _options->activateCache(false, engines());
+  } else {
+    _options->activateCache(false, nullptr);
+  }
+  _optionsBuilt = true;
 }

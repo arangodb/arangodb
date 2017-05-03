@@ -1,0 +1,17 @@
+# Boost.Geometry (aka GGL, Generic Geometry Library)
+#
+# Copyright (c) 2016 Oracle and/or its affiliates.
+#
+# Contributed and/or modified by Vissarion Fisikopoulos, on behalf of Oracle
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+test-suite boost-geometry-algorithms-length
+    :
+    [ run length.cpp                     : : : : algorithms_length ]
+    [ run length_multi.cpp               : : : : algorithms_length_multi ]
+    [ run length_sph.cpp                 : : : : algorithms_length_sph ]
+    [ run length_geo.cpp                 : : : : algorithms_length_geo ]
+    ;

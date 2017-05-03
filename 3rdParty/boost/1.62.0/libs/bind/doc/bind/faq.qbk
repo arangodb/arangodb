@@ -1,0 +1,99 @@
+[/
+ /  Copyright (c) 2001, 2002 Peter Dimov and Multi Media Ltd.
+ /  Copyright (c) 2003-2008 Peter Dimov
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:faq Frequently Asked Questions]
+
+[section Why doesn't this compile?]
+
+See the dedicated [link bind.troubleshooting Troubleshooting section].
+
+[endsect]
+
+[section Why does this compile? It should not.]
+
+Probably because you used the general `bind<R>(f, ...)` syntax, thereby
+instructing `bind` to not "inspect" f to detect arity and return type errors.
+
+[endsect]
+
+[section:Q_forms What is the difference between `bind(f, ...)` and `bind<R>(f, ...)`?]
+
+The first form instructs `bind` to inspect the type of `f` in order to
+determine its arity (number of arguments) and return type. Arity errors will
+be detected at "bind time". This syntax, of course, places some requirements
+on `f`. It must be a function, function pointer, member function pointer, or a
+function object that defines a nested type named `result_type`; in short, it
+must be something that `bind` can recognize.
+
+The second form instructs `bind` to not attempt to recognize the type of `f`.
+It is generally used with function objects that do not, or cannot, expose
+`result_type`, but it can also be used with nonstandard functions. For example,
+the current implementation does not automatically recognize variable-argument
+functions like `printf`, so you will have to use `bind<int>(printf, ...)`.
+Note that an alternative `bind(type<R>(), f, ...)` syntax is supported for
+portability reasons.
+
+Another important factor to consider is that compilers without partial
+template specialization or function template partial ordering support cannot
+handle the first form when `f` is a function object, and in most cases will
+not handle the second form when `f` is a function (pointer) or a member
+function pointer.
+
+[endsect]
+
+[section Does bind work with Windows API functions?]
+
+Yes, if you [link bind.implementation.stdcall `#define
+BOOST_BIND_ENABLE_STDCALL`]. An alternative is to treat the function as a
+[link bind.purpose.with_function_objects generic function object] and use the
+`bind<R>(f, ...)` syntax.
+
+[endsect]
+
+[section Does bind work with COM methods?]
+
+Yes, if you [link bind.implementation.stdcall `#define
+BOOST_MEM_FN_ENABLE_STDCALL`].
+
+[endsect]
+
+[section Does bind work with Mac toolbox functions?]
+
+Yes, if you [link bind.implementation.stdcall `#define
+BOOST_BIND_ENABLE_PASCAL`]. An alternative is to treat the function as a [link
+bind.purpose.with_function_objects generic function object] and use the
+`bind<R>(f, ...)` syntax.
+
+[endsect]
+
+[section Does bind work with extern "C" functions?]
+
+Sometimes. On some platforms, pointers to extern "C" functions are equivalent
+to "ordinary" function pointers, so they work fine. Other platforms treat them
+as different types. A platform-specific implementation of `bind` is expected
+to handle the problem transparently; this implementation does not. As usual,
+the workaround is to treat the function as a [link
+bind.purpose.with_function_objects generic function object] and use the
+`bind<R>(f, ...)` syntax.
+
+[endsect]
+
+[section Why doesn't bind automatically recognize nonstandard functions?]
+
+Non-portable extensions, in general, should default to off to prevent vendor
+lock-in. Had the [link bind.implementation.stdcall appropriate macros] been
+defined automatically, you could have accidentally taken advantage of them
+without realizing that your code is, perhaps, no longer portable. In addition,
+some compilers have the option to make `__stdcall` (`__fastcall`) their
+default calling convention, in which case no separate support would be
+necessary.
+
+[endsect]
+
+[endsect]

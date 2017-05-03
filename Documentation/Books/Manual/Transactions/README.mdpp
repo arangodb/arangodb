@@ -1,4 +1,5 @@
-!CHAPTER Transactions
+Transactions
+============
 
 Starting with version 1.3, ArangoDB provides support for user-definable 
 transactions. 

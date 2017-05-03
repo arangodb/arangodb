@@ -49,6 +49,14 @@ const PARSED_JSON_MIME = (function (mime) {
   ]));
 }(MIME_JSON));
 
+const repeat = (times, value) => {
+  const arr = Array(times);
+  for (let i = 0; i < times; i++) {
+    arr[i] = value;
+  }
+  return arr;
+};
+
 module.exports = exports =
   class SwaggerContext {
     constructor (path) {
@@ -75,44 +83,69 @@ module.exports = exports =
       this._pathParams = new Map();
       this._pathParamNames = [];
       this._pathTokens = tokenize(path, this);
+      this._tags = new Set();
     }
 
-    header (name, schema, description) { [name, schema, description] = check(
+    header (...args) {
+      const argv = check(
         'endpoint.header',
-        ['name', 'schema?', 'description?'],
-        ['string', check.validateSchema, 'string'],
-        [name, schema, description]
+        args,
+        [['name', 'string'], ['schema', check.validateSchema], ['description', 'string']],
+        [['name', 'string'], ['description', 'string']],
+        [['name', 'string'], ['schema', check.validateSchema]],
+        [['name', 'string']]
       );
-      this._headers.set(name.toLowerCase(), {schema, description});
+      let schema = argv.schema;
+      let description = argv.description;
+      this._headers.set(argv.name.toLowerCase(), {schema, description});
       return this;
     }
 
-    pathParam (name, schema, description) { [name, schema, description] = check(
+    pathParam (...args) {
+      const argv = check(
         'endpoint.pathParam',
-        ['name', 'schema?', 'description?'],
-        ['string', check.validateSchema, 'string'],
-        [name, schema, description]
+        args,
+        [['name', 'string'], ['schema', check.validateSchema], ['description', 'string']],
+        [['name', 'string'], ['description', 'string']],
+        [['name', 'string'], ['schema', check.validateSchema]],
+        [['name', 'string']]
       );
-      this._pathParams.set(name, {schema, description});
+      let schema = argv.schema;
+      let description = argv.description;
+      this._pathParams.set(argv.name, {schema, description});
       return this;
     }
 
-    queryParam (name, schema, description) { [name, schema, description] = check(
+    queryParam  (...args) {
+      const argv = check(
         'endpoint.queryParam',
-        ['name', 'schema?', 'description?'],
-        ['string', check.validateSchema, 'string'],
-        [name, schema, description]
+        args,
+        [['name', 'string'], ['schema', check.validateSchema], ['description', 'string']],
+        [['name', 'string'], ['description', 'string']],
+        [['name', 'string'], ['schema', check.validateSchema]],
+        [['name', 'string']]
       );
-      this._queryParams.set(name, {schema, description});
+      let schema = argv.schema;
+      let description = argv.description;
+      this._queryParams.set(argv.name, {schema, description});
       return this;
     }
 
-    body (model, mimes, description) { [model, mimes, description] = check(
+    body  (...args) {
+      const argv = check(
         'endpoint.body',
-        ['model?', 'mimes?', 'description?'],
-        [check.validateModel, check.validateMimes, 'string'],
-        [model, mimes, description]
+        args,
+        [['model', check.validateModel], ['mimes', check.validateMimes], ['description', 'string']],
+        [['model', check.validateModel], ['description', 'string']],
+        [['mimes', check.validateMimes], ['description', 'string']],
+        [['model', check.validateModel], ['mimes', check.validateMimes]],
+        [['model', check.validateModel]],
+        [['mimes', check.validateMimes]],
+        [['description', 'string']]
       );
+      let model = argv.model;
+      let mimes = argv.mimes;
+      let description = argv.description;
 
       if (!model) {
         model = {multiple: false};
@@ -143,12 +176,29 @@ module.exports = exports =
       return this;
     }
 
-    response (status, model, mimes, description) { [status, model, mimes, description] = check(
+    response (...args) {
+      const argv = check(
         'endpoint.response',
-        ['status?', 'model?', 'mimes?', 'description?'],
-        [check.validateStatus, check.validateModel, check.validateMimes, 'string'],
-        [status, model, mimes, description]
+        args,
+        [['status', check.validateStatus], ['model', check.validateModel], ['mimes', check.validateMimes], ['description', 'string']],
+        [['status', check.validateStatus], ['model', check.validateModel], ['description', 'string']],
+        [['status', check.validateStatus], ['mimes', check.validateMimes], ['description', 'string']],
+        [['status', check.validateStatus], ['model', check.validateModel], ['mimes', check.validateMimes]],
+        [['model', check.validateModel], ['mimes', check.validateMimes], ['description', 'string']],
+        [['status', check.validateStatus], ['model', check.validateModel]],
+        [['status', check.validateStatus], ['mimes', check.validateMimes]],
+        [['status', check.validateStatus], ['description', 'string']],
+        [['model', check.validateModel], ['mimes', check.validateMimes]],
+        [['model', check.validateModel], ['description', 'string']],
+        [['mimes', check.validateMimes], ['description', 'string']],
+        [['model', check.validateModel]],
+        [['mimes', check.validateMimes]],
+        [['description', 'string']]
       );
+      let status = argv.status;
+      let model = argv.model;
+      let mimes = argv.mimes;
+      let description = argv.description;
 
       if (!model) {
         model = {multiple: false};
@@ -183,45 +233,62 @@ module.exports = exports =
       return this;
     }
 
-    error (status, description) { [status, description] = check(
+    error (...args) {
+      const argv = check(
         'endpoint.error',
-        ['status', 'description?'],
-        [check.validateStatus, 'string'],
-        [status, description]
+        args,
+        [['status', check.validateStatus], ['description', 'string']],
+        [['status', check.validateStatus]]
       );
+      let status = argv.status;
+      let description = argv.description;
       this._responses.set(status, {
         model: DEFAULT_ERROR_SCHEMA,
         multiple: false,
         contentTypes: [PARSED_JSON_MIME],
-      description});
+        description
+      });
       return this;
     }
 
-    summary (text) { [text] = check(
+    summary (text) {
+      [text] = check(
         'endpoint.summary',
-        ['text'],
-        ['string'],
-        [text]
+        [text],
+        [['text', 'string']]
       );
       this._summary = text;
       return this;
     }
 
-    description (text) { [text] = check(
+    description (text) {
+      [text] = check(
         'endpoint.description',
-        ['text'],
-        ['string'],
-        [text]
+        [text],
+        [['text', 'string']]
       );
       this._description = text;
       return this;
     }
 
-    deprecated (flag) { [flag] = check(
-        'endpoint.deprecated',
-        ['flag?'],
-        ['boolean'],
-        [flag]
+    tag (...tags) {
+      tags = check(
+        'endpoint.tag',
+        tags,
+        [...repeat(Math.max(1, tags.length), ['tag', 'string'])]
+      );
+      for (const tag of tags) {
+        this._tags.add(tag);
+      }
+      return this;
+    }
+
+    deprecated (...args) {
+      const [flag] = check(
+        'endpoint.summary',
+        args,
+        [['flag', 'boolean']],
+        []
       );
       this._deprecated = typeof flag === 'boolean' ? flag : true;
       return this;
@@ -237,6 +304,9 @@ module.exports = exports =
         }
         for (const response of swaggerObj._responses.entries()) {
           this._responses.set(response[0], response[1]);
+        }
+        for (const tag of swaggerObj._tags) {
+          this._tags.add(tag);
         }
         if (!this._bodyParam && swaggerObj._bodyParam) {
           this._bodyParam = swaggerObj._bodyParam;
@@ -288,6 +358,9 @@ module.exports = exports =
       }
       if (this._summary) {
         operation.summary = this._summary;
+      }
+      if (this._tags) {
+        operation.tags = Array.from(this._tags);
       }
       if (this._bodyParam) {
         operation.consumes = (

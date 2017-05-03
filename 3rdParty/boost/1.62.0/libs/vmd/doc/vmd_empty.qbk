@@ -1,0 +1,326 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_test_empty Emptiness]
+
+[heading Passing empty arguments]
+
+It is possible to pass an empty argument to a macro.
+The official terminology for this in the C++ standard is an argument 
+"consisting of no preprocessing tokens".
+
+Let us consider a number of cases without worrying too much
+what the macro output represents.
+
+Consider these two function-like macros:
+ 
+ #define SMACRO() someoutput
+ #define EMACRO(x) otheroutput x
+ 
+The first macro takes no parameters so invoking it must always be done by
+ 
+ SMACRO()
+ 
+and passing any arguments to it would be invalid.
+
+The second macro takes a single parameter. it can be evoked as
+
+ EMACRO(somedata)
+ 
+but it also can be invoked as
+
+ EMACRO()
+ 
+In the second invocation of EMACRO we are passing an empty argument to the macro.
+Similarly for any macro having 1 or more parameters, an empty argument
+can be validly passed for any of the parameters, as in
+
+ #define MMACRO(x,y,z) x y z
+ 
+ MMACRO(1,,2)
+ 
+An empty argument is an argument even if we are passing nothing.
+
+Because an empty argument can be passed for a given parameter of
+a macro does not mean one should do so. Any given macro will specify what each
+argument to a macro should represent, and it is has normally been very rare to encounter 
+a macro which specifies that an empty argument can logically be passed for a given
+argument. But from the perspective of standard C++ it is perfectly valid to
+pass an empty argument for a macro parameter.
+
+The notion of passing empty arguments can be extended to passing empty data which
+"consists of no preprocessing tokens" in slightly more complicated situations.
+It is possible to pass empty data as an argument to a variadic macro in the form of 
+variadic macro data, as in
+
+ #define VMACRO(x,...) x __VA_ARGS__
+ 
+invoked as
+
+ VMACRO(somedata,)
+ 
+Here one passes empty data as the variadic macro data and it is perfectly valid C++.
+Please notice that this different from
+
+ VMACRO(somedata)
+ 
+which is not valid C++ since something must be passed for the variadic argument.
+Similar one could invoke the macro as
+
+ VMACRO(somedata,vdata1,,vdata3)
+ 
+where one is passing variadic macro data but an element in the variadic macro data is empty.
+
+Furthermore if we are invoking a macro which expects a Boost PP data type, such as
+a tuple, we could also validly pass empty data for all or part of the data in a tuple,
+as in
+
+ #define TMACRO(x,atuple) x atuple
+ 
+ TMACRO(somedata,())
+ 
+In this case we are passing a 1 element tuple
+where the single element itself is empty.
+ 
+or
+
+ TMACRO(somedata,(telem1,,telem2,teleem3))
+ 
+In this case we are passing a 4 element tuple where
+the second element is empty.
+ 
+Again either invocation is valid C++ but it is not necessarily what the
+designed of the macro has desired, even if in both cases the macro designer
+has specified that the second parameter must be a tuple for the macro
+to work properly.
+ 
+[heading Returning emptiness]
+
+Similar to passing empty arguments in various ways to a macro,
+the data which a macro returns ( or 'generates' may be a better term )
+could be empty, in various ways. Again I am not necessarily promoting
+this idea as a common occurrence of macro design but merely pointing it 
+out as valid C++ preprocessing.
+
+ #define RMACRO(x,y,z)
+ 
+ RMACRO(data1,data2,data3)
+ 
+It is perfectly valid C++ to return "nothing" from a macro invocation.
+In fact a number of macros in Boost PP do that based on the preprocessor
+metaprogramming logic of the macro, and are documented as such.
+
+Similarly one could return nothing as part or all of a Boost PP
+data type or even as part of variadic macro data.
+
+ #define TRETMACRO(x,y,z) ()
+ #define TRETMACRO1(x,y,z) (x,,y,,z)
+ #define VRETMACRO(x,y,z) x,,y,,z
+
+Here again we are returning something but in terms of a Boost PP
+tuple or in terms of variadic data, we have elements which are empty.
+
+[heading Emptiness in preprocessor metaprogramming]
+
+In the examples given above where "emptiness" in one form of another
+is passed as arguments to a macro or returned from a macro, the examples
+I have given were created as simplified as possible to illustrate my points.
+In actual preprocessor metaprogramming, using Boost PP, where complicated logic 
+is used to generate macro output based on the arguments to a macro, it might be
+useful to allow and work with empty data if one were able to test for the fact 
+that data was indeed empty.
+
+[heading Testing for empty data]
+
+Currently Boost PP has an undocumented macro for testing whether 
+a parameter is empty of not, written without the use of variadic 
+macros. The macro is called BOOST_PP_IS_EMPTY. The macro is by its nature flawed,
+since there is no generalized way of determining whether or not a 
+parameter is empty using the C++ preprocessor. But the macro will 
+work given input limited in various ways or if the input is actually empty.
+
+Paul Mensonides, the developer of Boost PP and the BOOST_PP_IS_EMPTY macro 
+in that library, also wrote a better macro using variadic 
+macros, for determining whether or not a parameter is empty or not, which
+he published on the Internet in response to a discussion about emptiness.
+This macro is also not perfect, since there is no perfect solution, 
+but will work correctly with almost all input. I have adapted his code
+for the VMD and developed my own very slightly different code.
+
+The macro is called [macroref BOOST_VMD_IS_EMPTY] and will return 1 if its input 
+is empty or 0 if its input is not empty. The macro
+is a variadic macro which make take any input
+[footnote For VC++ 8 the input is not variadic data but a single parameter].
+
+[heading Macro Flaw with a standard C++ compiler]
+
+The one situation where the macro always does not work properly is if its input resolves 
+to a function-like macro name or a sequence of preprocessor tokens ending with 
+a function-like macro name and the function-like macro takes two or more parameters.
+
+Here is a simple example:
+
+ #include <boost/vmd/is_empty.hpp>
+ 
+ #define FMACRO(x,y) any_output
+ 
+ BOOST_VMD_IS_EMPTY(FMACRO)
+ BOOST_VMD_IS_EMPTY(some_input FMACRO)
+ 
+In the first case the name of a function-like macro is being passed to
+BOOST_VMD_IS_EMPTY while in the second case a sequence of preprocessing tokens is being
+passed to BOOST_VMD_IS_EMPTY ending with the name of a function-like macro.
+The function-like macro also has two ( or more ) parameters. In both the 
+cases above a compiler error will result from the use of BOOST_VMD_IS_EMPTY.
+
+Please note that these two problematical cases are not the same as passing
+an invocation of a function-like macro name to BOOST_VMD_IS_EMPTY, as in
+
+ #include <boost/vmd/is_empty.hpp>
+ 
+ BOOST_VMD_IS_EMPTY(FMACRO(arg1,arg2))
+ BOOST_VMD_IS_EMPTY(someinput FMACRO(arg1,arg2))
+ 
+which always works correctly, unless of course a particular function-like macro
+invocation resolves to either of our two previous situations.
+
+Another situation where the macro may not work properly is if the previously mentioned
+function-like macro takes a single parameter but creates an error when the argument
+passed is empty. An example of this would be:
+
+ #define FMACRO(x) BOOST_PP_CAT(+,x C);
+ 
+When nothing is passed to FMACRO undefined behavior will occur since attempting to concatenate
+'+' to ' C' is UB in C++ preprocessor terms.
+
+So for a standard conforming compiler we have essentially a single corner case where
+the BOOST_VMD_IS_EMPTY does not work and, when it does not work it, produces a
+compiler error rather than an incorrect result. Essentially what is desired for maximum 
+safety is that we never pass input ending with the name of a function-like macro name when
+testing for emptiness.
+
+[heading Macro Flaw with Visual C++]
+
+The VC++ preprocessor is not a standard C++ conforming preprocessor in at least two 
+relevant situations to our discussion of emptiness. These situations combine to create 
+a single corner case which causes the BOOST_VMD_IS_EMPTY macro to not work properly 
+using VC++ when the input resolves to a function-like macro name.
+
+The first situation, related to our discussion of emptiness, where the VC++ preprocessor
+is not a standard C++ conforming preprocessor is that if a macro taking 'n' number of parameters is invoked 
+with 0 to 'n-1' parameters, the compiler does not give an error, but only a warning.
+
+ #define FMACRO(x,y) x + y
+ 
+ FMACRO(1)
+ 
+should give a compiler error, as it does when using a C++ standard-conforming  
+compiler, but when invoked using VC++ it only gives a warning
+and VC++ continues macro substitution with 'y' as a placemarker preprocessing token.
+This non-standard conforming action actually eliminates the case where BOOST_VMD_IS_EMPTY
+does not work properly with a standard C++ conforming compiler. But of course it has the
+potential of producing incorrect output in other macro processing situations unrelated
+to the BOOST_VMD_IS_EMPTY invocation, where a compiler error should occur.
+
+A second general situation, related to our discussion of emptiness, where the VC++ preprocessor
+is not a standard C++ conforming preprocessor is that the expansion of a macro works incorrectly 
+when the expanded macro is a function-like macro name followed by a function-like macro invocation, 
+in which case the macro re-expansion is erroneously done more than once. This latter case can be 
+seen by this example:
+
+ #define FMACRO1(parameter) FMACRO3 parameter()
+ #define FMACRO2() ()
+ #define FMACRO3() 1
+ 
+ FMACRO1(FMACRO2)
+ 
+ should expand to:
+ 
+ FMACRO3()
+ 
+ but in VC++ it expands to:
+ 
+ 1
+
+where after initially expanding the macro to:
+
+ FMACRO3 FMACRO2()
+ 
+VC++ erroneously rescans the sequence of preprocessing tokens more than once rather than 
+rescan just one more time for more macro names.
+
+What these two particular preprocessor flaws in the VC++ compiler mean is that although
+BOOST_VMD_IS_EMPTY does not fail with a compiler error in the same case as with 
+a standard C++ conforming compiler given previously, it fails by giving
+the wrong result in another situation. 
+
+The failing situation is:
+
+when the input to BOOST_VMD_IS_EMPTY resolves to only a function-like macro 
+name, and the function-like macro, when passed a single empty argument, expands to 
+a Boost PP tuple, BOOST_VMD_IS_EMPTY will erroneously return 1 when using the Visual C++ 
+compiler rather than either give a preprocessing error or return 0.
+
+Here is an example of the failure:
+
+ #include <boost/vmd/is_empty.hpp>
+ 
+ #define FMACRO4() ( any_number_of_tuple_elements )
+ #define FMACRO5(param) ( any_number_of_tuple_elements )
+ #define FMACRO6(param1,param2) ( any_number_of_tuple_elements )
+ 
+ BOOST_VMD_IS_EMPTY(FMACRO4) // erroneously returns 1, instead of 0
+ BOOST_VMD_IS_EMPTY(FMACRO5) // erroneously returns 1, instead of 0
+ BOOST_VMD_IS_EMPTY(FMACRO6) // erroneously returns 1, instead of generating a preprocessing error
+ 
+As with a standard C++ conforming compiler, we have a rare corner case where
+the BOOST_VMD_IS_EMPTY will not work properly, but unfortunately in this very
+similar but even rarer corner case with VC++, we will silently get an incorrect result
+rather than a compiler error.
+
+I want to reiterate that there is no perfect solution in C++ to the detection of 
+emptiness even for a C++ compiler whose preprocessor is completely conformant, which 
+VC++ obviously is not.
+
+[heading Macro Flaw conclusion]
+
+With all of the above mentioned, the case(s) where BOOST_VMD_IS_EMPTY will work 
+incorrectly are very small, even with the erroneous VC++ preprocessor, 
+and I consider the macro worthwhile to use since it works correctly with the vast 
+majority of possible preprocessor input.
+
+The case where it will not work, with both a C++ standard conforming preprocessor or
+with Visual C++, occurs when the name of a function-like macro is part of the input
+to BOOST_VMD_IS_EMPTY. Obviously the macro should be used by the preprocessor 
+metaprogrammer when the possible input to it is constrained to eliminate the erroneous
+case.
+
+Furthermore, since emptiness can correctly be tested for in nearly every situation, the
+BOOST_VMD_IS_EMPTY macro can be used internally when the preprocessor metaprogrammer wants to return data
+from a macro and all or part of that data could be empty.
+
+Therefore I believe the BOOST_VMD_IS_EMPTY macro is quite useful, despite the corner case flaw
+which makes it imperfect. Consequently I believe that the preprocessor metaprogrammer
+can use the concept of empty preprocessor data in the design of his own macros.
+
+[heading Using the macro]
+
+The macro BOOST_VMD_IS_EMPTY is used internally throughout VMD and macro programmers 
+may find this macro useful in their own programming efforts despite the slight flaw 
+in the way that it works.
+
+You can use the general header file:
+
+ #include <boost/vmd/vmd.hpp>
+ 
+or you can use the individual header file:
+
+ #include <boost/vmd/is_empty.hpp>
+ 
+for the BOOST_VMD_IS_EMPTY macro.
+
+[endsect]

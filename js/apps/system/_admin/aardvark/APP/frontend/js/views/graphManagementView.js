@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require, Joi */
+/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require, Joi, frontendConfig */
 
 (function () {
   'use strict';
@@ -41,6 +41,28 @@
       } else {
         $('#modal-dialog .modal-footer .button-success').css('display', 'initial');
       }
+      if (id === 'smartGraph') {
+        this.toggleSmartGraph();
+        $('#createGraph').addClass('active');
+        this.showSmartGraphOptions();
+      } else {
+        this.toggleSmartGraph();
+        this.hideSmartGraphOptions();
+      }
+    },
+
+    hideSmartGraphOptions: function () {
+      $('#row_general-numberOfShards').show();
+      $('#smartGraphInfo').hide();
+      $('#row_new-numberOfShards').hide();
+      $('#row_new-smartGraphAttribute').hide();
+    },
+
+    showSmartGraphOptions: function () {
+      $('#row_general-numberOfShards').hide();
+      $('#smartGraphInfo').show();
+      $('#row_new-numberOfShards').show();
+      $('#row_new-smartGraphAttribute').show();
     },
 
     redirectToGraphViewer: function (e) {
@@ -107,7 +129,13 @@
 
     addNewGraph: function (e) {
       e.preventDefault();
-      this.createEditGraphModal();
+      if (frontendConfig.isCluster && frontendConfig.isEnterprise) {
+        this.createEditGraphModal();
+      } else {
+        this.createEditGraphModal();
+        // hide tab entry
+        $('#tab-smartGraph').parent().remove();
+      }
     },
 
     deleteGraph: function () {
@@ -205,9 +233,7 @@
       var i;
       var self = this;
 
-      // self.events['change tr[id*="newEdgeDefinitions"]'] = self.setFromAndTo.bind(self);
-
-      if ($('#new-is_smart').is(':checked') === true) {
+      if (!$('#tab-smartGraph').parent().hasClass('active')) {
         for (i = 0; i < this.counter; i++) {
           $('#newEdgeDefinitions' + i).select2({
             tags: []
@@ -301,12 +327,10 @@
             $('#graphManagementDropdown').show();
           }
 
-          self.events['click .tableRow'] = self.showHideDefinition.bind(self);
           self.events['change tr[id*="newEdgeDefinitions"]'] = self.setFromAndTo.bind(self);
           self.events['click .graphViewer-icon-button'] = self.addRemoveDefinition.bind(self);
           self.events['click #graphTab a'] = self.toggleTab.bind(self);
           self.events['click .createExampleGraphs'] = self.createExampleGraphs.bind(self);
-          self.events['click #new-is_smart'] = self.toggleSmartGraph.bind(self);
           self.events['focusout .select2-search-field input'] = function (e) {
             if ($('.select2-drop').is(':visible')) {
               if (!$('#select2-search-field input').is(':focus')) {
@@ -327,12 +351,11 @@
     },
 
     setFromAndTo: function (e) {
-      console.log(e);
       e.stopPropagation();
       var map = this.calculateEdgeDefinitionMap();
       var id;
 
-      if (!$('#new-is_smart').is(':checked')) {
+      if ($('#tab-smartGraph').parent().hasClass('active')) {
         if (e.added) {
           if (this.eCollList.indexOf(e.added.id) === -1 && this.removedECollList.indexOf(e.added.id) !== -1) {
             id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
@@ -345,8 +368,11 @@
           this.removedECollList.push(e.added.id);
           this.eCollList.splice(this.eCollList.indexOf(e.added.id), 1);
         } else {
-          this.eCollList.push(e.removed.id);
-          this.removedECollList.splice(this.removedECollList.indexOf(e.removed.id), 1);
+          if (e.removed) {
+            // TODO edges not properly removed within selection
+            this.eCollList.push(e.removed.id);
+            this.removedECollList.splice(this.removedECollList.indexOf(e.removed.id), 1);
+          }
         }
         if (map[e.val]) {
           id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
@@ -362,19 +388,6 @@
           $('#toCollections' + id).attr('disabled', false);
         }
       }
-
-    /* following not needed? => destroys webif modal
-    tmp = $('input[id*="newEdgeDefinitions"]')
-    for (i = 0; i < tmp.length ; i++) {
-      id = tmp[i].id
-      $('#' + id).select2({
-        tags : this.eCollList,
-        showSearchBox: false,
-        minimumResultsForSearch: -1,
-        width: "336px",
-        maximumSelectionSize: 1
-      })
-    }*/
     },
 
     editGraph: function (e) {
@@ -384,9 +397,11 @@
       });
       this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr('id'), '_settings');
       var graph = this.collection.findWhere({_key: this.graphToEdit});
-      this.createEditGraphModal(
-        graph
-      );
+      if (graph.get('isSmart')) {
+        this.createEditGraphModal(graph, true);
+      } else {
+        this.createEditGraphModal(graph);
+      }
     },
 
     saveEditedGraph: function () {
@@ -619,8 +634,9 @@
       };
 
       // if smart graph
-      if ($('#new-is_smart').is(':checked')) {
+      if ($('#tab-smartGraph').parent().hasClass('active')) {
         if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
+          arangoHelper.arangoError('Smart Graph creation', 'numberOfShards and/or smartGraphAttribute not set!');
           return;
         } else {
           newCollectionObject.isSmart = true;
@@ -628,6 +644,14 @@
             numberOfShards: $('#new-numberOfShards').val(),
             smartGraphAttribute: $('#new-smartGraphAttribute').val()
           };
+        }
+      } else {
+        if (frontendConfig.isCluster) {
+          if ($('#general-numberOfShards').val().length > 0) {
+            newCollectionObject.options = {
+              numberOfShards: $('#general-numberOfShards').val()
+            };
+          }
         }
       }
 
@@ -647,7 +671,7 @@
       });
     },
 
-    createEditGraphModal: function (graph) {
+    createEditGraphModal: function (graph, isSmart) {
       var buttons = [];
       var collList = [];
       var tableContent = [];
@@ -686,7 +710,11 @@
       this.counter = 0;
 
       if (graph) {
-        title = 'Edit Graph';
+        if (isSmart) {
+          title = 'Edit Smart Graph';
+        } else {
+          title = 'Edit Graph';
+        }
 
         name = graph.get('_key');
         edgeDefinitions = graph.get('edgeDefinitions');
@@ -703,6 +731,29 @@
             'The name to identify the graph. Has to be unique'
           )
         );
+
+        if (isSmart) {
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'smartGraphAttribute',
+              'Smart Graph Attribute',
+              graph.get('smartGraphAttribute'),
+              'The attribute name that is used to smartly shard the vertices of a graph. \n' +
+              'Every vertex in this Graph has to have this attribute. \n'
+            )
+          );
+        }
+
+        if (graph.get('numberOfShards')) {
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'numberOfShards',
+              'Shards',
+              graph.get('numberOfShards'),
+              'Number of shards the graph is using.'
+            )
+          );
+        }
 
         buttons.push(
           window.modalView.createDeleteButton('Delete', this.deleteGraph.bind(this))
@@ -734,6 +785,63 @@
 
       edgeDefinitions.forEach(
         function (edgeDefinition) {
+          if (frontendConfig.isEnterprise === true && frontendConfig.isCluster) {
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-numberOfShards',
+                'Shards*',
+                '',
+                'Number of shards the smart graph is using.',
+                '',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                    msg: 'Must be a number.'
+                  }
+                ]
+              )
+            );
+
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-smartGraphAttribute',
+                'Smart Graph Attribute*',
+                '',
+                'The attribute name that is used to smartly shard the vertices of a graph. \n' +
+                'Every vertex in this Graph has to have this attribute. \n' +
+                'Cannot be modified later.',
+                '',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional(),
+                    msg: 'Must be a string.'
+                  }
+                ]
+              )
+            );
+          }
+
+          if (frontendConfig.isCluster && !graph) {
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'general-numberOfShards',
+                'Shards',
+                '',
+                'Number of shards the graph is using.',
+                '',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                    msg: 'Must be a number.'
+                  }
+                ]
+              )
+            );
+          }
+
           if (self.counter === 0) {
             if (edgeDefinition.collection) {
               self.removedECollList.push(edgeDefinition.collection);
@@ -816,66 +924,12 @@
         )
       );
 
-      if (window.frontendConfig.isEnterprise === true) {
-        var advanced = {};
-        var advancedTableContent = [];
+      window.modalView.show(
+        'modalGraphTable.ejs', title, buttons, tableContent, undefined, undefined, this.events
+      );
 
-        advancedTableContent.push(
-          window.modalView.createCheckboxEntry(
-            'new-is_smart',
-            'Smart Graph',
-            true,
-            'Create a Smart Graph? Edge and vertex collections will be automatically generated. They are not allowed to be present before graph creation.',
-            false
-          )
-        );
-
-        advancedTableContent.push(
-          window.modalView.createTextEntry(
-            'new-numberOfShards',
-            'Shards',
-            '',
-            'Number of shards the smart graph is using.',
-            '',
-            false,
-            [
-              {
-                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                msg: 'Must be a number.'
-              }
-            ]
-          )
-        );
-
-        advancedTableContent.push(
-          window.modalView.createTextEntry(
-            'new-smartGraphAttribute',
-            'SmartGraph Attribute',
-            '',
-            'The attribute name that is used to smartly shard the vertices of a graph. \n' +
-            'Every vertex in this Graph has to have this attribute. \n' +
-            'Cannot be modified later.',
-            '',
-            false,
-            [
-              {
-                rule: Joi.string(),
-                msg: 'Must be a string.'
-              }
-            ]
-          )
-        );
-
-        advanced.header = 'Smart Graph';
-        advanced.content = advancedTableContent;
-
-        window.modalView.show(
-          'modalGraphTable.ejs', title, buttons, tableContent, advanced, undefined, this.events
-        );
-      } else {
-        window.modalView.show(
-          'modalGraphTable.ejs', title, buttons, tableContent, undefined, undefined, this.events
-        );
+      if ($('#tab-createGraph').parent().hasClass('active')) {
+        self.hideSmartGraphOptions();
       }
 
       if (graph) {
@@ -913,16 +967,6 @@
 
       window.modalView.hide();
       arangoHelper.arangoNotification('Graph', 'Reset successful.');
-    },
-
-    showHideDefinition: function (e) {
-      /* e.stopPropagation()
-      var id = $(e.currentTarget).attr("id"), number
-      if (id.indexOf("row_newEdgeDefinitions") !== -1 ) {
-        number = id.split("row_newEdgeDefinitions")[1]
-        $('#row_fromCollections' + number).toggle()
-        $('#row_toCollections' + number).toggle()
-      }*/
     },
 
     addRemoveDefinition: function (e) {

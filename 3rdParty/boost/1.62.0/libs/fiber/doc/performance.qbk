@@ -1,0 +1,71 @@
+[/
+          Copyright Oliver Kowalke 2009.
+ Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+          http://www.boost.org/LICENSE_1_0.txt
+]
+
+[section:performance Performance]
+
+Performance measurements were taken using `std::chrono::highresolution_clock`,
+with overhead corrections.
+The code was compiled using the build options:
+variant = release, optimization = speed
+[footnote Intel Core2 Q6700, x86_64, 3GHz].
+
+The columns labeled [*fiber (atomics)] were compiled with default fiber
+synchronization, capable of synchronizing fibers running on different threads.
+The columns labeled [*fiber (raw)] were compiled with [link cross_thread_sync
+`BOOST_FIBERS_NO_ATOMICS`].
+
+[table Overhead of join (contains fiber-context destruction, fiber-stack deallocation)
+    [[thread]     [fiber (atomics)] [fiber (raw)] [tbb]    [qthread]]
+    [[18 \u00b5s] [950 ns]          [900 ns]      [570 ns] [620 ns]]
+]
+(from [@../../performance/fiber/overhead_join.cpp overhead_join.cpp])
+
+[table Overhead of detach
+    [[thread] [fiber (atomics)] [fiber (raw)]]
+    [[126 ns] [21 ns]           [20 ns]]
+]
+(from [@../../performance/fiber/overhead_detach.cpp overhead_detach.cpp])
+
+[table Overhead of yield
+    [[thread]      [fiber (atomics)] [fiber (raw)]]
+    [[1.5 \u00b5s] [310 ns]          [330 ns]]
+]
+(from [@../../performance/fiber/overhead_yield.cpp overhead_yield.cpp])
+
+[table Overhead of waiting on a future
+    [[thread]     [fiber (atomics)] [fiber (raw)]]
+    [[16 \u00b5s] [1.40 \u00b5s]     [1.38 \u00b5s]]
+]
+(from [@../../performance/fiber/overhead_future.cpp overhead_future.cpp])
+
+[table Overhead of fiber creation (contains fiber-stack allocation and preparation, fiber-context construction, scheduler handling)
+    [[thread]     [fiber (atomics)] [fiber (raw)]]
+    [[18 \u00b5s] [450 ns]          [445 ns]     ]
+]
+(from [@../../performance/fiber/overhead_create.cpp overhead_create.cpp])
+
+[table Scaling of creating and joining
+    [[average of] [thread]       [fiber (atomics)] [fiber (raw)]]
+    [[10]         [8.21 \u00b5s] [1.96 \u00b5s]    [1.85 \u00b5s]]
+    [[50]         [6.67 \u00b5s] [1.40 \u00b5s]    [1.27 \u00b5s]]
+    [[100]        [6.79 \u00b5s] [1.84 \u00b5s]    [1.81 \u00b5s]]
+    [[500]        [8.25 \u00b5s] [1.13 \u00b5s]    [1.10 \u00b5s]]
+    [[1000]       [7.71 \u00b5s] [1.46 \u00b5s]    [1.26 \u00b5s]]
+    [[5000]       [5.67 \u00b5s] [2.11 \u00b5s]    [1.90 \u00b5s]]
+    [[10000]      [5.25 \u00b5s] [2.36 \u00b5s]    [1.89 \u00b5s]]
+]
+(from [@../../performance/fiber/scale_join.cpp scale_join.cpp])
+
+Numbers of the [@https://github.com/atemerev/skynet microbenchmark ['syknet]] from Alexander Temerev
+[footnote Intel Core2 Q6700, x86_64, 3GHz]:
+
+[table performance of N=100000 actors/goroutines/fibers
+    [[Haskell | stack-1.0.4] [fiber (single threaded/raw) | gcc-5.2.1] [fiber (single threaded/atomics) | gcc-5.2.1] [Erlang | erts-7.0] [Go | go1.4.2]]
+    [[58ms - 108ms]         [205ms - 263ms]                           [221ms - 278ms]                               [237ms- 470ms]      [614ms - 883ms]]
+]
+
+[endsect]

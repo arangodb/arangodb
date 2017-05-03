@@ -151,6 +151,13 @@ using VPackSlimBuffer = arangodb::velocypack::SliceContainer;
 #endif
 #endif
 
+#ifdef VELOCYPACK_UTF8HELPER_H
+#ifndef VELOCYPACK_ALIAS_UTF8HELPER
+#define VELOCYPACK_ALIAS_UTF8HELPER
+using VPackUtf8Helper = arangodb::velocypack::Utf8Helper;
+#endif
+#endif
+
 #ifdef VELOCYPACK_VALIDATOR_H
 #ifndef VELOCYPACK_ALIAS_VALIDATOR
 #define VELOCYPACK_ALIAS_VALIDATOR

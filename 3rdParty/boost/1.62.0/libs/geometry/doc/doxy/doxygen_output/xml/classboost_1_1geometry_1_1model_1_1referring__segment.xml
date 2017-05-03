@@ -1,0 +1,117 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1referring__segment" kind="class" prot="public">
+    <compoundname>boost::geometry::model::referring_segment</compoundname>
+    <includes local="no">segment.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename ConstOrNonConstPoint</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1model_1_1referring__segment_1a18a6655dd1d6a169a7731b59b172dfae" prot="private" static="no">
+        <type>ConstOrNonConstPoint</type>
+        <definition>typedef ConstOrNonConstPoint boost::geometry::model::referring_segment&lt; ConstOrNonConstPoint &gt;::point_type</definition>
+        <argsstring></argsstring>
+        <name>point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="97" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" bodystart="97" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1model_1_1referring__segment_1a3d7474ad6f9d9222abd61e906c6ed63c" prot="public" static="no" mutable="no">
+        <type>point_type &amp;</type>
+        <definition>point_type&amp; boost::geometry::model::referring_segment&lt; ConstOrNonConstPoint &gt;::first</definition>
+        <argsstring></argsstring>
+        <name>first</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="101" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" bodystart="101" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1model_1_1referring__segment_1aa93b6ffc58a5d66abcd3e0fc7a4e2b75" prot="public" static="no" mutable="no">
+        <type>point_type &amp;</type>
+        <definition>point_type&amp; boost::geometry::model::referring_segment&lt; ConstOrNonConstPoint &gt;::second</definition>
+        <argsstring></argsstring>
+        <name>second</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="102" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" bodystart="102" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1referring__segment_1ac7a3e1d9bef125f1eb2aa56b311aff07" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::referring_segment&lt; ConstOrNonConstPoint &gt;::BOOST_CONCEPT_ASSERT</definition>
+        <argsstring>((typename boost::mpl::if_&lt; boost::is_const&lt; ConstOrNonConstPoint &gt;, concepts::Point&lt; ConstOrNonConstPoint &gt;, concepts::ConstPoint&lt; ConstOrNonConstPoint &gt; &gt;))</argsstring>
+        <name>BOOST_CONCEPT_ASSERT</name>
+        <param>
+          <type>(typename boost::mpl::if_&lt; boost::is_const&lt; ConstOrNonConstPoint &gt;, <ref refid="classboost_1_1geometry_1_1concepts_1_1_point" kindref="compound">concepts::Point</ref>&lt; ConstOrNonConstPoint &gt;, <ref refid="classboost_1_1geometry_1_1concepts_1_1_const_point" kindref="compound">concepts::ConstPoint</ref>&lt; ConstOrNonConstPoint &gt; &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="88" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1referring__segment_1a40a61dea9784f2086edf88ce6d609b55" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::referring_segment&lt; ConstOrNonConstPoint &gt;::referring_segment</definition>
+        <argsstring>(point_type &amp;p1, point_type &amp;p2)</argsstring>
+        <name>referring_segment</name>
+        <param>
+          <type>point_type &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>point_type &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Constructor taking the first and the second point. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="107" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" bodystart="107" bodyend="110"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Class segment: small class containing two (templatized) point references. </para>    </briefdescription>
+    <detaileddescription>
+<para>From Wikipedia: In geometry, a line segment is a part of a line that is bounded by two distinct end points, and contains every point on the line between its end points. <simplesect kind="note"><para>The structure is like std::pair, and can often be used interchangeable. Difference is that it refers to points, does not have points. </para><simplesectsep/><para>Like std::pair, points are public available. </para><simplesectsep/><para>type is const or non const, so geometry::segment&lt;P&gt; or geometry::segment&lt;P const&gt; </para><simplesectsep/><para>We cannot derive from std::pair&lt;P&amp;, P&amp;&gt; because of reference assignments. </para></simplesect>
+<parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>ConstOrNonConstPoint</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point type of the segment, maybe a point or a const point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="87" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" bodystart="86" bodyend="111"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1referring__segment_1ac7a3e1d9bef125f1eb2aa56b311aff07" prot="private" virt="non-virtual"><scope>boost::geometry::model::referring_segment</scope><name>BOOST_CONCEPT_ASSERT</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1referring__segment_1a3d7474ad6f9d9222abd61e906c6ed63c" prot="public" virt="non-virtual"><scope>boost::geometry::model::referring_segment</scope><name>first</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1referring__segment_1a18a6655dd1d6a169a7731b59b172dfae" prot="private" virt="non-virtual"><scope>boost::geometry::model::referring_segment</scope><name>point_type</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1referring__segment_1a40a61dea9784f2086edf88ce6d609b55" prot="public" virt="non-virtual"><scope>boost::geometry::model::referring_segment</scope><name>referring_segment</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1referring__segment_1aa93b6ffc58a5d66abcd3e0fc7a4e2b75" prot="public" virt="non-virtual"><scope>boost::geometry::model::referring_segment</scope><name>second</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

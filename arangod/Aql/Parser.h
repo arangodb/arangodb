@@ -57,7 +57,7 @@ namespace aql {
 class Parser {
  public:
   /// @brief create the parser
-  Parser(Query*);
+  explicit Parser(Query*);
 
   /// @brief destroy the parser
   ~Parser();

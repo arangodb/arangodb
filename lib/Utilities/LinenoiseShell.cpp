@@ -27,6 +27,7 @@ extern "C" {
 #include <linenoise.h>
 }
 
+#include "Logger/Logger.h"
 #include "Utilities/Completer.h"
 
 using namespace arangodb;
@@ -43,7 +44,7 @@ static Completer* COMPLETER = nullptr;
 
 static void LinenoiseCompletionGenerator(char const* text,
                                          linenoiseCompletions* lc) {
-  if (COMPLETER) {
+  if (COMPLETER && text != nullptr) {
     std::vector<std::string> alternatives = COMPLETER->alternatives(text);
     ShellBase::sortAlternatives(alternatives);
 
@@ -94,16 +95,25 @@ bool LinenoiseShell::writeHistory() {
   return true;
 }
 
-std::string LinenoiseShell::getLine(std::string const& prompt, bool& eof) {
+std::string LinenoiseShell::getLine(std::string const& prompt, EofType& eof) {
   char* line = linenoise(prompt.c_str());
 
   if (line != nullptr) {
-    eof = false;
-    std::string const stringValue(line);
+    eof = EOF_NONE;
+    std::string stringValue(line);
     ::free(line);
     return stringValue;
   }
 
-  eof = true;
+  // no input from user (e.g. if CTRL-C was pressed)
+  eof = EOF_ABORT;
+
+  int keyType = linenoiseKeyType();
+
+  if (keyType == 2 || !isatty(STDIN_FILENO)) {
+    // force eof if CTRL-D was pressed or if we are not a tty
+    eof = EOF_FORCE_ABORT;
+  }
+
   return "";
 }

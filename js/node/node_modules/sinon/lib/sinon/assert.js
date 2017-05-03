@@ -45,6 +45,24 @@
             }
         }
 
+        function verifyIsValidAssertion(assertionMethod, assertionArgs) {
+            switch (assertionMethod) {
+                case "notCalled":
+                case "called":
+                case "calledOnce":
+                case "calledTwice":
+                case "calledThrice":
+                    if (assertionArgs.length !== 0) {
+                        assert.fail(assertionMethod +
+                                    " takes 1 argument but was called with " +
+                                    (assertionArgs.length + 1) + " arguments");
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
         function failAssertion(object, msg) {
             object = object || global;
             var failMethod = object.fail || assert.fail;
@@ -61,6 +79,8 @@
                 verifyIsStub(fake);
 
                 var args = slice.call(arguments, 1);
+                verifyIsValidAssertion(name, args);
+
                 var failed = false;
 
                 if (typeof method === "function") {

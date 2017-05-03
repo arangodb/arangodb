@@ -1,0 +1,126 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1multi__linestring" kind="class" prot="public">
+    <compoundname>boost::geometry::model::multi_linestring</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">Container&lt; LineString, Allocator&lt; LineString &gt; &gt;</basecompoundref>
+    <includes local="no">multi_linestring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename LineString</type>
+      </param>
+      <param>
+        <type>template&lt; typename, typename &gt; class</type>
+        <declname>Container</declname>
+        <defname>Container</defname>
+        <defval>std::vector</defval>
+      </param>
+      <param>
+        <type>template&lt; typename &gt; class</type>
+        <declname>Allocator</declname>
+        <defname>Allocator</defname>
+        <defval>std::allocator</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1model_1_1multi__linestring_1a12bcd28fa7393480249a84a23568d19c" prot="private" static="no">
+        <type>Container&lt; LineString, Allocator&lt; LineString &gt; &gt;</type>
+        <definition>typedef Container&lt;LineString, Allocator&lt;LineString&gt; &gt; boost::geometry::model::multi_linestring&lt; LineString, Container, Allocator &gt;::base_type</definition>
+        <argsstring></argsstring>
+        <name>base_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_linestring.hpp" line="65" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_linestring.hpp" bodystart="65" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__linestring_1a53d14b189112cb84455f2e0171a6ce25" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::multi_linestring&lt; LineString, Container, Allocator &gt;::BOOST_CONCEPT_ASSERT</definition>
+        <argsstring>((concepts::Linestring&lt; LineString &gt;))</argsstring>
+        <name>BOOST_CONCEPT_ASSERT</name>
+        <param>
+          <type>(<ref refid="classboost_1_1geometry_1_1concepts_1_1_linestring" kindref="compound">concepts::Linestring</ref>&lt; LineString &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_linestring.hpp" line="58" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__linestring_1a360efb5978f38ea069e66550839e7825" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::multi_linestring&lt; LineString, Container, Allocator &gt;::multi_linestring</definition>
+        <argsstring>()</argsstring>
+        <name>multi_linestring</name>
+        <briefdescription>
+<para>Default constructor, creating an empty <ref refid="classboost_1_1geometry_1_1model_1_1multi__linestring" kindref="compound">multi_linestring</ref>. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_linestring.hpp" line="69" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_linestring.hpp" bodystart="69" bodyend="71"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__linestring_1ae1afbaf7e59a9eb9c2c39a39dca56701" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::multi_linestring&lt; LineString, Container, Allocator &gt;::multi_linestring</definition>
+        <argsstring>(std::initializer_list&lt; LineString &gt; l)</argsstring>
+        <name>multi_linestring</name>
+        <param>
+          <type>std::initializer_list&lt; LineString &gt;</type>
+          <declname>l</declname>
+        </param>
+        <briefdescription>
+<para>Constructor taking std::initializer_list, filling the <ref refid="classboost_1_1geometry_1_1model_1_1multi__linestring" kindref="compound">multi_linestring</ref>. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_linestring.hpp" line="74" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_linestring.hpp" bodystart="74" bodyend="76"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>multi_line, a collection of linestring </para>    </briefdescription>
+    <detaileddescription>
+<para>Multi-linestring can be used to group lines belonging to each other, e.g. a highway (with interruptions)</para><para> <qbk>[include reference/geometries/multi_linestring.qbk]</qbk>   <qbk.before.synopsis>
+[heading Model of]
+[link geometry.reference.concepts.concept_multi_linestring MultiLineString Concept]
+</qbk.before.synopsis>  </para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="511">
+        <label>Container&lt; LineString, Allocator&lt; LineString &gt; &gt;</label>
+      </node>
+      <node id="510">
+        <label>boost::geometry::model::multi_linestring&lt; LineString, Container, Allocator &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1multi__linestring"/>
+        <childnode refid="511" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="513">
+        <label>Container&lt; LineString, Allocator&lt; LineString &gt; &gt;</label>
+      </node>
+      <node id="512">
+        <label>boost::geometry::model::multi_linestring&lt; LineString, Container, Allocator &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1multi__linestring"/>
+        <childnode refid="513" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_linestring.hpp" line="57" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_linestring.hpp" bodystart="56" bodyend="92"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__linestring_1a12bcd28fa7393480249a84a23568d19c" prot="private" virt="non-virtual"><scope>boost::geometry::model::multi_linestring</scope><name>base_type</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__linestring_1a53d14b189112cb84455f2e0171a6ce25" prot="private" virt="non-virtual"><scope>boost::geometry::model::multi_linestring</scope><name>BOOST_CONCEPT_ASSERT</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__linestring_1a360efb5978f38ea069e66550839e7825" prot="public" virt="non-virtual"><scope>boost::geometry::model::multi_linestring</scope><name>multi_linestring</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__linestring_1ae1afbaf7e59a9eb9c2c39a39dca56701" prot="public" virt="non-virtual"><scope>boost::geometry::model::multi_linestring</scope><name>multi_linestring</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

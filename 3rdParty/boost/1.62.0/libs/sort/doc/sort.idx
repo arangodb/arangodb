@@ -1,0 +1,37 @@
+# sort.idx for Boost.Sort/Spreadsort Quickbook, Doxygen and Auto-index.
+
+# Note needs more customization to be useful in practice! TODO?
+
+#!debug "\<\w*\>"
+
+# Sort Header files.
+#!scan-path "/boost/sort/" ".*\.*pp" true
+!scan-path "../include/boost/sort" ".*\.hpp" false
+!scan-path "../include/boost/sort/spreadsort" ".*\.hpp" false
+
+# All example source files, assuming no sub-folders.
+# sort example files.
+!scan-path "../example" ".*\.cpp" true
+
+# Allow alternative spellings colour | color, and plurals etc.
+color  \<\w*(colour|color)\w*\>
+container \<contain\w*\>
+data
+deque \<deque\w*\>
+example \<example\w*\>
+font  \<font\w*\>
+greek
+quartile \<quartile\w*\>
+histogram
+ioflags
+origin
+outlier
+maximum \<max\w*\>
+minimum \<min\w*\>
+precision
+range  \<\w*\range\w*\>
+scaling \<\w*\scal\w*\>
+tick \<\w*\tick\w*\>
+title
+Unicode \<unicode\w*\>
+vector \<\w*\vector\w*\>

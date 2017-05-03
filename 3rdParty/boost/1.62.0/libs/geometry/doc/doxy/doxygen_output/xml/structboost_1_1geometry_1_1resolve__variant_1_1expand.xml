@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1expand" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::expand</compoundname>
+    <includes local="no">interface.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1expand_1a0567fecd74d770c78d1327cec691ffe4" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Box</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::resolve_variant::expand&lt; Geometry &gt;::apply</definition>
+        <argsstring>(Box &amp;box, Geometry const &amp;geometry)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Box &amp;</type>
+          <declname>box</declname>
+        </param>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/expand/interface.hpp" line="43" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/expand/interface.hpp" bodystart="43" bodyend="50"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/expand/interface.hpp" line="41" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/expand/interface.hpp" bodystart="40" bodyend="51"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1expand_1a0567fecd74d770c78d1327cec691ffe4" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::expand</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

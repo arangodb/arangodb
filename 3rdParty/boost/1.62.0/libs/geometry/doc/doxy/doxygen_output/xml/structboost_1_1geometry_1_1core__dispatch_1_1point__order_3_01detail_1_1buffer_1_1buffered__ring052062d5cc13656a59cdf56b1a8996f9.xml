@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1core__dispatch_1_1point__order_3_01detail_1_1buffer_1_1buffered__ring052062d5cc13656a59cdf56b1a8996f9" kind="struct" prot="public">
+    <compoundname>boost::geometry::core_dispatch::point_order&lt; detail::buffer::buffered_ring_collection_tag, geometry::detail::buffer::buffered_ring_collection&lt; geometry::detail::buffer::buffered_ring&lt; Ring &gt; &gt; &gt;</compoundname>
+    <includes local="no">buffered_ring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Ring</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1core__dispatch_1_1point__order_3_01detail_1_1buffer_1_1buffered__ring052062d5cc13656a59cdf56b1a8996f9_1a4dc12eb8c6ddfb37d7573a96321825b9" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="group__enum_1ga0af1c124acb76f0892024d6d4ab2bc8c" kindref="member">order_selector</ref></type>
+        <definition>const order_selector boost::geometry::core_dispatch::point_order&lt; detail::buffer::buffered_ring_collection_tag, geometry::detail::buffer::buffered_ring_collection&lt; geometry::detail::buffer::buffered_ring&lt; Ring &gt; &gt; &gt;::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <initializer>= core_dispatch::point_order&lt;<ref refid="structboost_1_1geometry_1_1ring__tag" kindref="compound">ring_tag</ref>, Ring&gt;::value</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="161" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="162" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="160" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="155" bodyend="163"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1core__dispatch_1_1point__order_3_01detail_1_1buffer_1_1buffered__ring052062d5cc13656a59cdf56b1a8996f9_1a4dc12eb8c6ddfb37d7573a96321825b9" prot="public" virt="non-virtual"><scope>boost::geometry::core_dispatch::point_order&lt; detail::buffer::buffered_ring_collection_tag, geometry::detail::buffer::buffered_ring_collection&lt; geometry::detail::buffer::buffered_ring&lt; Ring &gt; &gt; &gt;</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

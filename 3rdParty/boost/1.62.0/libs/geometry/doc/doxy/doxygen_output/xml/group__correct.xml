@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__correct" kind="group">
+    <compoundname>correct</compoundname>
+    <title>correct: correct geometries</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__correct_1gaf14641937f187af33fec6bd99c8202d9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::correct</definition>
+        <argsstring>(Geometry &amp;geometry)</argsstring>
+        <name>correct</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Corrects a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>Corrects a geometry: all rings which are wrongly oriented with respect to their expected orientation are reversed. To all rings which do not have a closing point and are typed as they should have one, the first point is appended. Also boxes can be corrected.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept which will be corrected if necessary</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/algorithms/correct.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/correct.hpp" line="326" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/correct.hpp" bodystart="326" bodyend="329"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

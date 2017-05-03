@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="has__one__element_8hpp" kind="file">
+    <compoundname>has_one_element.hpp</compoundname>
+    <includedby refid="range__to__geometry__rtree_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/range_to_geometry_rtree.hpp</includedby>
+    <invincdepgraph>
+      <node id="57364">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/turn_in_piece_visitor.hpp</label>
+        <link refid="turn__in__piece__visitor_8hpp"/>
+        <childnode refid="57361" relation="include">
+        </childnode>
+      </node>
+      <node id="57354">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/iterators/has_one_element.hpp</label>
+        <link refid="has_one_element.hpp"/>
+        <childnode refid="57355" relation="include">
+        </childnode>
+      </node>
+      <node id="57357">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/implementation.hpp</label>
+        <link refid="distance_2implementation_8hpp"/>
+        <childnode refid="57358" relation="include">
+        </childnode>
+        <childnode refid="57359" relation="include">
+        </childnode>
+      </node>
+      <node id="57356">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/linear_to_linear.hpp</label>
+        <link refid="linear__to__linear_8hpp"/>
+        <childnode refid="57357" relation="include">
+        </childnode>
+        <childnode refid="57365" relation="include">
+        </childnode>
+      </node>
+      <node id="57360">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/comparable_distance.hpp</label>
+        <link refid="comparable__distance_8hpp"/>
+        <childnode refid="57361" relation="include">
+        </childnode>
+        <childnode refid="57364" relation="include">
+        </childnode>
+      </node>
+      <node id="57365">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/linear_or_areal_to_areal.hpp</label>
+        <link refid="linear__or__areal__to__areal_8hpp"/>
+        <childnode refid="57357" relation="include">
+        </childnode>
+      </node>
+      <node id="57361">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_piece_collection.hpp</label>
+        <link refid="buffered__piece__collection_8hpp"/>
+        <childnode refid="57362" relation="include">
+        </childnode>
+      </node>
+      <node id="57366">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/multipoint_to_geometry.hpp</label>
+        <link refid="multipoint__to__geometry_8hpp"/>
+        <childnode refid="57367" relation="include">
+        </childnode>
+        <childnode refid="57357" relation="include">
+        </childnode>
+      </node>
+      <node id="57367">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/backward_compatibility.hpp</label>
+        <link refid="backward__compatibility_8hpp"/>
+        <childnode refid="57357" relation="include">
+        </childnode>
+      </node>
+      <node id="57362">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffer_inserter.hpp</label>
+        <link refid="buffer__inserter_8hpp"/>
+        <childnode refid="57363" relation="include">
+        </childnode>
+      </node>
+      <node id="57355">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/range_to_geometry_rtree.hpp</label>
+        <link refid="range__to__geometry__rtree_8hpp"/>
+        <childnode refid="57356" relation="include">
+        </childnode>
+        <childnode refid="57366" relation="include">
+        </childnode>
+      </node>
+      <node id="57363">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp</label>
+        <link refid="algorithms_2buffer_8hpp"/>
+      </node>
+      <node id="57358">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/distance.hpp</label>
+        <link refid="algorithms_2distance_8hpp"/>
+      </node>
+      <node id="57359">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/comparable_distance/implementation.hpp</label>
+        <link refid="comparable__distance_2implementation_8hpp"/>
+        <childnode refid="57360" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/has_one_element.hpp"/>
+  </compounddef>
+</doxygen>

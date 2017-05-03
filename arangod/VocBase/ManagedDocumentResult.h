@@ -25,94 +25,88 @@
 #define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/RevisionCacheChunk.h"
-#include "Logger/Logger.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
-class Transaction;
+namespace velocypack {
+class Builder;
+}
 
-struct ChunkCache {
-  static constexpr size_t STATIC_ARRAY_SIZE = 4;
-  size_t _chunksUsed;
-  RevisionCacheChunk* _chunksArray[STATIC_ARRAY_SIZE];
-  std::unordered_set<RevisionCacheChunk*> _chunksHash;
-
-  ChunkCache() : _chunksUsed(0), _chunksArray() {}
-
-  void add(RevisionCacheChunk* chunk) {
-    if (_chunksUsed <= STATIC_ARRAY_SIZE) {
-      if (_chunksUsed == STATIC_ARRAY_SIZE) {
-        // transition static array to an unordered_map
-        for (size_t i = 0; i < STATIC_ARRAY_SIZE; ++i) {
-          _chunksHash.emplace(_chunksArray[i]);
-        }
-        _chunksHash.emplace(chunk);
-      } else {
-        if (_chunksUsed > 0) {
-          TRI_ASSERT(_chunksUsed < STATIC_ARRAY_SIZE);
-          // move elements in array
-          for (size_t i = _chunksUsed; i > 0; --i) {
-            _chunksArray[i] = _chunksArray[i - 1];
-          }
-        }
-
-        // finally insert chunk at head of static array
-        _chunksArray[0] = chunk;
-      }
-    } else {
-      // insert chunk into map
-      _chunksHash.emplace(chunk);
-    }
-    
-    ++_chunksUsed;
-  }
-
-  bool contains(RevisionCacheChunk* chunk) const {
-    if (_chunksUsed > STATIC_ARRAY_SIZE) {
-      // lookup chunk in map
-      return _chunksHash.find(chunk) != _chunksHash.end();
-    }
-
-    // look up chunk in static array
-    for (size_t i = 0; i < _chunksUsed; ++i) {
-      if (_chunksArray[i] == chunk) {
-        return true;
-      }
-    }
-    return false;
-  }
-};
+namespace aql {
+struct AqlValue;
+}
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() = delete;
+  ManagedDocumentResult() :
+    _length(0),
+    _lastRevisionId(0),
+    _vpack(nullptr),
+    _managed(false),
+    _useString(false) {}
+  ~ManagedDocumentResult() { reset(); }
   ManagedDocumentResult(ManagedDocumentResult const& other) = delete;
+  ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = delete;
+
+  ManagedDocumentResult& operator=(ManagedDocumentResult&& other) {
+    if (other._useString){
+      setManaged(std::move(other._string), other._lastRevisionId);
+      other._managed = false;
+      other.reset();
+    } else if (other._managed){
+      reset();
+      _vpack = other._vpack;
+      _length = other._length;
+      _lastRevisionId = other._lastRevisionId;
+      _managed = true;
+      other._managed = false;
+      other.reset();
+    } else {
+      setUnmanaged(other._vpack, other._lastRevisionId);
+    }
+    return *this;
+  }
+
   ManagedDocumentResult(ManagedDocumentResult&& other) = delete;
-  ManagedDocumentResult& operator=(ManagedDocumentResult const& other);
-  ManagedDocumentResult& operator=(ManagedDocumentResult&& other) = delete;
 
-  explicit ManagedDocumentResult(Transaction*);
-  ~ManagedDocumentResult();
+  void clone(ManagedDocumentResult& cloned) const;
 
-  inline uint8_t const* vpack() const { 
-    TRI_ASSERT(_vpack != nullptr); 
-    return _vpack; 
+  //add unmanaged vpack 
+  void setUnmanaged(uint8_t const* vpack, TRI_voc_rid_t revisionId);
+
+  void setManaged(uint8_t const* vpack, TRI_voc_rid_t revisionId);
+
+  void setManaged(std::string&& str, TRI_voc_rid_t revisionId);
+
+  inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
+
+  void reset() noexcept;
+  
+  inline uint8_t const* vpack() const {
+    TRI_ASSERT(_vpack != nullptr);
+    return _vpack;
   }
   
-  void add(ChunkProtector& protector, TRI_voc_rid_t revisionId);
-  void addExisting(ChunkProtector& protector, TRI_voc_rid_t revisionId);
+  inline bool empty() const { return _vpack == nullptr; }
 
-  bool hasSeenChunk(RevisionCacheChunk* chunk) const { return _chunkCache.contains(chunk); }
-  TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
-  uint8_t const* lastVPack() const { return _vpack; }
+  inline bool canUseInExternal() const {
+    return (!_managed && !_useString);
+  }
+  
+  void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
 
-  //void clear();
+  // @brief Creates an AQLValue with the content of this ManagedDocumentResult
+  // The caller is responsible to properly destroy() the
+  // returned value
+  aql::AqlValue createAqlValue() const;
 
  private:
-  Transaction* _trx;
-  uint8_t const* _vpack;
+  uint64_t _length;
   TRI_voc_rid_t _lastRevisionId;
-  ChunkCache _chunkCache;
+  uint8_t* _vpack;
+  std::string _string;
+  bool _managed;
+  bool _useString;
 };
 
 }

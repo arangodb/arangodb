@@ -1,4 +1,5 @@
-!CHAPTER Document Keys 
+Document Keys
+=============
 
 Users can define their own keys for documents they save. The document key will
 be saved along with a document in the *_key* attribute. Users can pick key

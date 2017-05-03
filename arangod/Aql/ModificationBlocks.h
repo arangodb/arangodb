@@ -28,7 +28,6 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationNodes.h"
-#include "Utils/AqlTransaction.h"
 
 namespace arangodb {
 namespace aql {

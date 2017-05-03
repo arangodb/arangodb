@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1strategy_1_1centroid" kind="namespace">
+    <compoundname>boost::geometry::strategy::centroid</compoundname>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average" prot="public">boost::geometry::strategy::centroid::average</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer" prot="public">boost::geometry::strategy::centroid::bashein_detmer</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1not__applicable__strategy" prot="public">boost::geometry::strategy::centroid::not_applicable_strategy</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length" prot="public">boost::geometry::strategy::centroid::weighted_length</innerclass>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1centroid_1_1services">boost::geometry::strategy::centroid::services</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1centroid_1_1detail">boost::geometry::strategy::centroid::detail</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/centroid.hpp" line="31" column="1"/>
+  </compounddef>
+</doxygen>

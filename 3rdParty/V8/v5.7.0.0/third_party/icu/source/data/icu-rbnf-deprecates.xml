@@ -1,0 +1,29 @@
+<!--
+/*
+* Copyright (C) 2016 and later: Unicode, Inc. and others.
+* License & terms of use: http://www.unicode.org/copyright.html
+*******************************************************************************
+* Copyright (C) 2015-2016, International Business Machines Corporation and    *
+* others. All Rights Reserved.                                                *
+*******************************************************************************
+*/
+-->
+<deprecates>
+   <alias from="es_DO" to="es_419" />
+   <alias from="es_GT" to="es_419" />
+   <alias from="es_HN" to="es_419" />
+   <alias from="es_MX" to="es_419" />
+   <alias from="es_NI" to="es_419" />
+   <alias from="es_PA" to="es_419" />
+   <alias from="es_PR" to="es_419" />
+   <alias from="es_SV" to="es_419" />
+   <alias from="es_US" to="es_419" />
+   <alias from="in" to="id" />
+   <alias from="iw" to="he" />
+   <alias from="no" to="nb" />
+   <alias from="sh" to="sr_Latn" />
+   <alias from="zh_Hant_HK" to="yue" />
+   <alias from="zh_HK" to="yue" />
+   <alias from="zh_MO" to="yue" />
+   <alias from="zh_TW" to="zh_Hant" />
+</deprecates>

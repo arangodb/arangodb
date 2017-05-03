@@ -70,11 +70,10 @@ class AsyncJobManager {
   AsyncJobManager& operator=(AsyncJobManager const&) = delete;
 
  public:
-  typedef void (*callback_fptr)(std::string&, GeneralResponse*);
   typedef std::unordered_map<AsyncJobResult::IdType, AsyncJobResult> JobList;
 
  public:
-  explicit AsyncJobManager(callback_fptr);
+  AsyncJobManager();
   ~AsyncJobManager();
 
  public:
@@ -95,7 +94,6 @@ class AsyncJobManager {
  private:
   basics::ReadWriteLock _lock;
   JobList _jobs;
-  callback_fptr _callback;
 };
 }
 }

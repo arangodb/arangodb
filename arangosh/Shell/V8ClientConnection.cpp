@@ -179,13 +179,13 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
 
   if (isConnected() &&
       _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
-    LOG(INFO) << "Connected to ArangoDB "
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Connected to ArangoDB "
               << "'" << endpointSpecification() << "', "
               << "version " << _version << " [" << _mode << "], "
               << "database '" << _databaseName << "', "
               << "username: '" << _username << "'";
   } else {
-    LOG(ERR) << "Could not connect to endpoint '" << client->endpoint()
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not connect to endpoint '" << client->endpoint()
              << "', username: '" << client->username() << "'";
 
     std::string errorMsg = "could not connect";
@@ -270,7 +270,7 @@ static V8ClientConnection* CreateV8ClientConnection(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_DestructorCallback(
-    const v8::WeakCallbackData<v8::External, v8::Persistent<v8::External>>&
+    const v8::WeakCallbackInfo<v8::Persistent<v8::External>>&
         data) {
   auto persistent = data.GetParameter();
   auto myConnection =
@@ -297,7 +297,8 @@ static v8::Handle<v8::Value> WrapV8ClientConnection(
   result->SetInternalField(SLOT_CLASS, myConnection);
   Connections[v8connection].Reset(isolate, myConnection);
   Connections[v8connection].SetWeak(&Connections[v8connection],
-                                    ClientConnection_DestructorCallback);
+                                    ClientConnection_DestructorCallback,
+                                    v8::WeakCallbackType::kFinalizer);
   return scope.Escape<v8::Value>(result);
 }
 
@@ -332,7 +333,7 @@ static void ClientConnection_ConstructorCallback(
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() ==
           (int)rest::ResponseCode::OK) {
-    LOG(INFO) << "Connected to ArangoDB "
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Connected to ArangoDB "
               << "'" << v8connection->endpointSpecification() << "', "
               << "version " << v8connection->version() << " ["
               << v8connection->mode() << "], "
@@ -1023,7 +1024,7 @@ static void ClientConnection_importJson(
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
 
-  if (ih.importJson(collectionName, fileName)) {
+  if (ih.importJson(collectionName, fileName, false)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
     result->Set(TRI_V8_ASCII_STRING("lines"),
@@ -1697,14 +1698,14 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
 
   connection_inst->SetInternalFieldCount(2);
 
-  TRI_AddGlobalVariableVocbase(isolate, context,
+  TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING("ArangoConnection"),
                                connection_proto->NewInstance());
 
   ConnectionTempl.Reset(isolate, connection_inst);
 
   // add the client connection to the context:
-  TRI_AddGlobalVariableVocbase(isolate, context,
+  TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_ARANGO"),
                                WrapV8ClientConnection(isolate, this));
 }

@@ -21,6 +21,33 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+
+// Execution plans like the one below are made of Nodes that inherit the
+// ExecutionNode class as a base class.
+//
+// Execution plan:
+//  Id   NodeType                  Est.   Comment
+//   1   SingletonNode                1   * ROOT
+//   2   EnumerateCollectionNode   6400     - FOR d IN coll   /* full collection scan */
+//   3   CalculationNode           6400       - LET #1 = DISTANCE(d.`lat`, d.`lon`, 0, 0)   /* simple expression */   /* collections used: d : coll */
+//   4   SortNode                  6400       - SORT #1 ASC
+//   5   LimitNode                    5       - LIMIT 0, 5
+//   6   ReturnNode                   5       - RETURN d
+//
+// Even though the Singleton Node has a comment saying it is the "ROOT" node
+// you receive a pointer to LimitNode by calling getFirstParent on the SortNode
+// (effectively going down the list). If you want to go up from 5 to 4 you need
+// to call getFirstDependency to get a pointer to the SortNode.
+//
+// For most maybe all operations you will only need to operate on the Dependencies
+// the parents will be updated automatically.
+//
+// If you wish to unlink (remove) or replace a node you should to it by using
+// one of the plans operations.
+//
+// addDependency(Parent) has a totally different functionality as addDependencies(Parents)
+// the latter is not adding a list of Dependencies to a node!!!
+
 #ifndef ARANGOD_AQL_EXECUTION_NODE_H
 #define ARANGOD_AQL_EXECUTION_NODE_H 1
 
@@ -47,9 +74,24 @@ class ExecutionPlan;
 struct Index;
 class RedundantCalculationsReplacer;
 
-/// @brief pairs, consisting of variable and sort direction
-/// (true = ascending | false = descending)
-typedef std::vector<std::pair<Variable const*, bool>> SortElementVector;
+/// @brief sort element, consisting of variable, sort direction, and a possible
+/// attribute path to dig into the document
+
+struct SortElement {
+  Variable const* var;
+  bool ascending;
+  std::vector<std::string> attributePath;
+
+  SortElement(Variable const* v, bool asc)
+    : var(v), ascending(asc) {
+  }
+
+  SortElement(Variable const* v, bool asc, std::vector<std::string> const& path)
+    : var(v), ascending(asc), attributePath(path) {
+  }
+};
+
+typedef std::vector<SortElement> SortElementVector;
 
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {
@@ -59,7 +101,6 @@ class ExecutionNode {
 
  public:
   enum NodeType : int {
-    ILLEGAL = 0,
     SINGLETON = 1,
     ENUMERATE_COLLECTION = 2,
     // INDEX_RANGE          =  3, // not used anymore
@@ -156,6 +197,8 @@ class ExecutionNode {
   bool hasDependency() const { return (_dependencies.size() == 1); }
 
   /// @brief add the node dependencies to a vector
+  /// ATTENTION - this function has nothing to do with the addDependency function
+  //              maybe another name should be used.
   void addDependencies(std::vector<ExecutionNode*>& result) const {
     for (auto const& it : _dependencies) {
       result.emplace_back(it);
@@ -301,13 +344,15 @@ class ExecutionNode {
   /// @brief remove all dependencies for the given node
   void removeDependencies() {
     for (auto& x : _dependencies) {
-      for (auto it = x->_parents.begin(); it != x->_parents.end(); ++it) {
+      for (auto it = x->_parents.begin(); it != x->_parents.end(); /* no hoisting */) {
         if (*it == this) {
           try {
-            x->_parents.erase(it);
+            it = x->_parents.erase(it);
           } catch (...) {
           }
           break;
+        } else {
+          ++it;
         }
       }
     }
@@ -433,7 +478,7 @@ class ExecutionNode {
     return false;
   }
 
-  ExecutionPlan const* plan() const { 
+  ExecutionPlan const* plan() const {
     return _plan;
   }
 
@@ -510,7 +555,7 @@ class ExecutionNode {
 
   /// @brief get depth
   int getDepth() const { return _depth; }
-  
+
   /// @brief get registers to clear
   std::unordered_set<RegisterId> const& getRegsToClear() const {
     return _regsToClear;
@@ -540,8 +585,8 @@ class ExecutionNode {
   void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, bool) const;
 
   /// @brief set regs to be deleted
-  void setRegsToClear(std::unordered_set<RegisterId> const& toClear) {
-    _regsToClear = toClear;
+  void setRegsToClear(std::unordered_set<RegisterId>&& toClear) {
+    _regsToClear = std::move(toClear);
   }
 
  protected:
@@ -677,7 +722,7 @@ class EnumerateCollectionNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final {
     return std::vector<Variable const*>{_outVariable};
   }
-  
+
   /// @brief the node is only non-deterministic if it uses a random sort order
   bool isDeterministic() override final { return !_random; }
 
@@ -927,7 +972,7 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief can the node throw?
   bool canThrow() override final { return _expression->canThrow(); }
-  
+
   bool isDeterministic() override final { return _expression->isDeterministic(); }
 
  private:
@@ -1014,10 +1059,10 @@ class SubqueryNode : public ExecutionNode {
   /// *originate* from this node. That is, this method does not need to
   /// return true just because a dependent node can throw an exception.
   bool canThrow() override final;
-  
+
   bool isDeterministic() override final;
 
-  bool isConst(); 
+  bool isConst();
 
  private:
   /// @brief we need to have an expression and where to write the result
@@ -1181,7 +1226,7 @@ class NoResultsNode : public ExecutionNode {
   /// @brief constructor with an id
  public:
   NoResultsNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
-  
+
   NoResultsNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
       : ExecutionNode(plan, base) {}
 

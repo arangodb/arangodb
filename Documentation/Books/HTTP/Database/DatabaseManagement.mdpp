@@ -1,4 +1,5 @@
-!CHAPTER Database Management
+Database Management
+===================
 
 This is an introduction to ArangoDB's HTTP interface for managing databases.
 
@@ -10,7 +11,8 @@ databases.
 Please note that all database management operations can only be accessed via
 the default database (*_system*) and none of the other databases.
 
-!SECTION Managing Databases using HTTP 
+Managing Databases using HTTP
+-----------------------------
 
 <!-- js/actions/api-database.js -->
 @startDocuBlock JSF_get_api_database_current

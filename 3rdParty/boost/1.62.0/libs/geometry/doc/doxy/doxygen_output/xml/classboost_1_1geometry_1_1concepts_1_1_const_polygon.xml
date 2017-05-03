@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1concepts_1_1_const_polygon" kind="class" prot="public">
+    <compoundname>boost::geometry::concepts::ConstPolygon</compoundname>
+    <includes local="no">polygon_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename PolygonType</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Checks polygon concept (const version) </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/polygon_concept.hpp" line="93" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/polygon_concept.hpp" bodystart="92" bodyend="131"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

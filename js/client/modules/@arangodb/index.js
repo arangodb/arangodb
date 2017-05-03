@@ -77,6 +77,13 @@ exports.ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 exports.ArangoQueryCursor = require('@arangodb/arango-query-cursor').ArangoQueryCursor;
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief class "ArangoView"
+// //////////////////////////////////////////////////////////////////////////////
+
+// cannot yet not use arangodb
+exports.ArangoView = require('@arangodb/arango-view').ArangoView;
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief the global "db" and "arango" object
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -102,7 +109,7 @@ exports.plainServerVersion = function () {
     if (devel !== null) {
       version = devel[1] + '.0';
     } else {
-      devel = version.match(/(.*)((alpha|beta|devel|rc)[0-9]*)$/);
+      devel = version.match(/(.*)((milestone|alpha|beta|devel|rc)[0-9]*)$/);
 
       if (devel !== null) {
         version = devel[1] + '0';

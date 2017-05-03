@@ -24,7 +24,6 @@
 #include "CursorRepository.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
-#include "Utils/CollectionExport.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -63,9 +62,9 @@ CursorRepository::~CursorRepository() {
     }
 
     if (tries == 0) {
-      LOG(INFO) << "waiting for used cursors to become unused";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "waiting for used cursors to become unused";
     } else if (tries == 120) {
-      LOG(WARN) << "giving up waiting for unused cursors";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for unused cursors";
     }
 
     usleep(500000);
@@ -84,63 +83,51 @@ CursorRepository::~CursorRepository() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief stores a cursor in the registry
+/// the repository will take ownership of the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
+  TRI_ASSERT(cursor != nullptr);
+  TRI_ASSERT(cursor->isUsed());
+
+  CursorId const id = cursor->id();
+
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
+    _cursors.emplace(id, cursor.get());
+  }
+
+  return cursor.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cursor and stores it in the registry
 /// the cursor will be returned with the usage flag set to true. it must be
 /// returned later using release()
 /// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-VelocyPackCursor* CursorRepository::createFromQueryResult(
+Cursor* CursorRepository::createFromQueryResult(
     aql::QueryResult&& result, size_t batchSize, std::shared_ptr<VPackBuilder> extra,
     double ttl, bool count) {
   TRI_ASSERT(result.result != nullptr);
 
   CursorId const id = TRI_NewTickServer();
 
-  arangodb::VelocyPackCursor* cursor = new arangodb::VelocyPackCursor(
-      _vocbase, id, std::move(result), batchSize, extra, ttl, count);
+  std::unique_ptr<Cursor> cursor;
+  cursor.reset(new VelocyPackCursor(
+      _vocbase, id, std::move(result), batchSize, extra, ttl, count));
   cursor->use();
 
-  try {
-    MUTEX_LOCKER(mutexLocker, _lock);
-    _cursors.emplace(std::make_pair(id, cursor));
-    return cursor;
-  } catch (...) {
-    delete cursor;
-    throw;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a cursor and stores it in the registry
-////////////////////////////////////////////////////////////////////////////////
-
-ExportCursor* CursorRepository::createFromExport(arangodb::CollectionExport* ex,
-                                                 size_t batchSize, double ttl,
-                                                 bool count) {
-  TRI_ASSERT(ex != nullptr);
-
-  CursorId const id = TRI_NewTickServer();
-  arangodb::ExportCursor* cursor =
-      new arangodb::ExportCursor(_vocbase, id, ex, batchSize, ttl, count);
-
-  cursor->use();
-
-  try {
-    MUTEX_LOCKER(mutexLocker, _lock);
-    _cursors.emplace(std::make_pair(id, cursor));
-    return cursor;
-  } catch (...) {
-    delete cursor;
-    throw;
-  }
+  return addCursor(std::move(cursor));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a cursor by id
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CursorRepository::remove(CursorId id) {
+bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
   arangodb::Cursor* cursor = nullptr;
 
   {
@@ -156,6 +143,11 @@ bool CursorRepository::remove(CursorId id) {
 
     if (cursor->isDeleted()) {
       // already deleted
+      return false;
+    }
+
+    if (cursor->type() != type) {
+      // wrong type
       return false;
     }
 
@@ -181,7 +173,7 @@ bool CursorRepository::remove(CursorId id) {
 /// it must be returned later using release()
 ////////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::find(CursorId id, bool& busy) {
+Cursor* CursorRepository::find(CursorId id, Cursor::CursorType type, bool& busy) {
   arangodb::Cursor* cursor = nullptr;
   busy = false;
 
@@ -198,6 +190,11 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
 
     if (cursor->isDeleted()) {
       // already deleted
+      return nullptr;
+    }
+
+    if (cursor->type() != type) {
+      // wrong cursor type
       return nullptr;
     }
 
@@ -256,12 +253,12 @@ bool CursorRepository::containsUsedCursor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CursorRepository::garbageCollect(bool force) {
-  std::vector<arangodb::Cursor*> found;
-  found.reserve(MaxCollectCount);
-
   auto const now = TRI_microtime();
+  std::vector<arangodb::Cursor*> found;
 
-  {
+  try {
+    found.reserve(MaxCollectCount);
+
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it = _cursors.begin(); it != _cursors.end(); /* no hoisting */) {
@@ -293,6 +290,8 @@ bool CursorRepository::garbageCollect(bool force) {
         ++it;
       }
     }
+  } catch (...) {
+    // go on and remove whatever we found so far
   }
 
   // remove cursors outside the lock

@@ -28,8 +28,6 @@
 
 #include "Basics/Common.h"
 
-#include <boost/lockfree/queue.hpp>
-
 #include "Basics/ConditionVariable.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "GeneralServer/GeneralDefinitions.h"
@@ -57,7 +55,7 @@ class GeneralServer {
  protected:
   bool openEndpoint(Endpoint* endpoint);
 
- protected:
+ private:
   std::vector<ListenTask*> _listenTasks;
   EndpointList const* _endpointList = nullptr;
 };

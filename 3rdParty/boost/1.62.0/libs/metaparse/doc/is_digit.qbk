@@ -1,0 +1,75 @@
+[#is_digit]
+[section is_digit]
+
+[h1 Synopsis]
+
+  namespace util
+  {
+    template <class C>
+    struct is_digit;
+  }
+
+This is a [link lazy_metafunction lazy template metafunction] that supports
+[link currying currying].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`C`]  [[link boxed_value boxed] character value]]
+]
+
+[h1 Description]
+
+Checks if `C` is a digit value or not. Returns a boxed boolean value.
+
+[h1 Header]
+
+  #include <boost/metaparse/util/is_digit.hpp>
+
+[h1 Expression semantics]
+
+The following expressions are equivalent:
+
+  is_digit<boost::mpl::char_<'0'>>::type
+  is_digit<>::apply<boost::mpl::char_<'0'>>::type
+  boost::mpl::true_
+
+The following expressions are also equivalent:
+
+  is_digit<>::apply<c>::type
+  boost::mpl::false_
+
+[h1 Example]
+
+  #include <boost/metaparse/util/is_digit.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  struct returns_char
+  {
+    using type = std::integral_constant<char, '0'>;
+  };
+  
+  static_assert(
+    util::is_digit<std::integral_constant<char, '0'>>::type::value,
+    "digit character should be a digit"
+  );
+  
+  static_assert(
+    !util::is_digit<std::integral_constant<char, 'x'>>::type::value,
+    "letter should not be a digit"
+  );
+  
+  static_assert(
+    util::is_digit<>::type::apply<std::integral_constant<char, '0'>>::type::value,
+    "it should support currying"
+  );
+  
+  static_assert(
+    util::is_digit<returns_char>::type::value,
+    "it should support lazy evaluation"
+  );
+
+[endsect]
+

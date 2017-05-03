@@ -390,6 +390,11 @@ Slice Slice::translateUnchecked() const {
   return Slice();
 }
 
+std::string Slice::toHex() const {
+  HexDump dump(this);
+  return dump.toString(); 
+}
+
 std::string Slice::toJson(Options const* options) const {
   std::string buffer;
   StringSink sink(&buffer);
@@ -681,7 +686,11 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
   if (h <= 0x05) {  // No offset table or length, need to compute:
     dataOffset = findDataOffset(h);
     Slice first(_start + dataOffset);
-    n = (end - dataOffset) / first.byteSize();
+    ValueLength s = first.byteSize();
+    if (s == 0) {
+      throw Exception(Exception::InternalError);
+    }
+    n = (end - dataOffset) / s;
   } else if (offsetSize < 8) {
     n = readIntegerNonEmpty<ValueLength>(_start + 1 + offsetSize, offsetSize);
   } else {

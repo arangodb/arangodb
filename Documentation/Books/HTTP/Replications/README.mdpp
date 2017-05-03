@@ -1,6 +1,7 @@
-!CHAPTER HTTP Interface for Replication 
+HTTP Interface for Replication
+==============================
 
-!SUBSECTION Replication
+### Replication
 
 This is an introduction to ArangoDB's HTTP replication interface.
 The replication architecture and components are described in more details in 

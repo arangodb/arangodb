@@ -37,12 +37,50 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class LogicalCollection;
+class InitialSyncer;
 
+int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
+                          arangodb::LogicalCollection* col,
+                          std::string const& keysId, std::string const& cid,
+                          std::string const& collectionName,
+                          TRI_voc_tick_t maxTick, std::string& errorMsg);
+
+int handleSyncKeysRocksDB(InitialSyncer& syncer,
+                          arangodb::LogicalCollection* col,
+                          std::string const& keysId, std::string const& cid,
+                          std::string const& collectionName,
+                          TRI_voc_tick_t maxTick, std::string& errorMsg);
+
+int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
+                     std::string const& keysId, uint64_t chunkId,
+                     std::string const& lowString,
+                     std::string const& highString,
+                     std::vector<std::pair<std::string, uint64_t>> markers,
+                     std::string& errorMsg);
 namespace httpclient {
 class SimpleHttpResult;
 }
 
 class InitialSyncer : public Syncer {
+  friend int ::arangodb::handleSyncKeysMMFiles(
+      arangodb::InitialSyncer& syncer, arangodb::LogicalCollection* col,
+      std::string const& keysId, std::string const& cid,
+      std::string const& collectionName, TRI_voc_tick_t maxTick,
+      std::string& errorMsg);
+
+  friend int ::arangodb::handleSyncKeysRocksDB(
+      InitialSyncer& syncer, arangodb::LogicalCollection* col,
+      std::string const& keysId, std::string const& cid,
+      std::string const& collectionName, TRI_voc_tick_t maxTick,
+      std::string& errorMsg);
+
+  friend int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
+                     std::string const& keysId, uint64_t chunkId,
+                     std::string const& lowString,
+                     std::string const& highString,
+                     std::vector<std::pair<std::string, uint64_t>> markers,
+                     std::string& errorMsg);
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply phases
@@ -64,7 +102,6 @@ class InitialSyncer : public Syncer {
   ~InitialSyncer();
 
  public:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run method, performs a full synchronization
   //////////////////////////////////////////////////////////////////////////////
@@ -105,6 +142,8 @@ class InitialSyncer : public Syncer {
     return _processedCollections;
   }
 
+  std::string progress() { return _progress; }
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set a progress message
@@ -115,8 +154,7 @@ class InitialSyncer : public Syncer {
 
     if (_verbose) {
       LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
-    }
-    else {
+    } else {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
     }
 
@@ -159,8 +197,7 @@ class InitialSyncer : public Syncer {
   /// @brief apply the data from a collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDump(arangodb::Transaction&,
-                          std::string const&,
+  int applyCollectionDump(transaction::Methods&, std::string const&,
                           httpclient::SimpleHttpResult*, uint64_t&,
                           std::string&);
 
@@ -188,9 +225,28 @@ class InitialSyncer : public Syncer {
   /// @brief incrementally fetch data from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSyncKeys(arangodb::LogicalCollection*, std::string const&,
-                     std::string const&, std::string const&, TRI_voc_tick_t,
-                     std::string&);
+  int handleSyncKeysRocksDB(arangodb::LogicalCollection* col,
+                            std::string const& keysId, std::string const& cid,
+                            std::string const& collectionName,
+                            TRI_voc_tick_t maxTick, std::string& errorMsg);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief incrementally fetch chunk data from a collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  int syncChunkRocksDB(SingleCollectionTransaction* trx,
+                       std::string const& keysId, uint64_t chunkId,
+                       std::string const& lowKey, std::string const& highKey,
+                       std::vector<std::pair<std::string, uint64_t>> markers,
+                       std::string& errorMsg);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief incrementally fetch data from a collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  int handleSyncKeysMMFiles(arangodb::LogicalCollection* col,
+                            std::string const& keysId, std::string const& cid,
+                            std::string const& collectionName,
+                            TRI_voc_tick_t maxTick, std::string& errorMsg);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief changes the properties of a collection, based on the VelocyPack
@@ -204,24 +260,24 @@ class InitialSyncer : public Syncer {
   /// @brief handle the information about a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleCollection(arangodb::velocypack::Slice const&, 
-                       arangodb::velocypack::Slice const&, bool,
-                       std::string&, sync_phase_e);
+  int handleCollection(arangodb::velocypack::Slice const&,
+                       arangodb::velocypack::Slice const&, bool, std::string&,
+                       sync_phase_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the inventory response of the master
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleInventoryResponse(arangodb::velocypack::Slice const&, 
-                              bool, std::string&);
+  int handleInventoryResponse(arangodb::velocypack::Slice const&, bool,
+                              std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief iterate over all collections from an array and apply an action
   //////////////////////////////////////////////////////////////////////////////
 
   int iterateCollections(
-      std::vector<
-          std::pair<arangodb::velocypack::Slice, arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<arangodb::velocypack::Slice,
+                            arangodb::velocypack::Slice>> const&,
       bool, std::string&, sync_phase_e);
 
  private:

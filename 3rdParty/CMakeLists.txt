@@ -7,33 +7,30 @@
 include(ExternalProject)
 
 ################################################################################
-## boost
-################################################################################
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
-
-################################################################################
 ## V8 and ICU
 ################################################################################
 
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
-if (USE_PRECOMPILED_V8)
-  set(V8_VERSION
-    "V8-5.0.71.39"
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Version"
-    FORCE
-  )
 
-  set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/v8)
-  set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_VERSION})
+set(V8_SUB_DIR "v5.7.0.0")
+set(V8_VERSION
+  "5.7.0.0"
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Version"
+  FORCE
+  )
+set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
+if (USE_PRECOMPILED_V8)
+
+  set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/${V8_SUB_DIR})
+  set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_SUB_DIR})
 
   set(V8_PROC_ARCH "x64")
   set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
 
   set(V8_TARGET_DIR "${V8_DIR}/${V8_TARGET_ARCH}/obj.target")
-  set(V8_BIN_DIR "${V8_TARGET_DIR}/tools/gyp")
+  set(V8_BIN_DIR "${V8_TARGET_DIR}/src/")
   set(ICU_BIN_DIR "${V8_TARGET_DIR}/third_party/icu")
 
   set(ICU_VERSION
@@ -51,7 +48,7 @@ if (USE_PRECOMPILED_V8)
   )
 
   set(ICU_LIBS
-    "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a;${ICU_BIN_DIR}/libicudata.a"
+    "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a"
     ${libev_BINARY_DIR}/libev.a
     CACHE INTERNAL
     "ICU: Libraries"
@@ -83,13 +80,14 @@ endif ()
 ################################################################################
 
 set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.8)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 
 ################################################################################
 ## cURL
 ################################################################################
 
 set(ENABLE_MANUAL OFF CACHE type BOOL)
+set(BUILD_CURL_EXE OFF CACHE type BOOL)
 set(BUILD_TESTING OFF CACHE type BOOL)
 set(CURL_STATICLIB ON CACHE type BOOL)
 set(HTTP_ONLY ON CACHE type BOOL)
@@ -103,12 +101,13 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 ## ROCKSDB
 ################################################################################
 
-if (${JEMALLOC_FOUND})
-#   set(USE_JEMALLOC_DEFAULT 1)
-endif()
-set(SKIP_INSTALL_ALL ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
+
+################################################################################
+## LIBCUCKOO
+################################################################################
+
+#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libcuckoo/)
 
 ################################################################################
 ## LINK_DIRECTORIES

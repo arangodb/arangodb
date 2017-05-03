@@ -22,21 +22,27 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SOCKET_TASK2_H
-#define ARANGOD_SCHEDULER_SOCKET_TASK2_H 1
+#ifndef ARANGOD_SCHEDULER_SOCKET_TASK_H
+#define ARANGOD_SCHEDULER_SOCKET_TASK_H 1
 
 #include "Scheduler/Task.h"
 
 #include <boost/asio/ssl.hpp>
+#include <list>
 
-#include "Basics/asio-helper.h"
+#include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/asio-helper.h"
+#include "Endpoint/ConnectionInfo.h"
 #include "Scheduler/Socket.h"
-#include "Statistics/StatisticsAgent.h"
+#include "Statistics/RequestStatistics.h"
 
 namespace arangodb {
+class ConnectionStatistics;
+
 namespace rest {
-class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
+class SocketTask : virtual public Task {
+  friend class HttpCommTask;
   explicit SocketTask(SocketTask const&) = delete;
   SocketTask& operator=(SocketTask const&) = delete;
 
@@ -45,7 +51,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
  public:
   SocketTask(EventLoop, std::unique_ptr<Socket>, ConnectionInfo&&,
-             double keepAliveTimeout);
+             double keepAliveTimeout, bool skipInit);
 
   virtual ~SocketTask();
 
@@ -53,50 +59,116 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   void start();
 
  protected:
-  virtual bool processRead() = 0;
+  // caller will hold the _readLock
+  virtual bool processRead(double start_time) = 0;
+  virtual void compactify() {}
+
+  // This function is used during the protocol switch from http
+  // to VelocyStream. This way we no not require additional
+  // constructor arguments. It should not be used otherwise.
+  void addToReadBuffer(char const* data, std::size_t len);
 
  protected:
-  void addWriteBuffer(std::unique_ptr<basics::StringBuffer> buffer) {
-    addWriteBuffer(std::move(buffer), (RequestStatisticsAgent*)nullptr);
-  }
+  struct WriteBuffer {
+    basics::StringBuffer* _buffer;
+    RequestStatistics* _statistics;
 
-  void addWriteBuffer(std::unique_ptr<basics::StringBuffer>,
-                      RequestStatisticsAgent*);
+    WriteBuffer(basics::StringBuffer* buffer, RequestStatistics* statistics)
+        : _buffer(buffer), _statistics(statistics) {}
+    
+    WriteBuffer(WriteBuffer const&) = delete;
+    WriteBuffer& operator=(WriteBuffer const&) = delete;
 
-  void addWriteBuffer(basics::StringBuffer*, TRI_request_statistics_t*);
+    WriteBuffer(WriteBuffer&& other) 
+        : _buffer(other._buffer), _statistics(other._statistics) {
+      other._buffer = nullptr;
+      other._statistics = nullptr;
+    }
 
-  void completedWriteBuffer();
+    WriteBuffer& operator=(WriteBuffer&& other) {
+      if (this != &other) {
+        // release our own memory to prevent memleaks
+        release();
 
+        // take over ownership from other
+        _buffer = other._buffer;
+        _statistics = other._statistics;
+        // fix other
+        other._buffer = nullptr;
+        other._statistics = nullptr;
+      }
+      return *this;
+    }
+
+    ~WriteBuffer() { release(); }
+
+    bool empty() const {
+      return _buffer == nullptr;
+    }
+    
+    void clear() {
+      _buffer = nullptr;
+      _statistics = nullptr;
+    }
+
+    void release() {
+      if (_buffer != nullptr) {
+        delete _buffer;
+        _buffer = nullptr;
+      }
+
+      if (_statistics != nullptr) {
+        _statistics->release();
+        _statistics = nullptr;
+      }
+    }
+  };
+
+  // will acquire the _writeLock
+  void addWriteBuffer(WriteBuffer&);
+
+  // will acquire the _writeLock
   void closeStream();
 
+  // will acquire the _writeLock
   void resetKeepAlive();
+
+  // will acquire the _writeLock
   void cancelKeepAlive();
 
  protected:
+  ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
 
-  basics::StringBuffer _readBuffer;
-
-  basics::StringBuffer* _writeBuffer = nullptr;
-  TRI_request_statistics_t* _writeBufferStatistics = nullptr;
-
-  std::deque<basics::StringBuffer*> _writeBuffers;
-  std::deque<TRI_request_statistics_t*> _writeBuffersStats;
-
-  std::unique_ptr<Socket> _peer;
-  boost::posix_time::milliseconds _keepAliveTimeout;
-  bool _useKeepAliveTimeout;
-  boost::asio::deadline_timer _keepAliveTimer;
-
-  bool _closeRequested = false;
+  Mutex _readLock;
+  basics::StringBuffer _readBuffer; // needs _readLock
 
  private:
+  // caller must hold the _writeLock
+  void closeStreamNoLock();
+
+  void writeWriteBuffer();
+  bool completedWriteBuffer();
+
   bool reserveMemory();
   bool trySyncRead();
+  bool processAll();
   void asyncReadSome();
   void closeReceiveStream();
 
  private:
+  Mutex _writeLock;
+  WriteBuffer _writeBuffer;
+  std::list<WriteBuffer> _writeBuffers;
+
+  std::unique_ptr<Socket> _peer;
+  boost::posix_time::milliseconds _keepAliveTimeout;
+  boost::asio::deadline_timer _keepAliveTimer;
+  bool const _useKeepAliveTimer;
+  bool _keepAliveTimerActive;
+  bool _closeRequested;
+  std::atomic_bool _abandoned;
+
   bool _closedSend = false;
   bool _closedReceive = false;
 };

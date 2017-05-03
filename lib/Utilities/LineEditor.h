@@ -25,9 +25,9 @@
 #define ARANGODB_UTILITIES_LINE_EDITOR_H 1
 
 #include "Basics/Common.h"
+#include "Utilities/ShellBase.h"
 
 namespace arangodb {
-class ShellBase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor
@@ -73,7 +73,7 @@ class LineEditor {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string prompt(std::string const& prompt, std::string const& begin,
-                     bool& eof);
+                     ShellBase::EofType&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add to history

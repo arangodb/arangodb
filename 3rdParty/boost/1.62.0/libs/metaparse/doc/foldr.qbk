@@ -1,0 +1,102 @@
+[#foldr]
+[section foldr]
+
+[h1 Synopsis]
+
+  template <class P, class State, class BackwardOp>
+  struct foldr;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name]         [Type]]
+  [[`P`]          [[link parser parser]]]
+  [[`State`]      [[link metaprogramming_value template metaprogramming value]]]
+  [[`BackwardOp`] [[link metafunction_class template metafunction class] taking two arguments]]
+]
+
+[h1 Description]
+
+`foldr` applies `P` on the input string repeatedly as long as `P` accepts the
+input. The result of parsing is equivalent to
+`boost::reverse_fold<Sequence, State, BackwardOp>`, where `Sequence` is the
+sequence of the results of the applications of `P`.
+
+When `P` rejects the input for the first time, `foldr` still accepts the input
+and the result of parsing is `State`.
+
+Here is a diagram showing how `foldr` works by example:
+
+  using int_token = token<int_>;
+  using sum_op = mpl::lambda<mpl::plus<mpl::_1, mpl::_2>>::type;
+
+[$images/metaparse/foldr_diag1.png [width 70%]]
+
+Further details can be found in the [link introducing-foldr Introducing foldr]
+section of the [link manual User Manual].
+
+[h1 Header]
+
+  #include <boost/metaparse/foldr.hpp>
+
+[h1 Expression semantics]
+
+For any `p` parser, `t` class, `f` metafunction class taking two arguments,
+`s` compile-time string and `pos` source position
+
+  foldr<p, t, f>::apply<s, pos>
+
+is equivalent to
+
+  return_<t>::apply<s, pos>
+
+when `p::apply<s, pos>` returns an error. It is
+
+  f::apply<
+    get_result<
+      foldr<p, t, f>::apply<
+        get_remaining<p::apply<s, pos>>,
+        get_position<p::apply<s, pos>>
+      >
+    >::type,
+    get_result<p::apply<s, pos>>::type
+  >
+
+otherwise.
+
+[h1 Example]
+
+  #include <boost/metaparse/foldr.hpp>
+  #include <boost/metaparse/token.hpp>
+  #include <boost/metaparse/int_.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  
+  #include <boost/mpl/lambda.hpp>
+  #include <boost/mpl/plus.hpp>
+  
+  using namespace boost::metaparse;
+  
+  using int_token = token<int_>;
+  using sum_op =
+    boost::mpl::lambda<boost::mpl::plus<boost::mpl::_1, boost::mpl::_2>>::type;
+  
+  using ints = foldr<int_token, boost::mpl::int_<0>, sum_op>;
+  
+  static_assert(
+    get_result<
+      ints::apply<BOOST_METAPARSE_STRING("11 13 3 21"), start>
+    >::type::value == 48,
+    "ints should sum the numbers"
+  );
+  
+  static_assert(
+    get_result<
+      ints::apply<BOOST_METAPARSE_STRING(""), start>
+    >::type::value == 0,
+    "the sum of no elements is 0"
+  );
+
+[endsect]
+

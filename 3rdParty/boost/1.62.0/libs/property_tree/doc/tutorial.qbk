@@ -1,0 +1,56 @@
+[/
+ / Copyright (c) 2008 Marcin Kalicinski (kalita <at> poczta dot onet dot pl)
+ / Copyright (c) 2009, 2013 Sebastian Redl (sebastian dot redl <at> getdesigned dot at)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section:tutorial Five Minute Tutorial]
+[import ../examples/debug_settings.cpp]
+
+This tutorial uses XML. Note that the library is not specifically bound to XML,
+and any other supported format (such as INI or JSON) could be used instead.
+XML was chosen because the author thinks that a wide range of people is familiar
+with it.
+
+Suppose we are writing a logging system for some application, and need to read
+log configuration from a file when the program starts. The file with the log
+configuration looks like this:
+
+[pre
+<debug>
+    <filename>debug.log</filename>
+    <modules>
+        <module>Finance</module>
+        <module>Admin</module>
+        <module>HR</module>
+    </modules>
+    <level>2</level>
+</debug>
+]
+
+It contains the log filename, a list of modules where logging is enabled, and
+the debug level value.
+
+First we need some includes:
+
+[debug_settings_includes]
+
+To store the logging configuration in the program we create a debug_settings
+structure:
+
+[debug_settings_data]
+
+All that needs to be done now is to write implementations of load() and save()
+member functions. Let's first deal with load(). It contains just 7 lines of
+code, although it does all the necessary things, including error reporting:
+
+[debug_settings_load]
+
+Now the save() function. It is also 7 lines of code:
+
+[debug_settings_save]
+
+The full program [@boost:/libs/property_tree/examples/debug_settings.cpp debug_settings.cpp] is
+included in the examples directory.
+[endsect] [/tutorial]

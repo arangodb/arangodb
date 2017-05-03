@@ -1,0 +1,299 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder" kind="struct" prot="private">
+    <compoundname>boost::geometry::index::rtree::members_holder</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">translator_type</basecompoundref>
+    <basecompoundref prot="public" virt="non-virtual">Parameters</basecompoundref>
+    <basecompoundref prot="public" virt="non-virtual">allocators_type</basecompoundref>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a79495f9743ff4a7b10a38253d34af7a5" prot="public" static="no" mutable="no">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::values_count</definition>
+        <argsstring></argsstring>
+        <name>values_count</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1768" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1768" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a54532ebe6aa8f0633aa0103ce1580495" prot="public" static="no" mutable="no">
+        <type><ref refid="classboost_1_1geometry_1_1index_1_1rtree_1acc1f90d7b70afebc58107c523ece5cd5" kindref="member">size_type</ref></type>
+        <definition>size_type boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::leafs_level</definition>
+        <argsstring></argsstring>
+        <name>leafs_level</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1769" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1769" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a4e250d88faad0f2a4fd4603dd5ab4589" prot="public" static="no" mutable="no">
+        <type>node_pointer</type>
+        <definition>node_pointer boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::root</definition>
+        <argsstring></argsstring>
+        <name>root</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1770" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1770" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a1139a63b774f54f26555339b4b99c4d3" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::members_holder</definition>
+        <argsstring>(members_holder const &amp;)</argsstring>
+        <name>members_holder</name>
+        <param>
+          <type>members_holder const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1728" column="1"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aa9a01bcefa1e37a6d3ef01db40df5e4c" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>members_holder &amp;</type>
+        <definition>members_holder&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::operator=</definition>
+        <argsstring>(members_holder const &amp;)</argsstring>
+        <name>operator=</name>
+        <param>
+          <type>members_holder const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1729" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a3ac59b9f486200ca525fd9122babc9f1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename IndGet</type>
+          </param>
+          <param>
+            <type>typename ValEq</type>
+          </param>
+          <param>
+            <type>typename Alloc</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::members_holder</definition>
+        <argsstring>(IndGet const &amp;ind_get, ValEq const &amp;val_eq, Parameters const &amp;parameters, BOOST_FWD_REF(Alloc) alloc)</argsstring>
+        <name>members_holder</name>
+        <param>
+          <type>IndGet const &amp;</type>
+          <declname>ind_get</declname>
+        </param>
+        <param>
+          <type>ValEq const &amp;</type>
+          <declname>val_eq</declname>
+        </param>
+        <param>
+          <type>Parameters const &amp;</type>
+          <declname>parameters</declname>
+        </param>
+        <param>
+          <type>BOOST_FWD_REF(Alloc)</type>
+          <declname>alloc</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1733" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1733" bodyend="1743"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a3e51cdb565f14bc21214d333f36bd45e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename IndGet</type>
+          </param>
+          <param>
+            <type>typename ValEq</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::members_holder</definition>
+        <argsstring>(IndGet const &amp;ind_get, ValEq const &amp;val_eq, Parameters const &amp;parameters)</argsstring>
+        <name>members_holder</name>
+        <param>
+          <type>IndGet const &amp;</type>
+          <declname>ind_get</declname>
+        </param>
+        <param>
+          <type>ValEq const &amp;</type>
+          <declname>val_eq</declname>
+        </param>
+        <param>
+          <type>Parameters const &amp;</type>
+          <declname>parameters</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1746" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1746" bodyend="1755"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a12ce0d3553ddf72a0d70fb720d6e33dc" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>translator_type const &amp;</type>
+        <definition>translator_type const&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::translator</definition>
+        <argsstring>() const </argsstring>
+        <name>translator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1757" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1757" bodyend="1757"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aaa989763b79c594b4680168b7fa8daaf" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>IndexableGetter const &amp;</type>
+        <definition>IndexableGetter const&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::indexable_getter</definition>
+        <argsstring>() const </argsstring>
+        <name>indexable_getter</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1759" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1759" bodyend="1759"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a5dde5e61c9925590efa4dc9a7e7a8bc1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>IndexableGetter &amp;</type>
+        <definition>IndexableGetter&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::indexable_getter</definition>
+        <argsstring>()</argsstring>
+        <name>indexable_getter</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1760" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1760" bodyend="1760"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aaf410c561483831a4b24a82bb3034773" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>EqualTo const &amp;</type>
+        <definition>EqualTo const&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::equal_to</definition>
+        <argsstring>() const </argsstring>
+        <name>equal_to</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1761" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1761" bodyend="1761"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a83b1737faa23d4d5ddaa4638c99e0c38" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>EqualTo &amp;</type>
+        <definition>EqualTo&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::equal_to</definition>
+        <argsstring>()</argsstring>
+        <name>equal_to</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1762" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1762" bodyend="1762"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1ade9a0bb6acb201c061014eb5809d5250" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>Parameters const &amp;</type>
+        <definition>Parameters const&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::parameters</definition>
+        <argsstring>() const </argsstring>
+        <name>parameters</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1763" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1763" bodyend="1763"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aefb71c6ca0fda211fd3e4416a95b22be" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>Parameters &amp;</type>
+        <definition>Parameters&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::parameters</definition>
+        <argsstring>()</argsstring>
+        <name>parameters</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1764" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1764" bodyend="1764"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a0f3486692427b058904953d8a37af61f" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>allocators_type const &amp;</type>
+        <definition>allocators_type const&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::allocators</definition>
+        <argsstring>() const </argsstring>
+        <name>allocators</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1765" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1765" bodyend="1765"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1ac9ff09e4f6113a40e267bc95cd2593af" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>allocators_type &amp;</type>
+        <definition>allocators_type&amp; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt;::members_holder::allocators</definition>
+        <argsstring>()</argsstring>
+        <name>allocators</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1766" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1766" bodyend="1766"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" line="1726" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp" bodystart="1722" bodyend="1771"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a0f3486692427b058904953d8a37af61f" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>allocators</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1ac9ff09e4f6113a40e267bc95cd2593af" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>allocators</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aaf410c561483831a4b24a82bb3034773" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>equal_to</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a83b1737faa23d4d5ddaa4638c99e0c38" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>equal_to</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aaa989763b79c594b4680168b7fa8daaf" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>indexable_getter</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a5dde5e61c9925590efa4dc9a7e7a8bc1" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>indexable_getter</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a54532ebe6aa8f0633aa0103ce1580495" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>leafs_level</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a1139a63b774f54f26555339b4b99c4d3" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>members_holder</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a3ac59b9f486200ca525fd9122babc9f1" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>members_holder</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a3e51cdb565f14bc21214d333f36bd45e" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>members_holder</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aa9a01bcefa1e37a6d3ef01db40df5e4c" prot="private" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>operator=</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1ade9a0bb6acb201c061014eb5809d5250" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>parameters</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1aefb71c6ca0fda211fd3e4416a95b22be" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>parameters</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a4e250d88faad0f2a4fd4603dd5ab4589" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>root</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a12ce0d3553ddf72a0d70fb720d6e33dc" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>translator</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder_1a79495f9743ff4a7b10a38253d34af7a5" prot="public" virt="non-virtual"><scope>boost::geometry::index::rtree::members_holder</scope><name>values_count</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

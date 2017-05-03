@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1detail_1_1is__valid" kind="namespace">
+    <compoundname>boost::geometry::detail::is_valid</compoundname>
+    <innerclass refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph" prot="public">boost::geometry::detail::is_valid::complement_graph</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex" prot="public">boost::geometry::detail::is_valid::complement_graph_vertex</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1is__valid_1_1debug__validity__phase" prot="public">boost::geometry::detail::is_valid::debug_validity_phase</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1detail_1_1is__valid_1a37533a9f5d171102ea9e9da5904b5754" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename OutputStream</type>
+          </param>
+          <param>
+            <type>typename TurnPoint</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::detail::is_valid::debug_print_complement_graph</definition>
+        <argsstring>(OutputStream &amp;, complement_graph&lt; TurnPoint &gt; const &amp;)</argsstring>
+        <name>debug_print_complement_graph</name>
+        <param>
+          <type>OutputStream &amp;</type>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph" kindref="compound">complement_graph</ref>&lt; TurnPoint &gt; const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_complement_graph.hpp" line="59" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_complement_graph.hpp" bodystart="59" bodyend="62"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1detail_1_1is__valid_1ac64fe59b4816e650c885d8635d265196" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Turn</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::detail::is_valid::debug_print_turn</definition>
+        <argsstring>(Turn const &amp;)</argsstring>
+        <name>debug_print_turn</name>
+        <param>
+          <type>Turn const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_print_turns.hpp" line="66" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_print_turns.hpp" bodystart="66" bodyend="67"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1detail_1_1is__valid_1aa0285826eac229949b48d1d9be080332" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename TurnIterator</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::detail::is_valid::debug_print_turns</definition>
+        <argsstring>(TurnIterator, TurnIterator)</argsstring>
+        <name>debug_print_turns</name>
+        <param>
+          <type>TurnIterator</type>
+        </param>
+        <param>
+          <type>TurnIterator</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_print_turns.hpp" line="70" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_print_turns.hpp" bodystart="70" bodyend="71"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="30" column="1"/>
+  </compounddef>
+</doxygen>

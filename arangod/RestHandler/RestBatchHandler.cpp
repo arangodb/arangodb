@@ -31,8 +31,6 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
-#include <iostream>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -71,16 +69,14 @@ RestStatus RestBatchHandler::executeHttp() {
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
   if (httpResponse == nullptr) {
-    std::cout << "please fix this for vpack" << std::endl;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
   HttpRequest const* httpRequest =
       dynamic_cast<HttpRequest const*>(_request.get());
 
   if (httpRequest == nullptr) {
-    std::cout << "please fix this for vpack" << std::endl;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   // extract the request type
@@ -101,7 +97,7 @@ RestStatus RestBatchHandler::executeHttp() {
     return RestStatus::FAIL;
   }
 
-  LOG(TRACE) << "boundary of multipart-message is '" << boundary << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "boundary of multipart-message is '" << boundary << "'";
 
   size_t errors = 0;
 
@@ -130,7 +126,7 @@ RestStatus RestBatchHandler::executeHttp() {
       // error
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid multipart message received");
-      LOG(WARN) << "received a corrupted multipart message";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received a corrupted multipart message";
 
       return RestStatus::FAIL;
     }
@@ -167,7 +163,7 @@ RestStatus RestBatchHandler::executeHttp() {
     }
 
     // set up request object for the part
-    LOG(TRACE) << "part header is: " << std::string(headerStart, headerLength);
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part header is: " << std::string(headerStart, headerLength);
 
     std::unique_ptr<HttpRequest> request(new HttpRequest(
         _request->connectionInfo(), headerStart, headerLength, false));
@@ -181,7 +177,7 @@ RestStatus RestBatchHandler::executeHttp() {
     request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
-      LOG(TRACE) << "part body is '" << std::string(bodyStart, bodyLength)
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part body is '" << std::string(bodyStart, bodyLength)
                  << "'";
       request->setBody(bodyStart, bodyLength);
     }
@@ -214,15 +210,21 @@ RestStatus RestBatchHandler::executeHttp() {
 
     // start to work for this handler
     {
-      int result = handler->syncRunEngine();
+      // ignore any errors here, will be handled later by inspecting the response
+      try {
+        handler->syncRunEngine();
+      } catch (...) {
+      }
 
+#if 0
+      int result = TRI_ERROR_NO_ERROR; 
       if (result != TRI_ERROR_NO_ERROR) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "executing a handler for batch part failed");
 
         return RestStatus::FAIL;
       }
-
+#endif
       HttpResponse* partResponse =
           dynamic_cast<HttpResponse*>(handler->response());
 
@@ -290,7 +292,7 @@ bool RestBatchHandler::getBoundaryBody(std::string* result) {
   HttpRequest const* req = dynamic_cast<HttpRequest const*>(_request.get());
 
   if (req == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   std::string const& bodyStr = req->body();
@@ -509,7 +511,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         if (value == StaticStrings::BatchContentType) {
           hasTypeHeader = true;
         } else {
-          LOG(WARN) << "unexpected content-type '" << value
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unexpected content-type '" << value
                     << "' for multipart-message. expected: '"
                     << StaticStrings::BatchContentType << "'";
         }

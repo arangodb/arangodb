@@ -1,7 +1,9 @@
-CHAPTER Persistent indexes
+Persistent indexes
+==================
 
 
-!SECTION Introduction to Persistent Indexes
+Introduction to Persistent Indexes
+----------------------------------
 
 This is an introduction to ArangoDB's persistent indexes.
 
@@ -15,7 +17,8 @@ If the index is declared sparse, a document will be excluded from the index and 
 uniqueness checks will be performed if any index attribute value is not set or has a value 
 of `null`. 
 
-!SECTION Accessing Persistent Indexes from the Shell
+Accessing Persistent Indexes from the Shell
+-------------------------------------------
 
 
 ensures that a unique persistent index exists
@@ -100,7 +103,7 @@ details, including the index-identifier, is returned.
     @endDocuBlock ensurePersistent
 
 
-!SUBSECTION Query by example using a persistent index
+### Query by example using a persistent index
 
 
 constructs a query-by-example using a persistent index
@@ -154,7 +157,8 @@ and
 ```
 will match.
 
-!SECTION Persistent Indexes and Server Language
+Persistent Indexes and Server Language
+--------------------------------------
 
 The order of index entries in persistent indexes adheres to the configured
 [server language](../Administration/Configuration/GeneralArangod.md#default-language).

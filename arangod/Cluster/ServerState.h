@@ -42,6 +42,9 @@ class ServerState {
     ROLE_AGENT
   };
 
+  static const std::vector<std::string> RoleStr;
+  static const std::vector<std::string> RoleStrReadable;
+
   /// @brief an enum describing the possible states a server can have
   enum StateEnum {
     STATE_UNDEFINED = 0,  // initial value
@@ -136,7 +139,7 @@ class ServerState {
   /// @brief get the server role
   RoleEnum getRole();
   
-  bool registerWithRole(RoleEnum);
+  bool integrateIntoCluster(RoleEnum, std::string const&, std::string const&);
   
   bool unregister();
 
@@ -266,11 +269,19 @@ class ServerState {
   /// @brief validate a state transition for a coordinator server
   bool checkCoordinatorState(StateEnum);
   
-  /// @brief create an id for a specified role
-  std::string createIdForRole(AgencyComm, RoleEnum);
+  /// @brief register at agency
+  bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
+  /// @brief register shortname for an id
+  bool registerShortName(std::string const& id, const RoleEnum&);
   
   /// @brief get the key for a role in the agency
   static std::string roleToAgencyKey(RoleEnum);
+
+  std::string getUuidFilename();
+  std::string getPersistedId();
+  bool hasPersistedId();
+  std::string generatePersistedId(RoleEnum const&);
+  bool writePersistedId(std::string const&);
 
  private:
   /// @brief the pointer to the singleton instance

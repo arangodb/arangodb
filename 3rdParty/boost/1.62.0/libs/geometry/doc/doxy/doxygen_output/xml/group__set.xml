@@ -1,0 +1,223 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__set" kind="group">
+    <compoundname>set</compoundname>
+    <title>set: set geometries</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__set_1ga547b9e2d42e58aab04949d056b795702" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>std::size_t</type>
+            <declname>Dimension</declname>
+            <defname>Dimension</defname>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::set</definition>
+        <argsstring>(Geometry &amp;geometry, typename coordinate_type&lt; Geometry &gt;::type const &amp;value)</argsstring>
+        <name>set</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>typename coordinate_type&lt; Geometry &gt;::type const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Set coordinate value of a geometry (usually a point) </para>        </briefdescription>
+        <detaileddescription>
+<para>The free functions [*get] and [*set] are two of the most important functions of Boost.Geometry, both within the library, as also for the library user. With these two functions you normally get and set coordinate values from and for a point, box, segment or sphere. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Dimension</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Dimension, this template parameter is required. Should contain \[0 .. n-1\] for an n-dimensional geometry </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept (usually a Point Concept) </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>geometry to assign coordinate to </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept (usually a point) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The coordinate value to set</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/core/set_point.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/access.hpp" line="303" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/access.hpp" bodystart="303" bodyend="322"/>
+      </memberdef>
+      <memberdef kind="function" id="group__set_1gab344165e39efdf322c11f5b3205cb302" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>std::size_t</type>
+            <declname>Index</declname>
+            <defname>Index</defname>
+          </param>
+          <param>
+            <type>std::size_t</type>
+            <declname>Dimension</declname>
+            <defname>Dimension</defname>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::set</definition>
+        <argsstring>(Geometry &amp;geometry, typename coordinate_type&lt; Geometry &gt;::type const &amp;value)</argsstring>
+        <name>set</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>typename coordinate_type&lt; Geometry &gt;::type const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>set coordinate value of a Box / Segment </para>        </briefdescription>
+        <detaileddescription>
+<para>The free functions [*get] and [*set] are two of the most important functions of Boost.Geometry, both within the library, as also for the library user. With these two functions you normally get and set coordinate values from and for a point, box, segment or sphere. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Index</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Index, this template parameter is required. For a Box: either min_corner or max_corner. For a Segment: either 0 or 1 for first or last point. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Dimension</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Dimension, this template parameter is required. Should contain \[0 .. n-1\] for an n-dimensional geometry </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Box Concept or a Segment Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>geometry to assign coordinate to </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The coordinate value to set</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk.distinguish>with index</qbk.distinguish>   <qbk>[include reference/core/set_box.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/access.hpp" line="375" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/access.hpp" bodystart="375" bodyend="395"/>
+      </memberdef>
+      <memberdef kind="function" id="group__set_1ga78f2e71135a76ccad3e37afab58b0f70" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>std::size_t</type>
+            <declname>Dimension</declname>
+            <defname>Dimension</defname>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::set_from_radian</definition>
+        <argsstring>(Geometry &amp;geometry, typename fp_coordinate_type&lt; Geometry &gt;::type const &amp;radians)</argsstring>
+        <name>set_from_radian</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>typename fp_coordinate_type&lt; Geometry &gt;::type const &amp;</type>
+          <declname>radians</declname>
+        </param>
+        <briefdescription>
+<para>set coordinate value (in radian) to a point </para>        </briefdescription>
+        <detaileddescription>
+<para>Coordinate value will be set correctly, if coordinate system of point is in Degree, Radian value will be converted to Degree</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Dimension</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>dimension </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>geometry </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>geometry to assign coordinate to </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>radians</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>coordinate value to assign </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="note"><para>Only applicable to coordinate systems templatized by units, e.g. spherical or geographic coordinate systems </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/radian_access.hpp" line="147" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/radian_access.hpp" bodystart="147" bodyend="152"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

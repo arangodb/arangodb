@@ -30,7 +30,20 @@
 
 var jsunity = require("jsunity");
 var wait = require("internal").wait;
-const instanceInfo = JSON.parse(require('fs').read('instanceinfo.json'));
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bogus UUIDs
+////////////////////////////////////////////////////////////////////////////////
+
+function guid() {
+  function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000)
+      .toString(16)
+      .substring(1);
+  }
+  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+    s4() + '-' + s4() + s4() + s4();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -39,48 +52,62 @@ const instanceInfo = JSON.parse(require('fs').read('instanceinfo.json'));
 function agencyTestSuite () {
   'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the agency servers
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the agency servers
+  ////////////////////////////////////////////////////////////////////////////////
 
+  var instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
   var agencyServers = instanceInfo.arangods.map(arangod => {
     return arangod.url;
   });
-  var whoseTurn = 0;
+  var agencyLeader = agencyServers[0];
   var request = require("@arangodb/request");
 
-  function readAgency(list) {
+  function accessAgency(api, list) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
-    var res = request({url: agencyServers[whoseTurn] + "/_api/agency/read", method: "POST",
-                       followRedirects: true, body: JSON.stringify(list),
-                       headers: {"Content-Type": "application/json"}});
-    
-    res.bodyParsed = JSON.parse(res.body);
-    return res;
-  }
-
-  function writeAgency(list) {
-    // We simply try all agency servers in turn until one gives us an HTTP
-    // response:
-    var res = request({url: agencyServers[whoseTurn] + "/_api/agency/write", method: "POST",
-                       followRedirects: true, body: JSON.stringify(list),
-                       headers: {"Content-Type": "application/json",
-                                 "x-arangodb-agency-mode": "waitForCommitted"}});
+    var res;
+    while (true) {
+      res = request({url: agencyLeader + "/_api/agency/" + api,
+                     method: "POST", followRedirect: false,
+                     body: JSON.stringify(list),
+                     headers: {"Content-Type": "application/json"}});
+      if(res.statusCode === 307) {
+        agencyLeader = res.headers.location;
+        var l = 0;
+        for (var i = 0; i < 3; ++i) {
+          l = agencyLeader.indexOf('/', l+1);
+        }
+        agencyLeader = agencyLeader.substring(0,l);
+        require('internal').print('Redirected to ' + agencyLeader);
+      } else if (res.statusCode !== 503) {
+        break;
+      } else {
+        require('internal').print('Waiting for leader ... ');
+      }
+    }
     res.bodyParsed = JSON.parse(res.body);
     return res;
   }
 
   function readAndCheck(list) {
-    var res = readAgency(list);
+    var res = accessAgency("read", list);
     assertEqual(res.statusCode, 200);
     return res.bodyParsed;
   }
 
   function writeAndCheck(list) {
-    var res = writeAgency(list);
+    var res = accessAgency("write", list);
     assertEqual(res.statusCode, 200);
+    return res.bodyParsed;
   }
+
+  function transactAndCheck(list, code) {
+    var res = accessAgency("transact", list);
+    assertEqual(res.statusCode, code);
+    return res.bodyParsed;
+  }
+  
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,18 +129,38 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testStartup : function () {
-      while (true) {
-        var res = request({
-          url: agencyServers[whoseTurn] + "/_api/agency/config",
-          method: "GET"
-        });
-        res.bodyParsed = JSON.parse(res.body);
-        if (res.bodyParsed.leaderId !== "") {
-          break;
-        }
-        wait(0.1);
-      }
+      assertEqual(readAndCheck([["/"]]), [{}]);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test transact interface
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransact : function () {
+
+      var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      assertEqual(readAndCheck([["/x"]]), [{}]);
+      var res = transactAndCheck([["/x"],[{"/x":12}]],200);
+      assertEqual(res, [{},++cur]);
+      res = transactAndCheck([["/x"],[{"/x":12}]],200);
+      assertEqual(res, [{x:12},++cur]);
+      res = transactAndCheck([["/x"],[{"/x":12}],["/x"]],200);
+      assertEqual(res, [{x:12},++cur,{x:12}]);
+      res = transactAndCheck([["/x"],[{"/x":12}],["/x"]],200);
+      assertEqual(res, [{x:12},++cur,{x:12}]);
+      res = transactAndCheck([["/x"],[{"/x":{"op":"increment"}}],["/x"]],200);
+      assertEqual(res, [{x:12},++cur,{x:13}]);
+      res = transactAndCheck(
+        [["/x"],[{"/x":{"op":"increment"}}],["/x"],[{"/x":{"op":"increment"}}]],
+        200);
+      assertEqual(res, [{x:13},++cur,{x:14},++cur]);
+      res = transactAndCheck(
+        [[{"/x":{"op":"increment"}}],[{"/x":{"op":"increment"}}],["/x"]],200);
+      assertEqual(res, [++cur,++cur,{x:17}]);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+    },
+    
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single top level key
@@ -150,80 +197,246 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a"]]), [{a:12}]);
       writeAndCheck([[{"/a":13},{"/a":12}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:13}]);
-      var res = writeAgency([[{"/a":14},{"/a":12}]]); // fail precond {a:12}
+      var res = accessAgency("write", [[{"/a":14},{"/a":12}]]); // fail precond {a:12}
       assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]}); 
       writeAndCheck([[{a:{op:"delete"}}]]);
       // fail precond oldEmpty
-      res = writeAgency([[{"a":14},{"a":{"oldEmpty":false}}]]); 
+      res = accessAgency("write",[[{"a":14},{"a":{"oldEmpty":false}}]]); 
       assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]}); 
       writeAndCheck([[{"a":14},{"a":{"oldEmpty":true}}]]); // precond oldEmpty
       writeAndCheck([[{"a":14},{"a":{"old":14}}]]);        // precond old
       // fail precond old
-      res = writeAgency([[{"a":14},{"a":{"old":13}}]]); 
+      res = accessAgency("write",[[{"a":14},{"a":{"old":13}}]]); 
       assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]}); 
       writeAndCheck([[{"a":14},{"a":{"isArray":false}}]]); // precond isArray
       // fail precond isArray
-      res = writeAgency([[{"a":14},{"a":{"isArray":true}}]]); 
+      res = accessAgency("write",[[{"a":14},{"a":{"isArray":true}}]]); 
       assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]});
       // check object precondition
-      res = writeAgency([[{"/a/b/c":{"op":"set","new":12}}]]);
-      res = writeAgency([[{"/a/b/c":{"op":"set","new":13}},{"a":{"b":{"c":12}}}]]);
+      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":12}}]]);
+      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":13}},{"a":{"b":{"c":12}}}]]);
       assertEqual(res.statusCode, 200);
-      res = writeAgency([[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":12}}}}]]);
+      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":12}}}}]]);
       assertEqual(res.statusCode, 412);
-      res = writeAgency([[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":13}}}}]]);
+      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":13}}}}]]);
       assertEqual(res.statusCode, 200);
       // multiple preconditions
-      res = writeAgency([[{"/a":1,"/b":true,"/c":"c"},{"/a":{"oldEmpty":false}}]]);
+      res = accessAgency("write",[[{"/a":1,"/b":true,"/c":"c"},{"/a":{"oldEmpty":false}}]]);
       assertEqual(readAndCheck([["/a","/b","c"]]), [{a:1,b:true,c:"c"}]);
-      res = writeAgency([[{"/a":2},{"/a":{"oldEmpty":false},"/b":{"oldEmpty":true}}]]);
+      res = accessAgency("write",[[{"/a":2},{"/a":{"oldEmpty":false},"/b":{"oldEmpty":true}}]]);
       assertEqual(res.statusCode, 412);
       assertEqual(readAndCheck([["/a"]]), [{a:1}]);
-      res = writeAgency([[{"/a":2},{"/a":{"oldEmpty":true},"/b":{"oldEmpty":false}}]]);
+      res = accessAgency("write",[[{"/a":2},{"/a":{"oldEmpty":true},"/b":{"oldEmpty":false}}]]);
       assertEqual(res.statusCode, 412);
       assertEqual(readAndCheck([["/a"]]), [{a:1}]);
-      res = writeAgency([[{"/a":2},{"/a":{"oldEmpty":false},"/b":{"oldEmpty":false},"/c":{"oldEmpty":true}}]]);
+      res = accessAgency("write",[[{"/a":2},{"/a":{"oldEmpty":false},"/b":{"oldEmpty":false},"/c":{"oldEmpty":true}}]]);
       assertEqual(res.statusCode, 412);
       assertEqual(readAndCheck([["/a"]]), [{a:1}]);
-      res = writeAgency([[{"/a":2},{"/a":{"oldEmpty":false},"/b":{"oldEmpty":false},"/c":{"oldEmpty":false}}]]);
+      res = accessAgency("write",[[{"/a":2},{"/a":{"oldEmpty":false},"/b":{"oldEmpty":false},"/c":{"oldEmpty":false}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/a"]]), [{a:2}]);
-      res = writeAgency([[{"/a":3},{"/a":{"old":2},"/b":{"oldEmpty":false},"/c":{"oldEmpty":false}}]]);
+      res = accessAgency("write",[[{"/a":3},{"/a":{"old":2},"/b":{"oldEmpty":false},"/c":{"oldEmpty":false}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/a"]]), [{a:3}]);
-      res = writeAgency([[{"/a":2},{"/a":{"old":2},"/b":{"oldEmpty":false},"/c":{"oldEmpty":false}}]]);
+      res = accessAgency("write",[[{"/a":2},{"/a":{"old":2},"/b":{"oldEmpty":false},"/c":{"oldEmpty":false}}]]);
       assertEqual(res.statusCode, 412);
       assertEqual(readAndCheck([["/a"]]), [{a:3}]);
-      res = writeAgency([[{"/a":2},{"/a":{"old":3},"/b":{"oldEmpty":false},"/c":{"isArray":true}}]]);
+      res = accessAgency("write",[[{"/a":2},{"/a":{"old":3},"/b":{"oldEmpty":false},"/c":{"isArray":true}}]]);
       assertEqual(res.statusCode, 412);
       assertEqual(readAndCheck([["/a"]]), [{a:3}]);
-      res = writeAgency([[{"/a":2},{"/a":{"old":3},"/b":{"oldEmpty":false},"/c":{"isArray":false}}]]);
+      res = accessAgency("write",[[{"/a":2},{"/a":{"old":3},"/b":{"oldEmpty":false},"/c":{"isArray":false}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/a"]]), [{a:2}]);
       // in precondition & multiple
       writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":[1,2]},"d":false}]]);
-      res = writeAgency([[{"/b":2},{"/a/b/c":{"in":3}}]]);
+      res = accessAgency("write",[[{"/b":2},{"/a/b/c":{"in":3}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/b"]]), [{b:2}]);
-      res = writeAgency([[{"/b":3},{"/a/e":{"in":3}}]]);
+      res = accessAgency("write",[[{"/b":3},{"/a/e":{"in":3}}]]);
       assertEqual(res.statusCode, 412);
       assertEqual(readAndCheck([["/b"]]), [{b:2}]);
-      res = writeAgency([[{"/b":3},{"/a/e":{"in":3},"/a/b/c":{"in":3}}]]);
+      res = accessAgency("write",[[{"/b":3},{"/a/e":{"in":3},"/a/b/c":{"in":3}}]]);
       assertEqual(res.statusCode, 412);
-      res = writeAgency([[{"/b":3},{"/a/e":{"in":3},"/a/b/c":{"in":3}}]]);
+      res = accessAgency("write",[[{"/b":3},{"/a/e":{"in":3},"/a/b/c":{"in":3}}]]);
       assertEqual(res.statusCode, 412);
-      res = writeAgency([[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":3}}]]);
+      res = accessAgency("write",[[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":3}}]]);
       assertEqual(res.statusCode, 412);
-      res = writeAgency([[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":2}}]]);
+      res = accessAgency("write",[[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":2}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/b"]]), [{b:3}]);
     },
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test clientIds
+////////////////////////////////////////////////////////////////////////////////
+
+    testClientIds : function () {
+      var res;
+
+      var id = [guid(),guid(),guid(),guid(),guid(),guid(),
+                guid(),guid(),guid(),guid(),guid(),guid(),
+                guid(),guid(),guid()];
+      var query = [{"a":12},{"a":13},{"a":13}];
+      var pre = [{},{"a":12},{"a":12}];
+
+      writeAndCheck([[query[0], pre[0], id[0]]]);
+      res = accessAgency("inquire",[id[0]]).bodyParsed;
+      assertEqual(res.length, 1);
+      assertEqual(res[0].length, 1);
+      assertEqual(res[0][0].query, query[0]);
+
+      writeAndCheck([[query[1], pre[1], id[0]]]);
+      res = accessAgency("inquire",[id[0]]).bodyParsed;
+      assertEqual(res.length, 1);
+      assertEqual(res[0].length, 2);
+      assertEqual(res[0][0].query, query[0]);
+      assertEqual(res[0][1].query, query[1]);
+
+      res = accessAgency("write",[[query[1], pre[1], id[2]]]);
+      assertEqual(res.statusCode,412);
+      res = accessAgency("inquire",[id[2]]).bodyParsed;
+      assertEqual(res[0].length, 0);
+
+      res = accessAgency("write",[[query[0], pre[0], id[3]],
+                                  [query[1], pre[1], id[3]]]);
+      assertEqual(res.statusCode,200);
+      res = accessAgency("inquire",[id[3]]).bodyParsed;
+      assertEqual(res.length, 1);
+      assertEqual(res[0][0].query, query[0]);
+      assertEqual(res[0][1].query, query[1]);
+      
+      res = accessAgency("write",[[query[0], pre[0], id[4]],
+                                  [query[1], pre[1], id[4]],
+                                  [query[2], pre[2], id[4]]]);
+      assertEqual(res.statusCode,412);
+      res = accessAgency("inquire",[id[4]]).bodyParsed;
+      assertEqual(res.length, 1);
+      assertEqual(res[0].length, 2);
+      assertEqual(res[0][0].query, query[0]);
+      assertEqual(res[0][1].query, query[1]);
+      
+      res = accessAgency("write",[[query[0], pre[0], id[5]],
+                                  [query[2], pre[2], id[5]],
+                                  [query[1], pre[1], id[5]]]);
+      assertEqual(res.statusCode,412);
+
+      res = accessAgency("inquire",[id[5]]).bodyParsed;
+      assertEqual(res.length, 1);
+      assertEqual(res[0].length, 2);
+      assertEqual(res[0][0].query, query[0]);
+      assertEqual(res[0][1].query, query[1]);
+      
+      res = accessAgency("write",[[query[2], pre[2], id[6]],
+                                  [query[0], pre[0], id[6]],
+                                  [query[1], pre[1], id[6]]]);
+      assertEqual(res.statusCode,412);
+      res = accessAgency("inquire",[id[6]]).bodyParsed;
+      assertEqual(res.length, 1);
+      assertEqual(res[0].length, 2);
+      assertEqual(res[0][0].query, query[0]);
+      assertEqual(res[0][1].query, query[1]);
+      
+      res = accessAgency("write",[[query[2], pre[2], id[7]],
+                                  [query[0], pre[0], id[8]],
+                                  [query[1], pre[1], id[9]]]);
+      assertEqual(res.statusCode,412);
+      res = accessAgency("inquire",[id[7],id[8],id[9]]).bodyParsed;
+      assertEqual(res.length, 3);
+      assertEqual(res[0].length, 0);
+      assertEqual(res[1].length, 1);
+      assertEqual(res[1][0].query, query[0]);
+      assertEqual(res[2].length, 1);
+      assertEqual(res[2][0].query, query[1]);
+
+      res = accessAgency("inquire",[id[9],id[7],id[8]]).bodyParsed;
+      assertEqual(res.length, 3);
+      assertEqual(res[0].length, 1);
+      assertEqual(res[0][0].query, query[1]);
+      assertEqual(res[1].length, 0);
+      assertEqual(res[2].length, 1);
+      assertEqual(res[2][0].query, query[0]);
+
+      res = accessAgency("inquire",[id[8],id[9],id[7]]).bodyParsed;
+      assertEqual(res.length, 3);
+      assertEqual(res[0].length, 1);
+      assertEqual(res[0][0].query, query[0]);
+      assertEqual(res[1].length, 1);
+      assertEqual(res[1][0].query, query[1]);
+      assertEqual(res[2].length, 0);
+
+      res = accessAgency("inquire",[id[7],id[9],id[8]]).bodyParsed;
+      assertEqual(res.length, 3);
+      assertEqual(res[0].length, 0);
+      assertEqual(res[1].length, 1);
+      assertEqual(res[1][0].query, query[1]);
+      assertEqual(res[2].length, 1);
+      assertEqual(res[2][0].query, query[0]);
+
+      res = accessAgency("inquire",[id[8],id[7],id[9]]).bodyParsed;
+      assertEqual(res.length, 3);
+      assertEqual(res[0].length, 1);
+      assertEqual(res[0][0].query, query[0]);
+      assertEqual(res[1].length, 0);
+      assertEqual(res[2].length, 1);
+      assertEqual(res[2][0].query, query[1]);
+
+      res = accessAgency("inquire",[id[7],id[8],id[9]]).bodyParsed;
+      assertEqual(res.length, 3);
+      assertEqual(res[0].length, 0);
+      assertEqual(res[1].length, 1);
+      assertEqual(res[1][0].query, query[0]);
+      assertEqual(res[2].length, 1);
+      assertEqual(res[2][0].query, query[1]);
+      
+      res = accessAgency("inquire",[id[7],id[8],id[9]]).bodyParsed;
+      assertEqual(res.length, 3);
+      assertEqual(res[0].length, 0);
+      assertEqual(res[1].length, 1);
+      assertEqual(res[1][0].query, query[0]);
+      assertEqual(res[2].length, 1);
+      assertEqual(res[2][0].query, query[1]);
+      
+      res = accessAgency("write",[[query[2], pre[2], id[10]],
+                                  [query[0], pre[0], id[11]],
+                                  [query[1], pre[1], id[12]],
+                                  [query[0], pre[0], id[12]]]);
+
+      res = accessAgency("inquire",[id[10],id[11],id[12]]).bodyParsed;
+      assertEqual(res.length, 3);
+      assertEqual(res[0].length, 0);
+      assertEqual(res[1].length, 1);
+      assertEqual(res[1][0].query, query[0]);
+      assertEqual(res[2].length, 2);
+      assertEqual(res[2][0].query, query[1]);
+      assertEqual(res[2][1].query, query[0]);
+      
+      res = accessAgency("transact",[[query[0], pre[0], id[13]],
+                                     [query[2], pre[2], id[13]],
+                                     [query[1], pre[1], id[13]],
+                                     ["a"]]);
+
+      
+      assertEqual(res.statusCode,412);
+      assertEqual(res.bodyParsed.length, 4);
+      assertEqual(res.bodyParsed[0] > 0, true);
+      assertEqual(res.bodyParsed[1] > 0, true);
+      assertEqual(res.bodyParsed[2], {a : 13});
+      assertEqual(res.bodyParsed[3], query[1]);
+
+      res = accessAgency("inquire",[id[13]]).bodyParsed;
+      assertEqual(res.length, 1);
+      assertEqual(res[0].length, 2);
+      assertEqual(res[0][0].query, query[0]);
+      assertEqual(res[0][1].query, query[2]);
+      
+    },
+
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document/transaction assignment
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,12 +498,12 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":12}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(3);
+      wait(3.0);
       assertEqual(readAndCheck([["a/y"]]), [{a:{}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       writeAndCheck([[{"a/y":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(3);
+      wait(3.0);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]),
@@ -298,7 +511,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
-      wait(3);
+      wait(3.0);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
@@ -607,29 +820,28 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/"]]),
                   [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
     },
-
+    
     testKeysBeginningWithSameString: function() {
-      var res = writeAgency([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
+      var res = accessAgency("write",[[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
-    }
-
-    /*
+    },
+    
     testHiddenAgencyWrite: function() {
-      var res = writeAgency([[{".agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 400);
+      var res = accessAgency("write",[[{".agency": {"op":"set","new":"fallera"}}]]);
+      assertEqual(res.statusCode, 200);
     }, 
-
+    
     testHiddenAgencyWriteSlash: function() {
-      var res = writeAgency([[{"/.agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 400);
+      var res = accessAgency("write",[[{"/.agency": {"op":"set","new":"fallera"}}]]);
+      assertEqual(res.statusCode, 200);
     },
     
     testHiddenAgencyWriteDeep: function() {
-      var res = writeAgency([[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 400);
+      var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
+      assertEqual(res.statusCode, 200);
     } 
-    */
+    
   };
 }
 

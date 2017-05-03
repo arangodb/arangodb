@@ -1,4 +1,5 @@
-!CHAPTER Data types
+Data types
+==========
 
 AQL supports both primitive and compound data types. The following types are
 available:
@@ -12,9 +13,10 @@ available:
   - array: Sequence of values, referred to by their positions
   - object / document: Sequence of values, referred to by their names
 
-!SECTION Primitive types
+Primitive types
+---------------
 
-!SUBSECTION Numeric literals
+### Numeric literals
 
 Numeric literals can be integers or real values. They can optionally be signed
 using the *+* or *-* symbols. The scientific notation is also supported.
@@ -33,7 +35,7 @@ using the *+* or *-* symbols. The scientific notation is also supported.
 All numeric values are treated as 64-bit double-precision values internally.
 The internal format used is IEEE 754.
 
-!SUBSECTION String literals
+### String literals
 
 String literals must be enclosed in single or double quotes. If the used quote
 character is to be used itself within the string literal, it must be escaped
@@ -58,14 +60,15 @@ arbitrary binary data if it is not UTF-8 encoded. A workaround to use binary
 data is to encode the data using base64 or other algorithms on the application
 side before storing, and decoding it on application side after retrieval.
 
-!SECTION Compound types
+Compound types
+--------------
 
 AQL supports two compound types:
 
 - arrays: A composition of unnamed values, each accessible by their positions
 - objects / documents: A composition of named values, each accessible by their names
 
-!SUBSECTION Arrays / Lists
+### Arrays / Lists
 
 The first supported compound type is the array type. Arrays are effectively
 sequences of (unnamed / anonymous) values. Individual array elements can be
@@ -111,7 +114,7 @@ u.friends[-1]
 u.friends[-2]
 ```
 
-!SUBSECTION Objects / Documents
+### Objects / Documents
 
 The other supported compound type is the object (or document) type. Objects are a
 composition of zero to many attributes. Each attribute is a name/value pair.

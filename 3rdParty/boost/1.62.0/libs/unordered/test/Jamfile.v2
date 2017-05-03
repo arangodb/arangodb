@@ -1,0 +1,79 @@
+
+# Copyright 2006-2008 Daniel James.
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+project unordered-test/unordered
+    : requirements
+        <warnings>all
+        <toolset>intel:<warnings>on
+        # Would be nice to define -Wundef, but I'm getting warnings from
+        # Boost.Preprocessor on trunk.
+        <toolset>gcc:<cxxflags>"-pedantic -Wstrict-aliasing -fstrict-aliasing -Wextra -Wsign-promo -Wunused-parameter -Wconversion -Wfloat-equal -Wshadow -Wno-long-long"
+        <toolset>darwin:<cxxflags>"-pedantic -Wstrict-aliasing -fstrict-aliasing -Wextra -Wsign-promo -Wunused-parameter -Wconversion -Wfloat-equal -Wshadow"
+        <toolset>clang:<cxxflags>"-pedantic -Wextra -Wno-long-long"
+    ;
+
+#alias framework : /boost/test//boost_unit_test_framework ;
+alias framework : ;
+
+test-suite unordered
+    :
+        [ run unordered/fwd_set_test.cpp ]
+        [ run unordered/fwd_map_test.cpp ]
+        [ run unordered/allocator_traits.cpp ]
+        [ run unordered/minimal_allocator.cpp ]
+        [ run unordered/compile_set.cpp ]
+        [ run unordered/compile_map.cpp ]
+        [ run unordered/noexcept_tests.cpp ]
+        [ run unordered/link_test_1.cpp unordered/link_test_2.cpp ]
+        [ run unordered/incomplete_test.cpp ]
+        [ run unordered/simple_tests.cpp ]
+        [ run unordered/equivalent_keys_tests.cpp ]
+        [ run unordered/constructor_tests.cpp ]
+        [ run unordered/copy_tests.cpp ]
+        [ run unordered/move_tests.cpp ]
+        [ run unordered/assign_tests.cpp ]
+        [ run unordered/insert_tests.cpp ]
+        [ run unordered/insert_stable_tests.cpp ]
+        [ run unordered/unnecessary_copy_tests.cpp ]
+        [ run unordered/erase_tests.cpp ]
+        [ run unordered/erase_equiv_tests.cpp ]
+        [ run unordered/find_tests.cpp ]
+        [ run unordered/at_tests.cpp ]
+        [ run unordered/bucket_tests.cpp ]
+        [ run unordered/load_factor_tests.cpp ]
+        [ run unordered/rehash_tests.cpp ]
+        [ run unordered/equality_tests.cpp ]
+        [ run unordered/swap_tests.cpp ]
+
+        [ run unordered/compile_set.cpp : :
+            : <define>BOOST_UNORDERED_USE_MOVE
+            : bmove_compile_set ]
+        [ run unordered/compile_map.cpp : :
+            : <define>BOOST_UNORDERED_USE_MOVE
+            : bmove_compile_map ]
+        [ run unordered/copy_tests.cpp : :
+            : <define>BOOST_UNORDERED_USE_MOVE
+            : bmove_copy ]
+        [ run unordered/move_tests.cpp : :
+            : <define>BOOST_UNORDERED_USE_MOVE
+            : bmove_move ]
+        [ run unordered/assign_tests.cpp : :
+            : <define>BOOST_UNORDERED_USE_MOVE
+            : bmove_assign ]
+    ;
+
+test-suite unordered-exception
+    :
+        [ run exception/constructor_exception_tests.cpp framework ]
+        [ run exception/copy_exception_tests.cpp framework ]
+        [ run exception/assign_exception_tests.cpp framework ]
+        [ run exception/insert_exception_tests.cpp framework ]
+        [ run exception/erase_exception_tests.cpp framework ]
+        [ run exception/rehash_exception_tests.cpp framework ]
+        [ run exception/swap_exception_tests.cpp framework : : :
+            <define>BOOST_UNORDERED_SWAP_METHOD=2 ]
+    ;

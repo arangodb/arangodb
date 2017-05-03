@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1compare_1_1circular__comparator" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::compare::circular_comparator</compoundname>
+    <includes local="no">compare_circular.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CoordinateType</type>
+      </param>
+      <param>
+        <type>typename Units</type>
+      </param>
+      <param>
+        <type>typename Compare</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1compare_1_1circular__comparator_1aaf2fc7c5853acb07f338e445383d639b" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>CoordinateType</type>
+        <definition>static CoordinateType boost::geometry::strategy::compare::circular_comparator&lt; CoordinateType, Units, Compare &gt;::put_in_range</definition>
+        <argsstring>(CoordinateType const &amp;c, double min_border, double max_border)</argsstring>
+        <name>put_in_range</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>min_border</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>max_border</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/compare_circular.hpp" line="63" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/compare_circular.hpp" bodystart="63" bodyend="76"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1compare_1_1circular__comparator_1a6a4d4b7f812ffd92d04d3bdee5baf97c" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::strategy::compare::circular_comparator&lt; CoordinateType, Units, Compare &gt;::operator()</definition>
+        <argsstring>(CoordinateType const &amp;c1, CoordinateType const &amp;c2) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>c1</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>c2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/compare_circular.hpp" line="78" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/compare_circular.hpp" bodystart="78" bodyend="106"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Compare (in one direction) strategy for spherical coordinates. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point-type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Dimension</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>dimension </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/compare_circular.hpp" line="62" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/compare_circular.hpp" bodystart="61" bodyend="107"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1compare_1_1circular__comparator_1a6a4d4b7f812ffd92d04d3bdee5baf97c" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::compare::circular_comparator</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1compare_1_1circular__comparator_1aaf2fc7c5853acb07f338e445383d639b" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::compare::circular_comparator</scope><name>put_in_range</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

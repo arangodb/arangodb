@@ -31,7 +31,6 @@ add_executable(${BIN_ARANGOBENCH}
 
 target_link_libraries(${BIN_ARANGOBENCH}
   ${LIB_ARANGO}
-  ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -78,7 +77,6 @@ add_executable(${BIN_ARANGODUMP}
 
 target_link_libraries(${BIN_ARANGODUMP}
   ${LIB_ARANGO}
-  ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -95,6 +93,52 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangodump zlibstatic)
+endif ()
+
+################################################################################
+## arangoexport
+################################################################################
+
+if (MSVC)
+  generate_product_version(ProductVersionFiles_arangoexport
+    NAME arangoexport
+    FILE_DESCRIPTION ${ARANGO_EXPORT_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+    VERSION_REVISION ${BUILD_ID}
+  )
+endif ()
+
+add_executable(${BIN_ARANGOEXPORT}
+  ${ProductVersionFiles_arangoexport}
+  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Export/ExportFeature.cpp
+  Export/arangoexport.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
+  V8Client/ArangoClientHelper.cpp
+)
+
+target_link_libraries(${BIN_ARANGOEXPORT}
+  ${LIB_ARANGO}
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
+)
+
+install(
+  TARGETS ${BIN_ARANGOEXPORT}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install_config(arangoexport)
+
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangoexport zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
 endif ()
 
 ################################################################################
@@ -126,7 +170,6 @@ add_executable(${BIN_ARANGOIMP}
 
 target_link_libraries(${BIN_ARANGOIMP}
   ${LIB_ARANGO}
-  ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -173,7 +216,6 @@ add_executable(${BIN_ARANGORESTORE}
 
 target_link_libraries(${BIN_ARANGORESTORE}
   ${LIB_ARANGO}
-  ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -263,6 +305,8 @@ endif ()
 add_executable(${BIN_ARANGOVPACK}
   ${ProductVersionFiles_arangovpack}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
   VPack/VPackFeature.cpp
   VPack/arangovpack.cpp
 )

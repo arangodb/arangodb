@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global ArangoClusterComm, require, exports, module */
+/*global ArangoClusterInfo, ArangoClusterComm, require, exports, module */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoCollection
@@ -103,6 +103,11 @@ require('@arangodb/arango-collection-common');
 var simple = require('@arangodb/simple-query');
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoDatabase = require('@arangodb/arango-database').ArangoDatabase;
+
+      
+ArangoCollection.prototype.shards = function () {
+  return Object.keys(ArangoClusterInfo.getCollectionInfo(require('internal').db._name(), this.name()).shardShorts);
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock collectionToArray
@@ -438,117 +443,6 @@ ArangoCollection.prototype.updateByExample = function (example,
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock ensureUniqueSkiplist
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureUniqueSkiplist = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'skiplist',
-    unique: true
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock ensureSkiplist
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureSkiplist = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'skiplist'
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock ensureFulltextIndex
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
-  'use strict';
-
-  if (! Array.isArray(field)) {
-    field = [ field ];
-  }
-
-  return this.ensureIndex({
-    type: 'fulltext',
-    minLength: minLength || undefined,
-    fields: field
-  });
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock ensureUniqueConstraint
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureUniqueConstraint = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'hash',
-    unique: true
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock ensureHashIndex
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureHashIndex = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'hash'
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionEnsureGeoIndex
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
-  'use strict';
-
-  if (typeof lat !== 'string') {
-    throw 'usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])';
-  }
-
-  if (typeof lon === 'boolean') {
-    return this.ensureIndex({
-      type: 'geo1',
-      fields: [ lat ],
-      geoJson: lon
-    });
-  }
-
-  if (lon === undefined) {
-    return this.ensureIndex({
-      type: 'geo1',
-      fields: [ lat ],
-      geoJson: false
-    });
-  }
-
-  return this.ensureIndex({
-    type: 'geo2',
-    fields: [ lat, lon ]
-  });
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionEnsureGeoConstraint
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
-  'use strict';
-
-  return this.ensureGeoIndex(lat, lon);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief looks up a unique constraint
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -618,4 +512,35 @@ ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
     fields: field,
     minLength: minLength || undefined
   });
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief getIndex() wrapper to ensure consistency between mmfiles and rocksdb
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.getIndexes = function (withFigures) {
+  'use strict';
+  var indexes = this.getIndexesPrivate(withFigures);
+  if (this.type() === 3) {
+    // edge collections
+    var result = [];
+    for (var i = 0; i < indexes.length; i++) {
+      if (indexes[i].type === "edge") {
+        if (indexes[i].fields.length === 1
+            && indexes[i].fields[0] === "_from") {
+          // we got two edge indexes. now pretend we only have one, and
+          // make it claim it is created on _from and _to
+          indexes[i].fields.push("_to");
+          result.push(indexes[i]);
+        } else if (indexes[i].fields.length === 2) {
+          // we have an edge index with two attributes
+          result.push(indexes[i]);
+        }
+      } else {
+        result.push(indexes[i]);
+      }
+    }
+    return result;
+  }
+  return indexes;
 };

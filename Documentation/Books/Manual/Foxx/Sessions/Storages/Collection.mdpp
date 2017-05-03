@@ -1,10 +1,12 @@
-!CHAPTER Collection Session Storage
+Collection Session Storage
+==========================
 
 `const collectionStorage = require('@arangodb/foxx/sessions/storages/collection');`
 
 The collection session storage persists sessions to a collection in the database.
 
-!SECTION Creating a storage
+Creating a storage
+------------------
 
 `collectionStorage(options): Storage`
 
@@ -35,7 +37,8 @@ Creates a [Storage](README.md) that can be used in the sessions middleware.
 
 If a string or collection is passed instead of an options object, it will be interpreted as the *collection* option.
 
-!SECTION prune
+prune
+-----
 
 `storage.prune(): Array<string>`
 
@@ -43,7 +46,8 @@ Removes all expired sessions from the collection. This method should be called e
 
 Returns an array of the keys of all sessions that were removed.
 
-!SECTION save
+save
+----
 
 `storage.save(session): Session`
 
@@ -57,7 +61,8 @@ Saves (replaces) the given session object in the collection. This method needs t
 
 Returns the modified session.
 
-!SECTION clear
+clear
+-----
 
 `storage.clear(session): boolean`
 

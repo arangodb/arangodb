@@ -19,7 +19,7 @@
             "frontend/js/lib/bootstrap-min.js",
             "frontend/js/lib/d3.min.js",
             "frontend/js/lib/nv.d3.min.js",
-            "frontend/js/lib/dygraph-combined.min.js"
+            "frontend/js/lib/dygraph-combined.min.js",
           ],
           css: [
             "frontend/css/swagger/hightlight.default.css",
@@ -34,6 +34,7 @@
             "frontend/css/highlightjs.css",
             "frontend/css/jsoneditor.css",
             "frontend/css/grids-responsive-min.css",
+            "frontend/css/tippy.css",
             "frontend/ttf/arangofont/style.css"
           ]
         },
@@ -53,6 +54,8 @@
             "frontend/js/lib/select2.min.js",
             "frontend/js/lib/typeahead.bundle.min.js",
             "frontend/js/lib/numeral.min.js",
+            "frontend/js/lib/moment.min.js",
+            "frontend/js/lib/tippy.js",
             // START SIGMA LIBRARIES
             "frontend/js/lib/sigma.min.js",
             "frontend/js/lib/sigma.renderers.halo.js",
@@ -322,19 +325,17 @@
         }
       },
 
-      semistandard: {
+      eslint: {
         options: {
-          format: false
+          configFile: '../../../../../.eslintrc'
         },
-        app: {
-          src: [
-            'frontend/js/views/*.js',
-            'frontend/js/arango/*.js',
-            'frontend/js/models/*.js',
-            'frontend/js/collections/*.js',
-            'frontend/js/routers/*.js'
-          ]
-        }
+        target: [
+          'frontend/js/views/*.js',
+          'frontend/js/arango/*.js',
+          'frontend/js/models/*.js',
+          'frontend/js/collections/*.js',
+          'frontend/js/routers/*.js'
+        ]
       },
 
       uglify: {
@@ -402,7 +403,6 @@
       }
     });
 
-    grunt.loadNpmTasks('grunt-semistandard');
     grunt.loadNpmTasks("grunt-sass");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks('grunt-contrib-cssmin');
@@ -416,6 +416,7 @@
     grunt.loadNpmTasks('grunt-text-replace');
 
     grunt.registerTask('default', [
+      'eslint',
       'sass:dev',
       'replace',
       'concat',
@@ -439,7 +440,7 @@
 
     grunt.registerTask('deploy', [
       'sass:dev',
-      'semistandard',
+      'eslint',
       'replace',
       'imagemin',
       'concat',

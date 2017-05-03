@@ -1,0 +1,174 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="cluster__info_8hpp" kind="file">
+    <compoundname>cluster_info.hpp</compoundname>
+    <includes local="no">set</includes>
+    <includes refid="signed__size__type_8hpp" local="no">boost/geometry/algorithms/detail/signed_size_type.hpp</includes>
+    <includedby refid="buffered__piece__collection_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_piece_collection.hpp</includedby>
+    <includedby refid="handle__colocations_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/handle_colocations.hpp</includedby>
+    <includedby refid="overlay_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/overlay.hpp</includedby>
+    <includedby refid="traversal__switch__detector_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/traversal_switch_detector.hpp</includedby>
+    <incdepgraph>
+      <node id="27583">
+        <label>boost/type_traits/make_signed.hpp</label>
+      </node>
+      <node id="27581">
+        <label>boost/geometry/algorithms/detail/signed_size_type.hpp</label>
+        <link refid="signed__size__type_8hpp"/>
+        <childnode refid="27582" relation="include">
+        </childnode>
+        <childnode refid="27583" relation="include">
+        </childnode>
+      </node>
+      <node id="27582">
+        <label>cstddef</label>
+      </node>
+      <node id="27579">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/cluster_info.hpp</label>
+        <link refid="cluster_info.hpp"/>
+        <childnode refid="27580" relation="include">
+        </childnode>
+        <childnode refid="27581" relation="include">
+        </childnode>
+      </node>
+      <node id="27580">
+        <label>set</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="27596">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/interface.hpp</label>
+        <link refid="intersection_2interface_8hpp"/>
+        <childnode refid="27597" relation="include">
+        </childnode>
+        <childnode refid="27598" relation="include">
+        </childnode>
+        <childnode refid="27600" relation="include">
+        </childnode>
+      </node>
+      <node id="27599">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/implementation.hpp</label>
+        <link refid="intersection_2implementation_8hpp"/>
+        <childnode refid="27597" relation="include">
+        </childnode>
+      </node>
+      <node id="27590">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/overlay.hpp</label>
+        <link refid="overlay_8hpp"/>
+        <childnode refid="27591" relation="include">
+        </childnode>
+        <childnode refid="27592" relation="include">
+        </childnode>
+        <childnode refid="27594" relation="include">
+        </childnode>
+      </node>
+      <node id="27597">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/intersection.hpp</label>
+        <link refid="algorithms_2intersection_8hpp"/>
+        <childnode refid="27593" relation="include">
+        </childnode>
+      </node>
+      <node id="27588">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/handle_colocations.hpp</label>
+        <link refid="handle__colocations_8hpp"/>
+        <childnode refid="27589" relation="include">
+        </childnode>
+      </node>
+      <node id="27601">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/traversal_switch_detector.hpp</label>
+        <link refid="traversal__switch__detector_8hpp"/>
+        <childnode refid="27602" relation="include">
+        </childnode>
+      </node>
+      <node id="27592">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/union.hpp</label>
+        <link refid="union_8hpp"/>
+        <childnode refid="27593" relation="include">
+        </childnode>
+      </node>
+      <node id="27602">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/traverse.hpp</label>
+        <link refid="traverse_8hpp"/>
+        <childnode refid="27585" relation="include">
+        </childnode>
+        <childnode refid="27590" relation="include">
+        </childnode>
+      </node>
+      <node id="27594">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/intersection_insert.hpp</label>
+        <link refid="intersection__insert_8hpp"/>
+        <childnode refid="27595" relation="include">
+        </childnode>
+        <childnode refid="27596" relation="include">
+        </childnode>
+      </node>
+      <node id="27585">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_piece_collection.hpp</label>
+        <link refid="buffered__piece__collection_8hpp"/>
+        <childnode refid="27586" relation="include">
+        </childnode>
+      </node>
+      <node id="27595">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/difference.hpp</label>
+        <link refid="difference_8hpp"/>
+      </node>
+      <node id="27600">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/multi.hpp</label>
+        <link refid="multi_8hpp"/>
+        <childnode refid="27599" relation="include">
+        </childnode>
+      </node>
+      <node id="27593">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/sym_difference.hpp</label>
+        <link refid="sym__difference_8hpp"/>
+      </node>
+      <node id="27586">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffer_inserter.hpp</label>
+        <link refid="buffer__inserter_8hpp"/>
+        <childnode refid="27587" relation="include">
+        </childnode>
+      </node>
+      <node id="27587">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp</label>
+        <link refid="algorithms_2buffer_8hpp"/>
+      </node>
+      <node id="27591">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp</label>
+        <link refid="touches_8hpp"/>
+      </node>
+      <node id="27589">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/enrich_intersection_points.hpp</label>
+        <link refid="enrich__intersection__points_8hpp"/>
+        <childnode refid="27585" relation="include">
+        </childnode>
+        <childnode refid="27590" relation="include">
+        </childnode>
+      </node>
+      <node id="27584">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/cluster_info.hpp</label>
+        <link refid="cluster_info.hpp"/>
+        <childnode refid="27585" relation="include">
+        </childnode>
+        <childnode refid="27588" relation="include">
+        </childnode>
+        <childnode refid="27590" relation="include">
+        </childnode>
+        <childnode refid="27601" relation="include">
+        </childnode>
+      </node>
+      <node id="27598">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/box_box.hpp</label>
+        <link refid="intersection_2box__box_8hpp"/>
+        <childnode refid="27599" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/cluster_info.hpp"/>
+  </compounddef>
+</doxygen>

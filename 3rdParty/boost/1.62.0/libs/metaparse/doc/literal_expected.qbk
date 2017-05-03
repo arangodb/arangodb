@@ -1,0 +1,29 @@
+[#literal_expected]
+[section literal_expected]
+
+[h1 Synopsis]
+
+  namespace error
+  {
+    template <char C>
+    struct literal_expected;
+  }
+
+This is a [link parsing_error_message parsing error message].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`C`]  [`char` value]]
+]
+
+[h1 Description]
+
+Template class representing the error that a specific literal was expected. `C`
+is the literal that was expected but not found.
+
+[h1 Header]
+
+  #include <boost/metaparse/error/literal_expected.hpp>
+
+[endsect]
+

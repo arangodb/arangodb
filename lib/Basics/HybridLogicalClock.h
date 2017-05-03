@@ -116,28 +116,15 @@ class HybridLogicalClock {
   }
 
   static uint64_t decodeTimeStamp(char const* p, size_t len) {
-    uint64_t r = 0;
-    for (size_t i = 0; i < len; i++) {
-      r = (r << 6) |
-          static_cast<uint8_t>(decodeTable[static_cast<uint8_t>(p[i])]);
-    }
-    return r;
-  }
-
-  static uint64_t decodeTimeStampWithCheck(std::string const& s) {
-    return decodeTimeStampWithCheck(s.c_str(), s.size());
-  }
-
-  static uint64_t decodeTimeStampWithCheck(char const* p, size_t len) {
-    // Returns 0 if format is not valid
+    // Returns UINT64_MAX if format is not valid
     if (len > 11) {
-      return 0;
+      return UINT64_MAX;
     }
     uint64_t r = 0;
     for (size_t i = 0; i < len; i++) {
       signed char c = decodeTable[static_cast<uint8_t>(p[i])];
       if (c < 0) {
-        return 0;
+        return UINT64_MAX;
       }
       r = (r << 6) | static_cast<uint8_t>(c);
     }
@@ -154,7 +141,6 @@ class HybridLogicalClock {
     return ms;
   }
 
- private:
   // helper to compute the offset between epoch and 1970
   uint64_t computeOffset1970();
 
@@ -166,6 +152,7 @@ class HybridLogicalClock {
     return (time << 20) + count;
   }
 
+ private:
   static char encodeTable[65];
 
   static signed char decodeTable[256];

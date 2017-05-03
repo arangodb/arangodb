@@ -41,8 +41,6 @@ namespace basics {
 class StringBuffer;
 }
 
-class Transaction;
-
 namespace aql {
 class Ast;
 struct Variable;
@@ -232,6 +230,8 @@ struct AstNode {
 
  public:
 
+  static constexpr size_t SortNumberThreshold = 8;
+
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
 
@@ -243,13 +243,12 @@ struct AstNode {
 
 /// @brief dump the node (for debugging purposes)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void dump(int) const;
+  void dump(int indent) const;
 #endif
 
   /// @brief compute the value for a constant value node
   /// the value is owned by the node and must not be freed by the caller
   arangodb::velocypack::Slice computeValue() const;
-  arangodb::velocypack::Slice computeValue(arangodb::Transaction*) const;
 
   /// @brief sort the members of an (array) node
   /// this will also set the FLAG_SORTED flag for the node
@@ -290,12 +289,12 @@ struct AstNode {
   /// @brief convert the node's value to a boolean value
   /// this may create a new node or return the node itself if it is already a
   /// boolean value node
-  AstNode* castToBool(Ast*);
+  AstNode const* castToBool(Ast*) const;
 
   /// @brief convert the node's value to a number value
   /// this may create a new node or return the node itself if it is already a
   /// numeric value node
-  AstNode* castToNumber(Ast*);
+  AstNode const* castToNumber(Ast*) const;
 
   /// @brief check a flag for the node
   inline bool hasFlag(AstNodeFlagType flag) const {
@@ -419,7 +418,6 @@ struct AstNode {
   bool isAttributeAccessForVariable(Variable const* variable, bool allowIndexedAccess) const {
     auto node = getAttributeAccessForVariable(allowIndexedAccess);
 
-
     if (node == nullptr) {
       return false;
     }
@@ -483,6 +481,10 @@ struct AstNode {
   /// @brief whether or not a node (and its subnodes) may contain a call to a
   /// user-defined function
   bool callsUserDefinedFunction() const;
+  
+  /// @brief whether or not a node (and its subnodes) may contain a call to a
+  /// a function or a user-defined function
+  bool callsFunction() const;
 
   /// @brief whether or not the object node contains dynamically named
   /// attributes
@@ -637,9 +639,16 @@ struct AstNode {
   /// @brief clone a node, recursively
   AstNode* clone(Ast*) const;
 
-  /// @brief append a JavaScript representation of the node into a string buffer
+  /// @brief append a string representation of the node into a string buffer
+  /// the string representation does not need to be JavaScript-compatible
+  /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and NODE_TYPE_OBJECT
+  /// (only for objects that do not contain dynamic attributes)
+  /// note that this may throw and that the caller is responsible for
+  /// catching the error
   void stringify(arangodb::basics::StringBuffer*, bool, bool) const;
 
+  /// note that this may throw and that the caller is responsible for
+  /// catching the error
   std::string toString() const;
 
   /// @brief stringify the value of a node into a string buffer

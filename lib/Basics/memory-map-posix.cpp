@@ -32,6 +32,34 @@
 
 using namespace arangodb;
 
+namespace {
+static std::string flagify(int flags) {
+  std::string result;
+
+  int const remain = flags & (PROT_READ | PROT_WRITE | PROT_EXEC);
+
+  if (remain & PROT_READ) {
+    result.append("read");
+  }
+
+  if (remain & PROT_WRITE) {
+    if (!result.empty()) {
+      result.push_back(',');
+    }
+    result.append("write");
+  }
+
+  if (remain & PROT_EXEC) {
+    if (!result.empty()) {
+      result.push_back(',');
+    }
+    result.append("exec");
+  }
+
+  return result;
+}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // @brief flush memory mapped file to disk
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,12 +77,12 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
   int res = msync(startingAddress, numOfBytesToFlush, flags);
 
 #ifdef __APPLE__
-  if (res == 0) {
+  if (res == TRI_ERROR_NO_ERROR) {
     res = fcntl(fileDescriptor, F_FULLFSYNC, 0);
   }
 #endif
 
-  if (res == 0) {
+  if (res == TRI_ERROR_NO_ERROR) {
     // msync was successful
     LOG_TOPIC(TRACE, Logger::MMAP) << "msync succeeded for range " << Logger::RANGE(startingAddress, numOfBytesToFlush) << ", file-descriptor " << fileDescriptor;
     return TRI_ERROR_NO_ERROR;
@@ -89,7 +117,9 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
                  fileDescriptor, offsetRetyped);
 
   if (*result != MAP_FAILED) {
-    LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor;
+    TRI_ASSERT(*result != nullptr);
+
+    LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -98,8 +128,12 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     LOG_TOPIC(DEBUG, Logger::MMAP) << "out of memory in mmap";
 
     return TRI_ERROR_OUT_OF_MEMORY_MMAP;
-  }
-
+  } 
+   
+  // preserve errno value while we're logging
+  int tmp = errno; 
+  LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed for range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
+  errno = tmp;
   return TRI_ERROR_SYS_ERROR;
 }
 
@@ -113,7 +147,7 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 
   int res = munmap(memoryAddress, numOfBytesToUnMap);
 
-  if (res == 0) {
+  if (res == TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-unmapped range " << Logger::RANGE(memoryAddress, numOfBytesToUnMap) << ", file-descriptor " << fileDescriptor;
 
     return TRI_ERROR_NO_ERROR;
@@ -139,11 +173,13 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
                       int flags, int fileDescriptor) {
   int res = mprotect(memoryAddress, numOfBytesToProtect, flags);
 
-  if (res == 0) {
-    LOG_TOPIC(TRACE, Logger::MMAP) << "memory-protecting range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor;
+  if (res == TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(TRACE, Logger::MMAP) << "memory-protecting range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
 
     return TRI_ERROR_NO_ERROR;
   }
+    
+  LOG_TOPIC(WARN, Logger::MMAP) << "memory-protecting failed for range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
 
   return TRI_ERROR_SYS_ERROR;
 }
@@ -158,17 +194,48 @@ int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 
   int res = madvise(memoryAddress, numOfBytes, advice);
 
-  if (res == 0) {
+  if (res == TRI_ERROR_NO_ERROR) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  char buffer[256];
-  char* p = strerror_r(errno, buffer, 256);
-  LOG_TOPIC(ERR, Logger::MMAP) << "madvise " << advice << " for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << p << " ";
+  res = errno;
+  LOG_TOPIC(ERR, Logger::MMAP) << "madvise " << advice << " for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << strerror(res);
   return TRI_ERROR_INTERNAL;
 #else
   return TRI_ERROR_NO_ERROR;
 #endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locks a region in memory
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MMFileLock(void* memoryAddress, size_t numOfBytes) {
+  int res = mlock(memoryAddress, numOfBytes);
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  res = errno;
+  LOG_TOPIC(WARN, Logger::MMAP) << "mlock for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << strerror(res);
+  return TRI_ERROR_SYS_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlocks a mapped region from memory
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MMFileUnlock(void* memoryAddress, size_t numOfBytes) {
+  int res = munlock(memoryAddress, numOfBytes);
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  res = errno;
+  LOG_TOPIC(WARN, Logger::MMAP) << "munlock for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << strerror(res);
+  return TRI_ERROR_SYS_ERROR;
 }
 
 #endif

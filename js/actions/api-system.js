@@ -51,12 +51,21 @@ actions.defineHttp({
     };
     try {
       actions.routeRequest(req, res);
-    } catch (err) {
-      var msg = 'A runtime error occurred while executing an action: '
-      + String(err) + ' ' + String(err.stack);
+    } catch (e) {
+      var msg = 'A runtime error occurred while executing an action\n';
+      let err = e;
+      while (err) {
+        if (err !== e) {
+          msg += '\nvia ';
+        }
+        if (err.stack) {
+          msg += err.stack;
+        }
+        err = err.cause;
+      }
 
-      if (err.hasOwnProperty('route')) {
-        actions.errorFunction(err.route, msg)(req, res);
+      if (e.hasOwnProperty('route')) {
+        actions.errorFunction(e.route, msg)(req, res);
       } else {
         actions.resultError(req, res, actions.HTTP_SERVER_ERROR, actions.HTTP_SERVER_ERROR, msg);
       }

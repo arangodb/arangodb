@@ -1,0 +1,43 @@
+[/
+ / Copyright (c) 2009-20012 Vicente J. Botet Escriba
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[/==================]
+[/section Motivation]
+[/==================]
+
+
+[heading Measuring elapsed time]
+
+Knowing how long a program, a function or a specific code block takes to execute is useful in both test and production environments.
+__Boost_Chrono introduces the __strict_stopwatch_concept concept which is a mechanism to measure the elapsed time.
+__strict_stopwatch`<>` is the basic model of __strict_stopwatch_concept.
+
+[heading Reporting elapsed time]
+
+It is often necessary to report elapsed time on a user display or in a log file.  __stopwatch_reporter provides a runtime reporting mechanism for this purpose which can be invoked in just one line of code.
+
+    using namespace boost::chrono;
+    int main()
+    {
+        __stopwatch_reporter<__stopwatch<__process_cpu_clocks> > _;
+      // ...
+    }
+
+Will produce the following output
+
+    real 0.034s, cpu 0.031s (93.0%), user 0.031s, system 0.000s
+
+As this is one of the expression more commonly use, the library provides a __stopclock shortcut so the preceding can be written as
+
+    int main()
+    {
+        __stopclock<__process_cpu_clocks> _;
+      // ...
+    }
+
+

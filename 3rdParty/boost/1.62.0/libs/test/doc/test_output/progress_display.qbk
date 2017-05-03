@@ -1,0 +1,39 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:test_output_progress Progress display]
+In case if the test module involves lengthy computation split among multiple test cases you may be interested in
+progress monitor. The test runners supplied with the __UTF__ support simple text progress display, implemented based
+on
+``
+  boost::progress_display
+``
+
+[footnote The __UTF__ interfaces allow implementing an advanced GUI based test runner with arbitrary progress display controls].
+
+The progress display output is enabled using the __UTF__ parameter
+[link boost_test.utf_reference.rt_param_reference.show_progress `show_progress`].
+
+The __UTF__ has no ability to estimate how long (in time duration) the test case execution is going to take and the manual test 
+progress update is not supported at this point. The __UTF__ tracks the progress on test case level. If you want to
+see more frequent progress update, you need to split the test into multiple test cases.
+
+In default configuration both test log and test progress outputs are directed into standard output stream. Any test
+log messages are going to interfere with test progress display. To prevent this you can either set log level to
+lower level or redirect either test log or test progress output into different stream during test module
+initialization. Use following interface to redirect test progress output:
+
+``
+  boost::unit_test::progress_monitor.set_stream( std::ostream& )
+``
+
+[bt_example example49..Progress report for the test module with large amount of test cases..run]
+
+[endsect] [/section:test_output_progress]
+
+[/ EOF]

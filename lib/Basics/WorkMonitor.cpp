@@ -72,6 +72,7 @@ void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
   if (_stopped.load()) {
     deleteWorkDescription(desc, true);
   } else {
+    desc->_context.reset();
     _freeableWorkDescription.push(desc);
   }
 }
@@ -105,10 +106,6 @@ bool WorkMonitor::pushThread(Thread* thread) {
 }
 
 void WorkMonitor::popThread(Thread* thread) {
-  if (_stopped.load()) {
-    return;
-  }
-
   TRI_ASSERT(thread != nullptr);
   WorkDescription* desc = deactivateWorkDescription();
 
@@ -281,9 +278,11 @@ WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
 }
 
 void WorkMonitor::deleteWorkDescription(WorkDescription* desc, bool stopped) {
+  desc->_context.reset();
+
   switch (desc->_type) {
     case WorkType::THREAD:
-      desc->_data._thread._canceled.std::atomic<bool>::~atomic<bool>();
+      desc->_data._thread._canceled.std::atomic<bool>::~atomic();
       break;
 
     case WorkType::HANDLER:
@@ -292,7 +291,7 @@ void WorkMonitor::deleteWorkDescription(WorkDescription* desc, bool stopped) {
 
     case WorkType::AQL_ID:
     case WorkType::AQL_STRING:
-      desc->_data._aql._canceled.std::atomic<bool>::~atomic<bool>();
+      desc->_data._aql._canceled.std::atomic<bool>::~atomic();
       break;
 
     case WorkType::CUSTOM:
@@ -314,6 +313,7 @@ void WorkMonitor::deleteWorkDescription(WorkDescription* desc, bool stopped) {
 
 void WorkMonitor::activateWorkDescription(WorkDescription* desc) {
   if (Thread::CURRENT_THREAD == nullptr) {
+    TRI_ASSERT(CURRENT_WORK_DESCRIPTION == nullptr);
     CURRENT_WORK_DESCRIPTION = desc;
   } else {
     Thread::CURRENT_THREAD->setWorkDescription(desc);

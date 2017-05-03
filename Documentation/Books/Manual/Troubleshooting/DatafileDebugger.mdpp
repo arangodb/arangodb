@@ -1,6 +1,8 @@
-!CHAPTER Datafile Debugger
+Datafile Debugger
+=================
 
-!SECTION In Case Of Disaster
+In Case Of Disaster
+-------------------
 
 AranagoDB uses append-only journals. Data corruption should only occur when the
 database server is killed. In this case, the corruption should only occur in the

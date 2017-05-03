@@ -1,0 +1,175 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_whyhow Why and how to use]
+
+The VMD library provides the ability to create a macro which takes
+different types of parameters and can therefore generate different output
+depending on the parameter types as well as their values. 
+
+This is equivalent to the way that overloaded
+functions provide the ability for a singularly named function
+to provide different functionality depending on the parameter
+types.
+
+In the case of macros, where more than one macro of the same
+name but different macro expansion is not allowed, a single macro name
+can create different expansions.
+
+As a simple example:
+
+ #include <boost/vmd/is_seq.hpp>
+ #include <boost/vmd/is_tuple.hpp>
+
+ #define AMACRO(param)                 \
+   BOOST_PP_IIF                        \
+     (                                 \
+     BOOST_VMD_IS_SEQ(param),          \
+     Seq,                              \
+     BOOST_PP_IIF                      \
+       (                               \
+       BOOST_VMD_IS_TUPLE(param),      \
+       Tuple,                          \
+       Unknown                         \
+       )                               \
+     )
+
+If the param passed is a seq the output of
+the macro is 'Seq'. If the param passed is
+a tuple the output of the macro is 'Tuple'. 
+Otherwise the output of the macro is 'Unknown'.
+
+Obviously much more complicated cases can be created
+in which the types and values of various parameters
+are parsed in order to produce variable macro output
+depending on the input. Using variadic macros,
+macros with variable numbers and types of arguments 
+give the macro programmer even greater freedom to 
+design macros with flexibility.
+
+Another feature of the VMD library is the ability to parse
+identifiers. A system of registering identifiers which VMD
+can recognize has been created. Once an identifier is registered
+VMD can recognize it as part of macro input as an identifier and 
+return the identifier. Furthermore VMD can compare identifiers
+for equality or inequality once an identifier has been pre-detected
+using VMD's system for pre-detecting identifiers.
+
+As another simple example:
+
+ #include <boost/vmd/is_identifier.hpp>
+ 
+ #define BOOST_VMD_REGISTER_NAME (NAME)
+ #define BOOST_VMD_REGISTER_ADDRESS (ADDRESS)
+ 
+ #define AMACRO1(param)              \
+   BOOST_PP_IIF                      \
+     (                               \
+     BOOST_VMD_IS_IDENTIFIER(param), \
+     AMACRO1_IDENTIFIER,             \
+     AMACRO1_NO_IDENTIFIER           \
+     )                               \
+   (param)
+   
+ #define AMACRO1_IDENTIFIER(param) AMACRO1_ ## param
+ #define AMACRO1_NO_IDENTIFIER(param) Parameter is not an identifier
+ #define AMACRO1_NAME Identifier is a NAME
+ #define AMACRO1_ADDRESS Identifier is an ADDRESS
+ 
+Here we use VMD's identifier registration system to determine and
+handle a particular identifier we may be expecting as a macro parameter.
+If the input to 'AMACRO1' is 'NAME' the output is 'Identifier is a NAME'.
+If the input to 'AMACRO1' is 'ADDRESS' the output is 'Identifier is an ADDRESS'.
+Otherwise the output is 'Parameter is not an identifier'.
+
+Identifier pre-detection makes things clearer, allowing us to
+detect within VMD whether macro input matches a particular identifier.
+Using the same setup as our previous example, but with identifier pre-detection:
+
+ #include <boost/vmd/is_identifier.hpp>
+ 
+ #define BOOST_VMD_REGISTER_NAME (NAME)
+ #define BOOST_VMD_DETECT_NAME_NAME
+ 
+ #define BOOST_VMD_REGISTER_ADDRESS (ADDRESS)
+ #define BOOST_VMD_DETECT_ADDRESS_ADDRESS
+ 
+ #define AMACRO2(param)                        \
+   BOOST_PP_IIF                                \
+     (                                         \
+     BOOST_VMD_IS_IDENTIFIER(param,NAME),      \
+     AMACRO2_NAME,                             \
+     BOOST_PP_IIF                              \
+       (                                       \
+       BOOST_VMD_IS_IDENTIFIER(param,ADDRESS), \
+       AMACRO2_ADDRESS,                        \
+       AMACRO2_NO_IDENTIFIER                   \
+       )                                       \
+     )                                         \
+   (param)
+   
+ #define AMACRO2_NO_IDENTIFIER(param) Parameter is not a NAME or ADDRESS identifier
+ #define AMACRO2_NAME(param) Identifier is a NAME
+ #define AMACRO2_ADDRESS(param) Identifier is an ADDRESS
+ 
+If the input to 'AMACRO2' is 'NAME' the output is 'Identifier is a NAME'.
+If the input to 'AMACRO2' is 'ADDRESS' the output is 'Identifier is an ADDRESS'.
+Otherwise the output is 'Parameter is not a NAME or ADDRESS identifier'.
+
+The VMD library also has 2 different subtypes of identifiers which can always be
+recognized. The first are numbers, equivalent to the number in Boost PP, numeric
+values with a range of 0-256. The second are v-types, which are identifiers starting
+with BOOST_VMD_TYPE_ followed by a name for the type of data. As an example, the v-type
+of a Boost PP tuple is BOOST_VMD_TYPE_TUPLE and the v-type of a v-type itself is
+BOOST_VMD_TYPE_TYPE. All data types have their own v-type identifier; types are
+recognized by the VMD macros and may be passed as input data just like any other of
+the types of data VMD recognizes.
+
+The VMD identifier system even has a way, to be explained later, for the end-user to
+create his own subtype identifiers.
+
+Another reason to use VMD is that VMD understands 'sequences' of the VMD data types. You
+can have a sequence of data types and VMD can convert the sequence to any of the Boost
+PP data types, or access any individual data type in a sequence.
+
+ #include <boost/vmd/elem.hpp>
+ #include <boost/vmd/to_tuple.hpp>
+ 
+ #define BOOST_VMD_REGISTER_NAME (NAME)
+ #define ASEQUENCE (1,2) NAME 147 BOOST_VMD_TYPE_NUMBER (a)(b)
+ 
+ BOOST_VMD_TO_TUPLE(ASEQUENCE)
+ BOOST_VMD_ELEM(2,ASEQUENCE)
+ 
+Our first expansion returns the tuple:
+
+ ((1,2),NAME,147,BOOST_VMD_TYPE_NUMBER,(a)(b))
+
+Our second expansion returns the sequence element:
+
+ 147
+ 
+Sequences give the macro programmer the ability to accept input
+data from the user which may more closely mimic C++ constructs.
+
+Another reason to use VMD is that VMD understands data types.
+Besides specifically asking if a particular input is a particular
+data type, you can use the macro BOOST_VMD_GET_TYPE to retrieve
+the type of any VMD data.
+
+ #include <boost/vmd/get_type.hpp>
+ 
+ BOOST_VMD_GET_TYPE((1,2)) // expands to BOOST_VMD_TYPE_TUPLE
+ BOOST_VMD_GET_TYPE(235)   // expands to BOOST_VMD_TYPE_NUMBER
+ 
+etc.
+
+There is still much more of VMD functionality but hopefully this brief
+introduction of what VMD can do will interest you so that you will read on
+to understand VMD's functionality for the macro programmer.
+
+[endsect]

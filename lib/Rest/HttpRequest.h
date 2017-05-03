@@ -113,7 +113,7 @@ class HttpRequest final : public GeneralRequest {
   //  key that do not get special treatment end um in the _headers map.
   void setHeader(char const* key, size_t keyLength, char const* value,
                  size_t valueLength);
-  
+
   void setHeader(std::string const& key, std::string const& value) {
     setHeader(key.c_str(), key.length(), value.c_str(), value.length());
   }

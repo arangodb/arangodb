@@ -24,6 +24,7 @@
 #define ARANGODB_APPLICATION_FEATURES_SUPERVISOR_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/threads.h"
 
 namespace arangodb {
 class SupervisorFeature final
@@ -36,17 +37,11 @@ class SupervisorFeature final
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void daemonize() override final;
 
- public:
-  void supervisorStart(std::vector<std::string> const& features) {
-    _supervisorStart = features;
-  }
-
  private:
   bool _supervisor;
 
  private:
   TRI_pid_t _clientPid;
-  std::vector<std::string> _supervisorStart;
 };
 };
 

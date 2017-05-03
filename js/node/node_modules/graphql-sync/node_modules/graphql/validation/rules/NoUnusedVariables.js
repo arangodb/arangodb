@@ -3,17 +3,10 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
-var _create = require('babel-runtime/core-js/object/create');
-
-var _create2 = _interopRequireDefault(_create);
-
 exports.unusedVariableMessage = unusedVariableMessage;
 exports.NoUnusedVariables = NoUnusedVariables;
 
 var _error = require('../../error');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
  *  Copyright (c) 2015, Facebook, Inc.
@@ -43,7 +36,7 @@ function NoUnusedVariables(context) {
         variableDefs = [];
       },
       leave: function leave(operation) {
-        var variableNameUsed = (0, _create2.default)(null);
+        var variableNameUsed = Object.create(null);
         var usages = context.getRecursiveVariableUsages(operation);
         var opName = operation.name ? operation.name.value : null;
 

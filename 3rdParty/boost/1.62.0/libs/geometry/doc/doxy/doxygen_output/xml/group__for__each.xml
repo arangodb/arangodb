@@ -1,0 +1,131 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__for__each" kind="group">
+    <compoundname>for_each</compoundname>
+    <title>for_each: apply a functor to each point or segment of a geometry</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__for__each_1ga3010849a8b501309db7b74157382cfaf" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Functor</type>
+          </param>
+        </templateparamlist>
+        <type>Functor</type>
+        <definition>Functor boost::geometry::for_each_point</definition>
+        <argsstring>(Geometry &amp;geometry, Functor f)</argsstring>
+        <name>for_each_point</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Functor</type>
+          <declname>f</declname>
+        </param>
+        <briefdescription>
+<para>Applies function [*f] to each point. </para>        </briefdescription>
+        <detaileddescription>
+<para>Applies a function [*f] (functor, having operator() defined) to each point making up the geometry</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>f</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Unary function, taking a point as argument </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Functor</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Function or class with operator()</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/algorithms/for_each_point.qbk]</qbk>   <qbk>[heading Example]</qbk>   <qbk>[for_each_point] [for_each_point_output]</qbk>   <qbk>[for_each_point_const] [for_each_point_const_output]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/for_each.hpp" line="338" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/for_each.hpp" bodystart="338" bodyend="344"/>
+      </memberdef>
+      <memberdef kind="function" id="group__for__each_1ga42ec4761584f85dae332cd4266418017" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Functor</type>
+          </param>
+        </templateparamlist>
+        <type>Functor</type>
+        <definition>Functor boost::geometry::for_each_segment</definition>
+        <argsstring>(Geometry &amp;geometry, Functor f)</argsstring>
+        <name>for_each_segment</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Functor</type>
+          <declname>f</declname>
+        </param>
+        <briefdescription>
+<para>Applies function [*f] to each segment. </para>        </briefdescription>
+        <detaileddescription>
+<para>Applies a function [*f] (functor, having operator() defined) to each segment making up the geometry</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>f</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Unary function, taking a segment as argument </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Functor</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Function or class with operator()</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/algorithms/for_each_segment.qbk]</qbk>   <qbk>[heading Example]</qbk>   <qbk>[for_each_segment_const] [for_each_segment_const_output]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/for_each.hpp" line="361" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/for_each.hpp" bodystart="361" bodyend="367"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

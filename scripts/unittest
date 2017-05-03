@@ -2,32 +2,34 @@
 export PID=$$
 
 if test -n "$ORIGINAL_PATH"; then
-# running in cygwin...
-  PS='\'
-  export EXT=".exe"
+    # running in cygwin...
+    PS='\'
+    export EXT=".exe"
 else
-  export EXT=""
-  PS='/'
+    export EXT=""
+    PS='/'
 fi;
-
-ulimit -n 2048
 
 export PORT=`expr 1024 + $RANDOM`
 
 if [ -z "${ARANGOSH}" ];  then
-  if [ -x build/bin/arangosh ];  then
-    ARANGOSH=build/bin/arangosh
-  elif [ -x bin/arangosh ];  then
-    ARANGOSH=bin/arangosh
-  else
-    echo "$0: cannot locate arangosh"
-  fi
+    if [ -x build/bin/arangosh ];  then
+        ARANGOSH=build/bin/arangosh
+    elif [ -x bin/arangosh ];  then
+        ARANGOSH=bin/arangosh
+    elif [ -x usr/bin/arangosh ];  then
+        ARANGOSH=usr/bin/arangosh
+    else
+        echo "$0: cannot locate arangosh"
+        exit 1
+    fi
 fi
 
+#
 exec $ARANGOSH \
-  -c etc${PS}relative${PS}arangosh.conf \
-  --log.level warning \
-  --server.endpoint tcp://127.0.0.1:${PORT} \
-  --javascript.execute UnitTests${PS}unittest.js \
-  -- \
-  "$@"
+     -c etc${PS}relative${PS}arangosh.conf \
+     --log.level warning \
+     --server.endpoint tcp://127.0.0.1:${PORT} \
+     --javascript.execute UnitTests${PS}unittest.js \
+     -- \
+     "$@"

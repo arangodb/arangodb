@@ -1,0 +1,31 @@
+[#before_4_2]
+['Definitions before section 4.2.]
+
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/int_.hpp>
+
+  #include <boost/metaparse/build_parser.hpp>
+
+  using namespace boost::metaparse;
+
+  using exp_parser1 = build_parser<int_>;
+  #include <boost/metaparse/entire_input.hpp>
+
+  using exp_parser2 = build_parser<entire_input<int_>>;
+  #include <boost/metaparse/token.hpp>
+
+  using exp_parser3 = build_parser<entire_input<token<int_>>>;
+  #include <boost/metaparse/lit_c.hpp>
+
+  #include <boost/metaparse/sequence.hpp>
+
+  using exp_parser4 = build_parser<sequence<token<int_>, token<lit_c<'+'>>, token<int_>>>;
+
+  #include <metashell/formatter.hpp>
+  
+  using int_token = token<int_>;
+
+  using plus_token = token<lit_c<'+'>>;
+
+  using exp_parser5 = build_parser<sequence<int_token, plus_token, int_token>>;
+

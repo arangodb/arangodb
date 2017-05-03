@@ -1,4 +1,5 @@
-!CHAPTER Documents
+Documents
+=========
 
 This is an introduction to ArangoDB's interface for working with
 documents from the JavaScript shell *arangosh* or in JavaScript code in

@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__calculate__count_3_01_point_00_01_calca69cfe36d9c7cf262d5bfaf468117704" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::winding_calculate_count&lt; Point, CalculationType, cartesian_tag &gt;</compoundname>
+    <includes local="no">point_in_poly_winding.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename CalculationType</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__calculate__count_3_01_point_00_01_calca69cfe36d9c7cf262d5bfaf468117704_1a5ef4cb9bcfbb60411b2f301b93081033" prot="public" static="no">
+        <type>CalculationType</type>
+        <definition>typedef CalculationType boost::geometry::strategy::within::winding_calculate_count&lt; Point, CalculationType, cartesian_tag &gt;::calc_t</definition>
+        <argsstring></argsstring>
+        <name>calc_t</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="296" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="296" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__calculate__count_3_01_point_00_01_calca69cfe36d9c7cf262d5bfaf468117704_1a0a5e5f98d6675fed84a8a2ada420deb1" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::within::winding_calculate_count&lt; Point, CalculationType, cartesian_tag &gt;::apply</definition>
+        <argsstring>(calc_t const &amp;p, calc_t const &amp;s1, calc_t const &amp;s2, bool eq1, bool eq2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__calculate__count_3_01_point_00_01_calca69cfe36d9c7cf262d5bfaf468117704_1a5ef4cb9bcfbb60411b2f301b93081033" kindref="member">calc_t</ref> const &amp;</type>
+          <declname>p</declname>
+        </param>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__calculate__count_3_01_point_00_01_calca69cfe36d9c7cf262d5bfaf468117704_1a5ef4cb9bcfbb60411b2f301b93081033" kindref="member">calc_t</ref> const &amp;</type>
+          <declname>s1</declname>
+        </param>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__calculate__count_3_01_point_00_01_calca69cfe36d9c7cf262d5bfaf468117704_1a5ef4cb9bcfbb60411b2f301b93081033" kindref="member">calc_t</ref> const &amp;</type>
+          <declname>s2</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>eq1</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>eq2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="298" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="298" bodyend="308"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="295" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="294" bodyend="309"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__calculate__count_3_01_point_00_01_calca69cfe36d9c7cf262d5bfaf468117704_1a0a5e5f98d6675fed84a8a2ada420deb1" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::winding_calculate_count&lt; Point, CalculationType, cartesian_tag &gt;</scope><name>apply</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__calculate__count_3_01_point_00_01_calca69cfe36d9c7cf262d5bfaf468117704_1a5ef4cb9bcfbb60411b2f301b93081033" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::winding_calculate_count&lt; Point, CalculationType, cartesian_tag &gt;</scope><name>calc_t</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

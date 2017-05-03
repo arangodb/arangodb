@@ -19,6 +19,12 @@
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                  global variables
 ## -----------------------------------------------------------------------------
+%global with_systemd 0
+%if @IS_SYSTEMD_INSTALL@
+%if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
+%global with_systemd 1
+%endif
+%endif
 
 %define _cfgdir %{_sysconfdir}/arangodb3
 %define _databasedir %{_localstatedir}/lib/arangodb3
@@ -49,6 +55,14 @@ Vendor:         @CPACK_PACKAGE_VENDOR@
 Prefix:         @CPACK_PACKAGING_INSTALL_PREFIX@
 BuildRoot:      @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/@CPACK_PACKAGE_FILE_NAME@
 
+%if %{with_systemd}
+BuildRequires: systemd-units
+Requires: systemd-units
+Requires(post): systemd-units
+Requires(preun): systemd-units
+Requires(postun): systemd-units
+%endif
+
 %{?systemd_requires}
 
 %define debug_package %{nil}
@@ -61,6 +75,14 @@ BuildRoot:      @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/@CPACK_PACK
 Summary:        ArangoDB shell as stand-alone package
 Group:          Productivity/Databases/Servers
 Conflicts:	arangodb, @CPACKG_PACKAGE_CONFLICTS@, @CPACKG_PACKAGE_CONFLICTS@-client, @CPACK_PACKAGE_NAME@
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                build dependencies
+## -----------------------------------------------------------------------------
+
+%package debuginfo
+Summary:        ArangoDB debug symbols
+Group:          Productivity/Databases/Servers
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       description
@@ -76,6 +98,9 @@ It is written in C/C++.
 
 %description client
 The ArangoDB shell as stand-alone program. It also contains the utility programs: arangobench (benchmark), arangorestore & arangodump (backup), arangoimp (import).
+
+%description debuginfo
+Debug symbols for the arangodb database
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             build
@@ -134,6 +159,7 @@ mkdir -p %{buildroot}%{_piddir}
 %if @IS_SYSTEMD_INSTALL@
 @SYSTEMD_UNIT_DIR@/@CPACK_PACKAGE_NAME@.service
 %endif
+/etc/logrotate.d/@CPACK_PACKAGE_NAME@
 
 
 %files client
@@ -164,6 +190,8 @@ mkdir -p %{buildroot}%{_piddir}
 %{_datadir}/arangodb3/js/client
 %{_datadir}/arangodb3/js/node
 
+%files debuginfo
+@CPACK_DEBUG_DIRECTORY_PATTERN@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                              post
@@ -176,10 +204,18 @@ mkdir -p %{buildroot}%{_piddir}
 %restart_on_update arangodb3
 
 %if @IS_SYSTEMD_INSTALL@
+%if 0%{?systemd_post:1}
+%systemd_post @CPACK_PACKAGE_NAME@.service
+%else
 %service_add_post @CPACK_PACKAGE_NAME@.service
+if [ $1 = 1 ]; then
+    /bin/systemctl daemon-reload >/dev/null 2>&1 || :
+fi
 %endif
 
-%else
+%endif
+%endif
+%if 0%{?suse_version} < 1210
 chkconfig --level 2345 arangodb3 on
 %endif
 
@@ -265,8 +301,10 @@ if ! getent passwd arangodb >/dev/null 2>&1; then
         /usr/sbin/usermod -c "Arango Server" arangodb
 fi
 
+%if 0%{?suse_version}
 %if @IS_SYSTEMD_INSTALL@
 %service_add_pre arangodb3.service
+%endif
 %endif
 
 ## -----------------------------------------------------------------------------
@@ -277,7 +315,11 @@ fi
 %if @IS_SYSTEMD_INSTALL@
 %stop_on_removal arangodb3
 
+%if 0%{?suse_version}
 %service_del_preun arangodb3.service
+%else
+%systemd_preun arangodb3
+%endif
 
 %else
 %{_sysconfdir}/init.d/arangodb stop > /dev/null 2>&1 || true

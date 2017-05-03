@@ -3,17 +3,10 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
-var _create = require('babel-runtime/core-js/object/create');
-
-var _create2 = _interopRequireDefault(_create);
-
 exports.unusedFragMessage = unusedFragMessage;
 exports.NoUnusedFragments = NoUnusedFragments;
 
 var _error = require('../../error');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
  *  Copyright (c) 2015, Facebook, Inc.
@@ -50,7 +43,7 @@ function NoUnusedFragments(context) {
 
     Document: {
       leave: function leave() {
-        var fragmentNameUsed = (0, _create2.default)(null);
+        var fragmentNameUsed = Object.create(null);
         operationDefs.forEach(function (operation) {
           context.getRecursivelyReferencedFragments(operation).forEach(function (fragment) {
             fragmentNameUsed[fragment.name.value] = true;

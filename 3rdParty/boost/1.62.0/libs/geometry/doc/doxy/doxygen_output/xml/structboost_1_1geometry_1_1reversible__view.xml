@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1reversible__view" kind="struct" prot="public">
+    <compoundname>boost::geometry::reversible_view</compoundname>
+    <includes local="no">reversible_view.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Range</type>
+      </param>
+      <param>
+        <type><ref refid="namespaceboost_1_1geometry_1a6424afc319f6cc4d4276a3900e966d3f" kindref="member">iterate_direction</ref></type>
+        <declname>Direction</declname>
+        <defname>Direction</defname>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>View on a range, reversing direction if necessary. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Range</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>original range </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Direction</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>direction of iteration </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/views/reversible_view.hpp" line="44" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/reversible_view.hpp" bodystart="44" bodyend="44"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

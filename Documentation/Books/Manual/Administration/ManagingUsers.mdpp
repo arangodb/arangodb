@@ -1,4 +1,5 @@
-!CHAPTER Managing Users
+Managing Users
+==============
 
 The user management in ArangoDB 3 is similar to the one found in
 MySQL, Postgres, or other database systems.
@@ -9,7 +10,8 @@ to one or more databases (or none for that matter).
 In order to manage users use the web interface. Log into the *_system*
 database and go to the "User" section.
 
-!SECTION Using the ArangoDB shell
+Using the ArangoDB shell
+------------------------
 
 Alternatively, you can use the ArangoDB shell. Fire up *arangosh*
 and require the users module.
@@ -29,7 +31,7 @@ arangosh> users.grantDatabase("admin@testapp", "testdb");
 This grants the user access to the database *testdb*. `revokeDatabase`
 will revoke the right.
 
-!SUBSECTION Save
+### Save
 
 `users.save(user, passwd, active, extra)`
 
@@ -61,7 +63,7 @@ grant the access rights for one or more databases using
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_02_saveUser
 
-!SUBSECTION Grant Database
+### Grant Database
 
 `users.grantDatabase(user, database)`
 
@@ -69,13 +71,13 @@ This grants read/write access to the *database* for the *user*.
 
 If a user has access rights to the *_system* database, he is considered superuser.
 
-!SUBSECTION Revoke Database
+### Revoke Database
 
 `users.revokeDatabase(user, database)`
 
 This revokes read/write access to the *database* for the *user*.
 
-!SUBSECTION Replace
+### Replace
 
 `users.replace(user, passwd, active, extra)`
 
@@ -103,7 +105,7 @@ database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_03_replaceUser
 
-!SUBSECTION Update
+### Update
 
 `users.update(user, passwd, active, extra)`
 
@@ -129,7 +131,7 @@ database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_04_updateUser
 
-!SUBSECTION isValid
+### isValid
 
 `users.isValid(user, password)`
 
@@ -148,7 +150,7 @@ amount of time.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_05_isValidUser
 
-!SUBSECTION Remove
+### Remove
 
 `users.remove(user)`
 
@@ -167,7 +169,7 @@ This method will fail if the user cannot be found in the database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_07_removeUser
 
-!SUBSECTION Document
+### Document
 
 `users.document(user)`
 
@@ -185,7 +187,7 @@ This method will fail if the user cannot be found in the database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_04_documentUser
 
-!SUBSECTION all()
+### all()
 
 `users.all()`
 
@@ -199,7 +201,7 @@ Fetches all existing ArangoDB users from the database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_06_AllUsers
 
-!SUBSECTION Reload
+### Reload
 
 `users.reload()`
 
@@ -217,14 +219,15 @@ automatically, and this can be performed by called this method.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_03_reloadUser
 
-!SECTION Comparison to ArangoDB 2
+Comparison to ArangoDB 2
+------------------------
 
 ArangoDB 2 contained separate users per database. It was not possible
 to give an user access to two or more databases. This proved
 impractical.  Therefore we switch to a more common user model in
 ArangoDB 3.
 
-!SUBSECTION Command-Line Options for the Authentication and Authorization
+### Command-Line Options for the Authentication and Authorization
 
 <!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock server_authentication

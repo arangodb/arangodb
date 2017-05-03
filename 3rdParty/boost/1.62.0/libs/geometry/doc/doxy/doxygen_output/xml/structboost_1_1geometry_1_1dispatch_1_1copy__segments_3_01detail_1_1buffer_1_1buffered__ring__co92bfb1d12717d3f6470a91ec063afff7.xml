@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1dispatch_1_1copy__segments_3_01detail_1_1buffer_1_1buffered__ring__co92bfb1d12717d3f6470a91ec063afff7" kind="struct" prot="public">
+    <compoundname>boost::geometry::dispatch::copy_segments&lt; detail::buffer::buffered_ring_collection_tag, Reverse &gt;</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">detail::copy_segments::copy_segments_multi&lt; detail::copy_segments::copy_segments_ring&lt; Reverse &gt; &gt;</basecompoundref>
+    <includes local="no">buffered_ring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>bool</type>
+        <declname>Reverse</declname>
+        <defname>Reverse</defname>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="319">
+        <label>detail::copy_segments::copy_segments_multi&lt; detail::copy_segments::copy_segments_ring&lt; Reverse &gt; &gt;</label>
+      </node>
+      <node id="318">
+        <label>boost::geometry::dispatch::copy_segments&lt; detail::buffer::buffered_ring_collection_tag, Reverse &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dispatch_1_1copy__segments_3_01detail_1_1buffer_1_1buffered__ring__co92bfb1d12717d3f6470a91ec063afff7"/>
+        <childnode refid="319" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="321">
+        <label>detail::copy_segments::copy_segments_multi&lt; detail::copy_segments::copy_segments_ring&lt; Reverse &gt; &gt;</label>
+      </node>
+      <node id="320">
+        <label>boost::geometry::dispatch::copy_segments&lt; detail::buffer::buffered_ring_collection_tag, Reverse &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dispatch_1_1copy__segments_3_01detail_1_1buffer_1_1buffered__ring__co92bfb1d12717d3f6470a91ec063afff7"/>
+        <childnode refid="321" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="220" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="211" bodyend="220"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -56,8 +56,8 @@ function ahuacatlQueryEdgesTestSuite () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
-      vertex = db._create(vn);
-      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
+      vertex = db._create(vn, {numberOfShards: 4});
+      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge", {numberOfShards: 4});
 
       vertex.save({ _key: "v1", name: "v1" });
       vertex.save({ _key: "v2", name: "v2" });
@@ -414,8 +414,8 @@ function ahuacatlQueryNeighborsTestSuite () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
-      vertex = db._create(vn);
-      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
+      vertex = db._create(vn, {numberOfShards: 4});
+      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge", {numberOfShards: 4});
 
       vertex.save({ _key: "v1", name: "v1" });
       vertex.save({ _key: "v2", name: "v2" });
@@ -676,8 +676,8 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     setUpAll : function () {
       cleanUp();
 
-      vertex = db._create(vn);
-      edge = db._createEdgeCollection(en);
+      vertex = db._create(vn, {numberOfShards: 4});
+      edge = db._createEdgeCollection(en, {numberOfShards: 4});
       
       vertex.save({_key: "A"});
       vertex.save({_key: "B"});
@@ -847,8 +847,8 @@ function ahuacatlQueryShortestPathTestSuite () {
       db._drop(vn);
       db._drop(en);
 
-      vertexCollection = db._create(vn);
-      edgeCollection = db._createEdgeCollection(en);
+      vertexCollection = db._create(vn, {numberOfShards: 4});
+      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
       [ "A", "B", "C", "D", "E", "F", "G", "H" ].forEach(function (item) {
         vertexCollection.save({ _key: item, name: item });
@@ -879,7 +879,8 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraOutbound : function () {
-      var query = `LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v: v._id, e: e._id})
+      var query = `WITH ${vn}
+                   LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v: v._id, e: e._id})
                    LET edges = (FOR e IN p[*].e FILTER e != null RETURN e)
                    LET vertices = p[*].v
                    LET distance = LENGTH(edges)
@@ -911,7 +912,8 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraOutboundIncludeData : function () {
-      var query = `LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v, e})
+      var query = `WITH ${vn}
+                   LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v, e})
                    LET edges = (FOR e IN p[*].e FILTER e != null RETURN e)
                    LET vertices = p[*].v
                    LET distance = LENGTH(edges)
@@ -940,7 +942,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraInbound : function () {
-      var query = `FOR v IN INBOUND SHORTEST_PATH "${vn}/H" TO "${vn}/A" ${en} RETURN v._id`;
+      var query = `WITH ${vn} FOR v IN INBOUND SHORTEST_PATH "${vn}/H" TO "${vn}/A" ${en} RETURN v._id`;
       var actual = getQueryResults(query);
       assertEqual([ vn + "/H", vn + "/G", vn + "/E", vn + "/D", vn + "/A" ], actual);
     },
@@ -950,7 +952,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraDistance : function () {
-      var query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} OPTIONS {weightAttribute: "weight"} RETURN v._key`;
+      var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} OPTIONS {weightAttribute: "weight"} RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual([ "A", "B", "C", "D", "E", "G", "H" ], actual);
     },
@@ -966,7 +968,7 @@ function ahuacatlQueryShortestPathTestSuite () {
         edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
       });
 
-      var query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN v._key`;
+      var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN v._key`;
       var actual = getQueryResults(query);
 
       assertEqual(["A","D","E","G","H"], actual);
@@ -1010,8 +1012,8 @@ function ahuacatlQueryNeighborsErrorsSuite () {
       db._drop(en);
       internal.debugClearFailAt();
 
-      vertexCollection = db._create(vn);
-      edgeCollection = db._createEdgeCollection(en);
+      vertexCollection = db._create(vn, {numberOfShards: 4});
+      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
       [ "A", "B", "C", "D" ].forEach(function (item) {
         vertexCollection.save({ _key: item, name: item });
@@ -1099,8 +1101,8 @@ function ahuacatlQueryShortestpathErrorsSuite () {
       db._drop(en);
       internal.debugClearFailAt();
 
-      vertexCollection = db._create(vn);
-      edgeCollection = db._createEdgeCollection(en);
+      vertexCollection = db._create(vn, {numberOfShards: 4});
+      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
       [ "A", "B", "C", "D" ].forEach(function (item) {
         vertexCollection.save({ _key: item, name: item });
@@ -1182,4 +1184,3 @@ if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 return jsunity.done();
-

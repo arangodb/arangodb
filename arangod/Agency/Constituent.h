@@ -115,8 +115,7 @@ class Constituent : public Thread {
   void candidate();
 
   // Become leader
-  void lead(term_t,
-            std::map<std::string, bool> const& = std::map<std::string, bool>());
+  void lead(term_t);
 
   // Call for vote (by leader or candidates after timeout)
   void callElection();
@@ -127,8 +126,11 @@ class Constituent : public Thread {
   // Wait for sync
   bool waitForSync() const;
 
-  // Sleep for how long
-  duration_t sleepFor(double, double);
+  // Check if log up to date with ours
+  bool logUpToDate(index_t, term_t) const;
+
+  // Check if log start matches entry in my log
+  bool logMatches(index_t, term_t) const;
 
   TRI_vocbase_t* _vocbase;
   aql::QueryRegistry* _queryRegistry;

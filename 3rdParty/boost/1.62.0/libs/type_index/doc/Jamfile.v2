@@ -1,0 +1,37 @@
+# Copyright Antony Polukhin 2011-2016.
+# Use, modification, and distribution are
+# subject to the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+using quickbook ;
+import boostbook : boostbook ;
+import doxygen ;
+
+doxygen autodoc
+   :
+      [ glob ../../../boost/type_index.hpp ]
+      [ glob ../../../boost/type_index/*.hpp ]
+   :
+        <doxygen:param>EXTRACT_ALL=NO
+        <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+        <doxygen:param>EXTRACT_PRIVATE=NO
+        <doxygen:param>ENABLE_PREPROCESSING=YES
+        <doxygen:param>EXPAND_ONLY_PREDEF=YES
+        <doxygen:param>MACRO_EXPANSION=YES
+        <doxygen:param>"PREDEFINED=\"stl_type_info=std::type_info\" \\
+                                   \"BOOST_TYPE_INDEX_DOXYGEN_INVOKED\" \\
+                                   \"BOOST_CXX14_CONSTEXPR=constexpr\" \\
+                                   \"detail::stl_type_info=std::type_info\""
+        <xsl:param>"boost.doxygen.reftitle=Boost.TypeIndex Header Reference"
+   ;
+
+xml type_index : type_index.qbk : <dependency>autodoc ;
+boostbook standalone
+    :
+        type_index
+    :
+        <xsl:param>boost.root=http://www.boost.org/doc/libs/1_53_0
+#        <xsl:param>boost.root=../../../..
+        <format>pdf:<xsl:param>boost.url.prefix=http://www.boost.org/doc/libs/release/doc/html
+    ;
+

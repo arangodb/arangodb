@@ -31,6 +31,10 @@
 #include <stdlib.h>
 #include <crtdbg.h>
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #endif
 
 #define TRI_WITHIN_COMMON 1
@@ -165,61 +169,33 @@ typedef long suseconds_t;
 #include "Basics/debugging.h"
 #include "Basics/make_unique.h"
 #include "Basics/memory.h"
-#include "Basics/structures.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief incrementing a uint64_t modulo a number with wraparound
-////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
+// some Windows headers define macros named free and small, 
+// leading to follow-up compile errors
+#undef free
+#undef small
+#endif
 
-static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
-  // Note that the dummy variable gives the compiler a (good) chance to
-  // use a conditional move instruction instead of a branch. This actually
-  // works on modern gcc.
-  uint64_t dummy;
-  dummy = (++i) - len;
-  return i < len ? i : dummy;
-}
-
-static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
-  if ((i--) != 0) {
-    return i;
-  }
-  return len - 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a trivial hash function for uint64_t to uint32_t
-////////////////////////////////////////////////////////////////////////////////
-
-static inline uint32_t TRI_64To32(uint64_t x) {
-  return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper macro for calculating strlens for static strings at
 /// a compile-time (unless compiled with fno-builtin-strlen etc.)
-////////////////////////////////////////////////////////////////////////////////
-
 #define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief assert
-////////////////////////////////////////////////////////////////////////////////
-
 #ifndef TRI_ASSERT
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr)    \
-  do {                      \
-    if (!(expr)) {          \
+#define TRI_ASSERT(expr)                             \
+  do {                                               \
+    if (!(TRI_LIKELY(expr))) {                       \
       TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
-      TRI_PrintBacktrace(); \
-      std::abort();         \
-    }                       \
+      TRI_PrintBacktrace();                          \
+      std::abort();                                  \
+    }                                                \
   } while (0)
 
 #else
@@ -230,23 +206,25 @@ static inline uint32_t TRI_64To32(uint64_t x) {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aborts program execution
-///
+/// @brief aborts program execution, returning an error code
 /// if backtraces are enabled, a backtrace will be printed before
-////////////////////////////////////////////////////////////////////////////////
-
 #define FATAL_ERROR_EXIT(...)                 \
   do {                                        \
-    std::string bt;                           \
-    TRI_GetBacktrace(bt);                     \
-    if (!bt.empty()) {                        \
-      LOG(WARN) << bt;                        \
-    }                                         \
+    TRI_LogBacktrace();                       \
     arangodb::Logger::flush();                \
-    arangodb::Logger::shutdown(true);         \
+    arangodb::Logger::shutdown();             \
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr); \
     exit(EXIT_FAILURE);                       \
+  } while (0)
+
+/// @brief aborts program execution, calling std::abort
+/// if backtraces are enabled, a backtrace will be printed before
+#define FATAL_ERROR_ABORT(...)                \
+  do {                                        \
+    TRI_LogBacktrace();                       \
+    arangodb::Logger::flush();                \
+    arangodb::Logger::shutdown();             \
+    std::abort();                             \
   } while (0)
 
 #ifdef _WIN32
@@ -260,7 +238,6 @@ inline void ADB_WindowsExitFunction(int exitCode, void* data) {}
 // --SECTIONS--                                               deferred execution
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
 /// Use in a function (or scope) as:
 ///   TRI_DEFER( <ONE_STATEMENT> );
 /// and the statement will be called regardless if the function throws or
@@ -271,19 +248,18 @@ inline void ADB_WindowsExitFunction(int exitCode, void* data) {}
 /// appearance.
 /// The idea to this is from
 ///   http://blog.memsql.com/c-error-handling-with-auto/
-////////////////////////////////////////////////////////////////////////////////
-
 #define TOKEN_PASTE_WRAPPED(x, y) x##y
 #define TOKEN_PASTE(x, y) TOKEN_PASTE_WRAPPED(x, y)
 
 template <typename T>
 struct TRI_AutoOutOfScope {
   explicit TRI_AutoOutOfScope(T& destructor) : m_destructor(destructor) {}
-  ~TRI_AutoOutOfScope() { m_destructor(); }
+  ~TRI_AutoOutOfScope() { try { m_destructor(); } catch (...) { } }
 
  private:
   T& m_destructor;
 };
+
 
 #define TRI_DEFER_INTERNAL(Destructor, funcname, objname) \
   auto funcname = [&]() { Destructor; };                  \

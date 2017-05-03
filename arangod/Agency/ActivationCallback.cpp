@@ -23,7 +23,7 @@
 
 #include "ActivationCallback.h"
 
-#include "Agent.h"
+#include "Agency/Agent.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;

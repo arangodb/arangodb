@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document */
+/* global window, $, Backbone, document, d3 */
 /* global $, arangoHelper, btoa, _, frontendConfig */
 
 (function () {
@@ -9,6 +9,7 @@
     toUpdate: [],
     dbServers: [],
     isCluster: undefined,
+    lastRoute: undefined,
 
     routes: {
       '': 'cluster',
@@ -32,13 +33,14 @@
       'graphs/:name': 'showGraph',
       'users': 'userManagement',
       'user/:name': 'userView',
-      'user/:name/permission': 'userPermissionView',
+      'user/:name/permission': 'userPermission',
       'userProfile': 'userProfile',
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
       'node/:name': 'node',
-      'logs': 'logs',
+      'nodeInfo/:id': 'nodeInfo',
+      'logs': 'logger',
       'helpus': 'helpUs',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
@@ -46,6 +48,26 @@
     },
 
     execute: function (callback, args) {
+      if (this.lastRoute === '#queries') {
+        // cleanup old canvas elements
+        this.queryView.cleanupGraphs();
+      }
+
+      if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
+        // dom graph cleanup
+        d3.selectAll('svg > *').remove();
+      }
+
+      if (this.lastRoute === '#logger') {
+        if (this.loggerView.logLevelView) {
+          this.loggerView.logLevelView.remove();
+        }
+        if (this.loggerView.logTopicView) {
+          this.loggerView.logTopicView.remove();
+        }
+      }
+
+      this.lastRoute = window.location.hash;
       // this function executes before every route call
       $('#subNavigationBar .breadcrumb').html('');
       $('#subNavigationBar .bottom').html('');
@@ -242,6 +264,8 @@
           documentStore: this.arangoDocumentStore,
           collectionsStore: this.arangoCollectionsStore
         });
+
+        arangoHelper.initSigma();
       }.bind(this);
 
       $(window).resize(function () {
@@ -304,14 +328,38 @@
         return;
       }
 
-      if (!this.nodeView) {
-        this.nodeView = new window.NodeView({
-          coordname: name,
-          coordinators: this.coordinatorCollection,
-          dbServers: this.dbServers
-        });
+      if (this.nodeView) {
+        this.nodeView.remove();
       }
+      this.nodeView = new window.NodeView({
+        coordname: name,
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers
+      });
       this.nodeView.render();
+    },
+
+    nodeInfo: function (id, initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.nodeInfo.bind(this), id);
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[''] = 'dashboard';
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
+
+      if (this.nodeInfoView) {
+        this.nodeInfoView.remove();
+      }
+      this.nodeInfoView = new window.NodeInfoView({
+        nodeId: id,
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0]
+      });
+      this.nodeInfoView.render();
     },
 
     shards: function (initialized) {
@@ -343,6 +391,9 @@
         this.routes[''] = 'dashboard';
         this.navigate('#dashboard', {trigger: true});
         return;
+      }
+      if (this.nodesView) {
+        this.nodesView.remove();
       }
       this.nodesView = new window.NodesView({
       });
@@ -426,71 +477,22 @@
       xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
-    logs: function (name, initialized) {
+    logger: function (name, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.logs.bind(this), name);
+        this.waitForInit(this.logger.bind(this), name);
         return;
       }
-      if (!this.logsView) {
-        var newLogsAllCollection = new window.ArangoLogs(
+      if (!this.loggerView) {
+        var co = new window.ArangoLogs(
           {upto: true, loglevel: 4}
         );
-        var newLogsDebugCollection = new window.ArangoLogs(
-          {loglevel: 4}
-        );
-        var newLogsInfoCollection = new window.ArangoLogs(
-          {loglevel: 3}
-        );
-        var newLogsWarningCollection = new window.ArangoLogs(
-          {loglevel: 2}
-        );
-        var newLogsErrorCollection = new window.ArangoLogs(
-          {loglevel: 1}
-        );
-        this.logsView = new window.LogsView({
-          logall: newLogsAllCollection,
-          logdebug: newLogsDebugCollection,
-          loginfo: newLogsInfoCollection,
-          logwarning: newLogsWarningCollection,
-          logerror: newLogsErrorCollection
+        this.loggerView = new window.LoggerView({
+          collection: co
         });
       }
-      this.logsView.render();
+      this.loggerView.render();
     },
-
-    /*
-    nLogs: function (nodename, initialized) {
-      this.checkUser()
-      if (!initialized) {
-        this.waitForInit(this.nLogs.bind(this), nodename)
-        return
-      }
-      var newLogsAllCollection = new window.ArangoLogs(
-        {upto: true, loglevel: 4}
-      ),
-      newLogsDebugCollection = new window.ArangoLogs(
-        {loglevel: 4}
-      ),
-      newLogsInfoCollection = new window.ArangoLogs(
-        {loglevel: 3}
-      ),
-      newLogsWarningCollection = new window.ArangoLogs(
-        {loglevel: 2}
-      ),
-      newLogsErrorCollection = new window.ArangoLogs(
-        {loglevel: 1}
-      )
-      this.nLogsView = new window.LogsView({
-        logall: newLogsAllCollection,
-        logdebug: newLogsDebugCollection,
-        loginfo: newLogsInfoCollection,
-        logwarning: newLogsWarningCollection,
-        logerror: newLogsErrorCollection
-      })
-      this.nLogsView.render()
-    },
-    */
 
     applicationDetail: function (mount, initialized) {
       this.checkUser();
@@ -499,11 +501,12 @@
         return;
       }
       var callback = function () {
-        if (!this.hasOwnProperty('applicationDetailView')) {
-          this.applicationDetailView = new window.ApplicationDetailView({
-            model: this.foxxList.get(decodeURIComponent(mount))
-          });
+        if (this.hasOwnProperty('applicationDetailView')) {
+          this.applicationDetailView.remove();
         }
+        this.applicationDetailView = new window.ApplicationDetailView({
+          model: this.foxxList.get(decodeURIComponent(mount))
+        });
 
         this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
         this.applicationDetailView.render('swagger');
@@ -545,11 +548,12 @@
         return;
       }
       var self = this;
-      if (!this.collectionsView) {
-        this.collectionsView = new window.CollectionsView({
-          collection: this.arangoCollectionsStore
-        });
+      if (this.collectionsView) {
+        this.collectionsView.remove();
       }
+      this.collectionsView = new window.CollectionsView({
+        collection: this.arangoCollectionsStore
+      });
       this.arangoCollectionsStore.fetch({
         cache: false,
         success: function () {
@@ -630,13 +634,14 @@
         this.waitForInit(this.documents.bind(this), colid, pageid);
         return;
       }
-      if (!this.documentsView) {
-        this.documentsView = new window.DocumentsView({
-          collection: new window.ArangoDocuments(),
-          documentStore: this.arangoDocumentStore,
-          collectionsStore: this.arangoCollectionsStore
-        });
+      if (this.documentsView) {
+        this.documentsView.removeView();
       }
+      this.documentsView = new window.DocumentsView({
+        collection: new window.ArangoDocuments(),
+        documentStore: this.arangoDocumentStore,
+        collectionsStore: this.arangoCollectionsStore
+      });
       this.documentsView.setCollectionId(colid, pageid);
       this.documentsView.render();
     },
@@ -666,7 +671,7 @@
 
       var callback = function (error, type) {
         if (!error) {
-          this.documentView.setType(type);
+          this.documentView.setType();
         } else {
           console.log('Error', 'Could not fetch collection type');
         }
@@ -701,6 +706,8 @@
         if (this.graphViewer.graphSettingsView) {
           this.graphViewer.graphSettingsView.remove();
         }
+        this.graphViewer.killCurrentGraph();
+        this.graphViewer.unbind();
         this.graphViewer.remove();
       }
 
@@ -895,34 +902,39 @@
       if (this.dashboardView) {
         this.dashboardView.resize();
       }
-      if (this.graphManagementView) {
+      if (this.graphManagementView && Backbone.history.getFragment() === 'graphs') {
         this.graphManagementView.handleResize($('#content').width());
       }
-      if (this.queryView) {
+      if (this.queryView && Backbone.history.getFragment() === 'queries') {
         this.queryView.resize();
       }
       if (this.naviView) {
         this.naviView.resize();
       }
-      if (this.graphViewer) {
+      if (this.graphViewer && Backbone.history.getFragment().indexOf('graph') > -1) {
         this.graphViewer.resize();
       }
-      if (this.documentsView) {
+      if (this.documentsView && Backbone.history.getFragment().indexOf('documents') > -1) {
         this.documentsView.resize();
       }
-      if (this.documentView) {
+      if (this.documentView && Backbone.history.getFragment().indexOf('collection') > -1) {
         this.documentView.resize();
       }
     },
 
-    userPermissionView: function (name, initialized) {
+    userPermission: function (name, initialized) {
       this.checkUser();
       if (initialized || initialized === null) {
+        if (this.userPermissionView) {
+          this.userPermissionView.remove();
+        }
+
         this.userPermissionView = new window.UserPermissionView({
           collection: this.userCollection,
           databases: this.arangoDatabase,
           username: name
         });
+
         this.userPermissionView.render();
       } else if (initialized === false) {
         this.waitForInit(this.userPermissionView.bind(this), name);
@@ -949,11 +961,13 @@
         this.waitForInit(this.userManagement.bind(this));
         return;
       }
-      if (!this.userManagementView) {
-        this.userManagementView = new window.UserManagementView({
-          collection: this.userCollection
-        });
+      if (this.userManagementView) {
+        this.userManagementView.remove();
       }
+
+      this.userManagementView = new window.UserManagementView({
+        collection: this.userCollection
+      });
       this.userManagementView.render();
     },
 

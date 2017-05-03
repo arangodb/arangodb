@@ -1,4 +1,9 @@
-!CHAPTER Modification Queries
+Modification Queries
+====================
+
+{% hint 'warning' %}
+It is recommended to use AQL instead, see [**Data Modification Queries**](../../../../AQL/DataQueries.html#data-modification-queries).
+{% endhint %}
 
 ArangoDB also allows removing, replacing, and updating documents based 
 on an example document. Every document in the collection will be 

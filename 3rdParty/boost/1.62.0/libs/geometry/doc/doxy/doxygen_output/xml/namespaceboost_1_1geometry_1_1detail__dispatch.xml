@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1detail__dispatch" kind="namespace">
+    <compoundname>boost::geometry::detail_dispatch</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1detail__dispatch_1_1helper__geometry" prot="public">boost::geometry::detail_dispatch::helper_geometry</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail__dispatch_1_1helper__geometry_3_01_box_00_01_new_coordinate_ty689709acc3f44e1b8799597d92eec6a0" prot="public">boost::geometry::detail_dispatch::helper_geometry&lt; Box, NewCoordinateType, NewUnits, box_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail__dispatch_1_1helper__geometry_3_01_point_00_01_new_coordinate_2736d54c84f62d660c59b0e016f57751" prot="public">boost::geometry::detail_dispatch::helper_geometry&lt; Point, NewCoordinateType, NewUnits, point_tag &gt;</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/helper_geometry.hpp" line="100" column="1"/>
+  </compounddef>
+</doxygen>

@@ -23,8 +23,8 @@
 
 #include "EndpointList.h"
 
-#include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -135,7 +135,7 @@ std::vector<std::string> EndpointList::all(
       break;
 
     case Endpoint::TransportType::VPP:
-      prefix = "vpp+";
+      prefix = "vst+";
       break;
   }
 
@@ -201,7 +201,7 @@ bool EndpointList::hasSsl() const {
       return true;
     }
 
-    if (StringUtils::isPrefix(key, "vpp+ssl://")) {
+    if (StringUtils::isPrefix(key, "vst+ssl://")) {
       return true;
     }
   }
@@ -217,7 +217,7 @@ void EndpointList::dump() const {
   for (auto& it : _endpoints) {
     Endpoint const* ep = it.second;
 
-    LOG(INFO) << "using endpoint '" << it.first << "' for "
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "using endpoint '" << it.first << "' for "
               << encryptionName(ep->encryption()) << " requests";
   }
 }

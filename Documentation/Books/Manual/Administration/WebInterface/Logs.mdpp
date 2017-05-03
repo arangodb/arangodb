@@ -1,4 +1,5 @@
-!CHAPTER Logs
+Logs
+====
 
 The logs section displays all available log entries. Log entries are filterable by
 their log level types.

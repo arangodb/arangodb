@@ -1,0 +1,197 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::side::side_of_intersection</compoundname>
+    <includes local="no">side_of_intersection.hpp</includes>
+      <sectiondef kind="private-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a250af75d66f7afec6608952bfcb9e257" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::side::side_of_intersection::sign_of_addition_of_two_products</definition>
+        <argsstring>(T const &amp;a, T const &amp;b, T const &amp;c, T const &amp;d)</argsstring>
+        <name>sign_of_addition_of_two_products</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="188" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="188" bodyend="214"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a8add677e5e22e2840a3cec88ac910f48" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::side::side_of_intersection::sign_of_compare</definition>
+        <argsstring>(T const &amp;a, T const &amp;b, T const &amp;c, T const &amp;d)</argsstring>
+        <name>sign_of_compare</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="152" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="152" bodyend="184"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a150ab4a1d4d8e063df9586da6e87c831" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+          <param>
+            <type>typename U</type>
+          </param>
+        </templateparamlist>
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::side::side_of_intersection::sign_of_product</definition>
+        <argsstring>(T const &amp;a, U const &amp;b)</argsstring>
+        <name>sign_of_product</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>U const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="142" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="142" bodyend="148"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a6e4fc49dbcd9c07600050e759fa2426c" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment</type>
+          </param>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::side::side_of_intersection::apply</definition>
+        <argsstring>(Segment const &amp;a, Segment const &amp;b, Segment const &amp;c, Point const &amp;fallback_point)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>fallback_point</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="329" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="329" bodyend="339"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a53fa630cc73d09c1849905c80faabb62" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+          <param>
+            <type>typename Segment</type>
+          </param>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>static T boost::geometry::strategy::side::side_of_intersection::side_value</definition>
+        <argsstring>(Segment const &amp;a, Segment const &amp;b, Segment const &amp;c, Point const &amp;fallback_point)</argsstring>
+        <name>side_value</name>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>fallback_point</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="224" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="224" bodyend="326"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="138" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="137" bodyend="341"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a6e4fc49dbcd9c07600050e759fa2426c" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::side_of_intersection</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a53fa630cc73d09c1849905c80faabb62" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::side_of_intersection</scope><name>side_value</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a250af75d66f7afec6608952bfcb9e257" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::side::side_of_intersection</scope><name>sign_of_addition_of_two_products</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a8add677e5e22e2840a3cec88ac910f48" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::side::side_of_intersection</scope><name>sign_of_compare</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection_1a150ab4a1d4d8e063df9586da6e87c831" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::side::side_of_intersection</scope><name>sign_of_product</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

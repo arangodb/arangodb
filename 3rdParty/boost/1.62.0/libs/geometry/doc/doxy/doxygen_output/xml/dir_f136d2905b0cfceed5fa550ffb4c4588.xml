@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_f136d2905b0cfceed5fa550ffb4c4588" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/policies</compoundname>
+    <innerdir refid="dir_70223ecaef5d80d63353dbb0510f117c">/home/travis/build/boostorg/boost/boost/geometry/policies/relate</innerdir>
+    <innerfile refid="policies_2compare_8hpp">compare.hpp</innerfile>
+    <innerfile refid="disjoint__interrupt__policy_8hpp">disjoint_interrupt_policy.hpp</innerfile>
+    <innerfile refid="predicate__based__interrupt__policy_8hpp">predicate_based_interrupt_policy.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/"/>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1detail_1_1turns" kind="namespace">
+    <compoundname>boost::geometry::detail::turns</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1turns_1_1filter__continue__turns" prot="public">boost::geometry::detail::turns::filter_continue_turns</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1detail_1_1turns_1_1filter__continue__turns_3_01_turns_00_01true_01_4" prot="public">boost::geometry::detail::turns::filter_continue_turns&lt; Turns, true &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1turns_1_1less__seg__fraction__other__op" prot="public">boost::geometry::detail::turns::less_seg_fraction_other_op</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1turns_1_1remove__duplicate__turns" prot="public">boost::geometry::detail::turns::remove_duplicate_turns</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1detail_1_1turns_1_1remove__duplicate__turns_3_01_turns_00_01true_01_4" prot="public">boost::geometry::detail::turns::remove_duplicate_turns&lt; Turns, true &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1turns_1_1turn__printer" prot="public">boost::geometry::detail::turns::turn_printer</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1detail_1_1turns_1a9e2f6263263febb4f89194c2aea7ee65" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry1</type>
+          </param>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+          <param>
+            <type>typename Turns</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::detail::turns::print_turns</definition>
+        <argsstring>(Geometry1 const &amp;g1, Geometry2 const &amp;g2, Turns const &amp;turns)</argsstring>
+        <name>print_turns</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>g1</declname>
+        </param>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>g2</declname>
+        </param>
+        <param>
+          <type>Turns const &amp;</type>
+          <declname>turns</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/print_turns.hpp" line="87" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/print_turns.hpp" bodystart="87" bodyend="95"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/compare_turns.hpp" line="25" column="1"/>
+  </compounddef>
+</doxygen>

@@ -26,6 +26,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
@@ -34,18 +35,28 @@
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
+
+#include <thread>
+
 using namespace arangodb;
+using namespace arangodb::communicator;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global callback for asynchronous REST handler
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief the pointer to the singleton instance
+//////////////////////////////////////////////////////////////////////////////
 
-void arangodb::ClusterCommRestCallback(std::string& coordinator,
-                                       GeneralResponse* response) {
-  ClusterComm::instance()->asyncAnswer(coordinator, response);
-}
+std::shared_ptr<ClusterComm> arangodb::ClusterComm::_theInstance;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief the following atomic int is 0 in the beginning, is set to 1
+/// if some thread initializes the singleton and is 2 once _theInstance
+/// is set. Note that after a shutdown has happened, _theInstance can be
+/// a nullptr, which means no new ClusterComm operations can be started.
+//////////////////////////////////////////////////////////////////////////////
+
+std::atomic<int> arangodb::ClusterComm::_theInstanceInit(0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief routine to set the destination
@@ -242,9 +253,38 @@ ClusterComm::~ClusterComm() {
 /// @brief getter for our singleton instance
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterComm* ClusterComm::instance() {
-  static ClusterComm* Instance = new ClusterComm();
-  return Instance;
+std::shared_ptr<ClusterComm> ClusterComm::instance() {
+  int state = _theInstanceInit;
+  if (state < 2) {
+    // Try to set from 0 to 1:
+    while (state == 0) {
+      if (_theInstanceInit.compare_exchange_weak(state, 1)) {
+        break;
+      }
+    }
+    // Now _state is either 0 (in which case we have changed _theInstanceInit
+    // to 1, or is 1, in which case somebody else has set it to 1 and is working
+    // to initialize the singleton, or is 2, in which case somebody else has 
+    // done all the work and we are done:
+    if (state == 0) {
+      // we must initialize (cannot use std::make_shared here because
+      // constructor is private), if we throw here, everything is broken:
+      ClusterComm* cc = new ClusterComm();
+      _theInstance = std::shared_ptr<ClusterComm>(cc);
+      _theInstanceInit = 2;
+    } else if (state == 1) {
+      while (_theInstanceInit < 2) {
+        std::this_thread::yield();
+      }
+    }
+  }
+  // We want to achieve by other means that nobody requests a copy of the
+  // shared_ptr when the singleton is already destroyed. Therefore we put
+  // an assertion despite the fact that we have checks for nullptr in
+  // all places that call this method. Assertions have no effect in released
+  // code at the customer's site.
+  TRI_ASSERT(_theInstance != nullptr);
+  return _theInstance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,7 +292,7 @@ ClusterComm* ClusterComm::instance() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::initialize() {
-  auto* i = instance();
+  auto i = instance();   // this will create the static instance
   i->startBackgroundThread();
 }
 
@@ -261,10 +301,8 @@ void ClusterComm::initialize() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanup() {
-  auto i = instance();
-  TRI_ASSERT(i != nullptr);
-
-  delete i;
+  _theInstance.reset();    // no more operations will be started, but running
+                           // ones have their copy of the shared_ptr
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -539,7 +577,7 @@ bool ClusterComm::match(ClientTransactionID const& clientTransactionID,
 /// from deleting `result` and `answer`.
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult const ClusterComm::enquire(Ticket const ticketId) {
+ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId) {
   ResponseIterator i;
   AsyncResponse response;
 
@@ -555,6 +593,7 @@ ClusterCommResult const ClusterComm::enquire(Ticket const ticketId) {
 
   ClusterCommResult res;
   res.operationID = ticketId;
+  // does res.coordTransactionID need to be set here too? 
   res.status = CL_COMM_DROPPED;
   return res;
 }
@@ -575,16 +614,15 @@ ClusterCommResult const ClusterComm::enquire(Ticket const ticketId) {
 
 ClusterCommResult const ClusterComm::wait(
     ClientTransactionID const& clientTransactionID,
-    CoordTransactionID const coordTransactionID, Ticket const ticketId,
+    CoordTransactionID const coordTransactionID, communicator::Ticket const ticketId,
     ShardID const& shardID, ClusterCommTimeout timeout) {
 
   ResponseIterator i;
   AsyncResponse response;
 
-  // tell Dispatcher that we are waiting:
+  // tell scheduler that we are waiting:
   JobGuard guard{SchedulerFeature::SCHEDULER};
   guard.block();
-
 
   CONDITION_LOCKER(locker, somethingReceived);
   if (ticketId == 0) {
@@ -600,6 +638,7 @@ ClusterCommResult const ClusterComm::wait(
     // Nothing known about this operation, return with failure:
     ClusterCommResult res;
     res.operationID = ticketId;
+    // does res.coordTransactionID need to be set here too? 
     res.status = CL_COMM_DROPPED;
     // tell Dispatcher that we are back in business
     return res;
@@ -688,197 +727,6 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send an answer HTTP request to a coordinator
-///
-/// This is only called in a DBServer node and never in a coordinator
-/// node.
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
-                              GeneralResponse* response) {
-  // FIXME - generalize for VPP
-  HttpResponse* responseToSend = dynamic_cast<HttpResponse*>(response);
-  if (responseToSend == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  // First take apart the header to get the coordinatorID:
-  ServerID coordinatorID;
-  size_t start = 0;
-  size_t pos;
-
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
-    << "In asyncAnswer, seeing " << coordinatorHeader;
-  pos = coordinatorHeader.find(":", start);
-
-  if (pos == std::string::npos) {
-    LOG_TOPIC(ERR, Logger::CLUSTER)
-      << "Could not find coordinator ID in X-Arango-Coordinator";
-    return;
-  }
-
-  coordinatorID = coordinatorHeader.substr(start, pos - start);
-
-  // Now find the connection to which the request goes from the coordinatorID:
-  httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
-  std::string endpoint =
-      ClusterInfo::instance()->getServerEndpoint(coordinatorID);
-
-  if (endpoint == "") {
-    if (logConnectionErrors()) {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "asyncAnswer: cannot find endpoint for server '"
-        << coordinatorID << "'";
-    } else {
-      LOG_TOPIC(INFO, Logger::CLUSTER)
-        << "asyncAnswer: cannot find endpoint for server '"
-        << coordinatorID << "'";
-    }
-    return;
-  }
-
-  httpclient::ConnectionManager::SingleServerConnection* connection =
-      cm->leaseConnection(endpoint);
-
-  if (nullptr == connection) {
-    LOG_TOPIC(ERR, Logger::CLUSTER)
-      << "asyncAnswer: cannot create connection to server '"
-      << coordinatorID << "'";
-    return;
-  }
-
-  std::unordered_map<std::string, std::string> headers =
-      responseToSend->headers();
-  headers["X-Arango-Coordinator"] = coordinatorHeader;
-  headers["X-Arango-Response-Code"] =
-      responseToSend->responseString(responseToSend->responseCode());
-
-  addAuthorization(&headers);
-  TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
-  headers[StaticStrings::HLCHeader] =
-      arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
-
-  char const* body = responseToSend->body().c_str();
-  size_t len = responseToSend->body().length();
-
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
-    << "asyncAnswer: sending PUT request to DB server '"
-    << coordinatorID << "'";
-
-  auto client = std::make_unique<arangodb::httpclient::SimpleHttpClient>(
-      connection->_connection, 3600.0, false);
-  client->keepConnectionOnDestruction(true);
-
-  // We add this result to the operation struct without acquiring
-  // a lock, since we know that only we do such a thing:
-  std::unique_ptr<httpclient::SimpleHttpResult> result(client->request(
-      rest::RequestType::PUT, "/_api/shard-comm", body, len, headers));
-  if (result.get() == nullptr || !result->isComplete()) {
-    cm->brokenConnection(connection);
-    client->invalidateConnection();
-  } else {
-    cm->returnConnection(connection);
-  }
-  // We cannot deal with a bad result here, so forget about it in any case.
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process an answer coming in on the HTTP socket
-///
-/// this is called for a request, which is actually an answer to one of
-/// our earlier requests, return value of "" means OK and nonempty is
-/// an error. This is only called in a coordinator node and not in a
-/// DBServer node.
-////////////////////////////////////////////////////////////////////////////////
-
-std::string ClusterComm::processAnswer(
-    std::string const& coordinatorHeader,
-    std::unique_ptr<GeneralRequest>&& answer) {
-  TRI_ASSERT(false);
-  if (answer == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  TRI_ASSERT(answer != nullptr);
-  // First take apart the header to get the operationID:
-  OperationID operationID;
-  size_t start = 0;
-  size_t pos;
-
-  pos = coordinatorHeader.find(":", start);
-  if (pos == std::string::npos) {
-    return std::string(
-        "could not find coordinator ID in 'X-Arango-Coordinator'");
-  }
-  // coordinatorID = coordinatorHeader.substr(start,pos-start);
-  start = pos + 1;
-  pos = coordinatorHeader.find(":", start);
-  if (pos == std::string::npos) {
-    return std::string("could not find operationID in 'X-Arango-Coordinator'");
-  }
-  operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
-
-  // Finally find the ClusterCommOperation record for this operation:
-  {
-    CONDITION_LOCKER(locker, somethingReceived);
-
-    ClusterComm::IndexIterator i;
-    i = receivedByOpID.find(operationID);
-    if (i != receivedByOpID.end()) {
-      TRI_ASSERT(answer != nullptr);
-      ClusterCommOperation* op = *(i->second);
-      op->result.answer = std::move(answer);
-      op->result.answer_code = GeneralResponse::responseCode(
-          op->result.answer->header("x-arango-response-code"));
-      op->result.status = CL_COMM_RECEIVED;
-      // Do we have to do a callback?
-      if (nullptr != op->callback.get()) {
-        if ((*op->callback.get())(&op->result)) {
-          // This is fully processed, so let's remove it from the queue:
-          QueueIterator q = i->second;
-          std::unique_ptr<ClusterCommOperation> o(op);
-          receivedByOpID.erase(i);
-          received.erase(q);
-          return std::string("");
-        }
-      }
-    } else {
-      // We have to look in the send queue as well, as it might not yet
-      // have been moved to the received queue. Note however that it must
-      // have been fully sent, so this is highly unlikely, but not impossible.
-      CONDITION_LOCKER(sendLocker, somethingToSend);
-
-      i = toSendByOpID.find(operationID);
-      if (i != toSendByOpID.end()) {
-        TRI_ASSERT(answer != nullptr);
-        ClusterCommOperation* op = *(i->second);
-        op->result.answer = std::move(answer);
-        op->result.answer_code = GeneralResponse::responseCode(
-            op->result.answer->header("x-arango-response-code"));
-        op->result.status = CL_COMM_RECEIVED;
-        if (nullptr != op->callback) {
-          if ((*op->callback)(&op->result)) {
-            // This is fully processed, so let's remove it from the queue:
-            QueueIterator q = i->second;
-            std::unique_ptr<ClusterCommOperation> o(op);
-            toSendByOpID.erase(i);
-            toSend.erase(q);
-            return std::string("");
-          }
-        }
-      } else {
-        // Nothing known about the request, get rid of it:
-        return std::string("operation was already dropped by sender");
-      }
-    }
-  }
-
-  // Finally tell the others:
-  somethingReceived.broadcast();
-  return std::string("");
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief move an operation from the send to the receive queue
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -944,7 +792,7 @@ void ClusterComm::cleanupAllQueues() {
 }
 
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
-  _cc = ClusterComm::instance();
+  _cc = ClusterComm::instance().get();
 }
 
 ClusterCommThread::~ClusterCommThread() { shutdown(); }
@@ -954,14 +802,15 @@ ClusterCommThread::~ClusterCommThread() { shutdown(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommThread::beginShutdown() {
+  // Note that this is called from the destructor of the ClusterComm singleton
+  // object. This means that our pointer _cc is still valid and the condition
+  // variable in it is still OK. However, this method is called from a 
+  // different thread than the ClusterCommThread. Therefore we can still 
+  // use the condition variable to wake up the ClusterCommThread.
   Thread::beginShutdown();
 
-  ClusterComm* cc = ClusterComm::instance();
-
-  if (cc != nullptr) {
-    CONDITION_LOCKER(guard, cc->somethingToSend);
-    guard.signal();
-  }
+  CONDITION_LOCKER(guard, _cc->somethingToSend);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1057,7 +906,11 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         // is in flight, this is possible, since we might have scheduled
         // a retry later than now and simply wait till then
         if (now < actionNeeded) {
-          usleep((actionNeeded - now) * 1000000);
+#ifdef _WIN32
+          usleep((unsigned long) ((actionNeeded - now) * 1000000));
+#else
+          usleep((useconds_t) ((actionNeeded - now) * 1000000));
+#endif
         }
         continue;
       }
@@ -1227,11 +1080,11 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 
   std::unordered_map<std::string, std::string> headersCopy(headerFields);
   if (destination.substr(0, 6) == "shard:") {
-    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    if (CollectionLockState::_noLockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
-      auto it = arangodb::Transaction::_makeNolockHeaders->find(result->shardID);
-      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      auto it = CollectionLockState::_noLockHeaders->find(result->shardID);
+      if (it != CollectionLockState::_noLockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found our shard\n";
         headersCopy["X-Arango-Nolock"] = result->shardID;
@@ -1270,6 +1123,19 @@ void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>*
   }
 }
 
+std::vector<communicator::Ticket> ClusterComm::activeServerTickets(std::vector<std::string> const& servers) {
+  std::vector<communicator::Ticket> tickets;
+  CONDITION_LOCKER(locker, somethingReceived);
+  for (auto const& it: responses) {
+    for (auto const& server: servers) {
+      if (it.second.result && it.second.result->serverID == server) {
+        tickets.push_back(it.first);
+      }
+    }
+  }
+  return tickets;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
 ////////////////////////////////////////////////////////////////////////////////
@@ -1277,18 +1143,10 @@ void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>*
 void ClusterCommThread::abortRequestsToFailedServers() {
   ClusterInfo* ci = ClusterInfo::instance();
   auto failedServers = ci->getFailedServers();
-  std::vector<std::string> failedServerEndpoints;
-  failedServerEndpoints.reserve(failedServers.size());
-
-  for (auto const& failedServer: failedServers) {
-    failedServerEndpoints.push_back(_cc->createCommunicatorDestination(ci->getServerEndpoint(failedServer), "/").url());
-  }
-
-  for (auto const& request: _cc->communicator()->requestsInProgress()) {
-    for (auto const& failedServerEndpoint: failedServerEndpoints) {
-      if (request->_destination.url().substr(0, failedServerEndpoint.length()) == failedServerEndpoint) {
-        _cc->communicator()->abortRequest(request->_ticketId);
-      }
+  if (failedServers.size() > 0) {
+    auto ticketIds = _cc->activeServerTickets(failedServers);
+    for (auto const& ticketId: ticketIds) {
+      _cc->communicator()->abortRequest(ticketId);
     }
   }
 }
@@ -1297,9 +1155,15 @@ void ClusterCommThread::run() {
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
 
   while (!isStopping()) {
-    abortRequestsToFailedServers();
-    _cc->communicator()->work_once();
-    _cc->communicator()->wait();
+    try {
+      abortRequestsToFailedServers();
+      _cc->communicator()->work_once();
+      _cc->communicator()->wait();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in ClusterCommThread: " << ex.what();
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in ClusterCommThread";
+    }
   }
   _cc->communicator()->abortRequests();
 

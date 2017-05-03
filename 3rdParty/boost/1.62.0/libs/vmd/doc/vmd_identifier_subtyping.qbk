@@ -1,0 +1,206 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_identifier_subtype Identifier subtypes]
+
+Identifiers are the low-level data types which macro programmers
+use to pass preprocessing data most often. As we have seen VMD
+has a system for registering and detecting identifiers so that
+they can be parsed as part of preprocessor data. This system also
+includes comparing identifiers for equality or inequality using
+BOOST_VMD_EQUAL/BOOST_VMD_NOT_EQUAL and matching identifiers
+using identifier modifiers in BOOST_VMD_IS_IDENTIFIER and
+BOOST_VMD_ELEM. Together these facilities provide a rich set
+of functionality for handling identifiers in macros.
+
+Both numbers and v-types are subtypes of identifiers, and can
+both be individually recognized as data types of their own or
+worked with as identifiers using the identifier facilities 
+already mentioned. Numbers, in particular, also have a rich set
+of functionality within the Boost PP library. As subtypes numbers
+and v-types can be used as filter modifiers and can be returned
+as specific types either when invoking BOOST_VMD_GET_TYPE
+or when using return type modifiers. Furthermore VMD recognizes
+their individual v-types, BOOST_VMD_TYPE_NUMBER and 
+BOOST_VMD_TYPE_TYPE, as VMD data when parsing sequences.
+
+It is possible for the end-user to define his own identifier subtype. 
+This is called a "user-defined subtype". Once a user-define subtype is
+created all the generic type facilities of VMD which subtypes such as
+a number or a v-type possess is automatically available for that 
+user-defined subtype.
+
+[heading Defining a subtype]
+
+In order to define a user-defined subtype a number of steps need to be followed.
+These steps will be explained in detail further below:
+
+# Register and pre-detect all identifiers of that subtype.
+# Register and pre-detect a v-type name for that subtype.
+# Subset register all identifiers of the subtype.
+# Subset register the v-type name for the subtype.
+
+When we do the above, it is best to put all the macros in a single
+header file and always include that header file when we work generically
+with our user-defined subtype.
+
+[heading Register and pre-detect all identifiers of that subtype]
+
+Registering and pre-detecting all of the identifiers of that subtype
+is exactly the same as registering and pre-detecting any identifier.
+
+Let's create some identifiers based for use in the mythical "udef" library.
+We will put all our macros in the header file udef_vmd_macros.hpp.
+
+We will need distinct names for the identifiers in our library, so we will
+append UDEF_ to our identifier names to make them unique. Our udef library
+deals in geometrical shapes so we will create a user-defined subtype which
+consists of identifiers for the various shapes our udef library can 
+manipulate in their macros. So our identifier registrations and pre-detections 
+placed in our header file will be:
+
+ #define BOOST_VMD_REGISTER_UDEF_CIRCLE (UDEF_CIRCLE)
+ #define BOOST_VMD_REGISTER_UDEF_SQUARE (UDEF_SQUARE)
+ #define BOOST_VMD_REGISTER_UDEF_TRIANGLE (UDEF_TRIANGLE)
+ #define BOOST_VMD_REGISTER_UDEF_HEXAGON (UDEF_HEXAGON)
+
+ #define BOOST_VMD_DETECT_UDEF_CIRCLE_UDEF_CIRCLE
+ #define BOOST_VMD_DETECT_UDEF_SQUARE_UDEF_SQUARE
+ #define BOOST_VMD_DETECT_UDEF_TRIANGLE_UDEF_TRIANGLE
+ #define BOOST_VMD_DETECT_UDEF_HEXAGON_UDEF_HEXAGON
+
+[heading Register and pre-detect a v-type name for that subtype]
+
+We need to create a unique v-type name for our user-defined subtype.
+The name does not have to begin with BOOST_VMD_TYPE_ but it should be
+unique. Since BOOST_VMD_TYPE_ is the common beginning of all v-types 
+we will use it for consistency but will append to it UDEF_SHAPES to
+give it a uniqueness which should not be duplicated:
+
+ #define BOOST_VMD_REGISTER_BOOST_VMD_TYPE_UDEF_SHAPES (BOOST_VMD_TYPE_UDEF_SHAPES)
+ 
+ #define BOOST_VMD_DETECT_BOOST_VMD_TYPE_UDEF_SHAPES_BOOST_VMD_TYPE_UDEF_SHAPES
+
+[heading Subtype register all identifiers of the subtype]
+
+The macro to register an identifier subset starts with BOOST_VMD_SUBTYPE_REGISTER_
+and you append to it each identifier in the subset. This is very much like the
+way you use the BOOST_VMD_REGISTER_ macro. The difference is that unlike the
+BOOST_VMD_REGISTER_ macro, which expands to a tuple whose single element is the
+identifier, the BOOST_VMD_SUBTYPE_REGISTER_ expands to a tuple of two elements
+where the first element is the subtype v-type and the second element is the identifier.
+
+For our udef user-defined subtype this would be:
+
+ #define BOOST_VMD_SUBTYPE_REGISTER_UDEF_CIRCLE (BOOST_VMD_TYPE_UDEF_SHAPES,UDEF_CIRCLE)
+ #define BOOST_VMD_SUBTYPE_REGISTER_UDEF_SQUARE (BOOST_VMD_TYPE_UDEF_SHAPES,UDEF_SQUARE)
+ #define BOOST_VMD_SUBTYPE_REGISTER_UDEF_TRIANGLE (BOOST_VMD_TYPE_UDEF_SHAPES,UDEF_TRIANGLE)
+ #define BOOST_VMD_SUBTYPE_REGISTER_UDEF_HEXAGON (BOOST_VMD_TYPE_UDEF_SHAPES,UDEF_HEXAGON)
+
+[heading Subtype register the v-type name for the subtype]
+
+Doing a subset register of the actual udef v-type is fairly easy once we understand
+how to register an identifier subset. The only particular thing to realize is
+that the type of any v-type is the v-type BOOST_VMD_TYPE_TYPE. So our subset
+register of our new v-type BOOST_VMD_TYPE_UDEF_SHAPES is:
+
+ #define BOOST_VMD_SUBTYPE_REGISTER_BOOST_VMD_TYPE_UDEF_SHAPES (BOOST_VMD_TYPE_TYPE,BOOST_VMD_TYPE_UDEF_SHAPES)
+ 
+[heading Using our identifier subset]
+
+Once we have added all of the above object-like macros for defining our user-defined
+subtype to the udef_vmd_macros.hpp header file we have a new data type which we can
+use generically just like we can use numbers or v-types generically. It is important
+to include the header udef_vmd_macros.hpp in some translation unit whenever we need
+the VMD functionality for our new data type. So in our examples we will assume that
+an '#include udef_vmd_macros.hpp' precedes each example.
+
+ #include <boost/vmd/get_type.hpp>
+ 
+ #define A_SEQUENCE UDEF_SQUARE
+ #define A_SEQUENCE2 217
+ #define A_SEQUENCE3 BOOST_VMD_TYPE_UDEF_SHAPES
+ #define A_SEQUENCE4 BOOST_VMD_TYPE_NUMBER
+ 
+ BOOST_VMD_GET_TYPE(A_SEQUENCE) will return 'BOOST_VMD_TYPE_UDEF_SHAPES'
+ BOOST_VMD_GET_TYPE(A_SEQUENCE2) will return 'BOOST_VMD_TYPE_NUMBER'
+ BOOST_VMD_GET_TYPE(A_SEQUENCE3) will return 'BOOST_VMD_TYPE_TYPE'
+ BOOST_VMD_GET_TYPE(A_SEQUENCE4) will return 'BOOST_VMD_TYPE_TYPE'
+ 
+Here we see that when we use our BOOST_VMD_GET_TYPE macro on a single-element
+sequence which is one of our user-defined subtype values we correctly get back
+our user-defined subtype's v-type, just like we do when we ask for the type of a number. Also
+when we use our BOOST_VMD_GET_TYPE macro on our user-defined subtype's v-type itself we correctly
+get back the type of all v-types, which is BOOST_VMD_TYPE_TYPE, just like we do
+when we ask for the type of the v-type of a number.
+
+ #include <boost/vmd/elem.hpp>
+ 
+ #define A_SEQUENCE5 (1,2) UDEF_TRIANGLE
+ 
+ BOOST_VMD_ELEM(1,A_SEQUENCE5,BOOST_VMD_RETURN_TYPE) will return '(BOOST_VMD_TYPE_UDEF_SHAPES,UDEF_TRIANGLE)'
+ BOOST_VMD_ELEM(0,A_SEQUENCE5,BOOST_VMD_RETURN_TYPE) will return '(BOOST_VMD_TYPE_TUPLE,(1,2))'
+ 
+Here we see that we can use the return type modifier to get back both the type
+and the value in a two-element tuple for our user-defined subtype just as we so
+for any other type.
+ 
+ #include <boost/vmd/equal.hpp>
+ 
+ #define A_SEQUENCE6 UDEF_CIRCLE
+ #define A_SEQUENCE7 168
+ 
+ BOOST_VMD_EQUAL(A_SEQUENCE6,UDEF_CIRCLE,BOOST_VMD_TYPE_UDEF_SHAPES) will return '1'
+ BOOST_VMD_EQUAL(A_SEQUENCE6,UDEF_CIRCLE,BOOST_VMD_TYPE_LIST) will return '0'
+ BOOST_VMD_EQUAL(A_SEQUENCE7,168,BOOST_VMD_TYPE_NUMBER) will return '1'
+ BOOST_VMD_EQUAL(A_SEQUENCE7,168,BOOST_VMD_TYPE_SEQ) will return '0'
+ 
+Here we can see that we can use the filter modifier with our user-defined subtype's v-type
+just as we can do with any other v-type, such as the number v-type.
+
+In all respects once we define our subtype and provide those definitions in
+a header file, our user-defined subtype acts like any other v-type in our system.
+Since VMD functionality is largely based on being able to recognize the type of
+data in macro input being able to define another 'type', as an identifier subtype, 
+which VMD understands has value for the macro programmer.
+
+[heading Uniqueness of identifier subtype values and v-type]
+
+When we define a new identifier subtype we need to be careful that
+the values of that subtype and its actual v-type are unique identifiers
+within any translation unit. This is the main difference between just
+defining identifiers and defining an identifier subtype.
+
+Recall that when we just register and pre-detect identifiers we will have
+no problems if the same identifiers already have been registered and pre-detected
+within the same translation unit. This is because we are just redefining the
+exact same macro if this is the case.
+
+But with identifier subtypes, when we use the BOOST_VMD_SUBTYPE_REGISTER_ macro
+to associate our subtype's v-type with our subtype identifiers, we will have
+problems if someone else has also defined an identifier subtype using the same
+identifiers as we use since we will be redefining the same object-like macro name
+with a different expansion. Even if someone else has registered/pre-detected an
+identifier we are using for out subtype without defining a subtype based on that
+identifier we will be causing a problem defining our subtype because VMD macros which
+generically return the type of a sequence or sequence element will return our
+subtype as the type rather than just BOOST_VMD_TYPE_IDENTIFIER which some programmer
+might expect.
+
+The gist of this is that if we define a user-defined subtype its identifiers need
+to be unique within a given translation unit, and yet unique names make it harder
+for an end-user to use macros more naturally. In our given example with the mythical
+udef library we used identifiers such as 'UDEF_CIRCLE' etc. instead of the more natural
+sounding CIRCLE. So with user-defined identifier subtypes we have a tradeoff; we need
+unique identifier names both for our subtype identifiers and the v-type for our
+subtype identifiers so as not to conflict with others who might be using identifier
+subtypes, but those unique names might make using macros less "natural" On the other
+hand, just registering/pre-detecting identifiers has no such problem. This is an
+issue of which any user, looking to create his own data type using VMD by defining
+user-defined subtypes, should be aware.
+
+[endsect]

@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1model_1_1d2" kind="namespace">
+    <compoundname>boost::geometry::model::d2</compoundname>
+    <innerclass refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy" prot="public">boost::geometry::model::d2::point_xy</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" line="29" column="1"/>
+  </compounddef>
+</doxygen>

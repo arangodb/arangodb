@@ -1,4 +1,5 @@
-!CHAPTER Durability 
+Durability
+==========
 
 Transactions are executed in main memory first until there is either a rollback
 or a commit. On rollback, no data will be written to disk, but the operations 

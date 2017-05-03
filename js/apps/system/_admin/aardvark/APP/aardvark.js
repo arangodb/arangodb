@@ -332,12 +332,18 @@ authRouter.get('/graph/:name', function (req, res) {
     ]
   };
 
-  // var traversal = require("@arangodb/graph/traversal");
-
   var graph = gm._graph(name);
 
   var verticesCollections = graph._vertexCollections();
-  var vertexName = verticesCollections[Math.floor(Math.random() * verticesCollections.length)].name();
+  if (!verticesCollections || verticesCollections.length === 0) {
+    res.throw('bad request', 'no vertex collections found for graph');
+  }
+  var vertexName;
+  try {
+    vertexName = verticesCollections[Math.floor(Math.random() * verticesCollections.length)].name();
+  } catch (err) {
+    res.throw('bad request', 'vertex collection of graph not found');
+  }
 
   var vertexCollections = [];
   _.each(graph._vertexCollections(), function (vertex) {
@@ -356,18 +362,29 @@ authRouter.get('/graph/:name', function (req, res) {
     res.throw('bad request', e.message, {cause: e});
   }
 
+  var multipleIds;
   if (config.nodeStart) {
-    try {
-      startVertex = db._document(config.nodeStart);
-    } catch (e) {
-      res.throw('bad request', e.message, {cause: e});
-    }
-
-    if (!startVertex) {
-      startVertex = db[vertexName].any();
+    if (config.nodeStart.indexOf(' ') > -1) {
+      multipleIds = config.nodeStart.split(' ');
+    } else {
+      try {
+        startVertex = db._document(config.nodeStart);
+      } catch (e) {
+        res.throw('bad request', e.message, {cause: e});
+      }
+      if (!startVertex) {
+        startVertex = db[vertexName].any();
+      }
     }
   } else {
     startVertex = db[vertexName].any();
+  }
+
+  var limit = 0;
+  if (config.limit !== undefined) {
+    if (config.limit.length > 0 && config.limit !== '0') {
+      limit = config.limit;
+    }
   }
 
   var toReturn;
@@ -379,25 +396,42 @@ authRouter.get('/graph/:name', function (req, res) {
         vertexCollections: vertexCollections
       }
     };
+    if (isEnterprise) {
+      if (graph.__isSmart) {
+        toReturn.settings.isSmart = graph.__isSmart;
+        toReturn.settings.smartGraphAttribute = graph.__smartGraphAttribute;
+      }
+    }
   } else {
     var aqlQuery;
+    var aqlQueries = [];
+
     if (config.query) {
       aqlQuery = config.query;
     } else {
-      var limit = 0;
-      if (config.limit !== undefined) {
-        if (config.limit.length > 0 && config.limit !== '0') {
-          limit = config.limit;
+      if (multipleIds) {
+        /* TODO: uncomment after #75 fix
+          aqlQuery =
+            'FOR x IN ' + JSON.stringify(multipleIds) + ' ' +
+            'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY x GRAPH "' + name + '"';
+        */
+        _.each(multipleIds, function (nodeid) {
+          aqlQuery =
+            'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + nodeid + '" GRAPH "' + name + '"';
+          if (limit !== 0) {
+            aqlQuery += ' LIMIT ' + limit;
+          }
+          aqlQuery += ' RETURN p';
+          aqlQueries.push(aqlQuery);
+        });
+      } else {
+        aqlQuery =
+          'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"';
+        if (limit !== 0) {
+          aqlQuery += ' LIMIT ' + limit;
         }
+        aqlQuery += ' RETURN p';
       }
-
-      aqlQuery =
-        'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"';
-
-      if (limit !== 0) {
-        aqlQuery += ' LIMIT ' + limit;
-      }
-      aqlQuery += ' RETURN p';
     }
 
     var getAttributeByKey = function (o, s) {
@@ -415,7 +449,56 @@ authRouter.get('/graph/:name', function (req, res) {
       return o;
     };
 
-    var cursor = AQL_EXECUTE(aqlQuery);
+    var cursor;
+    // get all nodes and edges, even if they are not connected
+    // atm there is no server side function, so we need to get all docs
+    // and edges of all related collections until the given limit is reached.
+    if (config.mode === 'all') {
+      var insertedEdges = 0;
+      var insertedNodes = 0;
+      var tmpEdges, tmpNodes;
+      cursor = {
+        json: [{
+          vertices: [],
+          edges: []
+        }]
+      };
+
+      // get all nodes
+      _.each(graph._vertexCollections(), function (node) {
+        if (insertedNodes < limit || limit === 0) {
+          tmpNodes = node.all().limit(limit).toArray();
+          _.each(tmpNodes, function (n) {
+            cursor.json[0].vertices.push(n);
+          });
+          insertedNodes += tmpNodes.length;
+        }
+      });
+      // get all edges
+      _.each(graph._edgeCollections(), function (edge) {
+        if (insertedEdges < limit || limit === 0) {
+          tmpEdges = edge.all().limit(limit).toArray();
+          _.each(tmpEdges, function (e) {
+            cursor.json[0].edges.push(e);
+          });
+          insertedEdges += tmpEdges.length;
+        }
+      });
+    } else {
+    // get all nodes and edges which are connected to the given start node
+      if (aqlQueries.length === 0) {
+        cursor = AQL_EXECUTE(aqlQuery);
+      } else {
+        var x;
+        cursor = AQL_EXECUTE(aqlQueries[0]);
+        for (var k = 1; k < aqlQueries.length; k++) {
+          x = AQL_EXECUTE(aqlQueries[k]);
+          _.each(x.json, function (val) {
+            cursor.json.push(val);
+          });
+        }
+      }
+    }
 
     var nodesObj = {};
     var nodesArr = [];
@@ -431,7 +514,6 @@ authRouter.get('/graph/:name', function (req, res) {
     _.each(cursor.json, function (obj) {
       var edgeLabel = '';
       var edgeObj;
-
       _.each(obj.edges, function (edge) {
         if (edge._to && edge._from) {
           if (config.edgeLabel && config.edgeLabel.length > 0) {
@@ -584,6 +666,11 @@ authRouter.get('/graph/:name', function (req, res) {
       if (config.nodeSizeByEdges === 'true') {
         // + 10 visual adjustment sigma
         node.size = nodeEdgesCount[node.id] + 10;
+
+        // if a node without edges is found, use def. size 10
+        if (Number.isNaN(node.size)) {
+          node.size = 10;
+        }
       }
       nodesArr.push(node);
     });
@@ -607,6 +694,12 @@ authRouter.get('/graph/:name', function (req, res) {
         startVertex: startVertex
       }
     };
+    if (isEnterprise) {
+      if (graph.__isSmart) {
+        toReturn.settings.isSmart = graph.__isSmart;
+        toReturn.settings.smartGraphAttribute = graph.__smartGraphAttribute;
+      }
+    }
   }
 
   res.json(toReturn);

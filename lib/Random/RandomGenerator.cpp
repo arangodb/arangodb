@@ -32,6 +32,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/Thread.h"
 #include "Basics/hashes.h"
 #include "Logger/Logger.h"
@@ -157,13 +158,13 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 
   while (r >= g) {
     if (++count >= MAX_COUNT) {
-      LOG(ERR) << "cannot generate small random number after " << count
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot generate small random number after " << count
                << " tries";
       r %= g;
       continue;
     }
 
-    LOG(TRACE) << "random number too large, trying again";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "random number too large, trying again";
     r = random();
   }
 
@@ -183,7 +184,7 @@ template <int N>
 class RandomDeviceDirect : public RandomDevice {
  public:
   explicit RandomDeviceDirect(std::string const& path) : fd(-1), pos(0) {
-    fd = TRI_OPEN(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_TRACKED_OPEN_FILE(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       std::string message("cannot open random source '" + path + "'");
@@ -195,7 +196,7 @@ class RandomDeviceDirect : public RandomDevice {
 
   ~RandomDeviceDirect() {
     if (fd >= 0) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
   }
 
@@ -217,10 +218,10 @@ class RandomDeviceDirect : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
 
       if (r == 0) {
-        LOG(FATAL) << "read on random device failed: nothing read";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: nothing read";
         FATAL_ERROR_EXIT();
       } else if (r < 0) {
-        LOG(FATAL) << "read on random device failed: " << strerror(errno);
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
 
@@ -252,7 +253,7 @@ class RandomDeviceCombined : public RandomDevice {
  public:
   explicit RandomDeviceCombined(std::string const& path)
       : fd(-1), pos(0), rseed(0) {
-    fd = TRI_OPEN(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_TRACKED_OPEN_FILE(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       std::string message("cannot open random source '" + path + "'");
@@ -279,7 +280,7 @@ class RandomDeviceCombined : public RandomDevice {
 
   ~RandomDeviceCombined() {
     if (fd >= 0) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
   }
 
@@ -300,14 +301,14 @@ class RandomDeviceCombined : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
 
       if (r == 0) {
-        LOG(FATAL) << "read on random device failed: nothing read";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: nothing read";
         FATAL_ERROR_EXIT();
       } else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-        LOG(INFO) << "not enough entropy (got " << (sizeof(buffer) - n)
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "not enough entropy (got " << (sizeof(buffer) - n)
                   << "), switching to pseudo-random";
         break;
       } else if (r < 0) {
-        LOG(FATAL) << "read on random device failed: " << strerror(errno);
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
 
@@ -316,7 +317,7 @@ class RandomDeviceCombined : public RandomDevice {
 
       rseed = buffer[0];
 
-      LOG(TRACE) << "using seed " << (long unsigned int)rseed;
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using seed " << rseed;
     }
 
     if (0 < n) {
@@ -354,6 +355,7 @@ class RandomDeviceMersenne : public RandomDevice {
       : engine(RandomDevice::seed()) {}
 
   uint32_t random() { return engine(); }
+  void seed(uint64_t seed) { engine.seed(static_cast<decltype(engine)::result_type>(seed)); }
 
   std::mt19937 engine;
 };
@@ -402,7 +404,7 @@ class RandomDeviceWin32 : public RandomDevice {
     // fill the buffer with random characters
     int result = CryptGenRandom(cryptoHandle, n, ptr);
     if (result == 0) {
-      LOG(FATAL) << "read on random device failed: nothing read";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: nothing read";
       FATAL_ERROR_EXIT();
     }
     pos = 0;
@@ -468,8 +470,11 @@ void RandomGenerator::initialize(RandomType type) {
 void RandomGenerator::shutdown() { _device.reset(nullptr); }
 
 int16_t RandomGenerator::interval(int16_t left, int16_t right) {
-  return static_cast<int16_t>(
+  uint16_t value = static_cast<int16_t>(
       interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
+
+  TRI_ASSERT(value >= left && value <= right);
+  return value;
 }
 
 int32_t RandomGenerator::interval(int32_t left, int32_t right) {
@@ -480,7 +485,9 @@ int32_t RandomGenerator::interval(int32_t left, int32_t right) {
                                    "random generator not initialized");
   }
 
-  return _device->interval(left, right);
+  int32_t value = _device->interval(left, right);
+  TRI_ASSERT(value >= left && value <= right);
+  return value;
 }
 
 int64_t RandomGenerator::interval(int64_t left, int64_t right) {
@@ -488,11 +495,15 @@ int64_t RandomGenerator::interval(int64_t left, int64_t right) {
     return left;
   }
 
+  int64_t value;
+
   if (left == INT64_MIN && right == INT64_MAX) {
     uint64_t r1 = interval(UINT32_MAX);
     uint64_t r2 = interval(UINT32_MAX);
 
-    return static_cast<int64_t>((r1 << 32) | r2);
+    value = static_cast<int64_t>((r1 << 32) | r2);
+    TRI_ASSERT(value >= left && value <= right);
+    return value;
   }
 
   if (left < 0) {
@@ -500,7 +511,9 @@ int64_t RandomGenerator::interval(int64_t left, int64_t right) {
       uint64_t high = static_cast<uint64_t>(-left);
       uint64_t low = static_cast<uint64_t>(-right);
       uint64_t d = high - low;
-      return left + static_cast<int64_t>(interval(d));
+      value = left + static_cast<int64_t>(interval(d));
+      TRI_ASSERT(value >= left && value <= right);
+      return value;
     }
 
     uint64_t low = static_cast<uint64_t>(-left);
@@ -508,20 +521,26 @@ int64_t RandomGenerator::interval(int64_t left, int64_t right) {
     uint64_t dRandom = interval(d);
 
     if (dRandom < low) {
-      return -1 - static_cast<int64_t>(dRandom);
+      value = -1 - static_cast<int64_t>(dRandom);
     } else {
-      return static_cast<int64_t>(dRandom - low);
+      value = static_cast<int64_t>(dRandom - low);
     }
+    TRI_ASSERT(value >= left && value <= right);
+    return value;
   } else {
     uint64_t high = static_cast<uint64_t>(right);
     uint64_t low = static_cast<uint64_t>(left);
     uint64_t d = high - low;
-    return left + static_cast<int64_t>(interval(d));
+    value = left + static_cast<int64_t>(interval(d));
+    TRI_ASSERT(value >= left && value <= right);
+    return value;
   }
 }
 
 uint16_t RandomGenerator::interval(uint16_t right) {
-  return static_cast<uint16_t>(interval(static_cast<uint32_t>(right)));
+  uint16_t value = static_cast<uint16_t>(interval(static_cast<uint32_t>(right)));
+  TRI_ASSERT(value <= right);
+  return value;
 }
 
 uint32_t RandomGenerator::interval(uint32_t right) {
@@ -531,32 +550,49 @@ uint32_t RandomGenerator::interval(uint32_t right) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "random generator not initialized");
   }
-
-  return _device->interval(static_cast<uint32_t>(0), right);
+  
+  uint32_t value = _device->interval(static_cast<uint32_t>(0), right);
+  TRI_ASSERT(value <= right);
+  return value;
 }
 
 uint64_t RandomGenerator::interval(uint64_t right) {
   if (right == 0) {
     return 0;
   }
+  uint64_t value;
 
   if (right == UINT64_MAX) {
     uint64_t r1 = interval(UINT32_MAX);
     uint64_t r2 = interval(UINT32_MAX);
 
-    return (r1 << 32) | r2;
-  }
-
-  uint32_t high = static_cast<uint32_t>(right >> 32);
-  uint32_t highMax = (static_cast<uint64_t>(high)) << 32;
-  uint64_t highRandom = (static_cast<uint64_t>(interval(high))) << 32;
-
-  if (highRandom == highMax) {
-    uint32_t low = static_cast<uint32_t>(right - highMax);
-    uint64_t lowRandom = static_cast<uint64_t>(interval(low));
-    return highRandom | lowRandom;
+    value = (r1 << 32) | r2;
   } else {
-    uint64_t lowRandom = static_cast<uint64_t>(interval(UINT32_MAX));
-    return highRandom | lowRandom;
+    uint32_t high = static_cast<uint32_t>(right >> 32);
+    uint64_t highMax = (static_cast<uint64_t>(high)) << 32;
+    uint64_t highRandom = (static_cast<uint64_t>(interval(high))) << 32;
+
+    if (highRandom == highMax) {
+      uint32_t low = static_cast<uint32_t>(right - highMax);
+      uint64_t lowRandom = static_cast<uint64_t>(interval(low));
+      value = highRandom | lowRandom;
+    } else {
+      uint64_t lowRandom = static_cast<uint64_t>(interval(UINT32_MAX));
+      value = highRandom | lowRandom;
+    }
   }
+  TRI_ASSERT(value <= right);
+  return value;
+}
+
+void RandomGenerator::seed(uint64_t seed) {
+  MUTEX_LOCKER(locker, _lock);
+  if (!_device) {
+    throw std::runtime_error("Random device not yet initialized!");
+  }
+  if(RandomDeviceMersenne* dev = dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
+    dev->seed(seed);
+    return;
+  }
+  throw std::runtime_error("Random device is not mersenne and cannot be seeded!");
 }

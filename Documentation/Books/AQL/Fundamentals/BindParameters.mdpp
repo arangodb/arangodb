@@ -1,4 +1,5 @@
-!CHAPTER Bind parameters
+Bind parameters
+===============
 
 AQL supports the usage of bind parameters, thus allowing to separate the query
 text from literal values used in the query. It is good practice to separate the
@@ -111,6 +112,8 @@ FOR u IN @@collection
 ```json
 { "@collection": "myCollection" }
 ```
+
+Keywords can't be replaced by bind-values; i.e. `FOR`, `FILTER`, `IN`, `INBOUND` or function calls.
 
 Specific information about parameters binding can also be found in:
 

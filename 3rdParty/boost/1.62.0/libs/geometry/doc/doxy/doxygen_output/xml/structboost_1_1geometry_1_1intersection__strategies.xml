@@ -1,0 +1,151 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1intersection__strategies" kind="struct" prot="public">
+    <compoundname>boost::geometry::intersection_strategies</compoundname>
+    <includes local="no">intersection_strategies.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Tag</type>
+      </param>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>typename Geometry2</type>
+      </param>
+      <param>
+        <type>typename IntersectionPoint</type>
+      </param>
+      <param>
+        <type>typename RobustPolicy</type>
+      </param>
+      <param>
+        <type>typename CalculationType</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1intersection__strategies_1a04b19c5f14da54554c00ee8c54e76dfd" prot="private" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1segment__intersection__points" kindref="compound">segment_intersection_points</ref>&lt; IntersectionPoint, typename geometry::segment_ratio_type&lt; IntersectionPoint, RobustPolicy &gt;::type &gt;</type>
+        <definition>typedef segment_intersection_points&lt; IntersectionPoint, typename geometry::segment_ratio_type &lt; IntersectionPoint, RobustPolicy &gt;::type &gt; boost::geometry::intersection_strategies&lt; Tag, Geometry1, Geometry2, IntersectionPoint, RobustPolicy, CalculationType &gt;::ip_type</definition>
+        <argsstring></argsstring>
+        <name>ip_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" line="70" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" bodystart="70" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1intersection__strategies_1a6f597f3c1bfc2a3a4989f61c5986201f" prot="private" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1point__type" kindref="compound">geometry::point_type</ref>&lt; Geometry1 &gt;::type</type>
+        <definition>typedef geometry::point_type&lt;Geometry1&gt;::type boost::geometry::intersection_strategies&lt; Tag, Geometry1, Geometry2, IntersectionPoint, RobustPolicy, CalculationType &gt;::point1_type</definition>
+        <argsstring></argsstring>
+        <name>point1_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" line="58" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" bodystart="58" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1intersection__strategies_1aa6cdc6b42a62fdcf8f56445daf9241d1" prot="private" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1point__type" kindref="compound">geometry::point_type</ref>&lt; Geometry2 &gt;::type</type>
+        <definition>typedef geometry::point_type&lt;Geometry2&gt;::type boost::geometry::intersection_strategies&lt; Tag, Geometry1, Geometry2, IntersectionPoint, RobustPolicy, CalculationType &gt;::point2_type</definition>
+        <argsstring></argsstring>
+        <name>point2_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" line="59" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1intersection__strategies_1acd48856c1769149e4393b990fd79ff37" prot="private" static="no">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1referring__segment" kindref="compound">model::referring_segment</ref>&lt; point1_type const  &gt;</type>
+        <definition>typedef model::referring_segment&lt;point1_type const&gt; boost::geometry::intersection_strategies&lt; Tag, Geometry1, Geometry2, IntersectionPoint, RobustPolicy, CalculationType &gt;::segment1_type</definition>
+        <argsstring></argsstring>
+        <name>segment1_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" line="60" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" bodystart="60" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1intersection__strategies_1a53026f792ec4a12fad7077e334675ceb" prot="private" static="no">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1referring__segment" kindref="compound">model::referring_segment</ref>&lt; point2_type const  &gt;</type>
+        <definition>typedef model::referring_segment&lt;point2_type const&gt; boost::geometry::intersection_strategies&lt; Tag, Geometry1, Geometry2, IntersectionPoint, RobustPolicy, CalculationType &gt;::segment2_type</definition>
+        <argsstring></argsstring>
+        <name>segment2_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" line="61" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" bodystart="61" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1intersection__strategies_1a3429f408d59654fc5efb0ea3e86d878a" prot="public" static="no">
+        <type>RobustPolicy</type>
+        <definition>typedef RobustPolicy boost::geometry::intersection_strategies&lt; Tag, Geometry1, Geometry2, IntersectionPoint, RobustPolicy, CalculationType &gt;::rescale_policy_type</definition>
+        <argsstring></argsstring>
+        <name>rescale_policy_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" line="93" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" bodystart="93" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1intersection__strategies_1a6aa7bbaf644af28cf5eea74d642148d9" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1services_1_1default__strategy" kindref="compound">strategy::intersection::services::default_strategy</ref>&lt; Tag, <ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled" kindref="compound">policies::relate::segments_tupled</ref>&lt; <ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__intersection__points" kindref="compound">policies::relate::segments_intersection_points</ref>&lt; <ref refid="structboost_1_1geometry_1_1segment__intersection__points" kindref="compound">ip_type</ref> &gt;, <ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction" kindref="compound">policies::relate::segments_direction</ref> &gt;, CalculationType &gt;::type</type>
+        <definition>typedef strategy::intersection::services::default_strategy&lt; Tag, policies::relate::segments_tupled &lt; policies::relate::segments_intersection_points &lt; ip_type &gt; , policies::relate::segments_direction &gt;, CalculationType &gt;::type boost::geometry::intersection_strategies&lt; Tag, Geometry1, Geometry2, IntersectionPoint, RobustPolicy, CalculationType &gt;::segment_intersection_strategy_type</definition>
+        <argsstring></argsstring>
+        <name>segment_intersection_strategy_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" line="85" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" bodystart="85" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1intersection__strategies_1a032cc29e495da3226e3bac03e4b7d20d" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1services_1_1default__strategy" kindref="compound">strategy::side::services::default_strategy</ref>&lt; Tag, CalculationType &gt;::type</type>
+        <definition>typedef strategy::side::services::default_strategy&lt; Tag, CalculationType &gt;::type boost::geometry::intersection_strategies&lt; Tag, Geometry1, Geometry2, IntersectionPoint, RobustPolicy, CalculationType &gt;::side_strategy_type</definition>
+        <argsstring></argsstring>
+        <name>side_strategy_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" line="91" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" bodystart="91" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>&quot;compound strategy&quot;, containing a segment-intersection-strategy and a side-strategy </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" line="54" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_strategies.hpp" bodystart="53" bodyend="94"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1intersection__strategies_1a04b19c5f14da54554c00ee8c54e76dfd" prot="private" virt="non-virtual"><scope>boost::geometry::intersection_strategies</scope><name>ip_type</name></member>
+      <member refid="structboost_1_1geometry_1_1intersection__strategies_1a6f597f3c1bfc2a3a4989f61c5986201f" prot="private" virt="non-virtual"><scope>boost::geometry::intersection_strategies</scope><name>point1_type</name></member>
+      <member refid="structboost_1_1geometry_1_1intersection__strategies_1aa6cdc6b42a62fdcf8f56445daf9241d1" prot="private" virt="non-virtual"><scope>boost::geometry::intersection_strategies</scope><name>point2_type</name></member>
+      <member refid="structboost_1_1geometry_1_1intersection__strategies_1a3429f408d59654fc5efb0ea3e86d878a" prot="public" virt="non-virtual"><scope>boost::geometry::intersection_strategies</scope><name>rescale_policy_type</name></member>
+      <member refid="structboost_1_1geometry_1_1intersection__strategies_1acd48856c1769149e4393b990fd79ff37" prot="private" virt="non-virtual"><scope>boost::geometry::intersection_strategies</scope><name>segment1_type</name></member>
+      <member refid="structboost_1_1geometry_1_1intersection__strategies_1a53026f792ec4a12fad7077e334675ceb" prot="private" virt="non-virtual"><scope>boost::geometry::intersection_strategies</scope><name>segment2_type</name></member>
+      <member refid="structboost_1_1geometry_1_1intersection__strategies_1a6aa7bbaf644af28cf5eea74d642148d9" prot="public" virt="non-virtual"><scope>boost::geometry::intersection_strategies</scope><name>segment_intersection_strategy_type</name></member>
+      <member refid="structboost_1_1geometry_1_1intersection__strategies_1a032cc29e495da3226e3bac03e4b7d20d" prot="public" virt="non-virtual"><scope>boost::geometry::intersection_strategies</scope><name>side_strategy_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -81,7 +81,16 @@ struct Option {
       std::cout << "  " << pad(nameWithType(), ow) << "   ";
 
       std::string value = description;
-      value += " (default: " + parameter->valueString() + ")";
+      if (obsolete) {
+        value += " (obsolete option)";
+      } else {
+        std::string description = parameter->description();
+        if (!description.empty()) {
+          value.append(". ");
+          value.append(description);
+        }
+        value += " (default: " + parameter->valueString() + ")";
+      }
       auto parts = wordwrap(value, tw - ow - 6);
       size_t const n = parts.size();
       for (size_t i = 0; i < n; ++i) {

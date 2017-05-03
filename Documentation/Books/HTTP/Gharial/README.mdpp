@@ -1,4 +1,5 @@
-!CHAPTER General Graphs
+General Graphs
+==============
 
 This chapter describes the REST interface for the [multi-collection graph module](../../Manual/Graphs/index.html).
 It allows you to define a graph that is spread across several edge and document collections.

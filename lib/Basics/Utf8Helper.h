@@ -52,9 +52,9 @@ class Utf8Helper {
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   //////////////////////////////////////////////////////////////////////////////
 
-  Utf8Helper(std::string const& lang, char const* binaryPath);
+  Utf8Helper(std::string const& lang, void *icuDataPtr);
 
-  explicit Utf8Helper(char const* binaryPath);
+  explicit Utf8Helper(void *icuDataPtr);
 
   ~Utf8Helper();
 
@@ -89,9 +89,10 @@ class Utf8Helper {
   /// @brief set collator by language
   /// @param lang   Lowercase two-letter or three-letter ISO-639 code.
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
+  /// @param icuDataPointer data file to be loaded by the application
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string const& lang, char const* binaryPath);
+  bool setCollatorLanguage(std::string const& lang, void* icuDataPointer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collator language
@@ -149,7 +150,12 @@ class Utf8Helper {
   /// @brief whether or not value matches a regex
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matches(RegexMatcher*, char const*, size_t, bool partial, bool& error);
+  bool matches(RegexMatcher*, char const* pattern, size_t patternLength, 
+               bool partial, bool& error);
+
+  std::string replace(RegexMatcher*, char const* pattern, size_t patternLength,
+                      char const* replacement, size_t replacementLength,
+                      bool partial, bool& error);
 
  private:
   Collator* _coll;

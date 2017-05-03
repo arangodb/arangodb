@@ -50,6 +50,16 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
+
+  // URL parameter names
+  static std::string const IgnoreRevsString;
+  static std::string const IsRestoreString;
+  static std::string const KeepNullString;
+  static std::string const MergeObjectsString;
+  static std::string const ReturnNewString;
+  static std::string const ReturnOldString;
+  static std::string const SilentString;
+  static std::string const WaitForSyncString;
  
   // database and collection names 
   static std::string const SystemDatabase;
@@ -74,6 +84,7 @@ class StaticStrings {
   static std::string const Code;
   static std::string const Connection;
   static std::string const ContentEncoding;
+  static std::string const ContentLength;
   static std::string const ContentTypeHeader;
   static std::string const Coordinator;
   static std::string const CorsMethods;
@@ -89,11 +100,13 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const Location;
   static std::string const MultiPartContentType;
+  static std::string const NoSniff;
   static std::string const Origin;
   static std::string const Queue;
   static std::string const Server;
   static std::string const StartThread;
   static std::string const WwwAuthenticate;
+  static std::string const XContentTypeOptions;
 
   // mime types
   static std::string const MimeTypeJson;

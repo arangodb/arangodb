@@ -1,6 +1,8 @@
-!CHAPTER Conventions
+Conventions
+===========
 
-!SECTION Naming
+Naming
+------
 
 Built-in AQL functions that are shipped with ArangoDB reside in the namespace
 *_aql*, which is also the default namespace to look in if an unqualified
@@ -21,7 +23,8 @@ fail.
 
 User function names are case-insensitive like all function names in AQL.
 
-!SECTION Variables and side effects
+Variables and side effects
+--------------------------
 
 User functions can take any number of input arguments and should
 provide one result via a `return` statement. User functions should be kept 
@@ -70,7 +73,8 @@ function (values) {
 }
 ```
 
-!SECTION Input parameters
+Input parameters
+----------------
 
 In order to return a result, a user function should use a `return` instruction 
 rather than modifying its input parameters.
@@ -82,7 +86,8 @@ However, user functions should not modify input parameters if the parameters are
 arrays or objects and as such passed by reference, as that may modify variables 
 and state outside of the user function itself. 
 
-!SECTION Return values
+Return values
+-------------
 
 User functions must only return primitive types (i.e. *null*, boolean
 values, numeric values, string values) or aggregate types (arrays or
@@ -90,7 +95,8 @@ objects) composed of these types.
 Returning any other JavaScript object type (Function, Date, RegExp etc.) from
 a user function may lead to undefined behavior and should be avoided.
 
-!SECTION Enforcing strict mode
+Enforcing strict mode
+---------------------
 
 By default, any user function code will be executed in *sloppy mode*, not
 *strict* or *strong mode*. In order to make a user function run in strict

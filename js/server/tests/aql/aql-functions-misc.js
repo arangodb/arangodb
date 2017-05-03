@@ -470,6 +470,18 @@ function ahuacatlMiscFunctionsTestSuite () {
       
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"thefoxdoesnotexist/99999999999\")");
       assertEqual(expected, actual);
+      
+      actual = getQueryResults("RETURN DOCUMENT({}, 'foo')");
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("RETURN DOCUMENT({}, {})");
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("RETURN DOCUMENT(true, 'foo')");
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("RETURN DOCUMENT('foo', {})");
+      assertEqual(expected, actual);
 
       internal.db._drop(cn);
     },

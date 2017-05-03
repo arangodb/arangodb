@@ -1,4 +1,5 @@
-!CHAPTER Session Middleware
+Session Middleware
+==================
 
 `const sessionMiddleware = require('@arangodb/foxx/sessions');`
 
@@ -30,7 +31,8 @@ router.post('/login', function (req, res) {
 .body(['text/plain'], 'Username');
 ```
 
-!SECTION Creating a session middleware
+Creating a session middleware
+-----------------------------
 
 `sessionMiddleware(options): Middleware`
 

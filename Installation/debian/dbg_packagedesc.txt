@@ -1,0 +1,10 @@
+stand-alone shell
+ A distributed free and open-source database with a flexible data model for documents,
+ graphs, and key-values. Build high performance applications using a convenient
+ SQL-like query language or JavaScript extensions.
+ Debug symbol file for development.
+ .
+ Copyright: 2014-2016 by ArangoDB GmbH
+ Copyright: 2012-2013 by triAGENS GmbH
+ ArangoDB Software
+ www.arangodb.com

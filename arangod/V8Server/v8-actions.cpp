@@ -22,12 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
-#include "V8/v8-vpack.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "Basics/MutexLocker.h"
@@ -44,10 +38,10 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "RestServer/VocbaseContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
@@ -55,6 +49,12 @@
 #include "VocBase/vocbase.h"
 
 #include <iostream>
+
+#include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Validator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -68,10 +68,21 @@ static TRI_action_result_t ExecuteActionVocbase(
 /// @brief action description for V8
 ////////////////////////////////////////////////////////////////////////////////
 
-class v8_action_t : public TRI_action_t {
+class v8_action_t final : public TRI_action_t {
  public:
-  v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {
-    _type = "JAVASCRIPT";
+  v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {}
+
+  void visit(void* data) override {
+    v8::Isolate* isolate = static_cast<v8::Isolate*>(data);
+    
+    WRITE_LOCKER(writeLocker, _callbacksLock);
+
+    auto it = _callbacks.find(isolate);
+
+    if (it != _callbacks.end()) {
+      (*it).second.Reset(); // dispose persistent
+      _callbacks.erase(it); // remove entry from map
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -83,11 +94,11 @@ class v8_action_t : public TRI_action_t {
 
     auto it = _callbacks.find(isolate);
 
-    if (it != _callbacks.end()) {
-      it->second.Reset();
+    if (it == _callbacks.end()) {
+      _callbacks[isolate].Reset(isolate, callback);
+    } else {
+      LOG_TOPIC(ERR, Logger::V8) << "cannot recreate callback for '" << _url << "'";
     }
-
-    _callbacks[isolate].Reset(isolate, callback);
   }
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
@@ -131,7 +142,7 @@ class v8_action_t : public TRI_action_t {
       auto it = _callbacks.find(context->_isolate);
 
       if (it == _callbacks.end()) {
-        LOG(WARN) << "no callback function for JavaScript action '" << _url
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "no callback function for JavaScript action '" << _url
                   << "'";
 
         result.isValid = true;
@@ -154,6 +165,10 @@ class v8_action_t : public TRI_action_t {
       v8::HandleScope scope(context->_isolate);
       auto localFunction =
           v8::Local<v8::Function>::New(context->_isolate, it->second);
+
+      // we can release the lock here already as no other threads will
+      // work in our isolate at this time
+      readLocker.unlock();
 
       try {
         result = ExecuteActionVocbase(vocbase, context->_isolate, this,
@@ -196,7 +211,7 @@ class v8_action_t : public TRI_action_t {
   /// @brief callback dictionary
   //////////////////////////////////////////////////////////////////////////////
 
-  std::map<v8::Isolate*, v8::Persistent<v8::Function>> _callbacks;
+  std::unordered_map<v8::Isolate*, v8::Persistent<v8::Function>> _callbacks;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for the callback dictionary
@@ -403,60 +418,53 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(RequestTypeKey);
   TRI_GET_GLOBAL_STRING(RequestBodyKey);
 
-  auto set_request_body_json_or_vpack = [&]() {
+  auto setRequestBodyJsonOrVPack = [&]() {
     if (rest::ContentType::JSON == request->contentType()) {
       auto httpreq = dynamic_cast<HttpRequest*>(request);
       if (httpreq == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
       }
       std::string const& body = httpreq->body();
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(body));
       headers["content-length"] = StringUtils::itoa(request->contentLength());
     } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to Javascript
-      // should we convert and validate here in a central place?
-      // should the work be done in javascript
       // FIXME not every VPack can be converted to JSON
       VPackSlice slice = request->payload();
-      VPackValidator validator;
-      validator.validate(slice.start(), slice.byteSize());
       std::string jsonString = slice.toJson();
 
-      LOG_TOPIC(DEBUG, Logger::REQUESTS) << "json handed into v8 request:\n"
-                                         << jsonString;
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "json handed into v8 request:\n"
+          << jsonString;
 
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(jsonString));
       headers["content-length"] = StringUtils::itoa(jsonString.size());
+      headers["content-type"] = StaticStrings::MimeTypeJson;
     } else {
       throw std::logic_error("unhandled request type");
     }
   };
-
-  for (auto const& it : headers) {
-    headerFields->ForceSet(TRI_V8_STD_STRING(it.first),
-                           TRI_V8_STD_STRING(it.second));
-  }
 
   // copy request type
   switch (request->requestType()) {
     case rest::RequestType::POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
       req->ForceSet(RequestTypeKey, PostConstant);
-      set_request_body_json_or_vpack();
+      setRequestBodyJsonOrVPack();
       break;
     }
 
     case rest::RequestType::PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
       req->ForceSet(RequestTypeKey, PutConstant);
-      set_request_body_json_or_vpack();
+      setRequestBodyJsonOrVPack();
       break;
     }
 
     case rest::RequestType::PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
       req->ForceSet(RequestTypeKey, PatchConstant);
-      set_request_body_json_or_vpack();
+      setRequestBodyJsonOrVPack();
       break;
     }
     case rest::RequestType::OPTIONS: {
@@ -480,6 +488,11 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
         req->ForceSet(RequestTypeKey, GetConstant);
         break;
     }
+  }
+  
+  for (auto const& it : headers) {
+    headerFields->ForceSet(TRI_V8_STD_STRING(it.first),
+                           TRI_V8_STD_STRING(it.second));
   }
 
   // copy request parameter
@@ -515,7 +528,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(request);
     if (httpRequest == nullptr) {
       // maybe we can just continue
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
     } else {
       for (auto& it : httpRequest->cookieValues()) {
         cookiesObject->ForceSet(TRI_V8_STD_STRING(it.first),
@@ -535,8 +548,11 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
 // TODO this needs to be generalized
 static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
+                            GeneralRequest* request,
                             v8::Handle<v8::Object> const res,
                             GeneralResponse* response) {
+  TRI_ASSERT(request != nullptr);
+
   rest::ResponseCode code = rest::ResponseCode::OK;
 
   using arangodb::Endpoint;
@@ -552,16 +568,21 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
   // string should not be used
   std::string contentType = "application/json";
-  bool jsonContent = true;
+  bool autoContent = true;
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {
     contentType = TRI_ObjectToString(res->Get(ContentTypeKey));
+
     if (contentType.find("application/json") == std::string::npos) {
-      jsonContent = false;
+      autoContent = false;
     }
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP:
-        response->setContentType(contentType);
+        if (autoContent) {
+          response->setContentType(rest::ContentType::JSON);
+        } else {
+          response->setContentType(contentType);
+        }
         break;
 
       case Endpoint::TransportType::VPP:
@@ -633,6 +654,17 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             auto obj = b.As<v8::Object>();
             httpResponse->body().appendText(V8Buffer::data(obj),
                                             V8Buffer::length(obj));
+          } else if (autoContent && 
+                     request->contentTypeResponse() == rest::ContentType::VPACK) {
+            // use velocypack
+            try {
+              std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(TRI_ObjectToString(res->Get(BodyKey))); 
+              httpResponse->setContentType(rest::ContentType::VPACK);
+              httpResponse->setPayload(builder->slice(), true);
+            } catch (...) {
+              httpResponse->body().appendText(
+                  TRI_ObjectToString(res->Get(BodyKey)));
+            }
           } else {
             // treat body as a string
             httpResponse->body().appendText(
@@ -645,7 +677,6 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         VPackBuilder builder;
 
         v8::Handle<v8::Value> v8Body = res->Get(BodyKey);
-        // LOG(ERR) << v8Body->IsString();
         std::string out;
 
         // decode and set out
@@ -672,7 +703,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
         // out is not set
         if (out.empty()) {
-          if (jsonContent && !V8Buffer::hasInstance(isolate, v8Body)) {
+          if (autoContent && !V8Buffer::hasInstance(isolate, v8Body)) {
             if (v8Body->IsString()) {
               out = TRI_ObjectToString(res->Get(BodyKey));  // should get moved
             } else {
@@ -693,7 +724,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         // there is a text body
         if (!out.empty()) {
           bool gotJson = false;
-          if (jsonContent) {  // the text body could contain an object
+          if (autoContent) {  // the text body could contain an object
             try {
               VPackParser parser(builder);  // add json as vpack to the builder
               parser.parse(out, false);
@@ -733,7 +764,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
 
     if (content == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FILE_NOT_FOUND, std::string("unable to read file '") + *filename + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_FILE_NOT_FOUND,
+          std::string("unable to read file '") + *filename + "'");
     }
 
     switch (response->transportType()) {
@@ -745,7 +778,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
       case Endpoint::TransportType::VPP: {
         VPackBuilder builder;
-        builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
+        builder.add(
+            VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
         TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
         // create vpack from file
@@ -828,7 +862,7 @@ static TRI_action_result_t ExecuteActionVocbase(
   v8::TryCatch tryCatch;
 
   if (response == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
 
   TRI_GET_GLOBALS();
@@ -837,21 +871,29 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   // copy suffix, which comes from the action:
   std::string path = request->prefix();
-  v8::Handle<v8::Array> suffixArray = v8::Array::New(isolate);
-  std::vector<std::string> const& suffix = request->suffix();
+  std::vector<std::string> const& suffixes = request->decodedSuffixes();
+  std::vector<std::string> const& rawSuffixes = request->suffixes();
 
   uint32_t index = 0;
   char const* sep = "";
 
-  for (size_t s = action->_urlParts; s < suffix.size(); ++s) {
-    suffixArray->Set(index++, TRI_V8_STD_STRING(suffix[s]));
+  size_t const n = suffixes.size();
+  v8::Handle<v8::Array> suffixArray = v8::Array::New(isolate, static_cast<int>(n - action->_urlParts));
+  v8::Handle<v8::Array> rawSuffixArray = v8::Array::New(isolate, static_cast<int>(n - action->_urlParts));
 
-    path += sep + suffix[s];
+  for (size_t s = action->_urlParts; s < n; ++s) {
+    suffixArray->Set(index, TRI_V8_STD_STRING(suffixes[s]));
+    rawSuffixArray->Set(index, TRI_V8_STD_STRING(rawSuffixes[s]));
+    ++index;
+
+    path += sep + suffixes[s];
     sep = "/";
   }
 
   TRI_GET_GLOBAL_STRING(SuffixKey);
   req->ForceSet(SuffixKey, suffixArray);
+  TRI_GET_GLOBAL_STRING(RawSuffixKey);
+  req->ForceSet(RawSuffixKey, rawSuffixArray);
 
   // copy full path
   TRI_GET_GLOBAL_STRING(PathKey);
@@ -917,6 +959,9 @@ static TRI_action_result_t ExecuteActionVocbase(
     if (tryCatch.CanContinue()) {
       response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
+      std::string jsError = TRI_StringifyV8Exception(isolate, &tryCatch);
+      LOG_TOPIC(WARN, arangodb::Logger::V8) << "Caught an error while executing an action: " << jsError;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // TODO how to generalize this?
       if (response->transportType() ==
           Endpoint::TransportType::HTTP) {  // FIXME
@@ -924,6 +969,7 @@ static TRI_action_result_t ExecuteActionVocbase(
             ->body()
             .appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
       }
+#endif
     } else {
       v8g->_canceled = true;
       result.isValid = false;
@@ -932,7 +978,7 @@ static TRI_action_result_t ExecuteActionVocbase(
   }
 
   else {
-    ResponseV8ToCpp(isolate, v8g, res, response);
+    ResponseV8ToCpp(isolate, v8g, request, res, response);
   }
 
   return result;
@@ -993,10 +1039,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (action != nullptr) {
       action->createCallback(isolate, callback);
     } else {
-      LOG(ERR) << "cannot create callback for V8 action";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create callback for V8 action";
     }
   } else {
-    LOG(ERR) << "cannot define V8 action";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot define V8 action";
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -1085,7 +1131,13 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
         case Endpoint::TransportType::HTTP: {
           auto httpRequest = static_cast<arangodb::HttpRequest*>(e->Value());
           if (httpRequest != nullptr) {
-            std::string bodyStr = httpRequest->body();
+            std::string bodyStr;
+            if (rest::ContentType::VPACK == request->contentType()) {
+              VPackSlice slice = request->payload();
+              bodyStr = slice.toJson();
+            } else {
+              bodyStr = httpRequest->body();
+            }
             V8Buffer* buffer =
                 V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
 
@@ -1316,23 +1368,23 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEFINE_ACTION"),
                                JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context,
+      isolate,
       TRI_V8_ASCII_STRING("SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"),
       JS_ExecuteGlobalContextFunction);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_GET_CURRENT_REQUEST"),
                                JS_GetCurrentRequest);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_GET_CURRENT_RESPONSE"),
                                JS_GetCurrentResponse);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_RAW_REQUEST_BODY"),
                                JS_RawRequestBody, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_REQUEST_PARTS"),
                                JS_RequestParts, true);
 }
@@ -1347,7 +1399,10 @@ static bool clusterSendToAllServers(
     std::string const& path,  // Note: Has to be properly encoded!
     arangodb::rest::RequestType const& method, std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
 
   // Have to propagate to DB Servers
@@ -1546,17 +1601,17 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           std::string const& startupPath,
                           std::string const& modules) {
   // debugging functions
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),
                                JS_DebugSegfault);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SET_FAILAT"),
                                JS_DebugSetFailAt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_REMOVE_FAILAT"),
                                JS_DebugRemoveFailAt);
 #endif

@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_a3f3934fe93618c2e6f3527095116c07" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost</compoundname>
+    <innerdir refid="dir_1db53b2a0b4206971f8a07039331107d">/home/travis/build/boostorg/boost/boost/geometry</innerdir>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/"/>
+  </compounddef>
+</doxygen>

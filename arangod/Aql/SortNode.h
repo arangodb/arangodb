@@ -53,7 +53,7 @@ class SortNode : public ExecutionNode {
  public:
   SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements,
            bool stable)
-      : ExecutionNode(plan, id), _elements(elements), _stable(stable) {}
+      : ExecutionNode(plan, id), _reinsertInCluster(true), _elements(elements), _stable(stable) {}
 
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
            SortElementVector const& elements, bool stable);
@@ -87,7 +87,7 @@ class SortNode : public ExecutionNode {
     v.reserve(_elements.size());
 
     for (auto& p : _elements) {
-      v.emplace_back(p.first);
+      v.emplace_back(p.var);
     }
     return v;
   }
@@ -96,7 +96,7 @@ class SortNode : public ExecutionNode {
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& vars) const override final {
     for (auto& p : _elements) {
-      vars.emplace(p.first);
+      vars.emplace(p.var);
     }
   }
 
@@ -119,6 +119,9 @@ class SortNode : public ExecutionNode {
   /// this can be used if the first conditions of the condition are constant
   /// values (e.g. when a FILTER condition exists that guarantees this)
   void removeConditions(size_t count);
+
+  // reinsert node when building gather node - this is used e.g for the geo-index
+  bool _reinsertInCluster;
 
  private:
   /// @brief pairs, consisting of variable and sort direction

@@ -1,0 +1,5 @@
+[#getting_started_18]
+
+  eval_binary_op<boost::mpl::int_<11>, '+', boost::mpl::int_<2>>::type
+  eval_binary_op<boost::mpl::int_<13>, '-', boost::mpl::int_<2>>::type
+

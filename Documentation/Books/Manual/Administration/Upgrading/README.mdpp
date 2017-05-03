@@ -1,11 +1,12 @@
-!CHAPTER General Upgrade Information
+General Upgrade Information
+===========================
 
-!SUBSECTION Recommended major upgrade procedure
+### Recommended major upgrade procedure
 
 To upgrade an existing ArangoDB 2.x to 3.0 please use the procedure described
 [here](../../Administration/Upgrading/Upgrading30.md).
 
-!SUBSECTION Recommended minor upgrade procedure
+### Recommended minor upgrade procedure
 
 To upgrade an existing ArangoDB database to a newer version of ArangoDB 
 (e.g. 3.0 to 3.1, or 3.3 to 3.4), the following method is recommended:

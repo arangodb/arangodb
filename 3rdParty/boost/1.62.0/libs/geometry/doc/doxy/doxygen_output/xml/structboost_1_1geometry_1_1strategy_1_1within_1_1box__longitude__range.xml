@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1box__longitude__range" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::box_longitude_range</compoundname>
+    <includes local="no">box_in_box.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Geometry</declname>
+        <defname>Geometry</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>InteriorCheck</declname>
+        <defname>InteriorCheck</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1box__longitude__range_1afb62e330bf8136ca6b6b675671ceb31b" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename BoxContainedValue</type>
+          </param>
+          <param>
+            <type>typename BoxContainingValue</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::box_longitude_range&lt; Geometry, InteriorCheck &gt;::apply</definition>
+        <argsstring>(BoxContainedValue const &amp;bed_min, BoxContainedValue const &amp;bed_max, BoxContainingValue const &amp;bing_min, BoxContainingValue const &amp;bing_max)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>BoxContainedValue const &amp;</type>
+          <declname>bed_min</declname>
+        </param>
+        <param>
+          <type>BoxContainedValue const &amp;</type>
+          <declname>bed_max</declname>
+        </param>
+        <param>
+          <type>BoxContainingValue const &amp;</type>
+          <declname>bing_min</declname>
+        </param>
+        <param>
+          <type>BoxContainingValue const &amp;</type>
+          <declname>bing_max</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" line="91" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" bodystart="91" bodyend="126"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" line="89" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" bodystart="88" bodyend="127"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1box__longitude__range_1afb62e330bf8136ca6b6b675671ceb31b" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::box_longitude_range</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

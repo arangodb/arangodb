@@ -51,9 +51,11 @@ class LoggerStream {
 
   LoggerStream& operator<<(LogTopic topic) {
     _topicId = topic.id();
-    _out << "{" + topic.name() << "} ";
+    _out << topic.displayName();
     return *this;
   }
+  
+  LoggerStream& operator<<(Logger::BINARY binary);
 
   LoggerStream& operator<<(Logger::RANGE range);
 
@@ -75,28 +77,16 @@ class LoggerStream {
   }
 
   template <typename T>
-  LoggerStream& operator<<(T obj) {
+  LoggerStream& operator<<(T const& obj) {
     _out << obj;
     return *this;
   }
-
-  template <typename T>
-  LoggerStream& operator<<(std::vector<T> const& v) {
-    for (auto const& i : v) _out << i << " ";
-    return *this;
-  }
-
-  template <typename T>
-  LoggerStream& operator<<(std::unordered_set<T> const& us) {
-    for (auto const& i : us) _out << i;
-    return *this;
-  }
-
+  
  private:
   std::stringstream _out;
   size_t _topicId;
   LogLevel _level;
-  long int _line;
+  int _line;
   char const* _file;
   char const* _function;
 };

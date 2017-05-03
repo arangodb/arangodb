@@ -1,0 +1,68 @@
+R"=(
+{
+  "arango": {
+    "Current": {
+      "Collections": {
+        "database": {
+          "collection": {
+            "s99": {
+              "servers": [
+                "leader",
+                "follower1"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "Plan": {
+      "Collections": {
+        "database": {
+          "collection": {
+            "replicationFactor" : 3,
+            "shards": {
+              "s99": [
+                "leader",
+                "follower1"
+              ]
+            }
+          }
+        }
+      },
+      "DBServers": {
+        "follower1": "none",
+        "follower2": "none",
+        "free": "none",
+        "free2": "none",
+        "leader": "none"
+      }
+    },
+    "Supervision": {
+      "DBServers": {},
+      "Health": {
+        "follower1": {
+          "Status": "GOOD"
+        },
+        "follower2": {
+          "Status": "GOOD"
+        },
+        "leader": {
+          "Status": "FAILED"
+        },
+        "free": {
+          "Status": "GOOD"
+        },
+        "free2": {
+          "Status": "FAILED"
+        }
+      },
+      "Shards": {}
+    },
+    "Target": {
+      "Failed": {},
+      "Finished": {},
+      "ToDo": {}
+    }
+  }
+}
+)="

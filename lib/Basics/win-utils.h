@@ -92,12 +92,6 @@ void TRI_sleep(unsigned long);
 void TRI_usleep(unsigned long);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fixes the ICU_DATA environment path
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FixIcuDataEnv(const char* binaryPath);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -136,9 +130,20 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
 void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
                              char const* fmt, ...);
 
-#define LOG_FATAL_WINDOWS(...)                                              \
+#define LOG_FATAL_WINDOWS(...)                                          \
   do {                                                                      \
     TRI_WindowsEmergencyLog(__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__); \
   } while (0)
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief detects whether an FD is connected to a (cygwin-)tty.
+////////////////////////////////////////////////////////////////////////////////
+int _cyg_isatty (int fd);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief detects whether an FD is connected to a cygwin-tty.
+////////////////////////////////////////////////////////////////////////////////
+int _is_cyg_tty (int fd);
 
 #endif

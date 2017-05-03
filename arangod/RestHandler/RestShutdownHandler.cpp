@@ -23,19 +23,20 @@
 
 #include "RestShutdownHandler.h"
 
-#include "Rest/HttpRequest.h"
-#include "Cluster/AgencyComm.h"
-#include "Cluster/ClusterFeature.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Agency/AgencyComm.h"
+#include "Cluster/ClusterFeature.h"
+#include "Rest/HttpRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(GeneralRequest* request, GeneralResponse* response)
-  : RestBaseHandler(request, response) {}
+RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
+                                         GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
 bool RestShutdownHandler::isDirect() const { return true; }
 
@@ -49,11 +50,13 @@ RestStatus RestShutdownHandler::execute() {
     return RestStatus::DONE;
   }
   bool removeFromCluster;
-  std::string const& remove = _request->value("remove_from_cluster", removeFromCluster);
+  std::string const& remove =
+      _request->value("remove_from_cluster", removeFromCluster);
   removeFromCluster = removeFromCluster && remove == "1";
 
   bool shutdownClusterFound;
-  std::string const& shutdownCluster = _request->value("shutdown_cluster", shutdownClusterFound);
+  std::string const& shutdownCluster =
+      _request->value("shutdown_cluster", shutdownClusterFound);
   if (shutdownClusterFound && shutdownCluster == "1") {
     AgencyComm agency;
 
@@ -67,7 +70,8 @@ RestStatus RestShutdownHandler::execute() {
     removeFromCluster = true;
   }
   if (removeFromCluster) {
-    ClusterFeature* clusterFeature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    ClusterFeature* clusterFeature =
+        ApplicationServer::getFeature<ClusterFeature>("Cluster");
     clusterFeature->setUnregisterOnShutdown(true);
   }
 

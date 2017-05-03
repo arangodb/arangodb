@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
+var db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -912,7 +913,11 @@ function ahuacatlQueryOptimizerInTestSuite () {
       }
       c.ensureHashIndex("value");
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) RETURN x.value";
-      ruleIsNotUsed(query);
+      if (db._engine().name === "rocksdb") {
+        ruleIsUsed(query);
+      } else {
+        ruleIsNotUsed(query);
+      }
     },
 
     testOverlappingRangesListSkiplist2 : function () { 
@@ -945,7 +950,11 @@ function ahuacatlQueryOptimizerInTestSuite () {
       }
       c.ensureHashIndex("value");
       var query = "FOR i IN " + cn + " FILTER i.value == 8 || i.value <= 7 RETURN i.value";
-      ruleIsNotUsed(query);
+      if (db._engine().name === "rocksdb") {
+        ruleIsUsed(query);
+      } else {
+        ruleIsNotUsed(query);
+      }
     },
 
     testNestedOrHashIndex : function () {

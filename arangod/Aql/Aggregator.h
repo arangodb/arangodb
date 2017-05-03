@@ -30,7 +30,10 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace aql {
 
@@ -39,30 +42,30 @@ struct Aggregator {
   Aggregator(Aggregator const&) = delete;
   Aggregator& operator=(Aggregator const&) = delete;
 
-  explicit Aggregator(arangodb::Transaction* trx) : trx(trx) {}
+  explicit Aggregator(transaction::Methods* trx) : trx(trx) {}
   virtual ~Aggregator() = default;
   virtual char const* name() const = 0;
   virtual void reset() = 0;
   virtual void reduce(AqlValue const&) = 0;
   virtual AqlValue stealValue() = 0;
 
-  static Aggregator* fromTypeString(arangodb::Transaction*,
-                                    std::string const&);
-  static Aggregator* fromVPack(arangodb::Transaction*,
-                               arangodb::velocypack::Slice const&, char const*);
+  static std::unique_ptr<Aggregator> fromTypeString(transaction::Methods*,
+                                                    std::string const&);
+  static std::unique_ptr<Aggregator> fromVPack(transaction::Methods*,
+                                               arangodb::velocypack::Slice const&, char const*);
 
   static bool isSupported(std::string const&);
   static bool requiresInput(std::string const&);
 
-  arangodb::Transaction* trx;
+  transaction::Methods* trx;
 
   arangodb::velocypack::Builder builder;
 };
 
 struct AggregatorLength final : public Aggregator {
-  explicit AggregatorLength(arangodb::Transaction* trx)
+  explicit AggregatorLength(transaction::Methods* trx)
       : Aggregator(trx), count(0) {}
-  AggregatorLength(arangodb::Transaction* trx, uint64_t initialCount)
+  AggregatorLength(transaction::Methods* trx, uint64_t initialCount)
       : Aggregator(trx), count(initialCount) {}
 
   char const* name() const override final { return "LENGTH"; }
@@ -75,7 +78,7 @@ struct AggregatorLength final : public Aggregator {
 };
 
 struct AggregatorMin final : public Aggregator {
-  explicit AggregatorMin(arangodb::Transaction* trx)
+  explicit AggregatorMin(transaction::Methods* trx)
       : Aggregator(trx), value() {}
 
   ~AggregatorMin();
@@ -90,7 +93,7 @@ struct AggregatorMin final : public Aggregator {
 };
 
 struct AggregatorMax final : public Aggregator {
-  explicit AggregatorMax(arangodb::Transaction* trx)
+  explicit AggregatorMax(transaction::Methods* trx)
       : Aggregator(trx), value() {}
 
   ~AggregatorMax();
@@ -105,7 +108,7 @@ struct AggregatorMax final : public Aggregator {
 };
 
 struct AggregatorSum final : public Aggregator {
-  explicit AggregatorSum(arangodb::Transaction* trx)
+  explicit AggregatorSum(transaction::Methods* trx)
       : Aggregator(trx), sum(0.0), invalid(false) {}
 
   char const* name() const override final { return "SUM"; }
@@ -119,7 +122,7 @@ struct AggregatorSum final : public Aggregator {
 };
 
 struct AggregatorAverage final : public Aggregator {
-  explicit AggregatorAverage(arangodb::Transaction* trx)
+  explicit AggregatorAverage(transaction::Methods* trx)
       : Aggregator(trx), count(0), sum(0.0), invalid(false) {}
 
   char const* name() const override final { return "AVERAGE"; }
@@ -134,7 +137,7 @@ struct AggregatorAverage final : public Aggregator {
 };
 
 struct AggregatorVarianceBase : public Aggregator {
-  AggregatorVarianceBase(arangodb::Transaction* trx, bool population)
+  AggregatorVarianceBase(transaction::Methods* trx, bool population)
       : Aggregator(trx),
         population(population),
         count(0),
@@ -153,7 +156,7 @@ struct AggregatorVarianceBase : public Aggregator {
 };
 
 struct AggregatorVariance final : public AggregatorVarianceBase {
-  AggregatorVariance(arangodb::Transaction* trx, bool population)
+  AggregatorVariance(transaction::Methods* trx, bool population)
       : AggregatorVarianceBase(trx, population) {}
 
   char const* name() const override final {
@@ -167,7 +170,7 @@ struct AggregatorVariance final : public AggregatorVarianceBase {
 };
 
 struct AggregatorStddev final : public AggregatorVarianceBase {
-  AggregatorStddev(arangodb::Transaction* trx, bool population)
+  AggregatorStddev(transaction::Methods* trx, bool population)
       : AggregatorVarianceBase(trx, population) {}
 
   char const* name() const override final {

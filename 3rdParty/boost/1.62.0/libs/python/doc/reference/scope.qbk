@@ -1,0 +1,83 @@
+[section boost/python/scope.hpp]
+[section Introduction]
+Defines facilities for querying and controlling the Python scope (namespace) which will contain new wrapped classes and functions.
+[endsect]
+[section Class `scope`]
+The scope class has an associated global Python object which controls the Python namespace in which new extension classes and wrapped functions will be defined as attributes. Default-constructing a new scope object binds it to the associated global Python object. Constructing a scope object with an argument changes the associated global Python object to the one held by the argument, until the lifetime of the scope object ends, at which time the associated global Python object reverts to what it was before the scope object was constructed.
+``
+namespace boost { namespace python
+{
+  class scope : public object
+  {
+   public:
+      scope(scope const&);
+      scope(object const&);
+      scope();
+      ~scope()
+   private:
+      void operator=(scope const&);
+  };
+}}
+``
+[endsect]
+[section Class scope constructors and destructor]
+``
+explicit scope(scope const& x);
+explicit scope(object const& x);
+``
+Stores a reference to the current associated scope object, and sets the associated scope object to the one referred to by x.ptr(). The object base class is initialized with x.
+
+``scope();``
+
+Stores a reference to the current associated scope object. The object base class is initialized with the current associated scope object. Outside any module initialization function, the current associated Python object is None.
+
+``~scope()``
+
+Sets the current associated Python object to the stored object. 
+[endsect]
+[section Example]
+The following example shows how scope setting can be used to define nested classes.
+
+C++ Module definition:
+``
+#include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/scope.hpp>
+using namespace boost::python;
+
+struct X
+{
+  void f() {}
+
+  struct Y { int g() { return 42; } };
+};
+
+BOOST_PYTHON_MODULE(nested)
+{
+   // add some constants to the current (module) scope
+   scope().attr("yes") = 1;
+   scope().attr("no") = 0;
+
+   // Change the current scope 
+   scope outer
+       = class_<X>("X")
+            .def("f", &X::f)
+            ;
+
+   // Define a class Y in the current scope, X
+   class_<X::Y>("Y")
+      .def("g", &X::Y::g)
+      ;
+}
+``
+Interactive Python:
+``
+>>> import nested
+>>> nested.yes
+1
+>>> y = nested.X.Y()
+>>> y.g()
+42
+``
+[endsect]
+[endsect]

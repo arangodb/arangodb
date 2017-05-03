@@ -21,44 +21,71 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+// In order to implement a new IndexIterator the following functions need to be
+// implmeneted.
+//
+// typeName() returns a string descibing the type of the indexIterator
+//
+// The next() function of the IndexIterator expects a callback taking DocumentIdentifierTokens
+// that are created from RevisionIds. In addition it expects a limit.
+// The iterator has to walk through the Index and call the callback with at most limit
+// many elements. On the next iteration it has to continue after the last returned Token.
+//
+// reset() resets the iterator
+//
+// optional - default implementation provided:
+//
+// skip(trySkip, skipped) tries to skip the next trySkip elements
+//
+// When finished you need to implement the fuction:
+//    virtual IndexIterator* iteratorForCondition(...)
+// So a there is a way to create an iterator for the index
+
+
 #ifndef ARANGOD_INDEXES_INDEX_ITERATOR_H
 #define ARANGOD_INDEXES_INDEX_ITERATOR_H 1
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/IndexElement.h"
 #include "Indexes/IndexLookupContext.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
 class Index;
 class LogicalCollection;
-class Transaction;
+namespace transaction {
+class Methods;
+}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
-////////////////////////////////////////////////////////////////////////////////
-
 class IndexIterator {
+ protected:
+  typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
+  typedef std::function<void(DocumentIdentifierToken const& token,
+                             arangodb::velocypack::Slice extra)>
+      ExtraCallback;
+
  public:
   IndexIterator(IndexIterator const&) = delete;
   IndexIterator& operator=(IndexIterator const&) = delete;
   IndexIterator() = delete;
 
-  IndexIterator(LogicalCollection*, arangodb::Transaction*, ManagedDocumentResult*, arangodb::Index const*);
+  IndexIterator(LogicalCollection*, transaction::Methods*, ManagedDocumentResult*, arangodb::Index const*);
 
   virtual ~IndexIterator();
 
   virtual char const* typeName() const = 0;
 
   LogicalCollection* collection() const { return _collection; }
-  arangodb::Transaction* transaction() const { return _trx; }
+  transaction::Methods* transaction() const { return _trx; }
 
-  virtual IndexLookupResult next();
+  virtual bool hasExtra() const;
 
-  virtual void nextBabies(std::vector<IndexLookupResult>&, size_t);
+  virtual bool next(TokenCallback const& callback, size_t limit) = 0;
+  virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
 
   virtual void reset();
 
@@ -66,48 +93,42 @@ class IndexIterator {
 
  protected:
   LogicalCollection* _collection;
-  arangodb::Transaction* _trx;
+  transaction::Methods* _trx;
   ManagedDocumentResult* _mmdr;
   IndexLookupContext _context;
   bool _responsible;
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Special iterator if the condition cannot have any result
-////////////////////////////////////////////////////////////////////////////////
-
 class EmptyIndexIterator final : public IndexIterator {
-  public:
-    EmptyIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
-        : IndexIterator(collection, trx, mmdr, index) {}
+ public:
+  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
+      : IndexIterator(collection, trx, mmdr, index) {}
 
-    ~EmptyIndexIterator() {}
+  ~EmptyIndexIterator() {}
 
-    char const* typeName() const override { return "empty-index-iterator"; }
+  char const* typeName() const override { return "empty-index-iterator"; }
 
-    IndexLookupResult next() override { return IndexLookupResult(); }
+  bool next(TokenCallback const&, size_t) override {
+    return false;
+  }
 
-    void nextBabies(std::vector<IndexLookupResult>&, size_t) override {}
+  void reset() override {}
 
-    void reset() override {}
-
-    void skip(uint64_t, uint64_t& skipped) override {
-      skipped = 0;
-    }
+  void skip(uint64_t, uint64_t& skipped) override {
+    skipped = 0;
+  }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper class to iterate over several IndexIterators.
 ///        Each iterator is requested at the index itself.
 ///        This iterator does NOT check for uniqueness.
 ///        Will always start with the first iterator in the vector. Reverse them
 ///        Outside if necessary.
-////////////////////////////////////////////////////////////////////////////////
-
 class MultiIndexIterator final : public IndexIterator {
 
   public:
-   MultiIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+   MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                       ManagedDocumentResult* mmdr,
                       arangodb::Index const* index,
                       std::vector<IndexIterator*> const& iterators)
@@ -126,27 +147,14 @@ class MultiIndexIterator final : public IndexIterator {
     
     char const* typeName() const override { return "multi-index-iterator"; }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Get the next element
+    /// @brief Get the next elements
     ///        If one iterator is exhausted, the next one is used.
-    ///        A nullptr indicates that all iterators are exhausted
-    ////////////////////////////////////////////////////////////////////////////////
+    ///        If callback is called less than limit many times
+    ///        all iterators are exhausted
+    bool next(TokenCallback const& callback, size_t limit) override;
 
-    IndexLookupResult next() override;
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Get at most the next limit many elements
-    ///        If one iterator is exhausted, the next one will be used.
-    ///        An empty result vector indicates that all iterators are exhausted
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
-
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief Reset the cursor
     ///        This will reset ALL internal iterators and start all over again
-    ////////////////////////////////////////////////////////////////////////////////
-
     void reset() override;
 
   private:

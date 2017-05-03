@@ -3,17 +3,10 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
-var _create = require('babel-runtime/core-js/object/create');
-
-var _create2 = _interopRequireDefault(_create);
-
 exports.duplicateVariableMessage = duplicateVariableMessage;
 exports.UniqueVariableNames = UniqueVariableNames;
 
 var _error = require('../../error');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function duplicateVariableMessage(variableName) {
   return 'There can be only one variable named "' + variableName + '".';
@@ -35,10 +28,10 @@ function duplicateVariableMessage(variableName) {
  */
 
 function UniqueVariableNames(context) {
-  var knownVariableNames = (0, _create2.default)(null);
+  var knownVariableNames = Object.create(null);
   return {
     OperationDefinition: function OperationDefinition() {
-      knownVariableNames = (0, _create2.default)(null);
+      knownVariableNames = Object.create(null);
     },
     VariableDefinition: function VariableDefinition(node) {
       var variableName = node.variable.name.value;

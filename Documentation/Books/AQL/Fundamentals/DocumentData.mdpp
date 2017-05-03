@@ -1,4 +1,5 @@
-!CHAPTER Accessing data from collections
+Accessing data from collections
+===============================
 
 Collection data can be accessed by specifying a collection name in a query.  A
 collection can be understood as an array of documents, and that is how they are

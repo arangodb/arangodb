@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1detail__dispatch_1_1helper__geometry" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail_dispatch::helper_geometry</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1not__implemented" prot="public" virt="non-virtual">boost::geometry::not_implemented&lt; Geometry &gt;</basecompoundref>
+    <includes local="no">helper_geometry.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+      <param>
+        <type>typename NewCoordinateType</type>
+      </param>
+      <param>
+        <type>typename NewUnits</type>
+      </param>
+      <param>
+        <type>typename Tag</type>
+        <defval>typename <ref refid="structboost_1_1geometry_1_1tag" kindref="compound">tag</ref>&lt;Geometry&gt;::type</defval>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="301">
+        <label>boost::geometry::nyi::not_implemented_error&lt; boost::mpl::identity&lt; nyi::tag_to_term&lt; Geometry &gt;::type &gt;::type, boost::mpl::identity&lt; nyi::tag_to_term&lt; void &gt;::type &gt;::type, boost::mpl::identity&lt; nyi::tag_to_term&lt; void &gt;::type &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1nyi_1_1not__implemented__error"/>
+      </node>
+      <node id="299">
+        <label>boost::geometry::not_implemented&lt; Geometry &gt;</label>
+        <link refid="structboost_1_1geometry_1_1not__implemented"/>
+        <childnode refid="300" relation="public-inheritance">
+        </childnode>
+        <childnode refid="301" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="300">
+        <label>boost::geometry::nyi::not_implemented_tag</label>
+        <link refid="structboost_1_1geometry_1_1nyi_1_1not__implemented__tag"/>
+      </node>
+      <node id="298">
+        <label>boost::geometry::detail_dispatch::helper_geometry&lt; Geometry, NewCoordinateType, NewUnits, Tag &gt;</label>
+        <link refid="structboost_1_1geometry_1_1detail__dispatch_1_1helper__geometry"/>
+        <childnode refid="299" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="305">
+        <label>boost::geometry::nyi::not_implemented_error&lt; boost::mpl::identity&lt; nyi::tag_to_term&lt; Geometry &gt;::type &gt;::type, boost::mpl::identity&lt; nyi::tag_to_term&lt; void &gt;::type &gt;::type, boost::mpl::identity&lt; nyi::tag_to_term&lt; void &gt;::type &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1nyi_1_1not__implemented__error"/>
+      </node>
+      <node id="303">
+        <label>boost::geometry::not_implemented&lt; Geometry &gt;</label>
+        <link refid="structboost_1_1geometry_1_1not__implemented"/>
+        <childnode refid="304" relation="public-inheritance">
+        </childnode>
+        <childnode refid="305" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="304">
+        <label>boost::geometry::nyi::not_implemented_tag</label>
+        <link refid="structboost_1_1geometry_1_1nyi_1_1not__implemented__tag"/>
+      </node>
+      <node id="302">
+        <label>boost::geometry::detail_dispatch::helper_geometry&lt; Geometry, NewCoordinateType, NewUnits, Tag &gt;</label>
+        <link refid="structboost_1_1geometry_1_1detail__dispatch_1_1helper__geometry"/>
+        <childnode refid="303" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/helper_geometry.hpp" line="110" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/helper_geometry.hpp" bodystart="109" bodyend="110"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1nyi_1_1not__implemented__error_1a4ee7dfcea347c7fbadca0d1e19ed14fd" prot="public" virt="non-virtual"><scope>boost::geometry::detail_dispatch::helper_geometry</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

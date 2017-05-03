@@ -1,5 +1,4 @@
 /* jshint sub: true */
-/* global exports: true */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -31,7 +30,6 @@
 
 const internal = require('internal');
 const Buffer = require('buffer').Buffer;
-const extend = require('lodash').extend;
 const httperr = require('http-errors');
 const is = require('@arangodb/is');
 const querystring = require('querystring');
@@ -54,7 +52,7 @@ class Response {
     this.body = this.rawBody = res.body;
     if (this.body && encoding !== null) {
       this.body = this.body.toString(encoding || 'utf-8');
-      if (json) {
+      if (json !== false) {
         try {
           this.json = JSON.parse(this.body);
         } catch (e) {
@@ -92,7 +90,7 @@ function request (req) {
   let pathObj = typeof path === 'string' ? url.parse(path) : path;
   if (pathObj.auth) {
     let auth = pathObj.auth.split(':');
-    req = extend({
+    req = Object.assign({
       auth: {
         username: decodeURIComponent(auth[0]),
         password: decodeURIComponent(auth[1])
@@ -143,7 +141,7 @@ function request (req) {
   }
 
   if (req.auth) {
-    headers['authorization'] = ( // eslint-disable-line dot-notation
+    headers.authorization = (
       req.auth.bearer ?
         'Bearer ' + req.auth.bearer :
         'Basic ' + new Buffer(
@@ -170,26 +168,25 @@ function request (req) {
   } else {
     options.maxRedirects = 10;
   }
+  if (req.sslProtocol) {
+    options.sslProtocol = req.sslProtocol;
+  }
   let result = internal.download(path, body, options);
 
   return new Response(result, req.encoding, req.json);
 }
 
-exports = request;
-exports.request = request;
-exports.Response = Response;
+module.exports = request;
+request.request = request;
+request.Response = Response;
 
-['delete', 'get', 'head', 'patch', 'post', 'put']
-  .forEach(function (method) {
-    exports[method.toLowerCase()] = function (url, options) {
-      if (typeof url === 'object') {
-        options = url;
-        url = undefined;
-      } else if (typeof url === 'string') {
-        options = extend({}, options, {url: url});
-      }
-      return request(extend({method: method.toUpperCase()}, options));
-    };
-  });
-
-module.exports = exports;
+for (const method of ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT']) {
+  request[method.toLowerCase()] = function (url, options) {
+    if (typeof url === 'object') {
+      options = url;
+    } else if (typeof url === 'string') {
+      options = Object.assign({}, options, {url});
+    }
+    return request(Object.assign({method}, options));
+  };
+}

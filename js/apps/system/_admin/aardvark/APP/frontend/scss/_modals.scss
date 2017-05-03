@@ -34,6 +34,10 @@
 
 }
 
+.tippy {
+  cursor: pointer;
+}
+
 .select2-drop-active {
   border: 2px solid $c-info;
   border-top: 0;
@@ -335,6 +339,13 @@
   pre {
     margin-right: 20px;
     margin-top: 20px;
+  }
+
+  .infoMessage {
+    background-color: $c-warning;
+    border-radius: 3px;
+    font-size: 9pt;
+    padding: 5px;
   }
 }
 

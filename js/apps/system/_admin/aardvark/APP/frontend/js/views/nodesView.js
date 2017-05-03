@@ -12,6 +12,8 @@
 
     events: {
       'click #nodesContent .coords-nodes .pure-table-row': 'navigateToNode',
+      'click #nodesContent .dbs-nodes .pure-table-row': 'navigateToInfo',
+      'click #nodesContent .coords-nodes .pure-table-row .fa-trash-o': 'deleteNode',
       'click #addCoord': 'addCoord',
       'click #removeCoord': 'removeCoord',
       'click #addDBs': 'addDBs',
@@ -19,6 +21,14 @@
       'click .abortClusterPlan': 'abortClusterPlanModal',
       'keyup #plannedCoords': 'checkKey',
       'keyup #plannedDBs': 'checkKey'
+    },
+
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
     },
 
     checkKey: function (e) {
@@ -93,12 +103,50 @@
       }
     },
 
+    deleteNode: function (elem) {
+      if ($(elem.currentTarget).hasClass('noHover')) {
+        return;
+      }
+      var self = this;
+      var name = $(elem.currentTarget.parentNode.parentNode).attr('node').slice(0, -5);
+      if (window.confirm('Do you want to delete this node?')) {
+        $.ajax({
+          type: 'POST',
+          url: arangoHelper.databaseUrl('/_admin/cluster/removeServer'),
+          contentType: 'application/json',
+          async: true,
+          data: JSON.stringify(name),
+          success: function (data) {
+            self.render(false);
+          },
+          error: function () {
+            if (window.location.hash === '#nodes') {
+              arangoHelper.arangoError('Cluster', 'Could not fetch cluster information');
+            }
+          }
+        });
+      }
+      return false;
+    },
+
+    navigateToInfo: function (elem) {
+      var name = $(elem.currentTarget).attr('node').slice(0, -5);
+      if ($(elem.target).hasClass('fa-info-circle')) {
+        window.App.navigate('#nodeInfo/' + encodeURIComponent(name), {trigger: true});
+      }
+    },
+
     navigateToNode: function (elem) {
+      var name = $(elem.currentTarget).attr('node').slice(0, -5);
+
+      if ($(elem.target).hasClass('fa-info-circle')) {
+        window.App.navigate('#nodeInfo/' + encodeURIComponent(name), {trigger: true});
+        return;
+      }
       if ($(elem.currentTarget).hasClass('noHover')) {
         return;
       }
 
-      var name = $(elem.currentTarget).attr('node').slice(0, -5);
       window.App.navigate('#node/' + encodeURIComponent(name), {trigger: true});
     },
 
@@ -106,13 +154,23 @@
       if (window.location.hash === '#nodes') {
         var self = this;
 
+        if ($('#content').is(':empty')) {
+          arangoHelper.renderEmpty('Please wait. Requesting cluster information...', 'fa fa-spin fa-circle-o-notch');
+        }
+
+        if (navi !== false) {
+          arangoHelper.buildNodesSubNav('Overview');
+        }
+
         var scalingFunc = function (nodes) {
           $.ajax({
             type: 'GET',
             url: arangoHelper.databaseUrl('/_admin/cluster/numberOfServers'),
             contentType: 'application/json',
             success: function (data) {
-              self.continueRender(nodes, data);
+              if (window.location.hash === '#nodes') {
+                self.continueRender(nodes, data);
+              }
             }
           });
         };
@@ -125,16 +183,16 @@
           processData: false,
           async: true,
           success: function (data) {
-            scalingFunc(data.Health);
+            if (window.location.hash === '#nodes') {
+              scalingFunc(data.Health);
+            }
           },
           error: function () {
-            arangoHelper.arangoError('Cluster', 'Could not fetch cluster information');
+            if (window.location.hash === '#nodes') {
+              arangoHelper.arangoError('Cluster', 'Could not fetch cluster information');
+            }
           }
         });
-
-        if (navi !== false) {
-          arangoHelper.buildNodesSubNav('Overview');
-        }
       }
     },
 
@@ -253,7 +311,6 @@
         this.setCoordSize(coords);
         this.setDBsSize(dbs);
       } catch (ignore) {
-        console.log(ignore);
         arangoHelper.arangoError('Plan', 'Could not abort Cluster Plan');
       }
     },

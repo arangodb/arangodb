@@ -30,11 +30,13 @@
 
 using namespace arangodb;
 
-namespace {
-class JobQueueThread : public Thread {
+namespace arangodb {
+class JobQueueThread final
+    : public Thread,
+      public std::enable_shared_from_this<JobQueueThread> {
  public:
-  JobQueueThread(JobQueue* server, boost::asio::io_service* ioService)
-      : Thread("JobQueueThread"), _jobQueue(server), _ioService(ioService) {}
+  JobQueueThread(JobQueue* server, rest::Scheduler* scheduler)
+      : Thread("JobQueueThread"), _jobQueue(server), _scheduler(scheduler) {}
 
   ~JobQueueThread() { shutdown(); }
 
@@ -46,101 +48,80 @@ class JobQueueThread : public Thread {
  public:
   void run() {
     int idleTries = 0;
-    auto jobQueue = _jobQueue;
+
+    auto self = shared_from_this();
 
     // iterate until we are shutting down
     while (!isStopping()) {
       ++idleTries;
 
-      for (size_t i = 0; i < JobQueue::SYSTEM_QUEUE_SIZE; ++i) {
-        LOG_TOPIC(TRACE, Logger::THREADS) << "size of queue #" << i << ": "
-                                          << _jobQueue->queueSize(i);
+      LOG_TOPIC(TRACE, Logger::THREADS)
+          << "size of job queue: " << _jobQueue->queueSize();
 
-        while (_jobQueue->tryActive()) {
-          Job* job = nullptr;
+      while (_scheduler->shouldQueueMore()) {
+        Job* jobPtr = nullptr;
 
-          if (!_jobQueue->pop(i, job)) {
-            _jobQueue->releaseActive();
-            break;
+        if (!_jobQueue->pop(jobPtr)) {
+          break;
+        }
+
+        LOG_TOPIC(TRACE, Logger::THREADS) << "starting next queued job";
+
+        idleTries = 0;
+
+        std::shared_ptr<Job> job(jobPtr);
+
+        _scheduler->post([this, self, job]() {
+          RequestStatistics::SET_QUEUE_END(job->_handler->statistics());
+
+          try {
+            job->_callback(std::move(job->_handler));
+          } catch (std::exception& e) {
+            LOG_TOPIC(WARN, Logger::THREADS)
+                << "Exception caught in a dangereous place! " << e.what();
           }
 
-          LOG_TOPIC(TRACE, Logger::THREADS)
-              << "starting next queued job, number currently active "
-              << _jobQueue->active();
-
-          idleTries = 0;
-
-          _ioService->dispatch([jobQueue, job]() {
-            std::unique_ptr<Job> guard(job);
-
-            job->_callback(std::move(job->_handler));
-            jobQueue->releaseActive();
-            jobQueue->wakeup();
-          });
-        }
+          this->_jobQueue->wakeup();
+        });
       }
-
-      // we need to check again if more work has arrived after we have
-      // aquired the lock. The lockfree queue and _nrWaiting are accessed
-      // using "memory_order_seq_cst", this guarantees that we do not
-      // miss a signal.
 
       if (idleTries >= 2) {
         LOG_TOPIC(TRACE, Logger::THREADS) << "queue manager going to sleep";
         _jobQueue->waitForWork();
       }
     }
+
+    // clear all non-processed jobs
+    Job* job = nullptr;
+
+    while (_jobQueue->pop(job)) {
+      delete job;
+    }
   }
 
  private:
   JobQueue* _jobQueue;
-  boost::asio::io_service* _ioService;
+  rest::Scheduler* _scheduler;
 };
-}
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-JobQueue::JobQueue(size_t queueSize, boost::asio::io_service* ioService)
-    : _queueAql(queueSize),
-      _queueRequeue(queueSize),
-      _queueStandard(queueSize),
-      _queueUser(queueSize),
-      _queues{&_queueRequeue, &_queueAql, &_queueStandard, &_queueUser},
-      _active(0),
-      _ioService(ioService),
-      _queueThread(new JobQueueThread(this, _ioService)) {
-  for (size_t i = 0; i < SYSTEM_QUEUE_SIZE; ++i) {
-    _queuesSize[i].store(0);
-  }
-}
+JobQueue::JobQueue(size_t maxQueueSize, rest::Scheduler* scheduler)
+    : _maxQueueSize(static_cast<int64_t>(maxQueueSize)),
+      _queue(maxQueueSize == 0 ? 512 : maxQueueSize),
+      _queueSize(0),
+      _queueThread(new JobQueueThread(this, scheduler)) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-void JobQueue::start() {
-  _queueThread->start();
-}
+void JobQueue::start() { _queueThread->start(); }
 
-void JobQueue::beginShutdown() {
-  _queueThread->beginShutdown();
-}
-
-bool JobQueue::tryActive() {
-  if (!SchedulerFeature::SCHEDULER->tryBlocking()) {
-    return false;
-  }
-
-  ++_active;
-  return true;
-}
-
-void JobQueue::releaseActive() {
-  SchedulerFeature::SCHEDULER->unworkThread();
-  --_active;
-}
+void JobQueue::beginShutdown() { _queueThread->beginShutdown(); }
 
 void JobQueue::wakeup() {
   CONDITION_LOCKER(guard, _queueCondition);

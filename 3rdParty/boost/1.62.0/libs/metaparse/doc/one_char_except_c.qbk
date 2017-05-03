@@ -1,0 +1,80 @@
+[#one_char_except_c]
+[section one_char_except_c]
+
+[h1 Synopsis]
+
+  template <char C1, char C2, /* ... */, char Cn>
+  struct one_char_except_c;
+
+This is a [link parser parser].
+
+[table Arguments
+  [[Name]       [Type]]
+  [[`C1`..`Cn`] [character values]]
+]
+
+[h1 Description]
+
+`one_char_except_c` accepts one character except any of `C1` ... `Cn`. When the
+input is empty or begins with one of the non-accepted characters,
+`one_char_except_c` rejects the input. Otherwise it accepts the input and the
+result of parsing is the character value.
+
+The maximum number of template arguments this class can have is the value the
+macro `BOOST_METAPARSE_LIMIT_ONE_CHAR_EXCEPT_SIZE` expands to. Its default value
+is 10.
+
+[h1 Header]
+
+  #include <boost/metaparse/one_char_except_c.hpp>
+
+[h1 Expression semantics]
+
+For any `s` compile-time string and `c1`, ..., `cn` characters the following are
+equivalent
+
+  one_char_except_c<c1, ..., cn>::apply<s, pos>
+  
+  boost::metaparse::one_char::apply<s, pos>
+
+when `s` is empty or it begins with a character other than `c1`, ..., `cn`.
+Otherwise `one_char_except_c<c1, ..., cn>::appl<s, pos>` returns a parsing
+error.
+
+[h1 Example]
+
+  #include <boost/metaparse/one_char_except_c.hpp>
+  #include <boost/metaparse/lit_c.hpp>
+  #include <boost/metaparse/middle_of.hpp>
+  #include <boost/metaparse/repeated.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  
+  #include <boost/mpl/vector.hpp>
+  #include <boost/mpl/char.hpp>
+  #include <boost/mpl/equal.hpp>
+  
+  using namespace boost::metaparse;
+  
+  using string_literal_parser =
+    middle_of<lit_c<'"'>, repeated<one_char_except_c<'"'>>, lit_c<'"'>>;
+  
+  static_assert(
+    boost::mpl::equal<
+      boost::mpl::vector<
+        boost::mpl::char_<'h'>,
+        boost::mpl::char_<'e'>,
+        boost::mpl::char_<'l'>,
+        boost::mpl::char_<'l'>,
+        boost::mpl::char_<'o'>
+      >,
+      get_result<
+        string_literal_parser::apply<BOOST_METAPARSE_STRING("\"hello\""), start>
+      >::type
+    >::type::value,
+    "it should return the content of the string literal"
+  );
+
+[endsect]
+

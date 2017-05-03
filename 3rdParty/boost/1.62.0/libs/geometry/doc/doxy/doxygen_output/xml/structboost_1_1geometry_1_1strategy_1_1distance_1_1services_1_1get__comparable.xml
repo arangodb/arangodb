@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1get__comparable" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::distance::services::get_comparable</compoundname>
+    <includes local="no">distance.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1get__comparable_1ab8fc410ea0232fa2a238627b69d06399" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::distance::services::get_comparable&lt; Strategy &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>(false, NOT_IMPLEMENTED_FOR_THIS_STRATEGY,(types&lt; Strategy &gt;))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type>false</type>
+        </param>
+        <param>
+          <type>NOT_IMPLEMENTED_FOR_THIS_STRATEGY</type>
+        </param>
+        <param>
+          <type>(types&lt; Strategy &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance.hpp" line="59" column="1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance.hpp" line="58" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance.hpp" bodystart="57" bodyend="63"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1get__comparable_1ab8fc410ea0232fa2a238627b69d06399" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::services::get_comparable</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

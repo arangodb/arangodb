@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1is__empty_3_01boost_1_1variant_3_01_b_o_o_s_t___vf237ff310a9158c969bf63db5a614467" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::is_empty&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</compoundname>
+    <includes local="no">is_empty.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1resolve__variant_1_1is__empty_3_01boost_1_1variant_3_01_b_o_o_s_t___v5fc612cbf3418eed7a1178144d4e12fd" prot="public">boost::geometry::resolve_variant::is_empty&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</innerclass>
+    <templateparamlist>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1is__empty_3_01boost_1_1variant_3_01_b_o_o_s_t___vf237ff310a9158c969bf63db5a614467_1a24a7c91265e986757b5dd10f8d5a1d41" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::resolve_variant::is_empty&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::apply</definition>
+        <argsstring>(boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;geometry)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/is_empty.hpp" line="179" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/is_empty.hpp" bodystart="179" bodyend="182"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/is_empty.hpp" line="168" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/is_empty.hpp" bodystart="167" bodyend="183"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1is__empty_3_01boost_1_1variant_3_01_b_o_o_s_t___vf237ff310a9158c969bf63db5a614467_1a24a7c91265e986757b5dd10f8d5a1d41" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::is_empty&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

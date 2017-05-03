@@ -1,4 +1,5 @@
-!CHAPTER Transaction invocation
+Transaction invocation
+======================
 
 ArangoDB transactions are different from transactions in SQL.
 
@@ -27,7 +28,7 @@ data retrieval and/or modification operations, and at the end automatically
 commit the transaction. If an error occurs during transaction execution, the
 transaction is automatically aborted, and all changes are rolled back.
 
-!SUBSECTION Execute transaction
+### Execute transaction
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
@@ -61,7 +62,7 @@ Additionally, *object* can have the following optional attributes:
 
 
 
-!SUBSECTION Declaration of collections
+### Declaration of collections
 
 All collections which are to participate in a transaction need to be declared 
 beforehand. This is a necessity to ensure proper locking and isolation. 
@@ -133,7 +134,7 @@ The default value for *allowImplicit* is *true*. Write-accessing collections tha
 have not been declared in the *collections* array is never possible, regardless of
 the value of *allowImplicit*.
 
-!SUBSECTION Declaration of data modification and retrieval operations
+### Declaration of data modification and retrieval operations
 
 All data modification and retrieval operations that are to be executed inside
 the transaction need to be specified in a Javascript function, using the *action*
@@ -223,7 +224,7 @@ db._executeTransaction({
 });
 ```
 
-!SUBSECTION Examples
+### Examples
 
 The first example will write 3 documents into a collection named *c1*. 
 The *c1* collection needs to be declared in the *write* attribute of the 
@@ -301,7 +302,7 @@ As required by the *consistency* principle, aborting or rolling back a
 transaction will also restore secondary indexes to the state at transaction
 start.
 
-!SUBSECTION Cross-collection transactions
+### Cross-collection transactions
 
 There's also the possibility to run a transaction across multiple collections. 
 In this case, multiple collections need to be declared in the *collections*

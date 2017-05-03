@@ -36,7 +36,6 @@
 #include "SimpleHttpClient/Options.h"
 
 namespace arangodb {
-using namespace basics;
 namespace communicator {
 typedef std::unordered_map<std::string, std::string> HeadersInProgress;
 typedef uint64_t Ticket;
@@ -51,7 +50,7 @@ struct RequestInProgress {
         _requestBody(requestBody),
         _requestHeaders(nullptr),
         _startTime(0.0),
-        _responseBody(new StringBuffer(TRI_UNKNOWN_MEM_ZONE, false)),
+        _responseBody(new basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, false)),
         _options(options) {
     _errorBuffer[0] = '\0';
   }
@@ -74,7 +73,7 @@ struct RequestInProgress {
 
   HeadersInProgress _responseHeaders;
   double _startTime;
-  std::unique_ptr<StringBuffer> _responseBody;
+  std::unique_ptr<basics::StringBuffer> _responseBody;
   Options _options;
 
   char _errorBuffer[CURL_ERROR_SIZE];
@@ -87,6 +86,7 @@ struct CurlHandle {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     curl_easy_setopt(_handle, CURLOPT_PRIVATE, _rip.get());
+    curl_easy_setopt(_handle, CURLOPT_PATH_AS_IS, 1L); 
   }
   ~CurlHandle() {
     if (_handle != nullptr) {
@@ -104,8 +104,6 @@ struct CurlHandle {
 }
 
 namespace arangodb {
-using namespace basics;
-
 namespace communicator {
 
 class Communicator {
@@ -142,8 +140,7 @@ class Communicator {
   CURLMcode _mc;
   curl_waitfd _wakeup;
 #ifdef _WIN32
-  SOCKET socks[2];
-  HANDLE _fds[2];
+  SOCKET _socks[2];
 #else
   int _fds[2];
 #endif
@@ -152,7 +149,7 @@ class Communicator {
   void createRequestInProgress(NewRequest const& newRequest);
   void handleResult(CURL*, CURLcode);
   void transformResult(CURL*, HeadersInProgress&&,
-                       std::unique_ptr<StringBuffer>, HttpResponse*);
+                       std::unique_ptr<basics::StringBuffer>, HttpResponse*);
   /// @brief curl will strip standalone ".". ArangoDB allows using . as a key
   /// so this thing will analyse the url and urlencode any unsafe .'s
   std::string createSafeDottedCurlUrl(std::string const& originalUrl);

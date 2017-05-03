@@ -1,0 +1,22 @@
+[/
+ / Copyright (c) 2015 Raffi Enficiaud
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:timeout Time-out for test cases]
+
+The __UTF__ provides the decorator __decorator_timeout__ that specifies a time-out for a specific *test case*, 
+The argument time (in seconds) sets the maximum allowed duration of a test case. If this time is 
+exceeded the test case is forced to stop and is reported as failure.
+
+[bt_example decorator_11..decorator timeout..run-fail]
+
+[note Applied at test suite level, this decorator has no effect.]
+
+[caution Decorator `timeout` has no effect on Windows build. This feature is not implemented on Windows yet.]
+
+
+[endsect]

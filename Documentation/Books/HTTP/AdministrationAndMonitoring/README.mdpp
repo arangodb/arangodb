@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for Administration and Monitoring
+HTTP Interface for Administration and Monitoring
+================================================
 
 
 This is an introduction to ArangoDB's HTTP interface for administration and

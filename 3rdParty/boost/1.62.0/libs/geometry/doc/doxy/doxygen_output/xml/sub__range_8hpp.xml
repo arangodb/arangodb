@@ -1,0 +1,469 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="sub__range_8hpp" kind="file">
+    <compoundname>sub_range.hpp</compoundname>
+    <includes local="no">boost/mpl/if.hpp</includes>
+    <includes refid="assert_8hpp" local="no">boost/geometry/core/assert.hpp</includes>
+    <includes refid="util_2range_8hpp" local="no">boost/geometry/util/range.hpp</includes>
+    <includedby refid="touches_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp</includedby>
+    <includedby refid="relate_2areal__areal_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/areal_areal.hpp</includedby>
+    <includedby refid="boundary__checker_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/boundary_checker.hpp</includedby>
+    <includedby refid="relate_2linear__areal_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/linear_areal.hpp</includedby>
+    <includedby refid="relate_2linear__linear_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/linear_linear.hpp</includedby>
+    <incdepgraph>
+      <node id="36870">
+        <label>boost/range/empty.hpp</label>
+      </node>
+      <node id="36863">
+        <label>iterator</label>
+      </node>
+      <node id="36869">
+        <label>boost/range/end.hpp</label>
+      </node>
+      <node id="36864">
+        <label>boost/concept_check.hpp</label>
+      </node>
+      <node id="36872">
+        <label>boost/range/iterator.hpp</label>
+      </node>
+      <node id="36859">
+        <label>boost/geometry/core/assert.hpp</label>
+        <link refid="assert_8hpp"/>
+        <childnode refid="36860" relation="include">
+        </childnode>
+      </node>
+      <node id="36868">
+        <label>boost/range/begin.hpp</label>
+      </node>
+      <node id="36858">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="36871">
+        <label>boost/range/difference_type.hpp</label>
+      </node>
+      <node id="36861">
+        <label>boost/geometry/util/range.hpp</label>
+        <link refid="util_2range_8hpp"/>
+        <childnode refid="36862" relation="include">
+        </childnode>
+        <childnode refid="36863" relation="include">
+        </childnode>
+        <childnode refid="36864" relation="include">
+        </childnode>
+        <childnode refid="36865" relation="include">
+        </childnode>
+        <childnode refid="36866" relation="include">
+        </childnode>
+        <childnode refid="36867" relation="include">
+        </childnode>
+        <childnode refid="36868" relation="include">
+        </childnode>
+        <childnode refid="36869" relation="include">
+        </childnode>
+        <childnode refid="36870" relation="include">
+        </childnode>
+        <childnode refid="36871" relation="include">
+        </childnode>
+        <childnode refid="36872" relation="include">
+        </childnode>
+        <childnode refid="36873" relation="include">
+        </childnode>
+        <childnode refid="36874" relation="include">
+        </childnode>
+        <childnode refid="36875" relation="include">
+        </childnode>
+        <childnode refid="36876" relation="include">
+        </childnode>
+        <childnode refid="36877" relation="include">
+        </childnode>
+        <childnode refid="36859" relation="include">
+        </childnode>
+        <childnode refid="36878" relation="include">
+        </childnode>
+      </node>
+      <node id="36880">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="36860">
+        <label>boost/assert.hpp</label>
+      </node>
+      <node id="36867">
+        <label>boost/range/concepts.hpp</label>
+      </node>
+      <node id="36874">
+        <label>boost/range/reference.hpp</label>
+      </node>
+      <node id="36866">
+        <label>boost/core/addressof.hpp</label>
+      </node>
+      <node id="36877">
+        <label>boost/type_traits/is_convertible.hpp</label>
+      </node>
+      <node id="36876">
+        <label>boost/range/value_type.hpp</label>
+      </node>
+      <node id="36879">
+        <label>cstddef</label>
+      </node>
+      <node id="36857">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sub_range.hpp</label>
+        <link refid="sub_range.hpp"/>
+        <childnode refid="36858" relation="include">
+        </childnode>
+        <childnode refid="36859" relation="include">
+        </childnode>
+        <childnode refid="36861" relation="include">
+        </childnode>
+      </node>
+      <node id="36865">
+        <label>boost/config.hpp</label>
+      </node>
+      <node id="36878">
+        <label>boost/geometry/core/mutable_range.hpp</label>
+        <link refid="mutable__range_8hpp"/>
+        <childnode refid="36879" relation="include">
+        </childnode>
+        <childnode refid="36876" relation="include">
+        </childnode>
+        <childnode refid="36880" relation="include">
+        </childnode>
+      </node>
+      <node id="36875">
+        <label>boost/range/size.hpp</label>
+      </node>
+      <node id="36862">
+        <label>algorithm</label>
+      </node>
+      <node id="36873">
+        <label>boost/range/rbegin.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="36892">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/turn_in_piece_visitor.hpp</label>
+        <link refid="turn__in__piece__visitor_8hpp"/>
+        <childnode refid="36889" relation="include">
+        </childnode>
+      </node>
+      <node id="36915">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/interface.hpp</label>
+        <link refid="intersection_2interface_8hpp"/>
+        <childnode refid="36916" relation="include">
+        </childnode>
+        <childnode refid="36917" relation="include">
+        </childnode>
+        <childnode refid="36919" relation="include">
+        </childnode>
+      </node>
+      <node id="36901">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/has_spikes.hpp</label>
+        <link refid="has__spikes_8hpp"/>
+        <childnode refid="36898" relation="include">
+        </childnode>
+        <childnode refid="36902" relation="include">
+        </childnode>
+        <childnode refid="36905" relation="include">
+        </childnode>
+      </node>
+      <node id="36884">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/implementation.hpp</label>
+        <link refid="relate_2implementation_8hpp"/>
+        <childnode refid="36885" relation="include">
+        </childnode>
+        <childnode refid="36923" relation="include">
+        </childnode>
+      </node>
+      <node id="36903">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/implementation.hpp</label>
+        <link refid="is__valid_2implementation_8hpp"/>
+        <childnode refid="36904" relation="include">
+        </childnode>
+      </node>
+      <node id="36918">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/implementation.hpp</label>
+        <link refid="intersection_2implementation_8hpp"/>
+        <childnode refid="36916" relation="include">
+        </childnode>
+      </node>
+      <node id="36925">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/boundary_checker.hpp</label>
+        <link refid="boundary__checker_8hpp"/>
+        <childnode refid="36883" relation="include">
+        </childnode>
+        <childnode refid="36926" relation="include">
+        </childnode>
+        <childnode refid="36927" relation="include">
+        </childnode>
+      </node>
+      <node id="36894">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/implementation.hpp</label>
+        <link refid="distance_2implementation_8hpp"/>
+        <childnode refid="36895" relation="include">
+        </childnode>
+        <childnode refid="36896" relation="include">
+        </childnode>
+      </node>
+      <node id="36922">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</label>
+        <link refid="strategies_8hpp"/>
+      </node>
+      <node id="36916">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/intersection.hpp</label>
+        <link refid="algorithms_2intersection_8hpp"/>
+        <childnode refid="36912" relation="include">
+        </childnode>
+      </node>
+      <node id="36923">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relation/implementation.hpp</label>
+        <link refid="relation_2implementation_8hpp"/>
+        <childnode refid="36924" relation="include">
+        </childnode>
+      </node>
+      <node id="36887">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp</label>
+        <link refid="equals_8hpp"/>
+        <childnode refid="36888" relation="include">
+        </childnode>
+        <childnode refid="36892" relation="include">
+        </childnode>
+        <childnode refid="36893" relation="include">
+        </childnode>
+        <childnode refid="36898" relation="include">
+        </childnode>
+        <childnode refid="36901" relation="include">
+        </childnode>
+        <childnode refid="36902" relation="include">
+        </childnode>
+        <childnode refid="36905" relation="include">
+        </childnode>
+        <childnode refid="36908" relation="include">
+        </childnode>
+        <childnode refid="36909" relation="include">
+        </childnode>
+      </node>
+      <node id="36910">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/linear_linear.hpp</label>
+        <link refid="overlay_2linear__linear_8hpp"/>
+        <childnode refid="36911" relation="include">
+        </childnode>
+        <childnode refid="36913" relation="include">
+        </childnode>
+      </node>
+      <node id="36909">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/remove_duplicate_turns.hpp</label>
+        <link refid="remove__duplicate__turns_8hpp"/>
+        <childnode refid="36910" relation="include">
+        </childnode>
+      </node>
+      <node id="36902">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/linear.hpp</label>
+        <link refid="is__valid_2linear_8hpp"/>
+        <childnode refid="36903" relation="include">
+        </childnode>
+      </node>
+      <node id="36899">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/implementation.hpp</label>
+        <link refid="is__simple_2implementation_8hpp"/>
+        <childnode refid="36900" relation="include">
+        </childnode>
+      </node>
+      <node id="36897">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/comparable_distance.hpp</label>
+        <link refid="comparable__distance_8hpp"/>
+        <childnode refid="36889" relation="include">
+        </childnode>
+        <childnode refid="36892" relation="include">
+        </childnode>
+      </node>
+      <node id="36886">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/crosses.hpp</label>
+        <link refid="crosses_8hpp"/>
+      </node>
+      <node id="36911">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/union.hpp</label>
+        <link refid="union_8hpp"/>
+        <childnode refid="36912" relation="include">
+        </childnode>
+      </node>
+      <node id="36913">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/intersection_insert.hpp</label>
+        <link refid="intersection__insert_8hpp"/>
+        <childnode refid="36914" relation="include">
+        </childnode>
+        <childnode refid="36915" relation="include">
+        </childnode>
+      </node>
+      <node id="36907">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/multipolygon.hpp</label>
+        <link refid="multipolygon_8hpp"/>
+        <childnode refid="36903" relation="include">
+        </childnode>
+      </node>
+      <node id="36889">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_piece_collection.hpp</label>
+        <link refid="buffered__piece__collection_8hpp"/>
+        <childnode refid="36890" relation="include">
+        </childnode>
+      </node>
+      <node id="36906">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/polygon.hpp</label>
+        <link refid="algorithms_2detail_2is__valid_2polygon_8hpp"/>
+        <childnode refid="36903" relation="include">
+        </childnode>
+        <childnode refid="36907" relation="include">
+        </childnode>
+      </node>
+      <node id="36905">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/ring.hpp</label>
+        <link refid="algorithms_2detail_2is__valid_2ring_8hpp"/>
+        <childnode refid="36903" relation="include">
+        </childnode>
+        <childnode refid="36906" relation="include">
+        </childnode>
+      </node>
+      <node id="36883">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/areal_areal.hpp</label>
+        <link refid="relate_2areal__areal_8hpp"/>
+        <childnode refid="36884" relation="include">
+        </childnode>
+      </node>
+      <node id="36914">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/difference.hpp</label>
+        <link refid="difference_8hpp"/>
+      </node>
+      <node id="36919">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/multi.hpp</label>
+        <link refid="multi_8hpp"/>
+        <childnode refid="36918" relation="include">
+        </childnode>
+      </node>
+      <node id="36912">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/sym_difference.hpp</label>
+        <link refid="sym__difference_8hpp"/>
+      </node>
+      <node id="36890">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffer_inserter.hpp</label>
+        <link refid="buffer__inserter_8hpp"/>
+        <childnode refid="36891" relation="include">
+        </childnode>
+      </node>
+      <node id="36927">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/linear_linear.hpp</label>
+        <link refid="relate_2linear__linear_8hpp"/>
+        <childnode refid="36884" relation="include">
+        </childnode>
+      </node>
+      <node id="36891">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp</label>
+        <link refid="algorithms_2buffer_8hpp"/>
+      </node>
+      <node id="36888">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/get_piece_turns.hpp</label>
+        <link refid="get__piece__turns_8hpp"/>
+        <childnode refid="36889" relation="include">
+        </childnode>
+      </node>
+      <node id="36924">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/relation.hpp</label>
+        <link refid="relation_8hpp"/>
+      </node>
+      <node id="36881">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sub_range.hpp</label>
+        <link refid="sub_range.hpp"/>
+        <childnode refid="36882" relation="include">
+        </childnode>
+        <childnode refid="36883" relation="include">
+        </childnode>
+        <childnode refid="36925" relation="include">
+        </childnode>
+        <childnode refid="36926" relation="include">
+        </childnode>
+        <childnode refid="36927" relation="include">
+        </childnode>
+      </node>
+      <node id="36882">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp</label>
+        <link refid="touches_8hpp"/>
+      </node>
+      <node id="36921">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/relate.hpp</label>
+        <link refid="strategies_2agnostic_2relate_8hpp"/>
+        <childnode refid="36922" relation="include">
+        </childnode>
+      </node>
+      <node id="36895">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/distance.hpp</label>
+        <link refid="algorithms_2distance_8hpp"/>
+      </node>
+      <node id="36896">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/comparable_distance/implementation.hpp</label>
+        <link refid="comparable__distance_2implementation_8hpp"/>
+        <childnode refid="36897" relation="include">
+        </childnode>
+      </node>
+      <node id="36885">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/relate.hpp</label>
+        <link refid="algorithms_2relate_8hpp"/>
+        <childnode refid="36886" relation="include">
+        </childnode>
+        <childnode refid="36887" relation="include">
+        </childnode>
+        <childnode refid="36920" relation="include">
+        </childnode>
+        <childnode refid="36882" relation="include">
+        </childnode>
+        <childnode refid="36921" relation="include">
+        </childnode>
+      </node>
+      <node id="36904">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/is_valid.hpp</label>
+        <link refid="is__valid_8hpp"/>
+      </node>
+      <node id="36898">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/linear.hpp</label>
+        <link refid="is__simple_2linear_8hpp"/>
+        <childnode refid="36899" relation="include">
+        </childnode>
+      </node>
+      <node id="36900">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/is_simple.hpp</label>
+        <link refid="is__simple_8hpp"/>
+      </node>
+      <node id="36908">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/segment.hpp</label>
+        <link refid="algorithms_2detail_2is__valid_2segment_8hpp"/>
+        <childnode refid="36903" relation="include">
+        </childnode>
+      </node>
+      <node id="36893">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/segment_to_box.hpp</label>
+        <link refid="segment__to__box_8hpp"/>
+        <childnode refid="36894" relation="include">
+        </childnode>
+      </node>
+      <node id="36920">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/overlaps.hpp</label>
+        <link refid="overlaps_8hpp"/>
+      </node>
+      <node id="36917">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/box_box.hpp</label>
+        <link refid="intersection_2box__box_8hpp"/>
+        <childnode refid="36918" relation="include">
+        </childnode>
+      </node>
+      <node id="36926">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/linear_areal.hpp</label>
+        <link refid="relate_2linear__areal_8hpp"/>
+        <childnode refid="36884" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sub_range.hpp"/>
+  </compounddef>
+</doxygen>

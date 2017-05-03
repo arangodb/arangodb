@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1equals_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_c050b04e1a64312df07050b392f02566" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::equals&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T1)&gt;, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T2)&gt;&gt;::visitor</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">boost::static_visitor&lt; bool &gt;</basecompoundref>
+    <includes local="no">equals.hpp</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1equals_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_c050b04e1a64312df07050b392f02566_1aeeaf85edd6e01ea9c333fbdab6d732d0" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry1</type>
+          </param>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::resolve_variant::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T2)&gt;&gt;::visitor::operator()</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, Geometry2 const &amp;geometry2) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" line="436" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" bodystart="436" bodyend="441"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1013">
+        <label>boost::static_visitor&lt; bool &gt;</label>
+      </node>
+      <node id="1012">
+        <label>boost::geometry::resolve_variant::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T2)&gt;&gt;::visitor</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1equals_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_c050b04e1a64312df07050b392f02566"/>
+        <childnode refid="1013" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1015">
+        <label>boost::static_visitor&lt; bool &gt;</label>
+      </node>
+      <node id="1014">
+        <label>boost::geometry::resolve_variant::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T2)&gt;&gt;::visitor</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1equals_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_c050b04e1a64312df07050b392f02566"/>
+        <childnode refid="1015" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" line="434" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" bodystart="433" bodyend="443"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1equals_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_c050b04e1a64312df07050b392f02566_1aeeaf85edd6e01ea9c333fbdab6d732d0" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::equals&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T1)&gt;, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T2)&gt;&gt;::visitor</scope><name>operator()</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

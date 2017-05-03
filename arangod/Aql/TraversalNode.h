@@ -24,52 +24,53 @@
 #ifndef ARANGOD_AQL_TRAVERSAL_NODE_H
 #define ARANGOD_AQL_TRAVERSAL_NODE_H 1
 
-#include "Aql/ExecutionNode.h"
-#include "Aql/Collection.h"
+#include "Aql/GraphNode.h"
 #include "Aql/Condition.h"
 #include "Aql/Graphs.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/TraverserOptions.h"
 
 namespace arangodb {
+
+namespace aql {
+struct Collection;
+}
+
+namespace graph {
+struct BaseOptions;
+}
+
+namespace traverser {
+struct TraverserOptions;
+}
+
 namespace aql {
 
 /// @brief class TraversalNode
-class TraversalNode : public ExecutionNode {
+class TraversalNode : public GraphNode {
+  class TraversalEdgeConditionBuilder final : public EdgeConditionBuilder {
+   private:
+    /// @brief reference to the outer traversal node
+    TraversalNode const* _tn;
 
-  class EdgeConditionBuilder {
-    private:
+   protected:
+    // Create the _fromCondition for the first time.
+    void buildFromCondition() override;
 
-      /// @brief reference to the outer traversal node
-      TraversalNode const* _tn;
+    // Create the _toCondition for the first time.
+    void buildToCondition() override;
 
-      /// @brief the conditions modifying the edge on this depth
-      AstNode* _modCondition;
+   public:
+    explicit TraversalEdgeConditionBuilder(TraversalNode const*);
 
-      /// @brief indicator if we have attached the _from or _to condition to _modCondition
-      bool _containsCondition;
+    TraversalEdgeConditionBuilder(TraversalNode const*,
+                                  arangodb::velocypack::Slice const&);
 
-    public:
-     explicit EdgeConditionBuilder(TraversalNode const*);
+    TraversalEdgeConditionBuilder(TraversalNode const*,
+                                  TraversalEdgeConditionBuilder const*);
 
-     EdgeConditionBuilder(TraversalNode const*, arangodb::velocypack::Slice const&);
+    ~TraversalEdgeConditionBuilder() {}
 
-     EdgeConditionBuilder(TraversalNode const*, EdgeConditionBuilder const*);
-
-     ~EdgeConditionBuilder() {}
-
-     EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
-
-     EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;
-
-     void addConditionPart(AstNode const*);
-
-      AstNode* getOutboundCondition();
-
-      AstNode* getInboundCondition();
-
-      void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+    void toVelocyPack(arangodb::velocypack::Builder&, bool);
   };
 
   friend class ExecutionBlock;
@@ -81,7 +82,7 @@ class TraversalNode : public ExecutionNode {
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
                 AstNode const* graph,
-                std::unique_ptr<traverser::TraverserOptions>& options);
+                std::unique_ptr<graph::BaseOptions>& options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -94,16 +95,11 @@ class TraversalNode : public ExecutionNode {
                 std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
                 Variable const* inVariable, std::string const& vertexId,
                 std::vector<TRI_edge_direction_e> const& directions,
-                std::unique_ptr<traverser::TraverserOptions>& options);
+                std::unique_ptr<graph::BaseOptions>& options);
 
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
-
-  /// @brief flag, ob smart traversal (enterprise edition only!) is done
-  bool isSmart() const {
-    return _isSmart;
-  }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
@@ -123,7 +119,7 @@ class TraversalNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesUsedHere() const override final {
     std::vector<Variable const*> result;
     for (auto const& condVar : _conditionVariables) {
-      if (condVar != _tmpObjVariable) {
+      if (condVar != getTemporaryVariable()) {
         result.emplace_back(condVar);
       }
     }
@@ -137,7 +133,7 @@ class TraversalNode : public ExecutionNode {
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& result) const override final {
     for (auto const& condVar : _conditionVariables) {
-      if (condVar != _tmpObjVariable) {
+      if (condVar != getTemporaryVariable()) {
         result.emplace(condVar);
       }
     }
@@ -149,48 +145,19 @@ class TraversalNode : public ExecutionNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> vars;
-    
-    size_t const numVars = 
-      (_vertexOutVariable != nullptr ? 1 : 0) + 
-      (_edgeOutVariable != nullptr ? 1 : 0) + 
-      (_pathOutVariable != nullptr ? 1 : 0);
-
-    vars.reserve(numVars);
-    
-    if (_vertexOutVariable != nullptr) {
-      vars.emplace_back(_vertexOutVariable);
+    if (usesVertexOutVariable()) {
+      vars.emplace_back(vertexOutVariable());
     }
-    if (_edgeOutVariable != nullptr) {
-      vars.emplace_back(_edgeOutVariable);
+    if (usesEdgeOutVariable()) {
+      vars.emplace_back(edgeOutVariable());
     }
-    if (_pathOutVariable != nullptr) {
-      vars.emplace_back(_pathOutVariable);
+    if (usesPathOutVariable()) {
+      vars.emplace_back(pathOutVariable());
     }
     return vars;
   }
 
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the vertex out variable
-  Variable const* vertexOutVariable() const { return _vertexOutVariable; }
-
-  /// @brief checks if the vertex out variable is used
-  bool usesVertexOutVariable() const { return _vertexOutVariable != nullptr; }
-
-  /// @brief set the vertex out variable
-  void setVertexOutput(Variable const* outVar) { _vertexOutVariable = outVar; }
-
-  /// @brief return the edge out variable
-  Variable const* edgeOutVariable() const { return _edgeOutVariable; }
-
-  /// @brief checks if the edge out variable is used
-  bool usesEdgeOutVariable() const { return _edgeOutVariable != nullptr; }
-
-  /// @brief set the edge out variable
-  void setEdgeOutput(Variable const* outVar) { _edgeOutVariable = outVar; }
-
-  /// @brief checks if the path out variable is used
+ /// @brief checks if the path out variable is used
   bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
 
   /// @brief return the path out variable
@@ -203,14 +170,6 @@ class TraversalNode : public ExecutionNode {
   Variable const* inVariable() const { return _inVariable; }
 
   std::string const getStartVertex() const { return _vertexId; }
-
-  std::vector<std::unique_ptr<aql::Collection>> const& edgeColls() const {
-    return _edgeColls;
-  }
-
-  std::vector<std::unique_ptr<aql::Collection>> const& vertexColls() const {
-    return _vertexColls;
-  }
 
   /// @brief remember the condition to execute for early traversal abortion.
   void setCondition(Condition* condition);
@@ -227,7 +186,7 @@ class TraversalNode : public ExecutionNode {
   /// @brief register a filter condition on a given search depth.
   ///        If this condition is not fulfilled a traversal will abort.
   ///        The condition will contain the local variable for it's accesses.
-  void registerCondition(bool, size_t, AstNode const*);
+  void registerCondition(bool, uint64_t, AstNode const*);
 
   /// @brief register a filter condition for all search depths
   ///        If this condition is not fulfilled a traversal will abort.
@@ -236,32 +195,13 @@ class TraversalNode : public ExecutionNode {
 
   bool allDirectionsEqual() const;
 
-  traverser::TraverserOptions* options() const;
+  void getConditionVariables(std::vector<Variable const*>&) const override;
 
-  AstNode* getTemporaryRefNode() const;
-
-  Variable const* getTemporaryVariable() const;
-
-  void getConditionVariables(std::vector<Variable const*>&) const;
-
-  void enhanceEngineInfo(arangodb::velocypack::Builder&) const;
 
   /// @brief Compute the traversal options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
-  void prepareOptions();
-
-  /// @brief Add a traverser engine Running on a DBServer to this node.
-  ///        The block will communicate with them (CLUSTER ONLY)
-  void addEngine(traverser::TraverserEngineID const&, ServerID const&);
-
-  
-  /// @brief Returns a reference to the engines. (CLUSTER ONLY)
-  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines()
-      const {
-    TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-    return &_engines;
-  }
+  void prepareOptions() override;
 
  private:
 
@@ -272,15 +212,6 @@ class TraversalNode : public ExecutionNode {
 
  private:
 
-  /// @brief the database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief vertex output variable
-  Variable const* _vertexOutVariable;
-
-  /// @brief vertex output variable
-  Variable const* _edgeOutVariable;
-
   /// @brief vertex output variable
   Variable const* _pathOutVariable;
 
@@ -290,38 +221,11 @@ class TraversalNode : public ExecutionNode {
   /// @brief input vertexId only used if _inVariable is unused
   std::string _vertexId;
 
-  /// @brief input graphInfo only used for serialization & info
-  arangodb::velocypack::Builder _graphInfo;
-
-  /// @brief The directions edges are followed
-  std::vector<TRI_edge_direction_e> _directions;
-
-  /// @brief the edge collection names
-  std::vector<std::unique_ptr<aql::Collection>> _edgeColls;
-
-  /// @brief the vertex collection names
-  std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
-
-  /// @brief our graph
-  Graph const* _graphObj;
-
   /// @brief early abort traversal conditions:
   Condition* _condition;
 
   /// @brief variables that are inside of the condition
   std::unordered_set<Variable const*> _conditionVariables;
-
-  /// @brief Options for traversals
-  std::unique_ptr<traverser::TraverserOptions> _options;
-
-  /// @brief Temporary pseudo variable for the currently traversed object.
-  Variable const* _tmpObjVariable;
-
-  /// @brief Reference to the pseudo variable
-  AstNode* _tmpObjVarNode;
-
-  /// @brief Pseudo string value node to hold the last visted vertex id.
-  AstNode* _tmpIdNode;
 
   /// @brief The hard coded condition on _from
   AstNode* _fromCondition;
@@ -337,21 +241,12 @@ class TraversalNode : public ExecutionNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
-  std::unordered_map<size_t, std::unique_ptr<EdgeConditionBuilder>> _edgeConditions;
+  std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
+      _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
-  std::unordered_map<size_t, AstNode*> _vertexConditions;
+  std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
-  /// @brief Flag if options are already prepared. After
-  ///        this flag was set the node cannot be cloned
-  ///        any more.
-  bool _optionsBuild;
-
-  /// @brief The list of traverser engines grouped by server.
-  std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
-
-  /// @brief flag, if traversal is smart (enterprise edition only!)
-  bool _isSmart;
 };
 
 }  // namespace arangodb::aql

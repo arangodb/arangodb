@@ -1,0 +1,165 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="validity__failure__type_8hpp" kind="file">
+    <compoundname>validity_failure_type.hpp</compoundname>
+    <includedby refid="failure__policy_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/failure_policy.hpp</includedby>
+    <includedby refid="algorithms_2detail_2is__valid_2box_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/box.hpp</includedby>
+    <includedby refid="has__duplicates_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/has_duplicates.hpp</includedby>
+    <includedby refid="has__spikes_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/has_spikes.hpp</includedby>
+    <includedby refid="is__valid_2linear_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/linear.hpp</includedby>
+    <includedby refid="multipolygon_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/multipolygon.hpp</includedby>
+    <includedby refid="pointlike_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/pointlike.hpp</includedby>
+    <includedby refid="algorithms_2detail_2is__valid_2polygon_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/polygon.hpp</includedby>
+    <includedby refid="algorithms_2detail_2is__valid_2ring_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/ring.hpp</includedby>
+    <includedby refid="algorithms_2detail_2is__valid_2segment_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/segment.hpp</includedby>
+    <invincdepgraph>
+      <node id="46428">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/failure_policy.hpp</label>
+        <link refid="failure__policy_8hpp"/>
+        <childnode refid="46429" relation="include">
+        </childnode>
+        <childnode refid="46432" relation="include">
+        </childnode>
+        <childnode refid="46433" relation="include">
+        </childnode>
+      </node>
+      <node id="46441">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/has_spikes.hpp</label>
+        <link refid="has__spikes_8hpp"/>
+        <childnode refid="46432" relation="include">
+        </childnode>
+        <childnode refid="46442" relation="include">
+        </childnode>
+        <childnode refid="46438" relation="include">
+        </childnode>
+      </node>
+      <node id="46435">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/implementation.hpp</label>
+        <link refid="is__valid_2implementation_8hpp"/>
+        <childnode refid="46436" relation="include">
+        </childnode>
+      </node>
+      <node id="46427">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/validity_failure_type.hpp</label>
+        <link refid="validity_failure_type.hpp"/>
+        <childnode refid="46428" relation="include">
+        </childnode>
+        <childnode refid="46434" relation="include">
+        </childnode>
+        <childnode refid="46437" relation="include">
+        </childnode>
+        <childnode refid="46441" relation="include">
+        </childnode>
+        <childnode refid="46442" relation="include">
+        </childnode>
+        <childnode refid="46440" relation="include">
+        </childnode>
+        <childnode refid="46443" relation="include">
+        </childnode>
+        <childnode refid="46439" relation="include">
+        </childnode>
+        <childnode refid="46438" relation="include">
+        </childnode>
+        <childnode refid="46444" relation="include">
+        </childnode>
+      </node>
+      <node id="46429">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/areal.hpp</label>
+        <link refid="areal_8hpp"/>
+        <childnode refid="46430" relation="include">
+        </childnode>
+      </node>
+      <node id="46433">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/multipoint.hpp</label>
+        <link refid="is__simple_2multipoint_8hpp"/>
+        <childnode refid="46430" relation="include">
+        </childnode>
+      </node>
+      <node id="46443">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/pointlike.hpp</label>
+        <link refid="pointlike_8hpp"/>
+        <childnode refid="46435" relation="include">
+        </childnode>
+      </node>
+      <node id="46442">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/linear.hpp</label>
+        <link refid="is__valid_2linear_8hpp"/>
+        <childnode refid="46435" relation="include">
+        </childnode>
+      </node>
+      <node id="46430">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/implementation.hpp</label>
+        <link refid="is__simple_2implementation_8hpp"/>
+        <childnode refid="46431" relation="include">
+        </childnode>
+      </node>
+      <node id="46440">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/multipolygon.hpp</label>
+        <link refid="multipolygon_8hpp"/>
+        <childnode refid="46435" relation="include">
+        </childnode>
+      </node>
+      <node id="46439">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/polygon.hpp</label>
+        <link refid="algorithms_2detail_2is__valid_2polygon_8hpp"/>
+        <childnode refid="46435" relation="include">
+        </childnode>
+        <childnode refid="46440" relation="include">
+        </childnode>
+      </node>
+      <node id="46438">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/ring.hpp</label>
+        <link refid="algorithms_2detail_2is__valid_2ring_8hpp"/>
+        <childnode refid="46435" relation="include">
+        </childnode>
+        <childnode refid="46439" relation="include">
+        </childnode>
+      </node>
+      <node id="46437">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/has_duplicates.hpp</label>
+        <link refid="has__duplicates_8hpp"/>
+        <childnode refid="46429" relation="include">
+        </childnode>
+        <childnode refid="46432" relation="include">
+        </childnode>
+        <childnode refid="46433" relation="include">
+        </childnode>
+        <childnode refid="46438" relation="include">
+        </childnode>
+      </node>
+      <node id="46434">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/box.hpp</label>
+        <link refid="algorithms_2detail_2is__valid_2box_8hpp"/>
+        <childnode refid="46435" relation="include">
+        </childnode>
+      </node>
+      <node id="46436">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/is_valid.hpp</label>
+        <link refid="is__valid_8hpp"/>
+      </node>
+      <node id="46432">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/linear.hpp</label>
+        <link refid="is__simple_2linear_8hpp"/>
+        <childnode refid="46430" relation="include">
+        </childnode>
+      </node>
+      <node id="46431">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/is_simple.hpp</label>
+        <link refid="is__simple_8hpp"/>
+      </node>
+      <node id="46444">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/segment.hpp</label>
+        <link refid="algorithms_2detail_2is__valid_2segment_8hpp"/>
+        <childnode refid="46435" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/validity_failure_type.hpp"/>
+  </compounddef>
+</doxygen>

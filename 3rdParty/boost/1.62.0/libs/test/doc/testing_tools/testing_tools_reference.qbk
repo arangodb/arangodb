@@ -1,0 +1,668 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:testing_tool_ref Reference API for writing tests]
+
+
+
+[/ ###############################################################################################]
+[section:assertion_boost_test_universal_macro `BOOST_TEST`]
+
+
+``
+  BOOST_TEST(statement);
+  BOOST_TEST_<level>(statement);
+
+  // replacement failure message, requires variadic macros
+  BOOST_TEST(statement, "failure message");
+
+  // Floating point comparison, requires variadic macros, auto and decltype
+  BOOST_TEST(statement, floating_point_comparison_manipulation);
+
+  // bitwise comparison, requires variadic macros, auto and decltype
+  BOOST_TEST(statement, boost::test_tools::bitwise() );
+
+  // element-wise comparison, for containers
+  BOOST_TEST(statement, boost::test_tools::per_element() );
+
+  // lexicographic comparison, for containers
+  BOOST_TEST(statement, boost::test_tools::lexicographic() );
+``
+
+The full documentation of this macro is located [link boost_test.testing_tools.boost_test_universal_macro here].
+
+The macro is available in three variants, corresponding to different [link boost_test.testing_tools.tools_assertion_severity_level assertion severity levels]:
+
+``
+  BOOST_TEST // or BOOST_TEST_CHECK
+  BOOST_TEST_REQUIRE
+  BOOST_TEST_WARN
+``
+
+
+* `"failure message"` is a C-string printed in case of failure in place of the default message.
+  See [link boost_test.testing_tools.reports this section] for
+  more details.
+* `floating_point_comparison_manipulation` is one of the floating point comparison manipulators.
+  See [link boost_test.testing_tools.boost_test_universal_macro this section]
+   for more details.
+* [classref boost::test_tools::bitwise] is a manipulator indicating that the comparison should be performed bitwise. See
+  [link boost_test.testing_tools.extended_comparison.bitwise this section] for more details
+* [classref boost::test_tools::per_element] is a manipulator indicating that the comparison should be performed on each element, in sequence, rather
+  than on containers. See
+  [link boost_test_coll_perelement this section] for more details
+* [classref boost::test_tools::lexicographic] is a manipulator indicating that the comparison should be performed with the lexicographic order. See
+  [link boost_test_coll_default_lex this section] for more details
+
+[h3 Limitations and workaround]
+There are some restrictions on the statements that are supported by this tool. Those are explained in details in
+[link boost_test_statement_limitations this] section.
+
+[endsect]
+
+
+
+[/ DECORATORS ###############################################################################################]
+[/-----------------------------------------------------------------]
+
+[section:decorator_expected_failures expected_failures (decorator)]
+
+``
+expected_failures(counter_t number);
+``
+
+Indicates the expected failures for a test unit.
+See [link boost_test.testing_tools.expected_failures here] for more details.
+
+[endsect] [/ section expected_failures]
+
+
+[/-----------------------------------------------------------------]
+[section:decorator_timeout timeout (decorator)]
+
+``
+timeout(unsigned seconds);
+``
+
+Specifies a time-out for a *test-case*, above which the test-case is forced to stop and reported as failing.
+See [link boost_test.testing_tools.timeout here] for more details.
+
+[endsect] [/ section timeout]
+
+
+[/-----------------------------------------------------------------]
+[section:decorator_tolerance tolerance (decorator)]
+
+``
+template <typename FPT>
+  tolerance(FPT eps);
+
+template <typename FPT>
+  tolerance(test_tools::fpc::percent_tolerance_t<FPT> eps)
+``
+
+Decorator `tolerance` specifies the default comparison tolerance for floating point type `FTP` in the decorated test
+unit. The default tolerance only applies to a particular type, so it makes sense to provide more than one `tolerance`
+decorator if we are comparing different floating point types. For more details see __floating_points_testing_impl__.
+The variant with `percent_tolerance` uses value `eps / 100` as tolerance.
+
+[bt_example decorator_13..decorator tolerance..run-fail]
+
+In the above example,  in `test1`, checks on `double`s fail because they differ by more what tolerance for `double`s
+specifies. In `test2` the tolerance for `double`s is greater and therefore the checks succeed. In `test3`, we specify
+only tolerance for type `float`, and since the checks use type `double` the specified tolerance does not apply. Tolerance
+in `test4` is equivalent to that in `test1`, therefore its checks also fail. Tolerance in `test5` is equivalent to
+that in `test2`, therefore its checks also succeed.
+[endsect] [/ section decorator_tolerance]
+
+
+
+
+
+[/ DEPRECATED API]
+[/ ###############################################################################################]
+[#ref_BOOST_level][section:assertion_boost_level `BOOST_<level>`]
+
+
+``
+  BOOST_WARN(predicate);
+  BOOST_CHECK(predicate);
+  BOOST_REQUIRE(predicate);
+``
+
+These tools are used to validate the predicate value. The only parameter for these tools is a boolean predicate
+value that gets validated. It could be any expression that could be evaluated and converted to boolean value. The
+expression gets evaluated only once, so it's safe to pass complex expression for validation.
+
+[bt_example example34..BOOST_<level> usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_MESSAGE__
+
+[endsect]
+
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_bitwise_eq `BOOST_<level>_BITWISE_EQUAL`]
+
+
+``
+  BOOST_WARN_BITWISE_EQUAL(left, right);
+  BOOST_CHECK_BITWISE_EQUAL(left, right);
+  BOOST_REQUIRE_BITWISE_EQUAL(left, right);
+``
+
+These tools are used to perform bitwise comparison of two values. The check shows all positions where left and
+right value's bits mismatch.
+
+The first parameter is the left compared value. The second parameter is the right compared value. Parameters are
+not required to be of the same type, but warning is issued if their type's size does not coincide.
+
+[bt_example example33..BOOST_<level>_BITWISE_EQUAL usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_EQUAL__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_eq `BOOST_<level>_EQUAL`]
+
+``
+  BOOST_WARN_EQUAL(left, right);
+  BOOST_CHECK_EQUAL(left, right);
+  BOOST_REQUIRE_EQUAL(left, right);
+``
+
+Check performed by these tools is the same as the one performed by `__BOOST_LEVEL__(left == right)`.
+The difference is that the mismatched values are reported as well.
+
+[note It is bad idea to use these tools to compare floating point values. Use __BOOST_LEVEL_CLOSE__ or
+      __BOOST_LEVEL_CLOSE_FRACTION__ tools instead.
+]
+
+[bt_example example35..BOOST_<level>_EQUAL usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL__
+* __BOOST_LEVEL_CLOSE__
+* __BOOST_LEVEL_NE__
+* __BOOST_LEVEL_EQUAL_COLLECTIONS__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_eq_collections `BOOST_<level>_EQUAL_COLLECTIONS`]
+
+``
+  BOOST_WARN_EQUAL_COLLECTIONS(left_begin, left_end, right_begin, right_end);
+  BOOST_CHECK_EQUAL_COLLECTIONS(left_begin, left_end, right_begin, right_end);
+  BOOST_REQUIRE_EQUAL_COLLECTIONS(left_begin, left_end, right_begin, right_end);
+``
+
+These tools are used to perform an element by element comparison of two collections. They print all mismatched
+positions, collection elements at these positions and check that the collections have the same size. The first two
+parameters designate begin and end of the first collection. The two last parameters designate begin and end of the
+second collection.
+
+[bt_example example36..BOOST_<level>_EQUAL_COLLECTIONS usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_EQUAL__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_close `BOOST_<level>_CLOSE`]
+
+``
+  BOOST_WARN_CLOSE(left, right, tolerance);
+  BOOST_CHECK_CLOSE(left, right, tolerance);
+  BOOST_REQUIRE_CLOSE(left, right, tolerance);
+``
+
+These tools are used to check on closeness using strong relationship defined by the predicate
+``check_is_close( left, right, tolerance )``
+
+To check for the weak relationship use
+__BOOST_LEVEL_PREDICATE__ family of tools with explicit `check_is_close` invocation.
+
+
+The first parameter is the ['left] compared value. The second parameter is the
+['right] compared value. Last third parameter defines the tolerance for the comparison in
+[link boost_test.testing_tools.extended_comparison.floating_point [*percentage units]].
+
+[note It is required for left and right parameters to be of the same floating point type. You will need to explicitly
+      resolve any type mismatch to select which type to use for comparison.
+]
+
+[note Note that to use these tools you need to include additional header `floating_point_comparison.hpp`.
+]
+
+[bt_example example42..BOOST_<level>_CLOSE usage with small values..run-fail]
+[bt_example example43..BOOST_<level>_CLOSE usage with big values..run]
+
+See also:
+
+* __BOOST_LEVEL_CLOSE_FRACTION__
+* __BOOST_LEVEL_SMALL__
+* __BOOST_LEVEL_EQUAL__
+* __floating_points_testing_tools__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_close_fraction `BOOST_<level>_CLOSE_FRACTION`]
+
+``
+  BOOST_WARN_CLOSE_FRACTION(left, right, tolerance);
+  BOOST_CHECK_CLOSE_FRACTION(left, right, tolerance);
+  BOOST_REQUIRE_CLOSE_FRACTION(left, right, tolerance);
+``
+
+These tools are used to check on closeness using strong relationship defined by the predicate
+``check_is_close(left, right, tolerance)``
+
+To check for the weak relationship use __BOOST_LEVEL_PREDICATE__ family of tools with explicit `check_is_close` invocation.
+
+The first parameter is the ['left] compared value. The second parameter is the
+['right] compared value. Last third parameter defines the tolerance for the comparison as
+[link boost_test.testing_tools.extended_comparison.floating_point [*fraction of absolute values being compared]].
+
+[note It is required for left and right parameters to be of the same floating point type. You will need to explicitly
+      resolve any type mismatch to select which type to use for comparison.]
+
+[note Note that to use these tools you need to include additional header `floating_point_comparison.hpp`.]
+
+[bt_example example44..BOOST_<level>_CLOSE_FRACTION usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_CLOSE__
+* __BOOST_LEVEL_SMALL__
+* __BOOST_LEVEL_EQUAL__
+* __floating_points_testing_tools__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_ge `BOOST_<level>_GE`]
+
+``
+  BOOST_WARN_GE(left, right);
+  BOOST_CHECK_GE(left, right);
+  BOOST_REQUIRE_GE(left, right);
+``
+
+Check performed by these tools is the same as the one performed by `__BOOST_LEVEL__( left >= right )`.
+The difference is that the argument values are reported as well.
+
+[bt_example example57..BOOST_<level>_GE usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_LE__
+* __BOOST_LEVEL_LT__
+* __BOOST_LEVEL_GT__
+
+[endsect]
+
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_gt `BOOST_<level>_GT`]
+
+
+``
+  BOOST_WARN_GT(left, right);
+  BOOST_CHECK_GT(left, right);
+  BOOST_REQUIRE_GT(left, right);
+``
+
+Check performed by these tools is the same as the one performed by __BOOST_LEVEL__`( left > right )`.
+The difference is that the argument values are reported as well.
+
+[bt_example example58..BOOST_<level>_GT usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_LE__
+* __BOOST_LEVEL_LT__
+* __BOOST_LEVEL_GE__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_le `BOOST_<level>_LE`]
+
+``
+  BOOST_WARN_LE(left, right);
+  BOOST_CHECK_LE(left, right);
+  BOOST_REQUIRE_LE(left, right);
+``
+
+Check performed by these tools is the same as the one performed by `__BOOST_LEVEL__( left <= right )`.
+The difference is that the argument values are reported as well.
+
+[bt_example example55..BOOST_<level>_LE usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_LE__
+* __BOOST_LEVEL_GE__
+* __BOOST_LEVEL_GT__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_lt `BOOST_<level>_LT`]
+
+``
+  BOOST_WARN_LT(left, right);
+  BOOST_CHECK_LT(left, right);
+  BOOST_REQUIRE_LT(left, right);
+``
+
+Check performed by these tools is the same as the one performed by `__BOOST_LEVEL__( left < right )`.
+The difference is that the argument values are reported as well.
+
+[bt_example example56..BOOST_<level>_LT usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_LE__
+* __BOOST_LEVEL_GE__
+* __BOOST_LEVEL_GT__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_message `BOOST_<level>_MESSAGE`]
+
+``
+  BOOST_WARN_MESSAGE(predicate, message);
+  BOOST_CHECK_MESSAGE(predicate, message);
+  BOOST_REQUIRE_MESSAGE(predicate, message);
+``
+
+These tools perform exactly the same check as __BOOST_LEVEL__ tools. The only difference is that
+instead of generating an error/confirm message these use the supplied one.
+
+The first parameter is the boolean expression. The second parameter is the message reported in case of check
+failure. The message argument can be constructed of components of any type supporting the
+`std::ostream& operator<<(std::ostream&)`.
+
+[bt_example example38..BOOST_<level>_MESSAGE usage..run]
+
+See also:
+
+* __BOOST_LEVEL__
+
+[endsect]
+
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_ne `BOOST_<level>_NE`]
+
+
+``
+  BOOST_WARN_NE(left, right);
+  BOOST_CHECK_NE(left, right);
+  BOOST_REQUIRE_NE(left, right);
+``
+
+Check performed by these tools is the same as the one performed by `__BOOST_LEVEL__( left != right )`.
+The difference is that the matched values are reported as well.
+
+[bt_example example54..BOOST_<level>_NE usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_EQUAL__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_predicate `BOOST_<level>_PREDICATE`]
+
+
+``
+  BOOST_WARN_PREDICATE(predicate, arguments_list);
+  BOOST_CHECK_PREDICATE(predicate, arguments_list);
+  BOOST_REQUIRE_PREDICATE(predicate, arguments_list);
+``
+
+These are generic tools used to validate an arbitrary supplied predicate functor (there is a compile time limit on
+predicate arity defined by the configurable macro `BOOST_TEST_MAX_PREDICATE_ARITY`). To
+validate zero arity predicate use __BOOST_LEVEL__ tools. In other cases prefer theses tools. The
+advantage of these tools is that they show arguments values in case of predicate failure.
+
+The first parameter is the predicate itself. The second parameter is the list of predicate arguments each wrapped
+in round brackets (`BOOST_PP` sequence format).
+
+[bt_example example40..BOOST_<level>_PREDICATE usage..run]
+
+[note Note difference in error log from __BOOST_LEVEL__]
+
+See also:
+
+* __BOOST_LEVEL__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_no_throw `BOOST_<level>_NO_THROW`]
+
+``
+  BOOST_WARN_NO_THROW(expression);
+  BOOST_CHECK_NO_THROW(expression);
+  BOOST_REQUIRE_NO_THROW(expression);
+``
+
+These assertions validate that the execution of `expression` does not throw any exception.
+To that extent, all possible exception are caught by assertion itself and no exception is propagated to
+the test body.
+
+[tip
+It is possible to test for complex expressions with the use of constructs such as `do { /* ... */} while(0)` block.
+]
+
+[bt_example exception_nothrow..BOOST_<level>_NO_THROW usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_THROW__
+* [link boost_test.testing_tools.exception_correctness Exception correctness] section
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_throw `BOOST_<level>_THROW`]
+
+``
+  BOOST_WARN_THROW(expression, exception_type);
+  BOOST_CHECK_THROW(expression, exception_type);
+  BOOST_REQUIRE_THROW(expression, exception_type);
+``
+
+These assertions validate that the execution of `expression` raises an /expected/ exception, which means an exception of
+the supplied `exception_type` type or of any child type.
+
+* If `expression` raises an unexpected exception, this exception is not caught by `BOOST_<level>_THROW` assertion and
+  might propagate to the test body. If not caught at all, the framework will catch it and terminate the test case
+  with the status /failed/.
+* If `expression` does not raise any exception, the the assertion fails.
+
+[warning the assertion catches only the expected exceptions.]
+
+[tip
+It is possible to test for complex expressions with the use of constructs such as `do { /* ... */} while(0)` block.
+]
+
+[bt_example exception_check..BOOST_<level>_THROW usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_NO_THROW__
+* [link boost_test.testing_tools.exception_correctness Exception correctness] section
+
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_exception `BOOST_<level>_EXCEPTION`]
+
+``
+  BOOST_WARN_EXCEPTION(expression, exception_type, predicate);
+  BOOST_CHECK_EXCEPTION(expression, exception_type, predicate);
+  BOOST_REQUIRE_EXCEPTION(expression, exception_type, predicate);
+``
+
+As for __BOOST_LEVEL_THROW__, these assertions validate that `expression` raises an exception of the
+type specified by `exception_type` or any of its child type, with additional checks on the exception instance.
+
+* If an expected exception is raised by `expression`, the instance of the exception is passed to `predicate`
+  for further validation.
+* It behaves like __BOOST_LEVEL_THROW__ if `expression` does not raise any exception, or an unrelated exception is raised.
+
+`predicate` should be a unary function accepting an instance of `exception_type` or any of its child, and that should return
+a boolean indicating a success (`true`) or a failure (`false`).
+
+[warning the assertion catches only the expected exceptions.]
+
+[tip
+It is possible to test for complex expressions with the use of constructs such as `do { /* ... */} while(0)` block.
+]
+
+
+The example below checks that the exception carries the proper error code.
+
+[bt_example exception_check_predicate..BOOST_<level>_EXCEPTION usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_THROW__
+* [link boost_test.testing_tools.exception_correctness Exception correctness] section
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_boost_level_small `BOOST_<level>_SMALL`]
+
+``
+  BOOST_WARN_SMALL(value, tolerance);
+  BOOST_CHECK_SMALL(value, tolerance);
+  BOOST_REQUIRE_SMALL(value, tolerance);
+``
+
+These tools are used to check that supplied value is small enough. The "smallness" is defined by absolute value
+of the tolerance supplied as a second argument. Use these tools with caution. To compare to values on closeness
+it's preferable to use __BOOST_LEVEL_CLOSE__ tools instead.
+
+The first parameter is the value to check. The second parameter is the tolerance.
+
+[note Note that to use these tools you need to include additional header `floating_point_comparison.hpp`.]
+
+[bt_example example41..BOOST_<level>_SMALL usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL_CLOSE__
+* __BOOST_LEVEL_CLOSE_FRACTION__
+* __floating_points_testing_tools__
+
+[endsect]
+
+
+
+[/ ###############################################################################################]
+[section:test_org_boost_test_case_expected_failure `BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES`]
+Indicates the number of failures for a test case.
+
+See [link boost_test.testing_tools.expected_failures here] for more details.
+[endsect] [/ expected failures]
+
+[/ ###############################################################################################]
+[section:assertion_boost_error `BOOST_ERROR`]
+
+``
+  BOOST_ERROR(message);
+``
+
+__BOOST_ERROR__ tool behave the same way as `__BOOST_TEST__(false, message)`. This tool is used for
+an unconditional error counter increasing and message logging.
+
+The tool's only parameter is an error message to log.
+
+[bt_example example46..BOOST_ERROR usage..run-fail]
+
+See also:
+
+* __BOOST_TEST__
+
+[endsect]
+
+
+[/ ###############################################################################################]
+[section:assertion_boost_fail `BOOST_FAIL`]
+
+``
+  BOOST_FAIL(message);
+``
+
+`__BOOST_FAIL__(message)` behave the same way as `__BOOST_TEST_REQUIRE__(false, message)`. This tool is used for an
+unconditional error counter increasing, message logging and the current test case aborting.
+
+The tool's only parameter is an error message to log.
+
+[bt_example example47..BOOST_FAIL usage..run-fail]
+
+See also:
+
+* __BOOST_TEST__
+*
+
+[endsect]
+
+
+[/ ###############################################################################################]
+[section:assertion_boost_is_defined `BOOST_IS_DEFINED`]
+
+``
+  BOOST_IS_DEFINED(symbol);
+``
+
+Unlike the rest of the tools in the toolbox this tool does not perform the logging itself. Its only purpose
+is to check at runtime whether or not the supplied preprocessor symbol is defined. Use it in combination with
+__BOOST_LEVEL__ to perform and log validation. Macros of any arity could be checked. To check the
+macro definition with non-zero arity specify dummy arguments for it. See below for example.
+
+The only tool's parameter is a preprocessor symbol that gets validated.
+
+[bt_example example48..BOOST_IS_DEFINED usage..run-fail]
+
+See also:
+
+* __BOOST_LEVEL__
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:assertion_control_under_debugger `BOOST_TEST_TOOLS_UNDER_DEBUGGER`]
+When defined, assertions evaluate their expression eagerly, as described [link boost_test.testing_tools.debugging here].
+[endsect] [/ assertion_control_under_debugger]
+
+[/ ###############################################################################################]
+[section:assertion_control_under_debuggable `BOOST_TEST_TOOLS_DEBUGGABLE`]
+When defined, test assertions are compiled in two modes (debugger-friendly and full-featured) and the version is selected at run-time, as described [link boost_test.testing_tools.debugging here].
+[endsect] [/ assertion_control_under_debuggable]
+
+[endsect] [/ testing_tool_ref]

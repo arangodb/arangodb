@@ -1,0 +1,104 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1envelope_1_1intersects__antimeridian" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::envelope::intersects_antimeridian</compoundname>
+    <includes local="no">intersects_antimeridian.hpp</includes>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1envelope_1_1intersects__antimeridian_1a081820b8afb3fb3273075797ca7ae033" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Units</type>
+          </param>
+          <param>
+            <type>typename CoordinateType</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::detail::envelope::intersects_antimeridian::apply</definition>
+        <argsstring>(CoordinateType const &amp;lon1, CoordinateType const &amp;lat1, CoordinateType const &amp;lon2, CoordinateType const &amp;lat2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>lon1</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>lat1</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>lon2</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>lat2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp" line="32" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp" bodystart="32" bodyend="48"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1envelope_1_1intersects__antimeridian_1ac8c897f65e92c75691e63db4d039b898" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::detail::envelope::intersects_antimeridian::apply</definition>
+        <argsstring>(Segment const &amp;segment)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>segment</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp" line="51" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp" bodystart="51" bodyend="55"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1envelope_1_1intersects__antimeridian_1a2ad45ea3a214d09d48770c5a16ad7a37" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::detail::envelope::intersects_antimeridian::apply</definition>
+        <argsstring>(Point const &amp;p1, Point const &amp;p2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp" line="58" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp" bodystart="58" bodyend="70"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp" line="30" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp" bodystart="29" bodyend="71"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1detail_1_1envelope_1_1intersects__antimeridian_1a081820b8afb3fb3273075797ca7ae033" prot="public" virt="non-virtual"><scope>boost::geometry::detail::envelope::intersects_antimeridian</scope><name>apply</name></member>
+      <member refid="structboost_1_1geometry_1_1detail_1_1envelope_1_1intersects__antimeridian_1ac8c897f65e92c75691e63db4d039b898" prot="public" virt="non-virtual"><scope>boost::geometry::detail::envelope::intersects_antimeridian</scope><name>apply</name></member>
+      <member refid="structboost_1_1geometry_1_1detail_1_1envelope_1_1intersects__antimeridian_1a2ad45ea3a214d09d48770c5a16ad7a37" prot="public" virt="non-virtual"><scope>boost::geometry::detail::envelope::intersects_antimeridian</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1linear" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::linear</compoundname>
+    <includes refid="parameters_8hpp" local="no">parameters.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>size_t</type>
+        <declname>MaxElements</declname>
+        <defname>MaxElements</defname>
+      </param>
+      <param>
+        <type>size_t</type>
+        <declname>MinElements</declname>
+        <defname>MinElements</defname>
+        <defval>detail::default_min_elements_s&lt;MaxElements&gt;::value</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1linear_1a36a79c7ea313fa87b0dbd7ec549f982f" prot="public" static="yes" mutable="no">
+        <type>const size_t</type>
+        <definition>const size_t boost::geometry::index::linear&lt; MaxElements, MinElements &gt;::max_elements</definition>
+        <argsstring></argsstring>
+        <name>max_elements</name>
+        <initializer>= MaxElements</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="79" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="79" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1linear_1a4d38e783069dfbf9a511ba49c7ce5315" prot="public" static="yes" mutable="no">
+        <type>const size_t</type>
+        <definition>const size_t boost::geometry::index::linear&lt; MaxElements, MinElements &gt;::min_elements</definition>
+        <argsstring></argsstring>
+        <name>min_elements</name>
+        <initializer>= MinElements</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="80" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="80" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1linear_1ac6f32e160803ac3b96e435558f1c9c3a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::linear&lt; MaxElements, MinElements &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>((0&lt; MinElements &amp;&amp;2 *MinElements&lt;=MaxElements+1), INVALID_STATIC_MIN_MAX_PARAMETERS,(linear))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type>(0&lt; MinElements &amp;&amp;2 *MinElements&lt;=MaxElements+1)</type>
+        </param>
+        <param>
+          <type>INVALID_STATIC_MIN_MAX_PARAMETERS</type>
+        </param>
+        <param>
+          <type>(<ref refid="structboost_1_1geometry_1_1index_1_1linear" kindref="compound">linear</ref>)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="76" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1linear_1acbe123037c8dcebc6657000f4f2ec6a4" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>static size_t boost::geometry::index::linear&lt; MaxElements, MinElements &gt;::get_max_elements</definition>
+        <argsstring>()</argsstring>
+        <name>get_max_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="82" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="82" bodyend="82"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1linear_1a6bd4b1d2e3e370785f164fb8046bff88" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>static size_t boost::geometry::index::linear&lt; MaxElements, MinElements &gt;::get_min_elements</definition>
+        <argsstring>()</argsstring>
+        <name>get_min_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="83" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="83" bodyend="83"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Linear r-tree creation algorithm parameters. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>MaxElements</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum number of elements in nodes. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>MinElements</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Minimum number of elements in nodes. Default: 0.3*Max. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="75" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="74" bodyend="84"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1linear_1ac6f32e160803ac3b96e435558f1c9c3a" prot="public" virt="non-virtual"><scope>boost::geometry::index::linear</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1linear_1acbe123037c8dcebc6657000f4f2ec6a4" prot="public" virt="non-virtual"><scope>boost::geometry::index::linear</scope><name>get_max_elements</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1linear_1a6bd4b1d2e3e370785f164fb8046bff88" prot="public" virt="non-virtual"><scope>boost::geometry::index::linear</scope><name>get_min_elements</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1linear_1a36a79c7ea313fa87b0dbd7ec549f982f" prot="public" virt="non-virtual"><scope>boost::geometry::index::linear</scope><name>max_elements</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1linear_1a4d38e783069dfbf9a511ba49c7ce5315" prot="public" virt="non-virtual"><scope>boost::geometry::index::linear</scope><name>min_elements</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

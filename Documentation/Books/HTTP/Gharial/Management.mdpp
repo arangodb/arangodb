@@ -1,4 +1,5 @@
-!CHAPTER Manage your graphs
+Manage your graphs
+==================
 
 The [graph module](../../Manual/Graphs/index.html) provides functions dealing with graph structures.
 Examples will explain the REST API on the [social graph](../../Manual/Graphs/index.html#the-social-graph):

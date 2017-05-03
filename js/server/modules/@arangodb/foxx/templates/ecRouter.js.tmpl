@@ -20,6 +20,10 @@ const HTTP_CONFLICT = status('conflict');
 const router = createRouter();
 module.exports = router;
 
+
+router.tag('<%= document %>');
+
+
 const New<%= model %> = Object.assign({}, <%= model %>, {
   schema: Object.assign({}, <%= model %>.schema, {
     _from: joi.string(),

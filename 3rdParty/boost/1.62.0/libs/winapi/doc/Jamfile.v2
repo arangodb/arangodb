@@ -1,0 +1,23 @@
+# Copyright (c) 2016 Andrey Semashev
+#
+# Distributed under the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt
+# or copy at http://boost.org/LICENSE_1_0.txt)
+
+import doxygen ;
+import quickbook ;
+
+xml winapi : winapi.qbk ;
+
+boostbook standalone
+  :
+    winapi
+  :
+    <xsl:param>boost.root=../../../..
+    <xsl:param>generate.section.toc.level=1
+    <xsl:param>toc.max.depth=1
+    <format>pdf:<xsl:param>boost.url.prefix=http://www.boost.org/doc/libs/release/libs/winapi/doc/html
+  ;
+
+alias boostdoc : standalone
+    : : : <implicit-dependency>standalone ;

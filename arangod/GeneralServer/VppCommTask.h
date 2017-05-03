@@ -8,7 +8,7 @@
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     vpp://www.apache.org/licenses/LICENSE-2.0
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,16 +42,18 @@ namespace rest {
 class VppCommTask : public GeneralCommTask {
  public:
   VppCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
-              ConnectionInfo&&, double timeout);
+              ConnectionInfo&&, double timeout, bool skipSocketInit = false);
 
   // convert from GeneralResponse to vppResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(GeneralResponse* response) override {
+  void addResponse(GeneralResponse* response, RequestStatistics* stat) override {
     VppResponse* vppResponse = dynamic_cast<VppResponse*>(response);
+
     if (vppResponse == nullptr) {
       throw std::logic_error("invalid response or response Type");
     }
-    addResponse(vppResponse);
+
+    addResponse(vppResponse, stat);
   };
 
   arangodb::Endpoint::TransportType transportType() override {
@@ -61,26 +63,30 @@ class VppCommTask : public GeneralCommTask {
  protected:
   // read data check if chunk and message are complete
   // if message is complete execute a request
-  bool processRead() override;
+  bool processRead(double startTime) override;
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
-  
+
   void handleAuthentication(VPackSlice const& header, uint64_t messageId);
+
   void handleSimpleError(rest::ResponseCode code, uint64_t id) override {
     VppResponse response(code, id);
-    addResponse(&response);
+    addResponse(&response, nullptr);
   }
+
   void handleSimpleError(rest::ResponseCode, int code,
                          std::string const& errorMessage,
                          uint64_t messageId) override;
+
+  bool allowDirectHandling() const override final { return false; }
 
  private:
   // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
   void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
 
-  void addResponse(VppResponse*);
+  void addResponse(VppResponse*, RequestStatistics* stat);
   rest::ResponseCode authenticateRequest(GeneralRequest* request);
 
  private:
@@ -137,10 +143,6 @@ class VppCommTask : public GeneralCommTask {
 
   std::string _authenticatedUser;
   AuthenticationFeature* _authentication;
-  // user
-  // authenticated or not
-  // database aus url
-  bool _authenticationEnabled;
 };
 }
 }

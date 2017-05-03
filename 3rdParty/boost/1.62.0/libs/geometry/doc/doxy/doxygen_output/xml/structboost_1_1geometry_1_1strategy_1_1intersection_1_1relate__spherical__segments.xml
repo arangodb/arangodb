@@ -1,0 +1,659 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::intersection::relate_spherical_segments</compoundname>
+    <includes local="no">intersection.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info" prot="public">boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename Policy</type>
+      </param>
+      <param>
+        <type>typename CalculationType</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="enum" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16" prot="public" static="no">
+        <name>intersection_point_flag</name>
+        <enumvalue id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16a17c6cb464bc227d48541ba761fcb9ad8" prot="public">
+          <name>ipi_inters</name>
+          <initializer>= 0</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16a9edb4569e692fa11b044a5db7d545772" prot="public">
+          <name>ipi_at_a1</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16af5b6b224d7f5fc4aba8501b2d7683923" prot="public">
+          <name>ipi_at_a2</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16a5f392f52557fc8be0941bb2c35c0e31b" prot="public">
+          <name>ipi_at_b1</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16a0b6f4aad95c014f093ae1d17e0194a58" prot="public">
+          <name>ipi_at_b2</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="76" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="76" bodyend="76"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ac16c97632efa47cbd1f06d7095aa9d10" prot="public" static="no">
+        <type>Policy::return_type</type>
+        <definition>typedef Policy::return_type boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::return_type</definition>
+        <argsstring></argsstring>
+        <name>return_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="74" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="74" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a7f0c0ac696f40c6f2fc1ea43ce809be0" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment1</type>
+          </param>
+          <param>
+            <type>typename Segment2</type>
+          </param>
+          <param>
+            <type>typename RobustPolicy</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ac16c97632efa47cbd1f06d7095aa9d10" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::apply</definition>
+        <argsstring>(Segment1 const &amp;a, Segment2 const &amp;b, RobustPolicy const &amp;robust_policy)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Segment1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>Segment2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>RobustPolicy const &amp;</type>
+          <declname>robust_policy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="141" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="141" bodyend="156"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a93d0d5bbd05041082038f32820f370e2" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment1</type>
+          </param>
+          <param>
+            <type>typename Segment2</type>
+          </param>
+          <param>
+            <type>typename RobustPolicy</type>
+          </param>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ac16c97632efa47cbd1f06d7095aa9d10" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::apply</definition>
+        <argsstring>(Segment1 const &amp;a, Segment2 const &amp;b, RobustPolicy const &amp;, Point1 const &amp;a1, Point1 const &amp;a2, Point2 const &amp;b1, Point2 const &amp;b2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Segment1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>Segment2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>RobustPolicy const &amp;</type>
+        </param>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>a1</declname>
+        </param>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>a2</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>b1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>b2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="160" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="160" bodyend="385"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a791aaf56cb7c78cb589ee9aa287a1d89" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+        </templateparamlist>
+        <type>CalcT</type>
+        <definition>static CalcT boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::abs_distance</definition>
+        <argsstring>(CalcT const &amp;dist_a1_a2, CalcT const &amp;dist_a1_i1)</argsstring>
+        <name>abs_distance</name>
+        <param>
+          <type>CalcT const &amp;</type>
+          <declname>dist_a1_a2</declname>
+        </param>
+        <param>
+          <type>CalcT const &amp;</type>
+          <declname>dist_a1_i1</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="615" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="615" bodyend="623"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a4c3f5af2823ad033cb37b233ed8b778f" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+          <param>
+            <type>typename Vec3d</type>
+          </param>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::calculate_collinear_data</definition>
+        <argsstring>(Point1 const &amp;a1, Point1 const &amp;a2, Point2 const &amp;b1, Point2 const &amp;b2, Vec3d const &amp;a1v, Vec3d const &amp;a2v, Vec3d const &amp;norm1, Vec3d const &amp;b1v_or_b2v, CalcT &amp;dist_a1_a2, CalcT &amp;dist_a1_i1)</argsstring>
+        <name>calculate_collinear_data</name>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>a1</declname>
+        </param>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>a2</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>b1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>b2</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>a1v</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>a2v</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>norm1</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>b1v_or_b2v</declname>
+        </param>
+        <param>
+          <type>CalcT &amp;</type>
+          <declname>dist_a1_a2</declname>
+        </param>
+        <param>
+          <type>CalcT &amp;</type>
+          <declname>dist_a1_i1</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="402" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="402" bodyend="428"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ace9214c767133f9adb3146e3f877f7cc" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Vec3d</type>
+          </param>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::calculate_dists</definition>
+        <argsstring>(Vec3d const &amp;a1v, Vec3d const &amp;a2v, Vec3d const &amp;norm1, Vec3d const &amp;i1, CalcT &amp;dist_a1_a2, CalcT &amp;dist_a1_i1)</argsstring>
+        <name>calculate_dists</name>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>a1v</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>a2v</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>norm1</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>i1</declname>
+        </param>
+        <param>
+          <type>CalcT &amp;</type>
+          <declname>dist_a1_a2</declname>
+        </param>
+        <param>
+          <type>CalcT &amp;</type>
+          <declname>dist_a1_i1</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="573" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="573" bodyend="597"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ac0b2d1d14f8a8c48017c130d24eb443f" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+          <param>
+            <type>typename Vec3d</type>
+          </param>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::calculate_ip_data</definition>
+        <argsstring>(Point1 const &amp;a1, Point1 const &amp;a2, Point2 const &amp;b1, Point2 const &amp;b2, Vec3d const &amp;a1v, Vec3d const &amp;a2v, Vec3d const &amp;b1v, Vec3d const &amp;b2v, Vec3d const &amp;norm1, Vec3d const &amp;norm2, side_info const &amp;sides, Vec3d &amp;i1, CalcT &amp;dist_a1_a2, CalcT &amp;dist_a1_i1, CalcT &amp;dist_b1_b2, CalcT &amp;dist_b1_i1, intersection_point_flag &amp;ip_flag)</argsstring>
+        <name>calculate_ip_data</name>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>a1</declname>
+        </param>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>a2</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>b1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>b2</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>a1v</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>a2v</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>b1v</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>b2v</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>norm1</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>norm2</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1side__info" kindref="compound">side_info</ref> const &amp;</type>
+          <declname>sides</declname>
+        </param>
+        <param>
+          <type>Vec3d &amp;</type>
+          <declname>i1</declname>
+        </param>
+        <param>
+          <type>CalcT &amp;</type>
+          <declname>dist_a1_a2</declname>
+        </param>
+        <param>
+          <type>CalcT &amp;</type>
+          <declname>dist_a1_i1</declname>
+        </param>
+        <param>
+          <type>CalcT &amp;</type>
+          <declname>dist_b1_b2</declname>
+        </param>
+        <param>
+          <type>CalcT &amp;</type>
+          <declname>dist_b1_i1</declname>
+        </param>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16" kindref="member">intersection_point_flag</ref> &amp;</type>
+          <declname>ip_flag</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="431" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="431" bodyend="570"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1afdbb7ec6f0e5ba13834f24da0754c5d0" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+          <param>
+            <type>typename Segment</type>
+          </param>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+          <param>
+            <type>typename Vec3d</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ac16c97632efa47cbd1f06d7095aa9d10" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::collinear_one_degenerted</definition>
+        <argsstring>(Segment const &amp;segment, bool degenerated_a, Point1 const &amp;a1, Point1 const &amp;a2, Point2 const &amp;b1, Point2 const &amp;b2, Vec3d const &amp;v1, Vec3d const &amp;v2, Vec3d const &amp;norm, Vec3d const &amp;vother)</argsstring>
+        <name>collinear_one_degenerted</name>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>segment</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>degenerated_a</declname>
+        </param>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>a1</declname>
+        </param>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>a2</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>b1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>b2</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>v1</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>v2</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>norm</declname>
+        </param>
+        <param>
+          <type>Vec3d const &amp;</type>
+          <declname>vother</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="389" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="389" bodyend="399"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ac78ff0f5eeac9555e42278b7e49ffdad" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+        </templateparamlist>
+        <type>CalcT</type>
+        <definition>static CalcT boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::dist_of_i2</definition>
+        <argsstring>(CalcT const &amp;dist_a1_i1)</argsstring>
+        <name>dist_of_i2</name>
+        <param>
+          <type>CalcT const &amp;</type>
+          <declname>dist_a1_i1</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="601" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="601" bodyend="612"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a887379c0cc0fb6c45614f82c90252f82" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+          <param>
+            <type>typename P1</type>
+          </param>
+          <param>
+            <type>typename P2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::is_endpoint_equal</definition>
+        <argsstring>(CalcT const &amp;dist, P1 const &amp;ai, P2 const &amp;b1, P2 const &amp;b2)</argsstring>
+        <name>is_endpoint_equal</name>
+        <param>
+          <type>CalcT const &amp;</type>
+          <declname>dist</declname>
+        </param>
+        <param>
+          <type>P1 const &amp;</type>
+          <declname>ai</declname>
+        </param>
+        <param>
+          <type>P2 const &amp;</type>
+          <declname>b1</declname>
+        </param>
+        <param>
+          <type>P2 const &amp;</type>
+          <declname>b2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="636" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="636" bodyend="641"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ad20bcdf023c4e7ab189d498b000c99ae" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::is_near</definition>
+        <argsstring>(CalcT const &amp;dist)</argsstring>
+        <name>is_near</name>
+        <param>
+          <type>CalcT const &amp;</type>
+          <declname>dist</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="644" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="644" bodyend="648"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ad2c4c00e082278ede03228bb4c49aecf" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::is_potentially_crossing</definition>
+        <argsstring>(CalcT const &amp;dist_a1_a2, CalcT const &amp;dist_a1_i1, bool &amp;is_on_a, bool &amp;is_near_a1, bool &amp;is_near_a2)</argsstring>
+        <name>is_potentially_crossing</name>
+        <param>
+          <type>CalcT const &amp;</type>
+          <declname>dist_a1_a2</declname>
+        </param>
+        <param>
+          <type>CalcT const &amp;</type>
+          <declname>dist_a1_i1</declname>
+        </param>
+        <param>
+          <type>bool &amp;</type>
+          <declname>is_on_a</declname>
+        </param>
+        <param>
+          <type>bool &amp;</type>
+          <declname>is_near_a1</declname>
+        </param>
+        <param>
+          <type>bool &amp;</type>
+          <declname>is_near_a2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="626" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="626" bodyend="633"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ab45134beea7baec0105c700ce72ab466" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename ProjCoord1</type>
+          </param>
+          <param>
+            <type>typename ProjCoord2</type>
+          </param>
+        </templateparamlist>
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::position_value</definition>
+        <argsstring>(ProjCoord1 const &amp;ca1, ProjCoord2 const &amp;cb1, ProjCoord2 const &amp;cb2)</argsstring>
+        <name>position_value</name>
+        <param>
+          <type>ProjCoord1 const &amp;</type>
+          <declname>ca1</declname>
+        </param>
+        <param>
+          <type>ProjCoord2 const &amp;</type>
+          <declname>cb1</declname>
+        </param>
+        <param>
+          <type>ProjCoord2 const &amp;</type>
+          <declname>cb2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="651" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="651" bodyend="666"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="73" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="72" bodyend="667"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a791aaf56cb7c78cb589ee9aa287a1d89" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>abs_distance</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a7f0c0ac696f40c6f2fc1ea43ce809be0" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>apply</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a93d0d5bbd05041082038f32820f370e2" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>apply</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a4c3f5af2823ad033cb37b233ed8b778f" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>calculate_collinear_data</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ace9214c767133f9adb3146e3f877f7cc" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>calculate_dists</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ac0b2d1d14f8a8c48017c130d24eb443f" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>calculate_ip_data</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1afdbb7ec6f0e5ba13834f24da0754c5d0" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>collinear_one_degenerted</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ac78ff0f5eeac9555e42278b7e49ffdad" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>dist_of_i2</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>intersection_point_flag</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16a9edb4569e692fa11b044a5db7d545772" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>ipi_at_a1</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16af5b6b224d7f5fc4aba8501b2d7683923" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>ipi_at_a2</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16a5f392f52557fc8be0941bb2c35c0e31b" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>ipi_at_b1</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16a0b6f4aad95c014f093ae1d17e0194a58" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>ipi_at_b2</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16a17c6cb464bc227d48541ba761fcb9ad8" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>ipi_inters</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a887379c0cc0fb6c45614f82c90252f82" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>is_endpoint_equal</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ad20bcdf023c4e7ab189d498b000c99ae" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>is_near</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ad2c4c00e082278ede03228bb4c49aecf" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>is_potentially_crossing</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ab45134beea7baec0105c700ce72ab466" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>position_value</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1ac16c97632efa47cbd1f06d7095aa9d10" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments</scope><name>return_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

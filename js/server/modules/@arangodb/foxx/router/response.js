@@ -388,8 +388,17 @@ module.exports =
       }
 
       this._raw.body = body;
-      this._raw.contentType = contentType || this._raw.contentType;
+      if (contentType) {
+        this._raw.contentType = contentType;
+      }
 
       return this;
+    }
+
+    type (type) {
+      if (type) {
+        this._raw.contentType = mimeTypes.lookup(type) || type;
+      }
+      return this._raw.contentType;
     }
 };

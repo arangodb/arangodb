@@ -24,6 +24,8 @@
 #include "ContinuousSyncer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Result.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -34,10 +36,11 @@
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -115,7 +118,7 @@ retry:
 
   // reset failed connects
   {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     _applier->_state._failedConnects = 0;
   }
 
@@ -128,7 +131,7 @@ retry:
       connectRetries++;
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
         _applier->_state._totalFailedConnects++;
@@ -162,7 +165,7 @@ retry:
       LOG_TOPIC(WARN, Logger::REPLICATION) << "requireFromPresent feature is not supported on master server < ArangoDB 2.7";
     }
 
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     res = getLocalState(errorMsg);
 
     _applier->_state._failedConnects = 0;
@@ -198,7 +201,7 @@ retry:
       TRI_RemoveStateReplicationApplier(_vocbase);
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
         LOG_TOPIC(DEBUG, Logger::REPLICATION) << "stopped replication applier for database '" << _vocbase->name() << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
 
@@ -556,7 +559,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
-    trx->addCollectionAtRuntime(cid, "", TRI_TRANSACTION_WRITE); 
+    trx->addCollectionAtRuntime(cid, "", AccessMode::Type::WRITE); 
     int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc, errorMsg);
 
     if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
@@ -570,28 +573,27 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   else {
     // standalone operation
     // update the apply tick for all standalone operations
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                            cid, TRI_TRANSACTION_WRITE);
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase),
+                                            cid, AccessMode::Type::WRITE);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-    int res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "unable to create replication transaction: " +
-                 std::string(TRI_errno_string(res));
-    }
-    else {
+    // fix error handling here when function returns result //////////////////////
+    if (!res.ok()) {
+      errorMsg = "unable to create replication transaction: " + res.errorMessage();
+      res.reset(res.errorNumber(),errorMsg);
+    } else {
       res = applyCollectionDumpMarker(trx, trx.name(), type, old, doc, errorMsg); 
-
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+      if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
         // ignore unique constraint violations for system collections
-        res = TRI_ERROR_NO_ERROR;
+        res.reset();
       }
     }
+    // fix error handling here when function returns result //////////////////////
 
     res = trx.finish(res);
-
-    return res;
+    return res.errorNumber();
   }
 }
 
@@ -632,17 +634,14 @@ int ContinuousSyncer::startTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
   auto trx = std::make_unique<ReplicationTransaction>(_vocbase);
+  Result res = trx->begin();
 
-  int res = trx->begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (res.ok()) {
+    _ongoingTransactions[tid] = trx.get();
+    trx.release();
   }
 
-  _ongoingTransactions[tid] = trx.get();
-  trx.release();
-
-  return TRI_ERROR_NO_ERROR;
+  return res.errorNumber();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -677,10 +676,10 @@ int ContinuousSyncer::abortTransaction(VPackSlice const& slice) {
   _ongoingTransactions.erase(tid);
 
   if (trx != nullptr) {
-    int res = trx->abort();
+    Result res = trx->abort();
     delete trx;
 
-    return res;
+    return res.errorNumber();
   }
 
   return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
@@ -718,10 +717,10 @@ int ContinuousSyncer::commitTransaction(VPackSlice const& slice) {
   _ongoingTransactions.erase(tid);
 
   if (trx != nullptr) {
-    int res = trx->commit();
+    Result res = trx->commit();
     delete trx;
 
-    return res;
+    return res.errorNumber();
   }
 
   return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
@@ -736,7 +735,11 @@ int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  VPackSlice const collection = slice.get("collection");
+  VPackSlice collection = slice.get("collection");
+  if (!collection.isObject()) {
+    collection = slice.get("data");
+  }
+
   if (!collection.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -755,7 +758,7 @@ int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  return _vocbase->renameCollection(col, name, true, true);
+  return _vocbase->renameCollection(col, name, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -776,14 +779,18 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  VPackSlice const data = slice.get("collection");
+  VPackSlice data = slice.get("collection");
+  if (!data.isObject()) {
+    data = slice.get("data");
+  }
+
   if (!data.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   arangodb::CollectionGuard guard(_vocbase, cid);
   bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  return guard.collection()->update(data, doSync);
+  return guard.collection()->updateProperties(data, doSync).errorNumber();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -807,7 +814,7 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
     TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
         StringUtils::uint64(tick.c_str(), tick.size()));
 
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
     if (newTick >= firstRegularTick &&
         newTick > _applier->_state._lastProcessedContinuousTick) {
@@ -836,7 +843,10 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
   }
 
   else if (type == REPLICATION_COLLECTION_CREATE) {
-    return createCollection(slice.get("collection"), nullptr);
+    if (slice.get("collection").isObject()) {
+      return createCollection(slice.get("collection"), nullptr);
+    }
+    return createCollection(slice.get("data"), nullptr);
   }
 
   else if (type == REPLICATION_COLLECTION_DROP) {
@@ -857,6 +867,18 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
 
   else if (type == REPLICATION_INDEX_DROP) {
     return dropIndex(slice);
+  }
+  
+  else if (type == REPLICATION_VIEW_CREATE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view create not yet implemented");
+  }
+  
+  else if (type == REPLICATION_VIEW_DROP) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view drop not yet implemented");
+  }
+  
+  else if (type == REPLICATION_VIEW_CHANGE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view change not yet implemented");
   }
 
   errorMsg = "unexpected marker type " + StringUtils::itoa(type);
@@ -922,6 +944,9 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
 
     int res;
     bool skipped;
+
+    //LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
+
     if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped
       res = TRI_ERROR_NO_ERROR;
@@ -940,9 +965,9 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
       }
 
       if (ignoreCount == 0) {
-        if (lineLength > 256) {
+        if (lineLength > 1024) {
           errorMsg +=
-              ", offending marker: " + std::string(lineStart, 256) + "...";
+              ", offending marker: " + std::string(lineStart, 1024) + "...";
         } else {
           errorMsg +=
               ", offending marker: " + std::string(lineStart, lineLength);
@@ -959,7 +984,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
     }
 
     // update tick value
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
     if (_applier->_state._lastProcessedContinuousTick >
         _applier->_state._lastAppliedContinuousTick) {
@@ -995,7 +1020,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
   TRI_voc_tick_t safeResumeTick = 0;
 
   {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
     if (_useTick) {
       // use user-defined tick
@@ -1078,7 +1103,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       connectRetries++;
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
@@ -1093,7 +1118,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       connectRetries = 0;
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
@@ -1357,6 +1382,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   bool checkMore = false;
   bool active = false;
   bool fromIncluded = false;
+  bool bumpTick = false;
   TRI_voc_tick_t tick = 0;
 
   bool found;
@@ -1382,10 +1408,10 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     header =
         response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (found) {
-      tick = StringUtils::uint64(header);
+      TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
 
-      if (tick > fetchTick) {
-        fetchTick = tick;
+      if (lastIncludedTick > fetchTick) {
+        fetchTick = lastIncludedTick;
         worked = true;
       } else {
         // we got the same tick again, this indicates we're at the end
@@ -1395,8 +1421,15 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
       if (found) {
         tick = StringUtils::uint64(header);
+        if (!checkMore && tick > lastIncludedTick) {
+          // the master has a tick value which is not contained in this result
+          // but it claims it does not have any more data
+          // so it's probably a tick from an invisible operation (such as closing
+          // a WAL file)
+          bumpTick = true;
+        }
 
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
         _applier->_state._lastAvailableContinuousTick = tick;
       }
     }
@@ -1425,7 +1458,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     TRI_voc_tick_t lastAppliedTick;
 
     {
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+      READ_LOCKER(locker, _applier->_statusLock);
       lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
     }
 
@@ -1437,10 +1470,26 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     if (processedMarkers > 0) {
       worked = true;
 
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       _applier->_state._totalEvents += processedMarkers;
 
       if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
+        _hasWrittenState = true;
+        saveApplierState();
+      }
+    } else if (bumpTick) {
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+      
+      if (_applier->_state._lastProcessedContinuousTick < tick) {
+        _applier->_state._lastProcessedContinuousTick = tick;
+      }
+      
+      if (_ongoingTransactions.empty() &&
+          _applier->_state._safeResumeTick == 0) {
+        _applier->_state._safeResumeTick = tick;
+      }
+
+      if (!_hasWrittenState) {
         _hasWrittenState = true;
         saveApplierState();
       }
@@ -1450,7 +1499,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       // write state at least once so the start tick gets saved
       _hasWrittenState = true;
 
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
       _applier->_state._lastAppliedContinuousTick = firstRegularTick;
       _applier->_state._lastProcessedContinuousTick = firstRegularTick;

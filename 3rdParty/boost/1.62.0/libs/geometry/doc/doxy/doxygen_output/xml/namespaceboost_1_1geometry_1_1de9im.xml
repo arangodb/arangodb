@@ -1,0 +1,243 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1de9im" kind="namespace">
+    <compoundname>boost::geometry::de9im</compoundname>
+    <innerclass refid="classboost_1_1geometry_1_1de9im_1_1mask" prot="public">boost::geometry::de9im::mask</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1de9im_1_1matrix" prot="public">boost::geometry::de9im::matrix</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1de9im_1_1static__mask" prot="public">boost::geometry::de9im::static_mask</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1de9im_1a445da36047d201b279e6f1d7de19b626" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>boost::tuples::cons&lt; <ref refid="classboost_1_1geometry_1_1de9im_1_1mask" kindref="compound">mask</ref>, boost::tuples::cons&lt; <ref refid="classboost_1_1geometry_1_1de9im_1_1mask" kindref="compound">mask</ref>, boost::tuples::null_type &gt; &gt;</type>
+        <definition>boost::tuples::cons&lt; mask, boost::tuples::cons&lt;mask, boost::tuples::null_type&gt; &gt; boost::geometry::de9im::operator||</definition>
+        <argsstring>(mask const &amp;m1, mask const &amp;m2)</argsstring>
+        <name>operator||</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1de9im_1_1mask" kindref="compound">mask</ref> const &amp;</type>
+          <declname>m1</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1de9im_1_1mask" kindref="compound">mask</ref> const &amp;</type>
+          <declname>m2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="196" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="196" bodyend="202"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1de9im_1a4a0a9c642eb485e28aed2b1c961fbe07" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Tail</type>
+          </param>
+        </templateparamlist>
+        <type>index::detail::tuples::push_back&lt; boost::tuples::cons&lt; <ref refid="classboost_1_1geometry_1_1de9im_1_1mask" kindref="compound">mask</ref>, Tail &gt;, <ref refid="classboost_1_1geometry_1_1de9im_1_1mask" kindref="compound">mask</ref> &gt;::type</type>
+        <definition>index::detail::tuples::push_back&lt; boost::tuples::cons&lt;mask, Tail&gt;, mask &gt;::type boost::geometry::de9im::operator||</definition>
+        <argsstring>(boost::tuples::cons&lt; mask, Tail &gt; const &amp;t, mask const &amp;m)</argsstring>
+        <name>operator||</name>
+        <param>
+          <type>boost::tuples::cons&lt; <ref refid="classboost_1_1geometry_1_1de9im_1_1mask" kindref="compound">mask</ref>, Tail &gt; const &amp;</type>
+          <declname>t</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1de9im_1_1mask" kindref="compound">mask</ref> const &amp;</type>
+          <declname>m</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="211" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="211" bodyend="220"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1de9im_1a607513c57e6d565b9feea5714df4450e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>char</type>
+            <declname>II1</declname>
+            <defname>II1</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>IB1</declname>
+            <defname>IB1</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>IE1</declname>
+            <defname>IE1</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>BI1</declname>
+            <defname>BI1</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>BB1</declname>
+            <defname>BB1</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>BE1</declname>
+            <defname>BE1</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>EI1</declname>
+            <defname>EI1</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>EB1</declname>
+            <defname>EB1</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>EE1</declname>
+            <defname>EE1</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>II2</declname>
+            <defname>II2</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>IB2</declname>
+            <defname>IB2</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>IE2</declname>
+            <defname>IE2</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>BI2</declname>
+            <defname>BI2</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>BB2</declname>
+            <defname>BB2</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>BE2</declname>
+            <defname>BE2</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>EI2</declname>
+            <defname>EI2</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>EB2</declname>
+            <defname>EB2</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>EE2</declname>
+            <defname>EE2</defname>
+          </param>
+        </templateparamlist>
+        <type>boost::mpl::vector&lt; <ref refid="classboost_1_1geometry_1_1de9im_1_1static__mask" kindref="compound">static_mask</ref>&lt; II1, IB1, IE1, BI1, BB1, BE1, EI1, EB1, EE1 &gt;, <ref refid="classboost_1_1geometry_1_1de9im_1_1static__mask" kindref="compound">static_mask</ref>&lt; II2, IB2, IE2, BI2, BB2, BE2, EI2, EB2, EE2 &gt;&gt;</type>
+        <definition>boost::mpl::vector&lt; static_mask&lt;II1, IB1, IE1, BI1, BB1, BE1, EI1, EB1, EE1&gt;, static_mask&lt;II2, IB2, IE2, BI2, BB2, BE2, EI2, EB2, EE2&gt;&gt; boost::geometry::de9im::operator||</definition>
+        <argsstring>(static_mask&lt; II1, IB1, IE1, BI1, BB1, BE1, EI1, EB1, EE1 &gt; const &amp;, static_mask&lt; II2, IB2, IE2, BI2, BB2, BE2, EI2, EB2, EE2 &gt; const &amp;)</argsstring>
+        <name>operator||</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1de9im_1_1static__mask" kindref="compound">static_mask</ref>&lt; II1, IB1, IE1, BI1, BB1, BE1, EI1, EB1, EE1 &gt; const &amp;</type>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1de9im_1_1static__mask" kindref="compound">static_mask</ref>&lt; II2, IB2, IE2, BI2, BB2, BE2, EI2, EB2, EE2 &gt; const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="236" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="236" bodyend="244"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1de9im_1a2f15b47be775b80193ee56fc4289e7de" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Seq</type>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>II</declname>
+            <defname>II</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>IB</declname>
+            <defname>IB</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>IE</declname>
+            <defname>IE</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>BI</declname>
+            <defname>BI</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>BB</declname>
+            <defname>BB</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>BE</declname>
+            <defname>BE</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>EI</declname>
+            <defname>EI</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>EB</declname>
+            <defname>EB</defname>
+          </param>
+          <param>
+            <type>char</type>
+            <declname>EE</declname>
+            <defname>EE</defname>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1detail_1_1de9im_1_1push__back" kindref="compound">detail::de9im::push_back</ref>&lt; Seq, <ref refid="classboost_1_1geometry_1_1de9im_1_1static__mask" kindref="compound">static_mask</ref>&lt; II, IB, IE, BI, BB, BE, EI, EB, EE &gt; &gt;::type</type>
+        <definition>detail::de9im::push_back&lt; Seq, static_mask&lt;II, IB, IE, BI, BB, BE, EI, EB, EE&gt; &gt;::type boost::geometry::de9im::operator||</definition>
+        <argsstring>(Seq const &amp;, static_mask&lt; II, IB, IE, BI, BB, BE, EI, EB, EE &gt; const &amp;)</argsstring>
+        <name>operator||</name>
+        <param>
+          <type>Seq const &amp;</type>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1de9im_1_1static__mask" kindref="compound">static_mask</ref>&lt; II, IB, IE, BI, BB, BE, EI, EB, EE &gt; const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="259" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="259" bodyend="267"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="36" column="1"/>
+  </compounddef>
+</doxygen>

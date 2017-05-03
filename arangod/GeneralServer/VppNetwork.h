@@ -1,3 +1,26 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Christoph Uhde
+////////////////////////////////////////////////////////////////////////////////
+
 #ifndef ARANGOD_VPP_NETWORK_H
 #define ARANGOD_VPP_NETWORK_H 1
 
@@ -5,6 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/LoggerFeature.h"
 
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -12,36 +36,7 @@
 #include <memory>
 #include <stdexcept>
 
-using namespace arangodb;
-
-inline std::size_t validateAndCount(char const* vpHeaderStart,
-                                    char const* vpEnd) {
-  try {
-    VPackValidator validator;
-    // check for slice start to the end of Chunk
-    // isSubPart allows the slice to be shorter than the checked buffer.
-    validator.validate(vpHeaderStart, std::distance(vpHeaderStart, vpEnd),
-                       /*isSubPart =*/true);
-
-    VPackSlice vpHeader(vpHeaderStart);
-    auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
-
-    std::size_t numPayloads = 0;
-    while (vpPayloadStart != vpEnd) {
-      // validate
-      validator.validate(vpPayloadStart, std::distance(vpPayloadStart, vpEnd),
-                         true);
-      // get offset to next
-      VPackSlice tmp(vpPayloadStart);
-      vpPayloadStart += tmp.byteSize();
-      numPayloads++;
-    }
-    return numPayloads;
-  } catch (std::exception const& e) {
-    throw std::runtime_error(
-        std::string("error during validation of incoming VPack") + e.what());
-  }
-}
+namespace arangodb {
 
 template <typename T>
 std::size_t appendToBuffer(basics::StringBuffer* buffer, T& value) {
@@ -88,11 +83,13 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   }
 
   // calculate length of current chunk
-  uint32_t chunkLength = dataLength + chunkHeaderLength(firstOfMany);
+  uint32_t chunkLength =
+      dataLength + static_cast<uint32_t>(chunkHeaderLength(firstOfMany));
 
   auto buffer =
       std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
 
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << chunkLength;
   appendToBuffer(buffer.get(), chunkLength);
   appendToBuffer(buffer.get(), chunk);
   appendToBuffer(buffer.get(), id);
@@ -103,7 +100,10 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 
   // append data in slices
   for (auto const& slice : slices) {
-    buffer->appendText(std::string(slice.startAs<char>(), slice.byteSize()));
+    try{
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << slice.toJson() << " , " << slice.byteSize();
+    } catch(...){}
+    buffer->appendText(slice.startAs<char>(), slice.byteSize());
   }
 
   return buffer;
@@ -155,10 +155,11 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   chunk |= isFirstChunk ? 0x1 : 0x0;
 
   // get the lenght of VPack data
-  uint32_t dataLength = end - begin;
+  uint32_t dataLength = static_cast<uint32_t>(end - begin);
 
   // calculate length of current chunk
-  uint32_t chunkLength = dataLength + chunkHeaderLength(firstOfMany);
+  uint32_t chunkLength =
+      dataLength + static_cast<uint32_t>(chunkHeaderLength(firstOfMany));
 
   auto buffer =
       std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
@@ -171,7 +172,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
     appendToBuffer(buffer.get(), totalMessageLength);
   }
 
-  buffer->appendText(std::string(data + begin, dataLength));
+  buffer->appendText(data + begin, dataLength);
 
   return buffer;
 }
@@ -197,13 +198,13 @@ inline void send_many(
     uint64_t id, std::size_t maxChunkBytes,
     std::unique_ptr<basics::StringBuffer> completeMessage,
     std::size_t uncompressedCompleteMessageLength) {
-  std::size_t totalLen = completeMessage->length();
+  uint64_t totalLen = completeMessage->length();
   std::size_t offsetBegin = 0;
   std::size_t offsetEnd = maxChunkBytes - chunkHeaderLength(true);
   // maximum number of bytes for follow up chunks
   std::size_t maxBytes = maxChunkBytes - chunkHeaderLength(false);
 
-  std::size_t numberOfChunks = 1;
+  uint32_t numberOfChunks = 1;
   {  // calcuate the number of chunks taht will be send
     std::size_t bytesToSend = totalLen - maxChunkBytes +
                               chunkHeaderLength(true);  // data for first chunk
@@ -216,12 +217,12 @@ inline void send_many(
     }
   }
 
-  // send fist
+  // send first
   resultVecRef.push_back(
       createChunkForNetworkMultiFirst(completeMessage->c_str(), offsetBegin,
                                       offsetEnd, id, numberOfChunks, totalLen));
 
-  std::size_t chunkNumber = 0;
+  std::uint32_t chunkNumber = 0;
   while (offsetEnd + maxBytes <= totalLen) {
     // send middle
     offsetBegin = offsetEnd;
@@ -294,8 +295,10 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
 
     // fill buffer
     for (auto const& slice : slices) {
-      vppPayload->appendText(
-          std::string(slice.startAs<char>(), slice.byteSize()));
+      try{
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << slice.toJson() << " , " << slice.byteSize();
+      } catch(...){}
+      vppPayload->appendText(slice.startAs<char>(), slice.byteSize());
     }
 
     if (compress) {
@@ -314,6 +317,8 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
               uncompressedPayloadLength);
   }
   return rv;
+}
+
 }
 
 #endif

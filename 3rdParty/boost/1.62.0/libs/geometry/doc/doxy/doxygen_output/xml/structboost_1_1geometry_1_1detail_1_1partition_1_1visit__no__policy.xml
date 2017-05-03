@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1partition_1_1visit__no__policy" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::partition::visit_no_policy</compoundname>
+    <includes local="no">partition.hpp</includes>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1partition_1_1visit__no__policy_1aecc38c596abff4ed8849bd4b06138c4e" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Box</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::detail::partition::visit_no_policy::apply</definition>
+        <argsstring>(Box const &amp;, std::size_t)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Box const &amp;</type>
+        </param>
+        <param>
+          <type>std::size_t</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" line="477" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" bodystart="477" bodyend="478"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" line="475" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" bodystart="474" bodyend="479"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1detail_1_1partition_1_1visit__no__policy_1aecc38c596abff4ed8849bd4b06138c4e" prot="public" virt="non-virtual"><scope>boost::geometry::detail::partition::visit_no_policy</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

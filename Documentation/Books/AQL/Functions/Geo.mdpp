@@ -1,19 +1,23 @@
-!CHAPTER Geo functions
+Geo functions
+=============
 
-!SECTION Geo index functions
+Geo index functions
+-------------------
 
 AQL offers the following functions to filter data based on
 [geo indexes](../../Manual/Indexing/Geo.html). These functions require the collection to have at
 least one geo index. If no geo index can be found, calling this function will fail
-with an error.
+with an error at runtime. There is no error when explaining the query however.
 
-!SUBSECTION NEAR()
+Currently, geo indexes are not yet supported with the RocksDB storage engine. Thus the functions `NEAR()`, `WITHIN()` and `WITHIN_RECTANGLE()` will be unavailable when using this storage engine. To use geo indexes, please use the MMFiles storage engine for the time being.
+
+### NEAR()
 
 `NEAR(coll, latitude, longitude, limit, distanceName) → docArray`
 
 Return at most *limit* documents from collection *coll* that are near *latitude*
 and *longitude*. The result contains at most *limit* documents, returned sorted by
-distance, with closest distances being returned first. If more than *limit* documents 
+distance, with closest distances being returned first. If more than *limit* documents
 qualify, with the distance being exactly the same among multiple documents around the
 limit, it is undefined which of the qualifying documents are returned. Optionally,
 the distances in meters between the specified coordinate (*latitude* and *longitude*)
@@ -32,13 +36,13 @@ The result documents will contain the distance value in an attribute of that nam
 - returns **docArray** (array): an array of documents, sorted by distance (shortest
   distance first)
 
-!SUBSECTION WITHIN()
+### WITHIN()
 
 `WITHIN(coll, latitude, longitude, radius, distanceName) → docArray`
 
 Return all documents from collection *coll* that are within a radius of *radius*
 around the specified coordinate (*latitude* and *longitude*). The documents returned
-are sorted by distance to the search coordinate, with the closest distances being 
+are sorted by distance to the search coordinate, with the closest distances being
 returned first. Optionally, the distance in meters between the search coordinate and
 the document coordinates can be returned as well. To make use of that, an attribute
 name for the distance result has to be specified in the *distanceName* argument.
@@ -53,7 +57,7 @@ The result documents will contain the distance value in an attribute of that nam
 - returns **docArray** (array): an array of documents, sorted by distance (shortest
   distance first)
 
-!SUBSECTION WITHIN_RECTANGLE()
+### WITHIN_RECTANGLE()
 
 `WITHIN_RECTANGLE(coll, latitude1, longitude1, latitude2, longitude2) → docArray`
 
@@ -68,14 +72,15 @@ There is no guaranteed order in which the documents are returned.
 - **longitude2** (number): the top-right longitude portion of the search coordinate
 - returns **docArray** (array): an array of documents, in random order
 
-!SECTION Geo utility functions
+Geo utility functions
+---------------------
 
 The following helper functions do **not use any geo index**. On large datasets,
 it is advisable to use them in combination with index-accelerated geo functions
 to limit the number of calls to these non-accelerated functions because of their
 computational costs.
 
-!SUBSECTION DISTANCE()
+### DISTANCE()
 
 `DISTANCE(latitude1, longitude1, latitude2, longitude2) → distance`
 
@@ -100,7 +105,7 @@ FOR doc IN documentSubset // e.g. documents returned by a traversal
   RETURN doc
 ```
 
-!SUBSECTION IS_IN_POLYGON()
+### IS_IN_POLYGON()
 
 Determine whether a coordinate is inside a polygon.
 

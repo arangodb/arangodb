@@ -1,11 +1,13 @@
-!CHAPTER Arangorestore
+Arangorestore
+=============
 
 To reload data from a dump previously created with [arangodump](Arangodump.md),
 ArangoDB provides the _arangorestore_ tool.
 
-!SECTION Reloading Data into an ArangoDB database
+Reloading Data into an ArangoDB database
+----------------------------------------
 
-!SUBSECTION Invoking arangorestore
+### Invoking arangorestore
 
 _arangorestore_ can be invoked from the command-line as follows:
 
@@ -98,7 +100,7 @@ collections being processed before all [edge collection](../Appendix/Glossary.md
 data into edge collections will have the document collections linked in edges (*_from* and
 *_to* attributes) loaded.
 
-!SUBSECTION Restoring Revision Ids and Collection Ids
+### Restoring Revision Ids and Collection Ids
  
 _arangorestore_ will reload document and edges data with the exact same *_key*, *_from* and 
 *_to* values found in the input directory. However, when loading document data, it will assign
@@ -117,7 +119,7 @@ Setting *--recycle-ids* to *false* or omitting it will only use the [collection 
 input directory and allow the target database to create the collection with a different id
 (though with the same name) than in the input directory.
 
-!SUBSECTION Reloading Data into a different Collection
+### Reloading Data into a different Collection
 
 With some creativity you can use _arangodump_ and _arangorestore_ to transfer data from one
 collection into another (either on the same server or not). For example, to copy data from
@@ -133,7 +135,7 @@ After that, run the following command:
     
     unix> arangorestore --collection mycopyvalues --server.database mycopy --input-directory "dump"
 
-!SUBSECTION Using arangorestore with sharding
+### Using arangorestore with sharding
 
 As of Version 2.1 the *arangorestore* tool supports sharding. Simply
 point it to one of the coordinators in your cluster and it will

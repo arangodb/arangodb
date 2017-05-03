@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateListBlock.h"
+#include "Aql/AqlItemBlock.h"
+#include "Aql/AqlValue.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
@@ -98,7 +100,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
     AqlValue const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
 
     if (!inVarReg.isArray()) {
-      throwArrayExpectedException();
+      throwArrayExpectedException(inVarReg);
     }
 
     size_t sizeInVar;
@@ -120,9 +122,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
       size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
-      res.reset(new AqlItemBlock(
-          toSend,
-          getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(requestBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       inheritRegisters(cur, res.get(), _pos);
 
@@ -154,7 +154,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
       _seen = 0;
       // advance read position in the current block . . .
       if (++_pos == cur->size()) {
-        delete cur;
+        returnBlock(cur);
         _buffer.pop_front();  // does not throw
         _pos = 0;
       }
@@ -193,7 +193,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
     AqlValue const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
     // get the size of the thing we are looping over
     if (!inVarReg.isArray()) {
-      throwArrayExpectedException();
+      throwArrayExpectedException(inVarReg);
     }
     
     size_t sizeInVar;
@@ -219,7 +219,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
       _index = 0;
       _thisBlock = 0;
       _seen = 0;
-      delete cur;
+      returnBlock(cur);
       _buffer.pop_front();
       _pos = 0;
     }
@@ -251,9 +251,12 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDes
   DEBUG_END_BLOCK();  
 }
 
-void EnumerateListBlock::throwArrayExpectedException() {
+void EnumerateListBlock::throwArrayExpectedException(AqlValue const& value) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_QUERY_ARRAY_EXPECTED,
+      std::string("collection or ") +
       TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-          std::string(" as operand to FOR loop"));
+          std::string(" as operand to FOR loop; you provided a value of type '") +
+        value.getTypeString () +
+        std::string("'"));
 }

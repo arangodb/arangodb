@@ -72,30 +72,37 @@ RestStatus RestSimpleQueryHandler::execute() {
 void RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
   }
+  
+  std::string collectionName;
   VPackSlice body = parsedBody.get()->slice();
-
-  VPackSlice const value = body.get("collection");
-
-  if (!value.isString()) {
+  
+  if (body.isObject() && body.hasKey("collection")) {
+    VPackSlice const value = body.get("collection");
+    if (value.isString()) {
+      collectionName = value.copyString();
+    }
+    collectionName = value.copyString();
+  } else {
+    collectionName = _request->value("collection");
+  }
+  
+  if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
     return;
   }
-  std::string collectionName = value.copyString();
+      
+  auto const* col = _vocbase->lookupCollection(collectionName);
 
-  if (!collectionName.empty()) {
-    auto const* col = _vocbase->lookupCollection(collectionName);
-
-    if (col != nullptr && collectionName != col->name()) {
-      // user has probably passed in a numeric collection id.
-      // translate it into a "real" collection name
-      collectionName = col->name();
-    }
+  if (col != nullptr && collectionName != col->name()) {
+    // user has probably passed in a numeric collection id.
+    // translate it into a "real" collection name
+    collectionName = col->name();
   }
 
   VPackBuilder bindVars;
@@ -156,24 +163,45 @@ void RestSimpleQueryHandler::allDocuments() {
 void RestSimpleQueryHandler::allDocumentKeys() {
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
   }
+
+  std::string collectionName;
   VPackSlice body = parsedBody.get()->slice();
 
-  VPackSlice const value = body.get("collection");
-
-  if (!value.isString()) {
+  if (body.isObject() && body.hasKey("collection")) {
+    VPackSlice const value = body.get("collection");
+    if (value.isString()) {
+      collectionName = value.copyString();
+    }
+    collectionName = value.copyString();
+  } else {
+    collectionName = _request->value("collection");
+  }
+      
+  if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
     return;
   }
-  std::string collectionName = value.copyString();
+  
+  auto const* col = _vocbase->lookupCollection(collectionName);
 
-  std::string returnType =
-      arangodb::basics::VelocyPackHelper::getStringValue(body, "type", "");
+  if (col != nullptr && collectionName != col->name()) {
+    // user has probably passed in a numeric collection id.
+    // translate it into a "real" collection name
+    collectionName = col->name();
+  }
+
+  std::string returnType;
+  if (body.isObject() && body.hasKey("type")) {
+    returnType = arangodb::basics::VelocyPackHelper::getStringValue(body, "type", "");
+  } else {
+    returnType = _request->value("type");
+  }
 
   std::string aql("FOR doc IN @@collection RETURN ");
   if (returnType == "key") {

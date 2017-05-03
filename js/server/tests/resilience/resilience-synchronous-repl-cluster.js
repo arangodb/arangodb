@@ -72,19 +72,21 @@ function SynchronousReplicationSuite () {
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
+    var replicas;
     while (++count <= 180) {
       ccinfo = shards.map(
         s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
       );
-      let replicas = ccinfo.map(s => s.servers.length);
-      if (_.every(replicas, x => x === 2)) {
+      replicas = ccinfo.map(s => s.servers.length);
+      if (replicas.every(x => x > 1)) {
         console.info("Replication up and running!");
         return true;
-      }
+      }  
       console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
+    console.error("Replication did not finish");
     return false;
   }
 
@@ -323,14 +325,15 @@ function SynchronousReplicationSuite () {
       console.info("System collections use servers:", systemCollServers);
       while (true) {
         db._drop(cn);
-        c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
+        c = db._create(cn, {numberOfShards: 1, replicationFactor: 2,
+                            avoidServers: systemCollServers});
         var servers = findCollectionServers("_system", cn);
         console.info("Test collections uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           return;
         }
         console.info("Need to recreate collection to avoid system collection servers.");
-        waitForSynchronousReplication("_system");
+        //waitForSynchronousReplication("_system");
         console.info("Synchronous replication has settled, now dropping again.");
       }
     },
@@ -768,62 +771,6 @@ function SynchronousReplicationSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations({place:18, follower: false},
                          {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-    
-    testCleaningFailedServer: function() {
-      assertTrue(waitForSynchronousReplication("_system"));
-      let leader = failLeader();
-      let count = 0;
-      let maxAttempts = 1000;
-      let info = global.ArangoClusterInfo.getCollectionInfo('_system', cn);
-      let shard = Object.keys(info.shards);
-      while (true) {
-        if (info.shards[shard][0] !== leader) {
-          // mop: leader should first become a follower
-          assertEqual(info.shards[shard][1], leader);
-          break;
-        }
-        if (count++ > maxAttempts) {
-          assertFalse('Supervision didn\'t promote a new follower within ' + maxAttempts + ' attempts');
-        }
-        wait(3);
-        info = global.ArangoClusterInfo.getCollectionInfo('_system', cn);
-      }
-
-      // mop: now when we reduce the number of servers this server should be cleaned out
-      let numDBServers = instanceInfo.arangods.filter(arangod => {
-        return arangod.role === 'dbserver';
-      }).length;
-      let coordinator = instanceInfo.arangods.filter(arangod => {
-        return arangod.role === 'coordinator';
-      })[0];
-      
-      const requestOptions = {};
-      requestOptions.method = 'PUT';
-      requestOptions.returnBodyOnError = true;
-       
-      let body = {"numberOfCoordinators":null,"numberOfDBServers":numDBServers - 1,"cleanedServers":[]};
-      let reply = download(coordinator.url + '/_admin/cluster/numberOfServers', JSON.stringify(body), requestOptions);
-      
-      assertFalse(reply.error);
-
-      count = 0;
-      while (true) {
-        let reply = download(coordinator.url + '/_admin/cluster/numberOfServers');
-        let body = JSON.parse(reply.body);
-        assertEqual(typeof body, 'object');
-        if (Array.isArray(body.cleanedServers) && body.cleanedServers.length > 0) {
-          assertEqual(1, body.cleanedServers.length);
-          assertEqual(leader, body.cleanedServers[0]);
-          break;
-        }
-        if (count++ > maxAttempts) {
-          assertFalse('Supervision didn\'t clean our server after ' + maxAttempts);
-        }
-        wait(5);
-      }
-      healLeader();
       assertTrue(waitForSynchronousReplication("_system"));
     },
 

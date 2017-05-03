@@ -1,0 +1,216 @@
+﻿[/
+ /  Copyright (c) 2001, 2002 Peter Dimov and Multi Media Ltd.
+ /  Copyright (c) 2003-2008 Peter Dimov
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:interface Interface]
+
+[section:synopsys Synopsis]
+
+    namespace boost
+    {
+    // no arguments
+
+    template<class R, class F> ``/unspecified-1/`` ``[link bind_1 `bind`]``(F f);
+
+    template<class F> ``/unspecified-1-1/`` ``[link bind_1_1 `bind`]``(F f);
+
+    template<class R> ``/unspecified-2/`` ``[link bind_2 `bind`]``(R (*f) ());
+
+    // one argument
+
+    template<class R, class F, class A1> ``/unspecified-3/`` ``[link bind_3 `bind`]``(F f, A1 a1);
+
+    template<class F, class A1> ``/unspecified-3-1/`` ``[link bind_3_1 `bind`]``(F f, A1 a1);
+
+    template<class R, class B1, class A1> ``/unspecified-4/`` ``[link bind_4 `bind`]``(R (*f) (B1), A1 a1);
+
+    template<class R, class T, class A1> ``/unspecified-5/`` ``[link bind_5 `bind`]``(R (T::*f) (), A1 a1);
+
+    template<class R, class T, class A1> ``/unspecified-6/`` ``[link bind_6 `bind`]``(R (T::*f) () const, A1 a1);
+
+    template<class R, class T, class A1> ``/unspecified-6-1/`` ``[link bind_6_1 `bind`]``(R T::*f, A1 a1);
+
+    // two arguments
+
+    template<class R, class F, class A1, class A2> ``/unspecified-7/`` ``[link bind_7 `bind`]``(F f, A1 a1, A2 a2);
+
+    template<class F, class A1, class A2> ``/unspecified-7-1/`` ``[link bind_7_1 `bind`]``(F f, A1 a1, A2 a2);
+
+    template<class R, class B1, class B2, class A1, class A2> ``/unspecified-8/`` ``[link bind_8 `bind`]``(R (*f) (B1, B2), A1 a1, A2 a2);
+
+    template<class R, class T, class B1, class A1, class A2> ``/unspecified-9/`` ``[link bind_9 `bind`]``(R (T::*f) (B1), A1 a1, A2 a2);
+
+    template<class R, class T, class B1, class A1, class A2> ``/unspecified-10/`` ``[link bind_10 `bind`]``(R (T::*f) (B1) const, A1 a1, A2 a2);
+
+    // implementation defined number of additional overloads for more arguments
+    }
+
+    namespace
+    {
+     ``/unspecified-placeholder-type-1/`` _1;
+
+     ``/unspecified-placeholder-type-2/`` _2;
+
+     ``/unspecified-placeholder-type-3/`` _3;
+
+    // implementation defined number of additional placeholder definitions
+    }
+
+[endsect]
+
+[section Common requirements]
+
+All /unspecified-N/ types returned by `bind` are /CopyConstructible/. /unspecified-N/`::result_type` is defined as the return type of /unspecified-N/`::operator()`.
+
+All /unspecified-placeholder-N/ types are /CopyConstructible/. Their copy constructors do not throw exceptions.
+
+[endsect]
+
+[section Common definitions]
+
+The function \u03BC`(x, v1, v2, ..., vm)`, where `m` is a nonnegative integer, is
+defined as:
+
+* `x.get()`, when `x` is of type [@boost:/libs/core/doc/html/core/ref.html `boost::reference_wrapper`]`<T>` for some type
+  `T`;
+
+* `vk`, when `x` is (a copy of) the placeholder /_k/ for some positive integer
+  /k/;
+
+* `x(v1, v2, ..., vm)` when `x` is (a copy of) a function object returned by
+  `bind`;
+
+* `x` otherwise.
+
+[endsect]
+
+[section `bind`]
+
+[#bind_1]
+
+    template<class R, class F> ``/unspecified-1/`` bind(F f)
+
+* /Returns:/ A function object \u03BB such that the expression \u03BB`(v1, v2, ..., vm)`
+is equivalent to `f()`, implicitly converted to `R`.
+
+* /Throws:/ Nothing unless the copy constructor of `F` throws an exception.
+
+[#bind_1_1]
+
+    template<class F> ``/unspecified-1-1/`` bind(F f)
+
+* /Effects:/ Equivalent to `bind<typename F::result_type, F>(f)`.
+
+* /Notes:/ Implementations are allowed to infer the return type of `f` via other
+means as an extension, without relying on the `result_type` member.
+
+[#bind_2]
+
+    template<class R> ``/unspecified-2/`` bind(R (*f) ())
+
+* /Returns:/ A function object \u03BB such that the expression \u03BB`(v1, v2, ..., vm)`
+is equivalent to `f()`.
+
+* /Throws:/ Nothing.
+
+[#bind_3]
+
+    template<class R, class F, class A1> ``/unspecified-3/`` bind(F f, A1 a1)
+
+* /Returns:/ A function object \u03BB such that the expression \u03BB`(v1, v2, ..., vm)`
+is equivalent to `f(`\u03BC`(a1, v1, v2, ..., vm))`, implicitly converted to `R`.
+
+* /Throws:/ Nothing unless the copy constructors of `F` or `A1` throw an exception.
+
+[#bind_3_1]
+
+    template<class F, class A1> ``/unspecified-3-1/`` bind(F f, A1 a1)
+
+* /Effects:/ Equivalent to `bind<typename F::result_type, F, A1>(f, a1)`.
+
+* /Notes:/ Implementations are allowed to infer the return type of `f` via other
+means as an extension, without relying on the `result_type` member.
+
+[#bind_4]
+
+    template<class R, class B1, class A1> ``/unspecified-4/`` bind(R (*f) (B1), A1 a1)
+
+* /Returns:/ A function object \u03BB such that the expression \u03BB`(v1, v2, ..., vm)`
+is equivalent to `f(`\u03BC`(a1, v1, v2, ..., vm))`.
+
+* /Throws:/ Nothing unless the copy constructor of `A1` throws an exception.
+
+[#bind_5]
+
+    template<class R, class T, class A1> ``/unspecified-5/`` bind(R (T::*f) (), A1 a1)
+
+* /Effects:/ Equivalent to `bind<R>(`[@boost:/libs/bind/mem_fn.html `boost::mem_fn`]`(f), a1)`.
+
+[#bind_6]
+
+    template<class R, class T, class A1> ``/unspecified-6/`` bind(R (T::*f) () const, A1 a1)
+
+* /Effects:/ Equivalent to `bind<R>(`[@boost:/libs/bind/mem_fn.html `boost::mem_fn`]`(f), a1)`.
+
+[#bind_6_1]
+
+    template<class R, class T, class A1> ``/unspecified-6-1/`` bind(R T::*f, A1 a1)
+
+* /Effects:/ Equivalent to `bind<R>(`[@boost:/libs/bind/mem_fn.html `boost::mem_fn`]`(f), a1)`.
+
+[#bind_7]
+
+    template<class R, class F, class A1, class A2> ``/unspecified-7/`` bind(F f, A1 a1, A2 a2)
+
+* /Returns:/ A function object \u03BB such that the expression \u03BB`(v1, v2, ..., vm)`
+is equivalent to `f(`\u03BC`(a1, v1, v2, ..., vm), `\u03BC`(a2, v1, v2, ..., vm))`,
+implicitly converted to `R`.
+
+* /Throws:/ Nothing unless the copy constructors of `F`, `A1` or `A2` throw an
+exception.
+
+[#bind_7_1]
+
+    template<class F, class A1, class A2> ``/unspecified-7-1/`` bind(F f, A1 a1, A2 a2)
+
+* /Effects:/ Equivalent to `bind<typename F::result_type, F, A1, A2>(f, a1, a2)`.
+
+* /Notes:/ Implementations are allowed to infer the return type of `f` via other
+means as an extension, without relying on the `result_type` member.
+
+[#bind_8]
+
+    template<class R, class B1, class B2, class A1, class A2> ``/unspecified-8/`` bind(R (*f) (B1, B2), A1 a1, A2 a2)
+
+* /Returns:/ A function object \u03BB such that the expression \u03BB`(v1, v2, ..., vm)`
+is equivalent to `f(`\u03BC`(a1, v1, v2, ..., vm), `\u03BC`(a2, v1, v2, ..., vm))`.
+
+* /Throws:/ Nothing unless the copy constructors of `A1` or `A2` throw an exception.
+
+[#bind_9]
+
+    template<class R, class T, class B1, class A1, class A2> ``/unspecified-9/`` bind(R (T::*f) (B1), A1 a1, A2 a2)
+
+* /Effects:/ Equivalent to `bind<R>(`[@boost:/libs/bind/mem_fn.html `boost::mem_fn`]`(f), a1, a2)`.
+
+[#bind_10]
+
+    template<class R, class T, class B1, class A1, class A2> ``/unspecified-10/`` bind(R (T::*f) (B1) const, A1 a1, A2 a2)
+
+* /Effects:/ Equivalent to `bind<R>(`[@boost:/libs/bind/mem_fn.html `boost::mem_fn`]`(f), a1, a2)`.
+
+[endsect]
+
+[section Additional overloads]
+
+Implementations are allowed to provide additional `bind` overloads in order to
+support more arguments or different function pointer variations.
+
+[endsect]
+
+[endsect]

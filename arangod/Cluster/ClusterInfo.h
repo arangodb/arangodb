@@ -26,18 +26,19 @@
 #define ARANGOD_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/Mutex.h"
-#include "Basics/ReadWriteLock.h"
-#include "Cluster/AgencyComm.h"
-#include "Cluster/AgencyCallbackRegistry.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Cluster/AgencyCallbackRegistry.h"
+#include "Agency/AgencyComm.h"
+#include "Basics/Mutex.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -185,8 +186,7 @@ class CollectionInfoCurrent {
   bool getFlag(char const* name, ShardID const& shardID) const {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
-      return arangodb::basics::VelocyPackHelper::getBooleanValue(it->second->slice(), "errorMessage",
-                                                          "");
+      return arangodb::basics::VelocyPackHelper::getBooleanValue(it->second->slice(), name, false);
     }
     return false;
   }
@@ -348,6 +348,8 @@ class ClusterInfo {
   int createCollectionCoordinator(std::string const& databaseName,
                                   std::string const& collectionID,
                                   uint64_t numberOfShards,
+                                  uint64_t replicationFactor,
+                                  bool waitForReplication,
                                   arangodb::velocypack::Slice const& json,
                                   std::string& errorMsg, double timeout);
 
@@ -497,6 +499,8 @@ class ClusterInfo {
   std::vector<std::string> const& getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
   void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
 
+  std::unordered_map<ServerID, std::string> getServerAliases();
+  
  private:
 
   //////////////////////////////////////////////////////////////////////////////
@@ -559,6 +563,8 @@ class ClusterInfo {
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string>
       _servers;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string>
+      _serverAliases;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
   // The DBServers, also from Current:
@@ -646,53 +652,6 @@ class ClusterInfo {
   
   arangodb::Mutex _failedServersMutex;  
   std::vector<std::string> _failedServers;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a class to track followers that are in sync for a shard
-////////////////////////////////////////////////////////////////////////////////
-
-class FollowerInfo {
-  std::shared_ptr<std::vector<ServerID> const> _followers;
-  Mutex                                        _mutex;
-  arangodb::LogicalCollection*                 _docColl;
-
- public:
-
-  explicit FollowerInfo(arangodb::LogicalCollection* d)
-    : _followers(new std::vector<ServerID>()), _docColl(d) { }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get information about current followers of a shard.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<std::vector<ServerID> const> get();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add a follower to a shard, this is only done by the server side
-  /// of the "get-in-sync" capabilities. This reports to the agency under
-  /// `/Current` but in asynchronous "fire-and-forget" way. The method
-  /// fails silently, if the follower information has since been dropped
-  /// (see `dropFollowerInfo` below).
-  //////////////////////////////////////////////////////////////////////////////
-
-  void add(ServerID const& s);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief remove a follower from a shard, this is only done by the
-  /// server if a synchronous replication request fails. This reports to
-  /// the agency under `/Current` but in an asynchronous "fire-and-forget"
-  /// way.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void remove(ServerID const& s);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief clear follower list, no changes in agency necesary
-  //////////////////////////////////////////////////////////////////////////////
-
-  void clear();
-
 };
 
 }  // end namespace arangodb

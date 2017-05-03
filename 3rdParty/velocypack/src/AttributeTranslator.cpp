@@ -59,17 +59,26 @@ void AttributeTranslator::seal() {
   ObjectIterator it(s);
 
   while (it.valid()) {
-    _keyToId.emplace(it.key(false).copyString(), it.value().begin());
-    _idToKey.emplace(it.value().getUInt(), it.key(false).begin());
+    Slice const key(it.key(false));
+    VELOCYPACK_ASSERT(key.isString());
+
+    // extract key value
+    ValueLength len;
+    char const* p = key.getString(len);
+    // insert into string and char lookup maps
+    _keyToIdString.emplace(key.copyString(), it.value().begin());
+    _keyToIdStringRef.emplace(StringRef(p, len), it.value().begin());
+    // insert into id to slice lookup map
+    _idToKey.emplace(it.value().getUInt(), key.begin());
     it.next();
   }
 }
 
 // translate from string to id
 uint8_t const* AttributeTranslator::translate(std::string const& key) const {
-  auto it = _keyToId.find(key);
+  auto it = _keyToIdString.find(key);
 
-  if (it == _keyToId.end()) {
+  if (it == _keyToIdString.end()) {
     return nullptr;
   }
 
@@ -79,9 +88,9 @@ uint8_t const* AttributeTranslator::translate(std::string const& key) const {
 // translate from string to id
 uint8_t const* AttributeTranslator::translate(char const* key,
                                               ValueLength length) const {
-  auto it = _keyToId.find(std::string(key, checkOverflow(length)));
+  auto it = _keyToIdStringRef.find(StringRef(key, length));
 
-  if (it == _keyToId.end()) {
+  if (it == _keyToIdStringRef.end()) {
     return nullptr;
   }
 

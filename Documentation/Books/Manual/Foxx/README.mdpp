@@ -1,4 +1,5 @@
-!CHAPTER Foxx
+Foxx
+====
 
 Traditionally, server-side projects have been developed as standalone applications
 that guide the communication between the client-side frontend and the database

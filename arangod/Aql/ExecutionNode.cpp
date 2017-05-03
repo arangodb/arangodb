@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/ShortestPathNode.h"
@@ -50,7 +51,6 @@ RegisterId const ExecutionNode::MaxRegisterId = 1000;
 
 /// @brief type names
 std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
-    {static_cast<int>(ILLEGAL), "ExecutionNode (abstract)"},
     {static_cast<int>(SINGLETON), "SingletonNode"},
     {static_cast<int>(ENUMERATE_COLLECTION), "EnumerateCollectionNode"},
     {static_cast<int>(ENUMERATE_LIST), "EnumerateListNode"},
@@ -113,6 +113,17 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
     bool ascending = it.get("ascending").getBoolean();
     Variable* v = varFromVPack(plan->getAst(), it, "inVariable");
     elements.emplace_back(v, ascending);
+    // Is there an attribute path?
+    VPackSlice path = it.get("paths");
+    if (path.isArray()) {
+      // Get a list of strings out and add to the path:
+      auto& element = elements.back();
+      for (auto const& it2 : VPackArrayIterator(it)) {
+        if (it2.isString()) {
+          element.attributePath.push_back(it2.copyString());
+        }
+      }
+    }
   }
 }
 
@@ -247,9 +258,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
-    case ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
-    }
   }
   return nullptr;
 }
@@ -259,6 +267,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
                              VPackSlice const& slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _estimatedCost(0.0),
+      _estimatedNrItems(0),
       _estimatedCostSet(false),
       _depth(slice.get("depth").getNumericValue<int>()),
       _varUsageValid(true),
@@ -1088,11 +1097,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       }
       break;
     }
-
-    case ExecutionNode::ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "node type not implemented");
-    }
   }
 
   en->_depth = depth;
@@ -1118,7 +1122,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
         if (it2 == varInfo.end()) {
           // report an error here to prevent crashing
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "missing variable #" + std::to_string(v->id) + " (" + v->name + ") for node " + en->getTypeString() + " while planning registers"); 
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("missing variable #") + std::to_string(v->id) + " (" + v->name + ") for node #" + std::to_string(en->id()) + " (" + en->getTypeString() + ") while planning registers"); 
         }
 
         // finally adjust the variable inside the IN calculation
@@ -1127,7 +1131,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
         regsToClear.emplace(r);
       }
     }
-    en->setRegsToClear(regsToClear);
+    en->setRegsToClear(std::move(regsToClear));
   }
 }
 
@@ -1153,7 +1157,11 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
-      _random(base.get("random").getBoolean()) {}
+      _random(base.get("random").getBoolean()) {
+  TRI_ASSERT(_vocbase != nullptr);
+  TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_outVariable != nullptr);
+}
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
 void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
@@ -1167,6 +1175,7 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
   nodes.add("random", VPackValue(_random));
+  nodes.add("satellite", VPackValue(_collection->isSatellite()));
 
   // And close it:
   nodes.close();
@@ -1195,11 +1204,14 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   size_t incoming;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  size_t count = _collection->count();
+  transaction::Methods* trx = _plan->getAst()->query()->trx();
+  size_t count = _collection->count(trx);
   nrItems = incoming * count;
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
-  return depCost + nrItems * (_random ? 1.005 : 1.0);
+  // we also penalize each EnumerateCollectionNode slightly (and do not
+  // do the same for IndexNodes) so IndexNodes will be preferred
+  return depCost + nrItems * (_random ? 1.005 : 1.0) + 1.0;
 }
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
@@ -1367,7 +1379,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(),
+  auto c = new CalculationNode(plan, _id, _expression->clone(plan->getAst()),
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 

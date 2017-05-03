@@ -74,29 +74,19 @@
 
     editor: 0,
 
-    setType: function (type) {
-      if (type === 2) {
-        type = 'document';
-      } else {
-        type = 'edge';
-      }
-
-      var callback = function (error, type) {
+    setType: function () {
+      var callback = function (error, data, type) {
         if (error) {
           arangoHelper.arangoError('Error', 'Could not fetch data.');
         } else {
-          var type2 = type + ': ';
           this.type = type;
-          this.fillInfo(type2);
+          this.breadcrumb();
+          this.fillInfo();
           this.fillEditor();
         }
       }.bind(this);
 
-      if (type === 'edge') {
-        this.collection.getEdge(this.colid, this.docid, callback);
-      } else if (type === 'document') {
-        this.collection.getDocument(this.colid, this.docid, callback);
-      }
+      this.collection.getDocument(this.colid, this.docid, callback);
     },
 
     deleteDocumentModal: function () {
@@ -204,7 +194,6 @@
 
       $('#documentEditor').height($('.centralRow').height() - 300);
       this.disableSaveButton();
-      this.breadcrumb();
 
       var self = this;
 
@@ -268,21 +257,21 @@
 
       model = JSON.stringify(model);
 
-      if (this.type._from && this.type._to) {
-        var callbackE = function (error) {
+      if (this.type === 'edge' || this.type._from) {
+        var callbackE = function (error, data) {
           if (error) {
-            arangoHelper.arangoError('Error', 'Could not save edge.');
+            arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
           } else {
             this.successConfirmation();
             this.disableSaveButton();
           }
         }.bind(this);
 
-        this.collection.saveEdge(this.colid, this.docid, this.type._from, this.type._to, model, callbackE);
+        this.collection.saveEdge(this.colid, this.docid, $('#document-from').html(), $('#document-to').html(), model, callbackE);
       } else {
-        var callback = function (error) {
+        var callback = function (error, data) {
           if (error) {
-            arangoHelper.arangoError('Error', 'Could not save document.');
+            arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
           } else {
             this.successConfirmation();
             this.disableSaveButton();
@@ -318,7 +307,7 @@
       $('#subNavigationBar .breadcrumb').html(
         '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1] + '</a>' +
         '<i class="fa fa-chevron-right"></i>' +
-        'Document: ' + name[2]
+        this.type.charAt(0).toUpperCase() + this.type.slice(1) + ': ' + name[2]
       );
     },
 

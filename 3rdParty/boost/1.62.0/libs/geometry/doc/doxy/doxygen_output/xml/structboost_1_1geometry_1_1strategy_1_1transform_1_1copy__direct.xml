@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1transform_1_1copy__direct" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::transform::copy_direct</compoundname>
+    <includes local="no">strategy_transform.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename P</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1transform_1_1copy__direct_1ad213f8d913f5308932def86ca7bc4ba5" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::strategy::transform::copy_direct&lt; P &gt;::apply</definition>
+        <argsstring>(P const &amp;p1, P &amp;p2) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type>P const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>P &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" line="94" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" bodystart="94" bodyend="98"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Transformation strategy to copy one point to another using assignment operator. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>P</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point type </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" line="93" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" bodystart="92" bodyend="99"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1copy__direct_1ad213f8d913f5308932def86ca7bc4ba5" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::copy_direct</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

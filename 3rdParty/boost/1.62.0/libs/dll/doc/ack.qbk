@@ -1,0 +1,19 @@
+[/
+    Copyright 2016 Antony Polukhin
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+/]
+
+[section Acknowledgements]
+
+In order of helping and advising:
+
+* Renato Tegon Forti for starting the `shared_library` class and writing many code lines for Boost.DLL.
+* Hartmut Kaiser for requesting a lot of cool functionality that is now part of Boost.DLL.
+* Niall Douglas for generating a lot of ideas.
+* Vladimir Prus (the review manager) and all the library reviewers for making good notes and proposing improvements to the library.
+* Rodrigo Madera for helping with MacOS debugging and fixing platform related issues.
+* Dmitry Moskalchuk for helping with Android debugging and jamfiles.
+* Klemens Morgenstern for implementing the mangled symbols loading by unmangled name, feature that was thought to be impossible.
+
+[endsect]

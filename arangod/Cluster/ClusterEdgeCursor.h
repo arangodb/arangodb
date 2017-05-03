@@ -24,28 +24,45 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H
 #define ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H 1
 
+#include "Graph/EdgeCursor.h"
 #include "VocBase/TraverserOptions.h"
 
 namespace arangodb {
+class CollectionNameResolver;
+
+namespace graph {
+struct BaseOptions;
+class ClusterTraverserCache;
+}
+
 namespace traverser {
 
-class ClusterEdgeCursor : public EdgeCursor {
+class Traverser;
 
+class ClusterEdgeCursor : public graph::EdgeCursor {
  public:
-  ClusterEdgeCursor(arangodb::velocypack::Slice, size_t, ClusterTraverser*);
+  // Traverser Variant
+  ClusterEdgeCursor(StringRef vid, uint64_t, graph::BaseOptions*);
+  // ShortestPath Variant
+  ClusterEdgeCursor(StringRef vid, bool isBackward, graph::BaseOptions*);
 
-  ~ClusterEdgeCursor() {
-  }
+  ~ClusterEdgeCursor() {}
 
-  bool next(std::vector<arangodb::velocypack::Slice>&, size_t&) override;
+  bool next(std::function<void(arangodb::StringRef const&,
+                               arangodb::velocypack::Slice, size_t)>
+                callback) override;
 
-  bool readAll(std::unordered_set<arangodb::velocypack::Slice>&, size_t&) override;
+  void readAll(std::function<void(arangodb::StringRef const&,
+                                  arangodb::velocypack::Slice, size_t&)>
+                   callback) override;
 
  private:
-
   std::vector<arangodb::velocypack::Slice> _edgeList;
 
   size_t _position;
+  CollectionNameResolver const* _resolver;
+  arangodb::graph::BaseOptions* _opts;
+  arangodb::graph::ClusterTraverserCache* _cache;
 };
 }
 }

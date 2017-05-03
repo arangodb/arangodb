@@ -24,6 +24,7 @@
 
 #include "ImportHelper.h"
 
+#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
@@ -156,6 +157,7 @@ ImportHelper::ImportHelper(httpclient::SimpleHttpClient* client,
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
+      _keyColumn(-1),
       _onDuplicateAction("error"),
       _collectionName(),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
@@ -190,7 +192,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       _errorMessage = TRI_LAST_ERROR_STR;
@@ -209,7 +211,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   if (separator == nullptr) {
     if (fd != STDIN_FILENO) {
-      TRI_CLOSE(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
     }
 
     _errorMessage = "out of memory";
@@ -244,15 +246,20 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
       TRI_DestroyCsvParser(&parser);
       if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
       }
       _errorMessage = TRI_LAST_ERROR_STR;
       return false;
     } else if (n == 0) {
+      // we have read the entire file
+      // now have the CSV parser parse an additional new line so it
+      // will definitely process the last line of the input data if
+      // it did not end with a newline
+      TRI_ParseCsvString(&parser, "\n", 1);
       break;
     }
 
-    totalRead += (int64_t)n;
+    totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, totalRead, nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
@@ -266,7 +273,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
 
   if (fd != STDIN_FILENO) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
   }
 
   _outputBuffer.clear();
@@ -274,7 +281,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 }
 
 bool ImportHelper::importJson(std::string const& collectionName,
-                              std::string const& fileName) {
+                              std::string const& fileName,
+                              bool assumeLinewise) {
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -292,7 +300,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       _errorMessage = TRI_LAST_ERROR_STR;
@@ -302,6 +310,11 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
   bool isObject = false;
   bool checkedFront = false;
+
+  if (assumeLinewise) {
+    checkedFront = true;
+    isObject = false;
+  }
 
   // progress display control variables
   int64_t totalRead = 0;
@@ -315,7 +328,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
       _errorMessage = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
 
       if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
       }
       return false;
     }
@@ -326,7 +339,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (n < 0) {
       _errorMessage = TRI_LAST_ERROR_STR;
       if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
       }
       return false;
     } else if (n == 0) {
@@ -339,8 +352,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
     if (!checkedFront) {
       // detect the import file format (single lines with individual JSON
-      // objects
-      // or a JSON array with all documents)
+      // objects or a JSON array with all documents)
       char const* p = _outputBuffer.begin();
       char const* e = _outputBuffer.end();
 
@@ -353,13 +365,13 @@ bool ImportHelper::importJson(std::string const& collectionName,
       checkedFront = true;
     }
 
-    totalRead += (int64_t)n;
+    totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, totalRead, nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {
       if (isObject) {
         if (fd != STDIN_FILENO) {
-          TRI_CLOSE(fd);
+          TRI_TRACKED_CLOSE_FILE(fd);
         }
         _errorMessage =
             "import file is too big. please increase the value of --batch-size "
@@ -385,7 +397,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   if (fd != STDIN_FILENO) {
-    TRI_CLOSE(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
   }
 
   // this is an approximation only. _numberLines is more meaningful for CSV
@@ -414,14 +426,14 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
     static int64_t nextProcessed = 10 * 1000 * 1000;
 
     if (totalRead >= nextProcessed) {
-      LOG(INFO) << "processed " << totalRead << " bytes of input file";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "processed " << totalRead << " bytes of input file";
       nextProcessed += 10 * 1000 * 1000;
     }
   } else {
     double pct = 100.0 * ((double)totalRead / (double)totalLength);
 
     if (pct >= nextProgress && totalLength >= 1024) {
-      LOG(INFO) << "processed " << totalRead << " bytes (" << (int)nextProgress
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "processed " << totalRead << " bytes (" << (int)nextProgress
                 << "%) of input file";
       nextProgress = (double)((int)(pct + ProgressStep));
     }
@@ -481,18 +493,26 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _lineBuffer.appendChar(',');
   }
 
-  if (row == 0 + _rowsToSkip || escaped) {
+  if (row == _rowsToSkip && fieldLength > 0) {
+    // translate field
+    auto it = _translations.find(std::string(field, fieldLength));
+    if (it != _translations.end()) {
+      field = (*it).second.c_str();
+      fieldLength = (*it).second.size();
+    }
+  }
+
+  if (_keyColumn == -1 && row == _rowsToSkip && fieldLength == 4 && memcmp(field, "_key", 4) == 0) {
+    _keyColumn = column;
+  }
+
+  if (row == _rowsToSkip || escaped || _keyColumn == static_cast<decltype(_keyColumn)>(column)) {
     // head line or escaped value
     _lineBuffer.appendJsonEncoded(field, fieldLength);
     return;
   }
-    
-  if (!_convert) {
-    _lineBuffer.appendText(field, fieldLength);
-    return;
-  }
 
-  if (*field == '\0') {
+  if (*field == '\0' || fieldLength == 0) {
     // do nothing
     _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
     return;
@@ -508,50 +528,62 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     return;
   }
 
-  if (IsInteger(field, fieldLength)) {
-    // integer value
-    // conversion might fail with out-of-range error
-    try {
-      if (fieldLength > 8) {
-        // long integer numbers might be problematic. check if we get out of
-        // range
-        (void) std::stoll(std::string(
-            field,
-            fieldLength));  // this will fail if the number cannot be converted
+  if (_convert) {
+    if (IsInteger(field, fieldLength)) {
+      // integer value
+      // conversion might fail with out-of-range error
+      try {
+        if (fieldLength > 8) {
+          // long integer numbers might be problematic. check if we get out of
+          // range
+          (void) std::stoll(std::string(
+              field,
+              fieldLength));  // this will fail if the number cannot be converted
+        }
+
+        int64_t num = StringUtils::int64(field, fieldLength);
+        _lineBuffer.appendInteger(num);
+      } catch (...) {
+        // conversion failed
+        _lineBuffer.appendJsonEncoded(field, fieldLength);
+      }
+    } else if (IsDecimal(field, fieldLength)) {
+      // double value
+      // conversion might fail with out-of-range error
+      try {
+        std::string tmp(field, fieldLength);
+        size_t pos = 0;
+        double num = std::stod(tmp, &pos);
+        if (pos == fieldLength) {
+          bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
+          if (!failed) {
+            _lineBuffer.appendDecimal(num);
+            return;
+          }
+        }
+        // NaN, +inf, -inf
+        // fall-through to appending the number as a string
+      } catch (...) {
+        // conversion failed
+        // fall-through to appending the number as a string
       }
 
-      int64_t num = StringUtils::int64(field, fieldLength);
-      _lineBuffer.appendInteger(num);
-    } catch (...) {
-      // conversion failed
+      _lineBuffer.appendChar('"');
+      _lineBuffer.appendText(field, fieldLength);
+      _lineBuffer.appendChar('"');
+    } else {
       _lineBuffer.appendJsonEncoded(field, fieldLength);
     }
-  } else if (IsDecimal(field, fieldLength)) {
-    // double value
-    // conversion might fail with out-of-range error
-    try {
-      std::string tmp(field, fieldLength);
-      size_t pos = 0;
-      double num = std::stod(tmp, &pos);
-      if (pos == fieldLength) {
-        bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
-        if (!failed) {
-          _lineBuffer.appendDecimal(num);
-          return;
-        }
-      }
-      // NaN, +inf, -inf
-      // fall-through to appending the number as a string
-    } catch (...) {
-      // conversion failed
-      // fall-through to appending the number as a string
-    }
-
-    _lineBuffer.appendChar('"');
-    _lineBuffer.appendText(field, fieldLength);
-    _lineBuffer.appendChar('"');
   } else {
-    _lineBuffer.appendJsonEncoded(field, fieldLength);
+    if (IsInteger(field, fieldLength) || IsDecimal(field, fieldLength)) {
+      // numeric value. don't convert
+      _lineBuffer.appendChar('"');
+      _lineBuffer.appendText(field, fieldLength);
+      _lineBuffer.appendChar('"');
+    } else {
+      // non-numeric value
+      _lineBuffer.appendJsonEncoded(field, fieldLength);
+    }
   }
 }
 
@@ -648,7 +680,7 @@ bool ImportHelper::checkCreateCollection() {
     return true;
   }
 
-  LOG(ERR) << "unable to create collection '" << _collectionName << "', server returned status code: " << static_cast<int>(code); 
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create collection '" << _collectionName << "', server returned status code: " << static_cast<int>(code); 
   _hasError = true;
   return false;
 }
@@ -661,7 +693,7 @@ void ImportHelper::sendCsvBuffer() {
   if (!checkCreateCollection()) {
     return;
   }
-    
+
   std::unordered_map<std::string, std::string> headerFields;
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
@@ -676,7 +708,7 @@ void ImportHelper::sendCsvBuffer() {
   if (_firstChunk && _overwrite) {
     url += "&overwrite=true";
   }
-  
+
   _firstChunk = false;
 
   std::unique_ptr<SimpleHttpResult> result(_client->request(
@@ -747,7 +779,7 @@ void ImportHelper::handleResult(SimpleHttpResult* result) {
   if (details.isArray()) {
     for (VPackSlice const& detail : VPackArrayIterator(details)) {
       if (detail.isString()) {
-        LOG(WARN) << "" << detail.copyString();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << detail.copyString();
       }
     }
   }

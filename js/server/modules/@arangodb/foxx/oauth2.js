@@ -23,6 +23,7 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
+const assert = require('assert');
 const url = require('url');
 const parseUrl = url.parse;
 const formatUrl = url.format;
@@ -41,6 +42,14 @@ function parse (str) {
 }
 
 module.exports = function oauth2 (cfg) {
+  if (!cfg) {
+    cfg = {};
+  }
+  assert(cfg.tokenEndpoint, 'No Token Request URL specified');
+  assert(cfg.authEndpoint, 'No User Authorization URL specified');
+  assert(cfg.clientId, 'No Client ID specified');
+  assert(cfg.clientSecret, 'No Client Secret specified');
+
   function getTokenRequest (code, redirect_uri) {
     const endpoint = parseUrl(cfg.tokenEndpoint);
     const body = Object.assign(
@@ -70,7 +79,7 @@ module.exports = function oauth2 (cfg) {
   }
 
   return {
-    getAuthUrl(redirect_uri, opts) {
+    getAuthUrl (redirect_uri, opts) {
       if (typeof redirect_uri !== 'string') {
         opts = redirect_uri;
         redirect_uri = undefined;
@@ -88,7 +97,8 @@ module.exports = function oauth2 (cfg) {
       }
       return formatUrl(endpoint);
     },
-    exchangeGrantToken(code, redirect_uri) {
+    exchangeGrantToken (code, redirect_uri) {
+      assert(code, 'No Grant Token specified');
       const req = getTokenRequest(code, redirect_uri);
       const res = request.post(req.url, {
         headers: {accept: 'application/json'},
@@ -99,7 +109,8 @@ module.exports = function oauth2 (cfg) {
       }
       return parse(res.body);
     },
-    fetchActiveUser(access_token) {
+    fetchActiveUser (access_token) {
+      assert(access_token, 'No Access Token specified');
       if (!cfg.activeUserEndpoint) {
         return null;
       }

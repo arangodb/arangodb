@@ -1377,9 +1377,9 @@ static void JS_BinaryWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   max_length = MIN(length, MIN(buffer->_length - offset, max_length));
 
-  int written = DecodeWrite(isolate, p, max_length, s, BINARY);
+  ssize_t written = DecodeWrite(isolate, p, max_length, s, BINARY);
 
-  TRI_V8_RETURN(v8::Integer::New(isolate, written));
+  TRI_V8_RETURN(v8::Integer::New(isolate, (int32_t)written));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1710,7 +1710,7 @@ void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_V8_AddMethod(isolate, exports, TRI_V8_ASCII_STRING("SlowBuffer"), ft);
   TRI_AddGlobalVariableVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("EXPORTS_SLOW_BUFFER"), exports);
+      isolate, TRI_V8_ASCII_STRING("EXPORTS_SLOW_BUFFER"), exports);
 
   v8::HeapProfiler* heap_profiler = isolate->GetHeapProfiler();
   heap_profiler->SetWrapperClassInfoProvider(TRI_V8_BUFFER_CID, WrapperInfo);

@@ -1,0 +1,143 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data" kind="class" prot="private">
+    <compoundname>boost::geometry::detail::is_valid::complement_graph::has_cycles_dfs_data</compoundname>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1ac83f350b444d6bf22059c84f28cd1473" prot="private" static="no" mutable="no">
+        <type>std::vector&lt; <ref refid="namespaceboost_1_1geometry_1af0c576f82145cf6a02dcbf48b675a0c2" kindref="member">signed_size_type</ref> &gt;</type>
+        <definition>std::vector&lt;signed_size_type&gt; boost::geometry::detail::is_valid::complement_graph&lt; TurnPoint &gt;::has_cycles_dfs_data::m_parent_id</definition>
+        <argsstring></argsstring>
+        <name>m_parent_id</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="128" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="128" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1a16e3f0715f40d1b163740a507c8cad88" prot="private" static="no" mutable="no">
+        <type>std::vector&lt; bool &gt;</type>
+        <definition>std::vector&lt;bool&gt; boost::geometry::detail::is_valid::complement_graph&lt; TurnPoint &gt;::has_cycles_dfs_data::m_visited</definition>
+        <argsstring></argsstring>
+        <name>m_visited</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="127" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="127" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1af3faa4bdb8c9f8f7b4e342a418213d32" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::detail::is_valid::complement_graph&lt; TurnPoint &gt;::has_cycles_dfs_data::has_cycles_dfs_data</definition>
+        <argsstring>(std::size_t num_nodes)</argsstring>
+        <name>has_cycles_dfs_data</name>
+        <param>
+          <type>std::size_t</type>
+          <declname>num_nodes</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="102" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="102" bodyend="105"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1ab380a05e0abe3e592614f6636b41a558" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="namespaceboost_1_1geometry_1af0c576f82145cf6a02dcbf48b675a0c2" kindref="member">signed_size_type</ref></type>
+        <definition>signed_size_type boost::geometry::detail::is_valid::complement_graph&lt; TurnPoint &gt;::has_cycles_dfs_data::parent_id</definition>
+        <argsstring>(vertex_handle v) const </argsstring>
+        <name>parent_id</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1af8ff708da06b4c70fa57074c7f315f5d" kindref="member">vertex_handle</ref></type>
+          <declname>v</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="107" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="107" bodyend="110"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1a0cde6d7368ee418d2b9505fd673a1afb" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::detail::is_valid::complement_graph&lt; TurnPoint &gt;::has_cycles_dfs_data::set_parent_id</definition>
+        <argsstring>(vertex_handle v, signed_size_type id)</argsstring>
+        <name>set_parent_id</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1af8ff708da06b4c70fa57074c7f315f5d" kindref="member">vertex_handle</ref></type>
+          <declname>v</declname>
+        </param>
+        <param>
+          <type><ref refid="namespaceboost_1_1geometry_1af0c576f82145cf6a02dcbf48b675a0c2" kindref="member">signed_size_type</ref></type>
+          <declname>id</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="112" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="112" bodyend="115"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1aec2e91c0a946f77af86ab4a934f56f55" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::detail::is_valid::complement_graph&lt; TurnPoint &gt;::has_cycles_dfs_data::set_visited</definition>
+        <argsstring>(vertex_handle v, bool value)</argsstring>
+        <name>set_visited</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1af8ff708da06b4c70fa57074c7f315f5d" kindref="member">vertex_handle</ref></type>
+          <declname>v</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="122" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="122" bodyend="125"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1a802e5f26b587cae4d40978590733df21" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::detail::is_valid::complement_graph&lt; TurnPoint &gt;::has_cycles_dfs_data::visited</definition>
+        <argsstring>(vertex_handle v) const </argsstring>
+        <name>visited</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1af8ff708da06b4c70fa57074c7f315f5d" kindref="member">vertex_handle</ref></type>
+          <declname>v</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="117" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="117" bodyend="120"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="100" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="99" bodyend="129"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1af3faa4bdb8c9f8f7b4e342a418213d32" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph::has_cycles_dfs_data</scope><name>has_cycles_dfs_data</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1ac83f350b444d6bf22059c84f28cd1473" prot="private" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph::has_cycles_dfs_data</scope><name>m_parent_id</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1a16e3f0715f40d1b163740a507c8cad88" prot="private" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph::has_cycles_dfs_data</scope><name>m_visited</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1ab380a05e0abe3e592614f6636b41a558" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph::has_cycles_dfs_data</scope><name>parent_id</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1a0cde6d7368ee418d2b9505fd673a1afb" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph::has_cycles_dfs_data</scope><name>set_parent_id</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1aec2e91c0a946f77af86ab4a934f56f55" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph::has_cycles_dfs_data</scope><name>set_visited</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph_1_1has__cycles__dfs__data_1a802e5f26b587cae4d40978590733df21" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph::has_cycles_dfs_data</scope><name>visited</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

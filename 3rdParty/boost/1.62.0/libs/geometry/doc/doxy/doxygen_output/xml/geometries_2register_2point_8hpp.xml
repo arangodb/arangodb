@@ -1,0 +1,428 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="geometries_2register_2point_8hpp" kind="file">
+    <compoundname>point.hpp</compoundname>
+    <includes local="no">cstddef</includes>
+    <incdepgraph>
+      <node id="20650">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp</label>
+        <link refid="geometries/register/point.hpp"/>
+        <childnode refid="20651" relation="include">
+        </childnode>
+      </node>
+      <node id="20651">
+        <label>cstddef</label>
+      </node>
+    </incdepgraph>
+      <sectiondef kind="define">
+      <memberdef kind="define" id="group__register_1ga040a8280aaf06372fc637e1a436019d8" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_2D</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Field0</defname></param>
+        <param><defname>Field1</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 2, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 0, CoordinateType, Field0, Field0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 1, CoordinateType, Field1, Field1) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a 2D point type. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_2D registers a two-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing second (usually y) coordinate</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/geometries/register/point.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="70" column="9" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="70" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga3a3e97175ef92eed648707933c3fbeaa" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_2D_CONST</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Field0</defname></param>
+        <param><defname>Field1</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 2, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 0, CoordinateType, Field0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 1, CoordinateType, Field1) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a 2D point type (const version) </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_2D_CONST registers a two-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type.. The const version registers only read access to the fields, the point type is therefore read-only <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="106" column="9" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="106" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1gaf174f265da534d30be10c2f5a4a2c75e" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_2D_GET_SET</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Get0</defname></param>
+        <param><defname>Get1</defname></param>
+        <param><defname>Set0</defname></param>
+        <param><defname>Set1</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 2, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 0, CoordinateType, Get0, Set0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 1, CoordinateType, Get1, Set1) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a 2D point type (having separate get/set methods) </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_2D_GET_SET registers a two-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type.. The get/set version registers get and set methods separately and can be used for classes with protected member variables and get/set methods to change coordinates <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="144" column="9" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="144" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga98e9781be9019c6d92029507e49ef9a5" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_3D</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Field0</defname></param>
+        <param><defname>Field1</defname></param>
+        <param><defname>Field2</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 3, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 0, CoordinateType, Field0, Field0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 1, CoordinateType, Field1, Field1) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 2, CoordinateType, Field2, Field2) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a 3D point type. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_3D registers a three-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing third (usually z) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="88" column="9" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="88" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga86cf81c9036010faf69dfbd9b3c4d9a8" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_3D_CONST</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Field0</defname></param>
+        <param><defname>Field1</defname></param>
+        <param><defname>Field2</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 3, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 0, CoordinateType, Field0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 1, CoordinateType, Field1) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 2, CoordinateType, Field2) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a 3D point type (const version) </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_3D_CONST registers a three-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type.. The const version registers only read access to the fields, the point type is therefore read-only <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing third (usually z) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="124" column="9" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="124" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga6550bf4438d3b63ad83f5508900690cf" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_3D_GET_SET</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Get0</defname></param>
+        <param><defname>Get1</defname></param>
+        <param><defname>Get2</defname></param>
+        <param><defname>Set0</defname></param>
+        <param><defname>Set1</defname></param>
+        <param><defname>Set2</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 3, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 0, CoordinateType, Get0, Set0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 1, CoordinateType, Get1, Set1) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 2, CoordinateType, Get2, Set2) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a 3D point type (having separate get/set methods) </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_3D_GET_SET registers a three-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type.. The get/set version registers get and set methods separately and can be used for classes with protected member variables and get/set methods to change coordinates <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the third (usually z) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the third (usually z) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="165" column="9" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="165" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp"/>
+  </compounddef>
+</doxygen>

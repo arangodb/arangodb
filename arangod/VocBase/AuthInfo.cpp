@@ -23,28 +23,31 @@
 
 #include "AuthInfo.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Random/UniformCharacter.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
+
+static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
   if (slice.isNone() || !slice.isObject()) {
     return AuthEntry();
   }
@@ -53,21 +56,21 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   VPackSlice const userSlice = slice.get("user");
 
   if (!userSlice.isString()) {
-    LOG(DEBUG) << "cannot extract username";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract username";
     return AuthEntry();
   }
 
   VPackSlice const authDataSlice = slice.get("authData");
 
   if (!authDataSlice.isObject()) {
-    LOG(DEBUG) << "cannot extract authData";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract authData";
     return AuthEntry();
   }
 
   VPackSlice const simpleSlice = authDataSlice.get("simple");
 
   if (!simpleSlice.isObject()) {
-    LOG(DEBUG) << "cannot extract simple";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract simple";
     return AuthEntry();
   }
 
@@ -77,7 +80,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
 
   if (!methodSlice.isString() || !saltSlice.isString() ||
       !hashSlice.isString()) {
-    LOG(DEBUG) << "cannot extract password internals";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract password internals";
     return AuthEntry();
   }
 
@@ -86,7 +89,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   VPackSlice const activeSlice = authDataSlice.get("active");
 
   if (!activeSlice.isBoolean()) {
-    LOG(DEBUG) << "cannot extract active flag";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract active flag";
     return AuthEntry();
   }
 
@@ -126,8 +129,8 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
 
   // build authentication entry
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
-                   saltSlice.copyString(), hashSlice.copyString(), databases,
-                   allDatabases, active, mustChange);
+                   saltSlice.copyString(), hashSlice.copyString(), std::move(databases),
+                   allDatabases, active, mustChange, source);
 }
 
 AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
@@ -140,6 +143,12 @@ AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
   return it->second;
 }
 
+AuthInfo::AuthInfo()
+    : _outdated(true),
+    _authJwtCache(16384),
+    _jwtSecret(""),
+    _queryRegistry(nullptr) {}
+
 void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _authJwtLock);
   _jwtSecret = jwtSecret;
@@ -147,14 +156,11 @@ void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
 }
 
 std::string AuthInfo::jwtSecret() {
+  READ_LOCKER(writeLocker, _authJwtLock);
   return _jwtSecret;
 }
 
-void AuthInfo::clear() {
-  _authInfo.clear();
-  _authBasicCache.clear();
-}
-
+// private, must be called with _authInfoLock in write mode
 void AuthInfo::insertInitial() {
   if (!_authInfo.empty()) {
     return;
@@ -201,31 +207,54 @@ void AuthInfo::insertInitial() {
   }
 }
 
+// private, must be called with _authInfoLock in write mode
 bool AuthInfo::populate(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
-  WRITE_LOCKER(writeLocker, _authInfoLock);
-
-  clear();
+  _authInfo.clear();
+  _authBasicCache.clear();
 
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
-    AuthEntry auth = CreateAuthEntry(authSlice.resolveExternal());
+    VPackSlice const& s = authSlice.resolveExternal();
+
+    if (s.hasKey("source") && s.get("source").isString() && s.get("source").copyString() == "LDAP") {
+      LOG_TOPIC(TRACE, arangodb::Logger::CONFIG) << "LDAP: skip user in collection _users: " << s.get("user").copyString();
+      continue;
+    }
+    AuthEntry auth = CreateAuthEntry(s, AuthSource::COLLECTION);
 
     if (auth.isActive()) {
-      _authInfo.emplace(auth.username(), auth);
+      _authInfo.emplace(auth.username(), std::move(auth));
     }
   }
 
   return true;
 }
 
+// private, will acquire _authInfoLock in write-mode and release it
 void AuthInfo::reload() {
-  insertInitial();
+  auto role = ServerState::instance()->getRole();
+
+  if (role != ServerState::ROLE_SINGLE
+      && role != ServerState::ROLE_COORDINATOR) {
+    _outdated = false;
+    return;
+  }
+
+  // TODO: is this correct?
+  if (_authenticationHandler == nullptr) {
+    _authenticationHandler.reset(application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication")->getHandler());
+  }
+  
+  {
+    WRITE_LOCKER(writeLocker, _authInfoLock);
+    insertInitial();
+  }
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   if (vocbase == nullptr) {
-    LOG(DEBUG) << "system database is unknown, cannot load authentication "
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown, cannot load authentication "
                << "and authorization information";
     return;
   }
@@ -234,20 +263,15 @@ void AuthInfo::reload() {
   if (!_outdated) {
     return;
   }
-  std::string queryStr("FOR user IN _users RETURN user");
-  auto nullBuilder = std::make_shared<VPackBuilder>();
-  VPackBuilder options;
-  {
-    VPackObjectBuilder b(&options);
-  }
-  auto objectBuilder = std::make_shared<VPackBuilder>(options);
+  std::string const queryStr("FOR user IN _users RETURN user");
+  auto emptyBuilder = std::make_shared<VPackBuilder>();
   
   arangodb::aql::Query query(false, vocbase, queryStr.c_str(),
-                             queryStr.length(), nullBuilder, objectBuilder,
+                             queryStr.size(), emptyBuilder, emptyBuilder,
                              arangodb::aql::PART_MAIN);
 
-  LOG(DEBUG) << "starting to load authentication and authorization information";
-  TRI_ASSERT(_queryRegistry != nullptr); 
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "starting to load authentication and authorization information";
+  TRI_ASSERT(_queryRegistry != nullptr);
   auto queryResult = query.execute(_queryRegistry);
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -265,32 +289,217 @@ void AuthInfo::reload() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   if (!usersSlice.isArray()) {
-    LOG(ERR) << "cannot read users from _users collection";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read users from _users collection";
     return;
   }
 
-  if (usersSlice.length() == 0) {
-    insertInitial();
-  } else {
-    populate(usersSlice);
+  {
+    WRITE_LOCKER(writeLocker, _authInfoLock);
+
+    if (usersSlice.length() == 0) {
+      insertInitial();
+    } else {
+      populate(usersSlice);
+    }
   }
 
   _outdated = false;
 }
 
+
+
+// protected
+HexHashResult AuthInfo::hexHashFromData(std::string const& hashMethod, char const* data, size_t len) {
+  char* crypted = nullptr;
+  size_t cryptedLength;
+  char* hex;
+
+  try {
+    if (hashMethod == "sha1") {
+      arangodb::rest::SslInterface::sslSHA1(data, len, crypted,
+                                            cryptedLength);
+    } else if (hashMethod == "sha512") {
+      arangodb::rest::SslInterface::sslSHA512(data, len, crypted,
+                                              cryptedLength);
+    } else if (hashMethod == "sha384") {
+      arangodb::rest::SslInterface::sslSHA384(data, len, crypted,
+                                              cryptedLength);
+    } else if (hashMethod == "sha256") {
+      arangodb::rest::SslInterface::sslSHA256(data, len, crypted,
+                                              cryptedLength);
+    } else if (hashMethod == "sha224") {
+      arangodb::rest::SslInterface::sslSHA224(data, len, crypted,
+                                              cryptedLength);
+    } else if (hashMethod == "md5") {
+      arangodb::rest::SslInterface::sslMD5(data, len, crypted,
+                                           cryptedLength);
+    } else {
+      // invalid algorithm...
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "invalid algorithm for hexHashFromData: " << hashMethod;
+      return HexHashResult(TRI_ERROR_FAILED); // TODO: fix to correct error number
+    }
+  } catch (...) {
+    // SslInterface::ssl....() allocate strings with new, which might throw
+    // exceptions
+    return HexHashResult(TRI_ERROR_FAILED);
+  }
+
+  if (crypted == nullptr ||
+      cryptedLength == 0) {
+    delete[] crypted;
+    return HexHashResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  size_t hexLen;
+  hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
+  delete[] crypted;
+
+  if (hex == nullptr) {
+    return HexHashResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  HexHashResult result(std::string(hex, hexLen));
+  TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
+
+  return result;
+}
+
+// public
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
   if (_outdated) {
     reload();
   }
 
-  AuthResult result;
-  result._username = username;
+  AuthResult result(username);
 
-  // look up username
-  READ_LOCKER(readLocker, _authInfoLock);
-
+  WRITE_LOCKER(writeLocker, _authInfoLock);
   auto it = _authInfo.find(username);
+
+  if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) { // && it->second.created() < TRI_microtime() - 60)) {
+    TRI_ASSERT(_authenticationHandler != nullptr);
+    AuthenticationResult authResult = _authenticationHandler->authenticate(username, password);
+
+    if (!authResult.ok()) {
+      return result;
+    }
+
+    if (authResult.source() == AuthSource::LDAP) { // user authed, add to _authInfo and _users
+      if (it != _authInfo.end()) { //  && it->second.created() < TRI_microtime() - 60) {
+        _authInfo.erase(username);
+        it = _authInfo.end();
+      }
+
+      if (it == _authInfo.end()) {
+        TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
+        if (vocbase == nullptr) {
+          LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown, cannot load authentication "
+                    << "and authorization information";
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system databse is unknown");
+        }
+
+        MUTEX_LOCKER(locker, _queryLock);
+
+        std::string const queryStr("UPSERT {user: @username} INSERT @user REPLACE @user IN _users");
+        auto emptyBuilder = std::make_shared<VPackBuilder>();
+
+        VPackBuilder binds;
+        binds.openObject();
+        binds.add("username", VPackValue(username));
+
+        binds.add("user", VPackValue(VPackValueType::Object));
+
+        binds.add("user", VPackValue(username));
+        binds.add("source", VPackValue("LDAP"));
+
+        binds.add("databases", VPackValue(VPackValueType::Object));
+        for(auto const& permission : authResult.permissions() ) {
+          binds.add(permission.first, VPackValue(permission.second));
+        }
+        binds.close();
+
+        binds.add("configData", VPackValue(VPackValueType::Object));
+        binds.close();
+
+        binds.add("userData", VPackValue(VPackValueType::Object));
+        binds.close();
+
+        binds.add("authData", VPackValue(VPackValueType::Object));
+        binds.add("active", VPackValue(true));
+        binds.add("changePassword", VPackValue(false));
+
+        binds.add("simple", VPackValue(VPackValueType::Object));
+        binds.add("method", VPackValue("sha256"));
+
+        std::string salt = UniformCharacter(8, "0123456789abcdef").random();
+        binds.add("salt", VPackValue(salt));
+
+        std::string saltedPassword = salt + password;
+        HexHashResult hex = hexHashFromData("sha256", saltedPassword.data(), saltedPassword.size());
+        if (!hex.ok()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "Could not calculate hex-hash from data");
+        }
+        binds.add("hash", VPackValue(hex.hexHash()));
+
+        binds.close();  // simple
+        binds.close(); // authData
+
+        binds.close(); // user
+        binds.close(); // obj
+
+        arangodb::aql::Query query(false, vocbase, queryStr.c_str(),
+                                  queryStr.size(), std::make_shared<VPackBuilder>(binds), emptyBuilder,
+                                  arangodb::aql::PART_MAIN);
+
+        TRI_ASSERT(_queryRegistry != nullptr);
+        auto queryResult = query.execute(_queryRegistry);
+
+        if (queryResult.code != TRI_ERROR_NO_ERROR) {
+          if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+              (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+          }
+          _outdated = false;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "query error");
+        }
+
+        VPackBuilder builder;
+        builder.openObject();
+
+        // username
+        builder.add("user", VPackValue(username));
+        builder.add("source", VPackValue("LDAP"));
+        builder.add("authData", VPackValue(VPackValueType::Object));
+
+        // simple auth
+        builder.add("simple", VPackValue(VPackValueType::Object));
+        builder.add("method", VPackValue("sha256"));
+
+        builder.add("salt", VPackValue(salt));
+
+        builder.add("hash", VPackValue(hex.hexHash()));
+
+        builder.close();  // simple
+
+        builder.add("active", VPackValue(true));
+
+        builder.close();  // authData
+
+        builder.add("databases", VPackValue(VPackValueType::Object));
+        for(auto const& permission : authResult.permissions() ) {
+          builder.add(permission.first, VPackValue(permission.second));
+        }
+        builder.close();
+        builder.close();  // The Object
+
+        AuthEntry auth = CreateAuthEntry(builder.slice().resolveExternal(), AuthSource::LDAP);
+        _authInfo.emplace(auth.username(), std::move(auth));
+
+        it = _authInfo.find(username);
+      }
+    } // AuthSource::LDAP
+  }
 
   if (it == _authInfo.end()) {
     return result;
@@ -305,63 +514,25 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   result._mustChange = auth.mustChange();
 
   std::string salted = auth.passwordSalt() + password;
-  size_t len = salted.size();
+  HexHashResult hexHash = hexHashFromData(auth.passwordMethod(), salted.data(), salted.size());
 
-  std::string const& passwordMethod = auth.passwordMethod();
-
-  // default value is false
-  char* crypted = nullptr;
-  size_t cryptedLength;
-
-  try {
-    if (passwordMethod == "sha1") {
-      arangodb::rest::SslInterface::sslSHA1(salted.c_str(), len, crypted,
-                                            cryptedLength);
-    } else if (passwordMethod == "sha512") {
-      arangodb::rest::SslInterface::sslSHA512(salted.c_str(), len, crypted,
-                                              cryptedLength);
-    } else if (passwordMethod == "sha384") {
-      arangodb::rest::SslInterface::sslSHA384(salted.c_str(), len, crypted,
-                                              cryptedLength);
-    } else if (passwordMethod == "sha256") {
-      arangodb::rest::SslInterface::sslSHA256(salted.c_str(), len, crypted,
-                                              cryptedLength);
-    } else if (passwordMethod == "sha224") {
-      arangodb::rest::SslInterface::sslSHA224(salted.c_str(), len, crypted,
-                                              cryptedLength);
-    } else if (passwordMethod == "md5") {
-      arangodb::rest::SslInterface::sslMD5(salted.c_str(), len, crypted,
-                                           cryptedLength);
-    } else {
-      // invalid algorithm...
-    }
-  } catch (...) {
-    // SslInterface::ssl....() allocate strings with new, which might throw
-    // exceptions
+  if (!hexHash.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "hexcalc did not work");
   }
 
-  if (crypted != nullptr) {
-    if (0 < cryptedLength) {
-      size_t hexLen;
-      char* hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
-
-      if (hex != nullptr) {
-        result._authorized = auth.checkPasswordHash(hex);
-        TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
-      }
-    }
-
-    delete[] crypted;
-  }
+  result._authorized = auth.checkPasswordHash(hexHash.hexHash());
 
   return result;
 }
 
+// public
 AuthLevel AuthInfo::canUseDatabase(std::string const& username,
                                    std::string const& dbname) {
   if (_outdated) {
     reload();
   }
+
+  READ_LOCKER(readLocker, _authInfoLock);
 
   auto const& it = _authInfo.find(username);
 
@@ -374,6 +545,7 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   return entry.canUseDatabase(dbname);
 }
 
+// public called from VocbaseContext.cpp
 AuthResult AuthInfo::checkAuthentication(AuthType authType,
                                          std::string const& secret) {
   if (_outdated) {
@@ -391,18 +563,22 @@ AuthResult AuthInfo::checkAuthentication(AuthType authType,
   return AuthResult();
 }
 
+// private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
-  auto const& it = _authBasicCache.find(secret);
+  {
+    READ_LOCKER(readLocker, _authInfoLock);
+    auto const& it = _authBasicCache.find(secret);
 
-  if (it != _authBasicCache.end()) {
-    return it->second;
+    if (it != _authBasicCache.end()) {
+      return it->second;
+    }
   }
 
   std::string const up = StringUtils::decodeBase64(secret);
   std::string::size_type n = up.find(':', 0);
 
   if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-    LOG(TRACE) << "invalid authentication data found, cannot extract "
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "invalid authentication data found, cannot extract "
                   "username/password";
     return AuthResult();
   }
@@ -412,9 +588,21 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
 
   AuthResult result = checkPassword(username, password);
 
-  if (result._authorized) {
-    _authBasicCache.emplace(secret, result);
-  }
+  {
+    WRITE_LOCKER(readLocker, _authInfoLock);
+
+    if (result._authorized) {
+      if (!_authBasicCache.emplace(secret, result).second) {
+        // insertion did not work - probably another thread did insert the 
+        // same data right now
+        // erase it and re-insert our version
+        _authBasicCache.erase(secret);
+        _authBasicCache.emplace(secret, result);
+      }
+    } else {
+      _authBasicCache.erase(secret);
+    }
+  } 
 
   return result;
 }
@@ -434,21 +622,21 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
         if (result._expires && now >= result._expireTime) {
           try {
             _authJwtCache.remove(jwt);
-          } catch (std::range_error const& e) {
+          } catch (std::range_error const&) {
           }
         }
         return AuthResult();
       }
     }
     return (AuthResult) result;
-  } catch (std::range_error const& e) {
+  } catch (std::range_error const&) {
     // mop: not found
   }
 
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
 
   if (parts.size() != 3) {
-    LOG(TRACE) << "Secret contains " << parts.size() << " parts";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Secret contains " << parts.size() << " parts";
     return AuthResult();
   }
   
@@ -457,22 +645,23 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
   std::string const& signature = parts[2];
 
   if (!validateJwtHeader(header)) {
-    LOG(TRACE) << "Couldn't validate jwt header " << header;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Couldn't validate jwt header " << header;
     return AuthResult();
   }
 
   AuthJwtResult result = validateJwtBody(body);
   if (!result._authorized) {
-    LOG(TRACE) << "Couldn't validate jwt body " << body;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Couldn't validate jwt body " << body;
     return AuthResult();
   }
 
   std::string const message = header + "." + body;
 
   if (!validateJwtHMAC256Signature(message, signature)) {
-    LOG(TRACE) << "Couldn't validate jwt signature " << signature << " " << _jwtSecret;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Couldn't validate jwt signature " << signature << " " << _jwtSecret;
     return AuthResult();
   }
+
   WRITE_LOCKER(writeLocker, _authJwtLock);
   _authJwtCache.put(jwt, result);
   return (AuthResult) result;
@@ -486,11 +675,11 @@ std::shared_ptr<VPackBuilder> AuthInfo::parseJson(std::string const& str,
     parser.parse(str);
     result = parser.steal();
   } catch (std::bad_alloc const&) {
-    LOG(ERR) << "Out of memory parsing " << hint << "!";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Out of memory parsing " << hint << "!";
   } catch (VPackException const& ex) {
-    LOG(DEBUG) << "Couldn't parse " << hint << ": " << ex.what();
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Couldn't parse " << hint << ": " << ex.what();
   } catch (...) {
-    LOG(ERR) << "Got unknown exception trying to parse " << hint;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Got unknown exception trying to parse " << hint;
   }
 
   return result;

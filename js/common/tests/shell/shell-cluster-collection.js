@@ -33,7 +33,6 @@ var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,6 +61,32 @@ function ClusterCollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test create, single shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateSingleShard : function () {
+      var c = db._create("UnitTestsClusterCrud");
+      assertEqual("UnitTestsClusterCrud", c.name());
+      assertEqual(2, c.type());
+      assertEqual(1, c.shards().length);
+      assertTrue(typeof c.shards()[0] === 'string');
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateMultipleShards : function () {
+      var c = db._create("UnitTestsClusterCrud", { numberOfShards: 8 });
+      assertEqual("UnitTestsClusterCrud", c.name());
+      assertEqual(2, c.type());
+      assertEqual(8, c.shards().length);
+      for (var i = 0; i < 8; ++i) {
+        assertTrue(typeof c.shards()[i] === 'string');
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test create
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -85,6 +110,21 @@ function ClusterCollectionSuite () {
       assertEqual(3, c.type());
       assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
+
+      assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateEdgeMultipleShards : function () {
+      var c = db._createEdgeCollection("UnitTestsClusterCrud", { numberOfShards: 8 });
+      assertEqual("UnitTestsClusterCrud", c.name());
+      assertEqual(3, c.type());
+      assertEqual(3, c.status());
+      assertTrue(c.hasOwnProperty("_id"));
+      assertEqual(8, c.shards().length);
 
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
     },
@@ -183,6 +223,35 @@ function ClusterCollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountAll : function () {
+      var c = db._create("UnitTestsClusterCrud", { numberOfShards : 5 });
+      for (var i = 0; i < 1000; ++i) {
+        c.insert({ value: i });
+      }
+
+      assertEqual(1000, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountDetailed : function () {
+      var c = db._create("UnitTestsClusterCrud", { numberOfShards : 5 });
+      for (var i = 0; i < 1000; ++i) {
+        c.insert({ value: i });
+      }
+
+      var total = 0, res = c.count(true);
+      assertEqual(5, Object.keys(res).length);
+      Object.keys(res).forEach(function(key) { total += res[key]; });
+      assertEqual(1000, total);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test create
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -222,7 +291,9 @@ function ClusterCollectionSuite () {
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "_key" ], c.properties().shardKeys);
       assertFalse(c.properties().waitForSync);
-      assertEqual(1048576, c.properties().journalSize);
+      if (db._engine().name === "mmfiles") {
+        assertEqual(1048576, c.properties().journalSize);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +372,6 @@ function ClusterCollectionSuite () {
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite

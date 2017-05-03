@@ -215,10 +215,10 @@ describe ArangoDB do
       
         doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
   
-        doc.code.should eq(400)
+        doc.code.should eq(409)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(409)
         doc.parsed_response['errorNum'].should eq(1702)
       end
     end

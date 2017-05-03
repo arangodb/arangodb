@@ -34,6 +34,12 @@ shall be used. If set to *false*, then any query cache lookup will be skipped
 for the query. If set to *true*, it will lead to the query cache being checked
 for the query if the query cache mode is either *on* or *demand*.
 
+@RESTBODYPARAM{memoryLimit,integer,optional,int64}
+the maximum number of memory (measured in bytes) that the query is allowed to 
+use. If set, then the query will fail with error "resource limit exceeded" in
+case it allocates too much memory. A value of *0* indicates that there is no
+memory limit.
+
 @RESTBODYPARAM{bindVars,array,optional,object}
 key/value pairs representing the bind parameters.
 
@@ -66,6 +72,12 @@ with a `+`. There is also a pseudo-rule `all`, which will match all optimizer ru
 If set to *true*, then the additional query profiling information will be returned
 in the sub-attribute *profile* of the *extra* return attribute if the query result
 is not served from the query cache.
+
+@RESTSTRUCT{satelliteSyncWait,JSF_post_api_cursor_opts,boolean,optional,}
+This *enterprise* parameter allows to configure how long a DBServer will have time
+to bring the satellite collections involved in the query into sync.
+The default value is *60.0* (seconds). When the max time has been reached the query
+will be stopped.
 
 @RESTDESCRIPTION
 The query details include the query string plus optional query options and

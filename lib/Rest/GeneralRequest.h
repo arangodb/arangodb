@@ -27,13 +27,13 @@
 
 #include "Basics/Common.h"
 
+#include "Endpoint/ConnectionInfo.h"
+#include "Rest/CommonDefines.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Endpoint/ConnectionInfo.h"
-#include "Rest/CommonDefines.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -95,9 +95,6 @@ class GeneralRequest {
   void setProtocol(char const* protocol) { _protocol = protocol; }
 
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
-  void setConnectionInfo(ConnectionInfo const& connectionInfo) {
-    _connectionInfo = connectionInfo;
-  }
 
   uint64_t clientTaskId() const { return _clientTaskId; }
   void setClientTaskId(uint64_t clientTaskId) { _clientTaskId = clientTaskId; }
@@ -120,12 +117,17 @@ class GeneralRequest {
 
   std::string const& fullUrl() const { return _fullUrl; }
   void setFullUrl(char const* begin, char const* end);
-  void setFullUrl(std::string url);
 
   // consists of the URL without the host and without any parameters.
   std::string const& requestPath() const { return _requestPath; }
   void setRequestPath(std::string const& requestPath) {
     _requestPath = requestPath;
+  }
+  void setRequestPath(char const* begin) {
+    _requestPath = std::string(begin);
+  }
+  void setRequestPath(char const* begin, char const* end) {
+    _requestPath = std::string(begin, end - begin);
   }
 
   // The request path consists of the URL without the host and without any
@@ -136,7 +138,13 @@ class GeneralRequest {
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
   void setPrefix(std::string&& prefix) { _prefix = std::move(prefix); }
 
-  std::vector<std::string> const& suffix() const { return _suffix; }
+  // Returns the request path suffixes in non-URL-decoded form
+  std::vector<std::string> const& suffixes() const { return _suffixes; }
+  
+  // Returns the request path suffixes in URL-decoded form. Note: this will
+  // re-compute the suffix list on every call!
+  std::vector<std::string> decodedSuffixes() const;
+
   void addSuffix(std::string&& part);
 
   // VIRTUAL //////////////////////////////////////////////
@@ -162,17 +170,13 @@ class GeneralRequest {
   virtual std::unordered_map<std::string, std::vector<std::string>>
   arrayValues() const = 0;
 
-  bool velocyPackResponse() const;
-
-  // should toVelocyPack be renamed to payload?
   virtual VPackSlice payload(arangodb::velocypack::Options const* options =
-                                 &VPackOptions::Defaults) = 0;
+                             &VPackOptions::Defaults) = 0;
 
-  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr(
-      arangodb::velocypack::Options const* options) {
-    auto rv = std::make_shared<VPackBuilder>();
-    rv->add(payload(options));
-    return rv;
+  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
+    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
+    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);
   };
 
   ContentType contentType() const { return _contentType; }
@@ -207,7 +211,7 @@ class GeneralRequest {
   std::string _fullUrl;
   std::string _requestPath;
   std::string _prefix;  // part of path matched by rest route
-  std::vector<std::string> _suffix;
+  std::vector<std::string> _suffixes;
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
 };

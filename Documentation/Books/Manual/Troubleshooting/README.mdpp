@@ -1,1 +1,2 @@
-!CHAPTER Troubleshooting
+Troubleshooting
+===============

@@ -13,6 +13,7 @@ if [ "x$@" == "x" ] ; then
     `find ./js/server/tests -name "*.js" | grep -v "ranges-combined"` \
     `find ./js/common/tests -name "*.js"` \
     `find ./js/client/tests -name "*.js"` \
+    `find ./UnitTests -name "*.js"` \
     \
     `find ./js/apps/system/_api/gharial/APP -name "*.js"` \
     \
@@ -61,6 +62,7 @@ fi
 exec $ARANGOSH \
     -c none \
     --log.level error \
+    --log.file - \
     --server.password "" \
     --javascript.startup-directory ./js \
     ${FILELIST}

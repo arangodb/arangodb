@@ -34,8 +34,7 @@ namespace aql {
 /// @brief Traversal condition finder
 class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
-  TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered)
-      : _plan(plan), _variableDefinitions(), _planAltered(planAltered) {}
+  TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered);
 
   ~TraversalConditionFinder() {}
 
@@ -45,8 +44,8 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
 
  private:
   ExecutionPlan* _plan;
-  std::unordered_map<VariableId, CalculationNode const*> _variableDefinitions;
-  std::unordered_map<VariableId, ExecutionNode const*> _filters;
+  std::unique_ptr<Condition> _condition;
+  std::unordered_set<VariableId> _filterVariables;
   bool* _planAltered;
 };
 }

@@ -62,15 +62,15 @@ void GeneralServer::setEndpointList(EndpointList const* list) {
 
 void GeneralServer::startListening() {
   for (auto& it : _endpointList->allEndpoints()) {
-    LOG(TRACE) << "trying to bind to endpoint '" << it.first
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trying to bind to endpoint '" << it.first
                << "' for requests";
 
     bool ok = openEndpoint(it.second);
 
     if (ok) {
-      LOG(DEBUG) << "bound to endpoint '" << it.first << "'";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '" << it.first << "'";
     } else {
-      LOG(FATAL) << "failed to bind to endpoint '" << it.first
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to bind to endpoint '" << it.first
                  << "'. Please check whether another instance is already "
                     "running using this endpoint and review your endpoints "
                     "configuration.";
@@ -114,6 +114,7 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
     return false;
   }
 
-  _listenTasks.emplace_back(task.release());
+  _listenTasks.emplace_back(task.get());
+  task.release();
   return true;
 }

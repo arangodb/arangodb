@@ -27,11 +27,10 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -211,20 +210,20 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     TRI_ASSERT(queryResult.result.get() != nullptr);
 
     // steal the query result, cursor will take over the ownership
-    arangodb::VelocyPackCursor* cursor = cursors->createFromQueryResult(
+    Cursor* cursor = cursors->createFromQueryResult(
         std::move(queryResult), batchSize, extra, ttl, count);
 
     try {
       VPackBuilder result;
       result.openObject();
       result.add("error", VPackValue(false));
-      result.add("code", VPackValue((int)_response->responseCode()));
+      result.add("code", VPackValue(static_cast<int>(_response->responseCode())));
       cursor->dump(result);
       result.close();
 
       _response->setContentType(rest::ContentType::JSON);
       generateResult(_response->responseCode(), result.slice(),
-                     cursor->result()->context);
+                     static_cast<VelocyPackCursor*>(cursor)->result()->context);
 
       cursors->release(cursor);
     } catch (...) {
@@ -315,6 +314,11 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
     options.add("batchSize", VPackValue(1000));
   }
 
+  VPackSlice memoryLimit = slice.get("memoryLimit");
+  if (memoryLimit.isNumber()) {
+    options.add("memoryLimit", memoryLimit);
+  }
+
   bool hasCache = false;
   VPackSlice cache = slice.get("cache");
   if (cache.isBool()) {
@@ -396,9 +400,9 @@ void RestCursorHandler::createCursor() {
     return;
   }
 
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 0) {
+  if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/cursor");
     return;
@@ -407,7 +411,7 @@ void RestCursorHandler::createCursor() {
   try {
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+        parseVelocyPackBody(parseSuccess);
 
     if (!parseSuccess) {
       return;
@@ -426,15 +430,15 @@ void RestCursorHandler::createCursor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::modifyCursor() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/cursor/<cursor-id>");
     return;
   }
 
-  std::string const& id = suffix[0];
+  std::string const& id = suffixes[0];
 
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
@@ -442,7 +446,7 @@ void RestCursorHandler::modifyCursor() {
   auto cursorId = static_cast<arangodb::CursorId>(
       arangodb::basics::StringUtils::uint64(id));
   bool busy;
-  auto cursor = cursors->find(cursorId, busy);
+  auto cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
 
   if (cursor == nullptr) {
     if (busy) {
@@ -479,22 +483,22 @@ void RestCursorHandler::modifyCursor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::deleteCursor() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/cursor/<cursor-id>");
     return;
   }
 
-  std::string const& id = suffix[0];
+  std::string const& id = suffixes[0];
 
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
       arangodb::basics::StringUtils::uint64(id));
-  bool found = cursors->remove(cursorId);
+  bool found = cursors->remove(cursorId, Cursor::CURSOR_VPACK);
 
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);

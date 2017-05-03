@@ -1,4 +1,5 @@
-!CHAPTER Usual Query Patterns Examples
+Usual Query Patterns Examples
+=============================
 
 Those pages contain some common query patterns with examples. For better
 understandability the query results are also included directly below each query.
@@ -9,7 +10,7 @@ will provide several examples for that.
 Some of the following example queries are executed on a collection 'users' with the data provided here below.
 
 
-!SUBSECTION Things to consider when running queries on collections
+### Things to consider when running queries on collections
 
 Note that all documents created in any collections will automatically get the
 following server-generated attributes:
@@ -31,7 +32,7 @@ establishing references / links between documents. These features have been left
 for brevity as well.
 
 
-!SUBSECTION Example data
+### Example data
 
 Some of the following example queries are executed on a collection *users*
 with the following initial data:

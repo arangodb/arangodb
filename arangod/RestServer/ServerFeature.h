@@ -33,6 +33,8 @@ class RestHandlerFactory;
 class AsyncJobManager;
 }
 
+class FeatureCacheFeature;
+
 class ServerFeature final : public application_features::ApplicationFeature {
  public:
   static std::string operationModeString(OperationMode mode);
@@ -45,6 +47,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void beginShutdown() override final;
+  bool isStopping() const { return _isStopping; }
 
  public:
   OperationMode operationMode() const { return _operationMode; }
@@ -56,6 +59,9 @@ class ServerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> const& scripts() const { return _scripts; }
   std::vector<std::string> const& unitTests() const { return _unitTests; }
   uint32_t const& vppMaxSize() const { return _vppMaxSize; }
+ 
+ private:
+  void waitForHeartbeat();
 
  private:
   bool _console = false;
@@ -63,13 +69,9 @@ class ServerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> _unitTests;
   std::vector<std::string> _scripts;
   uint32_t _vppMaxSize;
-
- private:
-  void waitForHeartbeat();
-
- private:
   int* _result;
   OperationMode _operationMode;
+  bool _isStopping = false;
 };
 }
 

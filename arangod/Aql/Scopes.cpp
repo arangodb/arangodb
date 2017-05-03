@@ -203,7 +203,7 @@ void Scopes::replaceVariable(Variable* variable) {
     }
   }
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find AQL variable in scopes");
 }
 
 /// @brief checks whether a variable exists in any scope

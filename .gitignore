@@ -29,8 +29,8 @@ enterprise
 compile_commands.json
 instanceinfo.json
 testresult.json
-botschaft.txt
 testsStarted
+soc-pokec-*
 
 build.sh
 build*/
@@ -41,6 +41,8 @@ Debug32/
 Release64/
 Release32/
 WindowsLibraries/
+cluster/
+p/
 
 core
 TAGS
@@ -57,37 +59,22 @@ lib/cmake_install.cmake
 
 Documentation/Examples/*.generated
 
-UnitTests/HttpInterface/logs/
-
-arangod/Aql/grammar.c
-arangod/Aql/grammar.cpp
-arangod/Aql/grammar.h
-arangod/Aql/grammar.hpp
 arangod/Aql/grammar.output
-arangod/Aql/tokens.cpp
+
+UnitTests/HttpInterface/logs/
 
 bin/
 logs/
-output/
 out/
 
 etc/arangodb/*.conf
-
-js/common/bootstrap/errors.js
-
-lib/Basics/local-configuration.h
-lib/Basics/stamp-h2
-lib/Basics/voc-errors.cpp
-lib/Basics/voc-errors.h
-lib/JsonParser/json-parser.c
-lib/JsonParser/json-parser.cpp
-lib/V8/v8-json.cpp
 
 Installation/epm/arangodb.sublist
 Installation/MacOSX/Bundle/Info.plist
 
 nbproject/
 .idea
+.vscode
 
 test.cpp.txt
 
@@ -113,16 +100,13 @@ js/apps/system/_admin/aardvark/APP/frontend/build/libs.js.gz
 js/apps/system/_admin/aardvark/APP/frontend/build/style.css
 js/apps/system/_admin/aardvark/APP/frontend/build/scripts.html.part
 
-3rdParty/etcd/src/
-3rdParty/boost/1.61.0/b2
-3rdParty/boost/1.61.0/bin.v2/
-3rdParty/boost/1.61.0/bjam
-3rdParty/boost/1.61.0/project-config.jam
-3rdParty/boost/1.61.0/stage/
+js/common/tests/shell/shell-database.js
 
 .gdb-history
 npm-debug.log
 
-UNITTEST_RESULT*
 log-*
 data-*
+cluster-init
+
+datafile-*.db

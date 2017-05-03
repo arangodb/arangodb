@@ -1,12 +1,14 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.6. ArangoDB 2.6 also contains several bugfixes that are not listed
 here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
 
-!SECTION APIs added
+APIs added
+----------
 
-!SUBSECTION Batch document removal and lookup commands
+### Batch document removal and lookup commands
 
 The following commands have been added for `collection` objects:
 
@@ -21,7 +23,7 @@ These commands can also be used via the HTTP REST API. Their endpoints are:
 * PUT /\_api/simple/lookup-by-keys
 * PUT /\_api/simple/remove-by-keys
 
-!SUBSECTION Collection export HTTP REST API
+### Collection export HTTP REST API
 
 ArangoDB now provides a dedicated collection export API, which can take snapshots of entire
 collections more efficiently than the general-purpose cursor API. The export API is useful
@@ -34,9 +36,10 @@ same return value structure as the already established cursor API (`POST /_api/c
 An introduction to the export API is given in this blog post:
 http://jsteemann.github.io/blog/2015/04/04/more-efficient-data-exports/
 
-!SECTION AQL improvements
+AQL improvements
+----------------
 
-!SUBSECTION EDGES AQL Function
+### EDGES AQL Function
 
 The AQL function EDGES got a new fifth optional parameter, which must be an 
 object if specified. Right now only one option is available for it: 
@@ -48,7 +51,7 @@ object if specified. Right now only one option is available for it:
 
       { vertex: <vertexDocument>, edge: <edgeDocument> } 
 
-!SUBSECTION Subquery optimizations for AQL queries
+### Subquery optimizations for AQL queries
 
 This optimization avoids copying intermediate results into subqueries that are not required
 by the subquery.
@@ -56,14 +59,14 @@ by the subquery.
 A brief description can be found here:
 http://jsteemann.github.io/blog/2015/05/04/subquery-optimizations/
 
-!SUBSECTION Return value optimization for AQL queries
+### Return value optimization for AQL queries
 
 This optimization avoids copying the final query result inside the query's main `ReturnNode`.
 
 A brief description can be found here:
 http://jsteemann.github.io/blog/2015/05/04/return-value-optimization-for-aql/
 
-!SUBSECTION Speed up AQL queries containing big `IN` lists for index lookups
+### Speed up AQL queries containing big `IN` lists for index lookups
 
 `IN` lists used for index lookups had performance issues in previous versions of ArangoDB.
 These issues have been addressed in 2.6 so using bigger `IN` lists for filtering is much
@@ -72,7 +75,7 @@ faster.
 A brief description can be found here:
 http://jsteemann.github.io/blog/2015/05/07/in-list-improvements/
 
-!SUBSECTION Added alternative implementation for AQL COLLECT
+### Added alternative implementation for AQL COLLECT
 
 The alternative method uses a hash table for grouping and does not require its input elements
 to be sorted. It will be taken into account by the optimizer for `COLLECT` statements that do
@@ -104,7 +107,7 @@ optimizer guesswork and only produce the *sorted* variant of `COLLECT`.
 A blog post on the new `COLLECT` implementation can be found here:
 http://jsteemann.github.io/blog/2015/04/22/collecting-with-a-hash-table/
 
-!SUBSECTION Simplified return value syntax for data-modification AQL queries
+### Simplified return value syntax for data-modification AQL queries
 
 ArangoDB 2.4 since version allows to return results from data-modification AQL queries. The
 syntax for this was quite limited and verbose:
@@ -136,7 +139,7 @@ can be called that may access documents.
 More information can be found here:
 http://jsteemann.github.io/blog/2015/03/27/improvements-for-data-modification-queries/
 
-!SUBSECTION Added AQL `UPSERT` statement
+### Added AQL `UPSERT` statement
 
 This adds an `UPSERT` statement to AQL that is a combination of both `INSERT` and `UPDATE` /
 `REPLACE`. The `UPSERT` will search for a matching document using a user-provided example.
@@ -171,13 +174,14 @@ RETURN { found: OLD, updated: NEW }
 A more detailed description of `UPSERT` can be found here:
 http://jsteemann.github.io/blog/2015/03/27/preview-of-the-upsert-command/
 
-!SUBSECTION Miscellaneous changes
+### Miscellaneous changes
 
 When errors occur inside AQL user functions, the error message will now contain a stacktrace,
 indicating the line of code in which the error occurred. This should make debugging AQL user functions
 easier.
 
-!SECTION Web Admin Interface
+Web Admin Interface
+-------------------
 
 ArangoDB's built-in web interface now uses sessions. Session information is stored in cookies, so clients 
 using the web interface must accept cookies in order to use it.
@@ -189,9 +193,10 @@ The query execution time is now also displayed in the AQL editor.
 
 Foxx apps that require configuration or are missing dependencies are now indicated in the app overview and details.
 
-!SECTION Foxx improvements
+Foxx improvements
+-----------------
 
-!SUBSECTION Configuration and Dependencies
+### Configuration and Dependencies
 
 Foxx app manifests can now define configuration options, as well as dependencies on other Foxx apps.
 
@@ -201,7 +206,7 @@ https://www.arangodb.com/2015/05/reusable-foxx-apps-with-configurations/
 And the blog post on Foxx dependencies can be found here:
 https://www.arangodb.com/2015/05/foxx-dependencies-for-more-composable-foxx-apps/
 
-!SUBSECTION Mocha Tests
+### Mocha Tests
 
 You can now write tests for your Foxx apps using the Mocha testing framework:
 https://www.arangodb.com/2015/04/testing-foxx-mocha/
@@ -209,7 +214,7 @@ https://www.arangodb.com/2015/04/testing-foxx-mocha/
 A recipe for writing tests for your Foxx apps can be found in the cookbook:
 https://docs.arangodb.com/2.8/cookbook/FoxxTesting.html
 
-!SUBSECTION API Documentation
+### API Documentation
 
 The API documentation has been updated to Swagger 2. You can now also mount API
 documentation in your own Foxx apps.
@@ -217,7 +222,7 @@ documentation in your own Foxx apps.
 Also see the blog post introducing this feature:
 https://www.arangodb.com/2015/05/document-your-foxx-apps-with-swagger-2/
 
-!SUBSECTION Custom Scripts and Foxx Queue
+### Custom Scripts and Foxx Queue
 
 In addition to the existing *setup* and *teardown* scripts you can now define custom scripts
 in your Foxx manifest and invoke these using the web admin interface or the Foxx manager CLI.
@@ -228,7 +233,8 @@ the use of Foxx scripts as job types. The pre-2.6 job types are known to cause i
 restarting the server and are error-prone; we strongly recommended converting any existing
 job types to the new format.
 
-!SECTION Client tools
+Client tools
+------------
 
 The default configuration value for the option `--server.request-timeout` was increased from 
 300 to 1200 seconds for all client tools (arangosh, arangoimp, arangodump, arangorestore).
@@ -236,7 +242,7 @@ The default configuration value for the option `--server.request-timeout` was in
 The default configuration value for the option `--server.connect-timeout` was increased from 
 3 to 5 seconds for client tools (arangosh, arangoimp, arangodump, arangorestore).
 
-!SUBSECTION Arangorestore
+### Arangorestore
 
 The option `--create-database` was added for arangorestore. 
 
@@ -246,7 +252,7 @@ initial user for the new database.
 
 The default value for this option is `false`.
 
-!SUBSECTION Arangoimp
+### Arangoimp
 
 Arangoimp can now optionally update or replace existing documents, provided the import data contains 
 documents with `_key` attributes.
@@ -280,7 +286,8 @@ The default value is `error`.
 A few examples for using arangoimp with the `--on-duplicate` option can be found here:
 http://jsteemann.github.io/blog/2015/04/14/updating-documents-with-arangoimp/
 
-!SECTION Miscellaneous changes
+Miscellaneous changes
+---------------------
 
 * Some Linux-based ArangoDB packages are now using tcmalloc for memory allocator.
 

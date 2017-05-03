@@ -34,7 +34,7 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-class CalculationBlock : public ExecutionBlock {
+class CalculationBlock final : public ExecutionBlock {
  public:
   CalculationBlock(ExecutionEngine*, CalculationNode const*);
 

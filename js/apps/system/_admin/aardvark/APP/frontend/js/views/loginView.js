@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, document, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig*/
+/* global Backbone, document, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig */
 
 (function () {
   'use strict';
@@ -23,17 +23,17 @@
 
     render: function (loggedIn) {
       var self = this;
-
       $(this.el).html(this.template.render({}));
       $(this.el2).hide();
       $(this.el3).hide();
 
-      if (frontendConfig.authenticationEnabled && loggedIn !== true) {
-        window.setTimeout(function () {
-          $('#loginUsername').focus();
-        }, 300);
-      } else {
-        var url = arangoHelper.databaseUrl('/_api/database/user');
+      var continueRender = function (user, errCallback) {
+        var url;
+        if (!user) {
+          url = arangoHelper.databaseUrl('/_api/database/user');
+        } else {
+          url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database', '_system');
+        }
 
         if (frontendConfig.authenticationEnabled === false) {
           $('#logout').hide();
@@ -44,38 +44,104 @@
         $('.login-window #databases').show();
 
         $.ajax(url).success(function (permissions) {
-          // enable db select and login button
-          $('#loginDatabase').html('');
-          // fill select with allowed dbs
+          var successFunc = function (availableDbs) {
+            //  enable db select and login button
+            $('#loginDatabase').html('');
+            // fill select with allowed dbs
+            _.each(permissions.result, function (rule, db) {
+              if (errCallback) {
+                if (availableDbs) {
+                  if (availableDbs.indexOf(db) > -1) {
+                    $('#loginDatabase').append(
+                      '<option>' + db + '</option>'
+                    );
+                  }
+                } else {
+                  $('#loginDatabase').append(
+                    '<option>' + db + '</option>'
+                  );
+                }
+              } else {
+                if (availableDbs) {
+                  if (availableDbs.indexOf(rule) > -1) {
+                    $('#loginDatabase').append(
+                      '<option>' + rule + '</option>'
+                    );
+                  }
+                } else {
+                  $('#loginDatabase').append(
+                    '<option>' + rule + '</option>'
+                  );
+                }
+              }
+            });
 
-          _.each(permissions.result, function (db) {
-            $('#loginDatabase').append(
-              '<option>' + db + '</option>'
-            );
-          });
+            self.renderDBS();
+          };
 
-          self.renderDBS();
+          // fetch available dbs
+          var availableDbs;
+          try {
+            $.ajax(arangoHelper.databaseUrl('/_api/database/user')).success(function (dbs) {
+              availableDbs = dbs.result;
+              successFunc(availableDbs);
+            });
+          } catch (ignore) {
+            successFunc();
+          }
         }).error(function () {
-          console.log('could not fetch user db data');
+          if (errCallback) {
+            errCallback();
+          } else {
+            console.log('could not fetch user db data');
+          }
         });
+      };
+
+      if (frontendConfig.authenticationEnabled && loggedIn !== true) {
+        var usr = arangoHelper.getCurrentJwtUsername();
+        if (usr !== null && usr !== 'undefined' && usr !== undefined) {
+          // try if existent jwt is valid
+          var errCallback = function () {
+            self.collection.logout();
+            window.setTimeout(function () {
+              $('#loginUsername').focus();
+            }, 300);
+          };
+          continueRender(arangoHelper.getCurrentJwtUsername(), errCallback);
+        } else {
+          window.setTimeout(function () {
+            $('#loginUsername').focus();
+          }, 300);
+        }
+      } else {
+        continueRender();
       }
 
       $('.bodyWrapper').show();
+      self.checkVersion();
 
+      return this;
+    },
+
+    checkVersion: function () {
+      var self = this;
       window.setTimeout(function () {
         var a = document.getElementById('loginSVG');
         var svgDoc = a.contentDocument;
         var svgItem;
 
-        if (window.isEnterprise) {
-          svgItem = svgDoc.getElementById('logo-enterprise');
+        if (frontendConfig.isEnterprise !== undefined) {
+          if (frontendConfig.isEnterprise) {
+            svgItem = svgDoc.getElementById('logo-enterprise');
+          } else {
+            svgItem = svgDoc.getElementById('logo-community');
+          }
+          svgItem.setAttribute('visibility', 'visible');
         } else {
-          svgItem = svgDoc.getElementById('logo-community');
+          self.checkVersion();
         }
-        svgItem.setAttribute('visibility', 'visible');
-      }, 300);
-
-      return this;
+      }, 150);
     },
 
     clear: function () {
@@ -124,42 +190,68 @@
           '<option>_system</option>'
         );
       } else {
-        var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(username) + '/database', '_system');
+        self.renderDBSelection(username);
+      }
+    },
 
-        if (frontendConfig.authenticationEnabled === false) {
-          url = arangoHelper.databaseUrl('/_api/database/user');
-        }
+    renderDBSelection: function (username) {
+      var self = this;
+      var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(username) + '/database', '_system');
 
-        $('.wrong-credentials').hide();
-        self.loggedIn = true;
+      if (frontendConfig.authenticationEnabled === false) {
+        url = arangoHelper.databaseUrl('/_api/database/user');
+      }
 
-        // get list of allowed dbs
-        $.ajax(url).success(function (permissions) {
-          // HANDLE PERMISSIONS
-          _.each(permissions.result, function (value, key) {
-            if (value !== 'rw') {
-              delete permissions.result[key];
-            }
-          });
+      $('.wrong-credentials').hide();
+      self.loggedIn = true;
 
-          $('#loginForm').hide();
-          $('.login-window #databases').show();
+      // get list of allowed dbs
+      $.ajax(url).success(function (permissions) {
+        // HANDLE PERMISSIONS
+        _.each(permissions.result, function (value, key) {
+          if (value !== 'rw') {
+            delete permissions.result[key];
+          }
+        });
 
-          // enable db select and login button
-          $('#loginDatabase').html('');
+        $('#loginForm').hide();
+        $('.login-window #databases').show();
 
-          // fill select with allowed dbs
-          _.each(permissions.result, function (db, key) {
-            $('#loginDatabase').append(
-              '<option>' + key + '</option>'
-            );
-          });
+        // enable db select and login button
+        $('#loginDatabase').html('');
+
+        var successFunc = function (availableDbs) {
+          if (availableDbs) {
+            _.each(permissions.result, function (db, key) {
+              if (availableDbs.indexOf(key) > -1) {
+                $('#loginDatabase').append(
+                  '<option>' + key + '</option>'
+                );
+              }
+            });
+          } else {
+            // fill select with allowed dbs
+            _.each(permissions.result, function (db, key) {
+              $('#loginDatabase').append(
+                '<option>' + key + '</option>'
+              );
+            });
+          }
 
           self.renderDBS();
-        }).error(function () {
-          $('.wrong-credentials').show();
-        });
-      }
+        };
+
+        // fetch available dbs
+        try {
+          $.ajax(arangoHelper.databaseUrl('/_api/database/user')).success(function (dbs) {
+            successFunc(dbs.result);
+          });
+        } catch (ignore) {
+          successFunc();
+        }
+      }).error(function () {
+        $('.wrong-credentials').show();
+      });
     },
 
     renderDBS: function () {

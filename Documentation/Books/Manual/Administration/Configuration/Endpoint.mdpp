@@ -1,4 +1,5 @@
-!CHAPTER Managing Endpoints
+Managing Endpoints
+==================
 
 The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 
@@ -11,10 +12,6 @@ types of endpoints:
 - ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
 - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 - unix:///path/to/socket - Unix domain socket endpoint
-- vpp+tcp://ipv4-address:port - TCP/IP endpoint, using IPv4, VelocyStream protocol
-- vpp+tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6, VelocyStream protocol
-- vpp+ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, VelocyStream protocol, SSL encryption
-- vpp+ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, VelocyStream protocol, SSL encryption
 
 If a TCP/IP endpoint is specified without a port number, then the default port
 (8529) will be used.  If multiple endpoints need to be used, the option can be
@@ -36,7 +33,8 @@ unix> ./arangod --server.endpoint tcp://127.0.0.1:8529
 2012-07-26T07:07:49Z [8161] INFO Have Fun!
 ```
 
-!SECTION TCP Endpoints
+TCP Endpoints
+-------------
 
 Given a hostname:
 
@@ -73,13 +71,45 @@ ArangoDB can also do a so called *broadcast bind* using
 host. This may be useful on development systems that frequently change their
 network setup like laptops.
 
-Use VelocyStream protocol:
+### Special note on IPv6 link-local addresses
 
-`--server.endpoint vpp+tcp://hostname:port`
+ArangoDB can also listen to IPv6 link-local addresses via adding the zone ID
+to the IPv6 address in the form `[ipv6-link-local-address%zone-id]`. However,
+what you probably instead want is to bind to a local IPv6 address. Local IPv6
+addresses start with `fd`. If you only see a `fe80:` IPv6 address in your
+interface configuration but no IPv6 address starting with `fd` your interface
+has no local IPv6 address assigned. You can read more about IPv6 link-local
+addresses [here](https://en.wikipedia.org/wiki/Link-local_address#IPv6).
 
-VelocyStream is the new symmetric binary protocol of ArangoDB. It supports sending messages back and forth, pipelined, multiplexed, uni-directional or bi-directional. The messages themselves are VelocyPack objects. Its specification will be released with ArangoDB 3.2, until that we keep us open to change it.
+** Example **
 
-!SUBSECTION Reuse address
+Bind to a link-local and local IPv6 address.
+
+    unix> ifconfig
+
+This command lists all interfaces and assigned ip addresses. The link-local
+address may be `fe80::6257:18ff:fe82:3ec6%eth0` (IPv6 address plus interface name).
+A local IPv6 address may be `fd12:3456::789a`. To bind ArangoDB to it start
+*arangod* with `--server.endpoint tcp://[fe80::6257:18ff:fe82:3ec6%eth0]:8529`.
+Use telnet to test the connection.
+
+    unix> telnet fe80::6257:18ff:fe82:3ec6%eth0 8529
+    Trying fe80::6257:18ff:fe82:3ec6...
+    Connected to my-machine.
+    Escape character is '^]'.
+    GET / HTTP/1.1
+    
+    HTTP/1.1 301 Moved Permanently
+    Location: /_db/_system/_admin/aardvark/index.html
+    Content-Type: text/html
+    Server: ArangoDB
+    Connection: Keep-Alive
+    Content-Length: 197
+    
+    <html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href="/_db/_system/_admin/aardvark/index.html">/_db/_system/_admin/aardvark/index.html</a>.</p></body></html>
+
+
+### Reuse address
 
 `--tcp.reuse-address`
 
@@ -95,7 +125,7 @@ address and port, possibly hijacking network traffic. Under Windows, ArangoDB
 additionally sets the flag SO_EXCLUSIVEADDRUSE as a measure to alleviate this
 problem.
 
-!SUBSECTION Backlog size
+### Backlog size
 
 `--tcp.backlog-size`
 

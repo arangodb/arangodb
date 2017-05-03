@@ -23,26 +23,47 @@
 
 #include "TraverserEngineRegistry.h"
 
+#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/TraverserEngine.h"
 #include "VocBase/ticks.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::traverser;
 
 #ifndef USE_ENTERPRISE
+std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(TRI_vocbase_t* vocbase,
+                                                    VPackSlice info) {
+  VPackSlice type = info.get(std::vector<std::string>({"options", "type"}));
+  if (!type.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The body requires an 'options.type' attribute.");
+  }
+  if (type.isEqualString("traversal")) {
+    return std::make_unique<TraverserEngine>(vocbase, info);
+  } else if (type.isEqualString("shortestPath")) {
+    return std::make_unique<ShortestPathEngine>(vocbase, info);
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "The 'options.type' attribute either has to be traversal or shortestPath");
+}
+#endif
+
 TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
                                                 VPackSlice info)
     : _isInUse(false),
       _toBeDeleted(false),
-      _engine(new TraverserEngine(vocbase, info)),
+      _engine(BaseEngine::BuildEngine(vocbase, info)),
       _timeToLive(0),
       _expires(0) {}
 
-TraverserEngineRegistry::EngineInfo::~EngineInfo() {
-}
-#endif
+TraverserEngineRegistry::EngineInfo::~EngineInfo() {}
 
 TraverserEngineRegistry::~TraverserEngineRegistry() {
   WRITE_LOCKER(writeLocker, _lock);
@@ -53,10 +74,13 @@ TraverserEngineRegistry::~TraverserEngineRegistry() {
 
 /// @brief Create a new Engine and return it's id
 TraverserEngineID TraverserEngineRegistry::createNew(TRI_vocbase_t* vocbase,
-                                                     VPackSlice engineInfo) {
+                                                     VPackSlice engineInfo,
+                                                     double ttl) {
   TraverserEngineID id = TRI_NewTickServer();
   TRI_ASSERT(id != 0);
   auto info = std::make_unique<EngineInfo>(vocbase, engineInfo);
+  info->_timeToLive = ttl;
+  info->_expires = TRI_microtime() + ttl;
 
   WRITE_LOCKER(writeLocker, _lock);
   TRI_ASSERT(_engines.find(id) == _engines.end());
@@ -71,25 +95,34 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id) {
 }
 
 /// @brief Get the engine with the given id
-BaseTraverserEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
-  WRITE_LOCKER(writeLocker, _lock);
-  auto e = _engines.find(id);
-  if (e == _engines.end()) {
-    // Nothing to hand out
-    // TODO: Should we throw an error instead?
-    return nullptr;
+BaseEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
+  while (true) {
+    {
+      WRITE_LOCKER(writeLocker, _lock);
+      auto e = _engines.find(id);
+      if (e == _engines.end()) {
+        // Nothing to hand out
+        // TODO: Should we throw an error instead?
+        return nullptr;
+      }
+      if (!e->second->_isInUse) {
+        // We capture the engine
+        e->second->_isInUse = true;
+        return e->second->_engine.get();
+      }
+      // Free write lock
+    }
+
+    CONDITION_LOCKER(condLocker, _cv);
+    condLocker.wait(1000);
   }
-  if (e->second->_isInUse) {
-    // Someone is still working with this engine.
-    // TODO can we just delete it? Or throw an error?
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEADLOCK);
-  }
-  e->second->_isInUse = true; 
-  return e->second->_engine.get();
+  // Unreachable the above loop can only be left by error or return;
+  TRI_ASSERT(false);
+  return nullptr;
 }
 
 /// @brief Returns the engine to the registry. Someone else can now use it.
-void TraverserEngineRegistry::returnEngine(TraverserEngineID id) {
+void TraverserEngineRegistry::returnEngine(TraverserEngineID id, double ttl) {
   WRITE_LOCKER(writeLocker, _lock);
   auto e = _engines.find(id);
   if (e == _engines.end()) {
@@ -102,7 +135,15 @@ void TraverserEngineRegistry::returnEngine(TraverserEngineID id) {
       auto engine = e->second;
       _engines.erase(e);
       delete engine;
+    } else {
+      if (ttl >= 0.0) {
+        e->second->_timeToLive = ttl;
+      }
+      e->second->_expires = TRI_microtime() + e->second->_timeToLive;
     }
+    // Lockgard send signal auf conditionvar
+    CONDITION_LOCKER(condLocker, _cv);
+    condLocker.broadcast();
   }
 }
 
@@ -130,4 +171,49 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
   }
 
   delete engine;
+}
+
+/// @brief expireEngines
+void TraverserEngineRegistry::expireEngines() {
+  double now = TRI_microtime();
+  std::vector<TraverserEngineID> toDelete;
+
+  {
+    WRITE_LOCKER(writeLocker, _lock);
+    for (auto& y : _engines) {
+      // y.first is an TraverserEngineID and
+      // y.second is an EngineInfo*
+      EngineInfo*& ei = y.second;
+      if (!ei->_isInUse && now > ei->_expires) {
+        toDelete.emplace_back(y.first);
+      }
+    }
+  }
+
+  for (auto& p : toDelete) {
+    try {  // just in case
+      destroy(p, true);
+    } catch (...) {
+    }
+  }
+}
+
+/// @brief return number of registered engines
+size_t TraverserEngineRegistry::numberRegisteredEngines() {
+  READ_LOCKER(readLocker, _lock);
+  return _engines.size();
+}
+
+/// @brief destroy all registered engines
+void TraverserEngineRegistry::destroyAll() {
+  std::vector<TraverserEngineID> engines;
+  {
+    READ_LOCKER(readLocker, _lock);
+    for (auto& p : _engines) {
+      engines.push_back(p.first);
+    }
+  }
+  for (auto& i : engines) {
+    destroy(i, true);
+  }
 }

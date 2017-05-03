@@ -27,8 +27,11 @@
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
+#include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
+#include <iomanip>
+#include <numeric>
 #include <thread>
 
 using namespace arangodb::consensus;
@@ -38,26 +41,40 @@ Inception::Inception() : Thread("Inception"), _agent(nullptr) {}
 Inception::Inception(Agent* agent) : Thread("Inception"), _agent(agent) {}
 
 // Shutdown if not already
-Inception::~Inception() { shutdown(); }
+Inception::~Inception() {
+  if (!isStopping()) {
+    shutdown();
+  }
+}
 
 /// Gossip to others
 /// - Get snapshot of gossip peers and agent pool
 /// - Create outgoing gossip.
 /// - Send to all peers
 void Inception::gossip() {
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens during controlled shutdown
+    return;
+  }
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Entering gossip phase ...";
+  using namespace std::chrono;
   
-  auto s = std::chrono::system_clock::now();
-  std::chrono::seconds timeout(120);
-  size_t i = 0;
+  auto startTime = system_clock::now();
+  seconds timeout(3600);
+  size_t j = 0;
+  long waitInterval = 250000;
 
   CONDITION_LOCKER(guard, _cv);
   
   while (!this->isStopping() && !_agent->isStopping()) {
 
-    config_t config = _agent->config();  // get a copy of conf
+    auto const config = _agent->config();  // get a copy of conf
+    auto const version = config.version();
 
     // Build gossip message
-    query_t out = std::make_shared<Builder>();
+    auto out = std::make_shared<Builder>();
     out->openObject();
     out->add("endpoint", VPackValue(config.endpoint()));
     out->add("id", VPackValue(config.id()));
@@ -68,267 +85,327 @@ void Inception::gossip() {
     out->close();
     out->close();
 
-    std::string path = privApiPrefix + "gossip";
+    auto const path = privApiPrefix + "gossip";
 
     // gossip peers
     for (auto const& p : config.gossipPeers()) {
       if (p != config.endpoint()) {
-        std::string clientid = config.id() + std::to_string(i++);
+        {
+          MUTEX_LOCKER(ackedLocker,_vLock);
+          if (_acked[p] >= version) {
+            continue;
+          }
+        }
+        std::string clientid = config.id() + std::to_string(j++);
         auto hf =
-            std::make_unique<std::unordered_map<std::string, std::string>>();
-        arangodb::ClusterComm::instance()->asyncRequest(
+          std::make_unique<std::unordered_map<std::string, std::string>>();
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
+            << out->toJson() << " to peer " << clientid;
+        cc->asyncRequest(
           clientid, 1, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
-          std::make_shared<GossipCallback>(_agent), 1.0, true, 0.5);
+          std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
       }
     }
     
     // pool entries
+    bool complete = true;
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
-        std::string clientid = config.id() + std::to_string(i++);
+        {
+          MUTEX_LOCKER(ackedLocker,_vLock);
+          if (_acked[pair.second] >= version) {
+            continue;
+          }
+        }
+        complete = false;
+        auto const clientid = config.id() + std::to_string(j++);
         auto hf =
-            std::make_unique<std::unordered_map<std::string, std::string>>();
-        arangodb::ClusterComm::instance()->asyncRequest(
+          std::make_unique<std::unordered_map<std::string, std::string>>();
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
+            << out->toJson() << " to pool member " << clientid;
+        cc->asyncRequest(
           clientid, 1, pair.second, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
-          std::make_shared<GossipCallback>(_agent), 1.0, true, 0.5);
+          std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
       }
-    }
-
-    // don't panic
-    _cv.wait(100000);
-
-    // Timed out? :(
-    if ((std::chrono::system_clock::now() - s) > timeout) {
-      if (config.poolComplete()) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
-      } else {
-        LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Failed to find complete pool of agents. Giving up!";
-      }
-      break;
     }
 
     // We're done
     if (config.poolComplete()) {
-      _agent->startConstituent();
+      if (complete) {
+        LOG_TOPIC(INFO, Logger::AGENCY) << "Agent pool completed. Stopping "
+          "active gossipping. Starting RAFT process.";
+        _agent->startConstituent();
+        break;
+      }
+    }
+
+    // Timed out? :(
+    if ((system_clock::now() - startTime) > timeout) {
+      if (config.poolComplete()) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
+      } else {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Failed to find complete pool of agents. Giving up!";
+      }
       break;
     }
-    
-  }
-  
-}
 
-
-// @brief Active agency from persisted database
-bool Inception::activeAgencyFromPersistence() {
-
-  auto myConfig = _agent->config();
-  std::string const path = pubApiPrefix + "config";
-
-  // Can only be done responcibly, if we are complete
-  if (myConfig.poolComplete()) {
-
-    // Contact hosts on pool in hopes of finding a leader Id
-    for (auto const& pair : myConfig.pool()) {
-
-      if (pair.first != myConfig.id()) {
-
-        auto comres = arangodb::ClusterComm::instance()->syncRequest(
-          myConfig.id(), 1, pair.second, rest::RequestType::GET, path,
-          std::string(), std::unordered_map<std::string, std::string>(), 1.0);
-        
-        if (comres->status == CL_COMM_SENT) {
-
-          auto body = comres->result->getBodyVelocyPack();
-          auto theirConfig = body->slice();
-          
-          std::string leaderId;
-
-          // LeaderId in configuration?
-          try {
-            leaderId = theirConfig.get("leaderId").copyString();
-          } catch (std::exception const& e) {
-            LOG_TOPIC(DEBUG, Logger::AGENCY)
-              << "Failed to get leaderId from" << pair.second << ": "
-              << e.what();
-          }
-
-          if (leaderId != "") { // Got leaderId. Let's get do it. 
-
-            try {
-              LOG_TOPIC(DEBUG, Logger::AGENCY)
-                << "Found active agency with leader " << leaderId
-                << " at endpoint "
-                << theirConfig.get("configuration").get(
-                  "pool").get(leaderId).copyString();
-            } catch (std::exception const& e) {
-              LOG_TOPIC(DEBUG, Logger::AGENCY)
-                << "Failed to get leaderId from" << pair.second << ": "
-                << e.what();
-            }
-
-            auto agency = std::make_shared<Builder>();
-            agency->openObject();
-            agency->add("term", theirConfig.get("term"));
-            agency->add("id", VPackValue(leaderId));
-            agency->add("active", theirConfig.get("configuration").get("active"));
-            agency->add("pool", theirConfig.get("configuration").get("pool"));
-            agency->close();
-            _agent->notify(agency);
-            
-            return true;
-            
-          } else { // No leaderId. Move on.
-
-            LOG_TOPIC(DEBUG, Logger::AGENCY)
-              << "Failed to get leaderId from" << pair.second;
-
-          }
-          
-        }
-        
-      }
-      
+    // don't panic just yet
+    _cv.wait(waitInterval);
+    if (waitInterval < 2500000) { // 2.5s
+      waitInterval *= 2;
     }
-  }
 
-  return false;
+  }
   
 }
 
 
 bool Inception::restartingActiveAgent() {
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens during controlled shutdown
+    return false;
+  }
 
-  auto myConfig = _agent->config();
-  std::string const path = pubApiPrefix + "config";
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Restarting agent from persistence ...";
 
-  auto s = std::chrono::system_clock::now();
-  std::chrono::seconds timeout(60);
+  using namespace std::chrono;
+
+  auto const  path      = pubApiPrefix + "config";
+  auto const  myConfig  = _agent->config();
+  auto const  startTime = system_clock::now();
+  auto        active    = myConfig.active();
+  auto const& clientId  = myConfig.id();
+  auto const& clientEp  = myConfig.endpoint();
+  auto const majority   = (myConfig.size()+1)/2;
+
+  Builder greeting;
+  {
+    VPackObjectBuilder b(&greeting);
+    greeting.add(clientId, VPackValue(clientEp));
+  }
+  auto const& greetstr = greeting.toJson();
+
+  seconds const timeout(3600);
+  long waitInterval(500000);  
   
-  // Can only be done responcibly, if we are complete
-  if (myConfig.poolComplete()) {
+  CONDITION_LOCKER(guard, _cv);
+
+  active.erase(
+    std::remove(active.begin(), active.end(), myConfig.id()), active.end());
+
+  while (!this->isStopping() && !_agent->isStopping()) {
     
-    auto pool = myConfig.pool();
-    auto active = myConfig.active();
+    active.erase(
+      std::remove(active.begin(), active.end(), ""), active.end());
     
-    CONDITION_LOCKER(guard, _cv);
+    if (active.size() < majority) {
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Found majority of agents in agreement over active pool. "
+           "Finishing startup sequence.";
+      return true;
+    }
 
-    while (!this->isStopping() && !_agent->isStopping()) {
-
-      active.erase(
-        std::remove(active.begin(), active.end(), myConfig.id()), active.end());
-      active.erase(
-        std::remove(active.begin(), active.end(), ""), active.end());
-
-      if (active.empty()) {
-        return true;
-      }
-
-      for (auto& i : active) {
+    auto gp = myConfig.gossipPeers();
+    std::vector<std::string> informed;
+    
+    for (auto& p : gp) {
+      auto comres = cc->syncRequest(
+        clientId, 1, p, rest::RequestType::POST, path, greetstr,
+        std::unordered_map<std::string, std::string>(), 2.0);
+      if (comres->status == CL_COMM_SENT) {
+        auto const  theirConfigVP = comres->result->getBodyVelocyPack();
+        auto const& theirConfig   = theirConfigVP->slice();
+        auto const& tcc           = theirConfig.get("configuration");
+        auto const& theirId       = tcc.get("id").copyString();
         
-        if (i != myConfig.id() && i != "") {
-          
-          auto clientId = myConfig.id();
-          auto comres   = arangodb::ClusterComm::instance()->syncRequest(
-            clientId, 1, pool.at(i), rest::RequestType::GET, path, std::string(),
-            std::unordered_map<std::string, std::string>(), 2.0);
-          
-          if (comres->status == CL_COMM_SENT) {
-
-            try {
-
-              auto theirActive = comres->result->getBodyVelocyPack()->
-                slice().get("configuration").get("active").toJson();
-              auto myActive = myConfig.activeToBuilder()->toJson();
+        _agent->updatePeerEndpoint(theirId, p);
+        informed.push_back(p);
+      }
+    }
+    
+    auto pool = _agent->config().pool();    
+    for (const auto& i : informed) {
+      active.erase(
+        std::remove(active.begin(), active.end(), i), active.end());
+    }
+    
+    for (auto& p : pool) {
+      
+      if (p.first != myConfig.id() && p.first != "") {
+        
+        auto comres = cc->syncRequest(
+          clientId, 1, p.second, rest::RequestType::POST, path, greetstr,
+          std::unordered_map<std::string, std::string>(), 2.0);
+        
+        if (comres->status == CL_COMM_SENT) {
+          try {
+            
+            auto const  theirConfigVP = comres->result->getBodyVelocyPack();
+            auto const& theirConfig   = theirConfigVP->slice();
+            auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
+            auto const& tcc           = theirConfig.get("configuration");
+            auto const& theirId       = tcc.get("id").copyString();            
+            
+            // Found RAFT with leader
+            if (!theirLeaderId.empty()) {
+              LOG_TOPIC(INFO, Logger::AGENCY) <<
+                "Found active RAFTing agency lead by " << theirLeaderId <<
+                ". Finishing startup sequence.";
               
+              auto const theirLeaderEp =
+                tcc.get(
+                  std::vector<std::string>({"pool", theirLeaderId})).copyString();
+
+              // Contact leader to update endpoint
+              if (theirLeaderId != theirId) { 
+                comres = cc->syncRequest(
+                  clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
+                  greetstr, std::unordered_map<std::string, std::string>(), 2.0);
+                // Failed to contact leader move on until we do. This way at
+                // least we inform everybody individually of the news.
+                if (comres->status != CL_COMM_SENT) {
+                  continue;
+                }
+              }
+              
+              auto agency = std::make_shared<Builder>();
+              agency->openObject();
+              agency->add("term", theirConfig.get("term"));
+              agency->add("id", VPackValue(theirLeaderId));
+              agency->add("active",   tcc.get("active"));
+              agency->add("pool",     tcc.get("pool"));
+              agency->add("min ping", tcc.get("min ping"));
+              agency->add("max ping", tcc.get("max ping"));
+              agency->close();
+              _agent->notify(agency);
+              return true;
+            }
+            
+            auto const theirActive = tcc.get("active").toJson();
+            auto const myActive = myConfig.activeToBuilder()->toJson();
+            auto i = std::find(active.begin(),active.end(),p.first);
+            
+            if (i != active.end()) {
               if (theirActive != myActive) {
                 LOG_TOPIC(FATAL, Logger::AGENCY)
-                  << "Assumed active RAFT peer and I disagree on active membership."
-                  << "Administrative intervention needed.";
+                  << "Assumed active RAFT peer and I disagree on active membership:";
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "Their active list is " << theirActive;  
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "My active list is " << myActive;  
                 FATAL_ERROR_EXIT();
                 return false;
               } else {
-                i = "";
+                *i = "";
               }
-
-            } catch (std::exception const& e) {
-              LOG_TOPIC(FATAL, Logger::AGENCY)
-                << "Assumed active RAFT peer has no active agency list: " << e.what()
-                << "Administrative intervention needed.";
-                FATAL_ERROR_EXIT();
-                return false;
             }
             
-          } else {
-            /*
-              LOG_TOPIC(FATAL, Logger::AGENCY)
-              << "Assumed active RAFT peer and I disagree on active membership."
-              << "Administrative intervention needed.";
-              FATAL_ERROR_EXIT();
-              return false;*/
+          } catch (std::exception const& e) {
+            LOG_TOPIC(FATAL, Logger::AGENCY)
+              << "Assumed active RAFT peer has no active agency list: "
+              << e.what() << "Administrative intervention needed.";
+            FATAL_ERROR_EXIT();
+            return false;
           }
-        }
-        
+        } 
       }
       
-      // Timed out? :(
-      if ((std::chrono::system_clock::now() - s) > timeout) {
-        if (myConfig.poolComplete()) {
-          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
-        } else {
-          LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Failed to find complete pool of agents. Giving up!";
-        }
-        break;
-      }
-      
-      _cv.wait(500000);
-
     }
+    
+    // Timed out? :(
+    if ((system_clock::now() - startTime) > timeout) {
+      if (myConfig.poolComplete()) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Joined complete pool!";
+      } else {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Failed to find complete pool of agents. Giving up!";
+      }
+      break;
+    }
+    
+    _cv.wait(waitInterval);
+    if (waitInterval < 2500000) { // 2.5s
+      waitInterval *= 2;
+    }
+    
   }
 
   return false;
-    
+  
+}
+
+void Inception::reportIn(query_t const& query) {
+
+  VPackSlice slice = query->slice();
+
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.hasKey("mean"));
+  TRI_ASSERT(slice.hasKey("stdev"));
+  TRI_ASSERT(slice.hasKey("min"));
+  TRI_ASSERT(slice.hasKey("max"));
+
+  MUTEX_LOCKER(lock, _mLock);
+  _measurements.push_back(
+    std::vector<double>(
+      {slice.get("mean").getNumber<double>(),
+          slice.get("stdev").getNumber<double>(),
+          slice.get("max").getNumber<double>(),
+          slice.get("min").getNumber<double>()} ));
 
 }
-  
 
-// @brief Active agency from persisted database
-bool Inception::activeAgencyFromCommandLine() {
-  return false;
+
+void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
+  MUTEX_LOCKER(versionLocker, _vLock);
+  if (_acked[endpoint] < version) {
+    _acked[endpoint] = version;
+  }
 }
 
 // @brief Thread main
 void Inception::run() {
-
-  // 1. If active agency, do as you're told
-  if (activeAgencyFromPersistence()) {
-    _agent->ready(true);  
-    return;
+  while (arangodb::rest::RestHandlerFactory::isMaintenance() &&
+         !this->isStopping() && !_agent->isStopping()) {
+    usleep(1000000);
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Waiting for RestHandlerFactory to exit maintenance mode before we "
+         " start gossip protocol...";
   }
 
-  // 2. If we think that we used to be active agent
-  if (restartingActiveAgent()) {
-  _agent->ready(true);  
-    return;
-  }
-
-  // 3. Else gossip
   config_t config = _agent->config();
-  if (!config.poolComplete()) {
-    gossip();
+  
+  // Are we starting from persisted pool?
+  if (config.startup() == "persistence") {
+    if (restartingActiveAgent()) {
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
+      _agent->ready(true);
+    } else {
+      if (!this->isStopping()) {
+        LOG_TOPIC(FATAL, Logger::AGENCY)
+          << "Unable to restart with persisted pool. Fatal exit.";
+      }
+        FATAL_ERROR_EXIT();
+      // FATAL ERROR
+    }
+    return;
   }
+  
+  // Gossip
+  gossip();
 
-  // 4. If still incomplete bail out :(
+  // No complete pool after gossip?
   config = _agent->config();
-  if (!config.poolComplete()) {
+  if (!_agent->ready() && !config.poolComplete()) {
     LOG_TOPIC(FATAL, Logger::AGENCY)
       << "Failed to build environment for RAFT algorithm. Bailing out!";
     FATAL_ERROR_EXIT();
   }
 
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
   _agent->ready(true);
 
 }

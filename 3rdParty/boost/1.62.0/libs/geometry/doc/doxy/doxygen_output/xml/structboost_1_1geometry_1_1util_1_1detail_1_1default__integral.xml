@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1util_1_1detail_1_1default__integral" kind="struct" prot="public">
+    <compoundname>boost::geometry::util::detail::default_integral</compoundname>
+    <includes local="no">calculation_type.hpp</includes>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1util_1_1detail_1_1default__integral_1a76a087133bfb8494906b619907cce465" prot="public" static="no">
+        <type>int</type>
+        <definition>typedef int boost::geometry::util::detail::default_integral::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/calculation_type.hpp" line="38" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/calculation_type.hpp" bodystart="38" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/calculation_type.hpp" line="34" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/calculation_type.hpp" bodystart="33" bodyend="40"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1util_1_1detail_1_1default__integral_1a76a087133bfb8494906b619907cce465" prot="public" virt="non-virtual"><scope>boost::geometry::util::detail::default_integral</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

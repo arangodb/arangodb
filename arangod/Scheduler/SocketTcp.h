@@ -23,56 +23,81 @@
 #ifndef ARANGOD_SCHEDULER_SOCKET_TCP_H
 #define ARANGOD_SCHEDULER_SOCKET_TCP_H 1
 
+#include "Basics/MutexLocker.h"
 #include "Scheduler/Socket.h"
 
 #include <boost/asio/ip/tcp.hpp>
 
 namespace arangodb {
-class SocketTcp: public Socket {
-  public:
-    SocketTcp(boost::asio::io_service& ioService,
-           boost::asio::ssl::context&& context, bool encrypted)
-        : Socket(ioService, std::move(context), encrypted),
-          _sslSocket(ioService, _context),
-          _socket(_sslSocket.next_layer()),
-          _peerEndpoint() {}
+class SocketTcp final : public Socket {
+ public:
+  SocketTcp(boost::asio::io_service& ioService,
+            boost::asio::ssl::context&& context, bool encrypted)
+      : Socket(ioService, std::move(context), encrypted),
+        _sslSocket(ioService, _context),
+        _socket(_sslSocket.next_layer()),
+        _peerEndpoint() {}
 
-    SocketTcp(SocketTcp&& that) = default;
+  SocketTcp(SocketTcp&& that) = default;
 
-    void close() override { _socket.close(); }
+  void close() override {
+    MUTEX_LOCKER(guard, _lock);
+    _socket.close();
+  }
 
-    void close(boost::system::error_code& ec) override { _socket.close(ec); }
+  void close(boost::system::error_code& ec) override {
+    MUTEX_LOCKER(guard, _lock);
+    _socket.close(ec);
+  }
 
-    void setNonBlocking(bool v) override { _socket.non_blocking(v); }
+  void setNonBlocking(bool v) override {
+    MUTEX_LOCKER(guard, _lock);
+    _socket.non_blocking(v);
+  }
 
-    std::string peerAddress() override { return _peerEndpoint.address().to_string(); }
+  std::string peerAddress() override {
+    return _peerEndpoint.address().to_string();
+  }
 
-    int peerPort() override { return _peerEndpoint.port(); }
+  int peerPort() override { return _peerEndpoint.port(); }
 
-    bool sslHandshake() override { return socketcommon::doSslHandshake(_sslSocket); }
+  bool sslHandshake() override {
+    MUTEX_LOCKER(guard, _lock);
+    return socketcommon::doSslHandshake(_sslSocket);
+  }
 
-    size_t write(basics::StringBuffer* buffer, boost::system::error_code& ec) override;
+  size_t write(basics::StringBuffer* buffer,
+               boost::system::error_code& ec) override;
 
-    void asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
+  void asyncWrite(boost::asio::mutable_buffers_1 const& buffer,
+                  AsyncHandler const& handler) override;
 
-    size_t read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) override;
+  size_t read(boost::asio::mutable_buffers_1 const& buffer,
+              boost::system::error_code& ec) override;
 
-    void asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
+  void asyncRead(boost::asio::mutable_buffers_1 const& buffer,
+                 AsyncHandler const& handler) override;
 
-    // mop: these functions actually only access the underlying socket. The _sslSocket is
-    // actually just an additional layer around the socket. These low level functions
-    // aceess the _socket only and it is ok that they are not implemented for _sslSocket in
-    // the children
-    void shutdownReceive() override;
-    void shutdownReceive(boost::system::error_code& ec) override;
-    void shutdownSend(boost::system::error_code& ec) override;
-    int available(boost::system::error_code& ec) override;
+  // mop: these functions actually only access the underlying socket. The
+  // _sslSocket is
+  // actually just an additional layer around the socket. These low level
+  // functions
+  // access the _socket only and it is ok that they are not implemented for
+  // _sslSocket in
+  // the children
 
-  public:
-    boost::asio::ssl::stream<boost::asio::ip::tcp::socket> _sslSocket;
-    boost::asio::ip::tcp::socket& _socket;
+  void shutdownReceive() override;
+  void shutdownReceive(boost::system::error_code& ec) override;
+  void shutdownSend(boost::system::error_code& ec) override;
+  std::size_t available(boost::system::error_code& ec) override;
 
-    boost::asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
+ public:
+  Mutex _lock;
+
+  boost::asio::ssl::stream<boost::asio::ip::tcp::socket> _sslSocket;
+  boost::asio::ip::tcp::socket& _socket;
+
+  boost::asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
 }
 

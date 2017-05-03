@@ -1,0 +1,175 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1multi__point" kind="class" prot="public">
+    <compoundname>boost::geometry::model::multi_point</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">Container&lt; Point, Allocator&lt; Point &gt; &gt;</basecompoundref>
+    <includes local="no">multi_point.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>template&lt; typename, typename &gt; class</type>
+        <declname>Container</declname>
+        <defname>Container</defname>
+        <defval>std::vector</defval>
+      </param>
+      <param>
+        <type>template&lt; typename &gt; class</type>
+        <declname>Allocator</declname>
+        <defname>Allocator</defname>
+        <defval>std::allocator</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1model_1_1multi__point_1a9a096eb72a510dc0373937557652dd5e" prot="private" static="no">
+        <type>Container&lt; Point, Allocator&lt; Point &gt; &gt;</type>
+        <definition>typedef Container&lt;Point, Allocator&lt;Point&gt; &gt; boost::geometry::model::multi_point&lt; Point, Container, Allocator &gt;::base_type</definition>
+        <argsstring></argsstring>
+        <name>base_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" line="63" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" bodystart="63" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__point_1aaa60521babc62f517d0b1245d1d0448b" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::multi_point&lt; Point, Container, Allocator &gt;::BOOST_CONCEPT_ASSERT</definition>
+        <argsstring>((concepts::Point&lt; Point &gt;))</argsstring>
+        <name>BOOST_CONCEPT_ASSERT</name>
+        <param>
+          <type>(<ref refid="classboost_1_1geometry_1_1concepts_1_1_point" kindref="compound">concepts::Point</ref>&lt; Point &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" line="61" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__point_1abae1e4f6c1338a8393af93e338a5556d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::multi_point&lt; Point, Container, Allocator &gt;::multi_point</definition>
+        <argsstring>()</argsstring>
+        <name>multi_point</name>
+        <briefdescription>
+<para>Default constructor, creating an empty <ref refid="classboost_1_1geometry_1_1model_1_1multi__point" kindref="compound">multi_point</ref>. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" line="67" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" bodystart="67" bodyend="69"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__point_1ab51375b0136afafeb08adfac0817fbf8" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Iterator</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::model::multi_point&lt; Point, Container, Allocator &gt;::multi_point</definition>
+        <argsstring>(Iterator begin, Iterator end)</argsstring>
+        <name>multi_point</name>
+        <param>
+          <type>Iterator</type>
+          <declname>begin</declname>
+        </param>
+        <param>
+          <type>Iterator</type>
+          <declname>end</declname>
+        </param>
+        <briefdescription>
+<para>Constructor with begin and end, filling the <ref refid="classboost_1_1geometry_1_1model_1_1multi__point" kindref="compound">multi_point</ref>. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" line="73" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" bodystart="73" bodyend="75"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__point_1a0052f6896ee5cb0d9c6a06f0b90c5392" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::multi_point&lt; Point, Container, Allocator &gt;::multi_point</definition>
+        <argsstring>(std::initializer_list&lt; Point &gt; l)</argsstring>
+        <name>multi_point</name>
+        <param>
+          <type>std::initializer_list&lt; Point &gt;</type>
+          <declname>l</declname>
+        </param>
+        <briefdescription>
+<para>Constructor taking std::initializer_list, filling the <ref refid="classboost_1_1geometry_1_1model_1_1multi__point" kindref="compound">multi_point</ref>. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" line="80" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" bodystart="80" bodyend="82"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para><ref refid="classboost_1_1geometry_1_1model_1_1multi__point" kindref="compound">multi_point</ref>, a collection of points </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Container</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container type, for example std::vector, std::deque </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Allocator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container-allocator-type</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+Multipoint can be used to group points belonging to each other, e.g. a constellation, or the result set of an intersection</para><para> <qbk>[include reference/geometries/multi_point.qbk]</qbk>   <qbk.before.synopsis>
+[heading Model of]
+[link geometry.reference.concepts.concept_multi_point MultiPoint Concept]
+</qbk.before.synopsis>  </para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="515">
+        <label>Container&lt; Point, Allocator&lt; Point &gt; &gt;</label>
+      </node>
+      <node id="514">
+        <label>boost::geometry::model::multi_point&lt; Point, Container, Allocator &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1multi__point"/>
+        <childnode refid="515" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="517">
+        <label>Container&lt; Point, Allocator&lt; Point &gt; &gt;</label>
+      </node>
+      <node id="516">
+        <label>boost::geometry::model::multi_point&lt; Point, Container, Allocator &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1multi__point"/>
+        <childnode refid="517" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" line="60" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_point.hpp" bodystart="59" bodyend="98"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__point_1a9a096eb72a510dc0373937557652dd5e" prot="private" virt="non-virtual"><scope>boost::geometry::model::multi_point</scope><name>base_type</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__point_1aaa60521babc62f517d0b1245d1d0448b" prot="private" virt="non-virtual"><scope>boost::geometry::model::multi_point</scope><name>BOOST_CONCEPT_ASSERT</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__point_1abae1e4f6c1338a8393af93e338a5556d" prot="public" virt="non-virtual"><scope>boost::geometry::model::multi_point</scope><name>multi_point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__point_1ab51375b0136afafeb08adfac0817fbf8" prot="public" virt="non-virtual"><scope>boost::geometry::model::multi_point</scope><name>multi_point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__point_1a0052f6896ee5cb0d9c6a06f0b90c5392" prot="public" virt="non-virtual"><scope>boost::geometry::model::multi_point</scope><name>multi_point</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

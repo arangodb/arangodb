@@ -1,0 +1,51 @@
+[section boost/python/exception_translator.hpp]
+[section Introduction]
+As described [link high_level_components.boost_python_errors_hpp.introduction here], it is important to make sure that exceptions thrown by C++ code do not pass into the Python interpreter core. By default, Boost.Python translates all C++ exceptions thrown by wrapped functions and module init functions into Python, but the default translators are extremely limited: most C++ exceptions will appear in Python as a [@http://www.python.org/doc/current/lib/module-exceptions.html RuntimeError] exception whose representation is 'Unidentifiable C++ Exception'. To produce better error messages, users can register additional exception translators as described below.
+[endsect]
+[section Function `register_exception_translator`]
+``
+template<class ExceptionType, class Translate>
+void register_exception_translator(Translate translate);
+``
+[variablelist
+[[Requires][Translate is CopyConstructible, and the following code must be well-formed:
+``void f(ExceptionType x) { translate(x); }``.
+The expression `translate(x)` must either throw a C++ exception, or a subsequent call to `PyErr_Occurred()` must return 1. ]]
+[[Effects][Adds a copy of translate to the sequence of exception translators tried when Boost.Python catches an exception that is about to pass into Python's core interpreter. The new translator will get "first shot" at translating all exceptions matching the catch clause shown above. Any subsequently-registered translators will be allowed to translate the exception earlier. A translator which cannot translate a given C++ exception can re-throw it, and it will be handled by a translator which was registered earlier (or by the default translator).]]
+]
+[endsect]
+[section Example]
+``
+#include <boost/python/module.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/exception_translator.hpp>
+#include <exception>
+
+struct my_exception : std::exception
+{
+  char const* what() throw() { return "One of my exceptions"; }
+};
+
+void translate(my_exception const& e)
+{
+    // Use the Python 'C' API to set up an exception object
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+}
+
+void something_which_throws()
+{
+    ...
+    throw my_exception();
+    ...
+}
+
+BOOST_PYTHON_MODULE(exception_translator_ext)
+{
+  using namespace boost::python;
+  register_exception_translator<my_exception>(&translate);
+  
+  def("something_which_throws", something_which_throws);
+}
+``
+[endsect]
+[endsect]

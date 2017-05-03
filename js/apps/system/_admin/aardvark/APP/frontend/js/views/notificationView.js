@@ -67,7 +67,9 @@
             time = false;
             closeWidth = ['button'];
             buttons = [{
-              addClass: 'button-danger', text: 'Close', onClick: function ($noty) {
+              addClass: 'button-danger',
+              text: 'Close',
+              onClick: function ($noty) {
                 $noty.close();
               }
             }];
@@ -75,12 +77,16 @@
             time = 15000;
             buttons = [
               {
-                addClass: 'button-warning', text: 'Close', onClick: function ($noty) {
+                addClass: 'button-warning',
+                text: 'Close',
+                onClick: function ($noty) {
                   $noty.close();
                 }
               },
               {
-                addClass: 'button-danger', text: "Don't show again.", onClick: function ($noty) {
+                addClass: 'button-danger',
+                text: "Don't show again.",
+                onClick: function ($noty) {
                   $noty.close();
                   window.arangoHelper.doNotShowAgain();
                 }

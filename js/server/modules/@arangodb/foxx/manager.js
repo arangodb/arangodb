@@ -55,9 +55,6 @@ const executeGlobalContextFunction = require('internal').executeGlobalContextFun
 const actions = require('@arangodb/actions');
 const plainServerVersion = require('@arangodb').plainServerVersion;
 
-const throwDownloadError = arangodb.throwDownloadError;
-const throwFileNotFound = arangodb.throwFileNotFound;
-
 // Regular expressions for joi patterns
 const RE_EMPTY = /^$/;
 const RE_NOT_EMPTY = /./;
@@ -133,7 +130,9 @@ const manifestSchema = {
         .keys({
           name: joi.string().default('*'),
           version: joi.string().default('*'),
-          required: joi.boolean().default(true)
+          description: joi.string().optional(),
+          required: joi.boolean().default(true),
+          multiple: joi.boolean().default(false)
         })
     ))
   ),
@@ -435,6 +434,10 @@ function checkManifest (filename, inputManifest, mount, isDevelopment) {
     });
   }
 
+  if (typeof manifest.tests === 'string') {
+    manifest.tests = [manifest.tests];
+  }
+
   if (legacy) {
     if (manifest.defaultDocument === undefined) {
       manifest.defaultDocument = 'index.html';
@@ -443,10 +446,18 @@ function checkManifest (filename, inputManifest, mount, isDevelopment) {
     if (typeof manifest.controllers === 'string') {
       manifest.controllers = {'/': manifest.controllers};
     }
-  }
-
-  if (typeof manifest.tests === 'string') {
-    manifest.tests = [manifest.tests];
+  } else if (manifest.lib) {
+    const base = manifest.lib;
+    delete manifest.lib;
+    if (manifest.main) {
+      manifest.main = joinPath(base, manifest.main);
+    }
+    if (manifest.tests) {
+      manifest.tests = manifest.tests.map((path) => joinPath(base, path));
+    }
+    for (const key of Object.keys(manifest.scripts)) {
+      manifest.scripts[key] = joinPath(base, manifest.scripts[key]);
+    }
   }
 
   return manifest;
@@ -460,7 +471,13 @@ function checkManifest (filename, inputManifest, mount, isDevelopment) {
 function validateManifestFile (filename, mount, isDevelopment) {
   let mf;
   if (!fs.exists(filename)) {
-    throwFileNotFound(`Cannot find manifest file "${filename}"`);
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.message}
+        File: ${filename}
+      `
+    });
   }
   try {
     mf = JSON.parse(fs.read(filename));
@@ -471,7 +488,6 @@ function validateManifestFile (filename, mount, isDevelopment) {
         errorMessage: dd`
           ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
           File: ${filename}
-          Cause: ${e.stack}
         `
       }), {cause: e}
     );
@@ -485,7 +501,6 @@ function validateManifestFile (filename, mount, isDevelopment) {
         errorMessage: dd`
           ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
           File: ${filename}
-          Cause: ${e.stack}
         `
       }), {cause: e}
     );
@@ -601,7 +616,7 @@ function uploadToPeerCoordinators (serviceInfo, coordinators) {
   let coordOptions = {
     coordTransactionID: ArangoClusterComm.getId()
   };
-  let req = fs.readBuffer(joinPath(fs.getTempPath(), serviceInfo));
+  let req = fs.readBuffer(serviceInfo);
   let httpOptions = {};
   let mapping = {};
   for (let i = 0; i < coordinators.length; ++i) {
@@ -701,7 +716,13 @@ function extractServiceToPath (archive, targetPath, noDelete) {
   }
 
   if (found === undefined) {
-    throwFileNotFound(`Cannot find manifest file in zip file "${tempFile}"`);
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.message}
+        Source: ${tempFile}
+      `
+    });
   }
 
   var mp;
@@ -774,11 +795,23 @@ function installServiceFromRemote (url, targetPath) {
     }, tempFile);
 
     if (result.code < 200 || result.code > 299) {
-      throwDownloadError(`Could not download from "${url}"`);
+      throw new ArangoError({
+        errorNum: errors.ERROR_SERVICE_SOURCE_ERROR.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_SOURCE_ERROR.message}
+          URL: ${url}
+          Status: ${result.code}
+        `
+      });
     }
-  } catch (err) {
-    let details = String(err.stack || err);
-    throwDownloadError(`Could not download from "${url}": ${details}`);
+  } catch (e) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_SOURCE_ERROR.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_SOURCE_ERROR.message}
+        URL: ${url}
+      `
+    }, {cause: e});
   }
   extractServiceToPath(tempFile, targetPath);
 }
@@ -799,7 +832,6 @@ function patchManifestFile (servicePath, patchData) {
         errorMessage: dd`
           ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
           File: ${filename}
-          Cause: ${e.stack}
         `
       }), {cause: e}
     );
@@ -817,6 +849,15 @@ function isLocalFile (path) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function installServiceFromLocal (path, targetPath) {
+  if (!fs.exists(path)) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_SOURCE_NOT_FOUND.message}
+        Path: ${path}
+      `
+    });
+  }
   if (fs.isDirectory(path)) {
     extractServiceToPath(utils.zipDirectory(path), targetPath);
   } else {
@@ -1086,8 +1127,8 @@ function _install (serviceInfo, mount, options, runSetup) {
   } catch (e) {
     try {
       fs.removeDirectoryRecursive(targetPath, true);
-    } catch (err) {
-      console.errorLines(err.stack);
+    } catch (e) {
+      console.errorLines(e.stack);
     }
     try {
       if (!options.__clusterDistribution) {
@@ -1095,7 +1136,7 @@ function _install (serviceInfo, mount, options, runSetup) {
           collections: {
             write: collection.name()
           },
-          action() {
+          action () {
             var definition = collection.firstExample({mount: mount});
             if (definition !== null) {
               collection.remove(definition._key);
@@ -1103,8 +1144,8 @@ function _install (serviceInfo, mount, options, runSetup) {
           }
         });
       }
-    } catch (err) {
-      console.errorLines(err.stack);
+    } catch (e) {
+      console.errorLines(e.stack);
     }
     throw e;
   }
@@ -1324,7 +1365,7 @@ function replace (serviceInfo, mount, options) {
         /* jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
         /* jshint -W075:false */
-        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
+        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
           '/_admin/foxx/replace', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, res.length);
@@ -1395,8 +1436,8 @@ function upgrade (serviceInfo, mount, options) {
         /* jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
         /* jshint -W075:false */
-        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
-          '/_admin/foxx/update', JSON.stringify(intReq), httpOptions, coordOptions);
+        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
+          '/_admin/foxx/upgrade', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, res.length);
     } else {
@@ -1413,7 +1454,7 @@ function upgrade (serviceInfo, mount, options) {
       req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
-          '/_admin/foxx/update', req, httpOptions, coordOptions);
+          '/_admin/foxx/upgrade', req, httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, coordinators.length);
     }
@@ -1578,6 +1619,7 @@ function requireService (mount) {
     'requireService(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ]);
+  mount = '/' + mount.replace(/(^\/+|\/+$)/, '');
   utils.validateMount(mount, true);
   var service = lookupService(mount);
   if (service.needsConfiguration()) {

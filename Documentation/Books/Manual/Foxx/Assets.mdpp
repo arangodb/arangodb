@@ -1,4 +1,5 @@
-!CHAPTER Static file assets
+Static file assets
+==================
 
 The most flexible way to serve files in your Foxx service is to simply pass them through in your router using the [context object's `fileName` method](../Foxx/Context.md#filename) and the [response object's `sendFile` method](../Foxx/Router/Response.md#sendfile):
 

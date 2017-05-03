@@ -30,6 +30,18 @@
 
 using namespace arangodb;
 
+LogicalCollection* OperationCursor::collection() const {
+  TRI_ASSERT(_indexIterator != nullptr);
+  return _indexIterator->collection();
+}
+
+bool OperationCursor::hasMore() {
+  if (_hasMore && _limit == 0) {
+    _hasMore = false;
+  }
+  return _hasMore;
+}
+
 void OperationCursor::reset() {
   code = TRI_ERROR_NO_ERROR;
 
@@ -41,114 +53,48 @@ void OperationCursor::reset() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements.
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
+/// @brief Calls cb for the next batchSize many elements 
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<OperationResult> OperationCursor::getMore(uint64_t batchSize,
-                                                          bool useExternals) {
-  auto res = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-  getMore(res, batchSize, useExternals);
-  return res;
-}
-
-void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
-                              uint64_t batchSize, bool useExternals) {
-  if (opRes == nullptr) {
-    // Create a valid pointer if none is given
-    auto tmp = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-    opRes.swap(tmp);
-  } 
-  
-  // This may throw out of memory
+bool OperationCursor::getMore(
+    std::function<void(DocumentIdentifierToken const& token)> const& callback,
+    uint64_t batchSize) {
   if (!hasMore()) {
-    TRI_ASSERT(false);
-    // You requested more even if you should have checked it before.
-    opRes->code = TRI_ERROR_FORBIDDEN;
-    return;
+    return false;
   }
-  if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
-  }
- 
-  LogicalCollection* collection = _indexIterator->collection(); 
-  Transaction* trx = _indexIterator->transaction();
-  ManagedDocumentResult mmdr(trx); // TODO 
-  VPackBuilder builder(opRes->buffer);
-  builder.clear();
-  try {
-    VPackArrayBuilder guard(&builder);
-    IndexLookupResult element;
-    // TODO: Improve this for baby awareness
-    while (batchSize > 0 && _limit > 0 && (element = _indexIterator->next())) {
-      --batchSize;
-      --_limit;
-      TRI_voc_rid_t revisionId = element.revisionId();
-      if (collection->readRevision(trx, mmdr, revisionId)) {
-        if (useExternals) {
-          builder.addExternal(mmdr.vpack());
-        } else {
-          builder.add(VPackSlice(mmdr.vpack()));
-        }
-      }
-    }
-    if (batchSize > 0 || _limit == 0) {
-      // Iterator empty, there is no more
-      _hasMore = false;
-    }
-    opRes->code = TRI_ERROR_NO_ERROR;
-  } catch (arangodb::basics::Exception const& e) {
-    opRes->code = e.code();
-  }
-}
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements. mptr variant
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
-std::vector<IndexLookupResult> OperationCursor::getMoreMptr(uint64_t batchSize) {
-  std::vector<IndexLookupResult> res;
-  getMoreMptr(res, batchSize);
-  return res;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements. mptr variant
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-///        NOTE: The result vector handed in is used to continue index lookups
-///              The caller shall NOT modify it.
-//////////////////////////////////////////////////////////////////////////////
-
-void OperationCursor::getMoreMptr(std::vector<IndexLookupResult>& result,
-                                  uint64_t batchSize) {
-  if (!hasMore()) {
-    TRI_ASSERT(false);
-    // You requested more even if you should have checked it before.
-    return;
-  }
   if (batchSize == UINT64_MAX) {
     batchSize = _batchSize;
   }
 
   size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
 
-  _indexIterator->nextBabies(result, atMost);
-
-  TRI_ASSERT(_limit >= atMost);
-  _limit -= atMost;
-
-  if (result.empty()) {
-    // Index is empty
-    _hasMore = false;
-    return;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // We add wrapper around Callback that validates that
+  // the callback has been called at least once.
+  bool called = false;
+  auto cb = [&](DocumentIdentifierToken const& token) {
+    called = true;
+    callback(token);
+  };
+  _hasMore = _indexIterator->next(cb, atMost);
+  if (_hasMore) {
+    // If the index says it has more elements than it need
+    // to call callback at least once.
+    // Otherweise progress is not guaranteed.
+    TRI_ASSERT(called);
   }
+#else
+  _hasMore = _indexIterator->next(callback, atMost);
+#endif
+
+  if (_hasMore) {
+    // We got atMost many callbacks
+    TRI_ASSERT(_limit >= atMost);
+    _limit -= atMost;
+  }
+  return _hasMore;
 }
 
 //////////////////////////////////////////////////////////////////////////////

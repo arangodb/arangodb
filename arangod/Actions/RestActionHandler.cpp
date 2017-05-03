@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
+#include "Statistics/RequestStatistics.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -48,9 +49,9 @@ RestStatus RestActionHandler::execute() {
   TRI_action_result_t result;
 
   // check the request path
-  if (_request->databaseName() == "_system") {
+  if (_request->databaseName() == TRI_VOC_SYSTEM_DATABASE) {
     if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
-      requestStatisticsAgentSetIgnore();
+      RequestStatistics::SET_IGNORE(_statistics);
     }
   }
 

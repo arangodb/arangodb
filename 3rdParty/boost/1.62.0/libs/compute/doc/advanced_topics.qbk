@@ -1,0 +1,210 @@
+[/===========================================================================
+ Copyright (c) 2013-2015 Kyle Lutz <kyle.r.lutz@gmail.com>
+
+ Distributed under the Boost Software License, Version 1.0
+ See accompanying file LICENSE_1_0.txt or copy at
+ http://www.boost.org/LICENSE_1_0.txt
+=============================================================================/]
+
+[section Advanced Topics]
+
+The following topics show advanced features of the Boost Compute library.
+
+[section Vector Data Types]
+
+In addition to the built-in scalar types (e.g. `int` and `float`), OpenCL
+also provides vector data types (e.g. `int2` and `vector4`). These can be
+used with the Boost Compute library on both the host and device.
+
+Boost.Compute provides typedefs for these types which take the form:
+`boost::compute::scalarN_` where `scalar` is a scalar data type (e.g. `int`,
+`float`, `char`) and `N` is the size of the vector. Supported vector sizes
+are: 2, 4, 8, and 16.
+
+The following example shows how to transfer a set of 3D points stored as an
+array of `float`s on the host the device and then calculate the sum of the
+point coordinates using the [funcref boost::compute::accumulate accumulate()]
+function. The sum is transferred to the host and the centroid computed by
+dividing by the total number of points.
+
+Note that even though the points are in 3D, they are stored as `float4` due to
+OpenCL's alignment requirements.
+
+[import ../example/point_centroid.cpp]
+[point_centroid_example]
+
+[endsect] [/ vector data types]
+
+[section Custom Functions]
+
+The OpenCL runtime and the Boost Compute library provide a number of built-in
+functions such as sqrt() and dot() but many times these are not sufficient for
+solving the problem at hand.
+
+The Boost Compute library provides a few different ways to create custom
+functions that can be passed to the provided algorithms such as
+[funcref boost::compute::transform transform()] and
+[funcref boost::compute::reduce reduce()].
+
+The most basic method is to provide the raw source code for a function:
+
+``
+boost::compute::function<int (int)> add_four =
+    boost::compute::make_function_from_source<int (int)>(
+        "add_four",
+        "int add_four(int x) { return x + 4; }"
+    );
+
+boost::compute::transform(input.begin(), input.end(), output.begin(), add_four, queue);
+``
+
+This can also be done more succinctly using the [macroref BOOST_COMPUTE_FUNCTION
+BOOST_COMPUTE_FUNCTION()] macro:
+``
+BOOST_COMPUTE_FUNCTION(int, add_four, (int x),
+{
+    return x + 4;
+});
+
+boost::compute::transform(input.begin(), input.end(), output.begin(), add_four, queue);
+``
+
+Also see [@http://kylelutz.blogspot.com/2014/03/custom-opencl-functions-in-c-with.html
+"Custom OpenCL functions in C++ with Boost.Compute"] for more details.
+
+[endsect] [/ custom functions]
+
+[section Custom Types]
+
+Boost.Compute provides the [macroref BOOST_COMPUTE_ADAPT_STRUCT
+BOOST_COMPUTE_ADAPT_STRUCT()] macro which allows a C++ struct/class to be
+wrapped and used in OpenCL.
+
+[endsect] [/ custom types]
+
+[section Complex Values]
+
+While OpenCL itself doesn't natively support complex data types, the Boost
+Compute library provides them.
+
+To use complex values first include the following header:
+
+``
+#include <boost/compute/types/complex.hpp>
+``
+
+A vector of complex values can be created like so:
+
+``
+// create vector on device
+boost::compute::vector<std::complex<float> > vector;
+
+// insert two complex values
+vector.push_back(std::complex<float>(1.0f, 3.0f));
+vector.push_back(std::complex<float>(2.0f, 4.0f));
+``
+
+[endsect] [/ complex values]
+
+[section Lambda Expressions]
+
+The lambda expression framework allows for functions and predicates to be
+defined at the call-site of an algorithm.
+
+Lambda expressions use the placeholders `_1` and `_2` to indicate the
+arguments. The following declarations will bring the lambda placeholders into
+the current scope:
+
+``
+using boost::compute::lambda::_1;
+using boost::compute::lambda::_2;
+``
+
+The following examples show how to use lambda expressions along with the
+Boost.Compute algorithms to perform more complex operations on the device.
+
+To count the number of odd values in a vector:
+
+``
+boost::compute::count_if(vector.begin(), vector.end(), _1 % 2 == 1, queue);
+``
+
+To multiply each value in a vector by three and subtract four:
+
+``
+boost::compute::transform(vector.begin(), vector.end(), vector.begin(), _1 * 3 - 4, queue);
+``
+
+Lambda expressions can also be used to create function<> objects:
+
+``
+boost::compute::function<int(int)> add_four = _1 + 4;
+``
+
+[endsect] [/ lambda expressions]
+
+[section Asynchronous Operations]
+
+A major performance bottleneck in GPGPU applications is memory transfer. This
+can be alleviated by overlapping memory transfer with computation. The Boost
+Compute library provides the [funcref boost::compute::copy_async copy_async()]
+function which performs an asynchronous memory transfers between the host and
+the device.
+
+For example, to initiate a copy from the host to the device and then perform
+other actions:
+
+``
+// data on the host
+std::vector<float> host_vector = ...
+
+// create a vector on the device
+boost::compute::vector<float> device_vector(host_vector.size(), context);
+
+// copy data to the device asynchronously
+boost::compute::future<void> f = boost::compute::copy_async(
+    host_vector.begin(), host_vector.end(), device_vector.begin(), queue
+);
+
+// perform other work on the host or device
+// ...
+
+// ensure the copy is completed
+f.wait();
+
+// use data on the device (e.g. sort)
+boost::compute::sort(device_vector.begin(), device_vector.end(), queue);
+``
+
+[endsect] [/ asynchronous operations]
+
+[section Performance Timing]
+
+For example, to measure the time to copy a vector of data from the host to the
+device:
+
+[import ../example/time_copy.cpp]
+[time_copy_example]
+
+[endsect]
+
+[section OpenCL API Interoperability]
+
+The Boost Compute library is designed to easily interoperate with the OpenCL
+API. All of the wrapped classes have conversion operators to their underlying
+OpenCL types which allows them to be passed directly to the OpenCL functions.
+
+For example,
+``
+// create context object
+boost::compute::context ctx = boost::compute::default_context();
+
+// query number of devices using the OpenCL API
+cl_uint num_devices;
+clGetContextInfo(ctx, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), &num_devices, 0);
+std::cout << "num_devices: " << num_devices << std::endl;
+``
+
+[endsect] [/ opencl api interoperability]
+
+[endsect] [/ advanced topics]

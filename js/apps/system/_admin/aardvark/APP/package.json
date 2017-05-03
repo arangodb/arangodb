@@ -8,6 +8,10 @@
     "grunt": "grunt"
   },
   "devDependencies": {
+    "eslint-config-semistandard": "^7.0.0",
+    "eslint-config-standard": "^6.2.1",
+    "eslint-plugin-promise": "^3.3.2",
+    "eslint-plugin-standard": "^2.0.1",
     "grunt": "*",
     "grunt-babel": "*",
     "grunt-concat-in-order": "*",
@@ -21,10 +25,10 @@
     "grunt-contrib-sass": "*",
     "grunt-contrib-uglify": "*",
     "grunt-contrib-watch": "*",
+    "grunt-eslint": "^19.0.0",
     "grunt-karma": "*",
     "grunt-processhtml": "*",
     "grunt-sass": "*",
-    "grunt-semistandard": "^1.0.6",
     "grunt-text-replace": "*",
     "jasmine-core": "*",
     "karma": "*",

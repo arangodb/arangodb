@@ -25,12 +25,14 @@ ERROR_CANNOT_CREATE_DIRECTORY,19,"cannot create directory","Will be raised when 
 ERROR_CANNOT_CREATE_TEMP_FILE,20,"cannot create temporary file","Will be raised when an attempt to create a temporary file fails."
 ERROR_REQUEST_CANCELED,21,"canceled request","Will be raised when a request is canceled by the user."
 ERROR_DEBUG,22,"intentional debug error","Will be raised intentionally during debugging."
+ERROR_NOT_YET_IMPLEMENTED,23,"not yet implemented","Will be raised when hitting an unimplemented feature that will be implemented soon."
 ERROR_IP_ADDRESS_INVALID,25,"IP address is invalid","Will be raised when the structure of an IP address is invalid."
 ERROR_FILE_EXISTS,27,"file exists","Will be raised when a file already exists."
 ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is locked."
 ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detected when accessing collections."
 ERROR_SHUTTING_DOWN,30,"shutdown in progress","Will be raised when a call cannot succeed because a server shutdown is already in progress."
 ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when an enterprise-feature is requested from the community edition."
+ERROR_RESOURCE_LIMIT,32,"resource limit exceeded","Will be raised when the resources used by an operation exceed the configured maximum value."
 
 ################################################################################
 ## HTTP error status codes
@@ -91,7 +93,7 @@ ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server wa
 ERROR_ARANGO_CONFLICT,1200,"conflict","Will be raised when updating or deleting a document and a conflict has been detected."
 ERROR_ARANGO_DATADIR_INVALID,1201,"invalid database directory","Will be raised when a non-existing database directory was specified when starting the database."
 ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a document with a given identifier or handle is unknown."
-ERROR_ARANGO_COLLECTION_NOT_FOUND,1203,"collection not found","Will be raised when a collection with a given identifier or name is unknown."
+ERROR_ARANGO_COLLECTION_NOT_FOUND,1203,"collection not found","Will be raised when a collection with the given identifier or name is unknown."
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
 ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document handle","Will be raised when a document handle is corrupt."
 ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,1206,"maximal size of journal too small","Will be raised when the maximal size of the journal is too small."
@@ -99,6 +101,7 @@ ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name du
 ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when an illegal name is detected."
 ERROR_ARANGO_NO_INDEX,1209,"no suitable index known","Will be raised when no suitable index for the query is known."
 ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,1210,"unique constraint violated","Will be raised when there is a unique constraint violation."
+ERROR_ARANGO_VIEW_NOT_FOUND,1211,"view not found","Will be raised when a view with the given identifier or name is unknown."
 ERROR_ARANGO_INDEX_NOT_FOUND,1212,"index not found","Will be raised when an index with a given identifier is unknown."
 ERROR_ARANGO_CROSS_COLLECTION_REQUEST,1213,"cross collection request not allowed","Will be raised when a cross-collection is requested."
 ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a index handle is corrupt."
@@ -133,6 +136,10 @@ ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised w
 
 ERROR_ARANGO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafile reaches its limit."
 ERROR_ARANGO_EMPTY_DATADIR,1301,"server database directory is empty","Will be raised when encountering an empty server database directory."
+ERROR_ARANGO_TRY_AGAIN,1302,"operation should be tried again","Will be raised when an operation should be retried."
+ERROR_ARANGO_BUSY,1303,"engine is busy","Will be raised when storage engine is busy."
+ERROR_ARANGO_MERGE_IN_PROGRESS,1304,"merge in progress","Will be raised when storage engine has a datafile merge in progress and cannot complete the operation."
+ERROR_ARANGO_IO_ERROR,1305,"storage engine I/O error","Will be raised when storage engine encounters an I/O error."
 
 ################################################################################
 ## ArangoDB replication errors
@@ -188,6 +195,13 @@ ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DBserver 
 ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required db server can't be reached."
 ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT,1479,"An endpoint couldn't be found","An endpoint couldn't be found"
 ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID,1480,"Invalid agency structure","The structure in the agency is invalid"
+ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,1481,"collection is out of sync","Will be raised if a collection needed during query execution is out of sync. This currently can only happen when using satellite collections"
+ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,1482,"could not create index in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new index in the Plan hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,1483,"could not drop index in plan","Will be raised when a coordinator in a cluster cannot remove an index from the Plan hierarchy in the agency."
+ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,1484,"chain of distributeShardsLike references","Will be raised if one tries to create a collection with a distributeShardsLike attribute which points to another collection that also has one."
+ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE,1485,"must not drop collection while another has a distributeShardsLike attribute pointing to it","Will be raised if one tries to drop a collection to which another collection points with its distributeShardsLike attribute."
+ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,1486,"must not have a distributeShardsLike attribute pointing to an unknown collection","Will be raised if one tries to create a collection which points to an unknown collection in its distributeShardsLike attribute."
+
 
 ################################################################################
 ## ArangoDB query errors
@@ -273,13 +287,29 @@ ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is u
 ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
 
 ################################################################################
-## Service management errors
+## Service management errors (legacy)
+## These have been superceded by the Foxx management errors in public APIs.
 ################################################################################
 
 ERROR_SERVICE_INVALID_NAME,1750,"invalid service name","Will be raised when an invalid service name is specified."
 ERROR_SERVICE_INVALID_MOUNT,1751,"invalid mount","Will be raised when an invalid mount is specified."
 ERROR_SERVICE_DOWNLOAD_FAILED,1752,"service download failed","Will be raised when a service download from the central repository failed."
 ERROR_SERVICE_UPLOAD_FAILED,1753,"service upload failed","Will be raised when a service upload from the client to the ArangoDB server failed."
+
+################################################################################
+## LDAP errors
+################################################################################
+
+ERROR_LDAP_CANNOT_INIT,1800,"cannot init a LDAP connection","can not init a LDAP connection"
+ERROR_LDAP_CANNOT_SET_OPTION,1801,"cannot set a LDAP option","can not set a LDAP option"
+ERROR_LDAP_CANNOT_BIND,1802,"cannot bind to a LDAP server","can not bind to a LDAP server"
+ERROR_LDAP_CANNOT_UNBIND,1803,"cannot unbind from a LDAP server","can not unbind from a LDAP server"
+ERROR_LDAP_CANNOT_SEARCH,1804,"cannot issue a LDAP search","can not search the LDAP server"
+ERROR_LDAP_CANNOT_START_TLS,1805,"cannot start a TLS LDAP session","can not star a TLS LDAP session"
+ERROR_LDAP_FOUND_NO_OBJECTS,1806,"LDAP didn't found any objects","LDAP didn't found any objects with the specified search query"
+ERROR_LDAP_NOT_ONE_USER_FOUND,1807,"LDAP found zero ore more than one user","LDAP found zero ore more than one user"
+ERROR_LDAP_USER_NOT_IDENTIFIED,1808,"LDAP found a user, but its not the desired one","LDAP found a user, but its not the desired one"
+ERROR_LDAP_INVALID_MODE,1820,"invalid ldap mode","cant distinguish a valid mode for provided ldap configuration"
 
 ################################################################################
 ## Task errors
@@ -344,19 +374,25 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ################################################################################
 ## Communicator errors
 ################################################################################
-COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted", "Request was aborted."
+
+COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
 
 ################################################################################
-## Foxx Manager errors
+## Foxx management errors
 ################################################################################
 
-ERROR_MALFORMED_MANIFEST_FILE,3000,"malformed manifest file","The manifest file is malformed. It is not in a valid JSON format."
-ERROR_INVALID_SERVICE_MANIFEST,3001,"manifest file is invalid","The manifest file of this service is invalid."
-ERROR_INVALID_FOXX_OPTIONS,3004,"invalid foxx options","The options used to configure the foxx are invalid."
-ERROR_INVALID_MOUNTPOINT,3007,"mountpoint is invalid","mountpoint is invalid"
-ERROR_SERVICE_NOT_FOUND,3009,"Service not found","No service found at this mountpoint"
-ERROR_SERVICE_NEEDS_CONFIGURATION,3010,"Service not configured","The service has to be configured before it can be used"
-ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service has already been installed at this mountpoint"
+ERROR_MALFORMED_MANIFEST_FILE,3000,"failed to parse manifest file","The service manifest file is not well-formed JSON."
+ERROR_INVALID_SERVICE_MANIFEST,3001,"manifest file is invalid","The service manifest contains invalid values."
+ERROR_INVALID_FOXX_OPTIONS,3004,"service options are invalid","The service options contain invalid values."
+ERROR_INVALID_MOUNTPOINT,3007,"invalid mountpath","The service mountpath contains invalid characters."
+ERROR_SERVICE_NOT_FOUND,3009,"service not found","No service found at the given mountpath."
+ERROR_SERVICE_NEEDS_CONFIGURATION,3010,"service needs configuration","The service is missing configuration or dependencies."
+ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"service already exists","A service already exists at the given mountpath."
+ERROR_SERVICE_MANIFEST_NOT_FOUND,3012,"missing manifest file","The service directory does not contain a manifest file."
+ERROR_SERVICE_OPTIONS_MALFORMED,3013,"failed to parse service options","The service options are not well-formed JSON."
+ERROR_SERVICE_SOURCE_NOT_FOUND,3014,"source path not found","The source path does not match a file or directory."
+ERROR_SERVICE_SOURCE_ERROR,3015,"error resolving source","The source path could not be resolved."
+ERROR_SERVICE_UNKNOWN_SCRIPT,3016,"unknown script","The service does not have a script with this name."
 
 ################################################################################
 ## JavaScript module loader errors
@@ -364,7 +400,6 @@ ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service ha
 
 ERROR_MODULE_NOT_FOUND,3100,"cannot locate module","The module path could not be resolved."
 ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module in its context."
-
 
 ################################################################################
 ## Enterprise errors
@@ -374,6 +409,7 @@ ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collecti
 ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given document does not have the smart graph attribute set."
 ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the smart graph attribute."
+ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart graph attribute","The given smartGraph attribute is illegal and connot be used for sharding. All system attributes are forbidden."
 
 ################################################################################
 ## Agency errors
@@ -384,6 +420,13 @@ ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM,20012,"Inform message must contain uint pa
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string parameter 'id'","The inform message in the agency must contain a string parameter 'id'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE,20014,"Inform message must contain array 'active'","The inform message in the agency must contain an array 'active'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL,20015,"Inform message must contain object 'pool'","The inform message in the agency must contain an object 'pool'."
+ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING,20020,"Inquiry failed","Inquiry by clientId failed"
+
+################################################################################
+## Supervision errors
+################################################################################
+
+ERROR_SUPERVISION_GENERAL_FAILURE,20501,"general supervision failure","General supervision failure."
 
 ################################################################################
 ## Dispatcher errors

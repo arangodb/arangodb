@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\..\gen\gen.cpp">
+        <Filter>qvm\gen</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="qvm">
+      <UniqueIdentifier>{482A79AA-4B67-0E64-1BFB-31FE2C505E34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="qvm\gen">
+      <UniqueIdentifier>{242B44CF-3AFB-0120-61E4-5E6E22FF22B2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

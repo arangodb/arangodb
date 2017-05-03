@@ -1,237 +1,249 @@
 <script id="indicesView.ejs" type="text/template">
-  <div class="contentIn" id="indexHeaderContent">
-      <div id="indexEditView">
-        <table id="collectionEditIndexTable" class="edit-index-table arango-table">
-          <thead>
-            <tr class="figuresHeader">
-              <th class="collectionInfoTh">ID</th>
-              <th class="collectionInfoTh">Type</th>
-              <th class="collectionInfoTh">Unique</th>
-              <th class="collectionInfoTh">Sparse</th>
-              <th class="collectionInfoTh">Selectivity Est.</th>
-              <th class="collectionInfoTh">Fields</th>
-              <th class="collectionInfoTh">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-          </tbody>
-          <tfoot>
-            <tr>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td><i class="fa fa-plus-circle" id="addIndex"></i></td>
-            </tr>
-          </tfoot>
-        </table>
-    </div>
+  <% if (typeof supported !== 'undefined') { %>
+    <div class="contentIn" id="indexHeaderContent">
+        <div id="indexEditView">
+          <table id="collectionEditIndexTable" class="edit-index-table arango-table">
+            <thead>
+              <tr class="figuresHeader">
+                <th class="collectionInfoTh">ID</th>
+                <th class="collectionInfoTh">Type</th>
+                <th class="collectionInfoTh">Unique</th>
+                <th class="collectionInfoTh">Sparse</th>
+                <th class="collectionInfoTh">Selectivity Est.</th>
+                <th class="collectionInfoTh">Fields</th>
+                <th class="collectionInfoTh">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td><i class="fa fa-plus-circle" id="addIndex"></i></td>
+              </tr>
+            </tfoot>
+          </table>
+      </div>
 
-      <div id="newIndexView" class="new-index-view" style="display:none">
-        <table>
-          <tr>
-            <th class="collectionTh">Type:</th>
-            <th class="">
-              <select id="newIndexType">
-                <option value="Geo">Geo Index</option>
-                <option value="Hash">Hash Index</option>
-                <option value="Persistent">Persistent Index</option>
-                <option value="Fulltext">Fulltext Index</option>
-                <option value="Skiplist">Skip-List Index</option>
-              </select>
-            </th>
-            <th class="" style="width: 18px"/>
-          </tr>
-        </table>
-        <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
-          <table>
-            <tr>
-              <th class="collectionTh">Fields:</th>
-              <th><input type="text" id="newGeoFields" value=""/></th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list with one or two attribute paths. Example: latitude,longitude">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-            <tr>
-              <th class="collectionTh">Geo JSON:</th>
-              <th>
-                <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
-              </th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Set geoJson to true if the coordinates stored in the specified attribute are arrays in the form [longitude,latitude].">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-          </table>
-        </div>
-        <div id="newIndexTypePersistent" class="newIndexClass" style="display:none">
-          <table>
-            <tr>
-              <th class="collectionTh">Fields:</th>
-              <th><input type="text" id="newPersistentFields" value=""/></th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-            <tr>
-              <th class="collectionTh">Unique:</th>
-              <th>
-                <input id="newPersistentUnique" type="checkbox" name="newPersistentUnique" value="true">
-              </th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-            <tr>
-              <th class="collectionTh">Sparse:</th>
-              <th>
-                <input id="newPersistentSparse" type="checkbox" name="newPersistentSparse" value="true">
-              </th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-          </table>
-        </div>
-        <div id="newIndexTypeHash" class="newIndexClass" style="display:none">
-          <table>
-            <tr>
-              <th class="collectionTh">Fields:</th>
-              <th><input type="text" id="newHashFields" value=""/></th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-            <tr>
-              <th class="collectionTh">Unique:</th>
-              <th>
-                <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
-              </th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-            <tr>
-              <th class="collectionTh">Sparse:</th>
-              <th>
-                <input id="newHashSparse" type="checkbox" name="newHashSparse" value="true">
-              </th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-          </table>
-        </div>
-        <div id="newIndexTypeFulltext" class="newIndexClass" style="display:none">
-          <table>
-            <tr>
-              <th class="collectionTh">Fields:</th>
-              <th><input type="text" id="newFulltextFields" value=""/></th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A single attribute path. Example: message.text">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-            <tr>
-              <th class="collectionTh">Min. length:</th>
-              <th><input type="text" id="newFulltextMinLength" value=""/></th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-          </table>
+          <div id="newIndexView" class="new-index-view" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Type:</th>
+                <th class="">
+                  <select id="newIndexType">
+                    <% if (supported.indexOf('geo') > -1) { %> 
+                      <option value="Geo">Geo Index</option>
+                    <% } %> 
+                    <% if (supported.indexOf('hash') > -1) { %> 
+                      <option value="Hash">Hash Index</option>
+                    <% } %> 
+                    <% if (supported.indexOf('persistent') > -1) { %> 
+                      <option value="Persistent">Persistent Index</option>
+                    <% } %> 
+                    <% if (supported.indexOf('fulltext') > -1) { %> 
+                      <option value="Fulltext">Fulltext Index</option>
+                    <% } %> 
+                    <% if (supported.indexOf('skiplist') > -1) { %> 
+                      <option value="Skiplist">Skip-List Index</option>
+                    <% } %> 
+                  </select>
+                </th>
+                <th class="" style="width: 18px"/>
+              </tr>
+            </table>
+            <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
+              <table>
+                <tr>
+                  <th class="collectionTh">Fields:</th>
+                  <th><input type="text" id="newGeoFields" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list with one or two attribute paths. Example: latitude,longitude">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Geo JSON:</th>
+                  <th>
+                    <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Set geoJson to true if the coordinates stored in the specified attribute are arrays in the form [longitude,latitude].">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+              </table>
+            </div>
+            <div id="newIndexTypePersistent" class="newIndexClass" style="display:none">
+              <table>
+                <tr>
+                  <th class="collectionTh">Fields:</th>
+                  <th><input type="text" id="newPersistentFields" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Unique:</th>
+                  <th>
+                    <input id="newPersistentUnique" type="checkbox" name="newPersistentUnique" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Sparse:</th>
+                  <th>
+                    <input id="newPersistentSparse" type="checkbox" name="newPersistentSparse" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+              </table>
+            </div>
+            <div id="newIndexTypeHash" class="newIndexClass" style="display:none">
+              <table>
+                <tr>
+                  <th class="collectionTh">Fields:</th>
+                  <th><input type="text" id="newHashFields" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Unique:</th>
+                  <th>
+                    <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Sparse:</th>
+                  <th>
+                    <input id="newHashSparse" type="checkbox" name="newHashSparse" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+              </table>
+            </div>
+            <div id="newIndexTypeFulltext" class="newIndexClass" style="display:none">
+              <table>
+                <tr>
+                  <th class="collectionTh">Fields:</th>
+                  <th><input type="text" id="newFulltextFields" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A single attribute path. Example: message.text">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Min. length:</th>
+                  <th><input type="text" id="newFulltextMinLength" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+              </table>
 
+            </div>
+            <div id="newIndexTypeSkiplist" class="newIndexClass" style="display:none">
+              <table>
+                <tr>
+                  <th class="collectionTh">Fields:</th>
+                  <th><input type="text" id="newSkiplistFields" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Unique:</th>
+                  <th>
+                    <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Sparse:</th>
+                  <th>
+                    <input id="newSkiplistSparse" type="checkbox" name="newSkiplistSparse" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+              </table>
+            </div>
+            <div class="index-button-bar index-button-bar2">
+              <button id="createIndex" class="button-success" style="margin-left: 15px;">Create</button>
+              <button id="cancelIndex" class="button-close" style="margin-left: 0;"><i class="fa fa-arrow-left"></i>
+                <span style="margin-left: 5px;">Back</span>
+              </button>
+            </div>
         </div>
-        <div id="newIndexTypeSkiplist" class="newIndexClass" style="display:none">
-          <table>
-            <tr>
-              <th class="collectionTh">Fields:</th>
-              <th><input type="text" id="newSkiplistFields" value=""/></th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-            <tr>
-              <th class="collectionTh">Unique:</th>
-              <th>
-                <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
-              </th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-            <tr>
-              <th class="collectionTh">Sparse:</th>
-              <th>
-                <input id="newSkiplistSparse" type="checkbox" name="newSkiplistSparse" value="true">
-              </th>
-              <th class="tooltipInfoTh">
-                <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
-                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                  </a>
-                </div>
-              </th>
-            </tr>
-          </table>
+        <div id="modal-dialog">
+          <div class="modal-footer" style="border: none"></div>
         </div>
-        <div class="index-button-bar index-button-bar2">
-          <button id="createIndex" class="button-success" style="margin-left: 15px;">Create</button>
-          <button id="cancelIndex" class="button-close" style="margin-left: 0;"><i class="fa fa-arrow-left"></i>
-            <span style="margin-left: 5px;">Back</span>
-          </button>
-        </div>
-    </div>
-    <div id="modal-dialog">
-      <div class="modal-footer" style="border: none"></div>
-    </div>
-  </div>
+      </div>
+    <% } %>
 </script>

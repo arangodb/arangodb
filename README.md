@@ -11,9 +11,11 @@ ArangoDB
 2.6: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.6)](http://travis-ci.org/arangodb/arangodb)
 2.7: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.7)](http://travis-ci.org/arangodb/arangodb)
 2.8: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=2.8)](http://travis-ci.org/arangodb/arangodb)
-3.0: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=3.0)](http://travis-ci.org/arangodb/arangodb)
 
-Slack: [![ArangoDB-Logo](http://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
+3.0: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=3.0)](http://travis-ci.org/arangodb/arangodb)
+3.1: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=3.1)](http://travis-ci.org/arangodb/arangodb)
+
+Slack: [![ArangoDB-Logo](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
 
 ArangoDB is a multi-model, open-source database with flexible data models for
 documents, graphs, and key-values. Build high performance applications using a
@@ -87,24 +89,13 @@ Other features of ArangoDB include:
 For more in-depth information read the [design goals of ArangoDB](https://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
 
 
-Latest Release - ArangoDB 3.0
------------------------------
+Latest Release
+--------------
 
-The [What's new in ArangoDB 3.0](https://docs.arangodb.com/3.0/Manual/ReleaseNotes/NewFeatures30.html) can be found in the documentation.
+Packages for all supported platforms can be downloaded from [https://www.arangodb.com/download](https://www.arangodb.com/download/).
 
-Key features of the 3.0 release are:
+Please also check [what's new in ArangoDB](https://docs.arangodb.com/latest/Manual/ReleaseNotes/).
 
-- Use of VelocyPack as internal storage format
-- AQL improvements
-- Much better cluster state management
-- Synchronous replication (master/master)
-- Unified APIs for CRUD operations
-- Persistent indexes
-- Upgraded version of V8
-- New web admin interface
-- Foxx improvements
-- Logging improvements
-- Improved documentation
 
 More Information
 ----------------
@@ -126,12 +117,12 @@ issue tracker for reporting them:
 
 You can use the Google group for improvements, feature requests, comments:
 
-[http://www.arangodb.com/community](https://www.arangodb.com/community)
+[https://www.arangodb.com/community](https://www.arangodb.com/community)
 
 StackOverflow is great for questions about AQL, usage scenarios etc.
 
-[http://stackoverflow.com/questions/tagged/arangodb](http://stackoverflow.com/questions/tagged/arangodb)
+[https://stackoverflow.com/questions/tagged/arangodb](https://stackoverflow.com/questions/tagged/arangodb)
 
 To chat with the community and the developers we offer a Slack chat:
 
-[http://slack.arangodb.com/](http://slack.arangodb.com/)
+[https://slack.arangodb.com/](https://slack.arangodb.com/)

@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1detail_1_1default__rstar__reinserted__elements__s" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::detail::default_rstar_reinserted_elements_s</compoundname>
+    <templateparamlist>
+      <param>
+        <type>size_t</type>
+        <declname>MaxElements</declname>
+        <defname>MaxElements</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1detail_1_1default__rstar__reinserted__elements__s_1ae7e8b4fa48d63d489a56dccbd93335be" prot="public" static="yes" mutable="no">
+        <type>const size_t</type>
+        <definition>const size_t boost::geometry::index::detail::default_rstar_reinserted_elements_s&lt; MaxElements &gt;::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <initializer>= (MaxElements * 3) / 10</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="46" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="46" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="45" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="44" bodyend="47"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__rstar__reinserted__elements__s_1ae7e8b4fa48d63d489a56dccbd93335be" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::default_rstar_reinserted_elements_s</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

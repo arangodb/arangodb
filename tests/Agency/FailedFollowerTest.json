@@ -1,0 +1,87 @@
+R"=(
+{
+  "arango": {
+    "Current": {
+      "Collections": {
+        "database": {
+          "collection": {
+            "s99": {
+              "servers": [
+                "leader",
+                "follower1",
+                "follower2"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "Plan": {
+      "Collections": {
+        "database": {
+          "collection": {
+            "shards": {
+              "s99": [
+                "leader",
+                "follower1",
+                "follower2"
+              ]
+            }
+          }
+        }
+      },
+      "DBServers": {
+        "follower1": "none",
+        "follower2": "none",
+        "free": "none",
+        "free2": "none",
+        "leader": "none"
+      }
+    },
+    "Supervision": {
+      "DBServers": {},
+      "Health": {
+        "follower1": {
+          "Status": "FAILED"
+        },
+        "follower2": {
+          "Status": "GOOD"
+        },
+        "leader": {
+          "Status": "GOOD"
+        },
+        "free": {
+          "Status": "GOOD"
+        },
+        "free2": {
+          "Status": "GOOD"
+        }
+      },
+      "Shards": {}
+    },
+    "Target": {
+      "MapUniqueToShortID": {
+        "follower1": {
+          "ShortName": "follower1"
+        },
+        "follower2": {
+          "ShortName": "follower2"
+        },
+        "free": {
+          "ShortName": "free"
+        },
+        "free2": {
+          "ShortName": "free2"
+        },
+        "leader": {
+          "ShortName": "leader"
+        }
+      },
+      "Pending": {},
+      "Failed": {},
+      "Finished": {},
+      "ToDo": {}
+    }
+  }
+}
+)="

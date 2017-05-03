@@ -125,6 +125,8 @@ struct TRI_external_status_t {
   std::string _errorMessage;
 };
 
+void TRI_LogProcessInfoSelf(char const* message = nullptr);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +171,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_KillExternalProcess(TRI_external_id_t pid);
+bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief suspends an external process, only on Unix

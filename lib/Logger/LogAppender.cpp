@@ -70,7 +70,7 @@ void LogAppender::addTtyAppender() { _ttyAppender.reset(new LogAppenderTty()); }
 
 std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     std::string const& definition, std::string const& filter) {
-  std::vector<std::string> v = StringUtils::split(definition, '=');
+  std::vector<std::string> v = StringUtils::split(definition, '=', '\0');
   std::string topicName;
   std::string output;
   std::string contentFilter;
@@ -88,7 +88,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
       output = v[1];
     }
   } else {
-    LOG(ERR) << "strange output definition '" << definition << "' ignored";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange output definition '" << definition << "' ignored";
     return {nullptr, nullptr};
   }
 
@@ -98,13 +98,13 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     topic = LogTopic::lookup(topicName);
 
     if (topic == nullptr) {
-      LOG(ERR) << "strange topic '" << topicName
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange topic '" << topicName
                << "', ignoring whole defintion";
       return {nullptr, nullptr};
     }
   }
 
-  auto key = make_pair(output, contentFilter);
+  auto key = std::make_pair(output, contentFilter);
 
 #ifdef ARANGODB_ENABLE_SYSLOG
   if (StringUtils::isPrefix(output, "syslog://")) {
@@ -124,7 +124,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     auto s = StringUtils::split(output.substr(9), '/');
 
     if (s.size() < 1 || s.size() > 2) {
-      LOG(ERR) << "unknown syslog definition '" << output << "', expecting "
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown syslog definition '" << output << "', expecting "
                << "'syslog://facility/identifier'";
       return {nullptr, nullptr};
     }
@@ -151,7 +151,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
   } else if (StringUtils::isPrefix(output, "file://")) {
     filename = output.substr(7);
   } else {
-    LOG(ERR) << "unknown output definition '" << output << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown output definition '" << output << "'";
     return {nullptr, nullptr};
   }
 

@@ -53,6 +53,9 @@
 ///   Will be raised when a request is canceled by the user.
 /// - 22: @LIT{intentional debug error}
 ///   Will be raised intentionally during debugging.
+/// - 23: @LIT{not yet implemented}
+///   Will be raised when hitting an unimplemented feature that will be
+///   implemented soon.
 /// - 25: @LIT{IP address is invalid}
 ///   Will be raised when the structure of an IP address is invalid.
 /// - 27: @LIT{file exists}
@@ -67,6 +70,9 @@
 /// - 31: @LIT{only enterprise version}
 ///   Will be raised when an enterprise-feature is requested from the community
 ///   edition.
+/// - 32: @LIT{resource limit exceeded}
+///   Will be raised when the resources used by an operation exceed the
+///   configured maximum value.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -145,7 +151,7 @@
 ///   Will be raised when a document with a given identifier or handle is
 ///   unknown.
 /// - 1203: @LIT{collection not found}
-///   Will be raised when a collection with a given identifier or name is
+///   Will be raised when a collection with the given identifier or name is
 ///   unknown.
 /// - 1204: @LIT{parameter 'collection' not found}
 ///   Will be raised when the collection parameter is missing.
@@ -161,6 +167,8 @@
 ///   Will be raised when no suitable index for the query is known.
 /// - 1210: @LIT{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
+/// - 1211: @LIT{view not found}
+///   Will be raised when a view with the given identifier or name is unknown.
 /// - 1212: @LIT{index not found}
 ///   Will be raised when an index with a given identifier is unknown.
 /// - 1213: @LIT{cross collection request not allowed}
@@ -229,6 +237,15 @@
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
 ///   Will be raised when encountering an empty server database directory.
+/// - 1302: @LIT{operation should be tried again}
+///   Will be raised when an operation should be retried.
+/// - 1303: @LIT{engine is busy}
+///   Will be raised when storage engine is busy.
+/// - 1304: @LIT{merge in progress}
+///   Will be raised when storage engine has a datafile merge in progress and
+///   cannot complete the operation.
+/// - 1305: @LIT{storage engine I/O error}
+///   Will be raised when storage engine encounters an I/O error.
 /// - 1400: @LIT{no response}
 ///   Will be raised when the replication applier does not receive any or an
 ///   incomplete response from the master.
@@ -362,6 +379,25 @@
 ///   An endpoint couldn't be found
 /// - 1480: @LIT{Invalid agency structure}
 ///   The structure in the agency is invalid
+/// - 1481: @LIT{collection is out of sync}
+///   Will be raised if a collection needed during query execution is out of
+///   sync. This currently can only happen when using satellite collections
+/// - 1482: @LIT{could not create index in plan}
+///   Will be raised when a coordinator in a cluster cannot create an entry for
+///   a new index in the Plan hierarchy in the agency.
+/// - 1483: @LIT{could not drop index in plan}
+///   Will be raised when a coordinator in a cluster cannot remove an index
+///   from the Plan hierarchy in the agency.
+/// - 1484: @LIT{chain of distributeShardsLike references}
+///   Will be raised if one tries to create a collection with a
+///   distributeShardsLike attribute which points to another collection that
+///   also has one.
+/// - 1485: @LIT{must not drop collection while another has a distributeShardsLike attribute pointing to it}
+///   Will be raised if one tries to drop a collection to which another
+///   collection points with its distributeShardsLike attribute.
+/// - 1486: @LIT{must not have a distributeShardsLike attribute pointing to an unknown collection}
+///   Will be raised if one tries to create a collection which points to an
+///   unknown collection in its distributeShardsLike attribute.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -503,6 +539,26 @@
 /// - 1753: @LIT{service upload failed}
 ///   Will be raised when a service upload from the client to the ArangoDB
 ///   server failed.
+/// - 1800: @LIT{cannot init a LDAP connection}
+///   can not init a LDAP connection
+/// - 1801: @LIT{cannot set a LDAP option}
+///   can not set a LDAP option
+/// - 1802: @LIT{cannot bind to a LDAP server}
+///   can not bind to a LDAP server
+/// - 1803: @LIT{cannot unbind from a LDAP server}
+///   can not unbind from a LDAP server
+/// - 1804: @LIT{cannot issue a LDAP search}
+///   can not search the LDAP server
+/// - 1805: @LIT{cannot start a TLS LDAP session}
+///   can not star a TLS LDAP session
+/// - 1806: @LIT{LDAP didn't found any objects}
+///   LDAP didn't found any objects with the specified search query
+/// - 1807: @LIT{LDAP found zero ore more than one user}
+///   LDAP found zero ore more than one user
+/// - 1808: @LIT{LDAP found a user, but its not the desired one}
+///   LDAP found a user, but its not the desired one
+/// - 1820: @LIT{invalid ldap mode}
+///   cant distinguish a valid mode for provided ldap configuration
 /// - 1850: @LIT{invalid task id}
 ///   Will be raised when a task is created with an invalid id.
 /// - 1851: @LIT{duplicate task id}
@@ -588,21 +644,31 @@
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
 /// - 2100: @LIT{Request aborted}
-///    "Request was aborted."
-/// - 3000: @LIT{malformed manifest file}
-///   The manifest file is malformed. It is not in a valid JSON format.
+///   Request was aborted.
+/// - 3000: @LIT{failed to parse manifest file}
+///   The service manifest file is not well-formed JSON.
 /// - 3001: @LIT{manifest file is invalid}
-///   The manifest file of this service is invalid.
-/// - 3004: @LIT{invalid foxx options}
-///   The options used to configure the foxx are invalid.
-/// - 3007: @LIT{mountpoint is invalid}
-///   mountpoint is invalid
-/// - 3009: @LIT{Service not found}
-///   No service found at this mountpoint
-/// - 3010: @LIT{Service not configured}
-///   The service has to be configured before it can be used
-/// - 3011: @LIT{mountpoint already in use}
-///   A service has already been installed at this mountpoint
+///   The service manifest contains invalid values.
+/// - 3004: @LIT{service options are invalid}
+///   The service options contain invalid values.
+/// - 3007: @LIT{invalid mountpath}
+///   The service mountpath contains invalid characters.
+/// - 3009: @LIT{service not found}
+///   No service found at the given mountpath.
+/// - 3010: @LIT{service needs configuration}
+///   The service is missing configuration or dependencies.
+/// - 3011: @LIT{service already exists}
+///   A service already exists at the given mountpath.
+/// - 3012: @LIT{missing manifest file}
+///   The service directory does not contain a manifest file.
+/// - 3013: @LIT{failed to parse service options}
+///   The service options are not well-formed JSON.
+/// - 3014: @LIT{source path not found}
+///   The source path does not match a file or directory.
+/// - 3015: @LIT{error resolving source}
+///   The source path could not be resolved.
+/// - 3016: @LIT{unknown script}
+///   The service does not have a script with this name.
 /// - 3100: @LIT{cannot locate module}
 ///   The module path could not be resolved.
 /// - 3103: @LIT{failed to invoke module}
@@ -617,6 +683,9 @@
 /// - 4003: @LIT{in smart vertex collections _key must be prefixed with the value of the smart graph attribute}
 ///   In a smart vertex collection _key must be prefixed with the value of the
 ///   smart graph attribute.
+/// - 4004: @LIT{attribute cannot be used as smart graph attribute}
+///   The given smartGraph attribute is illegal and connot be used for
+///   sharding. All system attributes are forbidden.
 /// - 20011: @LIT{Inform message must be an object.}
 ///   The inform message in the agency must be an object.
 /// - 20012: @LIT{Inform message must contain uint parameter 'term'}
@@ -627,6 +696,10 @@
 ///   The inform message in the agency must contain an array 'active'.
 /// - 20015: @LIT{Inform message must contain object 'pool'}
 ///   The inform message in the agency must contain an object 'pool'.
+/// - 20020: @LIT{Inquiry failed}
+///   Inquiry by clientId failed
+/// - 20501: @LIT{general supervision failure}
+///   General supervision failure.
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -878,6 +951,17 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_DEBUG                                                   (22)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 23: ERROR_NOT_YET_IMPLEMENTED
+///
+/// not yet implemented
+///
+/// Will be raised when hitting an unimplemented feature that will be
+/// implemented soon.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_NOT_YET_IMPLEMENTED                                     (23)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 25: ERROR_IP_ADDRESS_INVALID
 ///
 /// IP address is invalid
@@ -938,6 +1022,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ONLY_ENTERPRISE                                         (31)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 32: ERROR_RESOURCE_LIMIT
+///
+/// resource limit exceeded
+///
+/// Will be raised when the resources used by an operation exceed the
+/// configured maximum value.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_RESOURCE_LIMIT                                          (32)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -1273,7 +1368,8 @@ void TRI_InitializeErrorMessages ();
 ///
 /// collection not found
 ///
-/// Will be raised when a collection with a given identifier or name is unknown.
+/// Will be raised when a collection with the given identifier or name is
+/// unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                             (1203)
@@ -1347,6 +1443,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       (1210)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1211: ERROR_ARANGO_VIEW_NOT_FOUND
+///
+/// view not found
+///
+/// Will be raised when a view with the given identifier or name is unknown.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_VIEW_NOT_FOUND                                   (1211)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1212: ERROR_ARANGO_INDEX_NOT_FOUND
@@ -1639,6 +1745,47 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_EMPTY_DATADIR                                    (1301)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1302: ERROR_ARANGO_TRY_AGAIN
+///
+/// operation should be tried again
+///
+/// Will be raised when an operation should be retried.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_TRY_AGAIN                                        (1302)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1303: ERROR_ARANGO_BUSY
+///
+/// engine is busy
+///
+/// Will be raised when storage engine is busy.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_BUSY                                             (1303)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1304: ERROR_ARANGO_MERGE_IN_PROGRESS
+///
+/// merge in progress
+///
+/// Will be raised when storage engine has a datafile merge in progress and
+/// cannot complete the operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_MERGE_IN_PROGRESS                                (1304)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1305: ERROR_ARANGO_IO_ERROR
+///
+/// storage engine I/O error
+///
+/// Will be raised when storage engine encounters an I/O error.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_IO_ERROR                                         (1305)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1400: ERROR_REPLICATION_NO_RESPONSE
@@ -2131,6 +2278,75 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID                        (1480)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1481: ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC
+///
+/// collection is out of sync
+///
+/// Will be raised if a collection needed during query execution is out of
+/// sync. This currently can only happen when using satellite collections
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC                      (1481)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1482: ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN
+///
+/// could not create index in plan
+///
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new index in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN                  (1482)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1483: ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN
+///
+/// could not drop index in plan
+///
+/// Will be raised when a coordinator in a cluster cannot remove an index from
+/// the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN                    (1483)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1484: ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE
+///
+/// chain of distributeShardsLike references
+///
+/// Will be raised if one tries to create a collection with a
+/// distributeShardsLike attribute which points to another collection that also
+/// has one.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE                   (1484)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1485: ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE
+///
+/// must not drop collection while another has a distributeShardsLike attribute
+/// pointing to it
+///
+/// Will be raised if one tries to drop a collection to which another
+/// collection points with its distributeShardsLike attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE   (1485)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1486: ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE
+///
+/// must not have a distributeShardsLike attribute pointing to an unknown
+/// collection
+///
+/// Will be raised if one tries to create a collection which points to an
+/// unknown collection in its distributeShardsLike attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE                    (1486)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
@@ -2726,6 +2942,106 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_SERVICE_UPLOAD_FAILED                                   (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1800: ERROR_LDAP_CANNOT_INIT
+///
+/// cannot init a LDAP connection
+///
+/// can not init a LDAP connection
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_INIT                                        (1800)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1801: ERROR_LDAP_CANNOT_SET_OPTION
+///
+/// cannot set a LDAP option
+///
+/// can not set a LDAP option
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_SET_OPTION                                  (1801)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1802: ERROR_LDAP_CANNOT_BIND
+///
+/// cannot bind to a LDAP server
+///
+/// can not bind to a LDAP server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_BIND                                        (1802)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1803: ERROR_LDAP_CANNOT_UNBIND
+///
+/// cannot unbind from a LDAP server
+///
+/// can not unbind from a LDAP server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_UNBIND                                      (1803)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1804: ERROR_LDAP_CANNOT_SEARCH
+///
+/// cannot issue a LDAP search
+///
+/// can not search the LDAP server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_SEARCH                                      (1804)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1805: ERROR_LDAP_CANNOT_START_TLS
+///
+/// cannot start a TLS LDAP session
+///
+/// can not star a TLS LDAP session
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_START_TLS                                   (1805)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1806: ERROR_LDAP_FOUND_NO_OBJECTS
+///
+/// LDAP didn't found any objects
+///
+/// LDAP didn't found any objects with the specified search query
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_FOUND_NO_OBJECTS                                   (1806)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1807: ERROR_LDAP_NOT_ONE_USER_FOUND
+///
+/// LDAP found zero ore more than one user
+///
+/// LDAP found zero ore more than one user
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_NOT_ONE_USER_FOUND                                 (1807)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1808: ERROR_LDAP_USER_NOT_IDENTIFIED
+///
+/// LDAP found a user, but its not the desired one
+///
+/// LDAP found a user, but its not the desired one
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_USER_NOT_IDENTIFIED                                (1808)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1820: ERROR_LDAP_INVALID_MODE
+///
+/// invalid ldap mode
+///
+/// cant distinguish a valid mode for provided ldap configuration
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_INVALID_MODE                                       (1820)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1850: ERROR_TASK_INVALID_ID
 ///
 /// invalid task id
@@ -3132,7 +3448,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// Request aborted
 ///
-///  "Request was aborted."
+/// Request was aborted.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_COMMUNICATOR_REQUEST_ABORTED                                  (2100)
@@ -3140,9 +3456,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3000: ERROR_MALFORMED_MANIFEST_FILE
 ///
-/// malformed manifest file
+/// failed to parse manifest file
 ///
-/// The manifest file is malformed. It is not in a valid JSON format.
+/// The service manifest file is not well-formed JSON.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_MALFORMED_MANIFEST_FILE                                 (3000)
@@ -3152,7 +3468,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// manifest file is invalid
 ///
-/// The manifest file of this service is invalid.
+/// The service manifest contains invalid values.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_SERVICE_MANIFEST                                (3001)
@@ -3160,9 +3476,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3004: ERROR_INVALID_FOXX_OPTIONS
 ///
-/// invalid foxx options
+/// service options are invalid
 ///
-/// The options used to configure the foxx are invalid.
+/// The service options contain invalid values.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_FOXX_OPTIONS                                    (3004)
@@ -3170,9 +3486,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3007: ERROR_INVALID_MOUNTPOINT
 ///
-/// mountpoint is invalid
+/// invalid mountpath
 ///
-/// mountpoint is invalid
+/// The service mountpath contains invalid characters.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_MOUNTPOINT                                      (3007)
@@ -3180,9 +3496,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3009: ERROR_SERVICE_NOT_FOUND
 ///
-/// Service not found
+/// service not found
 ///
-/// No service found at this mountpoint
+/// No service found at the given mountpath.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SERVICE_NOT_FOUND                                       (3009)
@@ -3190,9 +3506,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3010: ERROR_SERVICE_NEEDS_CONFIGURATION
 ///
-/// Service not configured
+/// service needs configuration
 ///
-/// The service has to be configured before it can be used
+/// The service is missing configuration or dependencies.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SERVICE_NEEDS_CONFIGURATION                             (3010)
@@ -3200,12 +3516,62 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3011: ERROR_SERVICE_MOUNTPOINT_CONFLICT
 ///
-/// mountpoint already in use
+/// service already exists
 ///
-/// A service has already been installed at this mountpoint
+/// A service already exists at the given mountpath.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SERVICE_MOUNTPOINT_CONFLICT                             (3011)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3012: ERROR_SERVICE_MANIFEST_NOT_FOUND
+///
+/// missing manifest file
+///
+/// The service directory does not contain a manifest file.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_MANIFEST_NOT_FOUND                              (3012)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3013: ERROR_SERVICE_OPTIONS_MALFORMED
+///
+/// failed to parse service options
+///
+/// The service options are not well-formed JSON.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_OPTIONS_MALFORMED                               (3013)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3014: ERROR_SERVICE_SOURCE_NOT_FOUND
+///
+/// source path not found
+///
+/// The source path does not match a file or directory.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_SOURCE_NOT_FOUND                                (3014)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3015: ERROR_SERVICE_SOURCE_ERROR
+///
+/// error resolving source
+///
+/// The source path could not be resolved.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_SOURCE_ERROR                                    (3015)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3016: ERROR_SERVICE_UNKNOWN_SCRIPT
+///
+/// unknown script
+///
+/// The service does not have a script with this name.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_UNKNOWN_SCRIPT                                  (3016)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3100: ERROR_MODULE_NOT_FOUND
@@ -3270,6 +3636,17 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         (4003)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 4004: ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE
+///
+/// attribute cannot be used as smart graph attribute
+///
+/// The given smartGraph attribute is illegal and connot be used for sharding.
+/// All system attributes are forbidden.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           (4004)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 20011: ERROR_AGENCY_INFORM_MUST_BE_OBJECT
 ///
 /// Inform message must be an object.
@@ -3318,6 +3695,26 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL                         (20015)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20020: ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING
+///
+/// Inquiry failed
+///
+/// Inquiry by clientId failed
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING                 (20020)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20501: ERROR_SUPERVISION_GENERAL_FAILURE
+///
+/// general supervision failure
+///
+/// General supervision failure.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             (20501)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING

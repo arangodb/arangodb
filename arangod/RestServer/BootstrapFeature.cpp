@@ -22,8 +22,8 @@
 
 #include "RestServer/BootstrapFeature.h"
 
+#include "Agency/AgencyComm.h"
 #include "Aql/QueryList.h"
-#include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -45,7 +45,7 @@ BootstrapFeature::BootstrapFeature(
   startsAfter("Endpoint");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("LogfileManager");
+  startsAfter("MMFilesLogfileManager");
   startsAfter("Database");
   startsAfter("Upgrade");
   startsAfter("CheckVersion");
@@ -61,7 +61,7 @@ void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 static void raceForClusterBootstrap() {
   AgencyComm agency;
   auto ci = ClusterInfo::instance();
-
+  
   while (true) {
     AgencyCommResult result = agency.getValues("Bootstrap");
     if (!result.successful()) {
@@ -71,11 +71,13 @@ static void raceForClusterBootstrap() {
       sleep(1);
       continue;
     }
+
     VPackSlice value = result.slice()[0].get(
-        std::vector<std::string>({agency.prefix(), "Bootstrap"}));
+        std::vector<std::string>({AgencyCommManager::path(), "Bootstrap"}));
+
     if (value.isString()) {
       // key was found and is a string
-      if (value.isEqualString("done")) {
+      if (value.copyString().find("done") != std::string::npos) {
         // all done, let's get out of here:
         LOG_TOPIC(TRACE, Logger::STARTUP)
             << "raceForClusterBootstrap: bootstrap already done";
@@ -112,13 +114,14 @@ static void raceForClusterBootstrap() {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
     auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
-    V8DealerFeature::DEALER->loadJavascriptFiles(vocbase, "server/bootstrap/cluster-bootstrap.js", 0);
+    V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(
+        vocbase, "server/bootstrap/cluster-bootstrap.js");
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
 
     b.clear();
-    b.add(VPackValue("done"));
+    b.add(VPackValue(arangodb::ServerState::instance()->getId() + ": done"));
     result = agency.setValue("Bootstrap", b.slice(), 0);
     if (result.successful()) {
       return;
@@ -133,33 +136,34 @@ static void raceForClusterBootstrap() {
 
 void BootstrapFeature::start() {
   auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
-  
+
   auto ss = ServerState::instance();
+
   if (!ss->isRunningInCluster()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
-    V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js");
   } else if (ss->isCoordinator()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
     raceForClusterBootstrap();
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/coordinator.js";
-    V8DealerFeature::DEALER->loadJavascript(vocbase,
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
                                             "server/bootstrap/coordinator.js");
   } else if (ss->isDBServer()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/db-server.js";
-    V8DealerFeature::DEALER->loadJavascript(vocbase,
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
                                             "server/bootstrap/db-server.js");
   }
 
   // Start service properly:
   rest::RestHandlerFactory::setMaintenance(false);
 
-  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
 
   if (_bark) {
-    LOG(INFO) << "The dog says: wau wau!";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "The dog says: wau wau!";
   }
 
   _isReady = true;
@@ -167,7 +171,9 @@ void BootstrapFeature::start() {
 
 void BootstrapFeature::unprepare() {
   // notify all currently running queries about the shutdown
-  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto databaseFeature =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database");
 
   if (ServerState::instance()->isCoordinator()) {
     for (auto& id : databaseFeature->getDatabaseIdsCoordinator(true)) {

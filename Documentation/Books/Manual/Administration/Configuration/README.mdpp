@@ -1,8 +1,10 @@
-!CHAPTER Command-line options
+Command-line options
+====================
 
-!SECTION General Options
+General Options
+---------------
 
-!SUBSECTION General help
+### General help
 
 `--help`
 
@@ -11,7 +13,7 @@
 Prints a list of the most common options available and then exits. In order to
 see all options use *--help-all*.
 
-!SUBSECTION Version
+### Version
 
 `--version`
 
@@ -19,7 +21,7 @@ see all options use *--help-all*.
 
 Prints the version of the server and exits.
 
-!SUBSECTION Configuration Files
+### Configuration Files
 
 Options can be specified on the command line or in configuration files. If a
 string *Variable* occurs in the value, it is replaced by the corresponding

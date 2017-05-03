@@ -1,0 +1,107 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2017-2017 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Michael Hackstein
+////////////////////////////////////////////////////////////////////////////////
+
+#include "TraverserCache.h"
+
+#include "Basics/StringHeap.h"
+#include "Basics/StringRef.h"
+#include "Basics/VelocyPackHelper.h"
+
+#include "Aql/AqlValue.h"
+#include "Logger/Logger.h"
+#include "Transaction/Methods.h"
+#include "VocBase/ManagedDocumentResult.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+using namespace arangodb;
+using namespace arangodb::traverser;
+
+TraverserCache::TraverserCache(transaction::Methods* trx)
+    : _mmdr(new ManagedDocumentResult{}),
+      _trx(trx), _insertedDocuments(0),
+      _filteredDocuments(0),
+      _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for performance */ {
+}
+
+TraverserCache::~TraverserCache() {}
+
+VPackSlice TraverserCache::lookupInCollection(StringRef id) {
+  size_t pos = id.find('/');
+  if (pos == std::string::npos) {
+    // Invalid input. If we get here somehow we managed to store invalid _from/_to
+    // values or the traverser did a let an illegal start through
+    TRI_ASSERT(false);
+    return basics::VelocyPackHelper::NullValue();
+  }
+  Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
+                                        id.substr(pos + 1).toString(), *_mmdr);
+
+  if (!res.ok() && (res.errorNumber() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    // ok we are in a rather bad state. Better throw and abort.
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  VPackSlice result;
+  if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    // This is expected, we may have dangling edges. Interpret as NULL
+    result = basics::VelocyPackHelper::NullValue();
+  } else {
+    result = VPackSlice(_mmdr->vpack());
+  }
+  ++_insertedDocuments;
+  return result;
+}
+
+void TraverserCache::insertIntoResult(StringRef idString,
+                                      VPackBuilder& builder) {
+  builder.add(lookupInCollection(idString));
+}
+
+aql::AqlValue TraverserCache::fetchAqlResult(StringRef idString) {
+  return aql::AqlValue(lookupInCollection(idString));
+}
+
+void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Slice const& document) {
+  ++_insertedDocuments;
+  return;
+}
+
+bool TraverserCache::validateFilter(
+    StringRef idString,
+    std::function<bool(VPackSlice const&)> filterFunc) {
+  VPackSlice slice = lookupInCollection(idString);
+  return filterFunc(slice);
+}
+
+StringRef TraverserCache::persistString(
+    StringRef const idString) {
+  auto it = _persistedStrings.find(idString);
+  if (it != _persistedStrings.end()) {
+    return *it;
+  }
+  StringRef res = _stringHeap->registerString(idString.begin(), idString.length());
+  _persistedStrings.emplace(res);
+  return res;
+}

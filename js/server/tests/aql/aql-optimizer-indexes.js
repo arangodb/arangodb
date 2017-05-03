@@ -55,6 +55,29 @@ function optimizerIndexesTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test same results for const access queries
+////////////////////////////////////////////////////////////////////////////////
+
+    testSameResultsConstAccess : function () {
+      var bind = { doc : { key: "test1" } };
+      var q1 = `RETURN (FOR item IN UnitTestsCollection FILTER (@doc.key == item._key) LIMIT 1 RETURN item)[0]`; 
+      var q2 = `LET doc = @doc RETURN (FOR item IN UnitTestsCollection FILTER (doc.key == item._key) LIMIT 1 RETURN item)[0]`; 
+      var q3 = `LET doc = { key: "test1" } RETURN (FOR item IN UnitTestsCollection FILTER (doc.key == item._key) LIMIT 1 RETURN item)[0]`;
+      
+      var results = AQL_EXECUTE(q1, bind);
+      assertEqual(1, results.json.length);
+      assertEqual("test1", results.json[0]._key);
+      
+      results = AQL_EXECUTE(q2, bind);
+      assertEqual(1, results.json.length);
+      assertEqual("test1", results.json[0]._key);
+      
+      results = AQL_EXECUTE(q3);
+      assertEqual(1, results.json.length);
+      assertEqual("test1", results.json[0]._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -94,6 +117,28 @@ function optimizerIndexesTestSuite () {
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(0, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _id
+////////////////////////////////////////////////////////////////////////////////
+
+    testUsePrimaryIdInAttributeAccess : function () {
+      var values = [ "UnitTestsCollection/test1", "UnitTestsCollection/test2", "UnitTestsCollection/test21", "UnitTestsCollection/test30" ];
+      var query = "LET data = NOOPT({ ids : " + JSON.stringify(values) + " }) FOR i IN " + c.name() + " FILTER i._id IN data.ids RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1, 2, 21, 30 ], results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(4, results.stats.scannedIndex);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,6 +225,28 @@ function optimizerIndexesTestSuite () {
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(0, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _id
+////////////////////////////////////////////////////////////////////////////////
+
+    testUsePrimaryKeyInAttributeAccess : function () {
+      var values = [ "test1", "test2", "test21", "test30" ];
+      var query = "LET data = NOOPT({ ids : " + JSON.stringify(values) + " }) FOR i IN " + c.name() + " FILTER i._key IN data.ids RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1, 2, 21, 30 ], results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(4, results.stats.scannedIndex);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,7 +475,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -923,7 +990,11 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          assertEqual("hash", node.indexes[0].type);
+           if (db._engine().name === "rocksdb") {
+             assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+           } else {
+            assertEqual("hash", node.indexes[0].type);
+           }
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -1009,12 +1080,18 @@ function optimizerIndexesTestSuite () {
           ++indexNodes;
           if (indexNodes === 1) {
             // skiplist must be used for the first FOR
-            assertEqual("skiplist", node.indexes[0].type);
+            if (db._engine().name === "rocksdb") {
+              assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+            } else {
+              assertEqual("skiplist", node.indexes[0].type);
+            }
             assertEqual("i", node.outVariable.name);
           }
           else {
-            // second FOR should use a hash index
-            assertEqual("hash", node.indexes[0].type);
+            if (db._engine().name !== "rocksdb") {// all indexes were created equal
+              // second FOR should use a hash index
+              assertEqual("hash", node.indexes[0].type);
+            }
             assertEqual("j", node.outVariable.name);
           }
         }
@@ -1088,11 +1165,19 @@ function optimizerIndexesTestSuite () {
         if (node.type === "IndexNode") {
           ++indexNodes;
           if (indexNodes === 1) {
-            assertEqual("hash", node.indexes[0].type);
+            if (db._engine().name === "rocksdb") {
+              assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+            } else {
+              assertEqual("hash", node.indexes[0].type);
+            }
             assertEqual("i", node.outVariable.name);
           }
           else if (indexNodes === 2) {
-            assertEqual("hash", node.indexes[0].type);
+            if (db._engine().name === "rocksdb") {
+              assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+            } else {
+              assertEqual("hash", node.indexes[0].type);
+            }
             assertEqual("j", node.outVariable.name);
           }
           else {
@@ -1150,7 +1235,11 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          assertEqual("hash", node.indexes[0].type);
+          if (db._engine().name === "rocksdb") {
+             assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+          } else {
+             assertEqual("hash", node.indexes[0].type);
+          }
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -1240,7 +1329,11 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.indexes[0].type);
+          if (db._engine().name === "rocksdb") {
+            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+          } else {
+            assertEqual("hash", node.indexes[0].type);
+          }
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -1621,12 +1714,20 @@ function optimizerIndexesTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         return node.type;
       });
-      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      // rocksdb supports prefix filtering in the hash index
+      if (db._engine().name !== "rocksdb") {
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      }
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2 ], results.json.sort(), query);
-      assertEqual(0, results.stats.scannedIndex);
-      assertTrue(results.stats.scannedFull > 0);
+      if (db._engine().name === "rocksdb") {
+        assertEqual(2, results.stats.scannedIndex);
+        assertEqual(0, results.stats.scannedFull);
+      } else {
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2481,7 +2582,18 @@ function optimizerIndexesTestSuite () {
         [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23', 'test42'] RETURN i._key", [ 'test23', 'test42' ] ],
         [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
         [ "LET a = PASSTHRU(['test23']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23' ] ],
-        [ "LET a = PASSTHRU(['test23', 'test42']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23', 'test42' ] ]
+        [ "LET a = PASSTHRU(['test23', 'test42']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = PASSTHRU({ ids: ['test23', 'test42'] }) FOR i IN " + c.name() + " FILTER i._key IN a.ids RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = PASSTHRU({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value2 IN a.ids RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value3 IN a.ids RETURN i.value2", [ 23, 42 ] ],
+        
+        // non-arrays. should not fail but return no results
+        [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
+        [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ ] ],
+        [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ]
+        
+
+
       ];
 
       queries.forEach(function(query) {

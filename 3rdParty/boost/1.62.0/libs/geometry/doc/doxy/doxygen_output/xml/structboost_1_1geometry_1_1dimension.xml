@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1dimension" kind="struct" prot="public">
+    <compoundname>boost::geometry::dimension</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">core_dispatch::dimension&lt; tag&lt; Geometry &gt;::type, geometry::util::bare_type&lt; Geometry &gt;::type &gt;</basecompoundref>
+    <includes local="no">coordinate_dimension.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Metafunction defining [*value] as the number of coordinates (the number of axes of any geometry) of the point type making up the specified geometry type. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/core/coordinate_dimension.qbk]</qbk>  </para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="311">
+        <label>core_dispatch::dimension&lt; tag&lt; Geometry &gt;::type, geometry::util::bare_type&lt; Geometry &gt;::type &gt;</label>
+      </node>
+      <node id="310">
+        <label>boost::geometry::dimension&lt; Geometry &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dimension"/>
+        <childnode refid="311" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="313">
+        <label>core_dispatch::dimension&lt; tag&lt; Geometry &gt;::type, geometry::util::bare_type&lt; Geometry &gt;::type &gt;</label>
+      </node>
+      <node id="312">
+        <label>boost::geometry::dimension&lt; Geometry &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dimension"/>
+        <childnode refid="313" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/coordinate_dimension.hpp" line="87" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/coordinate_dimension.hpp" bodystart="81" bodyend="87"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,4 +1,5 @@
-!CHAPTER Sequential Access and Cursors
+Sequential Access and Cursors
+=============================
 
 If a query returns a cursor, then you can use *hasNext* and *next* to
 iterate over the result set or *toArray* to convert it to an array.
@@ -18,7 +19,7 @@ method that is available for each type of simple query, or when the simple
 query is executed using its *execute* method. If no *batchSize* value
 is specified, the server will pick a reasonable default value.
 
-!SUBSECTION Has Next
+### Has Next
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -48,7 +49,7 @@ documents. In this case the next document can be accessed using the
     @endDocuBlock cursorHasNext
 
 
-!SUBSECTION Next
+### Next
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -79,7 +80,7 @@ exhausted cursor, then *undefined* is returned.
     @endDocuBlock cursorNext
 
 
-!SUBSECTION Set Batch size
+### Set Batch size
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -90,7 +91,7 @@ Sets the batch size for queries. The batch size determines how many results
 are at most transferred from the server to the client in one chunk.
 
 
-!SUBSECTION Get Batch size
+### Get Batch size
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -101,7 +102,7 @@ Returns the batch size for queries. If the returned value is undefined, the
 server will determine a sensible batch size for any following requests.
 
 
-!SUBSECTION Execute Query
+### Execute Query
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -145,7 +146,7 @@ result:
 
 
 
-!SUBSECTION Dispose
+### Dispose
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -157,7 +158,7 @@ If you are no longer interested in any further results, you should call
 After calling *dispose* you can no longer access the cursor.
 
 
-!SUBSECTION Count
+### Count
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 

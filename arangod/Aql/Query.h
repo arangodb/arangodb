@@ -31,8 +31,10 @@
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/Graphs.h"
+#include "Aql/QueryExecutionState.h"
+#include "Aql/QueryResources.h"
 #include "Aql/QueryResultV8.h"
-#include "Aql/ShortStringStorage.h"
+#include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "V8Server/V8Context.h"
@@ -41,8 +43,11 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class Transaction;
-class TransactionContext;
+
+namespace transaction {
+class Context;
+class Methods;
+}
 
 namespace velocypack {
 class Builder;
@@ -55,45 +60,12 @@ class Ast;
 class ExecutionEngine;
 class ExecutionPlan;
 class Executor;
-class Parser;
 class Query;
+struct QueryProfile;
 class QueryRegistry;
 
 /// @brief equery part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
-
-/// @brief execution states
-enum ExecutionState {
-  INITIALIZATION = 0,
-  PARSING,
-  AST_OPTIMIZATION,
-  LOADING_COLLECTIONS,
-  PLAN_INSTANTIATION,
-  PLAN_OPTIMIZATION,
-  EXECUTION,
-  FINALIZATION,
-
-  INVALID_STATE
-};
-
-struct Profile {
-  Profile(Profile const&) = delete;
-  Profile& operator=(Profile const&) = delete;
-
-  explicit Profile(Query*);
-
-  ~Profile();
-
-  void setDone(ExecutionState);
-
-  /// @brief convert the profile to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
-
-  Query* query;
-  std::vector<std::pair<ExecutionState, double>> results;
-  double stamp;
-  bool tracked;
-};
 
 /// @brief an AQL query
 class Query {
@@ -120,13 +92,25 @@ class Query {
  public:
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction (arangodb::Transaction* trx) {
+  void injectTransaction (transaction::Methods* trx) {
     _trx = trx;
     init();
   }
+  
+  QueryProfile* profile() const {
+    return _profile.get();
+  }
+
+  void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
+  void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
+  
+  ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
 
   /// @brief return the start timestamp of the query
   double startTime () const { return _startTime; }
+  
+  /// @brief return the current runtime of the query
+  double runTime () const { return TRI_microtime() - _startTime; }
 
   /// @brief whether or not the query is killed
   inline bool killed() const { return _killed; }
@@ -155,13 +139,12 @@ class Query {
   char const* queryString() const { return _queryString; }
 
   /// @brief get the length of the query string
-  size_t queryLength() const { return _queryLength; }
+  size_t queryLength() const { return _queryStringLength; }
 
   /// @brief getter for _ast
-  Ast* ast() const { return _ast; }
-
-  /// @brief add a node to the list of nodes
-  void addNode(AstNode*);
+  Ast* ast() const { 
+    return _ast.get(); 
+  }
 
   /// @brief should we return verbose plans?
   bool verbosePlans() const { return getBooleanOption("verbosePlans", false); }
@@ -177,8 +160,34 @@ class Query {
 
   /// @brief maximum number of plans to produce
   size_t maxNumberOfPlans() const {
-    double value = getNumericOption("maxNumberOfPlans", 0.0);
-    if (value > 0.0) {
+    size_t value = getNumericOption<size_t>("maxNumberOfPlans", 0);
+    if (value > 0) {
+      return value;
+    }
+    return 0;
+  }
+
+  /// @brief add a node to the list of nodes
+  void addNode(AstNode* node) { _resources.addNode(node); }
+
+  /// @brief register a string
+  /// the string is freed when the query is destroyed
+  char* registerString(char const* p, size_t length) { return _resources.registerString(p, length); }
+
+  /// @brief register a string
+  /// the string is freed when the query is destroyed
+  char* registerString(std::string const& value) { return _resources.registerString(value); }
+
+  /// @brief register a potentially UTF-8-escaped string
+  /// the string is freed when the query is destroyed
+  char* registerEscapedString(char const* p, size_t length, size_t& outLength) { 
+    return _resources.registerEscapedString(p, length, outLength); 
+  }
+  
+  /// @brief memory limit for query
+  size_t memoryLimit() const {
+    uint64_t value = getNumericOption<decltype(MemoryLimitValue)>("memoryLimit", MemoryLimitValue);
+    if (value > 0) {
       return static_cast<size_t>(value);
     }
     return 0;
@@ -186,9 +195,9 @@ class Query {
 
   /// @brief maximum number of plans to produce
   int64_t literalSizeThreshold() const {
-    double value = getNumericOption("literalSizeThreshold", 0.0);
-    if (value > 0.0) {
-      return static_cast<int64_t>(value);
+    int64_t value = getNumericOption<int64_t>("literalSizeThreshold", 0);
+    if (value > 0) {
+      return value;
     }
     return -1;
   }
@@ -206,12 +215,8 @@ class Query {
 
   /// @brief register a warning
   void registerWarning(int, char const* = nullptr);
-
-  /// @brief prepare an AQL query, this is a preparation for execute, but
-  /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from VelocyPack and then store it in the
-  /// QueryRegistry.
-  QueryResult prepare(QueryRegistry*);
+  
+  void prepare(QueryRegistry*, uint64_t queryStringHash);
 
   /// @brief execute an AQL query
   QueryResult execute(QueryRegistry*);
@@ -229,37 +234,22 @@ class Query {
   /// @brief get v8 executor
   Executor* executor();
 
-  /// @brief register a string
-  /// the string is freed when the query is destroyed
-  char* registerString(char const*, size_t);
-
-  /// @brief register a string
-  /// the string is freed when the query is destroyed
-  char* registerString(std::string const&);
-
-  /// @brief register a potentially UTF-8-escaped string
-  /// the string is freed when the query is destroyed
-  char* registerEscapedString(char const*, size_t, size_t&);
-
   /// @brief return the engine, if prepared
-  ExecutionEngine* engine() { return _engine; }
+  ExecutionEngine* engine() const { return _engine.get(); }
 
   /// @brief inject the engine
-  void engine(ExecutionEngine* engine) { _engine = engine; }
+  void engine(ExecutionEngine* engine);
 
   /// @brief return the transaction, if prepared
-  inline arangodb::Transaction* trx() { return _trx; }
+  inline transaction::Methods* trx() { return _trx; }
 
   /// @brief get the plan for the query
-  ExecutionPlan* plan() const { return _plan; }
+  ExecutionPlan* plan() const { return _plan.get(); }
 
   /// @brief whether or not the query returns verbose error messages
   bool verboseErrors() const {
     return getBooleanOption("verboseErrors", false);
   }
-
-  /// @brief set the plan for the query
-  void setPlan(ExecutionPlan* plan);
 
   /// @brief enter a V8 context
   void enterContext();
@@ -273,14 +263,24 @@ class Query {
   /// @brief fetch a boolean value from the options
   bool getBooleanOption(char const*, bool) const;
 
+  std::unordered_set<std::string> includedShards() const;
+
   /// @brief add the list of warnings to VelocyPack.
   ///        Will add a new entry { ..., warnings: <warnings>, } if there are
   ///        warnings. If there are none it will not modify the builder
-   void addWarningsToVelocyPackObject(arangodb::velocypack::Builder&) const;
+  void addWarningsToVelocyPackObject(arangodb::velocypack::Builder&) const;
 
   /// @brief transform the list of warnings to VelocyPack.
   ///        NOTE: returns nullptr if there are no warnings.
-   std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
+  std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
+  
+  /// @brief fetch the query memory limit
+  static uint64_t MemoryLimit() { return MemoryLimitValue; }
+  
+  /// @brief set the query memory limit
+  static void MemoryLimit(uint64_t value) {
+    MemoryLimitValue = value;
+  }
 
   /// @brief fetch the global query tracking value
   static bool DisableQueryTracking() { return DoDisableQueryTracking; }
@@ -304,10 +304,21 @@ class Query {
   /// @brief look up a graph in the _graphs collection
   Graph const* lookupGraphByName(std::string const& name);
 
+  /// @brief return the bind parameters as passed by the user
+  std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
+    return _bindParameters.builder(); 
+  }
+
  private:
   /// @brief initializes the query
   void init();
   
+  /// @brief prepare an AQL query, this is a preparation for execute, but
+  /// execute calls it internally. The purpose of this separate method is
+  /// to be able to only prepare a query from VelocyPack and then store it in the
+  /// QueryRegistry.
+  ExecutionPlan* prepare();
+
   void setExecutionTime();
 
   /// @brief log a query
@@ -319,9 +330,27 @@ class Query {
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
 
-  /// @brief fetch a numeric value from the options
  public:
-  double getNumericOption(char const*, double) const;
+  /// @brief fetch a numeric value from the options
+  template<typename T> T getNumericOption(char const* option, T defaultValue) const {
+    if (_options == nullptr) {
+      return defaultValue;
+    }
+
+    VPackSlice options = _options->slice();
+    if (!options.isObject()) {
+      return defaultValue;
+    }
+
+    VPackSlice value = options.get(option);
+    if (!value.isNumber()) {
+      return defaultValue;
+    }
+
+    return value.getNumericValue<T>();
+  }
+  
+  QueryExecutionState::ValueType state() const { return _state; }
 
  private:
   /// @brief read the "optimizer.inspectSimplePlans" section from the options
@@ -330,17 +359,17 @@ class Query {
   /// @brief read the "optimizer.rules" section from the options
   std::vector<std::string> getRulesFromOptions() const;
 
-  /// @brief neatly format transaction errors to the user.
-  QueryResult transactionError(int errorCode) const;
+  /// @brief neatly format exception messages for the users
+  std::string buildErrorMessage(int errorCode) const;
 
   /// @brief enter a new state
-  void enterState(ExecutionState);
+  void enterState(QueryExecutionState::ValueType);
 
   /// @brief cleanup plan and engine for current query
-  void cleanupPlanAndEngine(int);
+  void cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
 
-  /// @brief create a TransactionContext
-  std::shared_ptr<arangodb::TransactionContext> createTransactionContext();
+  /// @brief create a transaction::Context
+  std::shared_ptr<transaction::Context> createTransactionContext();
 
   /// @brief returns the next query id
   static TRI_voc_tick_t NextId();
@@ -348,27 +377,30 @@ class Query {
  private:
   /// @brief query id
   TRI_voc_tick_t _id;
-
-  /// @brief all nodes created in the AST - will be used for freeing them later
-  std::vector<AstNode*> _nodes;
+  
+  /// @brief current resources and limits used by query
+  ResourceMonitor _resourceMonitor;
+  
+  /// @brief resources used by query
+  QueryResources _resources;
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t* _vocbase;
 
   /// @brief V8 code executor
-  Executor* _executor;
+  std::unique_ptr<Executor> _executor;
 
   /// @brief the currently used V8 context
   V8Context* _context;
 
   /// @brief warnings collected during execution
   std::unordered_map<std::string, Graph*> _graphs;
-
+  
   /// @brief the actual query string
   char const* _queryString;
 
   /// @brief length of the query string in bytes
-  size_t const _queryLength;
+  size_t const _queryStringLength;
 
   /// @brief query in a VelocyPack structure
   std::shared_ptr<arangodb::velocypack::Builder> const _queryBuilder;
@@ -381,38 +413,28 @@ class Query {
 
   /// @brief collections used in the query
   Collections _collections;
-
-  /// @brief strings created in the query - used for easy memory deallocation
-  std::vector<char const*> _strings;
-
-  /// @brief short string storage. uses less memory allocations for short
-  /// strings
-  ShortStringStorage _shortStringStorage;
-
+  
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
-  Ast* _ast;
+  std::unique_ptr<Ast> _ast;
 
   /// @brief query execution profile
-  Profile* _profile;
+  std::unique_ptr<QueryProfile> _profile;
 
   /// @brief current state the query is in (used for profiling and error
   /// messages)
-  ExecutionState _state;
+  QueryExecutionState::ValueType _state;
 
   /// @brief the ExecutionPlan object, if the query is prepared
-  ExecutionPlan* _plan;
-
-  /// @brief the Parser object, if the query is prepared
-  Parser* _parser;
+  std::shared_ptr<ExecutionPlan> _plan;
 
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
   /// created in the prepare method.
-  arangodb::Transaction* _trx;
+  transaction::Methods* _trx;
 
   /// @brief the ExecutionEngine object, if the query is prepared
-  ExecutionEngine* _engine;
+  std::unique_ptr<ExecutionEngine> _engine;
 
   /// @brief maximum number of warnings
   size_t _maxWarningCount;
@@ -434,6 +456,9 @@ class Query {
 
   /// @brief whether or not the query is a data modification query
   bool _isModificationQuery;
+  
+  /// @brief global memory limit for AQL queries
+  static uint64_t MemoryLimitValue;
 
   /// @brief global threshold value for slow queries
   static double SlowQueryThresholdValue;

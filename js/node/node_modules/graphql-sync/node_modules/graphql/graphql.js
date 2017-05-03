@@ -3,11 +3,6 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
-var _promise = require('babel-runtime/core-js/promise');
-
-var _promise2 = _interopRequireDefault(_promise);
-
 exports.graphql = graphql;
 
 var _source = require('./language/source');
@@ -17,8 +12,6 @@ var _parser = require('./language/parser');
 var _validate = require('./validation/validate');
 
 var _execute = require('./execution/execute');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
  * This is the primary entry point function for fulfilling GraphQL operations
@@ -55,7 +48,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  */
 
 function graphql(schema, requestString, rootValue, contextValue, variableValues, operationName) {
-  return new _promise2.default(function (resolve) {
+  return new Promise(function (resolve) {
     var source = new _source.Source(requestString || '', 'GraphQL request');
     var documentAST = (0, _parser.parse)(source);
     var validationErrors = (0, _validate.validate)(schema, documentAST);

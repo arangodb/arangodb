@@ -38,8 +38,6 @@ int RestEngine::asyncRun(std::shared_ptr<rest::RestHandler> handler) {
 }
 
 int RestEngine::syncRun(std::shared_ptr<rest::RestHandler> handler) {
-  _agent = nullptr;
-
   _loop._ioService = nullptr;
   _loop._scheduler = nullptr;
 
@@ -57,7 +55,7 @@ void RestEngine::appendRestStatus(std::shared_ptr<RestStatusElement> element) {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-int RestEngine::run(std::shared_ptr<rest::RestHandler> handler, bool synchron) {
+int RestEngine::run(std::shared_ptr<rest::RestHandler> handler, bool synchronous) {
   while (true) {
     int res = TRI_ERROR_NO_ERROR;
 
@@ -74,14 +72,14 @@ int RestEngine::run(std::shared_ptr<rest::RestHandler> handler, bool synchron) {
         break;
 
       case State::RUN:
-        res = handler->runEngine(synchron);
+        res = handler->runEngine(synchronous);
         if (res != TRI_ERROR_NO_ERROR) {
           handler->finalizeEngine();
         }
         break;
 
       case State::WAITING:
-        return synchron ? TRI_ERROR_INTERNAL : TRI_ERROR_NO_ERROR;
+        return synchronous ? TRI_ERROR_INTERNAL : TRI_ERROR_NO_ERROR;
 
       case State::FINALIZE:
         res = handler->finalizeEngine();

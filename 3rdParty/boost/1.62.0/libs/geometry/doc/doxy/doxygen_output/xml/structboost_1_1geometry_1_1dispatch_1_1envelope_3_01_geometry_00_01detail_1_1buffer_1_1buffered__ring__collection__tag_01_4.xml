@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1dispatch_1_1envelope_3_01_geometry_00_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::dispatch::envelope&lt; Geometry, detail::buffer::buffered_ring_collection_tag &gt;</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">detail::envelope::envelope_multi_range&lt; detail::envelope::envelope_range &gt;</basecompoundref>
+    <includes local="no">buffered_ring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="322">
+        <label>boost::geometry::dispatch::envelope&lt; Geometry, detail::buffer::buffered_ring_collection_tag &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dispatch_1_1envelope_3_01_geometry_00_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4"/>
+        <childnode refid="323" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="323">
+        <label>detail::envelope::envelope_multi_range&lt; detail::envelope::envelope_range &gt;</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="324">
+        <label>boost::geometry::dispatch::envelope&lt; Geometry, detail::buffer::buffered_ring_collection_tag &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dispatch_1_1envelope_3_01_geometry_00_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4"/>
+        <childnode refid="325" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="325">
+        <label>detail::envelope::envelope_multi_range&lt; detail::envelope::envelope_range &gt;</label>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="252" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="247" bodyend="252"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

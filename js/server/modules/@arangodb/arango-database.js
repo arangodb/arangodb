@@ -41,8 +41,9 @@ exports.ArangoDatabase = internal.ArangoDatabase;
 
 var ArangoDatabase = exports.ArangoDatabase;
 
-// must called after export
+// must be called after export
 var ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
+var ArangoView = require('@arangodb/arango-view').ArangoView;
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 
@@ -77,6 +78,9 @@ ArangoDatabase.prototype._createStatement = function (data) {
 ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {
   if (typeof query === 'object' && query !== null && arguments.length === 1) {
     return new ArangoStatement(this, query).execute();
+  }
+  if (options === undefined && cursorOptions !== undefined) {
+    options = cursorOptions;
   }
 
   var payload = {

@@ -31,13 +31,11 @@
     },
 
     continueRender: function () {
-      this.breadcrumb();
-
       this.currentUser = this.collection.findWhere({
         user: this.username
       });
 
-      arangoHelper.buildUserSubNav(this.currentUser.get('user'), 'General');
+      this.breadcrumb();
 
       if (this.currentUser.get('loggedIn')) {
         this.editCurrentUser();
@@ -255,7 +253,7 @@
         $('#newUsername').closest('th').css('backgroundColor', 'red');
         return false;
       }
-      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
+      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
         arangoHelper.arangoError(
           'Wrong Username', 'Username may only contain numbers, letters, _ and -'
         );
@@ -273,7 +271,7 @@
       if (name === '') {
         return true;
       }
-      if (!name.match(/^[a-zA-Z][a-zA-Z0-9_\-\ ]*$/)) {
+      if (!name.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
         arangoHelper.arangoError(
           'Wrong Username', 'Username may only contain numbers, letters, _ and -'
         );
@@ -307,9 +305,18 @@
     },
 
     breadcrumb: function () {
-      $('#subNavigationBar .breadcrumb').html(
-        'User: ' + this.username
-      );
+      var self = this;
+
+      if (window.App.naviView) {
+        $('#subNavigationBar .breadcrumb').html(
+          'User: ' + this.username
+        );
+        arangoHelper.buildUserSubNav(self.currentUser.get('user'), 'General');
+      } else {
+        window.setTimeout(function () {
+          self.breadcrumb();
+        }, 100);
+      }
     }
 
   });

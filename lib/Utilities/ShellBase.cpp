@@ -90,21 +90,21 @@ void ShellBase::signal() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ShellBase::prompt(std::string const& prompt,
-                              std::string const& plain, bool& eof) {
+                              std::string const& plain, EofType& eof) {
   size_t lineno = 0;
   std::string dotdot = "...> ";
   std::string p = prompt;
   std::string sep = "";
   std::string line;
 
-  eof = false;
+  eof = EOF_NONE;
 
   while (true) {
     // calling concrete implementation of the shell
     line = getLine(p, eof);
     p = dotdot;
 
-    if (eof) {
+    if (eof != EOF_NONE) {
       // give up, if the user pressed control-D on the top-most level
       if (_current.empty()) {
         return "";
@@ -112,7 +112,7 @@ std::string ShellBase::prompt(std::string const& prompt,
 
       // otherwise clear current content
       _current.clear();
-      eof = false;
+      eof = EOF_NONE;
       break;
     }
 

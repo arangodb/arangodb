@@ -550,7 +550,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   delete[] buffer;
 
   if (corrupted) {
-    LOG(WARN) << "escaped corrupted unicode string";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "escaped corrupted unicode string";
   }
 
   return result;
@@ -1141,6 +1141,52 @@ bool isSuffix(std::string const& str, std::string const& postfix) {
   }
 }
 
+std::string urlDecodePath(std::string const& str) {
+  std::string result;
+  // reserve enough room so we do not need to re-alloc
+  result.reserve(str.size() + 16); 
+
+  char const* src = str.c_str();
+  char const* end = src + str.size();
+
+  while (src < end) {
+    if (*src == '%') {
+      if (src + 2 < end) {
+        int h1 = hex2int(src[1], -1);
+        int h2 = hex2int(src[2], -1);
+
+        if (h1 == -1) {
+          ++src;
+        } else {
+          if (h2 == -1) {
+            result.push_back(h1);
+            src += 2;
+          } else {
+            result.push_back(h1 << 4 | h2);
+            src += 3;
+          }
+        }
+      } else if (src + 1 < end) {
+        int h1 = hex2int(src[1], -1);
+
+        if (h1 == -1) {
+          ++src;
+        } else {
+          result.push_back(h1);
+          src += 2;
+        }
+      } else {
+        ++src;
+      }
+    } else {
+      result.push_back(*src);
+      ++src;
+    }
+  }
+
+  return result;
+}
+
 std::string urlDecode(std::string const& str) {
   std::string result;
   // reserve enough room so we do not need to re-alloc
@@ -1236,7 +1282,7 @@ std::string urlEncode(char const* src, size_t const len) {
       result.push_back(*src);
     }
 
-    else if (*src == '-' || *src == '_' || *src == '.' || *src == '~') {
+    else if (*src == '-' || *src == '_' || *src == '~') {
       result.push_back(*src);
     }
 
@@ -1641,7 +1687,7 @@ int32_t int32(std::string const& str) {
   struct reent buffer;
   return _strtol_r(&buffer, str.c_str(), 0, 10);
 #else
-  return strtol(str.c_str(), 0, 10);
+  return (int32_t)strtol(str.c_str(), 0, 10);
 #endif
 #endif
 }
@@ -1667,7 +1713,7 @@ int32_t int32(char const* value, size_t size) {
   struct reent buffer;
   return _strtol_r(&buffer, value, 0, 10);
 #else
-  return strtol(value, 0, 10);
+  return (int32_t)strtol(value, 0, 10);
 #endif
 #endif
 }
@@ -1681,7 +1727,7 @@ uint32_t uint32(std::string const& str) {
   struct reent buffer;
   return _strtoul_r(&buffer, str.c_str(), 0, 10);
 #else
-  return strtoul(str.c_str(), 0, 10);
+  return (uint32_t)strtoul(str.c_str(), 0, 10);
 #endif
 #endif
 }
@@ -1695,7 +1741,7 @@ uint32_t unhexUint32(std::string const& str) {
   struct reent buffer;
   return _strtoul_r(&buffer, str.c_str(), 0, 16);
 #else
-  return strtoul(str.c_str(), 0, 16);
+  return (uint32_t)strtoul(str.c_str(), 0, 16);
 #endif
 #endif
 }
@@ -1721,7 +1767,7 @@ uint32_t uint32(char const* value, size_t size) {
   struct reent buffer;
   return _strtoul_r(&buffer, value, 0, 10);
 #else
-  return strtoul(value, 0, 10);
+  return (uint32_t)strtoul(value, 0, 10);
 #endif
 #endif
 }
@@ -1747,7 +1793,7 @@ uint32_t unhexUint32(char const* value, size_t size) {
   struct reent buffer;
   return _strtoul_r(&buffer, value, 0, 16);
 #else
-  return strtoul(value, 0, 16);
+  return (uint32_t)strtoul(value, 0, 16);
 #endif
 #endif
 }
@@ -2257,7 +2303,7 @@ bool gzipUncompress(char const* compressed, size_t compressedLength, std::string
   z_stream strm;  
   memset(&strm, 0, sizeof(strm));
   strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
-  strm.avail_in = compressedLength; 
+  strm.avail_in = (uInt) compressedLength; 
 
   if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {  
     return false;  
@@ -2292,7 +2338,7 @@ bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& u
   z_stream strm;
   memset(&strm, 0, sizeof(strm));
   strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
-  strm.avail_in = compressedLength;
+  strm.avail_in = (uInt) compressedLength;
   
   if (inflateInit(&strm) != Z_OK) {
     return false;

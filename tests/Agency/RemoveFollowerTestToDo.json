@@ -1,0 +1,11 @@
+R"=(
+{
+  "creator" : "supervision",
+  "type" : "removeFollower",
+  "database" : "database",
+  "collection" : "collection1",
+  "shard" : "s1",
+  "jobId" : "1" ,
+  "timeCreated" : "2017-01-01 00:00:00"
+}
+)="

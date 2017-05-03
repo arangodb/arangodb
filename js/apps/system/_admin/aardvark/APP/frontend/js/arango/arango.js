@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, $, document, _, arangoHelper, frontendConfig, arangoHelper, localStorage */
+/* global Blob, window, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, localStorage */
 
 (function () {
   'use strict';
@@ -28,7 +28,7 @@
 
   window.versionHelper = {
     fromString: function (s) {
-      var parts = s.replace(/-[a-zA-Z0-9_\-]*$/g, '').split('.');
+      var parts = s.replace(/-[a-zA-Z0-9_-]*$/g, '').split('.');
       return {
         major: parseInt(parts[0], 10) || 0,
         minor: parseInt(parts[1], 10) || 0,
@@ -44,12 +44,83 @@
   };
 
   window.arangoHelper = {
+
+    alphabetColors: {
+      a: 'rgb(0,0,180)',
+      b: 'rgb(175,13,102)',
+      c: 'rgb(146,248,70)',
+      d: 'rgb(255,200,47)',
+      e: 'rgb(255,118,0)',
+      f: 'rgb(185,185,185)',
+      g: 'rgb(235,235,222)',
+      h: 'rgb(100,100,100)',
+      i: 'rgb(255,255,0)',
+      j: 'rgb(55,19,112)',
+      k: 'rgb(255,255,150)',
+      l: 'rgb(202,62,94)',
+      m: 'rgb(205,145,63)',
+      n: 'rgb(12,75,100)',
+      o: 'rgb(255,0,0)',
+      p: 'rgb(175,155,50)',
+      q: 'rgb(0,0,0)',
+      r: 'rgb(37,70,25)',
+      s: 'rgb(121,33,135)',
+      t: 'rgb(83,140,208)',
+      u: 'rgb(0,154,37)',
+      v: 'rgb(178,220,205)',
+      w: 'rgb(255,152,213)',
+      x: 'rgb(0,0,74)',
+      y: 'rgb(175,200,74)',
+      z: 'rgb(63,25,12)'
+    },
+
+    statusColors: {
+      fatal: '#ad5148',
+      info: 'rgb(88, 214, 141)',
+      error: 'rgb(236, 112, 99)',
+      warning: '#ffb075',
+      debug: 'rgb(64, 74, 83)'
+    },
+
     getCurrentJwt: function () {
       return localStorage.getItem('jwt');
     },
 
-    setCurrentJwt: function (jwt) {
+    getCurrentJwtUsername: function () {
+      return localStorage.getItem('jwtUser');
+    },
+
+    setCurrentJwt: function (jwt, username) {
       localStorage.setItem('jwt', jwt);
+      localStorage.setItem('jwtUser', username);
+    },
+
+    getCoordinatorShortName: function (id) {
+      var shortName;
+      if (window.clusterHealth) {
+        _.each(window.clusterHealth, function (value, key) {
+          if (id === key) {
+            shortName = value.ShortName;
+          }
+        });
+      }
+      return shortName;
+    },
+
+    getDatabaseShortName: function (id) {
+      return this.getCoordinatorShortName(id);
+    },
+
+    getDatabaseServerId: function (shortname) {
+      var id;
+      if (window.clusterHealth) {
+        _.each(window.clusterHealth, function (value, key) {
+          if (shortname === value.ShortName) {
+            id = key;
+          }
+        });
+      }
+      return id;
     },
 
     lastNotificationMessage: null,
@@ -125,12 +196,49 @@
       return windowHeight - footer - navigation - 110;
     },
 
+    createTooltips: function (selector, position) {
+      var self = this;
+
+      var settings = {
+        arrow: true,
+        animation: 'fade',
+        animateFill: false,
+        multiple: false,
+        hideDuration: 1
+      };
+
+      if (position) {
+        settings.position = position;
+      }
+
+      if (!selector) {
+        selector = '.tippy';
+      }
+
+      if (typeof selector === 'object') {
+        _.each(selector, function (elem) {
+          self.lastTooltips = new Tippy(elem, settings);
+        });
+      } else {
+        if (selector.indexOf(',') > -1) {
+          var selectors = selector.split(',');
+          _.each(selectors, function (elem) {
+            self.lastTooltips = new Tippy(elem, settings);
+          });
+        }
+        this.lastTooltips = new Tippy(selector, settings);
+      }
+    },
+
     fixTooltips: function (selector, placement) {
+      arangoHelper.createTooltips(selector, placement);
+      /*
       $(selector).tooltip({
         placement: placement,
         hide: false,
         show: false
       });
+      */
     },
 
     currentDatabase: function (callback) {
@@ -181,6 +289,12 @@
         }, {
           label: 'Redo',
           letter: 'Ctrl/Cmd + Shift + Z'
+        }, {
+          label: 'Increase Font Size',
+          letter: 'Shift + Alt + Up'
+        }, {
+          label: 'Decrease Font Size',
+          letter: 'Shift + Alt + Down'
         }]
       },
       doceditor: {
@@ -255,7 +369,6 @@
         );
         if (!menu.disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
-            $('#subNavigationBar .breadcrumb').html('');
             window.App.navigate(menu.route, {trigger: true});
           });
         }
@@ -454,7 +567,9 @@
     },
 
     arangoError: function (title, content, info) {
-      window.App.notificationList.add({title: title, content: content, info: info, type: 'error'});
+      if (!$('#offlinePlaceholder').is(':visible')) {
+        window.App.notificationList.add({title: title, content: content, info: info, type: 'error'});
+      }
     },
 
     arangoWarning: function (title, content, info) {
@@ -790,10 +905,52 @@
       localStorage.setItem('authenticationNotification', false);
     },
 
-    renderEmpty: function (string) {
-      $('#content').html(
-        '<div class="noContent"><p>' + string + '</p></div>'
-      );
+    renderEmpty: function (string, iconClass) {
+      if (!iconClass) {
+        $('#content').html(
+          '<div class="noContent"><p>' + string + '</p></div>'
+        );
+      } else {
+        $('#content').html(
+          '<div class="noContent"><p>' + string + '<i class="' + iconClass + '"></i></p></div>'
+        );
+      }
+    },
+
+    initSigma: function () {
+      // init sigma
+      try {
+        sigma.classes.graph.addMethod('neighbors', function (nodeId) {
+          var k;
+          var neighbors = {};
+          var index = this.allNeighborsIndex[nodeId] || {};
+
+          for (k in index) {
+            neighbors[k] = this.nodesIndex[k];
+          }
+          return neighbors;
+        });
+
+        sigma.classes.graph.addMethod('getNodeEdges', function (nodeId) {
+          var edges = this.edges();
+          var edgesToReturn = [];
+
+          _.each(edges, function (edge) {
+            if (edge.source === nodeId || edge.target === nodeId) {
+              edgesToReturn.push(edge.id);
+            }
+          });
+          return edgesToReturn;
+        });
+
+        sigma.classes.graph.addMethod('getNodeEdgesCount', function (id) {
+          return this.allNeighborsCount[id];
+        });
+
+        sigma.classes.graph.addMethod('getNodesCount', function () {
+          return this.nodesArray.length;
+        });
+      } catch (ignore) {}
     },
 
     download: function (url, callback) {

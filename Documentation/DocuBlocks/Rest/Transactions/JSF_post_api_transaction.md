@@ -5,11 +5,14 @@
 @RESTHEADER{POST /_api/transaction, Execute transaction}
 
 @RESTBODYPARAM{collections,string,required,string}
-contains the array of collections to be used in the
-transaction (mandatory). *collections* must be a JSON object that can
-have the optional sub-attributes *read* and *write*. *read*
-and *write* must each be either arrays of collections names or strings
-with a single collection name.
+*collections* must be a JSON object that can have either or both sub-attributes
+*read* and *write*, each being an array of collection names or a single
+collection name as string. Collections that will be written to in the
+transaction must be declared with the *write* attribute or it will fail,
+whereas non-declared collections from which is solely read will be added lazily.
+The optional sub-attribute *allowImplicit* can be set to *false* to let
+transactions fail in case of undeclared collections for reading. Collections
+for reading should be fully declared if possible, to avoid deadlocks.
 
 @RESTBODYPARAM{action,string,required,string}
 the actual transaction operations to be executed, in the

@@ -1,4 +1,5 @@
-!CHAPTER Data models & modeling
+Data models & modeling
+======================
 
 This chapter introduces ArangoDB's core concepts and covers
 

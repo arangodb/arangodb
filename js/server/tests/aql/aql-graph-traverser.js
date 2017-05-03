@@ -70,6 +70,85 @@ var createBaseGraph = function () {
   edge.FE = ec.save(vertex.F, vertex.E, {})._id;
 };
 
+function nestedSuite () {
+  const gn = "UnitTestGraph";
+  var objects, tags, tagged;
+
+  return {
+
+    setUpAll: function() {
+      tags = db._create(gn + "tags");
+      objects = db._create(gn + "objects");
+      tagged = db._createEdgeCollection(gn + "tagged");
+
+      [ "airplane", "bicycle", "train", "car", "boat" ].forEach(function(_key) {
+        objects.insert({ _key });
+      });
+
+      [ "public", "private", "fast", "slow", "land", "air", "water" ].forEach(function(_key) {
+        tags.insert({ _key });
+      });
+
+      [
+        [ "air", "airplane" ],
+        [ "land", "car" ],
+        [ "land", "bicycle" ],
+        [ "land", "train" ],
+        [ "water", "boat" ],
+        [ "fast", "airplane" ],
+        [ "fast", "car" ],
+        [ "slow", "bicycle" ],
+        [ "fast", "train" ],
+        [ "slow", "boat" ],
+        [ "public", "airplane" ],
+        [ "private", "car" ],
+        [ "private", "bicycle" ],
+        [ "public", "train" ],
+        [ "public", "boat" ]
+      ].forEach(function(edge) {
+        tagged.insert({ _from: tags.name() + "/" + edge[0], _to: objects.name() + "/" + edge[1] });
+      });
+    },
+
+    tearDownAll: function () {
+      db._drop(gn + "tags");
+      db._drop(gn + "objects");
+      db._drop(gn + "tagged");
+    },
+
+    testNested: function() {
+      var query = "with " + objects.name() + ", " + tags.name() + " for vehicle in any @start1 @@tagged for type in any @start2 @@tagged filter vehicle._id == type._id return vehicle._key";
+      
+      var result = AQL_EXECUTE(query, { start1: tags.name() + "/land", start2: tags.name() + "/public", "@tagged": tagged.name() }).json;
+      assertEqual([ "train" ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/air", start2: tags.name() + "/fast", "@tagged": tagged.name() }).json;
+      assertEqual([ "airplane" ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/air", start2: tags.name() + "/slow", "@tagged": tagged.name() }).json;
+      assertEqual([ ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/land", start2: tags.name() + "/fast", "@tagged": tagged.name() }).json;
+      assertEqual([ "car", "train" ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/land", start2: tags.name() + "/private", "@tagged": tagged.name() }).json;
+      assertEqual([ "bicycle", "car" ], result.sort());
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/public", start2: tags.name() + "/slow", "@tagged": tagged.name() }).json;
+      assertEqual([ "boat" ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/public", start2: tags.name() + "/fast", "@tagged": tagged.name() }).json;
+      assertEqual([ "airplane", "train" ], result.sort());
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/public", start2: tags.name() + "/foo", "@tagged": tagged.name() }).json;
+      assertEqual([ ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/foo", start2: tags.name() + "/fast", "@tagged": tagged.name() }).json;
+      assertEqual([ ], result);
+    }
+  };
+}
+
 function namedGraphSuite () {
 
   /***********************************************************************
@@ -1435,6 +1514,22 @@ function complexInternaSuite () {
       assertEqual(found, amount);
     },
 
+    testTailRecursion: function () {
+      // This test is to make sure their is no
+      // inifinite callstack in getSome() API
+      let query = `
+        WITH ${vn}
+        FOR id IN 0..100000
+        FOR v IN OUTBOUND CONCAT('${vn}/foobar', id) ${en}
+        RETURN v
+      `;
+
+      let res = db._query(query);
+      assertEqual(res.count(), 0);
+      // With inifinit callstack in getSome this
+      // test will segfault
+    },
+
   };
 
 }
@@ -1493,22 +1588,22 @@ function optimizeInSuite () {
         assertEqual(extra.stats.filtered, 0);
       } else {
         // We have only 10 valid elements in the array.
-        assertEqual(extra.stats.filtered, 90);
+        assertEqual(extra.stats.filtered, 0);
       }
-
       assertEqual(result.count(), 1000);
 
       // if the rule is disabled we expect to do way more filtering
       var noOpt  = { optimizer: { rules: [ "-all" ] } };
       result = db._query(vertexQuery, bindVars, {}, noOpt);
+
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
 
       result = db._query(edgeQuery, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
     },
@@ -1556,7 +1651,7 @@ function optimizeInSuite () {
         assertEqual(extra.stats.filtered, 0);
       } else {
         // We have only 10 valid elements in the array.
-        assertEqual(extra.stats.filtered, 90);
+        assertEqual(extra.stats.filtered, 0);
       }
       assertEqual(result.count(), 1000);
 
@@ -1568,7 +1663,7 @@ function optimizeInSuite () {
         assertEqual(extra.stats.filtered, 0);
       } else {
         // We have only 10 valid elements in the array.
-        assertEqual(extra.stats.filtered, 90);
+        assertEqual(extra.stats.filtered, 0);
       }
       assertEqual(result.count(), 1000);
 
@@ -1582,25 +1677,25 @@ function optimizeInSuite () {
       var noOpt  = { optimizer: { rules: [ "-all" ] } };
       result = db._query(vertexQuery, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
 
       result = db._query(edgeQuery, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
 
       result = db._query(mixedQuery1, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
 
       result = db._query(mixedQuery2, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
     },
@@ -1710,7 +1805,7 @@ function complexFilteringSuite () {
         assertEqual(stats.scannedIndex, 2);
       }
       else {
-        assertEqual(stats.scannedIndex, 2);
+        assertEqual(stats.scannedIndex, 1);
       }
       assertEqual(stats.filtered, 1);
     },
@@ -1804,7 +1899,11 @@ function complexFilteringSuite () {
         // 1 Primary Lookups A -> B (B cached)
         // 1 Primary Lookups A -> B -> C (A, B cached)
         // 1 Primary Lookups A -> B -> F (A, B cached)
-        assertEqual(stats.scannedIndex, 9);
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 9);
+        
+        // Without traverser-read-cache
+        assertEqual(stats.scannedIndex, 18);
       }
       // 1 Filter On D
       assertEqual(stats.filtered, 1);
@@ -1841,7 +1940,11 @@ function complexFilteringSuite () {
         // 1 Primary Lookups A -> D (D)
         // 0 Primary Lookups A -> B -> C
         // 0 Primary Lookups A -> B -> F
-        assertEqual(stats.scannedIndex, 13);
+        // Without traverser-read-cache
+        // assertEqual(stats.scannedIndex, 13);
+
+        // With traverser-read-cache
+        assertEqual(stats.scannedIndex, 24);
       }
       // 2 Filter (B, C) too short
       // 2 Filter (E, G)
@@ -1877,7 +1980,11 @@ function complexFilteringSuite () {
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups for Eval (E, G)
         // 1 Primary Lookups A -> D
-        assertEqual(stats.scannedIndex, 9);
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 9);
+        
+        // Without traverser-read-cache
+        assertEqual(stats.scannedIndex, 8);
       }
       // 2 Filter (B, D) too short
       // 2 Filter (E, G)
@@ -1912,7 +2019,11 @@ function complexFilteringSuite () {
         // 2 Primary Lookups A -> B
         // 1 Primary Lookups A -> B -> C
         // 1 Primary Lookups A -> B -> F
-        assertEqual(stats.scannedIndex, 8);
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 8);
+        
+        // Without traverser-read-cache
+        assertEqual(stats.scannedIndex, 16);
       }
       // 1 Filter (A->D)
       assertEqual(stats.filtered, 1);
@@ -1951,7 +2062,11 @@ function complexFilteringSuite () {
         // 1 Primary Lookups A -> D
         // 1 Primary Lookups A -> B -> C
         // 1 Primary Lookups A -> B -> F
-        assertEqual(stats.scannedIndex, 11);
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 11);
+        
+        // Without traverser-read-cache
+        assertEqual(stats.scannedIndex, 20);
       }
       // 2 Filter On (B, D) too short 
       // 2 Filter On (D->E, D->G)
@@ -2003,7 +2118,11 @@ function complexFilteringSuite () {
           // 1 Primary Lookups A -> B
           // 1 Primary Lookups A -> B -> C
           // 1 Primary Lookups A -> B -> F
-          assertEqual(stats.scannedIndex, 9);
+          // With traverser-read-cache
+          // assertEqual(stats.scannedIndex, 9);
+          
+          // Without traverser-read-cache
+          assertEqual(stats.scannedIndex, 18);
         }
         // 1 Filter On D
         assertEqual(stats.filtered, 1);
@@ -2055,7 +2174,11 @@ function complexFilteringSuite () {
           // 1 Primary Lookups A -> B
           // 1 Primary Lookups A -> B -> C
           // 1 Primary Lookups A -> B -> F
-          assertEqual(stats.scannedIndex, 9);
+          // With traverser-read-cache
+          // assertEqual(stats.scannedIndex, 9);
+          
+          // Without traverser-read-cache
+          assertEqual(stats.scannedIndex, 18);
         }
         // 1 Filter On D
         assertEqual(stats.filtered, 1);
@@ -2710,7 +2833,17 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 9);
+      } else {
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 9);
+
+        // Without traverser-read-cache
+        // TODO Check for Optimization
+        // assertEqual(stats.scannedIndex, 23);
+        assertEqual(stats.scannedIndex, 27);
+      }
       assertEqual(stats.filtered, 1);
 
       query = `
@@ -2743,9 +2876,15 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
-      } else {
         assertEqual(stats.scannedIndex, 8);
+      } else {
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 8);
+
+        // TODO Check for Optimization
+        // Without traverser-read-cache
+        // assertEqual(stats.scannedIndex, 18);
+        assertEqual(stats.scannedIndex, 22);
       }
       assertEqual(stats.filtered, 2);
 
@@ -2763,9 +2902,14 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
-      } else {
         assertEqual(stats.scannedIndex, 8);
+      } else {
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 8);
+
+        // Without traverser-read-cache
+        // assertEqual(stats.scannedIndex, 18);
+        assertEqual(stats.scannedIndex, 22);
       }
       assertEqual(stats.filtered, 2);
     },
@@ -2784,7 +2928,17 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 9);
+      } else {
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 9);
+
+        // Without traverser-read-cache
+        // TODO Check for Optimization
+        // assertEqual(stats.scannedIndex, 23);
+        assertEqual(stats.scannedIndex, 27);
+      }
       assertEqual(stats.filtered, 1);
 
       query = `
@@ -2817,9 +2971,14 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
-      } else {
         assertEqual(stats.scannedIndex, 8);
+      } else {
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 8);
+
+        // Without traverser-read-cache
+        // assertEqual(stats.scannedIndex, 18);
+        assertEqual(stats.scannedIndex, 22);
       }
       assertEqual(stats.filtered, 1);
 
@@ -2837,9 +2996,15 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
-      } else {
         assertEqual(stats.scannedIndex, 8);
+      } else {
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 8);
+
+        // Without traverser-read-cache
+        // TODO Check for Optimization
+        //assertEqual(stats.scannedIndex, 18);
+        assertEqual(stats.scannedIndex, 22);
       }
       assertEqual(stats.filtered, 1);
     },
@@ -2859,7 +3024,16 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 9);
+      } else {
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 9);
+
+        // Without traverser-read-cache
+        // assertEqual(stats.scannedIndex, 17);
+        assertEqual(stats.scannedIndex, 21);
+      }
       assertEqual(stats.filtered, 2);
     },
 
@@ -2879,9 +3053,14 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 5);
-      } else {
         assertEqual(stats.scannedIndex, 7);
+      } else {
+        // With activated traverser-read-cache:
+        // assertEqual(stats.scannedIndex, 7);
+
+        // Without traverser-read-cache
+        // assertEqual(stats.scannedIndex, 12);
+        assertEqual(stats.scannedIndex, 16);
       }
       assertEqual(stats.filtered, 3);
     },
@@ -2901,7 +3080,17 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 9);
+      } else {
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 9);
+
+        // Without traverser-read-cache
+        // TODO Check for Optimization
+        // assertEqual(stats.scannedIndex, 17);
+        assertEqual(stats.scannedIndex, 21);
+      }
       assertEqual(stats.filtered, 2);
     },
 
@@ -2921,9 +3110,15 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 5);
-      } else {
         assertEqual(stats.scannedIndex, 7);
+      } else {
+        // With activated traverser-read-cache:
+        // assertEqual(stats.scannedIndex, 7);
+
+        // Without traverser-read-cache
+        // TODO Check for Optimization
+        // assertEqual(stats.scannedIndex, 12);
+        assertEqual(stats.scannedIndex, 16);
       }
       assertEqual(stats.filtered, 3);
     },
@@ -2943,7 +3138,17 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 9);
+      } else {
+        // With activated traverser-read-cache:
+        // assertEqual(stats.scannedIndex, 9);
+
+        // Without traverser-read-cache
+        // TODO Check for Optimization
+        // assertEqual(stats.scannedIndex, 17);
+        assertEqual(stats.scannedIndex, 21);
+      }
       assertEqual(stats.filtered, 4);
     },
 
@@ -2963,15 +3168,161 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 5);
-      } else {
         assertEqual(stats.scannedIndex, 7);
+      } else {
+        // With activated traverser-read-cache:
+        // assertEqual(stats.scannedIndex, 7);
+
+        // Without traverser-read-cache
+        // TODO Check for Optimization
+        // assertEqual(stats.scannedIndex, 12);
+        assertEqual(stats.scannedIndex, 16);
       }
       assertEqual(stats.filtered, 4);
     }
   };
 };
 
+function optimizeNonVertexCentricIndexesSuite () {
+
+  let explain = function (query, params) {
+    return AQL_EXPLAIN(query, params, { optimizer: { rules: [ "+all" ] } });
+  };
+
+  let vertices = {};
+  let edges = {};
+
+  return {
+    setUpAll: () => {
+      cleanup();
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      vertices.A = vc.save({_key: "A"})._id;
+      vertices.B = vc.save({_key: "B"})._id;
+      vertices.C = vc.save({_key: "C"})._id;
+      vertices.D = vc.save({_key: "D"})._id;
+      vertices.E = vc.save({_key: "E"})._id;
+      vertices.F = vc.save({_key: "F"})._id;
+      vertices.G = vc.save({_key: "G"})._id;
+
+      vertices.FOO = vc.save({_key: "FOO"})._id;
+      vertices.BAR = vc.save({_key: "BAR"})._id;
+
+      edges.AB = ec.save({_key: "AB", _from: vertices.A, _to: vertices.B, foo: "A", bar: true})._id;
+      edges.BC = ec.save({_key: "BC", _from: vertices.B, _to: vertices.C, foo: "B", bar: true})._id;
+      edges.BD = ec.save({_key: "BD", _from: vertices.B, _to: vertices.D, foo: "C", bar: false})._id;
+      edges.AE = ec.save({_key: "AE", _from: vertices.A, _to: vertices.E, foo: "D", bar: true})._id;
+      edges.EF = ec.save({_key: "EF", _from: vertices.E, _to: vertices.F, foo: "E", bar: true})._id;
+      edges.EG = ec.save({_key: "EG", _from: vertices.E, _to: vertices.G, foo: "F", bar: false})._id;
+
+
+      // Adding these edges to make the estimate for the edge-index extremly bad
+      let badEdges = [];
+      for (let j = 0; j < 1000; ++j) {
+        badEdges.push({_from: vertices.FOO, _to: vertices.BAR, foo: "foo" + j, bar: j});
+      }
+      ec.save(badEdges);
+    },
+
+    tearDownAll: cleanup,
+
+    tearDown: () => {
+      // After each test get rid of all superflous indexes.
+      var idxs = db[en].getIndexes();
+      for (let i = 2; i < idxs.length; ++i) {
+        db[en].dropIndex(idxs[i].id);
+      }
+    },
+
+    testUniqueHashIndex : () => {
+      var idx = db[en].ensureIndex({type: "hash", fields: ["foo"], unique: true, sparse: false});
+      // This index is assumed to be better than edge-index, but does not contain _from/_to
+      let q = `FOR v,e,p IN OUTBOUND "${vertices.A}" ${en}
+               FILTER p.edges[0].foo == "A"
+               RETURN v._id`;
+
+      let exp = explain(q, {}).plan.nodes.filter(node => {return node.type === "TraversalNode";});
+      assertEqual(1, exp.length);
+      // Check if we did use the hash index on level 0
+      let indexes  = exp[0].indexes;
+      let found = indexes.levels["0"];
+      assertEqual(1, found.length);
+      found = found[0];
+      assertEqual(idx.type, found.type);
+      assertEqual(idx.fields, found.fields);
+
+      let result = db._query(q).toArray();
+      assertEqual(result[0], vertices.B);
+    },
+
+    testUniqueSkiplistIndex : () => {
+      var idx = db[en].ensureIndex({type: "skiplist", fields: ["foo"], unique: true, sparse: false});
+      // This index is assumed to be better than edge-index, but does not contain _from/_to
+      let q = `FOR v,e,p IN OUTBOUND "${vertices.A}" ${en}
+               FILTER p.edges[0].foo == "A"
+               RETURN v._id`;
+
+      let exp = explain(q, {}).plan.nodes.filter(node => {return node.type === "TraversalNode";});
+      assertEqual(1, exp.length);
+      // Check if we did use the hash index on level 0
+      let indexes  = exp[0].indexes;
+      let found = indexes.levels["0"];
+      assertEqual(1, found.length);
+      found = found[0];
+      assertEqual(idx.type, found.type);
+      assertEqual(idx.fields, found.fields);
+
+      let result = db._query(q).toArray();
+      assertEqual(result[0], vertices.B);
+    },
+
+    testAllUniqueHashIndex : () => {
+      var idx = db[en].ensureIndex({type: "hash", fields: ["foo"], unique: true, sparse: false});
+      // This index is assumed to be better than edge-index, but does not contain _from/_to
+      let q = `FOR v,e,p IN OUTBOUND "${vertices.A}" ${en}
+               FILTER p.edges[*].foo ALL == "A"
+               RETURN v._id`;
+
+      let exp = explain(q, {}).plan.nodes.filter(node => {return node.type === "TraversalNode";});
+      assertEqual(1, exp.length);
+      // Check if we did use the hash index on level 0
+      let indexes  = exp[0].indexes;
+      let found = indexes.base;
+      assertEqual(1, found.length);
+      found = found[0];
+      assertEqual(idx.type, found.type);
+      assertEqual(idx.fields, found.fields);
+
+      let result = db._query(q).toArray();
+      assertEqual(result[0], vertices.B);
+    },
+
+    testAllUniqueSkiplistIndex : () => {
+      var idx = db[en].ensureIndex({type: "skiplist", fields: ["foo"], unique: true, sparse: false});
+      // This index is assumed to be better than edge-index, but does not contain _from/_to
+      let q = `FOR v,e,p IN OUTBOUND "${vertices.A}" ${en}
+               FILTER p.edges[*].foo ALL == "A"
+               RETURN v._id`;
+
+      let exp = explain(q, {}).plan.nodes.filter(node => {return node.type === "TraversalNode";});
+      assertEqual(1, exp.length);
+      // Check if we did use the hash index on level 0
+      let indexes  = exp[0].indexes;
+      let found = indexes.base;
+      assertEqual(1, found.length);
+      found = found[0];
+      assertEqual(idx.type, found.type);
+      assertEqual(idx.fields, found.fields);
+
+      let result = db._query(q).toArray();
+      assertEqual(result[0], vertices.B);
+    }
+
+  };
+};
+
+/*
+jsunity.run(nestedSuite);
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
 jsunity.run(multiEdgeCollectionGraphSuite);
@@ -2983,6 +3334,10 @@ jsunity.run(brokenGraphSuite);
 jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
 jsunity.run(optionsSuite);
+*/
 jsunity.run(optimizeQuantifierSuite);
+if (!isCluster) {
+  jsunity.run(optimizeNonVertexCentricIndexesSuite);
+}
 
 return jsunity.done();

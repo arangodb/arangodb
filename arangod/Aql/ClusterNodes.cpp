@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -160,8 +161,15 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
     for (auto const& it : _elements) {
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("inVariable"));
-      it.first->toVelocyPack(nodes);
-      nodes.add("ascending", VPackValue(it.second));
+      it.var->toVelocyPack(nodes);
+      nodes.add("ascending", VPackValue(it.ascending));
+      if (!it.attributePath.empty()) {
+        nodes.add(VPackValue("path"));
+        VPackArrayBuilder arr(&nodes);
+        for (auto const& a : it.attributePath) {
+          nodes.add(VPackValue(a));
+        }
+      }
     }
   }
 

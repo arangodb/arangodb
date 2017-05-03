@@ -1,4 +1,5 @@
-!CHAPTER Accessing the Web Interface
+Accessing the Web Interface
+===========================
 
 ArangoDB comes with a built-in web interface for administration. The web 
 interface can be accessed via the URL:

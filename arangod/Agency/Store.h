@@ -1,3 +1,5 @@
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -31,6 +33,39 @@
 namespace arangodb {
 namespace consensus {
 
+struct check_ret_t {
+
+  bool success;
+  query_t failed;
+  
+  check_ret_t() : success(true), failed(nullptr) {}
+  
+  explicit check_ret_t(bool s) : success(s) {}
+  
+  inline bool successful() const { return success; }
+  
+  inline void successful(bool s) { success = s; }
+
+  inline void open() {
+    TRI_ASSERT(failed == nullptr);
+    failed = std::make_shared<VPackBuilder>(); failed->openArray();
+  }
+  
+  inline void push_back(VPackSlice const& key) {
+    TRI_ASSERT(failed != nullptr);
+    success = false;
+    failed->add(key);
+  }
+  
+  inline void close() {
+    TRI_ASSERT(failed != nullptr);
+    failed->close();
+  } 
+  
+};
+
+enum CheckMode {FIRST_FAIL, FULL};
+
 class Agent;
 
 /// @brief Key value tree
@@ -57,23 +92,26 @@ class Store : public arangodb::Thread {
   /// @brief Apply entry in query
   std::vector<bool> apply(query_t const& query, bool verbose = false);
 
+  /// @brief Apply single entry in query
+  check_ret_t apply(Slice const& query, bool verbose = false);
+
   /// @brief Apply entry in query
-  std::vector<bool> apply(std::vector<Slice> const& query, bool inform = true);
+  std::vector<bool> apply(std::vector<Slice> const& query,
+                          index_t lastCommitIndex, term_t term,
+                          bool inform = true);
 
   /// @brief Read specified query from store
   std::vector<bool> read(query_t const& query, query_t& result) const;
 
+  /// @brief Read individual entry specified in slice into builder
+  bool read(arangodb::velocypack::Slice const&,
+            arangodb::velocypack::Builder&) const;
+  
   /// @brief Begin shutdown of thread
   void beginShutdown() override final;
 
   /// @brief Start thread
   bool start();
-
-  /// @brief Set name
-  void name(std::string const& name);
-
-  /// @brief Get name
-  std::string const& name() const;
 
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
@@ -84,34 +122,23 @@ class Store : public arangodb::Thread {
   /// @brief See how far the path matches anything in store
   size_t matchPath(std::vector<std::string> const& pv) const;
 
-  /// @brief Get node specified by path vector
-  Node operator()(std::vector<std::string> const& pv);
-  /// @brief Get node specified by path vector
-  Node const operator()(std::vector<std::string> const& pv) const;
-
-  /// @brief Get node specified by path string
-  Node operator()(std::string const& path);
-  /// @brief Get node specified by path string
-  Node const operator()(std::string const& path) const;
-
   Store& operator=(VPackSlice const& slice);
-
-  /// @brief Apply single slice
-  bool applies(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
 
   /// @brief Copy out a node
-  Node const get(std::string const& path) const;
+  Node get(std::string const& path = std::string("/")) const;
 
   std::string toJson() const;
 
   friend class Node;
 
-  std::vector<std::string> exists(std::string const&) const;
-
  private:
+
+  /// @brief Apply single slice
+  bool applies(arangodb::velocypack::Slice const&);
+
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);
 
@@ -122,12 +149,8 @@ class Store : public arangodb::Thread {
   std::multimap<std::string, std::string>& observedTable();
   std::multimap<std::string, std::string> const& observedTable() const;
 
-  /// @brief Read individual entry specified in slice into builder
-  bool read(arangodb::velocypack::Slice const&,
-            arangodb::velocypack::Builder&) const;
-
   /// @brief Check precondition
-  bool check(arangodb::velocypack::Slice const&) const;
+  check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
 
   /// @brief Clear entries, whose time to live has expired
   query_t clearExpired() const;
@@ -139,6 +162,7 @@ class Store : public arangodb::Thread {
   mutable arangodb::basics::ConditionVariable _cv;
 
   /// @brief Read/Write mutex on database
+  /// guard _node, _timeTable, _observerTable, _observedTable
   mutable arangodb::Mutex _storeLock;
 
   /// @brief My own agent
@@ -154,6 +178,12 @@ class Store : public arangodb::Thread {
   /// @brief Root node
   Node _node;
 };
+
+
+inline std::ostream& operator<<(std::ostream& o, Store const& store) {
+  return store.get().print(o);
+}
+
 }
 }
 

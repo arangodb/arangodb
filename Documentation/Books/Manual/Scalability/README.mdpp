@@ -1,4 +1,5 @@
-!CHAPTER Scalability
+Scalability
+===========
 
 ArangoDB is a distributed database supporting multiple data models,
 and can thus be scaled horizontally, that is, by using many servers,

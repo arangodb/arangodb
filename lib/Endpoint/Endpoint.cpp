@@ -35,6 +35,8 @@
 #include "Endpoint/EndpointUnixDomain.h"
 #endif
 
+#include <algorithm>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -76,8 +78,11 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 
   TransportType protocol = TransportType::HTTP;
 
-  std::string prefix = "http+";
-  std::string copy = StringUtils::tolower(specification);
+  std::string prefix("http+");
+  std::string copy(StringUtils::tolower(specification));
+  std::string const localName("localhost");
+  std::string const localIP("127.0.0.1");
+    
   StringUtils::trimInPlace(copy);
 
   if (specification.back() == '/') {
@@ -93,9 +98,9 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     copy = copy.substr(5);
   }
 
-  if (StringUtils::isPrefix(copy, "vpp+")) {
+  if (StringUtils::isPrefix(copy, "vst+")) {
     protocol = TransportType::VPP;
-    prefix = "vpp+";
+    prefix = "vst+";
     copy = copy.substr(4);
   }
 
@@ -149,16 +154,20 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     return illegal;
   }
 
+  // Replace localhost with 127.0.0.1
+  found = copy.find(localName);
+  if (found != std::string::npos) {
+    copy.replace(found, localName.length(), localIP);
+  }
+  
   // ipv4
-  found = temp.find(':');
-
+  found = temp.find(':');  
   if (found != std::string::npos && found + 1 < temp.size()) {
     // hostname and port
     return prefix + copy;
   }
 
   // hostname only
-
   if (protocol == TransportType::HTTP) {
     return prefix + copy + ":" +
            StringUtils::itoa(EndpointIp::_defaultPortHttp);
@@ -212,7 +221,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   if (StringUtils::isPrefix(copy, "http+")) {
     protocol = TransportType::HTTP;
     copy = copy.substr(5);
-  } else if (StringUtils::isPrefix(copy, "vpp+")) {
+  } else if (StringUtils::isPrefix(copy, "vst+")) {
     protocol = TransportType::VPP;
     copy = copy.substr(4);
   } else {
@@ -271,7 +280,13 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
 
     // hostname and port (e.g. [address]:port)
     if (found != std::string::npos && found > 2 && found + 2 < copy.size()) {
-      uint16_t port = (uint16_t)StringUtils::uint32(copy.substr(found + 2));
+      int64_t value = StringUtils::int64(copy.substr(found + 2));
+      // check port over-/underrun
+      if (value < (std::numeric_limits<uint16_t>::min)() || value > (std::numeric_limits<uint16_t>::max)()) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "specified port number '" << value << "' is outside the allowed range"; 
+        return nullptr;
+      }
+      uint16_t port = static_cast<uint16_t>(value);
       std::string host = copy.substr(1, found - 1);
 
       return new EndpointIpV6(type, protocol, encryption, listenBacklog,
@@ -297,7 +312,13 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
 
   // hostname and port
   if (found != std::string::npos && found + 1 < copy.size()) {
-    uint16_t port = (uint16_t)StringUtils::uint32(copy.substr(found + 1));
+    int64_t value = StringUtils::int64(copy.substr(found + 1));
+    // check port over-/underrun
+    if (value < (std::numeric_limits<uint16_t>::min)() || value > (std::numeric_limits<uint16_t>::max)()) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "specified port number '" << value << "' is outside the allowed range"; 
+      return nullptr;
+    }
+    uint16_t port = static_cast<uint16_t>(value);
     std::string host = copy.substr(0, found);
 
     return new EndpointIpV4(type, protocol, encryption, listenBacklog,
@@ -320,7 +341,7 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
              StringUtils::itoa(EndpointIp::_defaultPortHttp);
 
     case TransportType::VPP:
-      return "vpp+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
+      return "vst+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
              StringUtils::itoa(EndpointIp::_defaultPortVpp);
 
     default: {
@@ -328,8 +349,6 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
                                      "invalid transport type");
     }
   }
-
-  return "";  // silence GCC
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -362,7 +381,7 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   bool ok = TRI_SetNonBlockingSocket(s);
 
   if (!ok) {
-    LOG(ERR) << "cannot switch to non-blocking: " << errno << " ("
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot switch to non-blocking: " << errno << " ("
              << strerror(errno) << ")";
 
     return false;
@@ -372,7 +391,7 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   ok = TRI_SetCloseOnExecSocket(s);
 
   if (!ok) {
-    LOG(ERR) << "cannot set close-on-exit: " << errno << " (" << strerror(errno)
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set close-on-exit: " << errno << " (" << strerror(errno)
              << ")";
 
     return false;

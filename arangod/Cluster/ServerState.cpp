@@ -22,15 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerState.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
-#include "Logger/Logger.h"
-#include "Cluster/AgencyComm.h"
-#include "Cluster/ClusterInfo.h"
 
 #include <iomanip>
 #include <sstream>
+
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
+#include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
+#include "Cluster/ClusterInfo.h"
+
+#include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -72,6 +82,14 @@ ServerState* ServerState::instance() { return &Instance; }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a role
 ////////////////////////////////////////////////////////////////////////////////
+
+const std::vector<std::string> ServerState::RoleStr ({
+    "NONE", "SNGL", "PRMR", "SCND", "CRDN", "AGNT"
+      });
+
+const std::vector<std::string> ServerState::RoleStrReadable ({
+    "none", "single", "dbserver", "secondary", "coordinator", "agent"
+      });
 
 std::string ServerState::roleToString(ServerState::RoleEnum role) {
   switch (role) {
@@ -179,9 +197,7 @@ void ServerState::findAndSetRoleBlocking() {
 /// @brief flush the server state (used for testing)
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::flush() {
-  findAndSetRoleBlocking();
-}
+void ServerState::flush() { findAndSetRoleBlocking(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the server role
@@ -194,131 +210,204 @@ ServerState::RoleEnum ServerState::getRole() {
     return role;
   }
 
-  TRI_ASSERT(!_id.empty());
+  //TRI_ASSERT(!_id.empty());
   findAndSetRoleBlocking();
   return loadRole();
 }
 
 bool ServerState::unregister() {
   TRI_ASSERT(!getId().empty());
-  
+
   std::string const& id = getId();
 
   std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
-  AgencyOperation deleteLocalIdMap(
-    "Target/MapLocalToID/" + localInfoEncoded,
-    AgencySimpleOperationType::DELETE_OP);
-  
+  AgencyOperation deleteLocalIdMap("Target/MapLocalToID/" + localInfoEncoded,
+                                   AgencySimpleOperationType::DELETE_OP);
+
   std::vector<AgencyOperation> operations = {deleteLocalIdMap};
 
   auto role = loadRole();
   const std::string agencyKey = roleToAgencyKey(role);
   TRI_ASSERT(isClusterRole(role));
   if (role == ROLE_COORDINATOR || role == ROLE_PRIMARY) {
-    operations.push_back(
-      AgencyOperation(
-        "Plan/" + agencyKey + "/" + id, AgencySimpleOperationType::DELETE_OP));
-    operations.push_back(
-      AgencyOperation(
-        "Current/" + agencyKey + "/"
-        + id, AgencySimpleOperationType::DELETE_OP));
+    operations.push_back(AgencyOperation("Plan/" + agencyKey + "/" + id,
+                                         AgencySimpleOperationType::DELETE_OP));
+    operations.push_back(AgencyOperation("Current/" + agencyKey + "/" + id,
+                                         AgencySimpleOperationType::DELETE_OP));
   }
-  
+
   AgencyWriteTransaction unregisterTransaction(operations);
-  
+
   AgencyComm comm;
   AgencyCommResult result;
-  
+
   result = comm.sendTransactionWithFailover(unregisterTransaction);
   return result.successful();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief try to register with a role
-////////////////////////////////////////////////////////////////////////////////
-bool ServerState::registerWithRole(ServerState::RoleEnum role) {
-  if (!getId().empty()) {
-    LOG_TOPIC(INFO, Logger::CLUSTER)
-      << "Registering with role and localinfo. Supplied id is being ignored";
+bool ServerState::registerShortName(std::string const& id, ServerState::RoleEnum const& role) {
+  // secondaries will not be handled here and will get assigned an auto generated one
+  if (role == ROLE_SECONDARY) {
     return false;
+  }
+  AgencyComm comm;
+  AgencyCommResult result;
+
+  std::string agencyIdKey;
+  std::string roleName;
+  if (role == ROLE_PRIMARY) {
+    agencyIdKey = "LatestDBServerId";
+    roleName = "DBServer";
+  } else {
+    agencyIdKey = "LatestCoordinatorId";
+    roleName = "Coordinator";
+  }
+
+  uint32_t shortNum(0);
+  try {
+    shortNum = StringUtils::uint32(id.substr(roleName.size(), 3));
+  } catch (...) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
+      "Old id cannot be parsed for number.";
+    return false;
+  }
+
+  const std::string idKey  = "Target/" + agencyIdKey;
+  const std::string mapKey  = "Target/MapUniqueToShortID/" + id;
+  
+  size_t attempts {0};
+  while (attempts++ < 300) {
+    result = comm.getValues("Target/" + agencyIdKey);
+    if (!result.successful()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER) << "Couldn't fetch Target/" + agencyIdKey;
+      sleep(1);
+      continue;
+    }
+
+    VPackSlice latestId = result.slice()[0].get(
+    std::vector<std::string>(
+      {AgencyCommManager::path(), "Target", agencyIdKey}));
+
+    auto num = latestId.getNumber<uint32_t>();
+    
+    std::vector<AgencyOperation> operations;
+    std::vector<AgencyPrecondition> preconditions;
+
+    std::stringstream ss; // ShortName
+    ss << roleName
+      << std::setw(4) << std::setfill('0')
+      << shortNum;
+    std::string shortName = ss.str();
+
+    VPackBuilder shortNumBuilder;
+    shortNumBuilder.add(VPackValue(shortNum));
+
+    VPackBuilder numBuilder;
+    numBuilder.add(VPackValue(num));
+
+    VPackBuilder mapBuilder;
+    {
+      VPackObjectBuilder b(&mapBuilder);
+      mapBuilder.add("TransactionID", shortNumBuilder.slice());
+      mapBuilder.add("ShortName", VPackValue(shortName));
+    }
+
+    operations.push_back(AgencyOperation(mapKey, AgencyValueOperationType::SET, mapBuilder.slice()));
+    preconditions.push_back(
+      AgencyPrecondition(idKey, AgencyPrecondition::Type::VALUE, numBuilder.slice())
+    );
+    if (num > shortNum) {
+      // possible conflict! our shortname might already be taken!
+      result = comm.getValues("Target/MapUniqueToShortID");
+
+      if (!result.successful()) {
+        LOG_TOPIC(WARN, Logger::CLUSTER) << "Couldn't fetch Target/MapUniqueToShortID";
+        sleep(1);
+        continue;
+      }
+
+      VPackSlice shortIdMap = result.slice()[0].get(std::vector<std::string>(
+        {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
+
+      if (shortIdMap.isObject()) {
+        for (auto const& s : VPackObjectIterator(shortIdMap)) {
+          if (s.key.copyString() == "ShortName") {
+            if (arangodb::basics::VelocyPackHelper::getStringValue(s.value, "") == shortName) {
+              // our short name is taken. total disaster! very sad!
+              return false;
+            }
+          }
+        }
+      }
+    } else {
+      // update the number so it the next auto generated number is out of our taken range
+      operations.push_back({idKey, AgencyValueOperationType::SET, shortNumBuilder.slice()});
+    }
+
+    AgencyWriteTransaction trx(operations, preconditions);
+    result = comm.sendTransactionWithFailover(trx);
+    if (result.successful()) {
+      return true;
+    }
+    sleep(1);
+  }
+
+  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't register shortname for " << id;
+  FATAL_ERROR_EXIT();
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to integrate into a cluster
+////////////////////////////////////////////////////////////////////////////////
+bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
+                                       std::string const& myAddress,
+                                       std::string const& myId) {
+  // id supplied via command line this is deprecated
+  if (!myId.empty()) {
+    if (!hasPersistedId()) {
+      setId(myId);
+      role = getRole();
+
+      // we are known to the agency under our old id!
+      if (role != ServerState::ROLE_UNDEFINED) {
+        registerShortName(myId, role);
+        writePersistedId(myId);
+      } else {
+        LOG_TOPIC(FATAL, Logger::STARTUP) << "started with --cluster.my-id but id unknown in agency!";
+        FATAL_ERROR_EXIT();
+      }
+    } else {
+      LOG_TOPIC(WARN, Logger::STARTUP) << "--cluster.my-id is deprecated and will be deleted.";
+    }
   }
 
   AgencyComm comm;
   AgencyCommResult result;
-  std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
-  result = comm.getValues("Target/MapLocalToID/" + localInfoEncoded);
 
   std::string id;
-  bool found = true;
-  if (!result.successful()) {
-    found = false;
+  if (!hasPersistedId()) {
+    id = generatePersistedId(role);
+    LOG_TOPIC(INFO, Logger::CLUSTER)
+      << "Fresh start. Persisting new UUID " << id;
   } else {
-    VPackSlice idSlice = result.slice()[0].get(std::vector<std::string>(
-          {comm.prefix(), "Target", "MapLocalToID", localInfoEncoded}));
-    if (!idSlice.isString()) {
-      found = false;
-    } else {
-      id = idSlice.copyString();
-    }
-  }
-  if (!found) {
+    id = getPersistedId();
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "Determining id from localinfo failed."
-      << "Continuing with registering ourselves for the first time";
-    id = createIdForRole(comm, role);
+      << "Restarting with persisted UUID " << id;
   }
-  
-  const std::string agencyKey = roleToAgencyKey(role);
-  const std::string planKey = "Plan/" + agencyKey + "/" + id;
-  const std::string currentKey = "Current/" + agencyKey + "/" + id;
-  
-  auto builder = std::make_shared<VPackBuilder>();
-  result = comm.getValues(planKey);
-  found = true;
-  if (!result.successful()) {
-    found = false;
-  } else {
-    VPackSlice plan = result.slice()[0].get(std::vector<std::string>(
-          { comm.prefix(), "Plan", agencyKey, id }));
-    if (!plan.isString()) {
-      found = false;
-    } else {
-      builder->add(plan);
-    }
-  }
-  if (!found) {
-    // mop: hmm ... we are registered but not part of the Plan :O
-    // create a plan for ourselves :)
-    builder->add(VPackValue("none"));
-    
-    VPackSlice plan = builder->slice();
+  setId(id);
 
-    comm.setValue(planKey, plan, 0.0);
-    if (!result.successful()) {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "Couldn't create plan " << result.errorMessage();
-      return false;
-    }
+  if (!registerAtAgency(comm, role, id)) {
+    FATAL_ERROR_EXIT();
   }
-  
-  result = comm.setValue(currentKey, builder->slice(), 0.0);
-  
-  if (!result.successful()) {
-    LOG_TOPIC(ERR, Logger::CLUSTER)
-      << "Could not talk to agency! " << result.errorMessage();
-    return false;
-  }
-  
-  _id = id;
 
   findAndSetRoleBlocking();
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
-    << "We successfully announced ourselves as " << roleToString(role)
-    << " and our id is " << id;
-  
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
+    << roleToString(role) << " and our id is "
+    << id;
+
   return true;
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get the key for a role in the agency
@@ -333,78 +422,216 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
     case ROLE_SECONDARY:
     case ROLE_UNDEFINED:
     case ROLE_SINGLE:
-    case ROLE_AGENT: {}
+    case ROLE_AGENT: {
+    }
   }
   return "INVALID_CLUSTER_ROLE";
+}
+
+void mkdir (std::string const& path) {
+  if (!TRI_IsDirectory(path.c_str())) {
+    if (!arangodb::basics::FileUtils::createDirectory(path)) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't create file directory " << path << " (UUID)";
+      FATAL_ERROR_EXIT();
+    }
+  }
+}
+
+std::string ServerState::getUuidFilename() {
+  auto dbpath =
+    application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+      "DatabasePath");
+  TRI_ASSERT(dbpath != nullptr);
+  mkdir (dbpath->directory());
+
+  return dbpath->directory() + "/UUID";
+}
+
+bool ServerState::hasPersistedId() {
+  std::string uuidFilename = getUuidFilename(); 
+  return FileUtils::exists(uuidFilename);
+}
+
+bool ServerState::writePersistedId(std::string const& id) {
+  std::string uuidFilename = getUuidFilename();
+  std::ofstream ofs(uuidFilename);
+  if (!ofs.is_open()) {
+    LOG_TOPIC(FATAL, Logger::CLUSTER)
+      << "Couldn't write id file " << getUuidFilename();
+    FATAL_ERROR_EXIT();
+    return false;
+  }
+  ofs << id << std::endl;
+  ofs.close();
+
+  return true;
+}
+
+std::string ServerState::generatePersistedId(RoleEnum const& role) {
+  std::string id = RoleStr.at(role) + "-" +
+    to_string(boost::uuids::random_generator()());
+  writePersistedId(id);
+  return id;
+}
+
+std::string ServerState::getPersistedId() {
+  std::string uuidFilename = getUuidFilename(); 
+  std::ifstream ifs(uuidFilename);
+
+  std::string id;
+  if (ifs.is_open()) {
+    std::getline(ifs, id);
+    ifs.close();
+  } else {
+    LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open " << uuidFilename;
+    FATAL_ERROR_EXIT();
+  }
+  return id;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create an id for a specified role
 //////////////////////////////////////////////////////////////////////////////
-std::string ServerState::createIdForRole(
-  AgencyComm comm, ServerState::RoleEnum role) {
-  
-  std::string const agencyKey = roleToAgencyKey(role);
-  
-  std::string const serverIdPrefix = agencyKey.substr(0, agencyKey.length() - 1);
-  std::string id;
 
-  VPackBuilder builder;
-  builder.add(VPackValue("none"));
+bool ServerState::registerAtAgency(AgencyComm& comm,
+                                          const ServerState::RoleEnum& role,
+                                          std::string const& id) {
 
-  VPackSlice idValue = builder.slice();
-  AgencyCommResult createResult; 
-  do {
+  typedef std::pair<AgencyOperation,AgencyPrecondition> operationType;
+  std::string agencyKey = role == ROLE_COORDINATOR ?
+    "Coordinators" : "DBServers";
+  std::string idKey = role == ROLE_COORDINATOR ?
+    "LatestCoordinatorId" : "LatestDBServerId";
+
+  if (role != ROLE_SECONDARY) {
+    VPackBuilder builder;
+    builder.add(VPackValue("none"));
+
+    AgencyCommResult createResult;
+
     AgencyCommResult result = comm.getValues("Plan/" + agencyKey);
     if (!result.successful()) {
-      LOG(FATAL) << "Couldn't fetch Plan/" << agencyKey
-          << " from agency. Agency is not initialized?";
-      FATAL_ERROR_EXIT();
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't fetch Plan/" << agencyKey
+        << " from agency. Agency is not initialized?";
+      return false;
     }
-    VPackSlice servers = result.slice()[0].get(std::vector<std::string>(
-          {comm.prefix(), "Plan", agencyKey}));
+
+    VPackSlice servers = result.slice()[0].get(
+        std::vector<std::string>({AgencyCommManager::path(), "Plan", agencyKey}));
     if (!servers.isObject()) {
-      LOG(FATAL) << "Plan/" << agencyKey << " in agency is no object. "
-          << "Agency not initialized?";
-      FATAL_ERROR_EXIT();
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "Plan/" << agencyKey << " in agency is no object. "
+        << "Agency not initialized?";
+      return false;
     }
 
-    // mop: it is not our first run. wait a bit. 
-    if (!id.empty()) {
-      sleep(1);
+    VPackSlice entry = servers.get(id);
+    LOG_TOPIC(TRACE, Logger::STARTUP)
+      << id << " found in existing keys: " << (!entry.isNone());
+
+    std::string planUrl = "Plan/" + agencyKey + "/" + id;
+    std::string currentUrl = "Current/" + agencyKey + "/" + id;
+
+    AgencyGeneralTransaction reg;
+    reg.push_back( // Plan entry if not exists
+        operationType(
+          AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
+          AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true)));
+
+    reg.push_back( // Current entry if not exists
+        operationType(
+          AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
+          AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true)));
+    
+    // ok to fail..if it failed we are already registered
+    comm.sendTransactionWithFailover(reg, 0.0);
+  } else {
+    std::string currentUrl = "Current/" + agencyKey + "/" + _idOfPrimary;
+    AgencyCommResult result = comm.setValue(currentUrl, id, 0.0);
+    if (!result.successful()) {
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "Could not register ourselves as secondary in Current";
+      return false;
     }
-
-    size_t idCounter = 1;
-    VPackSlice entry;
-    do {
-      std::ostringstream idss;
-      idss << std::setw(3) << std::setfill('0') << idCounter++;
-      id = serverIdPrefix + idss.str();
-      entry = servers.get(id);
-
-      LOG_TOPIC(TRACE, Logger::STARTUP) << id << " found in existing keys: " 
-          << (!entry.isNone());
-    } while (!entry.isNone());
-
-    createResult =
-      comm.casValue("Plan/" + agencyKey + "/" + id, idValue, false, 0.0, 0.0);
-  } while(!createResult.successful());
-  
-  VPackBuilder localIdBuilder;
-  localIdBuilder.add(VPackValue(id));
-
-  VPackSlice localIdValue = localIdBuilder.slice();
-
-  AgencyCommResult mapResult = comm.setValue(
-    "Target/MapLocalToID/"
-    + StringUtils::urlEncode(_localInfo), localIdValue, 0.0);
-  
-  if (!mapResult.successful()) {
-    LOG(FATAL) << "Couldn't register Id as localId";
-    FATAL_ERROR_EXIT();
   }
-   
-  return id;
+
+  std::string targetIdStr =
+    (role == ROLE_COORDINATOR) ?
+    "Target/LatestCoordinatorId" : "Target/LatestDBServerId";
+  std::string targetUrl = "Target/MapUniqueToShortID/" + id;
+
+  size_t attempts {0};
+  while (attempts++ < 300) {
+    AgencyReadTransaction readValueTrx(std::vector<std::string>{AgencyCommManager::path() + "/" + targetIdStr, AgencyCommManager::path() + "/" + targetUrl});
+    AgencyCommResult result = comm.sendTransactionWithFailover(readValueTrx, 0.0);
+    
+    if (!result.successful()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER) << "Couldn't fetch " << targetIdStr
+        << " and " << targetUrl;
+      sleep(1);
+      continue;
+    }
+
+    VPackSlice mapSlice = result.slice()[0].get(
+    std::vector<std::string>(
+      {AgencyCommManager::path(), "Target", "MapUniqueToShortID", id}));
+
+    // already registered
+    if (!mapSlice.isNone()) {
+      return true;
+    }
+
+    VPackSlice latestId = result.slice()[0].get(
+    std::vector<std::string>(
+      {AgencyCommManager::path(), "Target", idKey}));
+
+    uint32_t num = 0;
+    std::unique_ptr<AgencyPrecondition> latestIdPrecondition;
+    VPackBuilder latestIdBuilder;
+    if (latestId.isNumber()) {
+      num = latestId.getNumber<uint32_t>();
+      latestIdBuilder.add(VPackValue(num));
+      latestIdPrecondition.reset(new AgencyPrecondition(targetIdStr, AgencyPrecondition::Type::VALUE, latestIdBuilder.slice()));
+    } else {
+      latestIdPrecondition.reset(new AgencyPrecondition(targetIdStr, AgencyPrecondition::Type::EMPTY, true));
+    }
+
+    VPackBuilder localIdBuilder;
+    {
+      VPackObjectBuilder b(&localIdBuilder);
+      localIdBuilder.add("TransactionID", VPackValue(num + 1));
+      std::stringstream ss; // ShortName
+      ss << ((role == ROLE_COORDINATOR) ? "Coordinator" : "DBServer")
+        << std::setw(4) << std::setfill('0')
+        << num + 1;
+      std::string shortName = ss.str();
+      localIdBuilder.add("ShortName", VPackValue(shortName));
+    }
+
+    std::vector<AgencyOperation> operations;
+    std::vector<AgencyPrecondition> preconditions;
+
+    operations.push_back(
+      AgencyOperation(targetIdStr, AgencySimpleOperationType::INCREMENT_OP)
+    );
+    operations.push_back(
+      AgencyOperation(targetUrl, AgencyValueOperationType::SET, localIdBuilder.slice())
+    );
+
+    preconditions.push_back(*(latestIdPrecondition.get()));
+    preconditions.push_back(
+      AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY, true)
+    );
+
+    AgencyWriteTransaction trx(operations, preconditions);
+    result = comm.sendTransactionWithFailover(trx, 0.0);
+
+    if (result.successful()) {
+      return true;
+    }
+    sleep(1);
+  }
+
+  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't register shortname for " << id;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -543,16 +770,16 @@ void ServerState::setState(StateEnum state) {
 
   if (result) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "changing state of " << ServerState::roleToString(role)
-      << " server from " << ServerState::stateToString(_state)
-      << " to " << ServerState::stateToString(state);
+        << "changing state of " << ServerState::roleToString(role)
+        << " server from " << ServerState::stateToString(_state) << " to "
+        << ServerState::stateToString(state);
 
     _state = state;
   } else {
     LOG_TOPIC(ERR, Logger::CLUSTER)
-      << "invalid state transition for " << ServerState::roleToString(role)
-      << " server from " << ServerState::stateToString(_state)
-      << " to " << ServerState::stateToString(state);
+        << "invalid state transition for " << ServerState::roleToString(role)
+        << " server from " << ServerState::stateToString(_state) << " to "
+        << ServerState::stateToString(state);
   }
 }
 
@@ -677,14 +904,25 @@ bool ServerState::redetermineRole() {
   std::string saveIdOfPrimary = _idOfPrimary;
   RoleEnum role = determineRole(_localInfo, _id);
   std::string roleString = roleToString(role);
-  LOG_TOPIC(INFO, Logger::CLUSTER)
-    << "Redetermined role from agency: " << roleString;
+  LOG_TOPIC(INFO, Logger::CLUSTER) << "Redetermined role from agency: "
+                                   << roleString;
   if (role == ServerState::ROLE_UNDEFINED) {
     return false;
   }
   RoleEnum oldRole = loadRole();
   if (role != oldRole) {
     LOG_TOPIC(INFO, Logger::CLUSTER) << "Changed role to: " << roleString;
+    if (oldRole == ROLE_PRIMARY && role == ROLE_SECONDARY) {
+      std::string oldId("Current/DBServers/" + _id);
+      AgencyOperation del(oldId, AgencySimpleOperationType::DELETE_OP);
+      AgencyOperation incrementVersion("Current/Version",
+          AgencySimpleOperationType::INCREMENT_OP);
+
+      AgencyWriteTransaction trx(std::vector<AgencyOperation> {del, incrementVersion});
+
+      AgencyComm comm;
+      comm.sendTransactionWithFailover(trx, 0.0);
+    }
     if (!storeRole(role)) {
       return false;
     }
@@ -714,7 +952,7 @@ ServerState::RoleEnum ServerState::determineRole(std::string const& info,
     LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Learned my own Id: " << id;
     setId(id);
   }
-  
+
   ServerState::RoleEnum role = checkCoordinatorsList(id);
   if (role == ServerState::ROLE_UNDEFINED) {
     role = checkServersList(id);
@@ -807,21 +1045,21 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
   AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
-    std::string const endpoints = AgencyComm::getEndpointsString();
+    std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
     LOG_TOPIC(TRACE, Logger::CLUSTER)
-      << "Could not fetch configuration from agency endpoints ("
-      << endpoints << "): got status code " << result._statusCode
-      << ", message: " << result.errorMessage() << ", key: " << key;
+        << "Could not fetch configuration from agency endpoints (" << endpoints
+        << "): got status code " << result._statusCode
+        << ", message: " << result.errorMessage() << ", key: " << key;
 
     return ServerState::ROLE_UNDEFINED;
   }
 
   VPackSlice coordinators = result.slice()[0].get(std::vector<std::string>(
-        {comm.prefix(), "Plan", "Coordinators"}));
+      {AgencyCommManager::path(), "Plan", "Coordinators"}));
   if (!coordinators.isObject()) {
     LOG_TOPIC(TRACE, Logger::CLUSTER)
-      << "Got an invalid JSON response for Plan/Coordinators";
+        << "Got an invalid JSON response for Plan/Coordinators";
     return ServerState::ROLE_UNDEFINED;
   }
 
@@ -852,7 +1090,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
     AgencyCommResult result = comm.getValues(key);
 
     if (!result.successful()) {
-      std::string const endpoints = AgencyComm::getEndpointsString();
+      std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
       LOG_TOPIC(DEBUG, Logger::STARTUP)
           << "Could not fetch configuration from agency endpoints ("
@@ -860,11 +1098,11 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
           << ", message: " << result.errorMessage() << ", key: " << key;
     } else {
       VPackSlice slice = result.slice()[0].get(std::vector<std::string>(
-            {comm.prefix(), "Target", "MapLocalToID"}));
+          {AgencyCommManager::path(), "Target", "MapLocalToID"}));
 
       if (!slice.isObject()) {
         LOG_TOPIC(DEBUG, Logger::STARTUP) << "Target/MapLocalToID corrupt: "
-            << "no object.";
+                                          << "no object.";
       } else {
         slice = slice.get(localInfo);
         if (slice.isObject()) {
@@ -903,12 +1141,12 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
-    std::string const endpoints = AgencyComm::getEndpointsString();
+    std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
     LOG_TOPIC(TRACE, Logger::CLUSTER)
-      << "Could not fetch configuration from agency endpoints (" << endpoints
-      << "): got status code " << result._statusCode << ", message: "
-      << result.errorMessage() << ", key: " << key;
+        << "Could not fetch configuration from agency endpoints (" << endpoints
+        << "): got status code " << result._statusCode
+        << ", message: " << result.errorMessage() << ", key: " << key;
 
     return ServerState::ROLE_UNDEFINED;
   }
@@ -916,10 +1154,10 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;
 
   VPackSlice dbservers = result.slice()[0].get(std::vector<std::string>(
-        {comm.prefix(), "Plan", "DBServers"}));
+      {AgencyCommManager::path(), "Plan", "DBServers"}));
   if (!dbservers.isObject()) {
     LOG_TOPIC(TRACE, Logger::CLUSTER)
-      << "Got an invalid JSON response for Plan/DBServers";
+        << "Got an invalid JSON response for Plan/DBServers";
     return ServerState::ROLE_UNDEFINED;
   }
 
@@ -952,65 +1190,62 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
 
 bool ServerState::storeRole(RoleEnum role) {
   if (isClusterRole(role)) {
-    AgencyComm comm;
-    AgencyCommResult result;
-
+    VPackBuilder builder;
+    std::unique_ptr<AgencyTransaction> trx;
+    bool fatalError = true;
     if (role == ServerState::ROLE_COORDINATOR) {
-      VPackBuilder builder;
       try {
         builder.add(VPackValue("none"));
       } catch (...) {
-        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory";
+        FATAL_ERROR_EXIT();
       }
 
-      // register coordinator
-      AgencyCommResult result =
-        comm.setValue("Current/Coordinators/" + _id, builder.slice(), 0.0);
-
-      if (!result.successful()) {
-        LOG(FATAL)
-          << "unable to register coordinator in agency"; FATAL_ERROR_EXIT();
-      }
+      AgencyOperation op("Current/Coordinators/" + _id, AgencyValueOperationType::SET, builder.slice());
+      trx.reset(new AgencyWriteTransaction(op));
     } else if (role == ServerState::ROLE_PRIMARY) {
-      VPackBuilder builder;
       try {
         builder.add(VPackValue("none"));
       } catch (...) {
-        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory";
+        FATAL_ERROR_EXIT();
       }
 
-      // register server
-      AgencyCommResult result =
-        comm.setValue("Current/DBServers/" + _id, builder.slice(), 0.0);
-
-      if (!result.successful()) {
-        LOG(FATAL)
-          << "unable to register db server in agency"; FATAL_ERROR_EXIT();
-      }
+      AgencyOperation op("Current/DBServers/" + _id, AgencyValueOperationType::SET, builder.slice());
+      trx.reset(new AgencyWriteTransaction(op));
     } else if (role == ServerState::ROLE_SECONDARY) {
       std::string keyName = _id;
-      VPackBuilder builder;
       try {
         builder.add(VPackValue(keyName));
       } catch (...) {
-        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory";
+        FATAL_ERROR_EXIT();
       }
 
-      std::string myId (
-        "Current/DBServers/" + ServerState::instance()->getPrimaryId());
-      AgencyOperation addMe(
-        myId, AgencyValueOperationType::SET, builder.slice());
-      AgencyOperation incrementVersion(
-        "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-      AgencyPrecondition precondition(myId, AgencyPrecondition::EMPTY, true);
-      AgencyWriteTransaction trx({addMe, incrementVersion}, precondition);
-      
-      // register server
-      AgencyCommResult result = comm.sendTransactionWithFailover(trx, 0.0);
+      std::string myId("Current/DBServers/" +
+                       ServerState::instance()->getPrimaryId());
+      AgencyOperation addMe(myId, AgencyValueOperationType::SET,
+                            builder.slice());
+      AgencyOperation incrementVersion("Current/Version",
+                                       AgencySimpleOperationType::INCREMENT_OP);
+      AgencyPrecondition precondition(myId, AgencyPrecondition::Type::EMPTY, false);
+      trx.reset(new AgencyWriteTransaction({addMe, incrementVersion}, precondition));
+      // mop: try again for secondaries
+      fatalError = false;
+    }
 
-      if (!result.successful()) {
-        // mop: fail gracefully (allow retry)
-        return false;
+    if (trx) {
+      if (AgencyCommManager::MANAGER) {
+        AgencyComm comm;
+        AgencyCommResult result = comm.sendTransactionWithFailover(*trx.get(), 0.0);
+        if (!result.successful()) {
+          if (fatalError) {
+            LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to register server in agency";
+            FATAL_ERROR_EXIT();
+          } else {
+            return false;
+          }
+        }
       }
     }
   }
@@ -1022,9 +1257,7 @@ bool ServerState::isFoxxmaster() {
   return !isRunningInCluster() || _foxxmaster == getId();
 }
 
-std::string const& ServerState::getFoxxmaster() {
-  return _foxxmaster;
-}
+std::string const& ServerState::getFoxxmaster() { return _foxxmaster; }
 
 void ServerState::setFoxxmaster(std::string const& foxxmaster) {
   if (_foxxmaster != foxxmaster) {
@@ -1033,9 +1266,7 @@ void ServerState::setFoxxmaster(std::string const& foxxmaster) {
   _foxxmaster = foxxmaster;
 }
 
-bool ServerState::getFoxxmasterQueueupdate() {
-  return _foxxmasterQueueupdate;
-}
+bool ServerState::getFoxxmasterQueueupdate() { return _foxxmasterQueueupdate; }
 
 void ServerState::setFoxxmasterQueueupdate(bool value) {
   _foxxmasterQueueupdate = value;

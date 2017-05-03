@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_6264b039324fcd610a179f376cbde94b" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/io/svg</compoundname>
+    <innerfile refid="svg__mapper_8hpp">svg_mapper.hpp</innerfile>
+    <innerfile refid="svg_2write_8hpp">write.hpp</innerfile>
+    <innerfile refid="write__svg_8hpp">write_svg.hpp</innerfile>
+    <innerfile refid="write__svg__multi_8hpp">write_svg_multi.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/io/svg/"/>
+  </compounddef>
+</doxygen>

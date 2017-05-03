@@ -1,0 +1,289 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</compoundname>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01geographic__tag_01_4" prot="public" virt="non-virtual">boost::geometry::collected_vector&lt; T, Geometry, geographic_tag &gt;</derivedcompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__polar__tag_01_4" prot="public" virt="non-virtual">boost::geometry::collected_vector&lt; T, Geometry, spherical_polar_tag &gt;</derivedcompoundref>
+    <includes local="no">collect_vectors.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename T</type>
+      </param>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1aad17741710bc6763d8d09aedb41ab4e8" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1coordinate__system" kindref="compound">coordinate_system</ref>&lt; Geometry &gt;::<ref refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1ac5a39995714bbd39aafbddab699148fe" kindref="member">type</ref></type>
+        <definition>typedef coordinate_system&lt;Geometry&gt;::type boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::cs_type</definition>
+        <argsstring></argsstring>
+        <name>cs_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="144" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="144" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1ab0491c05abb46a232c31e56a65bd70a4" prot="public" static="no">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1point" kindref="compound">model::point</ref>&lt; T, 2, <ref refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1aad17741710bc6763d8d09aedb41ab4e8" kindref="member">cs_type</ref> &gt;</type>
+        <definition>typedef model::point&lt;T, 2, cs_type&gt; boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::point_type</definition>
+        <argsstring></argsstring>
+        <name>point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="145" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="145" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1ac5a39995714bbd39aafbddab699148fe" prot="public" static="no">
+        <type>T</type>
+        <definition>typedef T boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="142" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="142" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a55ad809434c5e1fea8ca31d7f0261250" prot="public" static="no">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1point" kindref="compound">model::point</ref>&lt; T, 3, <ref refid="structboost_1_1geometry_1_1cs_1_1cartesian" kindref="compound">cs::cartesian</ref> &gt;</type>
+        <definition>typedef model::point&lt;T, 3, cs::cartesian&gt; boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::vector_type</definition>
+        <argsstring></argsstring>
+        <name>vector_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="146" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="146" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1abde2cc2095ff85a6a8a39927960149aa" prot="private" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a55ad809434c5e1fea8ca31d7f0261250" kindref="member">vector_type</ref></type>
+        <definition>vector_type boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::direction</definition>
+        <argsstring></argsstring>
+        <name>direction</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="230" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="230" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1af7ecc7a07b0b50d008c39b04d2c0753b" prot="private" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a55ad809434c5e1fea8ca31d7f0261250" kindref="member">vector_type</ref></type>
+        <definition>vector_type boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::next</definition>
+        <argsstring></argsstring>
+        <name>next</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="232" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="232" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1aedd2ccf74fa5a60209f8263442c05cb1" prot="private" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1ab0491c05abb46a232c31e56a65bd70a4" kindref="member">point_type</ref></type>
+        <definition>point_type boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::origin</definition>
+        <argsstring></argsstring>
+        <name>origin</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="229" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="229" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a1443cc86ad5ed5c62fb84e0db7fbf90c" prot="private" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a55ad809434c5e1fea8ca31d7f0261250" kindref="member">vector_type</ref></type>
+        <definition>vector_type boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::prev</definition>
+        <argsstring></argsstring>
+        <name>prev</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="231" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="231" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1aaba1ae31580d0065d44662d92fec577b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::collected_vector</definition>
+        <argsstring>()</argsstring>
+        <name>collected_vector</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="148" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="148" bodyend="149"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a3c577337828af49ad0de443cbc05fee9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::collected_vector</definition>
+        <argsstring>(Point const &amp;p1, Point const &amp;p2)</argsstring>
+        <name>collected_vector</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="152" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="152" bodyend="161"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1acd4ce58ea8b70ad0b23a8c1f0bf4b75b" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::next_is_collinear</definition>
+        <argsstring>(collected_vector const &amp;other) const </argsstring>
+        <name>next_is_collinear</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1collected__vector" kindref="compound">collected_vector</ref> const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="201" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="201" bodyend="204"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1acfb6b03ec7c276050c8b35717df6b014" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::normalize</definition>
+        <argsstring>()</argsstring>
+        <name>normalize</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="163" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="163" bodyend="175"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a9230fd471bfeea9139a3ac1c38968e5a" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::operator&lt;</definition>
+        <argsstring>(collected_vector const &amp;other) const </argsstring>
+        <name>operator&lt;</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1collected__vector" kindref="compound">collected_vector</ref> const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="177" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="177" bodyend="196"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a5e773d3c3a8ef035dcaa5169ae680a43" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::operator==</definition>
+        <argsstring>(collected_vector const &amp;other) const </argsstring>
+        <name>operator==</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1collected__vector" kindref="compound">collected_vector</ref> const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="207" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="207" bodyend="212"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a68f49dfb60abb38f33b1b7f706b60ffd" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;::is_collinear</definition>
+        <argsstring>(collected_vector const &amp;other) const </argsstring>
+        <name>is_collinear</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1collected__vector" kindref="compound">collected_vector</ref> const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="216" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="216" bodyend="220"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="50">
+        <label>boost::geometry::collected_vector&lt; T, Geometry, geographic_tag &gt;</label>
+        <link refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01geographic__tag_01_4"/>
+        <childnode refid="49" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="49">
+        <label>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</label>
+        <link refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4"/>
+      </node>
+      <node id="51">
+        <label>boost::geometry::collected_vector&lt; T, Geometry, spherical_polar_tag &gt;</label>
+        <link refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__polar__tag_01_4"/>
+        <childnode refid="49" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="141" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="140" bodyend="233"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1aaba1ae31580d0065d44662d92fec577b" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>collected_vector</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a3c577337828af49ad0de443cbc05fee9" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>collected_vector</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1aad17741710bc6763d8d09aedb41ab4e8" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>cs_type</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1abde2cc2095ff85a6a8a39927960149aa" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>direction</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a68f49dfb60abb38f33b1b7f706b60ffd" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>is_collinear</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1af7ecc7a07b0b50d008c39b04d2c0753b" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>next</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1acd4ce58ea8b70ad0b23a8c1f0bf4b75b" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>next_is_collinear</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1acfb6b03ec7c276050c8b35717df6b014" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>normalize</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a9230fd471bfeea9139a3ac1c38968e5a" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>operator&lt;</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a5e773d3c3a8ef035dcaa5169ae680a43" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>operator==</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1aedd2ccf74fa5a60209f8263442c05cb1" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>origin</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1ab0491c05abb46a232c31e56a65bd70a4" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>point_type</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a1443cc86ad5ed5c62fb84e0db7fbf90c" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>prev</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1ac5a39995714bbd39aafbddab699148fe" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>type</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_3_01_t_00_01_geometry_00_01spherical__equatorial__tag_01_4_1a55ad809434c5e1fea8ca31d7f0261250" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector&lt; T, Geometry, spherical_equatorial_tag &gt;</scope><name>vector_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -25,7 +25,7 @@
 const dd = require('dedent');
 const assert = require('assert');
 const joi = require('joi');
-const gql = require('graphql-sync');
+const gqlSync = require('graphql-sync');
 const createRouter = require('@arangodb/foxx/router');
 
 const GRAPHIQL_VERSION = '0.7.1';
@@ -33,12 +33,12 @@ const GRAPHIQL_VERSION = '0.7.1';
 module.exports = function graphql (cfg) {
   assert(cfg, 'Must pass options for graphql');
 
-  function getVariables(variables, res) {
+  function getVariables (variables, res) {
     if (typeof variables !== 'string') {
       return variables;
     }
     try {
-      return JSON.stringify(variables);
+      return JSON.parse(variables);
     } catch (e) {
       res.throw(400, 'Variables are invalid JSON', e);
     }
@@ -61,6 +61,7 @@ module.exports = function graphql (cfg) {
 
   function handler (req, res) {
     const options = typeof cfg === 'function' ? cfg(req, res) : cfg;
+    const gql = options.graphql || gqlSync;
 
     const params = typeof req.body === 'string' ? {query: req.body} : req.body || {};
     const query = req.queryParams.query || params.query;
@@ -91,8 +92,7 @@ module.exports = function graphql (cfg) {
       res.json(result, options.pretty);
     }
 
-
-    function handleRequest() {
+    function handleRequest () {
       if (!query) {
         if (showGraphiQL) {
           return null;
@@ -150,16 +150,16 @@ module.exports = function graphql (cfg) {
   }
 };
 
-function canDisplayGraphiQL(req, params) {
+function canDisplayGraphiQL (req, params) {
   const raw = params.raw !== undefined;
   return !raw && req.accepts(['json', 'html']) === 'html';
 }
 
-function safeSerialize(data) {
+function safeSerialize (data) {
   return data ? JSON.stringify(data).replace(/\//g, '\\/') : null;
 }
 
-function renderGraphiQL(options) {
+function renderGraphiQL (options) {
   const queryString = options.query;
   const variablesString = options.variables ? JSON.stringify(options.variables, null, 2) : null;
   const resultString = options.result ? JSON.stringify(options.result, null, 2) : null;

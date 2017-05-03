@@ -23,7 +23,7 @@
 
 #include "Executor.h"
 #include "Aql/AstNode.h"
-#include "Aql/FunctionDefinitions.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "Aql/Functions.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
@@ -84,7 +84,7 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
   v8::Handle<v8::Script> compiled = v8::Script::Compile(
       TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
 
-  if (! compiled.IsEmpty()) {
+  if (!compiled.IsEmpty()) {
     v8::Handle<v8::Value> func(compiled->Run());
 
     // exit early if an error occurred
@@ -108,7 +108,7 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
     HandleV8Error(tryCatch, empty,  _buffer, true);
     
     // well we're almost sure we never reach this since the above call should throw:
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
   }
 }
 
@@ -133,7 +133,7 @@ int Executor::executeExpression(Query* query, AstNode const* node,
   v8::Handle<v8::Script> compiled = v8::Script::Compile(
       TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
 
-  if (! compiled.IsEmpty()) {
+  if (!compiled.IsEmpty()) {
 
     v8::Handle<v8::Value> func(compiled->Run());
 
@@ -175,21 +175,14 @@ int Executor::executeExpression(Query* query, AstNode const* node,
     HandleV8Error(tryCatch, empty, _buffer, true);
 
     // well we're almost sure we never reach this since the above call should throw:
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
   }
 }
 
 /// @brief returns a reference to a built-in function
 Function const* Executor::getFunctionByName(std::string const& name) {
-  auto it = FunctionDefinitions::FunctionNames.find(name);
-
-  if (it == FunctionDefinitions::FunctionNames.end()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
-                                  name.c_str());
-  }
-
-  // return the address of the function
-  return &((*it).second);
+  auto functions = AqlFunctionFeature::AQLFUNCTIONS;
+  return functions->byName(name);
 }
 
 /// @brief traverse the expression and note all user-defined functions
@@ -356,7 +349,7 @@ void Executor::HandleV8Error(v8::TryCatch& tryCatch,
 
       if (buffer) {
         std::string script(buffer->c_str(), buffer->length());
-        LOG(ERR) << details << " " << script;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << script;
         details += "\nSee log for more details";
       }
       if (*stacktrace && stacktrace.length() > 0) {
@@ -373,7 +366,7 @@ void Executor::HandleV8Error(v8::TryCatch& tryCatch,
     }
     if (buffer) {
       std::string script(buffer->c_str(), buffer->length());
-      LOG(ERR) << msg << " " << script;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
       msg += " See log for details";
     }
     // we can't figure out what kind of error occurred and throw a generic error
@@ -387,7 +380,7 @@ void Executor::HandleV8Error(v8::TryCatch& tryCatch,
     }
     if (buffer) {
       std::string script(buffer->c_str(), buffer->length());
-      LOG(ERR) << msg << " " << script;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
       msg += " See log for details";
     }
 
@@ -608,16 +601,11 @@ void Executor::generateCodeRegularObject(AstNode const* node) {
 void Executor::generateCodeUnaryOperator(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
-
-  auto it = FunctionDefinitions::InternalFunctionNames.find(static_cast<int>(node->type));
-
-  if (it == FunctionDefinitions::InternalFunctionNames.end()) {
-    // no function found for the type of node
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unary operator function not found");
-  }
+  auto functions = AqlFunctionFeature::AQLFUNCTIONS;
+  TRI_ASSERT(functions != nullptr);
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-  _buffer->appendText((*it).second);
+  _buffer->appendText(functions->getOperatorName(node->type, "unary operator function not found"));
   _buffer->appendChar('(');
 
   generateCodeNode(node->getMember(0));
@@ -628,19 +616,14 @@ void Executor::generateCodeUnaryOperator(AstNode const* node) {
 void Executor::generateCodeBinaryOperator(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
-
-  auto it = FunctionDefinitions::InternalFunctionNames.find(static_cast<int>(node->type));
-
-  if (it == FunctionDefinitions::InternalFunctionNames.end()) {
-    // no function found for the type of node
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "binary operator function not found");
-  }
+  auto functions = AqlFunctionFeature::AQLFUNCTIONS;
+  TRI_ASSERT(functions != nullptr);
 
   bool wrap = (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
                node->type == NODE_TYPE_OPERATOR_BINARY_OR);
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-  _buffer->appendText((*it).second);
+  _buffer->appendText(functions->getOperatorName(node->type, "binary operator function not found"));
   _buffer->appendChar('(');
 
   if (wrap) {
@@ -662,16 +645,11 @@ void Executor::generateCodeBinaryOperator(AstNode const* node) {
 void Executor::generateCodeBinaryArrayOperator(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 3);
-
-  auto it = FunctionDefinitions::InternalFunctionNames.find(static_cast<int>(node->type));
-
-  if (it == FunctionDefinitions::InternalFunctionNames.end()) {
-    // no function found for the type of node
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "binary array function not found");
-  }
+  auto functions = AqlFunctionFeature::AQLFUNCTIONS;
+  TRI_ASSERT(functions != nullptr);
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-  _buffer->appendText((*it).second);
+  _buffer->appendText(functions->getOperatorName(node->type, "binary array function not found"));
   _buffer->appendChar('(');
 
   generateCodeNode(node->getMember(0));
@@ -692,16 +670,11 @@ void Executor::generateCodeBinaryArrayOperator(AstNode const* node) {
 void Executor::generateCodeTernaryOperator(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 3);
-
-  auto it = FunctionDefinitions::InternalFunctionNames.find(static_cast<int>(node->type));
-
-  if (it == FunctionDefinitions::InternalFunctionNames.end()) {
-    // no function found for the type of node
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
-  }
+  auto functions = AqlFunctionFeature::AQLFUNCTIONS;
+  TRI_ASSERT(functions != nullptr);
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-  _buffer->appendText((*it).second);
+  _buffer->appendText(functions->getOperatorName(node->type, "function not found"));
   _buffer->appendChar('(');
 
   generateCodeNode(node->getMember(0));

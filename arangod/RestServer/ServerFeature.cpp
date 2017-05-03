@@ -29,8 +29,6 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -56,7 +54,7 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   requiresElevatedPrivileges(false);
   startsAfter("Cluster");
   startsAfter("Database");
-  startsAfter("Recovery");
+  startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Statistics");
   startsAfter("Upgrade");
@@ -85,9 +83,9 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
 
-  options->addSection("vpp", "Configure the VelocyStream protocol");
+  options->addSection("vst", "Configure the VelocyStream protocol");
 
-  options->addOption("--vpp.maxsize",
+  options->addOption("--vst.maxsize",
                      "maximal size (in bytes) for a VelocyPack chunk",
                      new UInt32Parameter(&_vppMaxSize));
 }
@@ -111,21 +109,20 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 
   if (1 < count) {
-    LOG(FATAL) << "cannot combine '--console', '--javascript.unit-tests' and "
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot combine '--console', '--javascript.unit-tests' and "
                << "'--javascript.script'";
     FATAL_ERROR_EXIT();
   }
 
   if (_operationMode == OperationMode::MODE_SERVER && !_restServer) {
-    LOG(FATAL) << "need at least '--console', '--javascript.unit-tests' or"
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "need at least '--console', '--javascript.unit-tests' or"
                << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
   }
 
   if (!_restServer) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
-                                        "Scheduler", "SslServer",
-                                        "Supervisor"});
+                                        "SslServer", "Supervisor"});
 
     DatabaseFeature* database =
         ApplicationServer::getFeature<DatabaseFeature>("Database");
@@ -158,7 +155,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void ServerFeature::start() {
-  if (_operationMode != OperationMode::MODE_CONSOLE && _restServer) {
+  if (_operationMode != OperationMode::MODE_CONSOLE) {
     auto scheduler =
         ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
@@ -190,6 +187,7 @@ void ServerFeature::beginShutdown() {
   std::string msg =
       ArangoGlobalContext::CONTEXT->binaryName() + " [shutting down]";
   TRI_SetProcessTitle(msg.c_str());
+  _isStopping = true;
 }
 
 void ServerFeature::waitForHeartbeat() {

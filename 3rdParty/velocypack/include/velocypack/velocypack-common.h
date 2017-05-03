@@ -160,22 +160,9 @@ static inline int64_t toInt64(uint64_t v) noexcept {
 
 // read an unsigned little endian integer value of the
 // specified length, starting at the specified byte offset
-template <typename T>
-static inline T readInteger(uint8_t const* start, ValueLength length) noexcept {
-  uint64_t value = 0;
-  uint64_t x = 0;
-  uint8_t const* end = start + length;
-  while (start < end) {
-    value += static_cast<T>(*start++) << x;
-    x += 8;
-  }
-  return value;
-}
-
-// read an unsigned little endian integer value of the
-// specified length, starting at the specified byte offset
 template <typename T, ValueLength length>
 static inline T readIntegerFixed(uint8_t const* start) noexcept {
+  static_assert(length > 0, "length must be > 0");
   uint64_t x = 8;
   uint8_t const* end = start + length;
   uint64_t value = static_cast<T>(*start++);
@@ -190,6 +177,7 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
 // specified length, starting at the specified byte offset
 template <typename T>
 static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) noexcept {
+  VELOCYPACK_ASSERT(length > 0);
   uint64_t x = 8;
   uint8_t const* end = start + length;
   uint64_t value = static_cast<T>(*start++);
@@ -201,7 +189,7 @@ static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) no
 }
 
 static inline uint64_t readUInt64(uint8_t const* start) noexcept {
-  return readInteger<uint64_t>(start, 8);
+  return readIntegerFixed<uint64_t, 8>(start);
 }
 
 static inline void storeUInt64(uint8_t* start, uint64_t value) noexcept {

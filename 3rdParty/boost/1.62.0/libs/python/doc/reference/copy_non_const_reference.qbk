@@ -1,0 +1,58 @@
+[section boost/python/copy_non_const_reference.hpp]
+[section Class `copy_non_const_reference`]
+`copy_non_const_reference` is a model of [link concepts.resultconverter.resultconvertergenerator_concept ResultConverterGenerator] which can be used to wrap C++ functions returning a reference-to-non-const type such that the referenced value is copied into a new Python object.
+``
+namespace boost { namespace python
+{
+    struct copy_non_const_reference
+    {
+        template <class T> struct apply;
+    };
+}}
+``
+[endsect]
+[section Class `copy_non_const_reference` metafunctions]
+``template <class T> struct apply``
+[variablelist
+[[Requires][`T` is `U &` for some non-const `U`.]]
+[[Returns][`typedef to_python_value<T> type`;]]
+]
+[endsect]
+[section Example]
+C++ module definition:
+``
+#include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/copy_non_const_reference.hpp>
+#include <boost/python/return_value_policy.hpp>
+
+// classes to wrap
+struct Bar { int x; }
+
+struct Foo {
+   Foo(int x) : { b.x = x; }
+   Bar& get_bar() { return b; }
+ private:
+   Bar b;
+};
+
+// Wrapper code
+using namespace boost::python;
+BOOST_PYTHON_MODULE(my_module)
+{
+    class_<Bar>("Bar");
+
+     class_<Foo>("Foo", init<int>())
+        .def("get_bar", &Foo::get_bar
+            , return_value_policy<copy_non_const_reference>())
+       ;
+}
+``
+Python code:
+``
+>>> from my_module import *
+>>> f = Foo(3)         # create a Foo object
+>>> b = f.get_bar()    # make a copy of the internal Bar object
+``
+[endsect]
+[endsect]

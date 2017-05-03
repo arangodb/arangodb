@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1strategy_1_1relate" kind="namespace">
+    <compoundname>boost::geometry::strategy::relate</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1relate_1_1relate" prot="public">boost::geometry::strategy::relate::relate</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/relate.hpp" line="21" column="1"/>
+  </compounddef>
+</doxygen>

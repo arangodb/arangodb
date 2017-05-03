@@ -1,4 +1,5 @@
-!CHAPTER Controllers vs routers
+Controllers vs routers
+======================
 
 Foxx Controllers have been replaced with [routers](../../Router/README.md). This is more than a cosmetic change as there are significant differences in behaviour:
 

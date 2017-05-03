@@ -27,10 +27,12 @@
 
 #include <boost/asio/local/stream_protocol.hpp>
 
-using namespace arangodb::basics;
-
 namespace arangodb {
-class SocketUnixDomain: public Socket {
+namespace basics {
+class StringBuffer;
+}
+
+class SocketUnixDomain final : public Socket {
   public:
     SocketUnixDomain(boost::asio::io_service& ioService, boost::asio::ssl::context&& context)
         : Socket(ioService, std::move(context), false),
@@ -51,7 +53,7 @@ class SocketUnixDomain: public Socket {
     
     bool sslHandshake() override { return false; }
     
-    size_t write(StringBuffer* buffer, boost::system::error_code& ec) override;
+    size_t write(basics::StringBuffer* buffer, boost::system::error_code& ec) override;
     
     void asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
     
@@ -63,8 +65,8 @@ class SocketUnixDomain: public Socket {
     
     void shutdownSend(boost::system::error_code& ec) override;
     
-    int available(boost::system::error_code& ec) override;
-    
+    std::size_t available(boost::system::error_code& ec) override;
+  
     void asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
 
   public:

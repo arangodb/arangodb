@@ -12,11 +12,27 @@ configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist.in" 
 set(CPACK_BUNDLE_PLIST           "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
 
 set(CPACK_BUNDLE_PREFIX          "Contents/MacOS")
-set(CPACK_INSTALL_PREFIX         "${CPACK_PACKAGE_NAME}.app/${CPACK_BUNDLE_PREFIX}/${CMAKE_INSTALL_PREFIX}")
+set(CPACK_INSTALL_PREFIX         "${CPACK_PACKAGE_NAME}.app/${CPACK_BUNDLE_PREFIX}${CMAKE_INSTALL_PREFIX}")
+
+set(INST_USR_LIBDIR "/Library/ArangoDB")
+set(CPACK_ARANGO_PID_DIR "/${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LOCALSTATEDIR}/run")
+set(CPACK_ARANGO_DATA_DIR "${INST_USR_LIBDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LOCALSTATEDIR}/lib/arangodb3")
+set(CPACK_ARANGO_LOG_DIR "${INST_USR_LIBDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LOCALSTATEDIR}/log/arangodb3")
+set(CPACK_ARANGO_STATE_DIR "${INST_USR_LIBDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LOCALSTATEDIR}")
+
+set(CPACK_ARANGODB_APPS_DIRECTORY "${INST_USR_LIBDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LOCALSTATEDIR}/lib/arangodb3-apps")
+
+to_native_path("CPACK_ARANGODB_APPS_DIRECTORY")
+to_native_path("CMAKE_INSTALL_DATAROOTDIR_ARANGO")
+to_native_path("CPACK_ARANGO_PID_DIR")
+to_native_path("CPACK_ARANGO_DATA_DIR")
+to_native_path("CPACK_ARANGO_STATE_DIR")
+to_native_path("CPACK_ARANGO_LOG_DIR")
 
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh.in"
   "${CMAKE_CURRENT_BINARY_DIR}/arangodb-cli.sh"
   @ONLY)
+
 set(CPACK_BUNDLE_STARTUP_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/arangodb-cli.sh")
 
 add_custom_target(package-arongodb-server-bundle
@@ -26,5 +42,14 @@ add_custom_target(package-arongodb-server-bundle
 
 list(APPEND PACKAGES_LIST package-arongodb-server-bundle)
 
-add_custom_target(copy_packages
-  COMMAND cp *.dmg ${PACKAGE_TARGET_DIR})
+add_custom_target(copy_bundle_packages
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.dmg ${PACKAGE_TARGET_DIR})
+
+list(APPEND COPY_PACKAGES_LIST copy_bundle_packages)
+
+add_custom_target(remove_packages
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.dmg
+  COMMAND ${CMAKE_COMMAND} -E remove_directory _CPack_Packages
+  )
+
+list(APPEND CLEAN_PACKAGES_LIST remove_packages)

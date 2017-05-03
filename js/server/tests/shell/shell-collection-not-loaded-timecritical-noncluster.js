@@ -62,6 +62,7 @@ function ThrowCollectionNotLoadedSuite() {
       c = null;
       internal.wal.flush(true, true);
       while (db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(cn).unload();
         internal.wait(0.5);
       }
 
@@ -82,6 +83,7 @@ function ThrowCollectionNotLoadedSuite() {
       c = null;
       internal.wal.flush(true, true);
       while (db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(cn).unload();
         internal.wait(0.5);
       }
 
@@ -110,6 +112,7 @@ function ThrowCollectionNotLoadedSuite() {
       internal.wal.flush(true, true);
 
       while (db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(cn).unload();
         internal.wait(0.5);
       }
 
@@ -188,6 +191,7 @@ function ThrowCollectionNotLoadedSuite() {
       internal.wal.flush(true, true);
 
       while (db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(cn).unload();
         internal.wait(0.5);
       }
 

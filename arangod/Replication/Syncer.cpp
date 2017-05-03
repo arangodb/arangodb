@@ -29,12 +29,15 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -370,7 +373,7 @@ arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, 
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::applyCollectionDumpMarker(
-    arangodb::Transaction& trx, std::string const& collectionName,
+    transaction::Methods& trx, std::string const& collectionName,
     TRI_replication_operation_e type, VPackSlice const& old, 
     VPackSlice const& slice, std::string& errorMsg) {
 
@@ -492,7 +495,7 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
 
   int res = TRI_ERROR_NO_ERROR;
   try {
-    col = _vocbase->createCollection(merged.slice(), cid, true);
+    col = _vocbase->createCollection(merged.slice());
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
@@ -527,7 +530,7 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _vocbase->dropCollection(col, true, true);
+  return _vocbase->dropCollection(col, true, -1.0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -535,7 +538,11 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::createIndex(VPackSlice const& slice) {
-  VPackSlice const indexSlice = slice.get("index");
+  VPackSlice indexSlice = slice.get("index");
+  if (!indexSlice.isObject()) {
+    indexSlice = slice.get("data");
+  }
+
   if (!indexSlice.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -543,16 +550,8 @@ int Syncer::createIndex(VPackSlice const& slice) {
   TRI_voc_cid_t cid = getCid(slice);
   std::string cnameString = getCName(slice);
 
-  // TODO
-  // Backwards compatibility. old check to nullptr, new is empty string
-  // Other api does not know yet.
-  char const* cname = nullptr;
-  if (!cnameString.empty()) {
-    cname = cnameString.c_str();
-  }
-
   try {
-    CollectionGuard guard(_vocbase, cid, std::string(cname));
+    CollectionGuard guard(_vocbase, cid, cnameString);
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -560,24 +559,21 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     LogicalCollection* collection = guard.collection();
 
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->cid(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), guard.collection()->cid(), AccessMode::Type::WRITE);
 
-    int res = trx.begin();
+    Result res = trx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (!res.ok()) {
+      return res.errorNumber();
     }
 
+    auto physical = collection->getPhysical();
+    TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
-    res = collection->restoreIndex(&trx, indexSlice, idx);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = collection->saveIndex(idx.get(), true);
-    }
-
+    res = physical->restoreIndex(&trx, indexSlice, idx);
     res = trx.finish(res);
 
-    return res;
+    return res.errorNumber();
   } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
@@ -590,7 +586,12 @@ int Syncer::createIndex(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
-  std::string const id = VelocyPackHelper::getStringValue(slice, "id", "");
+  std::string id;
+  if (slice.hasKey("data")) {
+    id = VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
+  } else {
+    id = VelocyPackHelper::getStringValue(slice, "id", "");
+  }
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -601,16 +602,8 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   TRI_voc_cid_t const cid = getCid(slice);
   std::string cnameString = getCName(slice);
 
-  // TODO
-  // Backwards compatibility. old check to nullptr, new is empty string
-  // Other api does not know yet.
-  char const* cname = nullptr;
-  if (!cnameString.empty()) {
-    cname = cnameString.c_str();
-  }
-
   try {
-    CollectionGuard guard(_vocbase, cid, std::string(cname));
+    CollectionGuard guard(_vocbase, cid, cnameString);
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -618,7 +611,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
     LogicalCollection* collection = guard.collection();
 
-    bool result = collection->dropIndex(iid, true);
+    bool result = collection->dropIndex(iid);
 
     if (!result) {
       return TRI_ERROR_NO_ERROR;
@@ -669,7 +662,6 @@ int Syncer::getMasterState(std::string& errorMsg) {
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
 
-  
   auto builder = std::make_shared<VPackBuilder>();
   int res = parseResponse(builder, response.get());
 
@@ -677,6 +669,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
     VPackSlice const slice = builder->slice();
 
     if (!slice.isObject()) {
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "synger::getMasterState - state is not an object";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       errorMsg = "got invalid response from master at " +
                  _masterInfo._endpoint + ": invalid JSON";
@@ -686,6 +679,9 @@ int Syncer::getMasterState(std::string& errorMsg) {
     }
   }
 
+  if (res != TRI_ERROR_NO_ERROR){
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "synger::getMasterState - handleStateResponse failed";
+  }
   return res;
 }
 

@@ -45,7 +45,7 @@ class QueryRegistry {
   /// a query for this <vocbase> and <id> combination and an exception will
   /// be thrown in that case. The time to live <ttl> is in seconds and the
   /// query will be deleted if it is not opened for that amount of time.
-  void insert(QueryId id, Query* query, double ttl = 3600.0);
+  void insert(QueryId id, Query* query, double ttl = 600.0);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -73,6 +73,12 @@ class QueryRegistry {
 
   /// @brief expireQueries, this deletes all expired queries from the registry
   void expireQueries();
+
+  /// @brief return number of registered queries
+  size_t numberRegisteredQueries();
+
+  /// @brief for shutdown, we need to shut down all queries:
+  void destroyAll();
 
  private:
   /// @brief a struct for all information regarding one query in the registry

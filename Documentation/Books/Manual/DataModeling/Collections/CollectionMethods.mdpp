@@ -1,6 +1,7 @@
-!CHAPTER Collection Methods
+Collection Methods
+==================
 
-!SUBSECTION Drop
+### Drop
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -34,7 +35,7 @@ with attribute *isSystem* set to *true* must be specified.
     @endDocuBlock collectionDropSystem
 
 
-!SUBSECTION Truncate
+### Truncate
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
@@ -63,11 +64,11 @@ Truncates a collection:
     @endDocuBlock collectionTruncate
 
 
-!SUBSECTION Properties
+### Properties
 <!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionProperties
 
-!SUBSECTION Figures
+### Figures
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -122,7 +123,7 @@ memory.
 * *indexes.count*: The total number of indexes defined for the
   collection, including the pre-defined indexes (e.g. primary index).
 * *indexes.size*: The total memory allocated for indexes in bytes.
-* *maxTick*: The tick of the last marker that was stored in a journal
+* *lastTick*: The tick of the last marker that was stored in a journal
   of the collection. This might be 0 if the collection does not yet have
   a journal.
 * *uncollectedLogfileEntries*: The number of markers in the write-ahead
@@ -174,7 +175,7 @@ used as a lower bound approximation of the disk usage.
 
 
 
-!SUBSECTION Load
+### Load
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -199,16 +200,7 @@ Loads a collection into memory.
 
 
 
-!SUBSECTION Reserve
-`collection.reserve(number)`
-
-Sends a resize hint to the indexes in the collection. The resize hint allows indexes to reserve space for additional documents (specified by number) in one go.
-
-The reserve hint can be sent before a mass insertion into the collection is started. It allows indexes to allocate the required memory at once and avoids re-allocations and possible re-locations.
-
-Not all indexes implement the reserve function at the moment. The indexes that don't implement it will simply ignore the request. returns the revision id of a collection
-
-!SUBSECTION Revision
+### Revision
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -228,7 +220,22 @@ The revision id returned is a string value. Clients should treat this value
 as an opaque string, and only use it for equality/non-equality comparisons.
 
 
-!SUBSECTION Checksum
+### Path
+
+
+returns the physical path of the collection
+`collection.path()`
+
+The *path* operation returns a string with the physical storage path for
+the collection data.
+
+**Note**: this method will return nothing meaningful in a cluster. In a 
+single-server ArangoDB, this method will only return meaningful data for the 
+MMFiles engine.
+
+
+
+### Checksum
 <!-- arangod/V8Server/v8-query.cpp -->
 
 
@@ -251,7 +258,7 @@ The checksum calculation algorithm changed in ArangoDB 3.0, so checksums from
 **Note**: this method is not available in a cluster.
 
 
-!SUBSECTION Unload
+### Unload
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -277,7 +284,7 @@ until all query have finished.
 
 
 
-!SUBSECTION Rename
+### Rename
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -312,7 +319,7 @@ database.
 
 
 
-!SUBSECTION Rotate
+### Rotate
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 

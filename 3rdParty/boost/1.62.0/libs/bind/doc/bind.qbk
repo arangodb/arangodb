@@ -1,0 +1,35 @@
+[/
+ /  Copyright (c) 2001, 2002 Peter Dimov and Multi Media Ltd.
+ /  Copyright (c) 2003-2008 Peter Dimov
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[library Boost.Bind
+  [quickbook 1.6]
+  [id bind]
+  [copyright 2001, 2002 Peter Dimov and Multi Media Ltd.]
+  [copyright 2003-2008 Peter Dimov]
+  [dirname bind]
+  [license Distributed under the
+    [@http://boost.org/LICENSE_1_0.txt Boost Software License,
+      Version 1.0].
+  ]
+]
+
+[template simplesect[title]
+[block '''<simplesect><title>'''[title]'''</title>''']]
+
+[template endsimplesect[]
+[block '''</simplesect>''']]
+
+[include bind/purpose.qbk]
+[include bind/examples.qbk]
+[include bind/limitations.qbk]
+[include bind/faq.qbk]
+[include bind/troubleshooting.qbk]
+[include bind/interface.qbk]
+[include bind/implementation.qbk]
+[include bind/acknowledgements.qbk]

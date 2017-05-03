@@ -426,6 +426,15 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief pbkdf2-hmac-sha1
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_PBKDF2HS1) {
+    exports.pbkdf2hs1 = global.SYS_PBKDF2HS1;
+    delete global.SYS_PBKDF2HS1;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief pbkdf2-hmac
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -934,9 +943,11 @@ global.DEFINE_MODULE('internal', (function () {
   var useColor = false;
 
   if (global.COLOR_OUTPUT) {
-    useColor = global.COLOR_OUTPUT;
+    useColor = Boolean(global.COLOR_OUTPUT);
     delete global.COLOR_OUTPUT;
   }
+
+  exports.COLOR_OUTPUT = useColor;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief usePrettyPrint
@@ -1451,7 +1462,7 @@ global.DEFINE_MODULE('internal', (function () {
     output('\n');
   }
 
-  printShell.limitString = 80;
+  printShell.limitString = 256;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief flatten

@@ -6,13 +6,13 @@
   <string>English</string>
 
   <key>CFBundleDisplayName</key>
-  <string>ArangoDB-CLI</string>
+  <string>@CPACK_PACKAGE_NAME@</string>
 
   <key>CFBundleExecutable</key>
-  <string>ArangoDB-CLI</string>
+  <string>@CPACK_PACKAGE_NAME@</string>
 
   <key>CFBundleIconFile</key>
-  <string>ArangoDB-CLI</string>
+  <string>@CPACK_PACKAGE_NAME@</string>
 
   <key>CFBundleIdentifier</key>
   <string>org.arangodb.ArangoDB-CLI</string>
@@ -21,7 +21,7 @@
   <string>6.0</string>
 
   <key>CFBundleName</key>
-  <string>ArangoDB-CLI</string>
+  <string>@CPACK_PACKAGE_NAME@</string>
 
   <key>CFBundlePackageType</key>
   <string>APPL</string>
@@ -39,7 +39,7 @@
   <string>NO</string>
 
   <key>NSHumanReadableCopyright</key>
-  <string>Copyright © 2013 triAgens. All rights reserved.</string>
+  <string>Copyright © 2014-2016 ArangoDB GmbH, Cologne, Germany. All rights reserved.</string>
 
   <key>LSMinimumSystemVersion</key>
   <string>10.8</string>

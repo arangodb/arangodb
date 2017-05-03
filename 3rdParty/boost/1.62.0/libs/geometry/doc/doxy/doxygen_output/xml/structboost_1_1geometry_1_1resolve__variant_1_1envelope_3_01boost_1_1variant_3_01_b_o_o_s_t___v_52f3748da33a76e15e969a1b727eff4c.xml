@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1envelope_3_01boost_1_1variant_3_01_b_o_o_s_t___v_52f3748da33a76e15e969a1b727eff4c" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::envelope&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">boost::static_visitor&lt; void &gt;</basecompoundref>
+    <includes local="no">interface.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Box</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1envelope_3_01boost_1_1variant_3_01_b_o_o_s_t___v_52f3748da33a76e15e969a1b727eff4c_1a99829505c8b460ed8c268c89a78a42c9" prot="public" static="no" mutable="no">
+        <type>Box &amp;</type>
+        <definition>Box&amp; boost::geometry::resolve_variant::envelope&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Box &gt;::m_box</definition>
+        <argsstring></argsstring>
+        <name>m_box</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" line="56" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1envelope_3_01boost_1_1variant_3_01_b_o_o_s_t___v_52f3748da33a76e15e969a1b727eff4c_1af61119800911c3c2be63da67f73261f8" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::resolve_variant::envelope&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Box &gt;::operator()</definition>
+        <argsstring>(Geometry const &amp;geometry) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" line="61" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" bodystart="61" bodyend="64"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1envelope_3_01boost_1_1variant_3_01_b_o_o_s_t___v_52f3748da33a76e15e969a1b727eff4c_1aa04fde48c6442ce0b32926eb222fe670" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::resolve_variant::envelope&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Box &gt;::visitor</definition>
+        <argsstring>(Box &amp;box)</argsstring>
+        <name>visitor</name>
+        <param>
+          <type>Box &amp;</type>
+          <declname>box</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" line="58" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" bodystart="58" bodyend="58"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="999">
+        <label>boost::static_visitor&lt; void &gt;</label>
+      </node>
+      <node id="998">
+        <label>boost::geometry::resolve_variant::envelope&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Box &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1envelope_3_01boost_1_1variant_3_01_b_o_o_s_t___v_52f3748da33a76e15e969a1b727eff4c"/>
+        <childnode refid="999" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1001">
+        <label>boost::static_visitor&lt; void &gt;</label>
+      </node>
+      <node id="1000">
+        <label>boost::geometry::resolve_variant::envelope&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Box &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1envelope_3_01boost_1_1variant_3_01_b_o_o_s_t___v_52f3748da33a76e15e969a1b727eff4c"/>
+        <childnode refid="1001" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" line="55" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" bodystart="54" bodyend="65"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1envelope_3_01boost_1_1variant_3_01_b_o_o_s_t___v_52f3748da33a76e15e969a1b727eff4c_1a99829505c8b460ed8c268c89a78a42c9" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::envelope&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>m_box</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1envelope_3_01boost_1_1variant_3_01_b_o_o_s_t___v_52f3748da33a76e15e969a1b727eff4c_1af61119800911c3c2be63da67f73261f8" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::envelope&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1envelope_3_01boost_1_1variant_3_01_b_o_o_s_t___v_52f3748da33a76e15e969a1b727eff4c_1aa04fde48c6442ce0b32926eb222fe670" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::envelope&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>visitor</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

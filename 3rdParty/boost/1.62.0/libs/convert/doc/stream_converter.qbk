@@ -1,0 +1,144 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2014
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[section:stream_converter ['boost::cnv::stream] Converter]
+
+The purpose of the converter is to provide conversion-related formatting and locale support not available with `boost::lexical_cast`. Advantages of deploying a `std::stream`-based conversion engine are:
+
+* availability and maturity;
+* formatting and locale support;
+* familiar interface and deployment;
+* instant re-use of available standard manipulators (`std::hex`, `std::setprecision`, `std::skipws`, etc.);
+* extendibility via custom manipulators (see [@http://www.cecalc.ula.ve/documentacion/tutoriales/PGICDK/doc/pgC++_lib/stdlibug/str_5412.htm Stream Storage for Private Use: iword, pword, and xalloc] by Rogue Wave Software).
+
+The converter might be deployed as follows:
+
+[stream_headers1]
+[stream_example1]
+
+[section Formatting Support]
+
+Formatting support is provided by the underlying `std::stringstream`. Consequently, the API heavily borrows formatting metaphors from this underlying component. One such metaphor is the ['manipulator] represented by `std::hex`, `std::dec`, `std::uppercase`, `std::scientific`, etc.
+
+The following code demonstrates how `char` and `wchar_t` strings can be read in the `std::hex` or `std::dec` format:
+
+[stream_example2]
+
+For batch-processing it might be more efficient to configure the converter once:
+
+[stream_example3]
+
+An alternative (generic) formatting interface is currently being extended and explored:
+
+[stream_headers2]
+[stream_example4]
+
+is equivalent to the following ['std::manipulator]-based variant:
+
+[stream_example5]
+
+[section Numeric Base]
+[stream_using]
+[stream_numbase_example1]
+
+A more generic interface is also supported:
+
+[stream_cnv_namespace_shortcut]
+[stream_numbase_example2]
+[endsect]
+
+[section Field Width, Fill Character and Adjustment]
+[stream_width_example]
+[endsect]
+
+[section Leading Whitespace Characters]
+[stream_using]
+[stream_skipws_example]
+[endsect]
+
+[section Format of Boolean Values]
+[stream_using]
+[stream_boolalpha_example]
+[endsect]
+[endsect]
+
+[section Locale Support]
+
+Locale support is similar to the formatting support as demonstrated by the following example:
+
+[stream_headers2]
+[stream_locale_example1]
+
+[endsect]
+[section Supported String Types]
+[section Wide String]
+[wide_stream_numeric_base]
+[wide_stream_skipws]
+[endsect]
+
+[section Custom String Types]
+
+`boost::cnv::stream` accepts custom string and string-like types as input or output as long as they satisfy certain requirements. 
+
+[stream_my_string]
+
+When a string-like type is the source, then it needs to be a ['contiguous sequence] of the corresponding character type (`char` or `wchar_t`) accessible via `begin()` and `end()`. 
+
+`std::stringstream` is implemented entirely in terms of `std::basic_streambuf` which, in turn, operates on a ['contiguous character sequence], also called the ['buffer] (see [@http://en.cppreference.com/w/cpp/io/basic_streambuf `std::basic_streambuf`] for details). For efficiency reasons `boost::cnv::stream` uses the provided (read-only) input string as the ['buffer] and, consequently, requires that provided input string to be a contiguous character sequence.
+
+When a string is the target, then the described ['contiguous character sequence] requirement does not apply. Any type that provides 
+
+ MyType::MyType(char const* beg, char const* end)
+ 
+constructor can be deployed in type-to-string conversions.
+
+See [link boost_convert.performance.the_bigger_picture The Bigger Picture] chapter for the discussion of potential advantages of deploying custom strings.
+
+[endsect]
+[endsect]
+[section The ['Default Constructible] Type Requirement]
+
+Due to `std::stream` design it requires an ['initialized] temporary storage of ['TypeOut] type to put the result of the requested conversion to. Conceptually `boost::cnv::cstream` achieves that with:
+
+ istream_type& istream = stream_;
+ TypeOut        result = boost::make_default<TypeOut>();
+
+ istream >> result;
+
+The temporary storage `result` is initialized with `boost::make_default()` the default implementation of which is
+
+ namespace boost
+ {
+    template<typename T> T make_default() { return T(); }
+ }
+
+Consequently,
+
+[note [*By default] the `boost::cnv::cstream` and `boost::cnv::wstream` converters require the ['TypeOut] type to be [@http://en.cppreference.com/w/cpp/concept/DefaultConstructible ['Default Constructible]].]
+
+That said, a well-designed type (in my opinion, anyway) should only have meaningful and unambiguous constructors... and the default constructor is not always and necessarily one of them. Consider the following as one such example:
+
+[direction_declaration]
+[direction_stream_operators]
+
+The `direction` type has no default state. It is not [@http://en.cppreference.com/w/cpp/concept/DefaultConstructible ['Default Constructible]] and, consequently, the following does not compile:
+
+ direction dir1 = convert<direction>(str, cnv).value(); // Does not compile
+ direction dir2 = lexical_cast<direction>(str);         // Does not compile
+
+However, ['Boost.Convert] is able to handle such a type with little help from the user -- the instructions ['how] to create that mentioned temporary storage:
+
+[direction_declaration_make_default]
+
+Now such class can be deployed with `boost::cnv::cstream`:
+
+ direction dir1 = convert<direction>(str, cnv).value(); // Compiles
+ direction dir2 = lexical_cast<direction>(str); // Does not compile
+
+[endsect]
+[endsect]
+
+

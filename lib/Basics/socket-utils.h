@@ -92,11 +92,11 @@ static inline TRI_socket_t TRI_accept(TRI_socket_t s, struct sockaddr* address,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
-                           int addr_len) {
+                           size_t addr_len) {
 #ifdef _WIN32
-  return bind(s.fileHandle, address, addr_len);
+  return bind(s.fileHandle, address, static_cast<int>(addr_len));
 #else
-  return bind(s.fileDescriptor, address, addr_len);
+  return bind(s.fileDescriptor, address, (socklen_t)addr_len);
 #endif
 }
 
@@ -105,11 +105,11 @@ static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
-                              int addr_len) {
+                              size_t addr_len) {
 #ifdef _WIN32
-  return connect(s.fileHandle, address, addr_len);
+  return connect(s.fileHandle, address, (int)addr_len);
 #else
-  return connect(s.fileDescriptor, address, addr_len);
+  return connect(s.fileDescriptor, address, (socklen_t)addr_len);
 #endif
 }
 
@@ -117,7 +117,7 @@ static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
 /// @brief send abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_send(TRI_socket_t s, const void* buffer, size_t length,
+static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length,
                            int flags) {
 #ifdef _WIN32
   return send(s.fileHandle, (char*)buffer, (int)length, flags);
@@ -199,8 +199,8 @@ static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
 
   // shut up Valgrind
   memset(&tv, 0, sizeof(tv));
-  tv.tv_sec = (long)timeout;
-  tv.tv_usec = (long)((timeout - (double)tv.tv_sec) * 1000000.0);
+  tv.tv_sec = (time_t)timeout;
+  tv.tv_usec = (suseconds_t)((timeout - (double)tv.tv_sec) * 1000000.0);
 
   if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
     return false;

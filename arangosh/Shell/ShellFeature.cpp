@@ -123,7 +123,7 @@ void ShellFeature::validateOptions(
   }
 
   if (1 < n) {
-    LOG(ERR) << "you cannot specify more than one type ("
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "you cannot specify more than one type ("
              << "jslint, execute, execute-string, check-syntax, unit-tests)";
   }
 }
@@ -132,6 +132,9 @@ void ShellFeature::start() {
   *_result = EXIT_FAILURE;
 
   V8ShellFeature* shell = application_features::ApplicationServer::getFeature<V8ShellFeature>("V8Shell");
+
+  // turn off memory allocation failures before we move into V8 code
+  TRI_DisallowMemoryFailures();
 
   bool ok = false;
 
@@ -162,15 +165,17 @@ void ShellFeature::start() {
         break;
     }
   } catch (basics::Exception const& ex) {
-    LOG(ERR) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     ok = false;
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     ok = false;
   } catch (...) {
-    LOG(ERR) << "caught unknown exception";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception";
     ok = false;
   }
 
+  // turn on memory allocation failures again
+  TRI_AllowMemoryFailures();
   *_result = ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

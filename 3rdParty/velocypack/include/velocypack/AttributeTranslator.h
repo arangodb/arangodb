@@ -35,6 +35,7 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Options.h"
 #include "velocypack/Slice.h"
+#include "velocypack/StringRef.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -68,7 +69,8 @@ class AttributeTranslator {
 
  private:
   Builder* _builder;
-  std::unordered_map<std::string, uint8_t const*> _keyToId;
+  std::unordered_map<std::string, uint8_t const*> _keyToIdString;
+  std::unordered_map<StringRef, uint8_t const*> _keyToIdStringRef;
   std::unordered_map<uint64_t, uint8_t const*> _idToKey;
   size_t _count;
 };

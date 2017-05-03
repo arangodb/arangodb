@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/threads.h"
-#include "Utils/ReplicationTransaction.h"
+#include "Replication/ReplicationTransaction.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 
@@ -321,12 +321,6 @@ int TRI_RemoveStateReplicationApplier(TRI_vocbase_t*);
 
 int TRI_LoadStateReplicationApplier(TRI_vocbase_t*,
                                     TRI_replication_applier_state_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove the replication application configuration file
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveConfigurationReplicationApplier(TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the replication application configuration to a file

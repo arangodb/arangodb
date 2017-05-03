@@ -1,4 +1,5 @@
-!CHAPTER Traversals
+Traversals
+==========
 
 ArangoDB provides [several ways to query graph data](../README.md).
 Very simple operations can be composed with the low-level edge methods *edges*, *inEdges*, and *outEdges* for
@@ -14,7 +15,8 @@ here which gives you complete programmatic access to the data.
 For any of the following examples, we'll be using the example collections *v* and *e*,
 populated with continents, countries and capitals data listed below (see [Example Data](ExampleData.md)).
 
-!SECTION Starting from Scratch
+Starting from Scratch
+---------------------
 
 ArangoDB provides the *edges*, *inEdges*, and *outEdges* methods for edge collections.
 These methods can be used to quickly determine if a vertex is connected to other vertices,

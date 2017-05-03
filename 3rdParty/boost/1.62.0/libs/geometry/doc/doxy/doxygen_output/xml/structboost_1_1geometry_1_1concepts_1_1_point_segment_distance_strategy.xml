@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1concepts_1_1_point_segment_distance_strategy" kind="struct" prot="public">
+    <compoundname>boost::geometry::concepts::PointSegmentDistanceStrategy</compoundname>
+    <includes local="no">distance_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+      <param>
+        <type>typename <ref refid="classboost_1_1geometry_1_1concepts_1_1_point" kindref="compound">Point</ref></type>
+      </param>
+      <param>
+        <type>typename PointOfSegment</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Checks strategy for point-segment distance. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/distance_concept.hpp" line="138" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/distance_concept.hpp" bodystart="137" bodyend="206"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

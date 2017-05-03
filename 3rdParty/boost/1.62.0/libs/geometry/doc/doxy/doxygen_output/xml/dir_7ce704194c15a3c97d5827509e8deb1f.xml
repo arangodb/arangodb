@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_7ce704194c15a3c97d5827509e8deb1f" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/within</compoundname>
+    <innerfile refid="point__in__geometry_8hpp">point_in_geometry.hpp</innerfile>
+    <innerfile refid="within__no__turns_8hpp">within_no_turns.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/within/"/>
+  </compounddef>
+</doxygen>

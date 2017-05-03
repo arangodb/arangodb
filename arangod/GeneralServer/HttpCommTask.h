@@ -9,7 +9,7 @@ namespace arangodb {
 class HttpRequest;
 
 namespace rest {
-class HttpCommTask : public GeneralCommTask {
+class HttpCommTask final : public GeneralCommTask {
  public:
   static size_t const MaximalHeaderSize;
   static size_t const MaximalBodySize;
@@ -25,18 +25,20 @@ class HttpCommTask : public GeneralCommTask {
   };
 
   // convert from GeneralResponse to httpResponse
-  void addResponse(GeneralResponse* response) override {
+  void addResponse(GeneralResponse* response,
+                   RequestStatistics* stat) override {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
 
     if (httpResponse == nullptr) {
       throw std::logic_error("invalid response or response Type");
     }
 
-    addResponse(httpResponse);
+    addResponse(httpResponse, stat);
   };
 
  protected:
-  bool processRead() override;
+  bool processRead(double startTime) override;
+  void compactify() override;
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
@@ -48,13 +50,15 @@ class HttpCommTask : public GeneralCommTask {
                          std::string const& errorMessage,
                          uint64_t messageId = 1) override final;
 
+  bool allowDirectHandling() const override final { return true; }
+
  private:
   void processRequest(std::unique_ptr<HttpRequest>);
   void processCorsOptions(std::unique_ptr<HttpRequest>);
 
   void resetState();
 
-  void addResponse(HttpResponse*);
+  void addResponse(HttpResponse*, RequestStatistics* stat);
 
   // check the content-length header of a request and fail it is broken
   bool checkContentLength(HttpRequest*, bool expectContentLength);

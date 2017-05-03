@@ -1,4 +1,5 @@
-!CHAPTER Query statistics
+Query statistics
+================
 
 A query that has been executed will always return execution statistics. Execution statistics
 can be retrieved by calling `getExtra()` on the cursor. The statistics are returned in the

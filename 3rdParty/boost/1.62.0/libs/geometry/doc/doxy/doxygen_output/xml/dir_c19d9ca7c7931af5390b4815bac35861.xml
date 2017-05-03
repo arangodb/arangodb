@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_c19d9ca7c7931af5390b4815bac35861" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/geometries/register</compoundname>
+    <innerfile refid="geometries_2register_2box_8hpp">box.hpp</innerfile>
+    <innerfile refid="register_2linestring_8hpp">linestring.hpp</innerfile>
+    <innerfile refid="register_2multi__linestring_8hpp">multi_linestring.hpp</innerfile>
+    <innerfile refid="register_2multi__point_8hpp">multi_point.hpp</innerfile>
+    <innerfile refid="register_2multi__polygon_8hpp">multi_polygon.hpp</innerfile>
+    <innerfile refid="geometries_2register_2point_8hpp">point.hpp</innerfile>
+    <innerfile refid="geometries_2register_2ring_8hpp">ring.hpp</innerfile>
+    <innerfile refid="geometries_2register_2segment_8hpp">segment.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/"/>
+  </compounddef>
+</doxygen>

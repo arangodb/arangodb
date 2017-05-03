@@ -35,7 +35,6 @@ var db = arangodb.db;
 var aql = arangodb.aql;
 var ERRORS = arangodb.errors;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,6 +61,22 @@ function StatementSuite () {
       }
       catch (err) {
         // ignore this error
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test memory limit
+////////////////////////////////////////////////////////////////////////////////
+
+    testMemoryLimit : function () {
+      var st = db._createStatement({ query : "FOR i IN 1..100000 SORT i RETURN i", options: { memoryLimit: 100000 } });
+
+      try {
+        st.execute();
+        fail();
+      }
+      catch (e) {
+        assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, e.errorNum);
       }
     },
 

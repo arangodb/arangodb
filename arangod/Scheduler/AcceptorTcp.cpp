@@ -31,28 +31,48 @@ using namespace arangodb;
 void AcceptorTcp::open() {
   boost::asio::ip::tcp::resolver resolver(_ioService);
 
-  auto hostname = _endpoint->host();
-  auto portNumber = _endpoint->port();
+  std::string hostname = _endpoint->host();
+  int portNumber = _endpoint->port();
 
   boost::asio::ip::tcp::endpoint asioEndpoint;
-  std::unique_ptr<boost::asio::ip::tcp::resolver::query> query;
-  if (_endpoint->domain() == AF_INET6) {
-    query.reset(new boost::asio::ip::tcp::resolver::query(boost::asio::ip::tcp::v6(), hostname, std::to_string(portNumber)));
-  } else if (_endpoint->domain() == AF_INET) {
-    query.reset(new boost::asio::ip::tcp::resolver::query(boost::asio::ip::tcp::v4(), hostname, std::to_string(portNumber)));
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
-  }
-  boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(*query);
+  boost::system::error_code err;
+  auto address = boost::asio::ip::address::from_string(hostname,err);
+  if(!err) {
+    asioEndpoint = boost::asio::ip::tcp::endpoint(address,portNumber);
+  } else { // we need to resolve the string containing the ip
+    std::unique_ptr<boost::asio::ip::tcp::resolver::query> query;
+    if (_endpoint->domain() == AF_INET6) {
+      query.reset(new boost::asio::ip::tcp::resolver::query(boost::asio::ip::tcp::v6(), hostname, std::to_string(portNumber)));
+    } else if (_endpoint->domain() == AF_INET) {
 
-  asioEndpoint = iter->endpoint();
+      query.reset(new boost::asio::ip::tcp::resolver::query(boost::asio::ip::tcp::v4(), hostname, std::to_string(portNumber)));
+    } else {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
+    }
+
+    boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(*query, err);
+    if (err) {
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve endpoint: " << err.message();
+      throw std::runtime_error(err.message());
+    }
+
+    if(boost::asio::ip::tcp::resolver::iterator{} == iter){
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve endpoint: endpoint is default constructed";
+    }
+
+    asioEndpoint = iter->endpoint(); // function not documented in boost?!
+  }
   _acceptor.open(asioEndpoint.protocol());
 
   _acceptor.set_option(
       boost::asio::ip::tcp::acceptor::reuse_address(
         ((EndpointIp*)_endpoint)->reuseAddress()));
 
-  _acceptor.bind(asioEndpoint);
+  _acceptor.bind(asioEndpoint, err);
+  if (err) {
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind endpoint: " << err.message();
+    throw std::runtime_error(err.message());
+  }
   _acceptor.listen();
 }
 

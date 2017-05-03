@@ -86,14 +86,14 @@ class Version {
   /// @brief get BOOST version
   static std::string getBoostVersion();
 
+  /// @brief get boost reactor type
+  static std::string getBoostReactorType();
+
   /// @brief get V8 version
   static std::string getV8Version();
 
   /// @brief get OpenSSL version
   static std::string getOpenSSLVersion();
-
-  /// @brief get libev version
-  static std::string getLibevVersion();
 
   /// @brief get vpack version
   static std::string getVPackVersion();

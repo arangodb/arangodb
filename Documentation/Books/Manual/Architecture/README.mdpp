@@ -1,6 +1,8 @@
-!CHAPTER Architecture
+Architecture
+============
 
-!SECTION AppendOnly/MVCC 
+AppendOnly/MVCC
+---------------
 
 Instead of overwriting existing documents, ArangoDB will create a new version of 
 modified documents. This is even the case when a document gets deleted. The
@@ -14,7 +16,8 @@ The system collects obsolete versions as garbage, recognizing them as
 forsaken. Garbage collection is asynchronous and runs parallel to other
 processes.
 
-!SECTION Mostly Memory/Durability
+Mostly Memory/Durability
+------------------------
 
 Database documents are stored in memory-mapped files. Per default, these
 memory-mapped files are synced regularly but not instantly. This is often a good

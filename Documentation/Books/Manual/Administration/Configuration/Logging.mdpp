@@ -1,6 +1,8 @@
-!CHAPTER Command-Line Options for Logging 
+Command-Line Options for Logging
+================================
 
-!SECTION Log levels and topics
+Log levels and topics
+---------------------
 
 ArangoDB's log output is grouped into topics. `--log.level` can be specified
 multiple times at startup, for as many topics as needed. The log verbosity and
@@ -49,7 +51,7 @@ Some relevant log topics available in ArangoDB 3 are:
 - `startup`: information about server startup and shutdown
 - `threads`: information about threads
 
-!SUBSECTION Log outputs
+### Log outputs
 
 The log option `--log.output <definition>` allows directing the global
 or per-topic log output to different outputs. The output definition `<definition>`
@@ -89,7 +91,7 @@ To additionally log HTTP request to a file named "requests.log" add the options:
 --log.level requests=info --log.output requests=file:///path/to/requests.log
 ```
 
-!SUBSECTION Forcing direct output
+### Forcing direct output
 
 The option `--log.force-direct` can be used to disable logging in an extra
 logging thread. If set to `true`, any log messages are immediately printed in the
@@ -97,7 +99,7 @@ thread that triggered the log message. This is non-optimal for performance but
 can aid debugging. If set to `false`, log messages are handed off to an extra
 logging thread, which asynchronously writes the log messages.
 
-!SUBSECTION Local time
+### Local time
 
 Log dates and times in local time zone: `--log.use-local-time`
 
@@ -107,7 +109,7 @@ will be printed in UTC / Zulu time. The date and time format used in logs
 is always `YYYY-MM-DD HH:MM:SS`, regardless of this setting. If UTC time
 is used, a `Z` will be appended to indicate Zulu time.
 
-!SUBSECTION Line number
+### Line number
 
 Log line number: `--log.line-number`
 
@@ -116,13 +118,13 @@ logged, no information about the file and line number is provided. The
 file and line number is only logged for debug and trace message. This option
 can be use to always log these pieces of information.
 
-!SUBSECTION Prefix
+### Prefix
 
 Log prefix: `--log.prefix prefix`
 
 This option is used specify an prefix to logged text.
 
-!SUBSECTION Thread
+### Thread
 
 Log thread identifier: `--log.thread`
 

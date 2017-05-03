@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_b1c3408d39074b319f4645aed5bb8b63" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted</compoundname>
+    <innerfile refid="boost__array_8hpp">boost_array.hpp</innerfile>
+    <innerfile refid="boost__fusion_8hpp">boost_fusion.hpp</innerfile>
+    <innerfile refid="boost__polygon_8hpp">boost_polygon.hpp</innerfile>
+    <innerfile refid="boost__tuple_8hpp">boost_tuple.hpp</innerfile>
+    <innerfile refid="c__array_8hpp">c_array.hpp</innerfile>
+    <innerfile refid="std__pair__as__segment_8hpp">std_pair_as_segment.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted/"/>
+  </compounddef>
+</doxygen>

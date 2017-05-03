@@ -1,5 +1,6 @@
 
-!CHAPTER WITH
+WITH
+====
 
 An AQL query can optionally start with a *WITH* statement and the list of 
 collections used by the query. All collections specified in *WITH* will be

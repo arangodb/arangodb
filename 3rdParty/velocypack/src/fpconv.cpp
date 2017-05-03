@@ -230,6 +230,8 @@ static int emit_digits(char* digits, int ndigits, char* dest, int K, bool neg) {
   /* write plain integer */
   if (K >= 0 && (exp < (ndigits + 7))) {
     memcpy(dest, digits, ndigits);
+    // intentionally fill with '0', not 0 (NUL byte) because
+    // we want the string representation of the number zero
     memset(dest + ndigits, '0', K);
 
     return ndigits + K;

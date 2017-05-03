@@ -75,7 +75,7 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'no-manifest'), '/unittest/broken');
       }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_FILE_NOT_FOUND.code);
+        .with.property('errorNum', errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code);
     });
 
     it('with malformed manifest', function () {

@@ -1,4 +1,5 @@
-!CHAPTER AQL Fundamentals 
+AQL Fundamentals
+================
 
 
 * [AQL Syntax](Syntax.md) explains the structure of the AQL language.

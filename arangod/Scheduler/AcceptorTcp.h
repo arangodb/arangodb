@@ -26,7 +26,7 @@
 #include "Scheduler/Acceptor.h"
 
 namespace arangodb {
-class AcceptorTcp: public Acceptor {
+class AcceptorTcp final : public Acceptor {
   public:
     AcceptorTcp(boost::asio::io_service& ioService, Endpoint* endpoint)
     : Acceptor(ioService, endpoint),

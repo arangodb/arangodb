@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-const download = internal.download;
+const download = internal.clusterDownload;
 const cluster = require('@arangodb/cluster');
 
 const db = require('@arangodb').db;
@@ -477,14 +477,14 @@ router.get("/coordshort", function(req, res) {
           _.each(http, function(value) {
             counter2 = 0;
             _.each(stat[value], function(x) {
-              merged.http[value][counter] = merged.http[value][counter] + x;
+              merged.http[value][counter2] = merged.http[value][counter2] + x;
               counter2++;
             });
           });
           _.each(arrays, function(value) {
             counter2 = 0;
             _.each(stat[value], function(x) {
-              merged[value][counter] = merged[value][counter] + x;
+              merged[value][counter2] = merged[value][counter2] + x;
               counter2++;
             });
           });
@@ -495,20 +495,31 @@ router.get("/coordshort", function(req, res) {
   };
 
   var coordinators = global.ArangoClusterInfo.getCoordinators();
-  
-  var coordinatorStats = coordinators.map(coordinator => {
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
-    var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length);
+  if (Array.isArray(coordinators)) {
+    var coordinatorStats = coordinators.map(coordinator => {
+      var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
+      if (endpoint.substring(0, 3) === 'ssl') {
+        // if protocol ssl is returned, change it to https
+        endpoint = 'https' + endpoint.substring(3);
+      }
+      if (endpoint !== "") {
+        var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length, '', {headers: {}});
+        if (response.body === undefined) {
+          console.warn("cannot contact coordinator " + coordinator + " on endpoint " + endpoint);
+        } else {
+          try {
+            return JSON.parse(response.body);
+          } catch (e) {
+            console.error("Couldn't read statistics response:", response.body);
+            throw e;
+          }
+        }
+      }
+      return {};
+    });
 
-    try {
-      return JSON.parse(response.body);
-    } catch (e) {
-      console.error("Couldn't read statistics response:", response.body);
-      throw e;
-    }
-  });
-  
-  mergeHistory(coordinatorStats);
+    mergeHistory(coordinatorStats);
+  }
   res.json({"enabled": coordinatorStats.some(stat => stat.enabled), "data": merged});
 })
 .summary("Short term history for all coordinators")

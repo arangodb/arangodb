@@ -26,12 +26,14 @@
 
 #include "AgencyCommon.h"
 #include "Cluster/ClusterComm.h"
+#include "Utils/OperationOptions.h"
 
 #include <velocypack/vpack.h>
 
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <map>
 
 struct TRI_vocbase_t;
 
@@ -63,16 +65,30 @@ class State {
   std::vector<index_t> log(query_t const& query,
                            std::vector<bool> const& indices, term_t term);
 
+  /// @brief Single log entry (leader)
+  index_t log(velocypack::Slice const& slice, term_t term,
+              std::string const& clientId = std::string());
+    
   /// @brief Log entries (followers)
   arangodb::consensus::index_t log(query_t const& queries, size_t ndups = 0);
-
+  
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);
 
   /// @brief Get complete log entries bound by lower and upper bounds.
   ///        Default: [first, last]
   std::vector<log_t> get(
-      index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
+    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
+  
+  /// @brief Get complete log entries bound by lower and upper bounds.
+  ///        Default: [first, last]
+  log_t at(index_t) const;
+  
+  /// @brief Has entry with index und term
+  bool has(index_t, term_t) const;
+  
+  /// @brief Get log entries by client Id
+  std::vector<std::vector<log_t>> inquire(query_t const&) const;
 
   /// @brief Get complete logged commands by lower and upper bounds.
   ///        Default: [first, last]
@@ -86,6 +102,10 @@ class State {
   /// after the return
   log_t lastLog() const;
 
+  /// @brief last log entry, copy entry because we do no longer have the lock
+  /// after the return
+  index_t lastIndex() const;
+
   /// @brief Set endpoint
   bool configure(Agent* agent);
 
@@ -94,10 +114,16 @@ class State {
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
-    for (auto const& i : s._log)
-      LOG_TOPIC(INFO, Logger::AGENCY)
-          << "index(" << i.index << ") term(" << i.term << ") query("
-          << VPackSlice(i.entry->data()).toJson() << ")";
+    VPackBuilder b;
+    { VPackArrayBuilder a(&b);
+      for (auto const& i : s._log) {
+        VPackObjectBuilder bb(&b);
+        b.add("index", VPackValue(i.index));
+        b.add("term", VPackValue(i.term));
+        b.add("item", VPackSlice(i.entry->data()));
+      }
+    }
+    os << b.toJson();
     return os;
   }
 
@@ -108,16 +134,16 @@ class State {
   ///        exists are overwritten
   size_t removeConflicts(query_t const&);
 
-  /// @brief Persist active agency in pool
-  bool persistActiveAgents(query_t const& active, query_t const& pool);
+  /// @brief Persist active agency in pool, throws an exception in case of error
+  void persistActiveAgents(query_t const& active, query_t const& pool);
 
   /// @brief Get everything from the state machine
   query_t allLogs() const;
 
  private:
   /// @brief Save currentTerm, votedFor, log entries
-  bool persist(index_t index, term_t term,
-               arangodb::velocypack::Slice const& entry);
+  bool persist(index_t, term_t, arangodb::velocypack::Slice const&,
+               std::string const&) const;
 
   bool saveCompacted();
 
@@ -157,24 +183,32 @@ class State {
   /// @brief Our vocbase
   TRI_vocbase_t* _vocbase;
 
-  mutable arangodb::Mutex _logLock; /**< @brief Mutex for modifying _log */
+  /**< @brief Mutex for modifying
+     _log & _cur
+  */
+  mutable arangodb::Mutex _logLock; 
   std::deque<log_t> _log;           /**< @brief  State entries */
   std::string _endpoint;            /**< @brief persistence end point */
   bool _collectionsChecked;         /**< @brief Collections checked */
   bool _collectionsLoaded;
+  std::multimap<std::string,arangodb::consensus::index_t> _clientIdLookupTable;
 
   /// @brief Our query registry
   aql::QueryRegistry* _queryRegistry;
-
-  /// @brief Compaction step
-  size_t _compaction_step;
 
   /// @brief Current log offset
   size_t _cur;
 
   /// @brief Operation options
-  OperationOptions _options;
+  arangodb::OperationOptions _options;
+
+  /// @brief Empty log entry;
+  static log_t emptyLog;
+  
+  /// @brief Protect writing into configuration collection
+  arangodb::Mutex _configurationWriteLock;
 };
+
 }
 }
 

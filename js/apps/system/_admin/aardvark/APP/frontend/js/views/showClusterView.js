@@ -122,7 +122,7 @@
         var type;
         var icon;
         id = id.replace(/\./g, '-');
-        id = id.replace(/\:/g, '_');
+        id = id.replace(/:/g, '_');
         icon = $('#id' + id);
         if (icon.length < 1) {
           // callback after view was unrendered
@@ -210,8 +210,11 @@
       var self = this;
 
       this.data.forEach(function (m) {
-        pieData.push({key: m.get('name'), value: m.get('system').virtualSize,
-        time: self.serverTime});
+        pieData.push({
+          key: m.get('name'),
+          value: m.get('system').virtualSize,
+          time: self.serverTime
+        });
       });
 
       return pieData;
@@ -517,8 +520,8 @@
       var coord;
 
       var ipPort = tar.attr('id');
-      ipPort = ipPort.replace(/\-/g, '.');
-      ipPort = ipPort.replace(/\_/g, ':');
+      ipPort = ipPort.replace(/-/g, '.');
+      ipPort = ipPort.replace(/_/g, ':');
       ipPort = ipPort.substr(2);
 
       serv.raw = ipPort;

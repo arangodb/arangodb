@@ -25,9 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include <openssl/ssl.h>
-#include <boost/asio/ssl.hpp>
-
 #include "Actions/RestActionHandler.h"
 #include "Basics/asio-helper.h"
 

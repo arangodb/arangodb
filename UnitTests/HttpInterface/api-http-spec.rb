@@ -209,7 +209,7 @@ describe ArangoDB do
 
     context "options requests" do
       before do
-        @headers = "DELETE, GET, HEAD, PATCH, POST, PUT"
+        @headers = "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT"
       end
 
       it "checks handling of an OPTIONS request, without body" do
@@ -271,7 +271,7 @@ describe ArangoDB do
 
     context "CORS requests" do
       before do
-        @headers = "DELETE, GET, HEAD, PATCH, POST, PUT"
+        @headers = "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT"
       end
 
       it "checks handling of a non-CORS GET request" do

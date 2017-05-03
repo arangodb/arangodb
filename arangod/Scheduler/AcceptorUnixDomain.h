@@ -26,7 +26,7 @@
 #include "Scheduler/Acceptor.h"
 
 namespace arangodb {
-class AcceptorUnixDomain: public Acceptor {
+class AcceptorUnixDomain final : public Acceptor {
   public:
     AcceptorUnixDomain(boost::asio::io_service& ioService, Endpoint* endpoint)
     : Acceptor(ioService, endpoint),

@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1is__radian" kind="struct" prot="public">
+    <compoundname>boost::geometry::is_radian</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">true_type</basecompoundref>
+    <includes local="no">cs.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CoordinateSystem</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Meta-function to verify if a coordinate system is radian. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any coordinate system. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="474">
+        <label>boost::true_type</label>
+      </node>
+      <node id="473">
+        <label>boost::geometry::is_radian&lt; CoordinateSystem &gt;</label>
+        <link refid="structboost_1_1geometry_1_1is__radian"/>
+        <childnode refid="474" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="476">
+        <label>boost::true_type</label>
+      </node>
+      <node id="475">
+        <label>boost::geometry::is_radian&lt; CoordinateSystem &gt;</label>
+        <link refid="structboost_1_1geometry_1_1is__radian"/>
+        <childnode refid="476" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" line="254" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" bodystart="254" bodyend="254"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1detail_1_1default__min__elements__s" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::detail::default_min_elements_s</compoundname>
+    <templateparamlist>
+      <param>
+        <type>size_t</type>
+        <declname>MaxElements</declname>
+        <defname>MaxElements</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1detail_1_1default__min__elements__s_1af10c4bcd2b2dc1244d9e1e4c9dd257c6" prot="public" static="yes" mutable="no">
+        <type>const size_t</type>
+        <definition>const size_t boost::geometry::index::detail::default_min_elements_s&lt; MaxElements &gt;::raw_value</definition>
+        <argsstring></argsstring>
+        <name>raw_value</name>
+        <initializer>= (MaxElements * 3) / 10</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="23" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="23" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1detail_1_1default__min__elements__s_1a3c73e751e7446d6b34869353c42a638d" prot="public" static="yes" mutable="no">
+        <type>const size_t</type>
+        <definition>const size_t boost::geometry::index::detail::default_min_elements_s&lt; MaxElements &gt;::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <initializer>= 1 &lt;= raw_value ? raw_value : 1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="24" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="24" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="22" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="21" bodyend="25"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__min__elements__s_1af10c4bcd2b2dc1244d9e1e4c9dd257c6" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::default_min_elements_s</scope><name>raw_value</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__min__elements__s_1a3c73e751e7446d6b34869353c42a638d" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::default_min_elements_s</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

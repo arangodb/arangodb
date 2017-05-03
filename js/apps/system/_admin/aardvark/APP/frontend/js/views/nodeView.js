@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, templateEngine, $, window */
+/* global Backbone, templateEngine, arangoHelper, $, window */
 (function () {
   'use strict';
 
@@ -30,6 +30,14 @@
       }
     },
 
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     breadcrumb: function (name) {
       $('#subNavigationBar .breadcrumb').html('Node: ' + name);
     },
@@ -39,7 +47,7 @@
 
       var callback = function () {
         this.continueRender();
-        this.breadcrumb(this.coordname);
+        this.breadcrumb(arangoHelper.getCoordinatorShortName(this.coordname));
         // window.arangoHelper.buildNodeSubNav(this.coordname, 'Dashboard', 'Logs')
         $(window).trigger('resize');
       }.bind(this);

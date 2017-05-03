@@ -46,12 +46,30 @@
 #define TRI_PADDING_32 1
 #endif
 
+// aligned / unaligned access
+
+#if defined(__sparc__) || defined(__arm__)
+/* unaligned accesses not allowed */
+#undef TRI_UNALIGNED_ACCESS
+#elif defined(__ppc__) || defined(__POWERPC__) || defined(_M_PPC)
+/* unaligned accesses are slow */
+#undef TRI_UNALIGNED_ACCESS
+#elif defined(__i386__) || defined(__x86_64__) || \
+      defined(_M_IX86) || defined(_M_X64)
+/* unaligned accesses should work */
+#define TRI_UNALIGNED_ACCESS 1 
+#else
+/* unknown platform. better not use unaligned accesses */
+#undef TRI_UNALIGNED_ACCESS
+#endif
 
 // -----------------------------------------------------------------------------
 // --Section--                                                       v8 features
 // -----------------------------------------------------------------------------
 
 #if defined(__arm__) || defined(__aarch64__)
+#define TRI_V8_MAXHEAP 1 * 1024
+#elif TRI_PADDING_32
 #define TRI_V8_MAXHEAP 1 * 1024
 #else
 #define TRI_V8_MAXHEAP 3 * 1024
@@ -143,6 +161,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
 #define TRI_CLOSE ::close
@@ -160,6 +179,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 
+#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -298,6 +318,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
 #define TRI_CLOSE ::close
@@ -315,6 +336,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 
+#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -440,6 +462,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
 #define TRI_CLOSE ::close
@@ -457,6 +480,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 
+#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -601,6 +625,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_NOATIME O_NOATIME
 
 #define TRI_CHDIR ::chdir
 #define TRI_CLOSE ::close
@@ -618,6 +643,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 
+#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -718,7 +744,7 @@
 
 #define fileno _fileno
 #define fsync _commit
-#define isatty _isatty
+#define isatty _cyg_isatty
 #define putenv _putenv
 #define sleep TRI_sleep
 #define tzset _tzset
@@ -795,6 +821,7 @@ typedef unsigned char bool;
 #define S_IWUSR _S_IWRITE
 
 #define TRI_O_CLOEXEC 0
+#define TRI_NOATIME 0
 
 #define O_RDONLY _O_RDONLY
 
@@ -812,6 +839,7 @@ typedef unsigned char bool;
 #define TRI_UNLINK ::_unlink
 #define TRI_WRITE ::_write
 
+#define TRI_usleep_t unsigned long
 #define TRI_lseek_t __int64
 #define TRI_read_t unsigned int
 #define TRI_stat_t struct _stat64

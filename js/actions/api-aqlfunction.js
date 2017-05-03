@@ -77,7 +77,7 @@ function delete_api_aqlfunction (req, res) {
     return;
   }
 
-  var name = decodeURIComponent(req.suffix[0]);
+  var name = req.suffix[0];
   try {
     var g = req.parameters.group;
     if (g === 'true' || g === 'yes' || g === 'y' || g === 'on' || g === '1') {

@@ -1,4 +1,0 @@
-
-project test : requirements <include>everything <threading>single ;
-
-build-project lib2 ;

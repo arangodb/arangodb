@@ -1,0 +1,180 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="std__pair__as__segment_8hpp" kind="file">
+    <compoundname>std_pair_as_segment.hpp</compoundname>
+    <includes local="no">cstddef</includes>
+    <includes refid="access_8hpp" local="no">boost/geometry/core/access.hpp</includes>
+    <includes refid="tag_8hpp" local="no">boost/geometry/core/tag.hpp</includes>
+    <includes refid="core_2tags_8hpp" local="no">boost/geometry/core/tags.hpp</includes>
+    <incdepgraph>
+      <node id="52903">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="52906">
+        <label>boost/type_traits/is_const.hpp</label>
+      </node>
+      <node id="52895">
+        <label>boost/geometry/core/access.hpp</label>
+        <link refid="access_8hpp"/>
+        <childnode refid="52894" relation="include">
+        </childnode>
+        <childnode refid="52896" relation="include">
+        </childnode>
+        <childnode refid="52897" relation="include">
+        </childnode>
+        <childnode refid="52898" relation="include">
+        </childnode>
+        <childnode refid="52899" relation="include">
+        </childnode>
+        <childnode refid="52900" relation="include">
+        </childnode>
+        <childnode refid="52901" relation="include">
+        </childnode>
+        <childnode refid="52908" relation="include">
+        </childnode>
+        <childnode refid="52910" relation="include">
+        </childnode>
+      </node>
+      <node id="52905">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="52898">
+        <label>boost/type_traits/is_pointer.hpp</label>
+      </node>
+      <node id="52900">
+        <label>boost/geometry/core/coordinate_type.hpp</label>
+        <link refid="coordinate__type_8hpp"/>
+        <childnode refid="52897" relation="include">
+        </childnode>
+        <childnode refid="52901" relation="include">
+        </childnode>
+        <childnode refid="52908" relation="include">
+        </childnode>
+        <childnode refid="52910" relation="include">
+        </childnode>
+        <childnode refid="52911" relation="include">
+        </childnode>
+      </node>
+      <node id="52897">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="52893">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted/std_pair_as_segment.hpp</label>
+        <link refid="std_pair_as_segment.hpp"/>
+        <childnode refid="52894" relation="include">
+        </childnode>
+        <childnode refid="52895" relation="include">
+        </childnode>
+        <childnode refid="52908" relation="include">
+        </childnode>
+        <childnode refid="52909" relation="include">
+        </childnode>
+      </node>
+      <node id="52907">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="52896">
+        <label>boost/core/ignore_unused.hpp</label>
+      </node>
+      <node id="52911">
+        <label>boost/geometry/util/promote_floating_point.hpp</label>
+        <link refid="promote__floating__point_8hpp"/>
+        <childnode refid="52905" relation="include">
+        </childnode>
+        <childnode refid="52912" relation="include">
+        </childnode>
+      </node>
+      <node id="52909">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="52901">
+        <label>boost/geometry/core/point_type.hpp</label>
+        <link refid="point__type_8hpp"/>
+        <childnode refid="52897" relation="include">
+        </childnode>
+        <childnode refid="52902" relation="include">
+        </childnode>
+        <childnode refid="52903" relation="include">
+        </childnode>
+        <childnode refid="52904" relation="include">
+        </childnode>
+        <childnode refid="52908" relation="include">
+        </childnode>
+        <childnode refid="52909" relation="include">
+        </childnode>
+        <childnode refid="52910" relation="include">
+        </childnode>
+      </node>
+      <node id="52902">
+        <label>boost/range/value_type.hpp</label>
+      </node>
+      <node id="52894">
+        <label>cstddef</label>
+      </node>
+      <node id="52904">
+        <label>boost/geometry/core/ring_type.hpp</label>
+        <link refid="ring__type_8hpp"/>
+        <childnode refid="52897" relation="include">
+        </childnode>
+        <childnode refid="52905" relation="include">
+        </childnode>
+        <childnode refid="52902" relation="include">
+        </childnode>
+        <childnode refid="52906" relation="include">
+        </childnode>
+        <childnode refid="52903" relation="include">
+        </childnode>
+        <childnode refid="52907" relation="include">
+        </childnode>
+        <childnode refid="52908" relation="include">
+        </childnode>
+        <childnode refid="52909" relation="include">
+        </childnode>
+      </node>
+      <node id="52912">
+        <label>boost/type_traits/is_integral.hpp</label>
+      </node>
+      <node id="52908">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="52909" relation="include">
+        </childnode>
+        <childnode refid="52910" relation="include">
+        </childnode>
+      </node>
+      <node id="52910">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="52903" relation="include">
+        </childnode>
+        <childnode refid="52899" relation="include">
+        </childnode>
+        <childnode refid="52907" relation="include">
+        </childnode>
+      </node>
+      <node id="52899">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+    </incdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+      <sectiondef kind="define">
+      <memberdef kind="define" id="std__pair__as__segment_8hpp_1aa73faa86c70603589a4c8945968f8a81" prot="public" static="no">
+        <name>BOOST_GEOMETRY_ADAPTED_STD_RANGE_TAG_DEFINED</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted/std_pair_as_segment.hpp" line="25" column="9" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted/std_pair_as_segment.hpp" bodystart="25" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted/std_pair_as_segment.hpp"/>
+  </compounddef>
+</doxygen>

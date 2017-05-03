@@ -37,14 +37,19 @@ config_t::config_t()
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
-      _compactionStepSize(1000),
-      _supervisionGracePeriod(120),
+      _compactionStepSize(2000),
+      _compactionKeepSize(500),
+      _supervisionGracePeriod(15.0),
+      _cmdLineTimings(false),
+      _version(0),
+      _startup("origin"),
       _lock()
       {}
 
 config_t::config_t(size_t as, size_t ps, double minp, double maxp,
                    std::string const& e, std::vector<std::string> const& g,
-                   bool s, bool w, double f, uint64_t c, double p)
+                   bool s, bool w, double f, uint64_t c, uint64_t k, double p,
+                   bool t)
     : _agencySize(as),
       _poolSize(ps),
       _minPing(minp),
@@ -55,7 +60,11 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _waitForSync(w),
       _supervisionFrequency(f),
       _compactionStepSize(c),
+      _compactionKeepSize(k),      
       _supervisionGracePeriod(p),
+      _cmdLineTimings(t),
+      _version(0),
+      _startup("origin"),     
       _lock() {}
 
 config_t::config_t(config_t const& other) { *this = other; }
@@ -74,7 +83,11 @@ config_t::config_t(config_t&& other)
       _waitForSync(std::move(other._waitForSync)),
       _supervisionFrequency(std::move(other._supervisionFrequency)),
       _compactionStepSize(std::move(other._compactionStepSize)),
-      _supervisionGracePeriod(std::move(other._supervisionGracePeriod)) {}
+      _compactionKeepSize(std::move(other._compactionKeepSize)),
+      _supervisionGracePeriod(std::move(other._supervisionGracePeriod)),
+      _cmdLineTimings(std::move(other._cmdLineTimings)),
+      _version(std::move(other._version)),
+      _startup(std::move(other._startup)){}
 
 config_t& config_t::operator=(config_t const& other) {
   // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
@@ -93,7 +106,11 @@ config_t& config_t::operator=(config_t const& other) {
   _waitForSync = other._waitForSync;
   _supervisionFrequency = other._supervisionFrequency;
   _compactionStepSize = other._compactionStepSize;
+  _compactionKeepSize = other._compactionKeepSize;
   _supervisionGracePeriod = other._supervisionGracePeriod;
+  _cmdLineTimings = other._cmdLineTimings;
+  _version = other._version;
+  _startup = other._startup;
   return *this;
 }
 
@@ -111,8 +128,22 @@ config_t& config_t::operator=(config_t&& other) {
   _waitForSync = std::move(other._waitForSync);
   _supervisionFrequency = std::move(other._supervisionFrequency);
   _compactionStepSize = std::move(other._compactionStepSize);
+  _compactionKeepSize = std::move(other._compactionKeepSize);
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
+  _cmdLineTimings = std::move(other._cmdLineTimings);
+  _version = std::move(other._version);
+  _startup = std::move(other._startup);
   return *this;
+}
+
+size_t config_t::version() const {
+  READ_LOCKER(readLocker, _lock);
+  return _version;
+}
+
+bool config_t::cmdLineTimings() const {
+  READ_LOCKER(readLocker, _lock);
+  return _cmdLineTimings;
 }
 
 double config_t::supervisionGracePeriod() const {
@@ -128,6 +159,15 @@ double config_t::minPing() const {
 double config_t::maxPing() const {
   READ_LOCKER(readLocker, _lock);
   return _maxPing;
+}
+
+void config_t::pingTimes(double minPing, double maxPing) {
+  WRITE_LOCKER(writeLocker, _lock);
+  if (_minPing != minPing || _maxPing != maxPing ) {
+    _minPing = minPing;
+    _maxPing = maxPing;
+    ++_version;
+  }
 }
 
 std::map<std::string, std::string> config_t::pool() const {
@@ -177,8 +217,10 @@ double config_t::supervisionFrequency() const {
 
 bool config_t::activePushBack(std::string const& id) {
   WRITE_LOCKER(writeLocker, _lock);
-  if (_active.size() < _agencySize) {
+  if (_active.size() < _agencySize &&
+      std::find(_active.begin(), _active.end(), id) == _active.end()) {
     _active.push_back(id);
+    ++_version;
     return true;
   }
   return false;
@@ -191,15 +233,22 @@ std::vector<std::string> config_t::gossipPeers() const {
 
 void config_t::eraseFromGossipPeers(std::string const& endpoint) {
   WRITE_LOCKER(readLocker, _lock);
-  _gossipPeers.erase(
+  if (std::find(_gossipPeers.begin(), _gossipPeers.end(), endpoint) !=
+      _gossipPeers.end()) {
+    _gossipPeers.erase(
       std::remove(_gossipPeers.begin(), _gossipPeers.end(), endpoint),
       _gossipPeers.end());
+    ++_version;
+  }
 }
 
 bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
   WRITE_LOCKER(readLocker, _lock);
   if (_pool.find(i.first) == _pool.end()) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Adding " << i.first << "(" << i.second << ") to agent pool";
     _pool[i.first] = i.second;
+    ++_version;
   } else {
     if (_pool.at(i.first) != i.second) {  /// discrepancy!
       return false;
@@ -210,21 +259,23 @@ bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
 
 bool config_t::swapActiveMember(
   std::string const& failed, std::string const& repl) {
-  WRITE_LOCKER(writeLocker, _lock);
   try {
+    WRITE_LOCKER(writeLocker, _lock);
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Replacing " << failed << " with " << repl;
     std::replace (_active.begin(), _active.end(), failed, repl);
+    ++_version;
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Replacing " << failed << " with " << repl
-      << "failed miserably: " << e.what();
+      << "Replacing " << failed << " with " << repl << "failed : " << e.what();
     return false;
   }
+
   return true;
 }
 
 std::string config_t::nextAgentInLine() const {
 
-  READ_LOCKER(writeLocker, _lock);
+  READ_LOCKER(readLocker, _lock);
 
   if (_poolSize > _agencySize) {
     for (const auto& p : _pool) {
@@ -240,6 +291,11 @@ std::string config_t::nextAgentInLine() const {
 size_t config_t::compactionStepSize() const {
   READ_LOCKER(readLocker, _lock);
   return _compactionStepSize;
+}
+
+size_t config_t::compactionKeepSize() const {
+  READ_LOCKER(readLocker, _lock);
+  return _compactionKeepSize;
 }
 
 size_t config_t::size() const {
@@ -259,59 +315,89 @@ bool config_t::poolComplete() const {
 
 query_t config_t::activeToBuilder() const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-  ret->openArray();
   {
     READ_LOCKER(readLocker, _lock);
+    VPackArrayBuilder r(ret.get());
     for (auto const& i : _active) {
       ret->add(VPackValue(i));
     }
   }
-  ret->close();
   return ret;
 }
 
 query_t config_t::activeAgentsToBuilder() const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-  ret->openObject();
   {
     READ_LOCKER(readLocker, _lock);
+    VPackObjectBuilder r(ret.get());
     for (auto const& i : _active) {
       ret->add(i, VPackValue(_pool.at(i)));
     }
   }
-  ret->close();
   return ret;
 }
 
 query_t config_t::poolToBuilder() const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-  ret->openObject();
   {
     READ_LOCKER(readLocker, _lock);
+    VPackObjectBuilder r(ret.get());
     for (auto const& i : _pool) {
       ret->add(i.first, VPackValue(i.second));
     }
   }
-  ret->close();
   return ret;
 }
+
+
+bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
+  WRITE_LOCKER(readLocker, _lock);
+  if (_pool[id] != ep) {
+    _pool[id] = ep;
+    ++_version;
+    return true;
+  }
+  return false;
+}
+
 
 void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
   std::map<std::string, std::string> pool;
-  for (auto const& p : VPackObjectIterator(slice.get("pool"))) {
-    pool[p.key.copyString()] = p.value.copyString();
+  bool changed = false;
+  for (auto const& p : VPackObjectIterator(slice.get(poolStr))) {
+    auto const& id = p.key.copyString();
+    if (id != _id) {
+      pool[id] = p.value.copyString();
+    } else {
+      pool[id] = _endpoint;
+    }
   }
   std::vector<std::string> active;
-  for (auto const& a : VPackArrayIterator(slice.get("active"))) {
+  for (auto const& a : VPackArrayIterator(slice.get(activeStr))) {
     active.push_back(a.copyString());
   }
+  double minPing = slice.get(minPingStr).getNumber<double>();
+  double maxPing = slice.get(maxPingStr).getNumber<double>();
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
+    changed=true;
   }
   if (active != _active) {
     _active = active;
+    changed=true;
+  }
+  if (minPing != _minPing) {
+    _minPing = minPing;
+    changed=true;
+  }
+  if (maxPing != _maxPing) {
+    _maxPing = maxPing;
+    changed=true;
+  }
+  if (changed) {
+    ++_version;
   }
 }
 
@@ -334,14 +420,14 @@ void config_t::override(VPackSlice const& conf) {
   }
 
   if (conf.hasKey(minPingStr) && conf.get(minPingStr).isDouble()) {
-    _minPing = conf.get(minPingStr).getDouble();
+    _minPing = conf.get(minPingStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << minPingStr
                                    << " from " << conf.toJson();
   }
 
   if (conf.hasKey(maxPingStr) && conf.get(maxPingStr).isDouble()) {
-    _maxPing = conf.get(maxPingStr).getDouble();
+    _maxPing = conf.get(maxPingStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << maxPingStr
                                    << " from " << conf.toJson();
@@ -385,7 +471,7 @@ void config_t::override(VPackSlice const& conf) {
 
   if (conf.hasKey(supervisionFrequencyStr) &&
       conf.get(supervisionFrequencyStr).isDouble()) {
-    _supervisionFrequency = conf.get(supervisionFrequencyStr).getDouble();
+    _supervisionFrequency = conf.get(supervisionFrequencyStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
                                    << supervisionFrequencyStr << " from "
@@ -400,24 +486,43 @@ void config_t::override(VPackSlice const& conf) {
                                    << compactionStepSizeStr << " from "
                                    << conf.toJson();
   }
+
+  if (conf.hasKey(compactionKeepSizeStr) &&
+      conf.get(compactionKeepSizeStr).isUInt()) {
+    _compactionKeepSize = conf.get(compactionKeepSizeStr).getUInt();
+  } else {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
+                                   << compactionKeepSizeStr << " from "
+                                   << conf.toJson();
+  }
+
+  ++_version;
 }
 
 /// @brief vpack representation
 query_t config_t::toBuilder() const {
+
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-  ret->openObject();
   {
+    VPackObjectBuilder b(ret.get());
     READ_LOCKER(readLocker, _lock);
-    ret->add(poolStr, VPackValue(VPackValueType::Object));
-    for (auto const& i : _pool) {
-      ret->add(i.first, VPackValue(i.second));
+
+    ret->add(VPackValue(poolStr));
+    {
+      VPackObjectBuilder bb(ret.get());
+      for (auto const& i : _pool) {
+        ret->add(i.first, VPackValue(i.second));
+      }
     }
-    ret->close();
-    ret->add(activeStr, VPackValue(VPackValueType::Array));
-    for (auto const& i : _active) {
-      ret->add(VPackValue(i));
+
+    ret->add(VPackValue(activeStr));
+    {
+      VPackArrayBuilder bb(ret.get());
+      for (auto const& i : _active) {
+        ret->add(VPackValue(i));
+      }
     }
-    ret->close();
+
     ret->add(idStr, VPackValue(_id));
     ret->add(agencySizeStr, VPackValue(_agencySize));
     ret->add(poolSizeStr, VPackValue(_poolSize));
@@ -427,21 +532,32 @@ query_t config_t::toBuilder() const {
     ret->add(supervisionStr, VPackValue(_supervision));
     ret->add(supervisionFrequencyStr, VPackValue(_supervisionFrequency));
     ret->add(compactionStepSizeStr, VPackValue(_compactionStepSize));
+    ret->add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
     ret->add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
+    ret->add(versionStr, VPackValue(_version));
+    ret->add(startupStr, VPackValue(_startup));
   }
-  ret->close();
+
   return ret;
 }
 
+// Set my id
 bool config_t::setId(std::string const& i) {
   WRITE_LOCKER(writeLocker, _lock);
   if (_id.empty()) {
     _id = i;
     _pool[_id] = _endpoint;  // Register my endpoint with it
+    ++_version;
     return true;
   } else {
     return false;
   }
+}
+
+// Get startup fix
+std::string config_t::startup() const {
+  READ_LOCKER(readLocker, _lock);
+  return _startup;
 }
 
 /// @brief merge from persisted configuration
@@ -449,7 +565,7 @@ bool config_t::merge(VPackSlice const& conf) {
   WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...
 
   _id = conf.get(idStr).copyString();  // I get my id
-  _pool[_id] = _endpoint;              // Register my endpoint with it
+  _startup = "persistence";
 
   std::stringstream ss;
   ss << "Agency size: ";
@@ -488,7 +604,12 @@ bool config_t::merge(VPackSlice const& conf) {
   if (conf.hasKey(poolStr)) {  // Persistence only
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Found agent pool in persistence:";
     for (auto const& peer : VPackObjectIterator(conf.get(poolStr))) {
-      _pool[peer.key.copyString()] = peer.value.copyString();
+      auto const& id = peer.key.copyString();
+      if (id != _id) {
+        _pool[id] = peer.value.copyString();
+      } else {
+        _pool[id] = _endpoint;
+      }
     }
     ss << conf.get(poolStr).toJson() << " (persisted)";
   } else {
@@ -515,7 +636,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Min RAFT interval: ";
   if (_minPing == 0) {  // Command line beats persistence
     if (conf.hasKey(minPingStr)) {
-      _minPing = conf.get(minPingStr).getDouble();
+      _minPing = conf.get(minPingStr).getNumber<double>();
       ss << _minPing << " (persisted)";
     } else {
       _minPing = 0.5;
@@ -531,7 +652,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Max RAFT interval: ";
   if (_maxPing == 0) {  // Command line beats persistence
     if (conf.hasKey(maxPingStr)) {
-      _maxPing = conf.get(maxPingStr).getDouble();
+      _maxPing = conf.get(maxPingStr).getNumber<double>();
       ss << _maxPing << " (persisted)";
     } else {
       _maxPing = 2.5;
@@ -563,7 +684,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Supervision interval [s]: ";
   if (_supervisionFrequency == 0) {  // Command line beats persistence
     if (conf.hasKey(supervisionFrequencyStr)) {
-      _supervisionFrequency = conf.get(supervisionFrequencyStr).getDouble();
+      _supervisionFrequency = conf.get(supervisionFrequencyStr).getNumber<double>();
       ss << _supervisionFrequency << " (persisted)";
     } else {
       _supervisionFrequency = 2.5;
@@ -582,7 +703,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionStepSize = conf.get(compactionStepSizeStr).getUInt();
       ss << _compactionStepSize << " (persisted)";
     } else {
-      _compactionStepSize = 1000;
+      _compactionStepSize = 2000;
       ss << _compactionStepSize << " (default)";
     }
   } else {
@@ -590,5 +711,23 @@ bool config_t::merge(VPackSlice const& conf) {
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+  ss.str("");
+  ss.clear();
+  ss << "Compaction keep size: ";
+  if (_compactionKeepSize == 0) {  // Command line beats persistence
+    if (conf.hasKey(compactionKeepSizeStr)) {
+      _compactionKeepSize = conf.get(compactionKeepSizeStr).getUInt();
+      ss << _compactionKeepSize << " (persisted)";
+    } else {
+      _compactionStepSize =  500;
+      ss << _compactionKeepSize << " (default)";
+    }
+  } else {
+    ss << _compactionKeepSize << " (command line)";
+  }
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  ++_version;
   return true;
 }
+
+

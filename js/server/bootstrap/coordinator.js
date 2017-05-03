@@ -44,22 +44,23 @@
   internal.loadStartup('server/bootstrap/autoload.js').startup();
   internal.loadStartup('server/bootstrap/routing.js').startup();
 
-  // start the queue manager once
   if (internal.threadNumber === 0) {
+    // start the queue manager once
     require('@arangodb/foxx/queues/manager').run();
-  }
-
-  if (internal.threadNumber === 0) {
-    // Wait for synchronous replication of system colls to settle:
-    console.info('Waiting for synchronous replication of system collections...');
-    var db = internal.db;
-    var colls = db._collections();
-    colls = colls.filter(c => c.name()[0] === '_');
-    require('@arangodb/cluster').waitForSyncRepl('_system', colls);
-  }
-
-  if (internal.threadNumber === 0) {
-    console.info('bootstraped coordinator %s', global.ArangoServerState.id());
+    var systemCollectionsCreated = global.ArangoAgency.get('SystemCollectionsCreated');
+    if (!(systemCollectionsCreated && systemCollectionsCreated.arango && systemCollectionsCreated.arango.SystemCollectionsCreated)) {
+      // Wait for synchronous replication of system colls to settle:
+      console.info('Waiting for initial replication of system collections...');
+      var db = internal.db;
+      var colls = db._collections();
+      colls = colls.filter(c => c.name()[0] === '_');
+      if (!require('@arangodb/cluster').waitForSyncRepl('_system', colls)) {
+        throw new Error('System collections not properly set up. Refusing startup!');
+      } else {
+        global.ArangoAgency.set('SystemCollectionsCreated', true);
+      }
+    }
+    console.info('bootstrapped coordinator %s', global.ArangoServerState.id());
   }
 
   return true;

@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1interior__type" kind="struct" prot="public">
+    <compoundname>boost::geometry::interior_type</compoundname>
+    <includes local="no">interior_type.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1interior__type_1a28215ebe3657036188f6c765250bec86" prot="public" static="no">
+        <type>core_dispatch::interior_type&lt; typename <ref refid="structboost_1_1geometry_1_1tag" kindref="compound">tag</ref>&lt; Geometry &gt;::<ref refid="structboost_1_1geometry_1_1interior__type_1a28215ebe3657036188f6c765250bec86" kindref="member">type</ref>, Geometry &gt;::<ref refid="structboost_1_1geometry_1_1interior__type_1a28215ebe3657036188f6c765250bec86" kindref="member">type</ref></type>
+        <definition>typedef core_dispatch::interior_type&lt; typename tag&lt;Geometry&gt;::type, Geometry &gt;::type boost::geometry::interior_type&lt; Geometry &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/interior_type.hpp" line="147" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/interior_type.hpp" bodystart="147" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Metafunction defining [*type] as the <ref refid="structboost_1_1geometry_1_1interior__type" kindref="compound">interior_type</ref> (container type of inner rings) of the specified geometry type. </para>    </briefdescription>
+    <detaileddescription>
+<para>Interior rings should be organized as a container (std::vector, std::deque, boost::array) with Boost.Range support. This metafunction defines the type of the container. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A type fullfilling the Polygon or MultiPolygon concept.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/core/interior_type.qbk]</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/interior_type.hpp" line="142" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/interior_type.hpp" bodystart="141" bodyend="148"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1interior__type_1a28215ebe3657036188f6c765250bec86" prot="public" virt="non-virtual"><scope>boost::geometry::interior_type</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

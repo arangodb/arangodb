@@ -89,10 +89,15 @@
 #include <conio.h>
 #include <windows.h>
 #include <io.h>
-#if _MSC_VER < 1900
+
+#if defined(_MSC_VER) && _MSC_VER < 1900
 #define snprintf _snprintf  // Microsoft headers use underscores in some names
 #endif
+
+#if !defined GNUC
 #define strcasecmp _stricmp
+#endif
+
 #define strdup _strdup
 #define isatty _isatty
 #define write _write
@@ -2490,8 +2495,11 @@ static bool isCharacterAlphanumeric(char32_t testChar) {
 #ifndef _WIN32
 static bool gotResize = false;
 #endif
+static int keyType = 0;
 
 int InputBuffer::getInputLine(PromptBase& pi) {
+  keyType = 0;
+
   // The latest history entry is always our current buffer
   if (len > 0) {
     size_t bufferSize = sizeof(char32_t) * len + 1;
@@ -2533,6 +2541,16 @@ int InputBuffer::getInputLine(PromptBase& pi) {
     int c;
     if (terminatingKeystroke == -1) {
       c = linenoiseReadChar();  // get a new keystroke
+
+      keyType = 0; 
+      if (c != 0) {
+        // set flag that we got some input
+        if (c == ctrlChar('C')) {
+          keyType = 1;
+        } else if (c == ctrlChar('D')) {
+          keyType = 2;
+        }
+      }
 
 #ifndef _WIN32
       if (c == 0 && gotResize) {
@@ -3419,4 +3437,8 @@ int linenoiseInstallWindowChangeHandler(void) {
   }
 #endif
   return 0;
+}
+
+int linenoiseKeyType(void) {
+  return keyType;
 }

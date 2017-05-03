@@ -1,0 +1,46 @@
+
+#          Copyright Oliver Kowalke 2009.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+# For more information, see http://www.boost.org/
+
+import common ;
+import feature ;
+import indirect ;
+import modules ;
+import os ;
+import toolset ;
+
+project boost/fiber/performance/thread
+    : requirements
+      <link>static
+      <optimization>speed
+      <threading>multi
+      <variant>release
+    ;
+
+exe overhead_create
+   : overhead_create.cpp
+   ;
+
+exe overhead_join
+   : overhead_join.cpp
+   ;
+
+exe overhead_detach
+   : overhead_detach.cpp
+   ;
+
+exe overhead_yield
+   : overhead_yield.cpp
+   ;
+
+exe overhead_future
+   : overhead_future.cpp
+   ;
+
+#exe scale_join
+#   : scale_join.cpp
+#   ;

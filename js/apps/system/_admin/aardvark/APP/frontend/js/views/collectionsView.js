@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, Joi, $*/
+/* global _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, Joi, $ */
 
 (function () {
   'use strict';
@@ -12,6 +12,14 @@
     refreshRate: 10000,
 
     template: templateEngine.createTemplate('collectionsView.ejs'),
+
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
 
     refetchCollections: function () {
       var self = this;
@@ -305,10 +313,27 @@
 
     createCollection: function (e) {
       e.preventDefault();
-      this.createNewCollectionModal();
+      var self = this;
+
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/engine'),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          self.engine = data;
+          console.log(self.engine);
+          self.createNewCollectionModal(data);
+        },
+        error: function () {
+          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Engine details.');
+        }
+      });
     },
 
     submitCreateCollection: function () {
+      var self = this;
       var callbackCoord = function (error, isCoordinator) {
         if (error) {
           arangoHelper.arangoError('DB', 'Could not check coordinator state');
@@ -375,16 +400,19 @@
             window.modalView.hide();
           }.bind(this);
 
-          this.collection.newCollection({
+          var tmpObj = {
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
-            journalSize: collSize,
             replicationFactor: replicationFactor,
             collType: collType,
             shards: shards,
             shardBy: shardBy
-          }, callback);
+          };
+          if (self.engine.name !== 'rocksdb') {
+            tmpObj.journalSize = collSize;
+          }
+          this.collection.newCollection(tmpObj, callback);
         }
       }.bind(this);
 
@@ -392,6 +420,7 @@
     },
 
     createNewCollectionModal: function () {
+      var self = this;
       var callbackCoord2 = function (error, isCoordinator) {
         if (error) {
           arangoHelper.arangoError('DB', 'Could not check coordinator state');
@@ -466,29 +495,31 @@
               this.submitCreateCollection.bind(this)
             )
           );
-          advancedTableContent.push(
-            window.modalView.createTextEntry(
-              'new-collection-size',
-              'Journal size',
-              '',
-              'The maximal size of a journal or datafile (in MB). Must be at least 1.',
-              '',
-              false,
-              [
-                {
-                  rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                  msg: 'Must be a number.'
-                }
-              ]
-            )
-          );
+          if (self.engine.name !== 'rocksdb') {
+            advancedTableContent.push(
+              window.modalView.createTextEntry(
+                'new-collection-size',
+                'Journal size',
+                '',
+                'The maximal size of a journal or datafile (in MB). Must be at least 1.',
+                '',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                    msg: 'Must be a number.'
+                  }
+                ]
+              )
+            );
+          }
           if (window.App.isCluster) {
             advancedTableContent.push(
               window.modalView.createTextEntry(
                 'new-replication-factor',
                 'Replication factor',
                 '',
-                'Numeric value. Must be at least 1. Description: TODO',
+                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
                 '',
                 false,
                 [

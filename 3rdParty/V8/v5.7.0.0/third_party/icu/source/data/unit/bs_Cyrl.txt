@@ -1,0 +1,84 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+bs_Cyrl{
+    %%Parent{"root"}
+    Version{"2.1.28.76"}
+    units{
+        duration{
+            day{
+                few{"{0} дана"}
+                one{"{0} дан"}
+                other{"{0} дан"}
+            }
+            hour{
+                few{"{0} сата"}
+                one{"{0} сат"}
+                other{"{0} сат"}
+            }
+            minute{
+                few{"{0} минута"}
+                one{"{0} минут"}
+                other{"{0} минут"}
+            }
+            month{
+                few{"{0} месеца"}
+                one{"{0} месец"}
+                other{"{0} месец"}
+            }
+            second{
+                few{"{0} секунде"}
+                one{"{0} секунда"}
+                other{"{0} секунда"}
+            }
+            week{
+                few{"{0} недеље"}
+                one{"{0} недеља"}
+                other{"{0} недеља"}
+            }
+            year{
+                few{"{0} године"}
+                one{"{0} година"}
+                other{"{0} година"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                few{"{0} дана"}
+                one{"{0} дан"}
+                other{"{0} дан"}
+            }
+            hour{
+                few{"{0} сата"}
+                one{"{0} сат"}
+                other{"{0} сат"}
+            }
+            minute{
+                few{"{0} мин"}
+                one{"{0} мин"}
+                other{"{0} мин"}
+            }
+            month{
+                few{"{0} мес"}
+                one{"{0} мес"}
+                other{"{0} мес"}
+            }
+            second{
+                few{"{0} сек"}
+                one{"{0} сек"}
+                other{"{0} сек"}
+            }
+            week{
+                few{"{0} нед"}
+                one{"{0} нед"}
+                other{"{0} нед"}
+            }
+            year{
+                few{"{0} год"}
+                one{"{0} год"}
+                other{"{0} год"}
+            }
+        }
+    }
+}

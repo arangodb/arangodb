@@ -214,6 +214,14 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
   return requestResult.edges;
 };
 
+ArangoCollection.prototype.shards = function () {
+  var requestResult = this._database._connection.GET(this._baseurl('shards'), '');
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.shards;
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief converts into an array
 // //////////////////////////////////////////////////////////////////////////////
@@ -280,16 +288,18 @@ ArangoCollection.prototype.name = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.status = function () {
-  var result;
-
-  if (this._status === null) {
+  if (this._status === null || 
+      this._status === ArangoCollection.STATUS_UNLOADING || 
+      this._status === ArangoCollection.STATUS_UNLOADED) {
+    this._status = null;
     this.refresh();
   }
 
   // save original status
-  result = this._status;
+  var result = this._status;
 
-  if (this._status === ArangoCollection.STATUS_UNLOADING) {
+  if (this._status === ArangoCollection.STATUS_UNLOADING ||
+      this._status === ArangoCollection.STATUS_UNLOADED) {
     // if collection is currently unloading, we must not cache this info
     this._status = null;
   }
@@ -325,7 +335,8 @@ ArangoCollection.prototype.properties = function (properties) {
     'numberOfShards': false,
     'keyOptions': false,
     'indexBuckets': true,
-    'replicationFactor': false
+    'replicationFactor': false,
+    'distributeShardsLike': false,
   };
   var a;
 
@@ -334,7 +345,7 @@ ArangoCollection.prototype.properties = function (properties) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
 
     arangosh.checkRequestResult(requestResult);
-  }else {
+  } else {
     var body = {};
 
     for (a in attributes) {
@@ -494,11 +505,11 @@ ArangoCollection.prototype.load = function (count) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.unload = function () {
+  this._status = null;
   var requestResult = this._database._connection.PUT(this._baseurl('unload'), '');
+  this._status = null;
 
   arangosh.checkRequestResult(requestResult);
-
-  this._status = null;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -586,140 +597,6 @@ ArangoCollection.prototype.dropIndex = function (id) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a unique skip-list index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureUniqueSkiplist = function () {
-  var body = addIndexOptions({
-    type: 'skiplist',
-    unique: true
-  }, arguments);
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a skip-list index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureSkiplist = function () {
-  var body = addIndexOptions({
-    type: 'skiplist',
-    unique: false
-  }, arguments);
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a fulltext index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
-  var body = {
-    type: 'fulltext',
-    minLength: minLength || undefined,
-    fields: [ field ]
-  };
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a unique constraint
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureUniqueConstraint = function () {
-  var body = addIndexOptions({
-    type: 'hash',
-    unique: true
-  }, arguments);
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a hash index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureHashIndex = function () {
-  var body = addIndexOptions({
-    type: 'hash',
-    unique: false
-  }, arguments);
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a geo index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
-  var body;
-
-  if (typeof lat !== 'string') {
-    throw 'usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])';
-  }
-
-  if (typeof lon === 'boolean') {
-    body = {
-      type: 'geo',
-      fields: [ lat ],
-      geoJson: lon
-    };
-  }
-  else if (lon === undefined) {
-    body = {
-      type: 'geo',
-      fields: [ lat ],
-      geoJson: false
-    };
-  }else {
-    body = {
-      type: 'geo',
-      fields: [ lat, lon ],
-      geoJson: false
-    };
-  }
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a geo constraint
-// / since ArangoDB 2.5, this is just a redirection to ensureGeoIndex
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
-  return this.ensureGeoIndex(lat, lon);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief ensures an index
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -739,9 +616,13 @@ ArangoCollection.prototype.ensureIndex = function (data) {
 // / @brief gets the number of documents
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.count = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('count'));
-
+ArangoCollection.prototype.count = function (details) {
+  var requestResult;
+  if (details) {
+    requestResult = this._database._connection.GET(this._baseurl('count') + '?details=true');
+  } else {
+    requestResult = this._database._connection.GET(this._baseurl('count'));
+  }
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.count;

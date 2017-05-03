@@ -1,6 +1,7 @@
-!CHAPTER Combining queries
+Combining queries
+=================
 
-!SUBSECTION Subqueries
+### Subqueries
 
 Wherever an expression is allowed in AQL, a subquery can be placed. A subquery
 is a query part that can introduce its own local variables without affecting
@@ -35,4 +36,24 @@ FOR p IN persons
 
 Subqueries may also include other subqueries.
 
+Note that subqueries always return a result **array**, even if there is only
+a single return value:
 
+```js
+RETURN ( RETURN 1 )
+```
+
+```json
+[ [ 1 ] ]
+```
+
+To avoid such a nested data structure, [FIRST()](../Functions/Array.md#first)
+can be used for example:
+
+```js
+RETURN FIRST( RETURN 1 )
+```
+
+```json
+[ 1 ]
+```

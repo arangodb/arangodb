@@ -1,0 +1,70 @@
+[/
+ /  Copyright (c) 2001, 2002 Peter Dimov and Multi Media Ltd.
+ /  Copyright (c) 2003-2008 Peter Dimov
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:examples Examples]
+
+[section Using bind with standard algorithms]
+
+    class image;
+
+    class animation
+    {
+    public:
+        void advance(int ms);
+        bool inactive() const;
+        void render(image & target) const;
+    };
+
+    std::vector<animation> anims;
+
+    template<class C, class P> void erase_if(C & c, P pred)
+    {
+        c.erase(std::remove_if(c.begin(), c.end(), pred), c.end());
+    }
+
+    void update(int ms)
+    {
+        std::for_each(anims.begin(), anims.end(), boost::bind(&animation::advance, _1, ms));
+        erase_if(anims, boost::mem_fn(&animation::inactive));
+    }
+
+    void render(image & target)
+    {
+        std::for_each(anims.begin(), anims.end(), boost::bind(&animation::render, _1, boost::ref(target)));
+    }
+
+[endsect]
+
+[section Using bind with Boost.Function]
+
+    class button
+    {
+    public:
+        ``[@boost:/libs/function/index.html `boost::function`]``<void()> onClick;
+    };
+
+    class player
+    {
+    public:
+        void play();
+        void stop();
+    };
+
+    button playButton, stopButton;
+    player thePlayer;
+
+    void connect()
+    {
+        playButton.onClick = boost::bind(&player::play, &thePlayer);
+        stopButton.onClick = boost::bind(&player::stop, &thePlayer);
+    }
+
+[endsect]
+
+[endsect]

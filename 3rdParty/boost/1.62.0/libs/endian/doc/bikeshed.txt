@@ -1,0 +1,79 @@
+Conversion function naming bikeshed
+
+return-by-value          modify-argument
+------------------       ---------------
+
+reverse_endianness       reverse_endianness_in_place    
+       "                 reverse_endianness_arg
+endian_reverse           endian_reverse_in_place
+       "                 endian_reverse_inplace
+	   "                 endian_reverse_replace
+       "                 endian_reverse_in_situ
+       "                 endian_reverse_here
+       "                 endian_reverse_this          
+       "                 endian_reverse_self
+       "                 endian_reverse_arg
+       "                 endian_reverse_in  
+
+reverse                  reverse_in_place
+reverse_endian           reverse_endian_in_place
+
+swap_endianness          swap_endianness_in_place
+swap_endian              swap_endian_in_place
+endian_swap              endian_swap_this
+
+flip_endianness          flip_endianness_in_place
+flip_endian              flip_endian_in_place
+endian_flip              endian_flip_in_place
+
+
+reverse_order            reverse_order_in_place
+
+
+Key points:
+
+* The above names are defined in a user namespace as customization points to be found by
+  ADL, and so cannot depend on the enclosing namespace name to signal readers that they
+  are related to endianness.
+* The above functions are rarely called directly by user code, which is more likely to use
+  the various conditional functions instead. So explicitness is more important than 
+  brevity.
+
+Conditional names
+
+big_to_native  native_to_big  little_to_native  native_to_little
+
+big_to_host    host_to_big    
+                              
+be_to_ne       ne_to_be
+
+from_big, to_big
+
+big_to_native                  big_to_native
+native_to_big                  native_to_big
+
+conditional_reverse            runtime_conditional_reverse
+conditional_reverse            conditional_reverse              <------
+
+merriam-webster.com/dictionary
+
+reverse [1] (adjective): opposite or contrary to a previous or normal condition <reverse order>
+reverse [2] (verb) : to change (something) to an opposite state or condition
+
+swap (verb) : to give something to someone and receive something in return : to trade or exchange (things)
+
+flip (verb)
+
+: to turn (something) over by throwing it up in the air with a quick movement
+
+: to cause (something) to turn or turn over quickly
+
+: to move (something) with a quick light movement
+
+--------------------------------------------------
+
+Copyright Beman Dawes, 2014
+Distributed under the Boost Software License, Version 1.0.
+See www.boost.org/LICENSE_1_0.txt
+
+ 

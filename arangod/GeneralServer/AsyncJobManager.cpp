@@ -72,8 +72,8 @@ AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
 
 AsyncJobResult::~AsyncJobResult() {}
 
-AsyncJobManager::AsyncJobManager(callback_fptr callback)
-    : _lock(), _jobs(), _callback(callback) {}
+AsyncJobManager::AsyncJobManager()
+    : _lock(), _jobs() {}
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
@@ -252,7 +252,7 @@ void AsyncJobManager::initAsyncJob(RestHandler* handler, char const* hdr) {
   AsyncCallbackContext* ctx = nullptr;
 
   if (hdr != nullptr) {
-    LOG(DEBUG) << "Found header X-Arango-Coordinator in async request";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Found header X-Arango-Coordinator in async request";
     ctx = new AsyncCallbackContext(std::string(hdr));
   }
 
@@ -291,11 +291,5 @@ void AsyncJobManager::finishAsyncJob(RestHandler* handler) {
     }
   }
 
-  if (nullptr != ctx) {
-    if (nullptr != _callback) {
-      _callback(ctx->getCoordinatorHeader(), response.get());
-    }
-
-    delete ctx;
-  }
+  delete ctx;
 }

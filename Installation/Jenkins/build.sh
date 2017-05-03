@@ -6,6 +6,20 @@ if python -c "import sys ; sys.exit(sys.platform != 'cygwin')"; then
     exit 1
 fi
 
+OSNAME=linux
+isCygwin=0
+if test "`uname -o||true`" == "Cygwin"; then
+    isCygwin=1
+    OSNAME=windows
+fi
+
+SED=sed
+isMac=0
+if test "`uname`" == "Darwin"; then
+    isMac=1
+    SED=gsed
+    OSNAME=darwin
+fi
 
 #          debian          mac
 for f in /usr/bin/md5sum /sbin/md5; do
@@ -29,7 +43,7 @@ fi
 # remove local from LD_LIBRARY_PATH
 
 if [ "$LD_LIBRARY_PATH" != "" ]; then
-    LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -e 's/:$//'`;
+    LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | ${SED} -e 's/:$//'`;
 fi
 
 # find out if we are running on 32 or 64 bit
@@ -125,7 +139,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS="$CMAKE_OPENSSL"
+CONFIGURE_OPTIONS="$CMAKE_OPENSSL ${CONFIGURE_OPTIONS}"
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -137,6 +151,7 @@ COVERGAE=0
 CPACK=
 FAILURE_TESTS=0
 GCC5=0
+GCC6=0
 GOLD=0
 SANITIZE=0
 VERBOSE=0
@@ -154,9 +169,10 @@ case "$1" in
         ;;
 
     debug)
+        BUILD_CONFIG=Debug
         CFLAGS="${CFLAGS} -O0"
         CXXFLAGS="${CXXFLAGS} -O0"
-        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} --enable-v8-debug"
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Debug -DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
 
         echo "using debug compile configuration"
         shift
@@ -166,6 +182,7 @@ case "$1" in
         CFLAGS="${CFLAGS} -O3"
         CXXFLAGS="${CXXFLAGS} -O3"
         MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=on"
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
 
         echo "using maintainer mode"
         shift
@@ -180,13 +197,12 @@ case "$1" in
         ;;
 
     *)
-        echo "using unknown compile configuration"
+        echo "using unknown compile configuration - supported are [standard|debug|maintainer|scan-build]"
         exit 1
         ;;
 esac
 
 CLEAN_IT=0
-
 
 while [ $# -gt 0 ];  do
     case "$1" in
@@ -202,6 +218,11 @@ while [ $# -gt 0 ];  do
 
         --gcc5)
             GCC5=1
+            shift
+            ;;
+
+        --gcc6)
+            GCC6=1
             shift
             ;;
 
@@ -233,8 +254,16 @@ while [ $# -gt 0 ];  do
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
              CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Release"
+             export _IsNativeEnvironment=true
              ;;
 
+        --symsrv)
+            shift
+            SYMSRV=1
+            SYMSRVDIR=$1
+            shift
+            ;;
+        
         --gold)
             GOLD=1
             shift
@@ -257,6 +286,12 @@ while [ $# -gt 0 ];  do
         --buildDir)
             shift
             BUILD_DIR=$1
+            shift
+            ;;
+
+        --clientBuildDir)
+            shift
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCLIENT_BUILD_DIR=$1"
             shift
             ;;
 
@@ -295,6 +330,11 @@ while [ $# -gt 0 ];  do
             shift
             ;;
 
+        --snap)
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_SNAPCRAFT=ON -DSNAP_PORT=8529"
+            shift
+            ;;
+
         --parallel)
             shift
             PARALLEL_BUILDS=$1
@@ -304,7 +344,11 @@ while [ $# -gt 0 ];  do
         --targetDir)
             shift
             TARGET_DIR=$1
-            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DPACKAGE_TARGET_DIR=$1"
+            if test "${isCygwin}" == 1; then
+                CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DPACKAGE_TARGET_DIR=`cygpath --windows $1`"
+            else
+                CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DPACKAGE_TARGET_DIR=$1"
+            fi
             shift
             ;;
 
@@ -312,15 +356,27 @@ while [ $# -gt 0 ];  do
             CLEAN_IT=1
             shift
             ;;
-        --cxArmV8)
-            ARMV8=1
-            CXGCC=1
+        --xcArm)
+            shift
+            TOOL_PREFIX=$1
+            XCGCC=1
             shift
             ;;
-        --cxArmV7)
-            ARMV7=1
-            CXGCC=1
+
+        --rpmDistro)
             shift
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DRPM_DISTRO=$1"
+            shift
+            ;;
+        
+        --staticOpenSSL)
+            shift
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DOPENSSL_USE_STATIC_LIBS=TRUE"
+            ;;
+
+        --downloadStarter)
+            shift
+            DOWNLOAD_STARTER=1
             ;;
 
         --enterprise)
@@ -353,6 +409,10 @@ fi
 if [ "$GCC5" == 1 ]; then
     CC=/usr/bin/gcc-5
     CXX=/usr/bin/g++-5
+elif [ "$GCC6" == 1 ]; then
+    CC=/usr/bin/gcc-6
+    CXX=/usr/bin/g++-6
+    CXXFLAGS="${CXXFLAGS} -std=c++11"
 elif [ "$CLANG" == 1 ]; then
     CC=/usr/bin/clang
     CXX=/usr/bin/clang++
@@ -361,20 +421,21 @@ elif [ "$CLANG36" == 1 ]; then
     CC=/usr/bin/clang-3.6
     CXX=/usr/bin/clang++-3.6
     CXXFLAGS="${CXXFLAGS} -std=c++11"
-elif [ "${CXGCC}" = 1 ]; then
+elif [ "${XCGCC}" = 1 ]; then
     USE_JEMALLOC=0
-    if [ "${ARMV8}" = 1 ]; then
-        export TOOL_PREFIX=aarch64-linux-gnu
-        BUILD_DIR="${BUILD_DIR}-ARMV8"
-    elif [ "${ARMV7}" = 1 ]; then
-        export TOOL_PREFIX=aarch64-linux-gnu
-        BUILD_DIR="${BUILD_DIR}-ARMV7"
-    else
-        echo "Unknown CX-Compiler!"
-        exit 1;
-    fi
+    
+    BUILD_DIR="${BUILD_DIR}-`basename ${TOOL_PREFIX}`"
 
-    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true" # -DCMAKE_LIBRARY_ARCHITECTURE=${TOOL_PREFIX} "
+    # tell cmake we're cross compiling:
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true -DCMAKE_SYSTEM_NAME=Linux"
+    # -DCMAKE_LIBRARY_ARCHITECTURE=${TOOL_PREFIX} "
+    # these options would be evaluated using TRY_RUN(), which obviously doesn't work:
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_POLL_FINE_EXITCODE=0"
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_GLIBC_STRERROR_R=0"
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_GLIBC_STRERROR_R__TRYRUN_OUTPUT=TRUE"
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_POSIX_STRERROR_R=1"
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_POSIX_STRERROR_R__TRYRUN_OUTPUT=FALSE"
+    
     export CXX=$TOOL_PREFIX-g++
     export AR=$TOOL_PREFIX-ar
     export RANLIB=$TOOL_PREFIX-ranlib
@@ -382,12 +443,9 @@ elif [ "${CXGCC}" = 1 ]; then
     export LD=$TOOL_PREFIX-g++
     export LINK=$TOOL_PREFIX-g++
     export STRIP=$TOOL_PREFIX-strip
-
+    export OBJCOPY=$TOOL_PREFIX-objcopy
     # we need ARM LD:
     GOLD=0;
-
-    # tell cmake we're cross compiling:
-    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true"
 
     # V8's mksnapshot won't work - ignore it:
     MAKE_PARAMS="${MAKE_PARAMS} -i"
@@ -436,6 +494,38 @@ fi
 if [ -z "${MSVC}" ]; then
     # MSVC doesn't know howto do assembler in first place.
     CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
+    # on all other system cmake tends to be sluggish on finding strip.
+    # workaround by presetting it:
+    if test -z "${STRIP}"; then
+        STRIP=/usr/bin/strip
+        if [ ! -f ${STRIP} ] ; then
+            set +e
+            STRIP=`which strip`
+            set -e
+        fi
+        export STRIP
+    fi
+    if test -n "${STRIP}"; then
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_STRIP=${STRIP}"
+    fi
+
+    if test -z "${OBJCOPY}"; then
+        OBJCOPY=/usr/bin/objcopy
+        if [ ! -f ${OBJCOPY} ] ; then
+            set +e
+            OBJCOPY=`which objcopy`
+            
+            set -e
+            if test -n "${OBJCOPY}" -a ! -x "${OBJCOPY}"; then
+                OBJCOPY=""
+            fi
+        fi
+        export OBJCOPY
+    fi
+    if test -n "${OBJCOPY}"; then
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_OBJCOPY=${OBJCOPY}"
+    fi
+
 fi
 
 CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} ${MAINTAINER_MODE}"
@@ -467,6 +557,9 @@ echo "  MAKE: ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}"
 if test ${CLEAN_IT} -eq 1; then
     echo "found fundamental changes, rebuilding from scratch!"
     git clean -f -d -x
+    if test -d ${BUILD_DIR}; then
+        rm -rf ${BUILD_DIR}
+    fi
 fi
 
 SRC=`pwd`
@@ -477,8 +570,12 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
         GITARGS=`git describe --exact-match --tags ${GITSHA}`
         echo "I'm on tag: ${GITARGS}"
     else
-        GITARGS=`git branch --no-color -q| grep '^\*' | sed "s;\* *;;"`
+        GITARGS=`git branch --no-color| grep '^\*' | ${SED} "s;\* *;;"`
+        if echo $GITARGS |grep -q ' '; then
+            GITARGS=devel
+        fi
         echo "I'm on Branch: ${GITARGS}"
+        export FINAL_PULL="git pull"
     fi
     # clean up if we're commanded to:
     if test -d enterprise -a ${CLEAN_IT} -eq 1; then
@@ -487,10 +584,56 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
     if test ! -d enterprise; then
         git clone ${ENTERPRISE_GIT_URL} enterprise
     fi
-    (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS} )
+    (
+        cd enterprise;
+        EP_GITSHA=`git log -n1 --pretty='%h'`
+        if git describe --exact-match --tags ${EP_GITSHA}; then
+            EP_GITARGS=`git describe --exact-match --tags ${EP_GITSHA}`
+            echo "I'm on tag: ${GITARGS}"
+        else
+            EP_GITARGS=`git branch --no-color| grep '^\*' | ${SED} "s;\* *;;"`
+            if echo $EP_GITARGS |grep -q ' '; then
+                EP_GITARGS=devel
+            fi
+            echo "I'm on Branch: ${GITARGS}"
+        fi
+
+        if test "${EP_GITARGS}" != "${GITARGS}"; then
+            git checkout master;
+        fi
+        git fetch --tags;
+        if git pull --all; then
+            if test "${EP_GITARGS}" != "${GITARGS}"; then
+                git checkout ${GITARGS};
+            fi
+        else
+            git checkout master;
+            git pull --all;
+            git fetch --tags;
+            git checkout ${GITARGS};
+        fi
+        ${FINAL_PULL}
+    )
 fi
 
-
+if test "${DOWNLOAD_STARTER}" == 1; then
+    # we utilize https://developer.github.com/v3/repos/ to get the newest release:
+    STARTER_REV=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases |grep tag_name |head -n 1 |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    STARTER_URL=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases/tags/${STARTER_REV} |grep browser_download_url |grep "${OSNAME}" |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    if test -n "${STARTER_URL}"; then
+        curl -LO "${STARTER_URL}"
+        FN=`echo ${STARTER_URL} |${SED} "s;.*/;;"`
+        if test "${isCygwin}" == 1; then
+            TN=arangodb.exe
+        else
+            TN=arangodb
+        fi
+        mkdir -p ${BUILD_DIR}
+        mv ${FN} ${BUILD_DIR}/${TN}
+        chmod a+x ${BUILD_DIR}/${TN}
+    fi
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DTHIRDPARTY_BIN=${BUILD_DIR}/${TN} "
+fi
 
 test -d ${BUILD_DIR} || mkdir ${BUILD_DIR}
 cd ${BUILD_DIR}
@@ -498,9 +641,26 @@ cd ${BUILD_DIR}
 DST=`pwd`
 SOURCE_DIR=`compute_relative ${DST}/ ${SRC}/`
 
-if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
+set +e
+if test "${isCygwin}" == 0; then
+    test ! -f Makefile -o ! -f CMakeCache.txt
+else
+    test ! -f ALL_BUILD.vcxproj -o ! -f CMakeCache.txt
+fi
+PARTIAL_STATE=$?
+set -e
+
+if test "${PARTIAL_STATE}" == 0; then
+    rm -rf CMakeFiles CMakeCache.txt CMakeCPackOptions.cmake cmake_install.cmake CPackConfig.cmake CPackSourceConfig.cmake
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
+fi
+
+if [ -n "$CPACK"  -a -n "${TARGET_DIR}" -a -z "${MSVC}" ];  then
+    if ! grep -q CMAKE_STRIP CMakeCache.txt; then
+        echo "cmake failed to detect strip; refusing to build unstripped packages!"
+        exit 1
+    fi
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
@@ -508,7 +668,7 @@ ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
 (cd ${SOURCE_DIR}; git rev-parse HEAD > last_compiled_version.sha)
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-    ${PACKAGE_MAKE} packages
+    ${PACKAGE_MAKE} packages || exit 1
 fi
 # and install
 
@@ -518,33 +678,53 @@ if test -n "${TARGET_DIR}";  then
     mkdir -p "${TARGET_DIR}"
     dir="${TARGET_DIR}"
     if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-        ${PACKAGE_MAKE} copy_packages
-        ${PACKAGE_MAKE} clean_packages
+        ${PACKAGE_MAKE} copy_packages || exit 1
+        ${PACKAGE_MAKE} clean_packages || exit 1
+        if test "${SYMSRV}" = "1"; then
+            echo "Storing symbols:"
+            export LIST="`pwd`/pdbfiles_list.txt"
+            find `pwd`/bin/ -name *pdb |grep -v Release |grep -v Debug |grep -v 3rdParty |grep -v vc120.pdb  |cygpath -f - --windows > ${LIST}
+            
+            symstore.exe add /f @`cygpath --windows ${LIST}`  /s "`cygpath --windows ${SYMSRVDIR}`" /t ArangoDB /compress
+        fi
     else
+        # we re-use a generic cpack tarball:
+        ${PACKAGE_MAKE} TGZ_package
+        PKG_NAME=`grep CPACK_PACKAGE_FILE_NAME CPackConfig.cmake | ${SED} 's/\r//' | ${SED} -e 's;".$;;' -e 's;.*";;'`
+
+        
         TARFILE=arangodb-`uname`${TAR_SUFFIX}.tar.gz
         TARFILE_TMP=`pwd`/arangodb.tar.$$
-
-        mkdir -p ${dir}
         trap "rm -rf ${TARFILE_TMP}" EXIT
 
+        mkdir -p ${dir}
+
+        (cd _CPack_Packages/*/TGZ/${PKG_NAME}/; rm -rf ${dir}/share/arangodb3/js; tar -c -f ${TARFILE_TMP} *)
+        
         (cd ${SOURCE_DIR}
 
          touch 3rdParty/.keepme
          touch arangod/.keepme
          touch arangosh/.keepme
-
-         tar -c -f ${TARFILE_TMP} \
-             VERSION utils scripts etc/relative UnitTests Documentation js \
+                               
+         tar -u -f ${TARFILE_TMP} \
+             VERSION utils scripts etc/relative etc/testing UnitTests Documentation js \
              lib/Basics/errors.dat \
              3rdParty/.keepme \
              arangod/.keepme \
              arangosh/.keepme
         )
 
-        if test "`uname -o||true`" == "Cygwin"; then
-            SSLDIR=`grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt  |sed -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"`
+        if test -n "${ENTERPRISE_GIT_URL}" ; then
+            (cd ${SOURCE_DIR}/enterprise; tar -u -f ${TARFILE_TMP} js)
+        fi
+
+        if test "${isCygwin}" == 1; then
+            SSLDIR=`grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt | ${SED} 's/\r//' | ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"`
             DLLS=`find ${SSLDIR} -name \*.dll |grep -i release`
             cp ${DLLS} bin/${BUILD_CONFIG}
+            cp bin/${BUILD_CONFIG}/* bin/
+            cp tests/${BUILD_CONFIG}/*exe bin/
         fi
         tar -u -f ${TARFILE_TMP} \
             bin etc tests
@@ -570,6 +750,6 @@ if test -n "${TARGET_DIR}";  then
         fi
 
         gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-        ${MD5} < ${dir}/${TARFILE}  |sed "s; .*;;" > ${dir}/${TARFILE}.md5
+        ${MD5} < ${dir}/${TARFILE} | ${SED} "s; .*;;" > ${dir}/${TARFILE}.md5
     fi
 fi

@@ -1,10 +1,11 @@
-!CHAPTER Foxx configuration
+Foxx configuration
+==================
 
 Foxx services can define configuration parameters to make them more re-usable.
 
 The `configuration` object maps names to configuration parameters:
 
-* The key is the name under whicht the parameter will be available
+* The key is the name under which the parameter will be available
   on the [service context's](Context.md) `configuration` property.
 
 * The value is a parameter definition.

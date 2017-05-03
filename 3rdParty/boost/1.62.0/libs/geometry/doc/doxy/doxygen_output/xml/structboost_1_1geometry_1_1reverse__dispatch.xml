@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1reverse__dispatch" kind="struct" prot="public">
+    <compoundname>boost::geometry::reverse_dispatch</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">detail::reverse_dispatch&lt; geometry_id&lt; Geometry1 &gt;::type::value, geometry_id&lt; Geometry2 &gt;::type::value &gt;</basecompoundref>
+    <includes local="no">reverse_dispatch.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>typename Geometry2</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1243">
+        <label>detail::reverse_dispatch&lt; geometry_id&lt; Geometry1 &gt;::type::value, geometry_id&lt; Geometry2 &gt;::type::value &gt;</label>
+      </node>
+      <node id="1242">
+        <label>boost::geometry::reverse_dispatch&lt; Geometry1, Geometry2 &gt;</label>
+        <link refid="structboost_1_1geometry_1_1reverse__dispatch"/>
+        <childnode refid="1243" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1245">
+        <label>detail::reverse_dispatch&lt; geometry_id&lt; Geometry1 &gt;::type::value, geometry_id&lt; Geometry2 &gt;::type::value &gt;</label>
+      </node>
+      <node id="1244">
+        <label>boost::geometry::reverse_dispatch&lt; Geometry1, Geometry2 &gt;</label>
+        <link refid="structboost_1_1geometry_1_1reverse__dispatch"/>
+        <childnode refid="1245" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/reverse_dispatch.hpp" line="61" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/reverse_dispatch.hpp" bodystart="56" bodyend="61"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

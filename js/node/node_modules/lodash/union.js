@@ -1,11 +1,11 @@
 var baseFlatten = require('./_baseFlatten'),
+    baseRest = require('./_baseRest'),
     baseUniq = require('./_baseUniq'),
-    isArrayLikeObject = require('./isArrayLikeObject'),
-    rest = require('./rest');
+    isArrayLikeObject = require('./isArrayLikeObject');
 
 /**
  * Creates an array of unique values, in order, from all given arrays using
- * [`SameValueZero`](http://ecma-international.org/ecma-262/6.0/#sec-samevaluezero)
+ * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
  * for equality comparisons.
  *
  * @static
@@ -19,7 +19,7 @@ var baseFlatten = require('./_baseFlatten'),
  * _.union([2], [1, 2]);
  * // => [2, 1]
  */
-var union = rest(function(arrays) {
+var union = baseRest(function(arrays) {
   return baseUniq(baseFlatten(arrays, 1, isArrayLikeObject, true));
 });
 

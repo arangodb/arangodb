@@ -1,19 +1,29 @@
-!CHAPTER Management
+Management
+==========
 
-!SECTION List installed services
+List installed services
+-----------------------
 
-!SECTION Install a new service
+Install a new service
+---------------------
 
-!SECTION Upgrade an installed service
+Upgrade an installed service
+----------------------------
 
-!SECTION Replace an installed service
+Replace an installed service
+----------------------------
 
-!SECTION Uninstall a service
+Uninstall a service
+-------------------
 
-!SECTION Run a service's tests
+Run a service's tests
+---------------------
 
-!SECTION Run a service script
+Run a service script
+--------------------
 
-!SECTION Enable development mode
+Enable development mode
+-----------------------
 
-!SECTION Disable development mode
+Disable development mode
+------------------------

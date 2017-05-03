@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface
+HTTP Interface
+==============
 
 Following you have ArangoDB's HTTP Interface for Documents, Databases, Edges and more.
 

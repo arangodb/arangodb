@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1dispatch_1_1copy__segment__point_3_01detail_1_1buffer_1_1buffered__ri3c7bfcbd8e37adae623500f2221c498d" kind="struct" prot="public">
+    <compoundname>boost::geometry::dispatch::copy_segment_point&lt; detail::buffer::buffered_ring_collection_tag, MultiRing, Reverse, SegmentIdentifier, PointOut &gt;</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">detail::copy_segments::copy_segment_point_multi&lt; MultiRing, SegmentIdentifier, PointOut, detail::copy_segments::copy_segment_point_range&lt; boost::range_value&lt; MultiRing &gt;::type, Reverse, SegmentIdentifier, PointOut &gt; &gt;</basecompoundref>
+    <includes local="no">buffered_ring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename MultiRing</type>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>Reverse</declname>
+        <defname>Reverse</defname>
+      </param>
+      <param>
+        <type>typename SegmentIdentifier</type>
+      </param>
+      <param>
+        <type>typename PointOut</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="314">
+        <label>boost::geometry::dispatch::copy_segment_point&lt; detail::buffer::buffered_ring_collection_tag, MultiRing, Reverse, SegmentIdentifier, PointOut &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dispatch_1_1copy__segment__point_3_01detail_1_1buffer_1_1buffered__ri3c7bfcbd8e37adae623500f2221c498d"/>
+        <childnode refid="315" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="315">
+        <label>detail::copy_segments::copy_segment_point_multi&lt; MultiRing, SegmentIdentifier, PointOut, detail::copy_segments::copy_segment_point_range&lt; boost::range_value&lt; MultiRing &gt;::type, Reverse, SegmentIdentifier, PointOut &gt; &gt;</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="316">
+        <label>boost::geometry::dispatch::copy_segment_point&lt; detail::buffer::buffered_ring_collection_tag, MultiRing, Reverse, SegmentIdentifier, PointOut &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dispatch_1_1copy__segment__point_3_01detail_1_1buffer_1_1buffered__ri3c7bfcbd8e37adae623500f2221c498d"/>
+        <childnode refid="317" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="317">
+        <label>detail::copy_segments::copy_segment_point_multi&lt; MultiRing, SegmentIdentifier, PointOut, detail::copy_segments::copy_segment_point_range&lt; boost::range_value&lt; MultiRing &gt;::type, Reverse, SegmentIdentifier, PointOut &gt; &gt;</label>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="207" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="186" bodyend="207"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -30,6 +30,12 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::communicator;
+
+namespace {
+
 #ifdef _WIN32
 /* socketpair.c
 Copyright 2007, 2010 by Nathan C. Myers <ncm@cantrip.org>
@@ -53,7 +59,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
+static int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
   union {
     struct sockaddr_in inaddr;
     struct sockaddr addr;
@@ -93,7 +99,7 @@ int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
 
     if (listen(listener, 1) == SOCKET_ERROR) break;
 
-    socks[0] = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
+    socks[0] = WSASocketW(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
     if (socks[0] == -1) break;
     if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) break;
 
@@ -101,6 +107,11 @@ int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
     if (socks[1] == -1) break;
 
     closesocket(listener);
+
+    u_long mode = 1;
+    int res = ioctlsocket(socks[0], FIONBIO, &mode);
+    if (res != NO_ERROR) break;
+
     return 0;
   }
 
@@ -114,25 +125,21 @@ int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
 }
 #endif
 
-using namespace arangodb;
-using namespace arangodb::communicator;
-
-namespace {
 std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(0));
 std::vector<char> urlDotSeparators{'/', '#', '?'};
 }
 
-Communicator::Communicator() : _curl(nullptr) {
+Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK) {
   curl_global_init(CURL_GLOBAL_ALL);
   _curl = curl_multi_init();
 
 #ifdef _WIN32
-  int err = dumb_socketpair(socks, 0);
+  int err = dumb_socketpair(_socks, 0);
   if (err != 0) {
     throw std::runtime_error("Couldn't setup sockets. Error was: " +
                              std::to_string(err));
   }
-  _wakeup.fd = socks[0];
+  _wakeup.fd = _socks[0];
 #else
   int result = pipe(_fds);
   if (result != 0) {
@@ -146,6 +153,7 @@ Communicator::Communicator() : _curl(nullptr) {
 #endif
 
   _wakeup.events = CURL_WAIT_POLLIN | CURL_WAIT_POLLPRI;
+  // TODO: does _wakeup.revents has to be initialized here?
 }
 
 Communicator::~Communicator() {
@@ -164,21 +172,18 @@ Ticket Communicator::addRequest(Destination destination,
     _newRequests.emplace_back(
         NewRequest{destination, std::move(request), callbacks, options, id});
   }
+
+  // mop: just send \0 terminated empty string to wake up worker thread
 #ifdef _WIN32
-  // mop: just send \0 terminated empty string to wake up worker thread
-  ssize_t numBytes = send(socks[1], "", 1, 0);
-  if (numBytes != 1) {
-    LOG_TOPIC(WARN, Logger::REQUESTS)
-        << "Couldn't wake up pipe. numBytes was " + std::to_string(numBytes);
-  }
+  ssize_t numBytes = send(_socks[1], "", 1, 0);
 #else
-  // mop: just send \0 terminated empty string to wake up worker thread
   ssize_t numBytes = write(_fds[1], "", 1);
+#endif
+
   if (numBytes != 1) {
-    LOG_TOPIC(WARN, Logger::REQUESTS)
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "Couldn't wake up pipe. numBytes was " + std::to_string(numBytes);
   }
-#endif
 
   return Ticket{id};
 }
@@ -220,7 +225,7 @@ int Communicator::work_once() {
 void Communicator::wait() {
   static int const MAX_WAIT_MSECS = 1000;  // wait max. 1 seconds
 
-  int numFds; // not used here
+  int numFds;  // not used here
   int res = curl_multi_wait(_curl, &_wakeup, 1, MAX_WAIT_MSECS, &numFds);
   if (res != CURLM_OK) {
     throw std::runtime_error(
@@ -231,7 +236,7 @@ void Communicator::wait() {
   // drain the pipe
   char a[16];
 #ifdef _WIN32
-  while (0 < recv(socks[0], a, sizeof(a), 0)) {
+  while (0 < recv(_socks[0], a, sizeof(a), 0)) {
   }
 #else
   while (0 < read(_fds[0], a, sizeof(a))) {
@@ -377,16 +382,17 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
   std::string prefix("Communicator(" + std::to_string(rip->_ticketId) +
                      ") // ");
-  LOG_TOPIC(TRACE, Logger::REQUESTS)
-      << prefix << "Curl rc is : " << rc << " after " << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      << prefix << "Curl rc is : " << rc << " after "
+      << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
   if (strlen(rip->_errorBuffer) != 0) {
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
         << prefix << "Curl error details: " << rip->_errorBuffer;
   }
 
   switch (rc) {
     case CURLE_OK: {
-      long httpStatusCode = 200;
+      int httpStatusCode = 200;
       curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
 
       std::unique_ptr<GeneralResponse> response(
@@ -416,7 +422,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       rip->_callbacks._onError(TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
       break;
     default:
-      LOG(ERR) << "Curl return " << rc;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Curl return " << rc;
       rip->_callbacks._onError(TRI_ERROR_INTERNAL, {nullptr});
       break;
   }
@@ -448,7 +454,8 @@ void Communicator::logHttpBody(std::string const& prefix,
                                std::string const& data) {
   std::string::size_type n = 0;
   while (n < data.length()) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << prefix << " " << data.substr(n, 80);
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << prefix << " "
+                                            << data.substr(n, 80);
     n += 80;
   }
 }
@@ -462,8 +469,8 @@ void Communicator::logHttpHeaders(std::string const& prefix,
     if (n == std::string::npos) {
       break;
     }
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << prefix << " "
-                                       << headerData.substr(last, n - last);
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << prefix << " " << headerData.substr(last, n - last);
     last = n + 2;
   }
 }
@@ -481,7 +488,7 @@ int Communicator::curlDebug(CURL* handle, curl_infotype type, char* data,
 
   switch (type) {
     case CURLINFO_TEXT:
-      LOG_TOPIC(TRACE, Logger::REQUESTS) << prefix << "Text: " << dataStr;
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << prefix << "Text: " << dataStr;
       break;
     case CURLINFO_HEADER_OUT:
       logHttpHeaders(prefix + "Header >>", dataStr);
@@ -546,11 +553,13 @@ std::string Communicator::createSafeDottedCurlUrl(
 }
 
 void Communicator::abortRequest(Ticket ticketId) {
-  LOG(ERR) << "Aborting " << ticketId;
   auto handle = _handlesInProgress.find(ticketId);
   if (handle == _handlesInProgress.end()) {
     return;
   }
+  std::string prefix("Communicator(" + std::to_string(handle->second->_rip->_ticketId) +
+                     ") // ");
+  LOG_TOPIC(WARN, Logger::REQUESTS) << prefix << "aborting request to " << handle->second->_rip->_destination.url();
   handle->second->_rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED,
                                             {nullptr});
   _handlesInProgress.erase(ticketId);

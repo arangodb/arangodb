@@ -25,10 +25,12 @@
 #ifndef ARANGOD_AQL_INDEX_BLOCK_H
 #define ARANGOD_AQL_INDEX_BLOCK_H 1
 
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
-#include "Indexes/IndexElement.h"
+
+#include "StorageEngine/DocumentIdentifierToken.h"
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -58,7 +60,7 @@ struct NonConstExpression {
   ~NonConstExpression() { delete expression; }
 };
 
-class IndexBlock : public ExecutionBlock {
+class IndexBlock final : public ExecutionBlock {
  public:
   IndexBlock(ExecutionEngine* engine, IndexNode const* ep);
 
@@ -96,8 +98,11 @@ class IndexBlock : public ExecutionBlock {
   /// @brief execute the bounds expressions
   void executeExpressions();
 
+  /// @brief continue skipping of documents
+  bool skipIndex(size_t atMost);
+
   /// @brief continue fetching of documents
-  bool readIndex(size_t atMost);
+  bool readIndex(size_t atMost, std::function<void(DocumentIdentifierToken const&)>&);
 
   /// @brief frees the memory for all non-constant expressions
   void cleanupNonConstExpressions();
@@ -109,20 +114,11 @@ class IndexBlock : public ExecutionBlock {
   /// @brief collection
   Collection const* _collection;
 
-  /// @brief document result
-  std::vector<IndexLookupResult> _result;
-  
-  /// @brief document buffer
-  std::vector<arangodb::velocypack::Slice> _documents;
-
-  /// @brief current position in _allDocs
-  size_t _posInDocs;
-
   /// @brief current position in _indexes
   size_t _currentIndex;
 
   /// @brief _indexes holds all Indexes used in this block
-  std::vector<Transaction::IndexHandle> _indexes;
+  std::vector<transaction::Methods::IndexHandle> _indexes;
 
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
@@ -149,12 +145,27 @@ class IndexBlock : public ExecutionBlock {
   AstNode const* _condition;
 
   /// @brief set of already returned documents. Used to make the result distinct
-  std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
+  std::unordered_set<DocumentIdentifierToken> _alreadyReturned;
 
   /// @brief whether or not at least one expression uses v8
   bool _hasV8Expression;
   
+  /// @brief A managed document result to temporary hold one document
   std::unique_ptr<ManagedDocumentResult> _mmdr;
+
+  /// @brief Flag if all indexes are exhausted to be maintained accross several getSome() calls
+  bool _indexesExhausted;
+
+  /// @brief Flag if the current index pointer is the last of the list.
+  ///        Used in uniqueness checks.
+  bool _isLastIndex;
+
+  /// @brief Counter how many documents have been returned/skipped
+  ///        during one call.
+  uint64_t _returned;
+
+  /// @brief Collect several AQLItemsBlocks
+  BlockCollector _collector;
 };
 
 }  // namespace arangodb::aql

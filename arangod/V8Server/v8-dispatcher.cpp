@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
+#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
@@ -206,7 +207,9 @@ V8Task::V8Task(std::string const& id, std::string const& name,
       _created(TRI_microtime()),
       _vocbaseGuard(new VocbaseGuard(vocbase)),
       _command(command),
-      _allowUseDatabase(allowUseDatabase) {}
+      _allowUseDatabase(allowUseDatabase),
+      _offset(0),
+      _interval(0) {}
 
 void V8Task::setOffset(double offset) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
@@ -230,8 +233,22 @@ V8Task::callbackFunction() {
   auto self = shared_from_this();
 
   return [self, this](const boost::system::error_code& error) {
+    // First tell the scheduler that this thread is working:
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.work();
+
     if (error) {
-      V8Task::unregisterTask(_id, false);
+      MUTEX_LOCKER(guard, _tasksLock);
+
+      auto itr = _tasks.find(_id);
+
+      if (itr != _tasks.end()) {
+        // remove task from list of tasks if it is still active
+        if (this == (*itr).second.get()) {
+          // still the same task. must remove from map
+          _tasks.erase(itr);
+        }
+      }
       return;
     }
 
@@ -240,12 +257,15 @@ V8Task::callbackFunction() {
       return;
     }
 
+    // now do the work:
     work();
-
-    if (_periodic) {
+    
+    if (_periodic && !SchedulerFeature::SCHEDULER->isStopping()) {
       _timer->expires_from_now(_interval);
       _timer->async_wait(callbackFunction());
     } else {
+      // in case of one-off tasks or in case of a shutdown, simply
+      // remove the task from the list
       V8Task::unregisterTask(_id, false);
     }
   };
@@ -263,6 +283,9 @@ void V8Task::start(boost::asio::io_service* ioService) {
 }
 
 void V8Task::cancel() {
+  // this will prevent the task from dispatching itself again
+  _periodic = false;
+
   boost::system::error_code ec;
   _timer->cancel(ec);
 }
@@ -351,18 +374,18 @@ void V8Task::work() {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG(WARN)
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
                 << "caught non-catchable exception (aka termination) in job";
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG(ERR) << "caught exception in V8 user task: "
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in V8 user task: "
                  << TRI_errno_string(ex.code()) << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG(ERR) << "caught exception in V8 user task: "
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in V8 user task: "
                  << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
-        LOG(ERR) << "caught unknown exception in V8 user task";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in V8 user task";
       }
     }
   }
@@ -406,8 +429,7 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              Javascript
-// functions
+// --SECTION--                                              Javascript functions
 // -----------------------------------------------------------------------------
 
 static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -595,15 +617,15 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate,
   v8::HandleScope scope(isolate);
 
   // we need a scheduler and a dispatcher to define periodic tasks
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_REGISTER_TASK"),
                                JS_RegisterTask);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_UNREGISTER_TASK"),
                                JS_UnregisterTask);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
 }
 

@@ -32,6 +32,11 @@ document under the attribute *old* in the result.
 Return additionally the complete new document under the attribute *new*
 in the result.
 
+@RESTQUERYPARAM{silent,boolean,optional}
+If set to *true*, an empty object will be returned as response. No meta-data 
+will be returned for the replaced document. This option can be used to
+save some network traffic.
+
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{If-Match,string,optional}
@@ -71,11 +76,11 @@ applied. The *waitForSync* query parameter cannot be used to disable
 synchronization for collections that have a default *waitForSync* value
 of *true*.
 
-The body of the response contains a JSON object with the information
-about the handle and the revision. The attribute *_id* contains the
-known *document-handle* of the updated document, *_key* contains the
-key which uniquely identifies a document in a given collection, and
-the attribute *_rev* contains the new document revision.
+If *silent* is not set to *true*, the body of the response contains a JSON 
+object with the information about the handle and the revision. The attribute 
+*_id* contains the known *document-handle* of the updated document, *_key* 
+contains the key which uniquely identifies a document in a given collection, 
+and the attribute *_rev* contains the new document revision.
 
 If the query parameter *returnOld* is *true*, then
 the complete previous revision of the document

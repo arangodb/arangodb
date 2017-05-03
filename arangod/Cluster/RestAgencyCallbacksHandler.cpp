@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAgencyCallbacksHandler.h"
+
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Cluster/AgencyCallbackRegistry.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -39,9 +40,9 @@ RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
 bool RestAgencyCallbacksHandler::isDirect() const { return false; }
 
 RestStatus RestAgencyCallbacksHandler::execute() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid callback");
     return RestStatus::DONE;
@@ -56,10 +57,8 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   }
   
   bool parseSuccess = true;
-  VPackOptions options = VPackOptions::Defaults;
-  options.checkAttributeUniqueness = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
@@ -67,7 +66,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   }
 
   try {
-    std::stringstream ss(suffix.at(0));
+    std::stringstream ss(suffixes.at(0));
     uint32_t index;
     ss >> index;
 

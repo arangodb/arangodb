@@ -43,8 +43,6 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
     case ProtocolVersion::UNKNOWN:
     default: { return "HTTP/1.0"; }
   }
-
-  return "UNKNOWN";  // in order please MSVC
 }
 
 std::string GeneralRequest::translateMethod(RequestType method) {
@@ -80,7 +78,7 @@ std::string GeneralRequest::translateMethod(RequestType method) {
       return "STATUS";
 
     case RequestType::ILLEGAL:
-      LOG(WARN) << "illegal http request method encountered in switch";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "illegal http request method encountered in switch";
       return "UNKNOWN";
   }
 
@@ -214,17 +212,17 @@ void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   _fullUrl = std::string(begin, end - begin);
 }
 
-void GeneralRequest::setFullUrl(std::string url) {
-  TRI_ASSERT(!url.empty());
-  _fullUrl = std::move(url);
+std::vector<std::string> GeneralRequest::decodedSuffixes() const {
+  std::vector<std::string> result;
+  result.reserve(_suffixes.size());
+
+  for (auto const& it : _suffixes) {
+    result.emplace_back(StringUtils::urlDecodePath(it));
+  }
+  return result;
 }
 
 void GeneralRequest::addSuffix(std::string&& part) {
-  _suffix.emplace_back(StringUtils::urlDecode(part));
-}
-
-bool GeneralRequest::velocyPackResponse() const {
-  // needs only to be used in http case?!
-  std::string const& result = header(StaticStrings::Accept);
-  return (std::string::npos != result.find(StaticStrings::MimeTypeVPack));
+  // part will not be URL-decoded here!
+  _suffixes.emplace_back(std::move(part));
 }

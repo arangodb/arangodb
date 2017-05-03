@@ -1,0 +1,175 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1strategy_1_1buffer" kind="namespace">
+    <compoundname>boost::geometry::strategy::buffer</compoundname>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__asymmetric" prot="public">boost::geometry::strategy::buffer::distance_asymmetric</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__symmetric" prot="public">boost::geometry::strategy::buffer::distance_symmetric</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__flat" prot="public">boost::geometry::strategy::buffer::end_flat</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round" prot="public">boost::geometry::strategy::buffer::end_round</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__miter" prot="public">boost::geometry::strategy::buffer::join_miter</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round" prot="public">boost::geometry::strategy::buffer::join_round</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide" prot="public">boost::geometry::strategy::buffer::join_round_by_divide</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__circle" prot="public">boost::geometry::strategy::buffer::point_circle</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__square" prot="public">boost::geometry::strategy::buffer::point_square</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1side__straight" prot="public">boost::geometry::strategy::buffer::side_straight</innerclass>
+      <sectiondef kind="enum">
+      <memberdef kind="enum" id="group__enum_1gaf73238cbd03ff9961f8547d084d83e2c" prot="public" static="no">
+        <name>buffer_side_selector</name>
+        <enumvalue id="group__enum_1ggaf73238cbd03ff9961f8547d084d83e2ca85f7bc4b2bf45e6ce03256a4edac146f" prot="public">
+          <name>buffer_side_left</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1ggaf73238cbd03ff9961f8547d084d83e2ca51fff9a1fc847ec098c25adfe8ec5b9b" prot="public">
+          <name>buffer_side_right</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+<para>Enumerates options for side of buffer (left/right w.r.t. directed segment) </para>        </briefdescription>
+        <detaileddescription>
+<para>Around a linestring, a buffer can be defined left or right. Around a polygon, assumed clockwise internally, a buffer is either on the left side (inflates the polygon), or on the right side (deflates the polygon) </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/buffer.hpp" line="56" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/buffer.hpp" bodystart="56" bodyend="56"/>
+      </memberdef>
+      <memberdef kind="enum" id="group__enum_1ga2ce054c657ad2094069c44ef0e037b16" prot="public" static="no">
+        <name>join_selector</name>
+        <enumvalue id="group__enum_1gga2ce054c657ad2094069c44ef0e037b16a053d8ba146acb5336a8e68ccc4c6eaf1" prot="public">
+          <name>join_convex</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga2ce054c657ad2094069c44ef0e037b16a3413bd3271548163010ad1e936d47fa6" prot="public">
+          <name>join_concave</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga2ce054c657ad2094069c44ef0e037b16a2ba5b4d8a6cfc9ca86c4100b8a37e00b" prot="public">
+          <name>join_continue</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga2ce054c657ad2094069c44ef0e037b16a0979b163712fccfa2811ea6494167265" prot="public">
+          <name>join_spike</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+<para>Enumerates types of joins. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/buffer.hpp" line="79" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/buffer.hpp" bodystart="78" bodyend="84"/>
+      </memberdef>
+      <memberdef kind="enum" id="group__enum_1ga79d3ab5282ad51728a40fc5b30fc332d" prot="public" static="no">
+        <name>piece_type</name>
+        <enumvalue id="group__enum_1gga79d3ab5282ad51728a40fc5b30fc332da158a3e6a23fcdf6abd8f1858e73514b8" prot="public">
+          <name>buffered_segment</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga79d3ab5282ad51728a40fc5b30fc332da7ee2534a92e01faecec230f188c7af50" prot="public">
+          <name>buffered_join</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga79d3ab5282ad51728a40fc5b30fc332dabb1b35eb299f24000daa33fa2a65b1c9" prot="public">
+          <name>buffered_round_end</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga79d3ab5282ad51728a40fc5b30fc332dac24a175cf38ec6afcf0a95e4704af854" prot="public">
+          <name>buffered_flat_end</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga79d3ab5282ad51728a40fc5b30fc332da0cd980f9eae221f3b9af241f68602c3f" prot="public">
+          <name>buffered_point</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga79d3ab5282ad51728a40fc5b30fc332da792658183c13c2ba99acc9b61ddc2b92" prot="public">
+          <name>buffered_concave</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga79d3ab5282ad51728a40fc5b30fc332da1e423792b09e6cba40ad7462b8e2f5a1" prot="public">
+          <name>piece_type_unknown</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+<para>Enumerates types of pieces (parts of buffer) around geometries. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/buffer.hpp" line="63" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/buffer.hpp" bodystart="62" bodyend="71"/>
+      </memberdef>
+      <memberdef kind="enum" id="group__enum_1ga98d7cec6a125ad7edf42a3c08e2853dd" prot="public" static="no">
+        <name>result_code</name>
+        <enumvalue id="group__enum_1gga98d7cec6a125ad7edf42a3c08e2853ddaeef2d3b4e82be420b7b9bf0f0a05a540" prot="public">
+          <name>result_normal</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga98d7cec6a125ad7edf42a3c08e2853ddad0b7a74aa0258eb3543c5c7daf2e6a04" prot="public">
+          <name>result_error_numerical</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="group__enum_1gga98d7cec6a125ad7edf42a3c08e2853ddac43b56490ccd3b15a97208b66f3dd681" prot="public">
+          <name>result_no_output</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+<para>Enumerates types of result codes from buffer strategies. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/buffer.hpp" line="91" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/buffer.hpp" bodystart="90" bodyend="95"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/buffer.hpp" line="16" column="1"/>
+  </compounddef>
+</doxygen>

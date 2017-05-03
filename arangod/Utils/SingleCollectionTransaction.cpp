@@ -22,67 +22,55 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleCollectionTransaction.h"
+#include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
-#include "Utils/TransactionContext.h"
-#include "VocBase/Ditch.h"
+#include "Utils/OperationResult.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction, using a collection id
-////////////////////////////////////////////////////////////////////////////////
-
 SingleCollectionTransaction::SingleCollectionTransaction(
-  std::shared_ptr<TransactionContext> transactionContext, TRI_voc_cid_t cid, 
-  TRI_transaction_type_e accessType)
-      : Transaction(transactionContext),
+  std::shared_ptr<transaction::Context> transactionContext, TRI_voc_cid_t cid, 
+  AccessMode::Type accessType)
+      : transaction::Methods(transactionContext),
         _cid(cid),
         _trxCollection(nullptr),
         _documentCollection(nullptr),
         _accessType(accessType) {
 
   // add the (sole) collection
-  if (setupState() == TRI_ERROR_NO_ERROR) {
-    addCollection(cid, _accessType);
-  }
+  addCollection(cid, _accessType);
+  addHint(transaction::Hints::Hint::NO_DLD);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction, using a collection name
-////////////////////////////////////////////////////////////////////////////////
-
 SingleCollectionTransaction::SingleCollectionTransaction(
-  std::shared_ptr<TransactionContext> transactionContext,
-  std::string const& name, TRI_transaction_type_e accessType)
-      : Transaction(transactionContext),
+  std::shared_ptr<transaction::Context> transactionContext,
+  std::string const& name, AccessMode::Type accessType)
+      : transaction::Methods(transactionContext),
         _cid(0),
         _trxCollection(nullptr),
         _documentCollection(nullptr),
         _accessType(accessType) {
   // add the (sole) collection
-  if (setupState() == TRI_ERROR_NO_ERROR) {
-    _cid = resolver()->getCollectionId(name);
-    addCollection(_cid, name.c_str(), _accessType);
-  }
+  _cid = resolver()->getCollectionId(name);
+  addCollection(_cid, name.c_str(), _accessType);
+  addHint(transaction::Hints::Hint::NO_DLD);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying transaction collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_transaction_collection_t* SingleCollectionTransaction::trxCollection() {
+TransactionCollection* SingleCollectionTransaction::trxCollection() {
   TRI_ASSERT(_cid > 0);
 
   if (_trxCollection == nullptr) {
-    _trxCollection =
-        TRI_GetCollectionTransaction(_trx, _cid, _accessType);
+    _trxCollection = _state->collection(_cid, _accessType);
 
     if (_trxCollection != nullptr) {
-      _documentCollection =
-          _trxCollection->_collection;
+      _documentCollection = _trxCollection->collection();
     }
   }
 
@@ -90,12 +78,9 @@ TRI_transaction_collection_t* SingleCollectionTransaction::trxCollection() {
   return _trxCollection;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying document collection
 /// note that we have two identical versions because this is called
 /// in two different situations
-////////////////////////////////////////////////////////////////////////////////
-
 LogicalCollection* SingleCollectionTransaction::documentCollection() {
   if (_documentCollection != nullptr) {
     return _documentCollection;
@@ -106,62 +91,26 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
 
   return _documentCollection;
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the ditch for the collection
-/// note that the ditch must already exist
-/// furthermore note that we have two calling conventions because this
-/// is called in two different ways
-//////////////////////////////////////////////////////////////////////////////
-
-DocumentDitch* SingleCollectionTransaction::ditch() const {
-  return _transactionContext->ditch(_cid);
-}
-
-DocumentDitch* SingleCollectionTransaction::ditch(TRI_voc_cid_t) const { 
-  return ditch(); 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a ditch is available for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-bool SingleCollectionTransaction::hasDitch() const {
-  return (ditch() != nullptr);
-}
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying collection's name
-////////////////////////////////////////////////////////////////////////////////
-
 std::string SingleCollectionTransaction::name() { 
   trxCollection(); // will ensure we have the _trxCollection object set
   TRI_ASSERT(_trxCollection != nullptr);
-  TRI_ASSERT(_trxCollection->_collection != nullptr);
-  return _trxCollection->_collection->name(); 
+  return _trxCollection->collectionName();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief explicitly lock the underlying collection for read access
-////////////////////////////////////////////////////////////////////////////////
-
-int SingleCollectionTransaction::lockRead() {
-  return lock(trxCollection(), TRI_TRANSACTION_READ);
+Result SingleCollectionTransaction::lockRead() {
+  return lock(trxCollection(), AccessMode::Type::READ);
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief explicitly unlock the underlying collection after read access
-//////////////////////////////////////////////////////////////////////////////
-
-int SingleCollectionTransaction::unlockRead() {
-  return unlock(trxCollection(), TRI_TRANSACTION_READ);
+Result SingleCollectionTransaction::unlockRead() {
+  return unlock(trxCollection(), AccessMode::Type::READ);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief explicitly lock the underlying collection for write access
-////////////////////////////////////////////////////////////////////////////////
-
-int SingleCollectionTransaction::lockWrite() {
-  return lock(trxCollection(), TRI_TRANSACTION_WRITE);
+Result SingleCollectionTransaction::lockWrite() {
+  return lock(trxCollection(), AccessMode::Type::WRITE);
 }
 

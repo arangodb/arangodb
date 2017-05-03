@@ -50,13 +50,8 @@ struct VppInputMessage {
   VppInputMessage(VppInputMessage const& other) = delete;
 
   // just move
-  VppInputMessage(VppInputMessage&& other) {
-    if (this == &other) {
-      return;
-    }
-    _buffer = std::move(other._buffer);
-    _id = other._id;
-    _payloadAmount = other._payloadAmount;
+  VppInputMessage(VppInputMessage&& other) 
+      : _buffer(std::move(other._buffer)), _id(other._id), _payloadAmount(other._payloadAmount) {
     init();
   }
 

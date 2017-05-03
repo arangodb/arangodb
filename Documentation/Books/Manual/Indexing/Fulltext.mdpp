@@ -1,19 +1,20 @@
-!CHAPTER Fulltext indexes
+Fulltext indexes
+================
 
 This is an introduction to ArangoDB's fulltext indexes.
 
-!SUBSECTION Introduction to Fulltext Indexes
+### Introduction to Fulltext Indexes
 
-A fulltext index can be used to find words, or prefixes of words inside documents. 
+A fulltext index can be used to find words, or prefixes of words inside documents.
 
-A fulltext index can be defined on one attribute only, and will include all words contained in 
-documents that have a textual value in the index attribute. Since ArangoDB 2.6 the index 
-will also include words from the index attribute if the index attribute is an array of 
+A fulltext index can be defined on one attribute only, and will include all words contained in
+documents that have a textual value in the index attribute. Since ArangoDB 2.6 the index
+will also include words from the index attribute if the index attribute is an array of
 strings, or an object with string value members.
 
-For example, given a fulltext index on the `translations` attribute and the following 
-documents, then searching for `лиса` using the fulltext index would return only the 
-first document. Searching for the index for the exact string `Fox` would return the first 
+For example, given a fulltext index on the `translations` attribute and the following
+documents, then searching for `лиса` using the fulltext index would return only the
+first document. Searching for the index for the exact string `Fox` would return the first
 two documents, and searching for `prefix:Fox` would return all three documents:
 
 ```js
@@ -35,13 +36,16 @@ all the strings into a special attribute, which you then create the index on
 (it might be necessary to clean the strings first, e.g. remove line breaks and
 strip certain words).
 
-If the index attribute is neither a string, an object or an array, its contents will 
-not be indexed. When indexing the contents of an array attribute, an array member will 
-only be included in the index if it is a string. When indexing the contents of an object 
-attribute, an object member value will only be included in the index if it is a string. 
+If the index attribute is neither a string, an object or an array, its contents will
+not be indexed. When indexing the contents of an array attribute, an array member will
+only be included in the index if it is a string. When indexing the contents of an object
+attribute, an object member value will only be included in the index if it is a string.
 Other data types are ignored and not indexed.
 
-!SECTION Accessing Fulltext Indexes from the Shell
+Currently, fulltext indexes are not yet supported with the RocksDB storage engine. Thus the function `FULLTEXT()` will be unavailable when using this storage engine. To use fulltext indexes, please use the MMFiles storage engine for the time being.
+
+Accessing Fulltext Indexes from the Shell
+-----------------------------------------
 
 <!-- js/server/modules/@arangodb/arango-collection.js -->
 
@@ -51,15 +55,15 @@ Ensures that a fulltext index exists:
 
 Creates a fulltext index on all documents on attribute *field*.
 
-Fulltext indexes are implicitly sparse: all documents which do not have 
-the specified *field* attribute or that have a non-qualifying value in their 
+Fulltext indexes are implicitly sparse: all documents which do not have
+the specified *field* attribute or that have a non-qualifying value in their
 *field* attribute will be ignored for indexing.
 
-Only a single attribute can be indexed. Specifying multiple attributes is 
+Only a single attribute can be indexed. Specifying multiple attributes is
 unsupported.
 
 The minimum length of words that are indexed can be specified via the
-*minLength* parameter. Words shorter than minLength characters will 
+*minLength* parameter. Words shorter than minLength characters will
 not be indexed. *minLength* has a default value of 2, but this value might
 be changed in future versions of ArangoDB. It is thus recommended to explicitly
 specify this value.
@@ -90,6 +94,7 @@ Looks up a fulltext index:
 
 Checks whether a fulltext index on the given attribute *attribute* exists.
 
-!SECTION Fulltext AQL Functions
+Fulltext AQL Functions
+----------------------
 
 Fulltext AQL functions are detailed in [Fulltext functions](../../AQL/Functions/Fulltext.html).

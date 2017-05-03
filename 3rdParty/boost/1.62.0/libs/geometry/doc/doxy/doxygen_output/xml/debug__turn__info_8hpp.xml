@@ -1,0 +1,187 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="debug__turn__info_8hpp" kind="file">
+    <compoundname>debug_turn_info.hpp</compoundname>
+    <includes refid="turn__info_8hpp" local="no">boost/geometry/algorithms/detail/overlay/turn_info.hpp</includes>
+    <includes refid="visit__info_8hpp" local="no">boost/geometry/algorithms/detail/overlay/visit_info.hpp</includes>
+    <includedby refid="print__turns_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/print_turns.hpp</includedby>
+    <incdepgraph>
+      <node id="28023">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/debug_turn_info.hpp</label>
+        <link refid="debug_turn_info.hpp"/>
+        <childnode refid="28024" relation="include">
+        </childnode>
+        <childnode refid="28046" relation="include">
+        </childnode>
+      </node>
+      <node id="28030">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="28045">
+        <label>boost/geometry/algorithms/detail/overlay/overlay_type.hpp</label>
+        <link refid="overlay__type_8hpp"/>
+      </node>
+      <node id="28044">
+        <label>boost/type_traits/make_signed.hpp</label>
+      </node>
+      <node id="28024">
+        <label>boost/geometry/algorithms/detail/overlay/turn_info.hpp</label>
+        <link refid="turn__info_8hpp"/>
+        <childnode refid="28025" relation="include">
+        </childnode>
+        <childnode refid="28026" relation="include">
+        </childnode>
+        <childnode refid="28041" relation="include">
+        </childnode>
+        <childnode refid="28045" relation="include">
+        </childnode>
+      </node>
+      <node id="28033">
+        <label>boost/type_traits/is_const.hpp</label>
+      </node>
+      <node id="28032">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="28026">
+        <label>boost/geometry/core/coordinate_type.hpp</label>
+        <link refid="coordinate__type_8hpp"/>
+        <childnode refid="28027" relation="include">
+        </childnode>
+        <childnode refid="28028" relation="include">
+        </childnode>
+        <childnode refid="28035" relation="include">
+        </childnode>
+        <childnode refid="28037" relation="include">
+        </childnode>
+        <childnode refid="28039" relation="include">
+        </childnode>
+      </node>
+      <node id="28027">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="28034">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="28039">
+        <label>boost/geometry/util/promote_floating_point.hpp</label>
+        <link refid="promote__floating__point_8hpp"/>
+        <childnode refid="28032" relation="include">
+        </childnode>
+        <childnode refid="28040" relation="include">
+        </childnode>
+      </node>
+      <node id="28036">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="28046">
+        <label>boost/geometry/algorithms/detail/overlay/visit_info.hpp</label>
+        <link refid="visit__info_8hpp"/>
+      </node>
+      <node id="28041">
+        <label>boost/geometry/algorithms/detail/overlay/segment_identifier.hpp</label>
+        <link refid="segment__identifier_8hpp"/>
+        <childnode refid="28042" relation="include">
+        </childnode>
+      </node>
+      <node id="28042">
+        <label>boost/geometry/algorithms/detail/signed_size_type.hpp</label>
+        <link refid="signed__size__type_8hpp"/>
+        <childnode refid="28043" relation="include">
+        </childnode>
+        <childnode refid="28044" relation="include">
+        </childnode>
+      </node>
+      <node id="28028">
+        <label>boost/geometry/core/point_type.hpp</label>
+        <link refid="point__type_8hpp"/>
+        <childnode refid="28027" relation="include">
+        </childnode>
+        <childnode refid="28029" relation="include">
+        </childnode>
+        <childnode refid="28030" relation="include">
+        </childnode>
+        <childnode refid="28031" relation="include">
+        </childnode>
+        <childnode refid="28035" relation="include">
+        </childnode>
+        <childnode refid="28036" relation="include">
+        </childnode>
+        <childnode refid="28037" relation="include">
+        </childnode>
+      </node>
+      <node id="28029">
+        <label>boost/range/value_type.hpp</label>
+      </node>
+      <node id="28043">
+        <label>cstddef</label>
+      </node>
+      <node id="28031">
+        <label>boost/geometry/core/ring_type.hpp</label>
+        <link refid="ring__type_8hpp"/>
+        <childnode refid="28027" relation="include">
+        </childnode>
+        <childnode refid="28032" relation="include">
+        </childnode>
+        <childnode refid="28029" relation="include">
+        </childnode>
+        <childnode refid="28033" relation="include">
+        </childnode>
+        <childnode refid="28030" relation="include">
+        </childnode>
+        <childnode refid="28034" relation="include">
+        </childnode>
+        <childnode refid="28035" relation="include">
+        </childnode>
+        <childnode refid="28036" relation="include">
+        </childnode>
+      </node>
+      <node id="28040">
+        <label>boost/type_traits/is_integral.hpp</label>
+      </node>
+      <node id="28025">
+        <label>boost/array.hpp</label>
+      </node>
+      <node id="28035">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="28036" relation="include">
+        </childnode>
+        <childnode refid="28037" relation="include">
+        </childnode>
+      </node>
+      <node id="28037">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="28030" relation="include">
+        </childnode>
+        <childnode refid="28038" relation="include">
+        </childnode>
+        <childnode refid="28034" relation="include">
+        </childnode>
+      </node>
+      <node id="28038">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="28047">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/debug_turn_info.hpp</label>
+        <link refid="debug_turn_info.hpp"/>
+        <childnode refid="28048" relation="include">
+        </childnode>
+      </node>
+      <node id="28048">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/print_turns.hpp</label>
+        <link refid="print__turns_8hpp"/>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/debug_turn_info.hpp"/>
+  </compounddef>
+</doxygen>

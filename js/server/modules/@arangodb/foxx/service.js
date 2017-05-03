@@ -31,12 +31,15 @@ const Module = require('module');
 const semver = require('semver');
 const path = require('path');
 const fs = require('fs');
+const ArangoError = require('@arangodb').ArangoError;
+const errors = require('@arangodb').errors;
 const defaultTypes = require('@arangodb/foxx/types');
 const FoxxContext = require('@arangodb/foxx/context');
 const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
 const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
 const Router = require('@arangodb/foxx/router/router');
 const Tree = require('@arangodb/foxx/router/tree');
+const codeFrame = require('@arangodb/util').codeFrame;
 
 const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
@@ -90,11 +93,12 @@ module.exports =
 
       this.configuration = createConfiguration(this.manifest.configuration);
       this.dependencies = createDependencies(this.manifest.dependencies, this.options.dependencies);
+
       const warnings = this.applyConfiguration(this.options.configuration, false);
       if (warnings) {
         console.warnLines(`Stored configuration for service "${data.mount}" has errors:\n  ${
           Object.keys(warnings).map((key) => warnings[key]).join('\n  ')
-        }`);
+        }\nValues for unknown options will be discarded if you save the configuration in production mode using the web interface.`);
       }
 
       this.thumbnail = null;
@@ -194,18 +198,44 @@ module.exports =
         const def = definitions[name];
         const value = deps[name];
 
-        if (value === undefined || value === null || value === '') {
-          this.options.dependencies[name] = undefined;
-          if (def.required !== false) {
-            warnings[name] = 'is required';
-          }
-          continue;
-        }
+        if (def.multiple) {
+          this.options.dependencies[name] = deps;
+          const values = Array.isArray(value) ? value : (
+            (value === undefined || value === null || value === '')
+            ? []
+            : [value]
+          );
 
-        if (typeof value !== 'string') {
-          warnings[name] = 'must be a string';
+          if (!values.length) {
+            if (def.required !== false) {
+              warnings[name] = 'is required';
+            }
+            continue;
+          }
+
+          for (let i = 0; i < values.length; i++) {
+            const value = values[i];
+            if (typeof value !== 'string') {
+              warnings[name] = `at ${i} must be a string`;
+            } else {
+              this.options.dependencies[name].push(value);
+            }
+          }
         } else {
-          this.options.dependencies[name] = value;
+          this.options.dependencies[name] = undefined;
+
+          if (value === undefined || value === null || value === '') {
+            if (def.required !== false) {
+              warnings[name] = 'is required';
+            }
+            continue;
+          }
+
+          if (typeof value !== 'string') {
+            warnings[name] = 'must be a string';
+          } else {
+            this.options.dependencies[name] = value;
+          }
         }
       }
 
@@ -213,16 +243,26 @@ module.exports =
     }
 
     buildRoutes () {
-      const service = this;
-      const tree = new Tree(this.main.context, this.router);
+      this.tree = new Tree(this.main.context, this.router);
       let paths = [];
       try {
-        paths = tree.buildSwaggerPaths();
+        paths = this.tree.buildSwaggerPaths();
       } catch (e) {
-        console.errorLines(e.stack);
-        let err = e.cause;
-        while (err && err.stack) {
-          console.errorLines(`via ${err.stack}`);
+        if (this.isDevelopment) {
+          const frame = codeFrame(e, this.basePath);
+          if (frame) {
+            console.errorLines(frame);
+          }
+        }
+        let err = e;
+        while (err) {
+          if (err.stack) {
+            console.errorLines(
+              err === e
+              ? err.stack
+              : `via ${err.stack}`
+            );
+          }
           err = err.cause;
         }
         console.warnLines(dd`
@@ -247,26 +287,35 @@ module.exports =
       this.routes.routes.push({
         url: {match: '/*'},
         action: {
-          callback(req, res, opts, next) {
+          callback: (req, res, opts, next) => {
             let handled = true;
 
             try {
-              handled = tree.dispatch(req, res);
+              handled = this.tree.dispatch(req, res);
             } catch (e) {
               const logLevel = (
-              !e.statusCode ? 'error' : // Unhandled
-                e.statusCode >= 500 ? 'warn' : // Internal
-                  service.isDevelopment ? 'info' : // Debug
-                    undefined
+                !e.statusCode
+                ? 'error' // Unhandled
+                : (
+                  e.statusCode >= 500
+                  ? 'warn' // Internal
+                  : (
+                    this.isDevelopment
+                    ? 'info' // Debug
+                    : undefined
+                  )
+                )
               );
+
               let error = e;
               if (!e.statusCode) {
                 error = new InternalServerError();
                 error.cause = e;
               }
+
               if (logLevel) {
                 console[logLevel](`Service "${
-                  service.mount
+                  this.mount
                 }" encountered error ${
                   e.statusCode || 500
                 } while handling ${
@@ -274,29 +323,47 @@ module.exports =
                 } ${
                   req.absoluteUrl()
                 }`);
-                console[`${logLevel}Lines`](e.stack);
-                let err = e.cause;
-                while (err && err.stack) {
-                  console[`${logLevel}Lines`](`via ${err.stack}`);
+
+                if (this.isDevelopment) {
+                  const frame = codeFrame(e.cause || e, this.basePath);
+                  if (frame) {
+                    console[`${logLevel}Lines`](frame);
+                  }
+                }
+                let err = e;
+                while (err) {
+                  if (err.stack) {
+                    console[`${logLevel}Lines`](
+                      err === e
+                      ? err.stack
+                      : `via ${err.stack}`
+                    );
+                  }
                   err = err.cause;
                 }
               }
+
               const body = {
                 error: true,
                 errorNum: error.errorNum || error.statusCode,
                 errorMessage: error.message,
                 code: error.statusCode
               };
+
               if (error.statusCode === 405 && error.methods) {
                 if (!res.headers) {
                   res.headers = {};
                 }
                 res.headers.allow = error.methods.join(', ');
               }
-              if (service.isDevelopment) {
-                const err = error.cause || error;
+              if (this.isDevelopment) {
+                const err = e.cause || e;
                 body.exception = String(err);
-                body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
+                if (!err.stack) {
+                  body.stacktrace = 'no stacktrace available';
+                } else {
+                  body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
+                }
               }
               if (error.extra) {
                 Object.keys(error.extra).forEach(function (key) {
@@ -308,7 +375,17 @@ module.exports =
               res.body = JSON.stringify(body);
             }
 
-            if (!handled) {
+            if (handled) {
+              // provide default CORS headers
+              if (req.headers.origin) {
+                if (!res.headers) {
+                  res.headers = {};
+                }
+                if (!res.headers['access-control-expose-headers']) {
+                  res.headers['access-control-expose-headers'] = Object.keys(res.headers).concat('server', 'content-length').sort().join(', ');
+                }
+              }
+            } else {
               next();
             }
           }
@@ -396,11 +473,10 @@ module.exports =
     needsConfiguration () {
       const config = this.getConfiguration();
       const deps = this.getDependencies();
-      return _.some(config, function (cfg) {
-          return cfg.current === undefined && cfg.required !== false;
-        }) || _.some(deps, function (dep) {
-          return dep.current === undefined && dep.required !== false;
-        });
+      return (
+        _.some(config, (cfg) => cfg.current === undefined && cfg.required) ||
+        _.some(deps, (dep) => (dep.multiple ? (!dep.current || !dep.current.length) : !dep.current) && dep.required)
+      );
     }
 
     run (filename, options) {
@@ -429,11 +505,28 @@ module.exports =
       return module.exports;
     }
 
+    getScripts () {
+      const names = {};
+      for (const name of Object.keys(this.manifest.scripts)) {
+        names[name] = getReadableName(name);
+      }
+      return names;
+    }
+
     executeScript (name, argv) {
       var scripts = this.manifest.scripts;
       // Only run setup/teardown scripts if they exist
-      if (!scripts[name] && (name === 'setup' || name === 'teardown')) {
-        return undefined;
+      if (!scripts[name]) {
+        if (name === 'setup' || name === 'teardown') {
+          return undefined;
+        }
+        throw new ArangoError({
+          errorNum: errors.ERROR_SERVICE_UNKNOWN_SCRIPT.code,
+          errorMessage: dd`
+            ${errors.ERROR_SERVICE_UNKNOWN_SCRIPT.message}
+            Name: ${name}
+          `
+        });
       }
       return this.run(scripts[name], {
         foxxContext: {
@@ -537,18 +630,32 @@ function createConfiguration (definitions) {
 function createDependencies (definitions, options) {
   const deps = {};
   for (const name of Object.keys(definitions)) {
+    const dfn = definitions[name];
     Object.defineProperty(deps, name, {
-      configurable: true,
       enumerable: true,
-      get() {
-        const mount = options[name];
-        if (!mount) {
-          return null;
+      get () {
+        const fm = require('@arangodb/foxx/manager');
+        const value = options[name];
+        if (!dfn.multiple) {
+          return value ? fm.requireService(value) : null;
         }
-        const FoxxManager = require('@arangodb/foxx/manager');
-        return FoxxManager.requireService('/' + mount.replace(/(^\/+|\/+$)/, ''));
+        const multi = [];
+        if (value) {
+          for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            Object.defineProperty(multi, String(i), {
+              enumerable: true,
+              get: () => item ? fm.requireService(item) : null
+            });
+          }
+        }
+        Object.freeze(multi);
+        Object.seal(multi);
+        return multi;
       }
     });
   }
+  Object.freeze(deps);
+  Object.seal(deps);
   return deps;
 }

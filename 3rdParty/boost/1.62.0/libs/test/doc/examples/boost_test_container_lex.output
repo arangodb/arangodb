@@ -1,0 +1,17 @@
+//[example_output
+> ./boost_test_container_lex --log_level=all
+Running 1 test case...
+Entering test module "boost_test_container_lex"
+test.cpp(15): Entering test case "test_collections_vectors_lex"
+test.cpp(19): error: in "test_collections_vectors_lex": check a < a has failed
+Collections appear to be equal.
+test.cpp(20): error: in "test_collections_vectors_lex": check a < b has failed
+Failure at position 2: 3 >= 2. 
+test.cpp(21): info: check a < c has passed
+test.cpp(22): error: in "test_collections_vectors_lex": check a >= c has failed
+Second collection has extra trailing elements.
+test.cpp(15): Leaving test case "test_collections_vectors_lex"; testing time: 267us
+Leaving test module "boost_test_container_lex"; testing time: 341us
+
+*** 3 failures are detected in the test module "boost_test_container_lex"
+//]

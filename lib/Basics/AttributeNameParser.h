@@ -42,11 +42,14 @@ namespace basics {
 struct AttributeName {
   std::string name;
   bool shouldExpand;
-
-  explicit AttributeName(std::string const& name, bool expand)
-      : name(name), shouldExpand(expand) {}
-
+  
   explicit AttributeName(arangodb::StringRef const& name);
+
+  AttributeName(std::string const& name, bool expand)
+      : name(name), shouldExpand(expand) {}
+  
+  AttributeName(std::string&& name, bool expand)
+      : name(std::move(name)), shouldExpand(expand) {}
 
   AttributeName(arangodb::StringRef const& name, bool expand);
 
@@ -126,10 +129,7 @@ bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
 }
 }
 
-std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const*);
 std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
-std::ostream& operator<<(std::ostream&,
-                         std::vector<arangodb::basics::AttributeName> const*);
 std::ostream& operator<<(std::ostream&,
                          std::vector<arangodb::basics::AttributeName> const&);
 

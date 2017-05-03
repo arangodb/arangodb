@@ -25,6 +25,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 size_t FixedVarExpressionContext::numRegisters() const {
@@ -63,7 +64,7 @@ void FixedVarExpressionContext::setVariableValue(Variable const* var,
 }
 
 void FixedVarExpressionContext::serializeAllVariables(
-    arangodb::Transaction* trx, VPackBuilder& builder) const {
+    transaction::Methods* trx, VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   for (auto const& it : _vars) {
     builder.openArray();

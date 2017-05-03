@@ -1,12 +1,14 @@
-!CHAPTER Incompatible changes in ArangoDB 2.4
+Incompatible changes in ArangoDB 2.4
+====================================
 
 It is recommended to check the following list of incompatible changes **before** 
 upgrading to ArangoDB 2.4, and adjust any client programs if necessary.
 
 
-!SECTION Changed behavior
+Changed behavior
+----------------
 
-!SUBSECTION V8 upgrade
+### V8 upgrade
 
 The bundled V8 version has been upgraded from 3.16.14 to 3.29.59.
 
@@ -38,7 +40,7 @@ Error messages have also changed slightly in the new version. Applications that
 rely on the exact error messages of the JavaScript engine may need to be adjusted so they
 look for the updated error messages.
 
-!SUBSECTION Default endpoint
+### Default endpoint
 
 The default endpoint for arangod is now `127.0.0.1`.
 
@@ -50,7 +52,7 @@ To make ArangoDB accessible from any client, change the server's configuration
 (`--server.endpoint`) to either `tcp://0.0.0.0:8529` or the server's publicly
 visible IP address.
 
-!SUBSECTION Replication
+### Replication
 
 System collections are now included in the replication and all replication API return 
 values by default. 
@@ -86,7 +88,8 @@ The HTTP REST API methods for fetching the replication inventory and for dumping
 collections also support the `includeSystem` control flag via a URL parameter of
 the same name.
 
-!SECTION Build process changes
+Build process changes
+---------------------
 
 Several options for the `configure` command have been removed in 2.4. The options
 
@@ -112,7 +115,8 @@ rebuild afterwards:
     ./configure <options go here>
     make
 
-!SECTION Miscellaneous changes
+Miscellaneous changes
+---------------------
 
 As a consequence of global renaming in the codebase, the option `mergeArrays` has
 been renamed to `mergeObjects`. This option controls whether JSON objects will be 
@@ -133,7 +137,8 @@ should thus be rewritten to the following in 2.4:
     UPDATE doc IN collection WITH { ... } IN collection OPTIONS { mergeObjects: false }
 
 
-!SECTION Deprecated features
+Deprecated features
+-------------------
 
 For `FoxxController` objects, the method `collection()` is deprecated and will be
 removed in future version of ArangoDB. Using this method will issue a warning. 
@@ -165,7 +170,8 @@ The HTTP REST API `_api/graph` and all its methods are deprecated. Please use
 the general graph API `_api/gharial` instead.
 
 
-!SECTION Removed features
+Removed features
+----------------
 
 The following replication-related JavaScript methods became obsolete in ArangoDB
 2.2 and have been removed in ArangoDB 2.4:

@@ -1,4 +1,5 @@
-!CHAPTER Notes about Databases
+Notes about Databases
+=====================
 
 Please keep in mind that each database contains its own system collections,
 which need to be set up when a database is created. This will make the creation

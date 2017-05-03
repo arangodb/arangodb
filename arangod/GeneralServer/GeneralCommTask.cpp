@@ -28,6 +28,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -37,11 +38,10 @@
 #include "Meta/conversion.h"
 #include "Rest/VppResponse.h"
 #include "Scheduler/Job.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Scheduler.h"
-#include "Scheduler/Socket.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Socket.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -53,10 +53,48 @@ using namespace arangodb::rest;
 
 GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
                                  std::unique_ptr<Socket> socket,
-                                 ConnectionInfo&& info, double keepAliveTimeout)
+                                 ConnectionInfo&& info, double keepAliveTimeout,
+                                 bool skipSocketInit)
     : Task(loop, "GeneralCommTask"),
-      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout),
+      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
+                 skipSocketInit),
       _server(server) {}
+
+GeneralCommTask::~GeneralCommTask() {
+  for (auto&& statistics : _statisticsMap) {
+    auto stat = statistics.second;
+
+    if (stat != nullptr) {
+      stat->release();
+    }
+  }
+
+  _statisticsMap.clear();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+
+  auto iter = _statisticsMap.find(id);
+
+  if (iter == _statisticsMap.end()) {
+    if (stat != nullptr) {
+      _statisticsMap.emplace(std::make_pair(id, stat));
+    }
+  } else {
+    iter->second->release();
+
+    if (stat != nullptr) {
+      iter->second = stat;
+    } else {
+      _statisticsMap.erase(iter);
+    }
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -86,11 +124,9 @@ void GeneralCommTask::executeRequest(
       GeneralServerFeature::HANDLER_FACTORY->createHandler(
           std::move(request), std::move(response)));
 
-  // transfer statistics into handler
-  getAgent(messageId)->transferTo(handler.get());
-
+  // give up, if we cannot find a handler
   if (handler == nullptr) {
-    LOG(TRACE) << "no handler is known, giving up";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no handler is known, giving up";
     handleSimpleError(rest::ResponseCode::NOT_FOUND, messageId);
     return;
   }
@@ -99,8 +135,9 @@ void GeneralCommTask::executeRequest(
   bool ok = false;
 
   if (found && (asyncExecution == "true" || asyncExecution == "store")) {
-    // getAgent(messageId)->requestStatisticsAgentSetAsync();
-    handler->requestStatisticsAgentSetAsync();
+    RequestStatistics::SET_ASYNC(statistics(messageId));
+    transferStatisticsTo(messageId, handler.get());
+
     uint64_t jobId = 0;
 
     if (asyncExecution == "store") {
@@ -130,6 +167,7 @@ void GeneralCommTask::executeRequest(
 
   // synchronous request
   else {
+    transferStatisticsTo(messageId, handler.get());
     ok = handleRequest(std::move(handler));
   }
 
@@ -144,8 +182,46 @@ void GeneralCommTask::processResponse(GeneralResponse* response) {
         << "processResponse received a nullptr, closing connection";
     closeStream();
   } else {
-    addResponse(response);
+    addResponse(response, nullptr);
   }
+}
+
+RequestStatistics* GeneralCommTask::acquireStatistics(uint64_t id) {
+  RequestStatistics* stat = RequestStatistics::acquire();
+  setStatistics(id, stat);
+  return stat;
+}
+
+RequestStatistics* GeneralCommTask::statistics(uint64_t id) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+
+  auto iter = _statisticsMap.find(id);
+
+  if (iter == _statisticsMap.end()) {
+    return nullptr;
+  }
+
+  return iter->second;
+}
+
+RequestStatistics* GeneralCommTask::stealStatistics(uint64_t id) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+
+  auto iter = _statisticsMap.find(id);
+
+  if (iter == _statisticsMap.end()) {
+    return nullptr;
+  }
+
+  RequestStatistics* stat = iter->second;
+  _statisticsMap.erase(iter);
+
+  return stat;
+}
+
+void GeneralCommTask::transferStatisticsTo(uint64_t id, RestHandler* handler) {
+  RequestStatistics* stat = stealStatistics(id);
+  handler->setStatistics(stat);
 }
 
 // -----------------------------------------------------------------------------
@@ -153,40 +229,54 @@ void GeneralCommTask::processResponse(GeneralResponse* response) {
 // -----------------------------------------------------------------------------
 
 bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
+  bool isDirect = false;
+  bool isPrio = false;
+
   if (handler->isDirect()) {
+    isDirect = true;
+  } else if (_loop._scheduler->hasQueueCapacity()) {
+    isDirect = true;
+  } else if (ServerState::instance()->isDBServer()) {
+    isPrio = true;
+  } else if (handler->needsOwnThread()) {
+    isPrio = true;
+  } else if (handler->queue() == JobQueue::AQL_QUEUE) {
+    isPrio = true;
+  }
+
+  if (isDirect && !allowDirectHandling()) {
+    isDirect = false;
+    isPrio = true;
+  }
+
+  if (isDirect) {
     handleRequestDirectly(std::move(handler));
     return true;
   }
 
-  if (_loop._scheduler->isIdle()) {
-    handleRequestDirectly(std::move(handler));
-    return true;
-  }
+  auto self = shared_from_this();
 
-  bool startThread = handler->needsOwnThread();
-
-  if (startThread) {
-    handleRequestDirectly(std::move(handler));
+  if (isPrio) {
+    SchedulerFeature::SCHEDULER->post(
+        [self, this, handler]() { handleRequestDirectly(std::move(handler)); });
     return true;
   }
 
   // ok, we need to queue the request
-  LOG_TOPIC(DEBUG, Logger::THREADS) << "too much work, queuing handler";
-  size_t queue = handler->queue();
+  LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
+                                    << _loop._scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
 
-  auto self = shared_from_this();
   std::unique_ptr<Job> job(
       new Job(_server, std::move(handler),
               [self, this](std::shared_ptr<RestHandler> h) {
                 handleRequestDirectly(h);
               }));
 
-  bool ok =
-      SchedulerFeature::SCHEDULER->jobQueue()->queue(queue, std::move(job));
+  bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
 
   if (!ok) {
-    handleSimpleError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_QUEUE_FULL,
+    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL,
                       TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
   }
 
@@ -195,15 +285,10 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
 
 void GeneralCommTask::handleRequestDirectly(
     std::shared_ptr<RestHandler> handler) {
-  JobGuard guard(_loop);
-  guard.work();
-
-  RequestStatisticsAgent* agent = getAgent(handler->messageId());
-
   auto self = shared_from_this();
-  handler->initEngine(_loop, agent, [self, this](RestHandler* h) {
-    h->transferTo(getAgent(h->messageId()));
-    addResponse(h->response());
+  handler->initEngine(_loop, [self, this](RestHandler* h) {
+    RequestStatistics* stat = h->stealStatistics();
+    addResponse(h->response(), stat);
   });
 
   HandlerWorkStack monitor(handler);
@@ -229,26 +314,19 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
   if (store) {
     auto self = shared_from_this();
-    handler->initEngine(_loop, nullptr, [this, self](RestHandler* handler) {
-      handler->transferTo(getAgent(handler->messageId()));
+    handler->initEngine(_loop, [this, self](RestHandler* handler) {
       GeneralServerFeature::JOB_MANAGER->finishAsyncJob(handler);
     });
   } else {
-    handler->initEngine(_loop, nullptr, [](RestHandler* handler) {});
+    handler->initEngine(_loop, [](RestHandler* handler) {});
   }
 
   // queue this job
-  size_t queue = handler->queue();
   auto self = shared_from_this();
 
-  std::unique_ptr<Job> job(
-      new Job(_server, std::move(handler),
-              [self, this](std::shared_ptr<RestHandler> h) {
-                JobGuard guard(_loop);
-                guard.work();
+  auto job = std::make_unique<Job>(
+      _server, std::move(handler),
+      [self, this](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
 
-                h->asyncRunEngine();
-              }));
-
-  return SchedulerFeature::SCHEDULER->jobQueue()->queue(queue, std::move(job));
+  return SchedulerFeature::SCHEDULER->queue(std::move(job));
 }

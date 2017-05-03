@@ -1,0 +1,65 @@
+[section Calling Python Functions and Methods]
+[section Introduction]
+The simplest way to call a Python function from C++, given an [link object_wrappers.boost_python_object_hpp.class_object `object`] instance f holding the function, is simply to invoke its function call operator.
+``f("tea", 4, 2) // In Python: f('tea', 4, 2)``
+ And of course, a method of an [link object_wrappers.boost_python_object_hpp.class_object `object`] instance `x` can be invoked by using the function-call operator of the corresponding attribute:
+``x.attr("tea")(4, 2); // In Python: x.tea(4, 2)``
+If you don't have an [link object_wrappers.boost_python_object_hpp.class_object `object`] instance, `Boost.Python` provides two families of function templates, [link function_invocation_and_creation.boost_python_call_hpp.function_call `call`] and [link function_invocation_and_creation.boost_python_call_method_hpp.function_call_method `call_method`], for invoking Python functions and methods respectively on `PyObject*`\ s. The interface for calling a Python function object (or any Python callable object) looks like:
+``call<ResultType>(callable_object, a1, a2... aN);``
+Calling a method of a Python object is similarly easy:
+``call_method<ResultType>(self_object, "method-name", a1, a2... aN);``
+ This comparitively low-level interface is the one you'll use when implementing C++ virtual functions that can be overridden in Python. 
+[endsect]
+[section Argument Handling]
+Arguments are converted to Python according to their type. By default, the arguments `a1...aN` are copied into new Python objects, but this behavior can be overridden by the use of [link function_invocation_and_creation.boost_python_ptr_hpp.functions `ptr()`] and `ref()`:
+``
+class X : boost::noncopyable
+{
+   ...
+};
+
+void apply(PyObject* callable, X& x)
+{
+   // Invoke callable, passing a Python object which holds a reference to x
+   boost::python::call<void>(callable, boost::ref(x));
+}
+``
+ In the table below, x denotes the actual argument object and cv denotes an optional cv-qualification: "const", "volatile", or "const volatile".
+
+[table
+[[Argument Type][Behavior]]
+[[`T cv &`
+`T cv`][The Python argument is created by the same means used for the return value of a wrapped C++ function returning T. When T is a class type, that normally means *x is copy-constructed into the new Python object.]]
+[[T*][If x == 0, the Python argument will be None. Otherwise, the Python argument is created by the same means used for the return value of a wrapped C++ function returning T. When T is a class type, that normally means *x is copy-constructed into the new Python object.]]
+[[boost::reference_wrapper<T>][The Python argument contains a pointer to, rather than a copy of, x.get(). Note: failure to ensure that no Python code holds a reference to the resulting object beyond the lifetime of *x.get() may result in a crash!]]
+[[pointer_wrapper<T>][If x.get() == 0, the Python argument will be None. Otherwise, the Python argument contains a pointer to, rather than a copy of, *x.get(). Note: failure to ensure that no Python code holds a reference to the resulting object beyond the lifetime of *x.get() may result in a crash!]]
+]
+[endsect]
+[section Result Handling]
+In general, `call<ResultType>()` and call_method<ResultType>() return ResultType by exploiting all lvalue and rvalue from_python converters registered for ResultType and returning a copy of the result. However, when ResultType is a pointer or reference type, Boost.Python searches only for lvalue converters. To prevent dangling pointers and references, an exception will be thrown if the Python result object has only a single reference count. 
+[endsect]
+[section Rationale]
+In general, to get Python arguments corresponding to a1...aN, a new Python object must be created for each one; should the C++ object be copied into that Python object, or should the Python object simply hold a reference/pointer to the C++ object? In general, the latter approach is unsafe, since the called function may store a reference to the Python object somewhere. If the Python object is used after the C++ object is destroyed, we'll crash Python.
+
+In keeping with the philosophy that users on the Python side shouldn't have to worry about crashing the interpreter, the default behavior is to copy the C++ object, and to allow a non-copying behavior only if the user writes boost::ref(a1) instead of a1 directly. At least this way, the user doesn't get dangerous behavior "by accident". It's also worth noting that the non-copying ("by-reference") behavior is in general only available for class types, and will fail at runtime with a Python exception if used otherwise[1].
+
+However, pointer types present a problem: one approach is to refuse to compile if any aN has pointer type: after all, a user can always pass *aN to pass "by-value" or ref(*aN) to indicate a pass-by-reference behavior. However, this creates a problem for the expected null pointer to None conversion: it's illegal to dereference a null pointer value.
+
+The compromise I've settled on is this:
+
+# The default behavior is pass-by-value. If you pass a non-null pointer, the pointee is copied into a new Python object; otherwise the corresponding Python argument will be None.
+# if you want by-reference behavior, use ptr(aN) if aN is a pointer and ref(aN) otherwise. If a null pointer is passed to ptr(aN), the corresponding Python argument will be None.
+
+As for results, we have a similar problem: if ResultType is allowed to be a pointer or reference type, the lifetime of the object it refers to is probably being managed by a Python object. When that Python object is destroyed, our pointer dangles. The problem is particularly bad when the ResultType is char const* - the corresponding Python String object is typically uniquely-referenced, meaning that the pointer dangles as soon as call<char const*>(...) returns.
+
+The old Boost.Python v1 deals with this issue by refusing to compile any uses of call<char const*>(), but this goes both too far and not far enough. It goes too far because there are cases where the owning Python string object survives beyond the call (just for instance, when it's the name of a Python class), and it goes not far enough because we might just as well have the same problem with a returned pointer or reference of any other type.
+
+In Boost.Python this is dealt with by:
+
+# lifting the compile-time restriction on `char const *` callback returns
+# detecting the case when the reference count on the result Python object is 1 and throwing an
+  exception inside of `call<U>(...)` when `U` is a pointer or reference type.
+
+This should be acceptably safe because users have to explicitly specify a pointer/reference for `U` in `call<U>`, and they will be protected against dangles at runtime, at least long enough to get out of the `call<U>(...)` invocation. 
+[endsect]
+[endsect]

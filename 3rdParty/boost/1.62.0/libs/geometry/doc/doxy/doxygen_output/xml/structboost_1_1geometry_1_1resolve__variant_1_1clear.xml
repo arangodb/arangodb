@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1clear" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::clear</compoundname>
+    <includes local="no">clear.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1clear_1ae9f69b7b99da661809b71db5260afe44" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void boost::geometry::resolve_variant::clear&lt; Geometry &gt;::apply</definition>
+        <argsstring>(Geometry &amp;geometry)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/clear.hpp" line="145" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/clear.hpp" bodystart="145" bodyend="148"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/clear.hpp" line="144" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/clear.hpp" bodystart="143" bodyend="149"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1clear_1ae9f69b7b99da661809b71db5260afe44" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::clear</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

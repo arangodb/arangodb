@@ -30,6 +30,7 @@
 #include <openssl/ssl.h>
 
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Scheduler/Socket.h"
 
@@ -83,23 +84,28 @@ class GeneralCommTask : public SocketTask {
 
  public:
   GeneralCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket>,
-                  ConnectionInfo&&, double keepAliveTimeout);
+                  ConnectionInfo&&, double keepAliveTimeout,
+                  bool skipSocketInit = false);
 
-  virtual void addResponse(GeneralResponse*) = 0;
+  ~GeneralCommTask();
+
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
-  RequestStatisticsAgent* getAgent(uint64_t id) {
-    auto agentIt = _agents.find(id);
-    if (agentIt != _agents.end()) {
-      return &(agentIt->second);
-    } else {
-      throw std::logic_error("there should be an agent for every request");
-    }
-  }
+  void setStatistics(uint64_t, RequestStatistics*);
 
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
+
+  virtual void addResponse(GeneralResponse*, RequestStatistics*) = 0;
+
+  virtual void handleSimpleError(rest::ResponseCode, uint64_t messageId) = 0;
+
+  virtual void handleSimpleError(rest::ResponseCode, int code,
+                                 std::string const& errorMessage,
+                                 uint64_t messageId) = 0;
+
+  virtual bool allowDirectHandling() const = 0;
 
  protected:
   void executeRequest(std::unique_ptr<GeneralRequest>&&,
@@ -107,25 +113,22 @@ class GeneralCommTask : public SocketTask {
 
   void processResponse(GeneralResponse*);
 
-  virtual void handleSimpleError(rest::ResponseCode, uint64_t messagid) = 0;
-
-  virtual void handleSimpleError(rest::ResponseCode, int code,
-                                 std::string const& errorMessage,
-                                 uint64_t messageId) = 0;
+  RequestStatistics* acquireStatistics(uint64_t);
+  RequestStatistics* statistics(uint64_t);
+  RequestStatistics* stealStatistics(uint64_t);
+  void transferStatisticsTo(uint64_t, RestHandler*);
 
  protected:
   GeneralServer* const _server;
 
-  // protocol to use http, vpp
+  // protocol to use http, vst
   char const* _protocol = "unknown";
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
-  std::unordered_map<uint64_t, RequestStatisticsAgent> _agents;
+  arangodb::Mutex _statisticsMutex;
+  std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
 
  private:
-  void handleTimeout() /* override final */ { /* _clientClosed = true; */
-  }
-
   bool handleRequest(std::shared_ptr<RestHandler>);
   void handleRequestDirectly(std::shared_ptr<RestHandler>);
   bool handleRequestAsync(std::shared_ptr<RestHandler>,

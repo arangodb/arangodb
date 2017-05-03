@@ -10,61 +10,52 @@ if (NOT CMAKE_INSTALL_SYSCONFDIR_ARANGO
 endif()
 
 # Global macros ----------------------------------------------------------------
-macro (generate_root_config name)
-  FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in FileContent)
-  STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}"
-    FileContent "${FileContent}") 
-  STRING(REPLACE "@LOCALSTATEDIR@" "@ROOTDIR@/var"
-    FileContent "${FileContent}")
-  STRING(REPLACE "@SBINDIR@" "@ROOTDIR@/bin"
-    FileContent "${FileContent}")
-  STRING(REPLACE "@LIBEXECDIR@/arangodb3" "@ROOTDIR@/bin"
-    FileContent "${FileContent}")
-  STRING(REPLACE "@SYSCONFDIR@" "@ROOTDIR@/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}" 
-    FileContent "${FileContent}")
-  if (ENABLE_UID_CFG)
-    STRING(REPLACE "@DEFINEUID@" ""
-      FileContent "${FileContent}")
-  else ()
-    STRING(REPLACE "@DEFINEUID@" "# "
-      FileContent "${FileContent}")
-  endif ()
-  if (MSVC)
-    STRING(REPLACE "@PROGRAM_SUFFIX@" ".exe"
-      FileContent "${FileContent}")
-    STRING(REGEX REPLACE "[\r\n]file =" "\n# file =" 
-      FileContent "${FileContent}")
-  endif ()
-  FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf "${FileContent}")
-endmacro ()
-
-#  generates config file using the configured paths ----------------------------
-macro (generate_path_config name)
-  FILE(READ "${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in" FileContent)
-  STRING(REPLACE "@PKGDATADIR@" "${CMAKE_INSTALL_DATAROOTDIR_ARANGO}"
-    FileContent "${FileContent}")
-  STRING(REPLACE "@LOCALSTATEDIR@" "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}" 
-    FileContent "${FileContent}")
-  if (ENABLE_UID_CFG)
-    STRING(REPLACE "@DEFINEUID@" ""
-      FileContent "${FileContent}")
-  else ()
-    STRING(REPLACE "@DEFINEUID@" "# "
-      FileContent "${FileContent}")
-  endif ()
-  FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf "${FileContent}")
-endmacro ()
-
 # installs a config file -------------------------------------------------------
 macro (install_config name)
   if (MSVC OR (DARWIN AND NOT HOMEBREW))
-    generate_root_config(${name})
+    set(PKGDATADIR "@ROOTDIR@/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}")
+    if (DARWIN)
+      # var will be redirected to ~ for the macos bundle
+      set(LOCALSTATEDIR "@HOME@${INC_CPACK_ARANGO_STATE_DIR}")
+    else ()
+      set(LOCALSTATEDIR "@ROOTDIR@${CMAKE_INSTALL_LOCALSTATEDIR}")
+    endif ()
+    set(SBINDIR "@ROOTDIR@/${CMAKE_INSTALL_SBINDIR}")  
+    set(SYSCONFDIR "@ROOTDIR@/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}")
   else ()
-    generate_path_config(${name})
+    set(PKGDATADIR "${CMAKE_INSTALL_DATAROOTDIR_ARANGO}")
+    set(LOCALSTATEDIR "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}")
+  endif()
+  
+  if (ENABLE_UID_CFG)
+      set(DEFINEUID "")
+    else ()
+    set(DEFINEUID "# ")
   endif ()
+  
+  if (MSVC)
+    set(PROGRAM_SUFFIX ".exe")
+    set(CRLFSTYLE "CRLF")
+    set(COMMENT_LOGFILE "# ")
+  else()
+    set(CRLFSTYLE "UNIX")
+    set(COMMENT_LOGFILE "")
+    set(PROGRAM_SUFFIX "")
+  endif ()
+
+  configure_file(
+    "${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in"
+    "${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf"
+    NEWLINE_STYLE ${CRLFSTYLE}
+    @ONLY)
+
   install(
     FILES ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf
     DESTINATION ${CMAKE_INSTALL_SYSCONFDIR_ARANGO})
+
+  set(INSTALL_CONFIGFILES_LIST
+    "${INSTALL_CONFIGFILES_LIST};${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf"
+    CACHE INTERNAL "INSTALL_CONFIGFILES_LIST")
 endmacro ()
 
 # installs a readme file converting EOL ----------------------------------------
@@ -79,16 +70,17 @@ macro (install_readme input output)
   if (${USE_VERSION_IN_LICENSEDIR})
     set(PKG_VERSION "-${ARANGODB_VERSION}")
   endif ()
-
-  FILE(READ ${PROJECT_SOURCE_DIR}/${input} FileContent)
-  STRING(REPLACE "\r" "" FileContent "${FileContent}")
+  set(CRLFSTYLE "UNIX")
   if (MSVC)
-    STRING(REPLACE "\n" "\r\n" FileContent "${FileContent}")
+    set(CRLFSTYLE "CRLF")
   endif ()
-  FILE(WRITE ${PROJECT_BINARY_DIR}/${output} "${FileContent}")
+
   install(
-    FILES ${PROJECT_BINARY_DIR}/${output}
-    DESTINATION ${where}${PKG_VERSION})
+    CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \"${PROJECT_BINARY_DIR}/${output}\" NEWLINE_STYLE ${CRLFSTYLE})")
+  install(
+    FILES "${PROJECT_BINARY_DIR}/${output}"
+    DESTINATION "${where}"
+    )
 endmacro ()
 
 # installs a link to an executable ---------------------------------------------
@@ -99,9 +91,9 @@ if (INSTALL_MACROS_NO_TARGET_INSTALL)
         OUTPUT ${name}
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
-	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
       install(
-        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
         DESTINATION ${where})
     else ()
       add_custom_command(
@@ -121,9 +113,9 @@ else ()
         TARGET ${name}
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
-	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
       install(
-        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
         DESTINATION ${where})
     else ()
       add_custom_command(
@@ -142,8 +134,7 @@ macro(to_native_path sourceVarName)
   if (MSVC)
     string(REGEX REPLACE "/" "\\\\\\\\" "myVar" "${${sourceVarName}}" )
   else()
-    set(myVar "${${sourceVarName}}")
+    string(REGEX REPLACE "//*" "/" "myVar" "${${sourceVarName}}" )
   endif()
-
   set("INC_${sourceVarName}" ${myVar})
 endmacro()

@@ -1,0 +1,10 @@
+//[example_output
+> fixture_03 --log_level=message
+Running 2 test cases...
+setup fixture
+running test_case1
+running test_case2
+teardown fixture
+
+*** No errors detected
+//]

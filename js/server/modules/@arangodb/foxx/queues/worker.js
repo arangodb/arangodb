@@ -122,7 +122,8 @@ exports.work = function (job) {
   }
 
   try {
-    fm.runScript(job.type.name, job.type.mount, [].concat(job.data, job._id));
+    // assign output to "result" variable
+    result = fm.runScript(job.type.name, job.type.mount, [].concat(job.data, job._id));
   } catch (e) {
     console.errorLines('Job %s failed:\n%s', job._key, e.stack || String(e));
     job.runFailures += 1;

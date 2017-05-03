@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1segment__view_1_1copy__policy" kind="class" prot="private">
+    <compoundname>boost::geometry::segment_view::copy_policy</compoundname>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1segment__view_1_1copy__policy_1a2c314133c22a98b4f60575b996f24ef8" prot="private" static="no" mutable="no">
+        <type>Segment const &amp;</type>
+        <definition>Segment const&amp; boost::geometry::segment_view&lt; Segment &gt;::copy_policy::m_segment</definition>
+        <argsstring></argsstring>
+        <name>m_segment</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/views/segment_view.hpp" line="74" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/segment_view.hpp" bodystart="74" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__view_1_1copy__policy_1a377d53b1fc8fa8d53297b52ced83754b" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::segment_view&lt; Segment &gt;::copy_policy::apply</definition>
+        <argsstring>(point_type *points) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1segment__view_1a53aef4fbc9e7640c12d4a7f3b94e3a11" kindref="member">point_type</ref> *</type>
+          <declname>points</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/views/segment_view.hpp" line="68" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/segment_view.hpp" bodystart="68" bodyend="72"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__view_1_1copy__policy_1ac39a7234f28e55fdd56b7e6ae6136dd7" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::segment_view&lt; Segment &gt;::copy_policy::copy_policy</definition>
+        <argsstring>(Segment const &amp;segment)</argsstring>
+        <name>copy_policy</name>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>segment</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/views/segment_view.hpp" line="64" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/segment_view.hpp" bodystart="64" bodyend="66"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/views/segment_view.hpp" line="62" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/segment_view.hpp" bodystart="61" bodyend="75"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1segment__view_1_1copy__policy_1a377d53b1fc8fa8d53297b52ced83754b" prot="public" virt="non-virtual"><scope>boost::geometry::segment_view::copy_policy</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__view_1_1copy__policy_1ac39a7234f28e55fdd56b7e6ae6136dd7" prot="public" virt="non-virtual"><scope>boost::geometry::segment_view::copy_policy</scope><name>copy_policy</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__view_1_1copy__policy_1a2c314133c22a98b4f60575b996f24ef8" prot="private" virt="non-virtual"><scope>boost::geometry::segment_view::copy_policy</scope><name>m_segment</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

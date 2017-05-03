@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1ring__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::ring_tag</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1single__tag" prot="public" virt="non-virtual">boost::geometry::single_tag</basecompoundref>
+    <basecompoundref refid="structboost_1_1geometry_1_1polygonal__tag" prot="public" virt="non-virtual">boost::geometry::polygonal_tag</basecompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>Convenience (linear) ring identifying tag. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1252">
+        <label>boost::geometry::ring_tag</label>
+        <link refid="structboost_1_1geometry_1_1ring__tag"/>
+        <childnode refid="1253" relation="public-inheritance">
+        </childnode>
+        <childnode refid="1254" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1255">
+        <label>boost::geometry::areal_tag</label>
+        <link refid="structboost_1_1geometry_1_1areal__tag"/>
+      </node>
+      <node id="1253">
+        <label>boost::geometry::single_tag</label>
+        <link refid="structboost_1_1geometry_1_1single__tag"/>
+      </node>
+      <node id="1254">
+        <label>boost::geometry::polygonal_tag</label>
+        <link refid="structboost_1_1geometry_1_1polygonal__tag"/>
+        <childnode refid="1255" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1256">
+        <label>boost::geometry::ring_tag</label>
+        <link refid="structboost_1_1geometry_1_1ring__tag"/>
+        <childnode refid="1257" relation="public-inheritance">
+        </childnode>
+        <childnode refid="1258" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1259">
+        <label>boost::geometry::areal_tag</label>
+        <link refid="structboost_1_1geometry_1_1areal__tag"/>
+      </node>
+      <node id="1257">
+        <label>boost::geometry::single_tag</label>
+        <link refid="structboost_1_1geometry_1_1single__tag"/>
+      </node>
+      <node id="1258">
+        <label>boost::geometry::polygonal_tag</label>
+        <link refid="structboost_1_1geometry_1_1polygonal__tag"/>
+        <childnode refid="1259" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="95" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="95" bodyend="95"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

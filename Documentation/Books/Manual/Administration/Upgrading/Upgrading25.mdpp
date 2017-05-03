@@ -1,4 +1,5 @@
-!CHAPTER Upgrading to ArangoDB 2.5
+Upgrading to ArangoDB 2.5
+=========================
 
 Please read the following sections if you upgrade from a previous version to
 ArangoDB 2.5. Please be sure that you have checked the list of [changes in 2.5](../../ReleaseNotes/UpgradingChanges25.md)
@@ -22,7 +23,8 @@ unix> foxx-manager list
 for all your databases.
 The listed apps should be identical before and after the upgrade.
 
-!SECTION Database Directory Version Check and Upgrade
+Database Directory Version Check and Upgrade
+--------------------------------------------
 
 ArangoDB will perform a database version check at startup. When ArangoDB 2.5
 encounters a database created with earlier versions of ArangoDB, it will refuse
@@ -89,7 +91,8 @@ Please check the full output the `--upgrade` run. Upgrading may produce errors, 
 to be fixed before ArangoDB can be used properly. If no errors are present or
 they have been resolved manually, you can start ArangoDB 2.5 regularly.
 
-!SECTION Upgrading a cluster planned in the web interface
+Upgrading a cluster planned in the web interface
+------------------------------------------------
 
 A cluster of ArangoDB instances has to be upgraded as well. This
 involves upgrading all ArangoDB instances in the cluster, as well as

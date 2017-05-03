@@ -26,7 +26,6 @@
 
 #include "Aql/QueryResult.h"
 #include "Basics/Common.h"
-#include "Basics/StringBuffer.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -38,12 +37,15 @@ class Builder;
 class Slice;
 }
 
-class CollectionExport;
-
 typedef TRI_voc_tick_t CursorId;
 
 class Cursor {
  public:
+  enum CursorType {
+    CURSOR_VPACK,
+    CURSOR_EXPORT
+  };
+
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
@@ -57,12 +59,9 @@ class Cursor {
 
   size_t batchSize() const { return _batchSize; }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a slice to read the extra values.
   /// Make sure the Cursor Object is not destroyed while reading this slice.
   /// If no extras are set this will return a NONE slice.
-  //////////////////////////////////////////////////////////////////////////////
-
   arangodb::velocypack::Slice extra() const;
 
   bool hasCount() const { return _hasCount; }
@@ -90,6 +89,8 @@ class Cursor {
     _isUsed = false;
   }
 
+  virtual CursorType type() const = 0;
+
   virtual bool hasNext() = 0;
 
   virtual arangodb::velocypack::Slice next() = 0;
@@ -110,7 +111,7 @@ class Cursor {
   bool _isUsed;
 };
 
-class VelocyPackCursor : public Cursor {
+class VelocyPackCursor final : public Cursor {
  public:
   VelocyPackCursor(TRI_vocbase_t*, CursorId, aql::QueryResult&&, size_t,
                    std::shared_ptr<arangodb::velocypack::Builder>, double,
@@ -120,6 +121,8 @@ class VelocyPackCursor : public Cursor {
 
  public:
   aql::QueryResult const* result() const { return &_result; }
+  
+  CursorType type() const override final { return CURSOR_VPACK; }
 
   bool hasNext() override final;
 
@@ -136,27 +139,6 @@ class VelocyPackCursor : public Cursor {
   bool _cached;
 };
 
-class ExportCursor : public Cursor {
- public:
-  ExportCursor(TRI_vocbase_t*, CursorId, arangodb::CollectionExport*, size_t,
-               double, bool);
-
-  ~ExportCursor();
-
- public:
-  bool hasNext() override final;
-
-  arangodb::velocypack::Slice next() override final;
-
-  size_t count() const override final;
-
-  void dump(VPackBuilder&) override final;
-
- private:
-  VocbaseGuard _vocbaseGuard;
-  arangodb::CollectionExport* _ex;
-  size_t const _size;
-};
 }
 
 #endif

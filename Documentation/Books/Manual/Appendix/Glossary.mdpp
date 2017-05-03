@@ -1,24 +1,25 @@
-!CHAPTER Glossary
+Glossary
+========
 
-!SUBSECTION Collection
+### Collection
 
 A collection consists of documents. It is uniquely identified by its collection identifier. 
 It also has a unique name that clients should use to identify and access it. 
 Collections can be renamed. It will change the collection name, but not the collection identifier. 
 Collections contain documents of a specific type. There are currently two types: document (default) and edge. The type is specified by the user when the collection is created, and cannot be changed later.
 
-!SUBSECTION Collection Identifier
+### Collection Identifier
 
 A collection identifier identifies a collection in a database. It is a string value and is unique within the database. Up to including ArangoDB 1.1, the collection identifier has been a client's primary means to access collections. Starting with ArangoDB 1.2, clients should instead use a collection's unique name to access a collection instead of its identifier.
 
 ArangoDB currently uses 64bit unsigned integer values to maintain collection ids internally. When returning collection ids to clients, ArangoDB will put them into a string to ensure the collection id is not clipped by clients that do not support big integers. Clients should treat the collection ids returned by ArangoDB as
 opaque strings when they store or use it locally.
 
-!SUBSECTION Collection Name
+### Collection Name
 
 A collection name identifies a collection in a database. It is a string and is unique within the database. Unlike the collection identifier it is supplied by the creator of the collection. The collection name must consist of letters, digits, and the _ (underscore) and - (dash) characters only. Please refer to [NamingConventions](../DataModeling/NamingConventions/CollectionNames.md) for more information on valid collection names.
 
-!SUBSECTION Database
+### Database
 
 ArangoDB can handle multiple databases in the same server instance. Databases can be used to logically group and separate data. An ArangoDB database consists of collections and dedicated database-specific worker processes.
 
@@ -28,13 +29,13 @@ There will always be at least one database in ArangoDB. This is the default data
 
 When ArangoDB is accessed via its HTTP REST API, the database name is read from the first part of the request URI path (e.g. /_db/_system/...). If the request URI does not contain a database name, the database name is automatically derived from the endpoint. Please refer to [DatabaseEndpoint](../../HTTP/Database/DatabaseEndpoint.html) for more information.
 
-!SUBSECTION Database Name
+### Database Name
 
 A single ArangoDB instance can handle multiple databases in parallel. When multiple databases are used, each database must be given a unique name. This name is used to uniquely identify a database. The default database in ArangoDB is named _system.
 
 The database name is a string consisting of only letters, digits and the _ (underscore) and - (dash) characters. User-defined database names must always start with a letter. Database names is case-sensitive.
 
-!SUBSECTION Database Organization
+### Database Organization
 
 A single ArangoDB instance can handle multiple databases in parallel. By default, there will be at least one database, which is named _system.
 
@@ -69,19 +70,19 @@ apps/                   # the instance's application directory
       <mountpoint>/APP  # sub-directory for a single application
 ```
 
-!SUBSECTION Document
+### Document
 
 Documents in ArangoDB are JSON objects. These objects can be nested (to any depth) and may contain arrays. Each document is uniquely identified by its document handle.
 
-!SUBSECTION Document ETag
+### Document ETag
 
 The document revision (`_rev` value) enclosed in double quotes. The revision is returned by several HTTP API methods in the Etag HTTP header.
 
-!SUBSECTION Document Handle
+### Document Handle
 
 A document handle uniquely identifies a document in the database. It is a string and consists of the collection's name and the document key (`_key` attribute) separated by /. The document handle is stored in a document's `_id` attribute.
 
-!SUBSECTION Document Key
+### Document Key
 
 A document key is a string that uniquely identifies a document in a
 given collection. It can and should be used by clients when specific
@@ -104,7 +105,7 @@ There are some restrictions for user-defined
 keys (see 
 [NamingConventions for document keys](../DataModeling/NamingConventions/DocumentKeys.md)).
 
-!SUBSECTION Document Revision
+### Document Revision
 
 As ArangoDB supports MVCC, documents can exist in more than one revision. The document revision is the MVCC token used to identify a particular revision of a document. It is a string value currently containing an integer number and is unique within the list of document revisions for a single document. Document revisions can be used to conditionally update, replace or delete documents in the database. In order to find a particular revision of a document, you need the document handle and the document revision.
 
@@ -112,27 +113,27 @@ The document revision is stored in the `_rev` attribute of a document, and is se
 
 ArangoDB currently uses 64bit unsigned integer values to maintain document revisions internally. When returning document revisions to clients, ArangoDB will put them into a string to ensure the revision id is not clipped by clients that do not support big integers. Clients should treat the revision id returned by ArangoDB as an opaque string when they store or use it locally. This will allow ArangoDB to change the format of revision ids later if this should be required. Clients can use revisions ids to perform simple equality/non-equality comparisons (e.g. to check whether a document has changed or not), but they should not use revision ids to perform greater/less than comparisons with them to check if a document revision is older than one another, even if this might work for some cases.
 
-!SUBSECTION Edge
+### Edge
 
 Edges are special documents used for connecting other documents into a graph. An edge describes the connection between two documents using the internal attributes: `_from` and `_to`. These contain document handles, namely the start-point and the end-point of the edge.
 
-!SUBSECTION Edge Collection
+### Edge Collection
 
 Edge collections are collections that store edges.
 
-!SUBSECTION Edge Definition
+### Edge Definition
 
 Edge definitions are parts of the definition of `named graphs`. They describe which edge collections connect which vertex collections.
 
-!SUBSECTION General Graph
+### General Graph
 
 Module maintaining graph setup in the `_graphs` collection - aka `named graphs`. Configures which edge collections relate to which vertex collections. Ensures graph consistency in modification queries.
 
-!SUBSECTION Named Graphs
+### Named Graphs
 
 Named graphs enforce consistency between edge collections and vertex collections, so if you remove a vertex, edges pointing to it will be removed too.
 
-!SUBSECTION Index
+### Index
 
 Indexes are used to allow fast access to documents in a collection. All collections have a primary index, which is the document's _key attribute. This index cannot be dropped or changed.
 
@@ -142,11 +143,11 @@ Most user-land indexes can be created by defining the names of the attributes wh
 
 Indexing the system attribute `_id` in user-defined indexes is not supported by any index type.
 
-!SUBSECTION Edges Index
+### Edges Index
 
 An edges index is automatically created for edge collections. It contains connections between vertex documents and is invoked when the connecting edges of a vertex are queried. There is no way to explicitly create or delete edges indexes.
 
-!SUBSECTION Fulltext Index
+### Fulltext Index
 
 A fulltext index can be used to find words, or prefixes of words inside documents. A fulltext index can be defined on one attribute only, and will include all words contained in documents that have a textual value in the index attribute. Since ArangoDB 2.6 the index will also include words from the index attribute if the index attribute is an array of strings, or an object with string value members.
 
@@ -160,15 +161,15 @@ If the index attribute is neither a string, an object or an array, its contents 
 
 Only words with a (specifiable) minimum length are indexed. Word tokenization is done using the word boundary analysis provided by libicu, which is taking into account the selected language provided at server start. Words are indexed in their lower-cased form. The index supports complete match queries (full words) and prefix queries.
 
-!SUBSECTION Geo Index
+### Geo Index
 
 A geo index is used to find places on the surface of the earth fast.
 
-!SUBSECTION Index Handle
+### Index Handle
 
 An index handle uniquely identifies an index in the database. It is a string and consists of a collection name and an index identifier separated by /.
 
-!SUBSECTION Hash Index
+### Hash Index
 
 A hash index is used to find documents based on examples. A hash index can be created for one or multiple document attributes.
 
@@ -178,11 +179,11 @@ A unique hash index has an amortized complexity of O(1) for lookup, insert, upda
 The non-unique hash index is similar, but amortized lookup performance is O(n), with n being the number of
 index entries with the same lookup value.
 
-!SUBSECTION Skiplist Index 
+### Skiplist Index
 
 A skiplist is a sorted index type that can be used to find ranges of documents.
 
 
-!SUBSECTION Anonymous Graphs
+### Anonymous Graphs
 
 You may use edge collections with vertex collections without the graph management facilities. However, graph consistency is not enforced by these. If you remove vertices, you have to ensure by yourselves edges pointing to this vertex are removed. Anonymous graphs may not be browsed using graph viewer in the webinterface. This may be faster in some scenarios.

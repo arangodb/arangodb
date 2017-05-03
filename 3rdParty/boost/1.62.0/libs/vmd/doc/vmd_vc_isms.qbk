@@ -1,0 +1,44 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_vc_isms Visual C++ gotchas in VMD]
+
+I have discussed throughout the documentation areas of VMD which need to be
+considered when using Microsoft's Visual C++ compilers. The VMD library
+supports VC++ versions 8 through the latest 14. These correspond to
+Visual Studio 2005 through the current Visual Studio 2015.
+
+I will give here fairly briefly the VC++ quirks which should be taken
+into account when using VMD. These quirks exist because the VC++ compiler
+does not have a C++ standard conforming preprocessor. More specifically
+the VC++ compiler does not follow all of the rules correctly for expanding 
+a macro when a macro is invoked. Here is a list for things to consider
+when using VMD with VC++:
+
+* The BOOST_VMD_IS_EMPTY macro will expand erroneously to 1 if the input resolves
+to a function-like macro name, which when it is called with an empty parameter
+expands to a tuple.
+
+* The BOOST_VMD_ASSERT macro, and the corresponding individual VMD ASSERT macros
+for the various data types, do not cause an immediate compiler error, but instead
+generate invalid C++ if the ASSERT occurs.
+
+* When the BOOST_VMD_ASSERT macro, or one of the corresponding individual VMD ASSERT macros
+for the various data types, does not generate an error, and the macro in which it is
+being used does generate some output, it is necessary to use BOOST_PP_CAT to 
+concatenate the empty result of the VMD ASSERT macro with the normally generated output
+to correctly generate the final expansion of the macro in which the VMD ASSERT occurs.
+
+* When using BOOST_VMD_EMPTY following some non-empty expansion, or when using
+BOOST_VMD_IDENTITY, the value returned needs to be concatenated using BOOST_PP_CAT
+with an empty value. You can use BOOST_VMD_IDENTITY_RESULT to accomplish this
+transparently.
+
+* Avoid using an empty parenthesis to pass no data as a tuple or seq if VC++8 might
+be used as the compiler.
+
+[endsect]

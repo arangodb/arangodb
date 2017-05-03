@@ -10,6 +10,8 @@ branches:
     - "2.7"
     - "2.8"
     - "3.0"
+    - "3.1"
+    - "3.2"
 
 language: cpp
 cache: ccache
@@ -22,8 +24,8 @@ addons:
     - ubuntu-toolchain-r-test
     - george-edison55-precise-backports
     packages:
-    - g++-4.9
-    - gcc-4.9
+    - g++-5
+    - gcc-5
     - binutils-gold
     - gdb
     - cmake-data
@@ -41,14 +43,10 @@ install:
 before_script: "bash -c Installation/travisCI/before_script.sh"
 script: "bash -c Installation/travisCI/build.sh"
 after_failure: "bash -c Installation/travisCI/after_failure.sh"
+after_script: "bash -c Installation/travisCI/after_script.sh"
 
 notifications:
-  webhooks:
-    urls:
-      - https://webhooks.gitter.im/e/806d92fa9ae97d241599
-    on_success: change
-    on_failure: always
-    on_start: false
   slack:
     secure: JrnDfdroyURrS85HIVsI4xw82taol+lvOJxduxz4T8mQuckaE3ECRYcxX7MzLJfjpeSLST5kttUiZBckHdZ/pnmraZlQ+1/b1VE6k5hFzkbeM0ShjXKTxHdudXaJKuENunMxDAjVWaBaTTh/iy8ZZbKUYQtWLtLfw3xa5zCKVaQ=
-
+    on_success: change
+    on_failure: always

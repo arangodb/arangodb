@@ -1,4 +1,5 @@
-!CHAPTER Foxx at a glance
+Foxx at a glance
+================
 
 Each Foxx service is defined by a [JSON manifest](Manifest.md) specifying the entry point, any scripts defined by the service, possible configuration options and Foxx dependencies, as well as other metadata. Within a service, these options are exposed as the [service context](Context.md).
 
@@ -8,7 +9,8 @@ While Foxx is primarily designed to be used to access the database itself, Arang
 
 Finally, [scripts](Scripts.md) can be used to perform one-off tasks, which can also be scheduled to be performed asynchronously using the built-in job queue.
 
-!SECTION How does it work
+How does it work
+----------------
 
 Foxx services consist of JavaScript code running in the V8 JavaScript runtime embedded inside ArangoDB. Each service is mounted in each available V8 context (the number of contexts can be adjusted in the ArangoDB configuration). Incoming requests are distributed accross these contexts automatically.
 
@@ -18,7 +20,8 @@ Because the JavaScript code is running inside the database another difference is
 
 For information on how this affects interoperability with third-party JavaScript modules written for other JavaScript environments see [the chapter on dependencies](./Dependencies.md).
 
-!SECTION Development mode
+Development mode
+----------------
 
 Development mode allows you to make changes to deployed services in-place directly on the database server's file system without downloading and re-uploading the service bundle.
 
@@ -32,7 +35,8 @@ Also note that if you are serving static files as part of your service, accessin
 
 Beware of deleting the database the service is deployed on: it will erase the source files of the service along with the collections. You should backup the code you worked on in development before doing that to avoid losing your progress.
 
-!SECTION Foxx store
+Foxx store
+----------
 
 The Foxx store provides access to a number of ready-to-use official and community-maintained Foxx services you can install with a single click, including example services and wrappers for external SaaS tools like transactional e-mail services, bug loggers or analytics trackers.
 
@@ -40,7 +44,8 @@ You can find the Foxx store in the web interface by using the *Add Service* butt
 
 <!-- TODO (Add link to relevant aardvark docs) -->
 
-!SECTION Cluster-Foxx
+Cluster-Foxx
+------------
 
 When running ArangoDB in a cluster the Foxx services will run on each coordinator. Installing, upgrading and uninstalling services on any coordinator will automatically affect the other coordinators, making deployments as easy as in single-server mode. However, this means there are some limitations:
 

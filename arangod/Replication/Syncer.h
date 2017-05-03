@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
-#include "VocBase/transaction.h"
 
 class TRI_replication_applier_configuration_t;
 struct TRI_vocbase_t;
@@ -46,7 +45,10 @@ class SimpleHttpClient;
 class SimpleHttpResult;
 }
 
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 class Syncer {
  public:
@@ -56,17 +58,15 @@ class Syncer {
   Syncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*);
 
   virtual ~Syncer();
+  
+  TRI_vocbase_t* vocbase() { return _vocbase; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sleeps (nanoseconds)
   //////////////////////////////////////////////////////////////////////////////
 
   void sleep(uint64_t time) {
-#ifdef _WIN32
-    usleep((unsigned long)time);
-#else
-    usleep((useconds_t)time);
-#endif
+    usleep(static_cast<TRI_usleep_t>(time));
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +131,7 @@ class Syncer {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(arangodb::Transaction&,
+  int applyCollectionDumpMarker(transaction::Methods&,
                                 std::string const&,
                                 TRI_replication_operation_e,
                                 arangodb::velocypack::Slice const&, 

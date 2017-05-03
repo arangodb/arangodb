@@ -40,6 +40,7 @@ class RestAgencyHandler : public RestBaseHandler {
  public:
   char const* name() const override final { return "RestAgencyHandler"; }
   bool isDirect() const override;
+  bool needsOwnThread() const { return true; }
   RestStatus execute() override;
 
  private:
@@ -47,11 +48,15 @@ class RestAgencyHandler : public RestBaseHandler {
   RestStatus reportTooManySuffices();
   RestStatus reportUnknownMethod();
   RestStatus handleStores();
+  RestStatus handleStore();
   RestStatus handleRead();
   RestStatus handleWrite();
+  RestStatus handleTransact();
   RestStatus handleConfig();
   RestStatus reportMethodNotAllowed();
   RestStatus handleState();
+  RestStatus handleTransient();
+  RestStatus handleInquire();
 
   void redirectRequest(std::string const& leaderId);
   consensus::Agent* _agent;

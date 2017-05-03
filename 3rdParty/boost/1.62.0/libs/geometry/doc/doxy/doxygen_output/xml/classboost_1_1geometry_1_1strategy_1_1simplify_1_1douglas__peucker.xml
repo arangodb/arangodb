@@ -1,0 +1,105 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::simplify::douglas_peucker</compoundname>
+    <includes local="no">simplify_douglas_peucker.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename PointDistanceStrategy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker_1a4e01b2b1229b52edc649e05b97b52164" prot="public" static="no">
+        <type>PointDistanceStrategy</type>
+        <definition>typedef PointDistanceStrategy boost::geometry::strategy::simplify::douglas_peucker&lt; Point, PointDistanceStrategy &gt;::distance_strategy_type</definition>
+        <argsstring></argsstring>
+        <name>distance_strategy_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp" line="271" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp" bodystart="271" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker_1aada9cdf3dd206cda7e45da4a2f74850e" prot="public" static="no">
+        <type>detail::douglas_peucker&lt; Point, PointDistanceStrategy &gt;::<ref refid="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker_1aada9cdf3dd206cda7e45da4a2f74850e" kindref="member">distance_type</ref></type>
+        <definition>typedef detail::douglas_peucker&lt; Point, PointDistanceStrategy &gt;::distance_type boost::geometry::strategy::simplify::douglas_peucker&lt; Point, PointDistanceStrategy &gt;::distance_type</definition>
+        <argsstring></argsstring>
+        <name>distance_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp" line="277" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp" bodystart="277" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker_1a6f9b4b0c960f624bf702f8418daaabfc" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Range</type>
+          </param>
+          <param>
+            <type>typename OutputIterator</type>
+          </param>
+        </templateparamlist>
+        <type>OutputIterator</type>
+        <definition>static OutputIterator boost::geometry::strategy::simplify::douglas_peucker&lt; Point, PointDistanceStrategy &gt;::apply</definition>
+        <argsstring>(Range const &amp;range, OutputIterator out, distance_type const &amp;max_distance)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Range const &amp;</type>
+          <declname>range</declname>
+        </param>
+        <param>
+          <type>OutputIterator</type>
+          <declname>out</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker_1aada9cdf3dd206cda7e45da4a2f74850e" kindref="member">distance_type</ref> const &amp;</type>
+          <declname>max_distance</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp" line="280" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp" bodystart="280" bodyend="301"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Implements the simplify algorithm. </para>    </briefdescription>
+    <detaileddescription>
+<para>The <ref refid="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker" kindref="compound">douglas_peucker</ref> strategy simplifies a linestring, ring or vector of points using the well-known Douglas-Peucker algorithm. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the point type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>PointDistanceStrategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point-segment distance strategy to be used </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="note"><para>This strategy uses itself a point-segment-distance strategy which can be specified </para></simplesect>
+<simplesect kind="author"><para>Barend and Maarten, 1995/1996 </para><simplesectsep/><para>Barend, revised for Generic Geometry Library, 2008 </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp" line="268" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp" bodystart="267" bodyend="303"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker_1a6f9b4b0c960f624bf702f8418daaabfc" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::simplify::douglas_peucker</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker_1a4e01b2b1229b52edc649e05b97b52164" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::simplify::douglas_peucker</scope><name>distance_strategy_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1simplify_1_1douglas__peucker_1aada9cdf3dd206cda7e45da4a2f74850e" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::simplify::douglas_peucker</scope><name>distance_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

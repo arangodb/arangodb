@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1simplify_3_01boost_1_1variant_3_01_b_o_o_s_t___v_72b4b5fe50b128313b14f1012abfe65f" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::simplify&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</compoundname>
+    <includes local="no">simplify.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1resolve__variant_1_1simplify_3_01boost_1_1variant_3_01_b_o_o_s_t___v_b46818e131e04151d69bee9525a6fbb6" prot="public">boost::geometry::resolve_variant::simplify&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</innerclass>
+    <templateparamlist>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1simplify_3_01boost_1_1variant_3_01_b_o_o_s_t___v_72b4b5fe50b128313b14f1012abfe65f_1a46eb993360688adcf7ca02f24c7fdc44" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Distance</type>
+          </param>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::resolve_variant::simplify&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::apply</definition>
+        <argsstring>(boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;geometry, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &amp;out, Distance const &amp;max_distance, Strategy const &amp;strategy)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &amp;</type>
+          <declname>out</declname>
+        </param>
+        <param>
+          <type>Distance const &amp;</type>
+          <declname>max_distance</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/simplify.hpp" line="427" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/simplify.hpp" bodystart="427" bodyend="437"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/simplify.hpp" line="406" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/simplify.hpp" bodystart="405" bodyend="438"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1simplify_3_01boost_1_1variant_3_01_b_o_o_s_t___v_72b4b5fe50b128313b14f1012abfe65f_1a46eb993360688adcf7ca02f24c7fdc44" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::simplify&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

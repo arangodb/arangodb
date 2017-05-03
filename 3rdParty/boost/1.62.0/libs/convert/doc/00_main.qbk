@@ -1,0 +1,55 @@
+[/==============================================================================
+    Copyright (C) 2009-2014 Vladimir Batov
+
+    Use, modification and distribution is subject to the Boost Software
+    License, Version 1.0. (See a copy at http://www.boost.org/LICENSE_1_0.txt)
+===============================================================================/]
+
+[library Boost.Convert
+    [quickbook 1.5]
+    [version 2.0]
+    [id convert]
+    [dirname convert]
+    [copyright 2009-2014 Vladimir Batov]
+    [purpose Conversions Beyond boost::lexical_cast]
+    [category generic]
+    [authors [Batov, Vladimir]]
+    [source-mode c++]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        See copy at [@http://www.boost.org/LICENSE_1_0.txt].
+    ]
+]
+
+[import ../test/test.hpp]
+[import ../example/stream.cpp]
+[import ../test/stream_converter.cpp]
+[import ../test/performance.cpp]
+[import ../test/sfinae.cpp]
+[import ../test/user_type.cpp]
+[import ../test/has_member.cpp]
+
+[include rationale.qbk]
+[include introduction.qbk]
+[include getting_started.qbk]
+[include getting_serious.qbk]
+[include default_converter.qbk]
+[include no_optional_interface.qbk]
+[include converters.qbk]
+[include user_types.qbk]
+[include algorithms.qbk]
+[include performance.qbk]
+[include other.qbk]
+[include converters_detail.qbk]
+[include lexcast_converter.qbk]
+[include stream_converter.qbk]
+[include strtol_converter.qbk]
+[include section-end.qbk]
+[include design_notes.qbk]
+[include tools.qbk]
+[include limitations.qbk]
+[include acknowledgments.qbk]
+[xinclude convert_reference.xml]
+'''<index/>'''
+
+

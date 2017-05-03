@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1util_1_1combine__if" kind="struct" prot="public">
+    <compoundname>boost::geometry::util::combine_if</compoundname>
+    <includes local="no">combine_if.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1util_1_1combine__if_1_1combine" prot="public">boost::geometry::util::combine_if::combine</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Sequence1</declname>
+        <defname>Sequence1</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>Sequence2</declname>
+        <defname>Sequence2</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>Pred</declname>
+        <defname>Pred</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1util_1_1combine__if_1a9f53e818cb7c361f19ea4a3eb4e7619c" prot="public" static="no">
+        <type>boost::mpl::fold&lt; Sequence1, boost::mpl::set0&lt;&gt;, <ref refid="structboost_1_1geometry_1_1util_1_1combine__if_1_1combine" kindref="compound">combine</ref> &gt;::<ref refid="structboost_1_1geometry_1_1util_1_1combine__if_1a9f53e818cb7c361f19ea4a3eb4e7619c" kindref="member">type</ref></type>
+        <definition>typedef boost::mpl::fold&lt; Sequence1, boost::mpl::set0&lt;&gt;, combine &gt;::type boost::geometry::util::combine_if&lt; Sequence1, Sequence2, Pred &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/combine_if.hpp" line="84" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/combine_if.hpp" bodystart="84" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Meta-function to generate all the combination of pairs of types from a given sequence Sequence except those that does not satisfy the predicate Pred. </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="par"><title>Example</title><para><programlisting><codeline><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>boost::mpl::vector&lt;boost::mpl::int_&lt;0&gt;,<sp/>boost::mpl::int_&lt;1&gt;<sp/>&gt;<sp/>types;</highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>combine_if&lt;types,<sp/>types,<sp/>always&lt;true_&gt;<sp/>&gt;<ref refid="structboost_1_1geometry_1_1util_1_1combine__if_1a9f53e818cb7c361f19ea4a3eb4e7619c" kindref="member">::type</ref><sp/>combinations;</highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>boost::mpl::vector&lt;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>pair&lt;boost::mpl::int_&lt;1&gt;,<sp/>boost::mpl::int_&lt;1&gt;<sp/>&gt;,</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>pair&lt;boost::mpl::int_&lt;1&gt;,<sp/>boost::mpl::int_&lt;0&gt;<sp/>&gt;,</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>pair&lt;boost::mpl::int_&lt;0&gt;,<sp/>boost::mpl::int_&lt;1&gt;<sp/>&gt;,</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>pair&lt;boost::mpl::int_&lt;0&gt;,<sp/>boost::mpl::int_&lt;0&gt;<sp/>&gt;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline><highlight class="normal">&gt;<sp/>result_types;</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal">BOOST_MPL_ASSERT((<sp/>boost::mpl::equal&lt;combinations,<sp/>result_types&gt;<sp/>));</highlight></codeline>
+</programlisting> </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/combine_if.hpp" line="56" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/combine_if.hpp" bodystart="55" bodyend="85"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1util_1_1combine__if_1a9f53e818cb7c361f19ea4a3eb4e7619c" prot="public" virt="non-virtual"><scope>boost::geometry::util::combine_if</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

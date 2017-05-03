@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__adaptors" kind="group">
+    <compoundname>adaptors</compoundname>
+    <title>Adaptors (boost::geometry::index::adaptors::)</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__adaptors_1ga4716cd5423bfed3ff3e69e9ec274ac81" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Predicates</type>
+          </param>
+        </templateparamlist>
+        <type>detail::query&lt; Predicates &gt;</type>
+        <definition>detail::query&lt;Predicates&gt; boost::geometry::index::adaptors::queried</definition>
+        <argsstring>(Predicates const &amp;pred)</argsstring>
+        <name>queried</name>
+        <param>
+          <type>Predicates const &amp;</type>
+          <declname>pred</declname>
+        </param>
+        <briefdescription>
+<para>The query index adaptor generator. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>pred</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Predicates. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="79" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="79" bodyend="82"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

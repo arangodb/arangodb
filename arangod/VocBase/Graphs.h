@@ -31,19 +31,19 @@ namespace aql {
 class Graph;
 }
 
+namespace transaction {
+class Context;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an instance of Graph by Name.
 ///  returns nullptr if graph is not existing
 ///  The caller has to take care for the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::aql::Graph* lookupGraphByName(TRI_vocbase_t*, std::string const&);
+arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
 
 }  // namespace arangodb
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"

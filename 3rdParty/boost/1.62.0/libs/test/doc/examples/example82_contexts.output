@@ -1,0 +1,24 @@
+//[example_output
+> example
+Running 1 test case...
+test.cpp(27): error: in "test1": check processor.op2(i, j) has failed
+Failure occurred in a following context:
+    With optimization level 1
+    With parameter i = 1
+    With parameter j = 0
+test.cpp(24): error: in "test1": check processor.op1(i) has failed
+Failure occurred in a following context:
+    With optimization level 2
+    With parameter i = 0
+test.cpp(24): error: in "test1": check processor.op1(i) has failed
+Failure occurred in a following context:
+    With optimization level 2
+    With parameter i = 1
+test.cpp(27): error: in "test1": check processor.op2(i, j) has failed
+Failure occurred in a following context:
+    With optimization level 2
+    With parameter i = 1
+    With parameter j = 0
+
+*** 4 failures are detected in the test module "example82"
+//]

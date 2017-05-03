@@ -1,6 +1,7 @@
-!CHAPTER Database Methods
+Database Methods
+================
 
-!SUBSECTION Collection
+### Collection
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -44,7 +45,7 @@ Unknown collection:
     @endDocuBlock collectionDatabaseNameUnknown
 
 
-!SUBSECTION Create
+### Create
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
@@ -137,7 +138,13 @@ to the [naming conventions](../NamingConventions/README.md).
 
   If a server fails, this is detected automatically and one of the
   servers holding copies take over, usually without an error being
-  reported. 
+  reported.
+
+  When using the *Enterprise* version of ArangoDB the replicationFactor
+  may be set to "satellite" making the collection locally joinable
+  on every database server. This reduces the number of network hops
+  dramatically when using joins in AQL at the costs of reduced write
+  performance on these collections.
 
 `db._create(collection-name, properties, type)`
 
@@ -229,7 +236,7 @@ Creates a new document collection named *collection-name*. If the
 document name already exists and error is thrown.
 
 
-!SUBSECTION All Collections
+### All Collections
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -252,7 +259,7 @@ Returns all collections of the given database.
 
 
 
-!SUBSECTION Collection Name
+### Collection Name
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -277,7 +284,7 @@ default properties.
 
 
 
-!SUBSECTION Drop
+### Drop
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
@@ -339,7 +346,7 @@ Drops a system collection
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock collectionDatabaseDropSystem
 
-!SUBSECTION Truncate
+### Truncate
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 

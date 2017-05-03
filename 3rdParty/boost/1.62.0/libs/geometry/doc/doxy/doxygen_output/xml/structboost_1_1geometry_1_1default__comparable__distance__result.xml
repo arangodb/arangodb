@@ -1,0 +1,110 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1default__comparable__distance__result" kind="struct" prot="public">
+    <compoundname>boost::geometry::default_comparable_distance_result</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1comparable__distance__result_3_01_geometry1_00_01_geometry2_00_01void_01_4" prot="public" virt="non-virtual">boost::geometry::comparable_distance_result&lt; Geometry1, Geometry2, void &gt;</basecompoundref>
+    <includes local="no">default_comparable_distance_result.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>typename Geometry2</type>
+        <defval>Geometry1</defval>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Meta-function defining return type of comparable_distance function. </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="note"><para>The strategy defines the return-type (so this situation is different from length, where distance is sqr/sqrt, but length always squared) </para></simplesect>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="182">
+        <label>boost::geometry::resolve_strategy::comparable_distance_result&lt; Geometry1, Geometry2, default_strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__strategy_1_1comparable__distance__result_3_01_geometry1_00_02149afb863d916b15e010f2a37dcbbd3"/>
+        <childnode refid="183" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="184">
+        <label>boost::geometry::strategy::distance::services::return_type&lt; strategy::distance::services::comparable_type&lt; detail::distance::default_strategy&lt; Geometry1, Geometry2 &gt;::type &gt;::type, point_type&lt; Geometry1 &gt;::type, point_type&lt; Geometry2 &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1return__type"/>
+      </node>
+      <node id="181">
+        <label>boost::geometry::resolve_variant::comparable_distance_result&lt; Geometry1, Geometry2, default_strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1comparable__distance__result"/>
+        <childnode refid="182" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="178">
+        <label>boost::geometry::default_comparable_distance_result&lt; Geometry1, Geometry2 &gt;</label>
+        <link refid="structboost_1_1geometry_1_1default__comparable__distance__result"/>
+        <childnode refid="179" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="180">
+        <label>boost::geometry::comparable_distance_result&lt; Geometry1, Geometry2, default_strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1comparable__distance__result"/>
+        <childnode refid="181" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="183">
+        <label>boost::geometry::resolve_strategy::comparable_distance_result&lt; Geometry1, Geometry2, detail::distance::default_strategy&lt; Geometry1, Geometry2 &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__strategy_1_1comparable__distance__result"/>
+        <childnode refid="184" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="179">
+        <label>boost::geometry::comparable_distance_result&lt; Geometry1, Geometry2, void &gt;</label>
+        <link refid="structboost_1_1geometry_1_1comparable__distance__result_3_01_geometry1_00_01_geometry2_00_01void_01_4"/>
+        <childnode refid="180" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="189">
+        <label>boost::geometry::resolve_strategy::comparable_distance_result&lt; Geometry1, Geometry2, default_strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__strategy_1_1comparable__distance__result_3_01_geometry1_00_02149afb863d916b15e010f2a37dcbbd3"/>
+        <childnode refid="190" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="191">
+        <label>boost::geometry::strategy::distance::services::return_type&lt; strategy::distance::services::comparable_type&lt; detail::distance::default_strategy&lt; Geometry1, Geometry2 &gt;::type &gt;::type, point_type&lt; Geometry1 &gt;::type, point_type&lt; Geometry2 &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1return__type"/>
+      </node>
+      <node id="188">
+        <label>boost::geometry::resolve_variant::comparable_distance_result&lt; Geometry1, Geometry2, default_strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1comparable__distance__result"/>
+        <childnode refid="189" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="185">
+        <label>boost::geometry::default_comparable_distance_result&lt; Geometry1, Geometry2 &gt;</label>
+        <link refid="structboost_1_1geometry_1_1default__comparable__distance__result"/>
+        <childnode refid="186" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="187">
+        <label>boost::geometry::comparable_distance_result&lt; Geometry1, Geometry2, default_strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1comparable__distance__result"/>
+        <childnode refid="188" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="190">
+        <label>boost::geometry::resolve_strategy::comparable_distance_result&lt; Geometry1, Geometry2, detail::distance::default_strategy&lt; Geometry1, Geometry2 &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__strategy_1_1comparable__distance__result"/>
+        <childnode refid="191" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="186">
+        <label>boost::geometry::comparable_distance_result&lt; Geometry1, Geometry2, void &gt;</label>
+        <link refid="structboost_1_1geometry_1_1comparable__distance__result_3_01_geometry1_00_01_geometry2_00_01void_01_4"/>
+        <childnode refid="187" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/default_comparable_distance_result.hpp" line="37" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/default_comparable_distance_result.hpp" bodystart="35" bodyend="37"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1return__type_1aaa63d9f53da472aa093e480ae634b79c" prot="public" virt="non-virtual"><scope>boost::geometry::default_comparable_distance_result</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

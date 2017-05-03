@@ -1,0 +1,41 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="trigonometry_and_angle_system_reference"><title>Trigonometry and Angle System Reference</title><header name="boost/units/systems/angle/degrees.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="degree">
+<typedef name="system"><type>make_system&lt; boost::units::angle::degree_base_unit &gt;::type</type></typedef>
+<typedef name="dimensionless"><type>unit&lt; dimensionless_type, system &gt;</type></typedef>
+<typedef name="plane_angle"><purpose>angle degree unit constant </purpose><type>unit&lt; plane_angle_dimension, system &gt;</type></typedef>
+<data-member name="degree" specifiers="static"><type>const plane_angle</type></data-member>
+<data-member name="degrees" specifiers="static"><type>const plane_angle</type></data-member>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/angle/gradians.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="gradian">
+<typedef name="system"><type>make_system&lt; boost::units::angle::gradian_base_unit &gt;::type</type></typedef>
+<typedef name="dimensionless"><type>unit&lt; dimensionless_type, system &gt;</type></typedef>
+<typedef name="plane_angle"><purpose>angle gradian unit constant </purpose><type>unit&lt; plane_angle_dimension, system &gt;</type></typedef>
+<data-member name="gradian" specifiers="static"><type>const plane_angle</type></data-member>
+<data-member name="gradians" specifiers="static"><type>const plane_angle</type></data-member>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/angle/revolutions.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="revolution">
+<typedef name="system"><type>make_system&lt; boost::units::angle::revolution_base_unit &gt;::type</type></typedef>
+<typedef name="dimensionless"><type>unit&lt; dimensionless_type, system &gt;</type></typedef>
+<typedef name="plane_angle"><purpose>angle revolution unit constant </purpose><type>unit&lt; plane_angle_dimension, system &gt;</type></typedef>
+<data-member name="revolution" specifiers="static"><type>const plane_angle</type></data-member>
+<data-member name="revolutions" specifiers="static"><type>const plane_angle</type></data-member>
+</namespace>
+</namespace>
+</namespace>
+</header>
+</library-reference>

@@ -22,16 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlock.h"
+#include "Aql/BlockCollector.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+using namespace arangodb;
 using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the block
-AqlItemBlock::AqlItemBlock(size_t nrItems, RegisterId nrRegs)
-    : _nrItems(nrItems), _nrRegs(nrRegs) {
+AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, size_t nrItems, RegisterId nrRegs)
+    : _nrItems(nrItems), _nrRegs(nrRegs), _resourceMonitor(resourceMonitor) {
+  TRI_ASSERT(resourceMonitor != nullptr);
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
 
   if (nrRegs > 0) {
@@ -40,12 +47,21 @@ AqlItemBlock::AqlItemBlock(size_t nrItems, RegisterId nrRegs)
     // query seems unlikely
     TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
 
-    _data.resize(nrItems * nrRegs);
+    increaseMemoryUsage(sizeof(AqlValue) * nrItems * nrRegs);
+    try {
+      _data.resize(nrItems * nrRegs);
+    } catch (...) {
+      decreaseMemoryUsage(sizeof(AqlValue) * nrItems * nrRegs);
+      throw;
+    }
   }
 }
 
 /// @brief create the block from VelocyPack, note that this can throw
-AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
+AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const slice)
+    : _nrItems(0), _nrRegs(0), _resourceMonitor(resourceMonitor) {
+  TRI_ASSERT(resourceMonitor != nullptr);
+
   bool exhausted = VelocyPackHelper::getBooleanValue(slice, "exhausted", false);
 
   if (exhausted) {
@@ -53,16 +69,23 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
                                    "exhausted must be false");
   }
 
-  _nrItems = VelocyPackHelper::getNumericValue<size_t>(slice, "nrItems", 0);
-  if (_nrItems == 0) {
+  int64_t nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
+  if (nrItems <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
+  _nrItems = static_cast<size_t>(nrItems);
 
   _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
 
   // Initialize the data vector:
   if (_nrRegs > 0) {
-    _data.resize(_nrItems * _nrRegs);
+    increaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
+    try {
+      _data.resize(_nrItems * _nrRegs);
+    } catch (...) {
+      decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
+      throw;
+    }
   }
 
   // Now put in the data:
@@ -74,9 +97,13 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
 
+  VPackArrayIterator dataIterator(data);
+  VPackArrayIterator rawIterator(raw);
+
   try {
-    size_t posInRaw = 2;
-    size_t posInData = 0;
+    // skip the first two records
+    rawIterator.next();
+    rawIterator.next();
     int64_t emptyRun = 0;
 
     for (RegisterId column = 0; column < _nrRegs; column++) {
@@ -84,7 +111,8 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
         if (emptyRun > 0) {
           emptyRun--;
         } else {
-          VPackSlice dataEntry = data.at(posInData++);
+          VPackSlice dataEntry = dataIterator.value();
+          dataIterator.next();
           if (!dataEntry.isNumber()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "data must contain only numbers");
@@ -94,15 +122,18 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
             // empty, do nothing here
           } else if (n == -1) {
             // empty run:
-            VPackSlice runLength = data.at(posInData++);
+            VPackSlice runLength = dataIterator.value();
+            dataIterator.next();
             TRI_ASSERT(runLength.isNumber());
             emptyRun = runLength.getNumericValue<int64_t>();
             emptyRun--;
           } else if (n == -2) {
             // a range
-            VPackSlice lowBound = data.at(posInData++);
-            VPackSlice highBound = data.at(posInData++);
-            
+            VPackSlice lowBound = dataIterator.value();
+            dataIterator.next();
+            VPackSlice highBound = dataIterator.value();
+            dataIterator.next();
+             
             int64_t low =
                 VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
             int64_t high =
@@ -116,7 +147,8 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
             }
           } else if (n == 1) {
             // a VelocyPack value
-            AqlValue a(raw.at(posInRaw++));
+            AqlValue a(rawIterator.value());
+            rawIterator.next();
             try {
               setValue(i, column, a);  // if this throws, a is destroyed again
             } catch (...) {
@@ -137,6 +169,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
     }
   } catch (...) {
     destroy();
+    // TODO: rethrow?
   }
 }
 
@@ -151,9 +184,10 @@ void AqlItemBlock::destroy() {
       try {  // can find() really throw???
         auto it2 = _valueCount.find(it);
         if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
-          TRI_ASSERT(it2->second > 0);
+          TRI_ASSERT((*it2).second > 0);
 
-          if (--(it2->second) == 0) {
+          if (--((*it2).second) == 0) {
+            decreaseMemoryUsage(it.memoryUsage());
             it.destroy();
             try {
               _valueCount.erase(it2);
@@ -173,7 +207,10 @@ void AqlItemBlock::destroy() {
 }
 
 /// @brief shrink the block to the specified number of rows
-void AqlItemBlock::shrink(size_t nrItems) {
+/// if sweep is set, then the superfluous rows are cleaned
+/// if sweep is not set, the caller has to ensure that the
+/// superfluous rows are empty
+void AqlItemBlock::shrink(size_t nrItems, bool sweep) {
   TRI_ASSERT(nrItems > 0);
 
   if (nrItems == _nrItems) {
@@ -187,38 +224,77 @@ void AqlItemBlock::shrink(size_t nrItems) {
                                    "cannot use shrink() to increase block");
   }
 
-  // erase all stored values in the region that we freed
-  for (size_t i = nrItems; i < _nrItems; ++i) {
-    for (RegisterId j = 0; j < _nrRegs; ++j) {
-      AqlValue& a(_data[_nrRegs * i + j]);
+  if (sweep) {
+    // erase all stored values in the region that we freed
+    for (size_t i = nrItems; i < _nrItems; ++i) {
+      for (RegisterId j = 0; j < _nrRegs; ++j) {
+        AqlValue& a(_data[_nrRegs * i + j]);
 
-      if (a.requiresDestruction()) {
-        auto it = _valueCount.find(a);
+        if (a.requiresDestruction()) {
+          auto it = _valueCount.find(a);
 
-        if (it != _valueCount.end()) {
-          TRI_ASSERT(it->second > 0);
+          if (it != _valueCount.end()) {
+            TRI_ASSERT((*it).second > 0);
 
-          if (--it->second == 0) {
-            a.destroy();
-            try {
-              _valueCount.erase(it);
-            } catch (...) {
+            if (--((*it).second) == 0) {
+              decreaseMemoryUsage(a.memoryUsage());
+              a.destroy();
+              try {
+                _valueCount.erase(it);
+              } catch (...) {
+              }
             }
           }
         }
+        a.erase();
       }
-      a.erase();
     }
   }
+    
+  decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
 
   // adjust the size of the block
   _nrItems = nrItems;
+  _data.resize(_nrItems * _nrRegs);
+}
+
+void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
+  TRI_ASSERT(_valueCount.empty());
+  TRI_ASSERT(nrRegs > 0);
+  TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
+
+  size_t const targetSize = nrItems * nrRegs;
+  size_t const currentSize = _nrItems * _nrRegs;
+  TRI_ASSERT(currentSize <= _data.size());
+
+  if (targetSize > _data.size()) {
+    increaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
+    try {
+      _data.resize(targetSize);
+    } catch (...) {
+      decreaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
+      throw;
+    }
+  } else if (targetSize < _data.size()) {
+    decreaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
+    try {
+      _data.resize(targetSize);
+    } catch (...) {
+      increaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
+      throw;
+    }
+  }
+
+  TRI_ASSERT(_data.size() >= targetSize);
+  _nrItems = nrItems;
+  _nrRegs = nrRegs;
 }
 
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
 void AqlItemBlock::clearRegisters(
     std::unordered_set<RegisterId> const& toClear) {
+
   for (auto const& reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue& a(_data[_nrRegs * i + reg]);
@@ -227,9 +303,10 @@ void AqlItemBlock::clearRegisters(
         auto it = _valueCount.find(a);
 
         if (it != _valueCount.end()) {
-          TRI_ASSERT(it->second > 0);
+          TRI_ASSERT((*it).second > 0);
 
-          if (--it->second == 0) {
+          if (--((*it).second) == 0) {
+            decreaseMemoryUsage(a.memoryUsage());
             a.destroy();
             try {
               _valueCount.erase(it);
@@ -251,7 +328,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
   std::unordered_map<AqlValue, AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -289,7 +366,7 @@ AqlItemBlock* AqlItemBlock::slice(
     size_t row, std::unordered_set<RegisterId> const& registers) const {
   std::unordered_map<AqlValue, AqlValue> cache;
 
-  auto res = std::make_unique<AqlItemBlock>(1, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, _nrRegs);
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     if (registers.find(col) == registers.end()) {
@@ -332,7 +409,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from
   std::unordered_map<AqlValue, AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -374,7 +451,7 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
                                   size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -395,10 +472,41 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
   return res.release();
 }
 
+/// @brief concatenate multiple blocks
+AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
+    BlockCollector* collector) {
+  
+  size_t totalSize = collector->totalSize();
+  RegisterId nrRegs = collector->nrRegs();
+
+  TRI_ASSERT(totalSize > 0);
+  TRI_ASSERT(nrRegs > 0);
+
+  auto res = std::make_unique<AqlItemBlock>(resourceMonitor, totalSize, nrRegs);
+
+  size_t pos = 0;
+  for (auto& it : collector->_blocks) {
+    size_t const n = it->size();
+    for (size_t row = 0; row < n; ++row) {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        // copy over value
+        AqlValue const& a = it->getValueReference(row, col);
+        if (!a.isEmpty()) {
+          res->setValue(pos + row, col, a);
+        }
+      }
+    }
+    it->eraseAll();
+    pos += n;
+  }
+
+  return res.release();
+}
+
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
-AqlItemBlock* AqlItemBlock::concatenate(
+AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
     std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(!blocks.empty());
   
@@ -416,11 +524,10 @@ AqlItemBlock* AqlItemBlock::concatenate(
   TRI_ASSERT(totalSize > 0);
   TRI_ASSERT(nrRegs > 0);
 
-  auto res = std::make_unique<AqlItemBlock>(totalSize, nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(resourceMonitor, totalSize, nrRegs);
 
   size_t pos = 0;
   for (auto& it : blocks) {
-    TRI_ASSERT(it != res.get());
     size_t const n = it->size();
     for (size_t row = 0; row < n; ++row) {
       for (RegisterId col = 0; col < nrRegs; ++col) {
@@ -432,7 +539,7 @@ AqlItemBlock* AqlItemBlock::concatenate(
       }
     }
     it->eraseAll();
-    pos += it->size();
+    pos += n;
   }
 
   return res.release();
@@ -449,41 +556,48 @@ AqlItemBlock* AqlItemBlock::concatenate(
 ///             numbers. The AqlItemBlock is stored columnwise, starting
 ///             from the first column (top to bottom) and going right.
 ///             Each entry found is encoded in the following way:
-///               0.0  means a single empty entry
-///               -1.0 followed by a positive integer N (encoded as number)
-///                      means a run of that many empty entries
-///               -2.0 followed by two numbers LOW and HIGH means a range
-///                      and LOW and HIGH are the boundaries (inclusive)
-///               1.0 means a JSON entry at the "next" position in "raw"
-///                      the "next" position starts with 2 and is increased
-///                      by one for every 1.0 found in data
-///               integer values >= 2.0 mean a JSON entry, in this
+///               0  means a single empty entry
+///               -1 followed by a positive integer N (encoded as number)
+///                    means a run of that many empty entries
+///               -2 followed by two numbers LOW and HIGH means a range
+///                    and LOW and HIGH are the boundaries (inclusive)
+///               1 means a JSON entry at the "next" position in "raw"
+///                    the "next" position starts with 2 and is increased
+///                    by one for every 1 found in data
+///               integer values >= 2 mean a JSON entry, in this
 ///                      case the "raw" list contains an entry in the
 ///                      corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                      such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
+void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
                                 VPackBuilder& result) const {
-  VPackBuilder data;
-  data.openArray();
+  VPackOptions options(VPackOptions::Defaults);
+  options.buildUnindexedArrays = true;
+  options.buildUnindexedObjects = true;
 
-  VPackBuilder raw;
+  VPackBuilder raw(&options);
   raw.openArray();
   // Two nulls in the beginning such that indices start with 2
   raw.add(VPackValue(VPackValueType::Null));
   raw.add(VPackValue(VPackValueType::Null));
 
   std::unordered_map<AqlValue, size_t> table;  // remember duplicates
+  
+  result.add("nrItems", VPackValue(_nrItems));
+  result.add("nrRegs", VPackValue(_nrRegs));
+  result.add("error", VPackValue(false));
+  result.add("exhausted", VPackValue(false));
+  result.add("data", VPackValue(VPackValueType::Array));
 
   size_t emptyCount = 0;  // here we count runs of empty AqlValues
 
-  auto commitEmpties = [&]() {  // this commits an empty run to the data
+  auto commitEmpties = [&result, &emptyCount]() {  // this commits an empty run to the result
     if (emptyCount > 0) {
       if (emptyCount == 1) {
-        data.add(VPackValue(0));
+        result.add(VPackValue(0));
       } else {
-        data.add(VPackValue(-1));
-        data.add(VPackValue(emptyCount));
+        result.add(VPackValue(-1));
+        result.add(VPackValue(emptyCount));
       }
       emptyCount = 0;
     }
@@ -498,32 +612,27 @@ void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
       } else {
         commitEmpties();
         if (a.isRange()) {
-          data.add(VPackValue(-2));
-          data.add(VPackValue(a.range()->_low));
-          data.add(VPackValue(a.range()->_high));
+          result.add(VPackValue(-2));
+          result.add(VPackValue(a.range()->_low));
+          result.add(VPackValue(a.range()->_high));
         } else {
           auto it = table.find(a);
 
           if (it == table.end()) {
             a.toVelocyPack(trx, raw, false);
-            data.add(VPackValue(1));
+            result.add(VPackValue(1));
             table.emplace(a, pos++);
           } else {
-            data.add(VPackValue(it->second));
+            result.add(VPackValue(it->second));
           }
         }
       }
     }
   }
   commitEmpties();
+  
+  result.close(); // closes "data"
 
   raw.close();
-  data.close();
-
-  result.add("nrItems", VPackValue(_nrItems));
-  result.add("nrRegs", VPackValue(_nrRegs));
-  result.add("data", data.slice());
   result.add("raw", raw.slice());
-  result.add("error", VPackValue(false));
-  result.add("exhausted", VPackValue(false));
 }

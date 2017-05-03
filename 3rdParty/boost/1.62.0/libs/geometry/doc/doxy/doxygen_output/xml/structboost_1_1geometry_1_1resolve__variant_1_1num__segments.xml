@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1num__segments" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::num_segments</compoundname>
+    <includes local="no">num_segments.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1num__segments_1acf9bbdee427c5d4374cf9bc046e96de4" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>static std::size_t boost::geometry::resolve_variant::num_segments&lt; Geometry &gt;::apply</definition>
+        <argsstring>(Geometry const &amp;geometry)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_segments.hpp" line="151" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_segments.hpp" bodystart="151" bodyend="156"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_segments.hpp" line="150" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_segments.hpp" bodystart="149" bodyend="157"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1num__segments_1acf9bbdee427c5d4374cf9bc046e96de4" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::num_segments</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

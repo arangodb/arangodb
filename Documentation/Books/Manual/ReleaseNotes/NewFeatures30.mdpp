@@ -1,10 +1,12 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.0. ArangoDB 3.0 also contains several bugfixes that are not listed
 here.
 
-!SECTION Internal data format changes
+Internal data format changes
+----------------------------
 
 ArangoDB now uses [VelocyPack](https://github.com/arangodb/velocypack) for
 storing documents, query results and temporarily computed values. Using a single
@@ -22,11 +24,12 @@ it removes the overhead of fetching attribute names and document layout from
 shared structures as in previous versions of ArangoDB. It also simplifies the
 code paths for storing and reading documents.
 
-!SECTION AQL improvements
+AQL improvements
+----------------
 
-!SUBSECTION Syntax improvements
+### Syntax improvements
 
-!SUBSUBSECTION `LIKE` string-comparison operator
+#### `LIKE` string-comparison operator
 
 AQL now provides a `LIKE` operator and can be used to compare strings like this,
 for example inside filter conditions:
@@ -43,7 +46,7 @@ function `LIKE`, which also remains operational in 3.0. Use the `LIKE` function
 in case you want to search case-insensitive (optional parameter), as the `LIKE`
 operator always compares case-sensitive.
 
-!SUBSUBSECTION AQL array comparison operators
+#### AQL array comparison operators
 
 All AQL comparison operators now also exist in an array variant. In the
 array variant, the operator is preceded with one of the keywords *ALL*, *ANY*
@@ -75,7 +78,7 @@ Examples:
 ["foo", "bar"] ANY == "foo"      // true
 ```
 
-!SUBSUBSECTION Regular expression string-comparison operators
+#### Regular expression string-comparison operators
 
 AQL now supports the operators *=~* and *!~* for testing strings against regular
 expressions. *=~* tests if a string value matches a regular expression, and *!~* tests 
@@ -124,7 +127,7 @@ quantifiers:
 - `x{y,z}` – matches between *y* and *z* occurrences of *x*
 - `x{y,}` – matches at least *y* occurences of *x*
 
-!SUBSUBSECTION Enclosing identifiers in forward ticks
+#### Enclosing identifiers in forward ticks
 
 AQL identifiers can now optionally be enclosed in forward ticks in addition to using
 backward ticks. This allows convenient writing of AQL queries in JavaScript template 
@@ -134,7 +137,7 @@ strings (which are delimited with backticks themselves), e.g.
 var q = `FOR doc IN ´collection´ RETURN doc.´name´`;
 ```
 
-!SUBSECTION Functions added
+### Functions added
 
 The following AQL functions have been added in 3.0:
 
@@ -189,9 +192,9 @@ The following AQL functions have been added in 3.0:
 
 - *DEGREES(value)*: Returns the angle converted from radians to degrees.
 
-!SUBSECTION Optimizer improvements
+### Optimizer improvements
 
-!SUBSUBSECTION "inline-subqueries" rule
+#### "inline-subqueries" rule
 
 The AQL optimizer rule "inline-subqueries" has been added. This rule can pull
 out certain subqueries that are used as an operand to a `FOR` loop one level
@@ -238,7 +241,7 @@ FOR tmp IN _users
 The rule will only fire when the subquery is used as an operand to a `FOR` loop,
 and if the subquery does not contain a `COLLECT` with an `INTO` variable.
 
-!SUBSUBSECTION "remove-unnecessary-calculations" rule
+#### "remove-unnecessary-calculations" rule
 
 The AQL optimizer rule "remove-unnecessary-calculations" now fires in more cases
 than in previous versions. This rule removes calculations from execution plans,
@@ -249,7 +252,7 @@ The rule will now remove calculations that are used exactly once in other
 expressions (e.g. `LET a = doc RETURN a.value`) and calculations, or calculations 
 that are just references to other variables (e.g. `LET a = b`).
 
-!SUBSUBSECTION "optimize-traversals" rule
+#### "optimize-traversals" rule
 
 The AQL optimizer rule "merge-traversal-filter" was renamed to "optimize-traversals".
 The rule will remove unused edge and path result variables from the traversal in case 
@@ -261,12 +264,13 @@ it can now get away without extra memory allocations and less internal conversio
 Values can be passed into internal AQL functions without copying them. This can lead to
 reduced query execution times for queries that use C++-based AQL functions.
 
-!SUBSUBSECTION "replace-or-with-in" and "use-index-for-sort" rules
+#### "replace-or-with-in" and "use-index-for-sort" rules
 
 These rules now fire in some additional cases, which allows simplifying index lookup
 conditions and removing SortNodes from execution plans.
 
-!SECTION Cluster state management
+Cluster state management
+------------------------
 
 The cluster's internal state information is now also managed by ArangoDB instances.
 Earlier versions relied on third party software being installed for the storing the
@@ -284,7 +288,8 @@ The operations for storing and retrieving cluster state information are now much
 expensive from an ArangoDB cluster node perspective, which in turn allows for faster
 cluster operations that need to fetch or update the overall cluster state.
 
-!SECTION `_from` and `_to` attributes of edges are updatable and usable in indexes
+`_from` and `_to` attributes of edges are updatable and usable in indexes
+-------------------------------------------------------------------------
 
 In ArangoDB prior to 3.0 the attributes `_from` and `_to` of edges were treated
 specially when loading or storing edges. That special handling led to these attributes
@@ -306,7 +311,8 @@ referenced by `_from` and `_to` values may be dropped and re-created later. Any
 `_from` and `_to` values of edges pointing to such dropped collection are unaffected
 by the drop operation now.
 
-!SECTION Unified APIs for CRUD operations
+Unified APIs for CRUD operations
+--------------------------------
 
 The CRUD APIs for documents and edge have been unified. Edges can now be inserted
 and modified via the same APIs as documents. `_from` and `_to` attribute values can
@@ -339,7 +345,8 @@ more efficiently carry out operations with multiple documents than their single-
 equivalents, which required one HTTP request per operation. With the batch operations,
 the HTTP request/response overhead can be amortized across multiple operations.
 
-!SECTION Persistent indexes
+Persistent indexes
+------------------
 
 ArangoDB 3.0 provides an experimental persistent index feature. Persistent indexes store
 the index values on disk instead of in-memory only. This means the indexes do not need
@@ -358,7 +365,8 @@ The persistent indexes are sorted, so they allow equality lookups and range quer
 Note that the feature is still highly experimental and has some known deficiencies. It 
 will be finalized until the release of the 3.0 stable version.
 
-!SECTION Upgraded V8 version
+Upgraded V8 version
+-------------------
 
 The V8 engine that is used inside ArangoDB to execute JavaScript code has been upgraded from
 version 4.3.61 to 5.0.71.39. The new version makes several more ES6 features available by
@@ -370,7 +378,8 @@ default, including
 - array destructuring
 - numeric and object literals
 
-!SECTION Web Admin Interface
+Web Admin Interface
+-------------------
 
 The ArangoDB 3.0 web interface is significantly improved. It now comes with a more
 responsive design, making it easier to use on different devices. Navigation and menus
@@ -413,7 +422,8 @@ accept paths from trusted frontend proxies. Trusted proxies may be added on star
 To disable the check and blindly accept any x-script-name set --frontend.proxy-request-check
 to false.
 
-!SECTION Foxx improvements
+Foxx improvements
+-----------------
 
 The Foxx framework has been completely rewritten for 3.0 with a new, simpler and 
 more familiar API. The most notable changes are:
@@ -468,7 +478,8 @@ more familiar API. The most notable changes are:
   into Foxx as the `@arangodb/foxx/auth`, `@arangodb/foxx/oauth2` and `@arangodb/foxx/sessions` 
   modules.
 
-!SECTION Logging
+Logging
+-------
 
 ArangoDB's logging is now grouped into topics. The log verbosity and output files can
 be adjusted per log topic. For example
@@ -506,7 +517,8 @@ To additionally log HTTP request to a file named "requests.log" add the options:
 --log.level requests=info --log.output requests=file:///path/to/requests.log
 ```
 
-!SECTION Build system
+Build system
+------------
 
 ArangoDB now uses the cross-platform build system CMake for all its builds.
 Previous versions used two different build systems, making development and
@@ -514,7 +526,8 @@ contributions harder than necessary. Now the build system is unified, and
 all targets (Linux, Windows, MacOS) are built from the same set of build
 instructions.
 
-!SECTION Documentation
+Documentation
+-------------
 
 The documentation has been enhanced and re-organized to be more intuitive.
 

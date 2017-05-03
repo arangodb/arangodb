@@ -1,0 +1,117 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::buffer::join_round</compoundname>
+    <includes local="no">buffer_join_round.hpp</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round_1adea6fe2e79aeabb4b78fb6ddc74f6951" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::strategy::buffer::join_round::m_points_per_circle</definition>
+        <argsstring></argsstring>
+        <name>m_points_per_circle</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round.hpp" line="179" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round.hpp" bodystart="179" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round_1af6a132897664319e1af10dcee8c20c5e" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::buffer::join_round::join_round</definition>
+        <argsstring>(std::size_t points_per_circle=90)</argsstring>
+        <name>join_round</name>
+        <param>
+          <type>std::size_t</type>
+          <declname>points_per_circle</declname>
+          <defval>90</defval>
+        </param>
+        <briefdescription>
+<para>Constructs the strategy. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>points_per_circle</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>points which would be used for a full circle </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round.hpp" line="62" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round.hpp" bodystart="62" bodyend="64"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round_1a59f5cb3245202b9ebc568c2ea84bea38" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename PromotedType</type>
+          </param>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename DistanceType</type>
+          </param>
+          <param>
+            <type>typename RangeOut</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::buffer::join_round::generate_points</definition>
+        <argsstring>(Point const &amp;vertex, Point const &amp;perp1, Point const &amp;perp2, DistanceType const &amp;buffer_distance, RangeOut &amp;range_out) const </argsstring>
+        <name>generate_points</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>vertex</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>perp1</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>perp2</declname>
+        </param>
+        <param>
+          <type>DistanceType const &amp;</type>
+          <declname>buffer_distance</declname>
+        </param>
+        <param>
+          <type>RangeOut &amp;</type>
+          <declname>range_out</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round.hpp" line="74" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round.hpp" bodystart="74" bodyend="117"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Let the buffer create rounded corners. </para>    </briefdescription>
+    <detaileddescription>
+<para>This strategy can be used as JoinStrategy for the buffer algorithm. It creates a rounded corners around each convex vertex. It can be applied for (multi)linestrings and (multi)polygons. This strategy is only applicable for Cartesian coordinate systems.</para><para> <qbk>
+[heading Example]
+[buffer_join_round]
+[heading Output]
+[$img/strategies/buffer_join_round.png]
+[heading See also]
+\* [link geometry.reference.algorithms.buffer.buffer_7_with_strategies buffer (with strategies)]
+\* [link geometry.reference.strategies.strategy_buffer_join_miter join_miter]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round.hpp" line="57" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round.hpp" bodystart="56" bodyend="180"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round_1a59f5cb3245202b9ebc568c2ea84bea38" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_round</scope><name>generate_points</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round_1af6a132897664319e1af10dcee8c20c5e" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_round</scope><name>join_round</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round_1adea6fe2e79aeabb4b78fb6ddc74f6951" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_round</scope><name>m_points_per_circle</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

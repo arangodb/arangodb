@@ -78,7 +78,8 @@ function clusterRequest(req) {
     }, req);
     delete pathObj.auth;
   }
-  let query = typeof req.qs === 'string' ? req.qs : querystringify(req.qs, req.useQuerystring);
+  let query = typeof req.qs === 'string' ?
+      req.qs : querystringify(req.qs, req.useQuerystring);
   if (query) {
     pathObj.search = query;
   }

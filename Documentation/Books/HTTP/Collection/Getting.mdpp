@@ -1,4 +1,5 @@
-!CHAPTER Getting Information about a Collection
+Getting Information about a Collection
+======================================
 
 <!-- js/actions/api-collection.js -->
 @startDocuBlock JSA_get_api_collection_name

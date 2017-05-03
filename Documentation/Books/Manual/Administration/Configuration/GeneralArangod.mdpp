@@ -1,6 +1,7 @@
-!CHAPTER General Options
+General Options
+===============
 
-!SUBSECTION Database Upgrade 
+### Database Upgrade
 
 `--database.auto-upgrade`
 
@@ -28,7 +29,7 @@ version check on startup. Running the server with a non-matching version number
 in the VERSION file will make the server refuse to start.
 
 
-!SUBSECTION Daemon
+### Daemon
 
 `--daemon`
 
@@ -37,7 +38,7 @@ be set if the pid (process id) file is specified. That is, unless a value to the
 parameter pid-file is given, then the server will report an error and exit.
 
 
-!SUBSECTION Default Language
+### Default Language
 
 `--default-language default-language`
 
@@ -49,7 +50,7 @@ language code with and a two letter country code (ISO-3166). Valid languages are
 The default default-language is set to be the system locale on that platform.
 
 
-!SUBSECTION Supervisor
+### Supervisor
 
 `--supervisor`
 
@@ -85,7 +86,7 @@ start up a new database process:
 ```
 
 
-!SUBSECTION User identity 
+### User identity
 
 `--uid uid`
 
@@ -104,7 +105,7 @@ security. In general, this parameter (and its corresponding relative gid) can
 lower privileges but not raise them.
 
 
-!SUBSECTION Group identity
+### Group identity
 
 `--gid gid`
 
@@ -118,7 +119,7 @@ connections or opening other files (such as recovery files).
 This parameter is related to the parameter uid.
 
 
-!SUBSECTION Process identity 
+### Process identity
 
 `--pid-file filename`
 
@@ -127,23 +128,23 @@ daemon. This parameter must be specified if either the flag *daemon* or
 *supervisor* is set.
 
 
-!SUBSECTION Console
+### Console
 
 `--console`
 
-Runs the server in an exclusive emergency console mode. When 
+Runs the server in an exclusive emergency console mode. When
 starting the server with this option, the server is started with
 an interactive JavaScript emergency console, with all networking
 and HTTP interfaces of the server disabled.
 
 No requests can be made to the server in this mode, and the only
 way to work with the server in this mode is by using the emergency
-console. 
-Note that the server cannot be started in this mode if it is 
-already running in this or another mode. 
+console.
+Note that the server cannot be started in this mode if it is
+already running in this or another mode.
 
 
-!SUBSECTION Random Generator
+### Random Generator
 
 `--random.generator arg`
 
@@ -160,12 +161,24 @@ algorithm. Algorithm 4 is a combination of the blocking random number
 generator and the Mersenne Twister.
 
 
-!SUBSECTION Enable/disable authentication  
+### Enable/disable authentication
 
 @startDocuBlock server_authentication
 
+### JWT Secret
 
-!SUBSECTION Enable/disable authentication for UNIX domain sockets
+`--server.jwt-secret secret`
+
+ArangoDB will use JWTs to authenticate requests. Using this option lets
+you specify a JWT.
+
+In single server setups and when not specifying this secret ArangoDB will
+generate a secret.
+
+In cluster deployments which have authentication enabled a secret must
+be set consistently across all cluster tasks so they can talk to each other.
+
+### Enable/disable authentication for UNIX domain sockets
 
 `--server.authentication-unix-sockets value`
 
@@ -181,12 +194,12 @@ The default value is *false*.
 domain sockets.
 
 
-!SUBSECTION Enable/disable authentication for system API requests only
+### Enable/disable authentication for system API requests only
 
 @startDocuBlock serverAuthenticateSystemOnly
 
 
-!SUBSECTION Enable/disable replication applier
+### Enable/disable replication applier
 
 `--database.replication-applier flag`
 
@@ -202,7 +215,7 @@ from the file *REPLICATION-APPLIER-CONFIG* on startup, and use the value of the
 
 The default is *true*.
 
-!SUBSECTION Keep-alive timeout
+### Keep-alive timeout
 
 `--http.keep-alive-timeout`
 
@@ -212,7 +225,7 @@ Idle keep-alive connections will be closed by the server automatically
 when the timeout is reached. A keep-alive-timeout value 0 will disable the keep
 alive feature entirely.
 
-!SUBSECTION Hide Product header
+### Hide Product header
 
 `--http.hide-product-header`
 
@@ -223,7 +236,7 @@ responses.
 The default is *false*.
 
 
-!SUBSECTION Allow method override
+### Allow method override
 
 `--http.allow-method-override`
 
@@ -246,13 +259,13 @@ be used in controlled environments.
 
 The default value for this option is *false*.
 
-!SUBSECTION Server threads
+### Server threads
 
 `--server.threads number`
 
 Specifies the *number* of threads that are spawned to handle requests.
 
-!SUBSECTION Toggling server statistics 
+### Toggling server statistics
 
 `--server.statistics value`
 
@@ -260,7 +273,7 @@ If this option is *value* is *false*, then ArangoDB's statistics gathering
 is turned off. Statistics gathering causes regular CPU activity so using this
 option to turn it off might relieve heavy-loaded instances a bit.
 
-!SUBSECTION Session timeout
+### Session timeout
 
 time to live for server sessions
 `--server.session-timeout value`
@@ -270,13 +283,13 @@ to the web interface (/_admin/aardvark) and related areas.
 
 Sessions are only used when authentication is turned on.
 
-!SUBSECTION Foxx queues 
+### Foxx queues
 @startDocuBlock foxxQueues
 
-!SUBSECTION Foxx queues poll interval
+### Foxx queues poll interval
 @startDocuBlock foxxQueuesPollInterval
 
-!SUBSECTION Directory
+### Directory
 
 `--database.directory directory`
 
@@ -304,19 +317,35 @@ directory as argument.
 ```
 
 
-!SUBSECTION Journal size
+### Journal size
 @startDocuBlock databaseMaximalJournalSize
 
 
-!SUBSECTION Wait for sync
+### Wait for sync
 @startDocuBlock databaseWaitForSync
 
 
-!SUBSECTION Force syncing of properties
+### Force syncing of properties
 @startDocuBlock databaseForceSyncProperties
 
 
-!SUBSECTION Enable/disable AQL query tracking
+### Limiting memory for AQL queries
+
+`--query.memory-limit value`
+
+The default maximum amount of memory (in bytes) that a single AQL query can use.
+When a single AQL query reaches the specified limit value, the query will be
+aborted with a *resource limit exceeded* exception. In a cluster, the memory
+accounting is done per shard, so the limit value is effectively a memory limit per
+query per shard.
+
+The global limit value can be overriden per query by setting the *memoryLimit* 
+option value for individual queries when running an AQL query. 
+
+The default value is *0*, meaning that there is no memory limit.
+
+
+### Enable/disable AQL query tracking
 
 `--query.tracking flag`
 
@@ -326,7 +355,7 @@ default. Tracking of queries can be disabled by setting the option to *false*.
 The default is *true*.
 
 
-!SUBSECTION Threshold for slow AQL queries
+### Threshold for slow AQL queries
 
 `--query.slow-threshold value`
 
@@ -339,7 +368,7 @@ setting the option `--query.tracking` to *false*.
 The default value is *10.0*.
 
 
-!SUBSECTION Throw collection not loaded error
+### Throw collection not loaded error
 
 `--database.throw-collection-not-loaded-error flag`
 
@@ -364,7 +393,7 @@ retry for later).
 The default value is *false*.
 
 
-!SUBSECTION AQL Query caching mode
+### AQL Query caching mode
 
 `--query.cache-mode`
 
@@ -377,7 +406,7 @@ Toggles the AQL query cache behavior. Possible values are:
   attribute set to *true*
 
 
-!SUBSECTION AQL Query cache size 
+### AQL Query cache size
 
 `--query.cache-entries`
 
@@ -390,33 +419,36 @@ This option only has an effect if the query cache mode is set to either *on* or
 *demand*.
 
 
-!SUBSECTION Index threads
-
-`--database.index-threads`
-
-Specifies the *number* of background threads for index creation. When a
-collection contains extra indexes other than the primary index, these other
-indexes can be built by multiple threads in parallel. The index threads are
-shared among multiple collections and databases. Specifying a value of *0* will
-turn off parallel building, meaning that indexes for each collection are built
-sequentially by the thread that opened the collection.  If the number of index
-threads is greater than 1, it will also be used to built the edge index of a
-collection in parallel (this also requires the edge index in the collection to
-be split into multiple buckets).
-
-
-!SUBSECTION V8 contexts
+### V8 contexts
 
 `--javascript.v8-contexts number`
 
-Specifies the *number* of V8 contexts that are created for executing JavaScript
-code. More contexts allow execute more JavaScript actions in parallel, provided
-that there are also enough threads available. Please note that each V8 context
+Specifies the maximum *number* of V8 contexts that are created for executing 
+JavaScript code. More contexts allow executing more JavaScript actions in parallel, 
+provided that there are also enough threads available. Please note that each V8 context
 will use a substantial amount of memory and requires periodic CPU processing
 time for garbage collection.
 
+Note that this value configures the maximum number of V8 contexts that can be
+used in parallel. Upon server start only as many V8 contexts will be created as are
+configured in option `--javascript.v8-contexts-minimum`. The actual number of
+available V8 contexts may float at runtime between `--javascript.v8-contexts-minimum`
+and `--javascript.v8-contexts`. When there are unused V8 contexts that linger around, 
+the server's garbage collector thread will automatically delete them.
 
-!SUBSECTION Garbage collection frequency (time-based)
+
+`--javascript.v8-contexts-minimum number`
+
+Specifies the minimum *number* of V8 contexts that will be present at any time
+the server is running. The actual number of V8 contexts will never drop below this
+value, but it may go up as high as specified via the option `--javascript.v8-contexts`.
+
+When there are unused V8 contexts that linger around and the number of V8 contexts
+is greater than `--javascript.v8-contexts-minimum` the server's garbage collector 
+thread will automatically delete them.
+
+
+### Garbage collection frequency (time-based)
 
 `--javascript.gc-frequency frequency`
 
@@ -425,7 +457,7 @@ JavaScript objects. This setting is useful to have the garbage collection still
 work in periods with no or little numbers of requests.
 
 
-!SUBSECTION Garbage collection interval (request-based)
+### Garbage collection interval (request-based)
 
 `--javascript.gc-interval interval`
 
@@ -433,7 +465,7 @@ Specifies the interval (approximately in number of requests) that the garbage
 collection for JavaScript objects will be run in each thread.
 
 
-!SUBSECTION V8 options
+### V8 options
 
 `--javascript.v8-options options`
 
@@ -448,13 +480,13 @@ with double dashes. Multiple options need to be separated by whitespace.  To get
 a list of all available V8 options, you can use the value *"--help"* as follows:
 
 ```
---javascript.v8-options "--help"
+--javascript.v8-options="--help"
 ```
 
 Another example of specific V8 options being set at startup:
 
 ```
---javascript.v8-options "--log"
+--javascript.v8-options="--log"
 ```
 
 Names and features or usable options depend on the version of V8 being used, and
@@ -462,4 +494,3 @@ might change in the future if a different version of V8 is being used in
 ArangoDB. Not all options offered by V8 might be sensible to use in the context
 of ArangoDB. Use the specific options only if you are sure that they are not
 harmful for the regular database operation.
-

@@ -23,321 +23,107 @@
 
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/EdgeIndex.h"
-#include "Utils/Transaction.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/TraverserOptions.h"
+#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Iterator.h> 
 #include <velocypack/velocypack-aliases.h>
 
-using Traverser = arangodb::traverser::Traverser;
-using TraverserExpression = arangodb::traverser::TraverserExpression;
+using namespace arangodb;
+using namespace arangodb::traverser;
 
-/// @brief Class Shortest Path
-
-/// @brief Clears the path
-void arangodb::traverser::ShortestPath::clear() {
-  _vertices.clear();
-  _edges.clear();
-}
-
-void arangodb::traverser::ShortestPath::edgeToVelocyPack(Transaction*, ManagedDocumentResult* mmdr,
-                                                         size_t position, VPackBuilder& builder) {
-  TRI_ASSERT(position < length());
-  if (position == 0) {
-    builder.add(basics::VelocyPackHelper::NullValue());
-  } else {
-    TRI_ASSERT(position - 1 < _edges.size());
-    builder.add(_edges[position - 1]);
-  }
-}
-
-void arangodb::traverser::ShortestPath::vertexToVelocyPack(Transaction* trx, ManagedDocumentResult* mmdr, 
-                                                           size_t position, VPackBuilder& builder) {
-  TRI_ASSERT(position < length());
-  VPackSlice v = _vertices[position];
-  TRI_ASSERT(v.isString());
-  std::string collection =  v.copyString();
-  size_t p = collection.find("/");
-  TRI_ASSERT(p != std::string::npos);
-
-  TransactionBuilderLeaser searchBuilder(trx);
-  searchBuilder->add(VPackValue(collection.substr(p + 1)));
-  collection = collection.substr(0, p);
-
-  int res =
-      trx->documentFastPath(collection, mmdr, searchBuilder->slice(), builder, true);
-  if (res != TRI_ERROR_NO_ERROR) {
-    builder.clear(); // Just in case...
-    builder.add(basics::VelocyPackHelper::NullValue());
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Creates an expression from a VelocyPackSlice
-////////////////////////////////////////////////////////////////////////////////
-
-TraverserExpression::TraverserExpression(VPackSlice const& slice) {
-  isEdgeAccess = slice.get("isEdgeAccess").getBool();
-  comparisonType = static_cast<aql::AstNodeType>(
-      slice.get("comparisonType").getNumber<uint32_t>());
-  auto registerNode = [&](aql::AstNode const* node)
-                          -> void { _nodeRegister.emplace_back(node); };
-
-  auto registerString = [&](std::string const& str) -> char const* {
-    auto copy = std::make_unique<std::string>(str.c_str(), str.size());
-
-    _stringRegister.emplace_back(copy.get());
-    auto p = copy.release();
-    TRI_ASSERT(p != nullptr);
-    TRI_ASSERT(p->c_str() != nullptr);
-    return p->c_str();  // should never change its position, even if vector
-                        // grows/shrinks
-  };
-
-  VPackSlice compareToSlice = slice.get("compareTo");
-  VPackBuilder* builder = new VPackBuilder;
-  try {
-    builder->add(compareToSlice);
-  } catch (...) {
-    delete builder;
-    throw;
-  }
-  compareTo.reset(builder);
-  // If this fails everything before does not leak
-  varAccess = new aql::AstNode(registerNode, registerString, slice.get("varAccess"));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transforms the expression into VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-void TraverserExpression::toVelocyPack(VPackBuilder& builder) const {
-  builder.openObject();
-  builder.add("isEdgeAccess", VPackValue(isEdgeAccess));
-  builder.add("comparisonType",
-              VPackValue(static_cast<int32_t>(comparisonType)));
-  
-  builder.add(VPackValue("varAccess"));
-  varAccess->toVelocyPack(builder, true);
-  if (compareTo != nullptr) {
-    builder.add("compareTo", compareTo->slice());
-  }
-  builder.close();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief recursively iterates through the access ast
-///        Returns false whenever the document does not have the required format
-////////////////////////////////////////////////////////////////////////////////
-
-bool TraverserExpression::recursiveCheck(arangodb::aql::AstNode const* node,
-                                         arangodb::velocypack::Slice& element,
-                                         arangodb::velocypack::Slice& base) const {
-
-  base = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
-
-  switch (node->type) {
-    case arangodb::aql::NODE_TYPE_REFERENCE:
-      // We are on the variable access
-      return true;
-    case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
-      std::string name(node->getString());
-      if (!recursiveCheck(node->getMember(0), element, base)) {
-        return false;
-      }
-      if (!element.isObject() || !element.hasKey(name)) {
-        return false;
-      }
-      base = element; // set base object
-      element = element.get(name);
-      break;
-    }
-    case arangodb::aql::NODE_TYPE_INDEXED_ACCESS: {
-      auto index = node->getMember(1);
-      if (!index->isIntValue()) {
-        return false;
-      }
-      if (!recursiveCheck(node->getMember(0), element, base)) {
-        return false;
-      }
-      auto idx = index->getIntValue();
-      if (!element.isArray()) {
-        return false;
-      }
-      element = element.at(idx);
-      break;
-    }
-    default:
-      return false;
-  }
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief evaluates if an element matches the given expression
-////////////////////////////////////////////////////////////////////////////////
-
-bool TraverserExpression::matchesCheck(arangodb::Transaction* trx,
-                                       VPackSlice const& element) const {
-  TRI_ASSERT(trx != nullptr);
-  VPackSlice base = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
-
-  VPackSlice value = element.resolveExternal(); 
-  
-  // initialize compare value to Null
-  VPackSlice result = arangodb::basics::VelocyPackHelper::NullValue();
-  // perform recursive check. this may modify value
-  if (recursiveCheck(varAccess, value, base)) {
-    result = value;
-  }
-
-  // hack for _id attribute
-  TransactionBuilderLeaser builder(trx);
-  if (result.isCustom() && base.isObject()) {
-    builder->add(VPackValue(trx->extractIdString(base)));
-    result = builder->slice();
-  }
-
-  TRI_ASSERT(compareTo != nullptr);
-  VPackOptions* options = trx->transactionContext()->getVPackOptions();
-
-  switch (comparisonType) {
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), false, options) == 0; 
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
-      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), false, options) != 0; 
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) < 0; 
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) <= 0; 
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) >= 0; 
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) > 0;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: {
-      // In means any of the elements in compareTo is identical
-      VPackSlice compareArray = compareTo->slice();
-      for (auto const& cmp : VPackArrayIterator(compareArray)) {
-        if (arangodb::basics::VelocyPackHelper::compare(result, cmp, false, options) == 0) {
-          // One is identical
-          return true;
-        }
-      }
-      // If we get here non is identical
-      return false;
-    }
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN: {
-      // NIN means none of the elements in compareTo is identical
-      VPackSlice compareArray = compareTo->slice();
-      for (auto const& cmp : VPackArrayIterator(compareArray)) {
-        if (arangodb::basics::VelocyPackHelper::compare(result, cmp, false, options) == 0) {
-          // One is identical
-          return false;
-        }
-      }
-      // If we get here non is identical
-      return true;
-    }
-    default:
-      TRI_ASSERT(false);
-  }
-  return false;
-}
-
-
-bool Traverser::VertexGetter::getVertex(
-    VPackSlice edge, std::vector<VPackSlice>& result) {
-  VPackSlice cmp = result.back();
-  VPackSlice res = Transaction::extractFromFromDocument(edge);
-  if (cmp == res) {
-    res = Transaction::extractToFromDocument(edge);
+bool Traverser::VertexGetter::getVertex(VPackSlice edge, std::vector<StringRef>& result) {
+  VPackSlice res = transaction::helpers::extractFromFromDocument(edge);
+  if (result.back() == StringRef(res)) {
+    res = transaction::helpers::extractToFromDocument(edge);
   }
 
   if (!_traverser->vertexMatchesConditions(res, result.size())) {
     return false;
   }
-  result.emplace_back(res);
+  result.emplace_back(_traverser->traverserCache()->persistString(StringRef(res)));
   return true;
 }
 
-bool Traverser::VertexGetter::getSingleVertex(VPackSlice edge,
-                                              VPackSlice cmp,
-                                              size_t depth,
-                                              VPackSlice& result) {
-  VPackSlice from = Transaction::extractFromFromDocument(edge);
-  if (from != cmp) {
-    result = from;
+bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge, StringRef cmp,
+                                              uint64_t depth, StringRef& result) {
+  VPackSlice resSlice;
+  VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
+  if (from.compareString(cmp.data(), cmp.length()) != 0) {
+    resSlice = from;
   } else {
-    result = Transaction::extractToFromDocument(edge);
+    resSlice = transaction::helpers::extractToFromDocument(edge);
   }
-  return _traverser->vertexMatchesConditions(result, depth);
+  result = _traverser->traverserCache()->persistString(StringRef(resSlice));
+  return _traverser->vertexMatchesConditions(resSlice, depth);
 }
 
-void Traverser::VertexGetter::reset(arangodb::velocypack::Slice) {
+void Traverser::VertexGetter::reset(StringRef const&) {
 }
 
-bool Traverser::UniqueVertexGetter::getVertex(
-  VPackSlice edge, std::vector<VPackSlice>& result) {
-  VPackSlice toAdd = Transaction::extractFromFromDocument(edge);
-  VPackSlice cmp = result.back();
-
-  if (toAdd == cmp) {
-    toAdd = Transaction::extractToFromDocument(edge);
+bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, std::vector<StringRef>& result) {
+  VPackSlice toAdd = transaction::helpers::extractFromFromDocument(edge);
+  StringRef const& cmp = result.back();
+  TRI_ASSERT(toAdd.isString());
+  if (cmp == StringRef(toAdd)) {
+    toAdd = transaction::helpers::extractToFromDocument(edge);
   }
-
-  // First check if we visited it. If not, than mark
-  if (_returnedVertices.find(toAdd) != _returnedVertices.end()) {
+  StringRef toAddStr = _traverser->traverserCache()->persistString(StringRef(toAdd));
+  // First check if we visited it. If not, then mark
+  if (_returnedVertices.find(toAddStr) != _returnedVertices.end()) {
     // This vertex is not unique.
-    ++_traverser->_filteredPaths;
+    _traverser->traverserCache()->increaseFilterCounter();
     return false;
   } else {
-    _returnedVertices.emplace(toAdd);
+    _returnedVertices.emplace(toAddStr);
   }
 
   if (!_traverser->vertexMatchesConditions(toAdd, result.size())) {
     return false;
   }
 
-  result.emplace_back(toAdd);
+  result.emplace_back(toAddStr);
   return true;
 }
 
-bool Traverser::UniqueVertexGetter::getSingleVertex(
-  VPackSlice edge, VPackSlice cmp, size_t depth, VPackSlice& result) {
-  result = Transaction::extractFromFromDocument(edge);
-
-  if (cmp == result) {
-    result = Transaction::extractToFromDocument(edge);
+bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice edge, StringRef cmp,
+                                              uint64_t depth, StringRef& result) {
+  VPackSlice resSlice = transaction::helpers::extractFromFromDocument(edge);
+    
+  if (resSlice.compareString(cmp.data(), cmp.length()) == 0) {
+    resSlice = transaction::helpers::extractToFromDocument(edge);
   }
+  TRI_ASSERT(resSlice.isString());
   
+  result = _traverser->traverserCache()->persistString(StringRef(resSlice));
   // First check if we visited it. If not, then mark
   if (_returnedVertices.find(result) != _returnedVertices.end()) {
     // This vertex is not unique.
-    ++_traverser->_filteredPaths;
+    _traverser->traverserCache()->increaseFilterCounter();
     return false;
   } else {
     _returnedVertices.emplace(result);
   }
-
-  return _traverser->vertexMatchesConditions(result, depth);
+  return _traverser->vertexMatchesConditions(resSlice, depth);
 }
 
-void Traverser::UniqueVertexGetter::reset(VPackSlice startVertex) {
+void Traverser::UniqueVertexGetter::reset(arangodb::StringRef const& startVertex) {
   _returnedVertices.clear();
   // The startVertex always counts as visited!
   _returnedVertices.emplace(startVertex);
 }
 
-Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, arangodb::Transaction* trx,
+Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
+                     transaction::Methods* trx,
                      arangodb::ManagedDocumentResult* mmdr)
     : _trx(trx),
       _mmdr(mmdr),
       _startIdBuilder(trx),
-      _readDocuments(0),
-      _filteredPaths(0),
+      _pruneNext(false),
       _done(true),
       _opts(opts),
       _canUseOptimizedNeighbors(false) {
@@ -348,25 +134,28 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, arangodb::Tran
   }
 }
 
+Traverser::~Traverser() {}
+
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
-                                                           VPackSlice vid,
-                                                           size_t depth,
+                                                           StringRef vid,
+                                                           uint64_t depth,
                                                            size_t cursorId) {
   if (!_opts->evaluateEdgeExpression(e, vid, depth, cursorId)) {
-    ++_filteredPaths;
     return false;
   }
   return true;
 }
 
-bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, size_t depth) {
+bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, uint64_t depth) {
   TRI_ASSERT(v.isString());
   if (_opts->vertexHasFilter(depth)) {
-    aql::AqlValue vertex = fetchVertexData(v);
+    // We always need to destroy this vertex
+    aql::AqlValue vertex = fetchVertexData(StringRef(v));
     if (!_opts->evaluateVertexExpression(vertex.slice(), depth)) {
-      ++_filteredPaths;
+      vertex.destroy();
       return false;
     }
+    vertex.destroy();
   }
   return true;
 }
@@ -380,6 +169,10 @@ bool arangodb::traverser::Traverser::next() {
   return res;
 }
 
+TraverserCache* arangodb::traverser::Traverser::traverserCache() {
+  return _opts->cache();
+}
+
 arangodb::aql::AqlValue arangodb::traverser::Traverser::lastVertexToAqlValue() {
   return _enumerator->lastVertexToAqlValue();
 }
@@ -391,6 +184,14 @@ arangodb::aql::AqlValue arangodb::traverser::Traverser::lastEdgeToAqlValue() {
 arangodb::aql::AqlValue arangodb::traverser::Traverser::pathToAqlValue(
     VPackBuilder& builder) {
   return _enumerator->pathToAqlValue(builder);
+}
+
+size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
+  return traverserCache()->getAndResetInsertedDocuments();
+}
+
+size_t arangodb::traverser::Traverser::getAndResetFilteredPaths() {
+  return traverserCache()->getAndResetFilteredDocuments();
 }
 
 void arangodb::traverser::Traverser::allowOptimizedNeighbors() {

@@ -48,7 +48,7 @@ void ApplicationFeature::collectOptions(std::shared_ptr<ProgramOptions>) {}
 // load options from somewhere. this method will only be called for enabled
 // features
 void ApplicationFeature::loadOptions(std::shared_ptr<ProgramOptions>,
-                                     const char* binaryPath) {}
+                                     char const* binaryPath) {}
 
 // validate the feature's options. this method will only be called for active
 // features, after the ApplicationServer has determined which features should be
@@ -112,21 +112,24 @@ void ApplicationFeature::determineAncestors() {
   std::vector<std::string> path;
 
   std::function<void(std::string const&)> build = [this, &build, &path](std::string const& name) {
-    path.emplace_back(name);
+    // lookup the feature first. it may not exist
+    ApplicationFeature* other = this->server()->lookupFeature(name);
 
-    for (auto& ancestor : this->server()->feature(name)->startsAfter()) {
-      if (_ancestors.emplace(ancestor).second) {
-        if (ancestor == _name) {
-          path.emplace_back(ancestor);
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            "dependencies for feature '" + _name + "' are cyclic: " + arangodb::basics::StringUtils::join(path, " <= "));
+    if (other != nullptr) {
+      path.emplace_back(name);
+      for (auto& ancestor : other->startsAfter()) {
+        if (_ancestors.emplace(ancestor).second) {
+          if (ancestor == _name) {
+            path.emplace_back(ancestor);
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              "dependencies for feature '" + _name + "' are cyclic: " + arangodb::basics::StringUtils::join(path, " <= "));
+          }
+          build(ancestor);
         }
-        build(ancestor);
       }
+      path.pop_back();
     }
-
-    path.pop_back();
   };
 
   build(_name);

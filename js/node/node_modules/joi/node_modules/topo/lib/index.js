@@ -93,9 +93,9 @@ internals.Topo.prototype._sort = function () {
 
     // Construct graph
 
-    const groups = {};
     const graph = {};
-    const graphAfters = {};
+    const graphAfters = Object.create(null); // A prototype can bungle lookups w/ false positives
+    const groups = Object.create(null);
 
     for (let i = 0; i < this._items.length; ++i) {
         const item = this._items[i];
@@ -132,7 +132,6 @@ internals.Topo.prototype._sort = function () {
             groups[group] = groups[group] || [];
 
             for (let k = 0; k < groups[group].length; ++k) {
-
                 expandedGroups.push(groups[group][k]);
             }
         }

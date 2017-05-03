@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1variant__or__single" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::variant_or_single</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">boost::mpl::if_&lt; boost::mpl::equal_to&lt; boost::mpl::size&lt; Types &gt;, boost::mpl::int_&lt; 1 &gt; &gt;, boost::mpl::front&lt; Types &gt;::type, make_variant_over&lt; Types &gt;::type &gt;</basecompoundref>
+    <includes local="no">compress_variant.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Types</declname>
+        <defname>Types</defname>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="291">
+        <label>boost::mpl::if_&lt; boost::mpl::equal_to&lt; boost::mpl::size&lt; Types &gt;, boost::mpl::int_&lt; 1 &gt; &gt;, boost::mpl::front&lt; Types &gt;::type, make_variant_over&lt; Types &gt;::type &gt;</label>
+      </node>
+      <node id="290">
+        <label>boost::geometry::detail::variant_or_single&lt; Types &gt;</label>
+        <link refid="structboost_1_1geometry_1_1detail_1_1variant__or__single"/>
+        <childnode refid="291" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="293">
+        <label>boost::mpl::if_&lt; boost::mpl::equal_to&lt; boost::mpl::size&lt; Types &gt;, boost::mpl::int_&lt; 1 &gt; &gt;, boost::mpl::front&lt; Types &gt;::type, make_variant_over&lt; Types &gt;::type &gt;</label>
+      </node>
+      <node id="292">
+        <label>boost::geometry::detail::variant_or_single&lt; Types &gt;</label>
+        <link refid="structboost_1_1geometry_1_1detail_1_1variant__or__single"/>
+        <childnode refid="293" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/compress_variant.hpp" line="71" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/compress_variant.hpp" bodystart="62" bodyend="71"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

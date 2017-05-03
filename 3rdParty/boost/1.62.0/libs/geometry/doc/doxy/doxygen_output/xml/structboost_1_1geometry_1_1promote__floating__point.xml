@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1promote__floating__point" kind="struct" prot="public">
+    <compoundname>boost::geometry::promote_floating_point</compoundname>
+    <includes local="no">promote_floating_point.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>T</declname>
+        <defname>T</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>PromoteIntegerTo</declname>
+        <defname>PromoteIntegerTo</defname>
+        <defval>double</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1promote__floating__point_1a732c9e3e88ac0957f4cae668f186a212" prot="public" static="no">
+        <type>boost::mpl::if_&lt; boost::is_integral&lt; T &gt;, PromoteIntegerTo, T &gt;::<ref refid="structboost_1_1geometry_1_1promote__floating__point_1a732c9e3e88ac0957f4cae668f186a212" kindref="member">type</ref></type>
+        <definition>typedef boost::mpl::if_&lt; boost::is_integral&lt;T&gt;, PromoteIntegerTo, T &gt;::type boost::geometry::promote_floating_point&lt; T, PromoteIntegerTo &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_floating_point.hpp" line="43" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_floating_point.hpp" bodystart="43" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Meta-function converting, if necessary, to &quot;a floating point&quot; type. </para>    </briefdescription>
+    <detaileddescription>
+<para><itemizedlist>
+<listitem><para>if input type is integer, type is double</para></listitem><listitem><para>else type is input type </para></listitem></itemizedlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_floating_point.hpp" line="36" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_floating_point.hpp" bodystart="35" bodyend="44"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1promote__floating__point_1a732c9e3e88ac0957f4cae668f186a212" prot="public" virt="non-virtual"><scope>boost::geometry::promote_floating_point</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

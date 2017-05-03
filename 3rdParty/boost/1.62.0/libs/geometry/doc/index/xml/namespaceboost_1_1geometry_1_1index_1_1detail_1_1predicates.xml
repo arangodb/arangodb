@@ -1,0 +1,131 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates" kind="namespace">
+    <compoundname>boost::geometry::index::detail::predicates</compoundname>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates_1aa7ee927c5d5afe88feb8852f4500a30d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Fun</type>
+          </param>
+          <param>
+            <type>bool</type>
+            <declname>Negated</declname>
+            <defname>Negated</defname>
+          </param>
+        </templateparamlist>
+        <type>satisfies&lt; Fun,!Negated &gt;</type>
+        <definition>satisfies&lt;Fun, !Negated&gt; boost::geometry::index::detail::predicates::operator!</definition>
+        <argsstring>(satisfies&lt; Fun, Negated &gt; const &amp;p)</argsstring>
+        <name>operator!</name>
+        <param>
+          <type>satisfies&lt; Fun, Negated &gt; const &amp;</type>
+          <declname>p</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp" line="376" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp" bodystart="376" bodyend="379"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates_1ad776359ad093e85915a91c01a0671215" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Tag</type>
+          </param>
+          <param>
+            <type>bool</type>
+            <declname>Negated</declname>
+            <defname>Negated</defname>
+          </param>
+        </templateparamlist>
+        <type>spatial_predicate&lt; Geometry, Tag,!Negated &gt;</type>
+        <definition>spatial_predicate&lt;Geometry, Tag, !Negated&gt; boost::geometry::index::detail::predicates::operator!</definition>
+        <argsstring>(spatial_predicate&lt; Geometry, Tag, Negated &gt; const &amp;p)</argsstring>
+        <name>operator!</name>
+        <param>
+          <type>spatial_predicate&lt; Geometry, Tag, Negated &gt; const &amp;</type>
+          <declname>p</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp" line="383" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp" bodystart="383" bodyend="386"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates_1ad4ff57f02a9efce689daf1b89c8d1971" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Pred1</type>
+          </param>
+          <param>
+            <type>typename Pred2</type>
+          </param>
+        </templateparamlist>
+        <type>boost::tuples::cons&lt; Pred1, boost::tuples::cons&lt; Pred2, boost::tuples::null_type &gt;&gt;</type>
+        <definition>boost::tuples::cons&lt; Pred1, boost::tuples::cons&lt;Pred2, boost::tuples::null_type&gt;&gt; boost::geometry::index::detail::predicates::operator&amp;&amp;</definition>
+        <argsstring>(Pred1 const &amp;p1, Pred2 const &amp;p2)</argsstring>
+        <name>operator&amp;&amp;</name>
+        <param>
+          <type>Pred1 const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Pred2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp" line="395" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp" bodystart="395" bodyend="404"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates_1a3d938db1fde01e0999fe68ffad47c200" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Head</type>
+          </param>
+          <param>
+            <type>typename Tail</type>
+          </param>
+          <param>
+            <type>typename Pred</type>
+          </param>
+        </templateparamlist>
+        <type>tuples::push_back&lt; boost::tuples::cons&lt; Head, Tail &gt;, Pred &gt;::type</type>
+        <definition>tuples::push_back&lt; boost::tuples::cons&lt;Head, Tail&gt;, Pred&gt;::type boost::geometry::index::detail::predicates::operator&amp;&amp;</definition>
+        <argsstring>(boost::tuples::cons&lt; Head, Tail &gt; const &amp;t, Pred const &amp;p)</argsstring>
+        <name>operator&amp;&amp;</name>
+        <param>
+          <type>boost::tuples::cons&lt; Head, Tail &gt; const &amp;</type>
+          <declname>t</declname>
+        </param>
+        <param>
+          <type>Pred const &amp;</type>
+          <declname>p</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp" line="410" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp" bodystart="410" bodyend="419"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp" line="370" column="1"/>
+  </compounddef>
+</doxygen>

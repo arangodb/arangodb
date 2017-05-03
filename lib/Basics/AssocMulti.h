@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
 /// @author Max Neunhoeffer
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_ASSOC_MULTI_H
@@ -29,18 +30,22 @@
 // Activate for additional debugging:
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
 
+#include "Basics/AssocMultiHelpers.h"
 #include "Basics/Common.h"
-#include "Basics/memory-map.h"
+#include "Basics/AssocHelpers.h"
+#include "Basics/IndexBucket.h"
+#include "Basics/LocalTaskQueue.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/PerformanceLogScope.h"
 #include "Basics/prime-numbers.h"
 #include "Logger/Logger.h"
 
-#include <thread>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <thread>
 
-#ifdef TRI_CHECK_MULTI_POINTER_HASH 
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
 #include <iostream>
 #endif
 
@@ -89,44 +94,6 @@ namespace basics {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-template <class Element, class IndexType, bool useHashCache>
-struct Entry {
- private:
-  uint64_t hashCache;  // cache the hash value, this stores the
-                       // hashByKey for the first element in the
-                       // linked list and the hashByElm for all
-                       // others
- public:
-  Element value;   // the data stored in this slot
-  IndexType next;  // index of the data following in the linked
-                   // list of all items with the same key
-  IndexType prev;  // index of the data preceding in the linked
-                   // list of all items with the same key
-  uint64_t readHashCache() { return hashCache; }
-  void writeHashCache(uint64_t v) { hashCache = v; }
-
-  Entry() : hashCache(0), value(), next(INVALID_INDEX), prev(INVALID_INDEX) {}
- 
- private:
-  static IndexType const INVALID_INDEX = ((IndexType)0) - 1;
-};
-
-template <class Element, class IndexType>
-struct Entry<Element, IndexType, false> {
-  Element value;   // the data stored in this slot
-  IndexType next;  // index of the data following in the linked
-                   // list of all items with the same key
-  IndexType prev;  // index of the data preceding in the linked
-                   // list of all items with the same key
-  uint64_t readHashCache() { return 0; }
-  void writeHashCache(uint64_t v) { TRI_ASSERT(false); }
-  
-  Entry() : value(), next(INVALID_INDEX), prev(INVALID_INDEX) {}
-  
- private:
-  static IndexType const INVALID_INDEX = ((IndexType)0) - 1;
-};
-
 template <class Key, class Element, class IndexType = size_t,
           bool useHashCache = true>
 class AssocMulti {
@@ -148,17 +115,7 @@ class AssocMulti {
  private:
   typedef Entry<Element, IndexType, useHashCache> EntryType;
 
-  struct Bucket {
-    IndexType _nrAlloc;       // the size of the table
-    IndexType _nrUsed;        // the number of used entries
-    IndexType _nrCollisions;  // the number of entries that have
-                              // a key that was previously in the table
-    EntryType* _table;        // the table itself
-
-    Bucket() : _nrAlloc(0), _nrUsed(0), _nrCollisions(0), _table(nullptr) {}
-    // Intentionally no destructor, the AssocMulti class takes
-    // care of freeing the tables!
-  };
+  typedef arangodb::basics::IndexBucket<EntryType, IndexType, SIZE_MAX> Bucket;
 
   std::vector<Bucket> _buckets;
   size_t _bucketsMask;
@@ -223,42 +180,19 @@ class AssocMulti {
     numberBuckets = nr;
     _bucketsMask = nr - 1;
 
+    _buckets.resize(numberBuckets);
+
     try {
       for (size_t j = 0; j < numberBuckets; j++) {
-        _buckets.emplace_back();
-        Bucket& b = _buckets.back();
-        b._nrAlloc = initialSize;
-        b._table = nullptr;
-
-        // may fail...
-        b._table = new EntryType[b._nrAlloc]();
-
-#ifdef __linux__
-        if (b._nrAlloc > 1000000) {
-          uintptr_t mem = reinterpret_cast<uintptr_t>(b._table);
-          uintptr_t pageSize = getpagesize();
-          mem = (mem / pageSize) * pageSize;
-          void* memptr = reinterpret_cast<void*>(mem);
-          TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(EntryType),
-                           TRI_MADVISE_RANDOM);
-        }
-#endif
+        _buckets[j].allocate(_initialSize);
       }
     } catch (...) {
-      for (auto& b : _buckets) {
-        delete[] b._table;
-        b._table = nullptr;
-        b._nrAlloc = 0;
-      }
+      _buckets.clear();
       throw;
     }
   }
 
-  ~AssocMulti() {
-    for (auto& b : _buckets) {
-      delete[] b._table;
-    }
-  }
+  ~AssocMulti() { _buckets.clear(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the memory used by the hash table
@@ -266,11 +200,8 @@ class AssocMulti {
 
   size_t memoryUsage() const {
     size_t res = 0;
-    // size_t count = 0;
     for (auto& b : _buckets) {
-      res += static_cast<size_t>(b._nrAlloc) * sizeof(EntryType);
-      // std::cout << "Bucket: " << count++ << " _nrAlloc=" << b._nrAlloc
-      //          << " _nrUsed=" << b._nrUsed << std::endl;
+      res += b.memoryUsage();
     }
     return res;
   }
@@ -358,217 +289,109 @@ class AssocMulti {
   /// @brief adds multiple elements to the array
   //////////////////////////////////////////////////////////////////////////////
 
-  int batchInsert(std::function<void*()> const& contextCreator, 
-                  std::function<void(void*)> const& contextDestroyer,
-                  std::vector<Element> const* data,
-                  size_t numThreads) {
+  void batchInsert(std::function<void*()> const& contextCreator,
+                   std::function<void(void*)> const& contextDestroyer,
+                   std::shared_ptr<std::vector<Element> const> data,
+                   std::shared_ptr<LocalTaskQueue> queue) {
     if (data->empty()) {
       // nothing to do
-      return TRI_ERROR_NO_ERROR;
+      return;
     }
 
-    std::atomic<int> res(TRI_ERROR_NO_ERROR);
+    std::vector<Element> const& elements = *(data.get());
 
-    std::vector<Element> const& elements = *(data);
-
+    // set the number of partitioners sensibly
+    size_t numThreads = _buckets.size();
     if (elements.size() < numThreads) {
       numThreads = elements.size();
     }
-    if (numThreads > _buckets.size()) {
-      numThreads = _buckets.size();
-    }
-    
-    TRI_ASSERT(numThreads > 0);
 
     size_t const chunkSize = elements.size() / numThreads;
 
     typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
+    typedef MultiInserterTask<Element, IndexType, useHashCache> Inserter;
+    typedef MultiPartitionerTask<Element, IndexType, useHashCache> Partitioner;
 
-    arangodb::Mutex bucketMapLocker;
+    // allocate working space and coordination tools for tasks
 
-    std::vector<std::vector<DocumentsPerBucket>> allBuckets;
-    allBuckets.resize(_bucketsMask + 1); // initialize to number of buckets
+    std::shared_ptr<std::vector<arangodb::Mutex>> bucketMapLocker;
+    bucketMapLocker.reset(new std::vector<arangodb::Mutex>(_buckets.size()));
 
-    // partition the work into some buckets
-    {
-      std::function<void(size_t, size_t, void*)> partitioner;
-      partitioner = [&](size_t lower, size_t upper, void* userData) -> void {
-        try {
-          std::vector<DocumentsPerBucket> partitions;
-          partitions.resize(_bucketsMask + 1); // initialize to number of buckets
-
-          for (size_t i = lower; i < upper; ++i) {
-            uint64_t hashByKey = _hashElement(userData, elements[i], true);
-            auto bucketId = hashByKey & _bucketsMask;
-
-            partitions[bucketId].emplace_back(elements[i], hashByKey);
-          }
-
-          // transfer ownership to the central map
-          MUTEX_LOCKER(mutexLocker, bucketMapLocker);
-
-          for (size_t i = 0; i < partitions.size(); ++i) {
-            allBuckets[i].emplace_back(std::move(partitions[i]));
-          }
-        } catch (...) {
-          res = TRI_ERROR_INTERNAL;
-        }
-
-        contextDestroyer(userData);
-      };
-
-      std::vector<std::thread> threads;
-      threads.reserve(numThreads);
-
-      try {
-        for (size_t i = 0; i < numThreads; ++i) {
-          size_t lower = i * chunkSize;
-          size_t upper = (i + 1) * chunkSize;
-
-          if (i + 1 == numThreads) {
-            // last chunk. account for potential rounding errors
-            upper = elements.size();
-          } else if (upper > elements.size()) {
-            upper = elements.size();
-          }
-
-          threads.emplace_back(std::thread(partitioner, lower, upper, contextCreator()));
-        }
-      } catch (...) {
-        res = TRI_ERROR_INTERNAL;
-      }
-
-      for (size_t i = 0; i < threads.size(); ++i) {
-        // must join threads, otherwise the program will crash
-        threads[i].join();
-      }
-    
-      // sort vectors in vectors so that we have a deterministics insertion order
-      for (size_t i = 0; i < allBuckets.size(); ++i) {
-        std::sort(allBuckets[i].begin(), allBuckets[i].end(), [](DocumentsPerBucket const& lhs, DocumentsPerBucket const& rhs) -> bool {
-          if (lhs.empty() && rhs.empty()) {
-            return false;
-          }
-          if (lhs.empty() && !rhs.empty()) {
-            return true;
-          }
-          if (rhs.empty() && !lhs.empty()) {
-            return false;
-          }
-
-          return lhs[0].first < rhs[0].first;
-        });
-      }
+    std::shared_ptr<std::vector<std::atomic<size_t>>> bucketFlags;
+    bucketFlags.reset(new std::vector<std::atomic<size_t>>(_buckets.size()));
+    for (size_t i = 0; i < bucketFlags->size(); i++) {
+      (*bucketFlags)[i] = numThreads;
     }
 
-    if (res.load() != TRI_ERROR_NO_ERROR) {
-      return res.load();
-    }
+    std::shared_ptr<std::vector<std::shared_ptr<Inserter>>> inserters;
+    inserters.reset(new std::vector<std::shared_ptr<Inserter>>);
+    inserters->reserve(_buckets.size());
 
-    // now the data is partitioned...
+    std::shared_ptr<std::vector<std::vector<DocumentsPerBucket>>> allBuckets;
+    allBuckets.reset(
+        new std::vector<std::vector<DocumentsPerBucket>>(_buckets.size()));
 
-    // now insert the bucket data in parallel
-    {
-      auto inserter = [&](size_t chunk, void* userData) -> void {
-        try {
-          for (size_t i = 0; i < allBuckets.size(); ++i) {
-            uint64_t bucketId = i;
+    auto doInsertBinding = [&](
+        UserData* userData, Element const& element, uint64_t hashByKey,
+        Bucket& b, bool const overwrite, bool const checkEquality) -> Element {
+      return doInsert(userData, element, hashByKey, b, overwrite,
+                      checkEquality);
+    };
 
-            if (bucketId % numThreads != chunk) {
-              // we're not responsible for this bucket!
-              continue;
-            }
+    try {
+      // create inserter tasks to be dispatched later by partitioners
+      for (size_t i = 0; i < allBuckets->size(); i++) {
+        std::shared_ptr<Inserter> worker;
+        worker.reset(new Inserter(queue, contextDestroyer, &_buckets,
+                                  doInsertBinding, i, contextCreator(),
+                                  allBuckets));
+        inserters->emplace_back(worker);
+      }
+      // enqueue partitioner tasks
+      for (size_t i = 0; i < numThreads; ++i) {
+        size_t lower = i * chunkSize;
+        size_t upper = (i + 1) * chunkSize;
 
-            // we're responsible for this bucket!
-            Bucket& b = _buckets[static_cast<size_t>(bucketId)];
-
-            for (auto const& it : allBuckets[i]) {
-              for (auto const& it2 : it) {
-                doInsert(userData, it2.first, it2.second, b, true, false);
-              }
-            }
-          }
-        } catch (...) {
-          res = TRI_ERROR_INTERNAL;
+        if (i + 1 == numThreads) {
+          // last chunk. account for potential rounding errors
+          upper = elements.size();
+        } else if (upper > elements.size()) {
+          upper = elements.size();
         }
 
-        contextDestroyer(userData);
-      };
-
-      std::vector<std::thread> threads;
-      threads.reserve(numThreads);
-
-      try {
-        for (size_t i = 0; i < numThreads; ++i) {
-          threads.emplace_back(std::thread(inserter, i, contextCreator()));
-        }
-      } catch (...) {
-        res = TRI_ERROR_INTERNAL;
+        std::shared_ptr<Partitioner> worker;
+        worker.reset(new Partitioner(queue, _hashElement, contextDestroyer,
+                                     data, lower, upper, contextCreator(),
+                                     bucketFlags, bucketMapLocker, allBuckets,
+                                     inserters));
+        queue->enqueue(worker);
       }
-
-      for (size_t i = 0; i < threads.size(); ++i) {
-        // must join threads, otherwise the program will crash
-        threads[i].join();
-      }
+    } catch (...) {
+      queue->setStatus(TRI_ERROR_INTERNAL);
     }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
     {
-      void* userData = contextCreator();
-      check(userData, true, true);
-      contextDestroyer(userData);
+      auto& checkFn = check;
+      auto callback = [&contextCreator, &contextDestroyer, &checkFn]() -> void {
+        if (queue->status() == TRI_ERROR_NO_ERROR) {
+          void* userData = contextCreator();
+          checkFn(userData, true, true);
+          contextDestroyer(userData);
+        }
+      };
+      std::shared_ptr<arangodb::basics::LocalCallbackTask> cbTask;
+      cbTask.reset(new arangodb::basics::LocalCallbackTask(queue, callback));
+      queue->enqueueCallback(cbTask);
     }
 #endif
-    if (res.load() != TRI_ERROR_NO_ERROR) {
-      // Rollback such that the data can be deleted outside
-      void* userData = contextCreator();
-      try {
-        for (auto const& d : *data) {
-          remove(userData, d);
-        }
-      } catch (...) {
-      }
-      contextDestroyer(userData);
-    }
-    return res.load();
   }
-  
+
   void truncate(CallbackElementFuncType callback) {
-    std::vector<EntryType*> empty;
-    empty.reserve(_buckets.size());
-    
-    try {
-      for (size_t i = 0; i < _buckets.size(); ++i) {
-        auto newBucket = new EntryType[static_cast<size_t>(_initialSize)]();
-        for (IndexType j = 0; j < _initialSize; ++j) {
-          newBucket[j].next = INVALID_INDEX;
-          newBucket[j].prev = INVALID_INDEX;
-          if (useHashCache) {
-            newBucket[j].writeHashCache(0);
-          }
-        }
-        empty.emplace_back(newBucket);
-      }
-      
-      size_t i = 0;
-      for (auto& b : _buckets) {
-        invokeOnAllElements(callback, b);
-
-        // now bucket is empty
-        delete[] b._table;
-        b._table = empty[i];
-        b._nrAlloc = _initialSize;
-        b._nrUsed = 0;
-
-        empty[i] = nullptr; // pass ownership
-        ++i;
-      }
-    } catch (...) {
-      // prevent leaks
-      for (auto& it : empty) {
-        delete[] it;
-      }
-      throw;
+    for (auto& b : _buckets) {
+      invokeOnAllElements(callback, b);
+      b.deallocate();
+      b.allocate(_initialSize);
     }
   }
 
@@ -603,8 +426,9 @@ class AssocMulti {
   /// @brief adds a key/element to the array
   //////////////////////////////////////////////////////////////////////////////
 
-  Element doInsert(UserData* userData, Element const& element, uint64_t hashByKey,
-                   Bucket& b, bool const overwrite, bool const checkEquality) {
+  Element doInsert(UserData* userData, Element const& element,
+                   uint64_t hashByKey, Bucket& b, bool const overwrite,
+                   bool const checkEquality) {
     // if the checkEquality flag is not set, we do not check for element
     // equality we use this flag to speed up initial insertion into the
     // index, i.e. when the index is built for a collection and we know
@@ -638,10 +462,11 @@ class AssocMulti {
 
     // Now find the first slot with an entry with the same key
     // that is the start of a linked list, or a free slot:
-    while (b._table[i].value &&
-           (b._table[i].prev != INVALID_INDEX ||
-            (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-            !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
+    while (
+        b._table[i].value &&
+        (b._table[i].prev != INVALID_INDEX ||
+         (useHashCache && b._table[i].readHashCache() != hashByKey) ||
+         !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       // update statistics
@@ -943,10 +768,11 @@ class AssocMulti {
 #endif
 
     // search the table
-    while (b._table[i].value &&
-           (b._table[i].prev != INVALID_INDEX ||
-            (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-            !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
+    while (
+        b._table[i].value &&
+        (b._table[i].prev != INVALID_INDEX ||
+         (useHashCache && b._table[i].readHashCache() != hashByKey) ||
+         !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       _nrProbesF++;
@@ -969,8 +795,9 @@ class AssocMulti {
   /// continuation
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<Element>* lookupWithElementByKeyContinue(
-      UserData* userData, Element const& element, size_t limit = 0) const {
+  std::vector<Element>* lookupWithElementByKeyContinue(UserData* userData,
+                                                       Element const& element,
+                                                       size_t limit = 0) const {
     auto result = std::make_unique<std::vector<Element>>();
     lookupWithElementByKeyContinue(userData, element, *result.get(), limit);
     return result.release();
@@ -1008,11 +835,11 @@ class AssocMulti {
 
       // Now find the first slot with an entry with the same key
       // that is the start of a linked list, or a free slot:
-      while (
-          b._table[i].value &&
-          (b._table[i].prev != INVALID_INDEX ||
-           (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-           !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
+      while (b._table[i].value &&
+             (b._table[i].prev != INVALID_INDEX ||
+              (useHashCache && b._table[i].readHashCache() != hashByKey) ||
+              !_isEqualElementElementByKey(userData, element,
+                                           b._table[i].value))) {
         i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
         _nrProbes++;
@@ -1066,7 +893,8 @@ class AssocMulti {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief removes an element from the array, caller is responsible to free it
+  /// @brief removes an element from the array, caller is responsible to free
+  /// it
   //////////////////////////////////////////////////////////////////////////////
 
   Element remove(UserData* userData, Element const& element) {
@@ -1208,84 +1036,59 @@ class AssocMulti {
   /// @brief resize the array, internal method
   //////////////////////////////////////////////////////////////////////////////
 
-  void resizeInternal(UserData* userData, Bucket& b, size_t size) {
+  void resizeInternal(UserData* userData, Bucket& b, size_t targetSize) {
     std::string const cb(_contextCallback());
 
-    LOG(TRACE) << "resizing hash " << cb << ", target size: " << size;
+    targetSize = TRI_NearPrime(targetSize);
+    
+    PerformanceLogScope logScope(std::string("multi hash-resize ") + cb + ", target size: " + std::to_string(targetSize));
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
-        "hash-resize " << cb << ", target size: " << size;
+    Bucket copy;
+    copy.allocate(targetSize);
 
-    double start = TRI_microtime();
-
-    EntryType* oldTable = b._table;
-    IndexType oldAlloc = b._nrAlloc;
-
-    b._nrAlloc =
-        static_cast<IndexType>(TRI_NearPrime(static_cast<uint64_t>(size)));
-
-    try {
-      b._table = new EntryType[b._nrAlloc]();
-#ifdef __linux__
-      if (b._nrAlloc > 1000000) {
-        uintptr_t mem = reinterpret_cast<uintptr_t>(b._table);
-        uintptr_t pageSize = getpagesize();
-        mem = (mem / pageSize) * pageSize;
-        void* memptr = reinterpret_cast<void*>(mem);
-        TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(EntryType),
-                         TRI_MADVISE_RANDOM);
-      }
-#endif
-    } catch (...) {
-      b._nrAlloc = oldAlloc;
-      b._table = oldTable;
-      throw;
-    }
-
-    b._nrUsed = 0;
-    b._nrCollisions = 0;
 #ifdef TRI_INTERNAL_STATS
     _nrResizes++;
 #endif
 
     // table is already clear by allocate, copy old data
-    IndexType j;
-    for (j = 0; j < oldAlloc; j++) {
-      if (oldTable[j].value && oldTable[j].prev == INVALID_INDEX) {
-        // This is a "first" one in its doubly linked list:
-        uint64_t hashByKey;
-        if (useHashCache) {
-          hashByKey = oldTable[j].readHashCache();
-        } else {
-          hashByKey = _hashElement(userData, oldTable[j].value, true);
-        }
-        IndexType insertPosition =
-            insertFirst(userData, b, oldTable[j].value, hashByKey);
-        // Now walk to the end of the list:
-        IndexType k = j;
-        while (oldTable[k].next != INVALID_INDEX) {
-          k = oldTable[k].next;
-        }
-        // Now insert all of them backwards, not repeating k:
-        while (k != j) {
-          uint64_t hashByElm;
+    if (b._nrUsed > 0) {
+      EntryType* oldTable = b._table;
+      IndexType const oldAlloc = b._nrAlloc;
+      TRI_ASSERT(oldAlloc > 0);
+
+      for (IndexType j = 0; j < oldAlloc; j++) {
+        if (oldTable[j].value && oldTable[j].prev == INVALID_INDEX) {
+          // This is a "first" one in its doubly linked list:
+          uint64_t hashByKey;
           if (useHashCache) {
-            hashByElm = oldTable[k].readHashCache();
+            hashByKey = oldTable[j].readHashCache();
           } else {
-            hashByElm = _hashElement(userData, oldTable[k].value, false);
+            hashByKey = _hashElement(userData, oldTable[j].value, true);
           }
-          insertFurther(userData, b, oldTable[k].value, hashByKey, hashByElm,
-                        insertPosition);
-          k = oldTable[k].prev;
+          IndexType insertPosition =
+              insertFirst(userData, copy, oldTable[j].value, hashByKey);
+          // Now walk to the end of the list:
+          IndexType k = j;
+          while (oldTable[k].next != INVALID_INDEX) {
+            k = oldTable[k].next;
+          }
+          // Now insert all of them backwards, not repeating k:
+          while (k != j) {
+            uint64_t hashByElm;
+            if (useHashCache) {
+              hashByElm = oldTable[k].readHashCache();
+            } else {
+              hashByElm = _hashElement(userData, oldTable[k].value, false);
+            }
+            insertFurther(userData, copy, oldTable[k].value, hashByKey,
+                          hashByElm, insertPosition);
+            k = oldTable[k].prev;
+          }
         }
       }
     }
 
-    delete[] oldTable;
-
-    LOG(TRACE) << "resizing hash " << cb << " done";
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, hash-resize, " << cb << ", target size: " << size;
+    b = std::move(copy);
   }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
@@ -1439,10 +1242,11 @@ class AssocMulti {
 
     // Now find the first slot with an entry with the same key
     // that is the start of a linked list, or a free slot:
-    while (b._table[i].value &&
-           (b._table[i].prev != INVALID_INDEX ||
-            (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-            !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
+    while (
+        b._table[i].value &&
+        (b._table[i].prev != INVALID_INDEX ||
+         (useHashCache && b._table[i].readHashCache() != hashByKey) ||
+         !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       _nrProbes++;

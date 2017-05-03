@@ -30,6 +30,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 
+#include <chrono>
+
 namespace arangodb {
 namespace consensus {
 
@@ -105,19 +107,36 @@ class Supervision : public arangodb::Thread {
   /// @brief Begin thread shutdown
   void beginShutdown() override final;
 
-  /// @brief Wake up to task
-  void wakeUp();
-
   /// @brief Upgrade agency
   void upgradeAgency();
 
- private:
-  static constexpr const char* HEALTH_STATUS_GOOD = "GOOD";
-  static constexpr const char* HEALTH_STATUS_BAD = "BAD";
-  static constexpr const char* HEALTH_STATUS_FAILED = "FAILED";
+  static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
+  static constexpr char const* HEALTH_STATUS_BAD = "BAD";
+  static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
 
-  /// @brief Update agency prefix from agency itself
-  bool updateAgencyPrefix(size_t nTries = 10, int intervalSec = 1);
+  static std::string agencyPrefix() {
+    return _agencyPrefix;
+  }
+
+  static void setAgencyPrefix(std::string prefix) {
+    LOG_TOPIC(WARN, Logger::SUPERVISION) << "WTF? " << _agencyPrefix;
+    _agencyPrefix = prefix;
+    LOG_TOPIC(WARN, Logger::SUPERVISION) << "WTF? " << _agencyPrefix;
+  }
+
+ private:
+
+  /// @brief Upgrade agency with FailedServers an object from array
+  void upgradeZero(VPackBuilder&);
+
+  /// @brief Upgrade agency to supervision overhaul jobs 
+  void upgradeOne(VPackBuilder&);
+
+  /// @brief Check for inconsistencies in distributeShardsLike
+  void missingPrototype();
+
+  /// @brief Check for inconsistencies in replication factor vs dbs entries
+  void enforceReplication();
 
   /// @brief Move shard from one db server to other db server
   bool moveShard(std::string const& from, std::string const& to);
@@ -138,12 +157,6 @@ class Supervision : public arangodb::Thread {
   /// @brief Get unique ids from agency
   void getUniqueIds();
 
-  /// @brief Update local cache from agency
-  void updateFromAgency();
-
-  /// @brief Read db
-  Store const& store() const;
-
   /// @brief Perform sanity checking
   bool doChecks();
 
@@ -157,19 +170,19 @@ class Supervision : public arangodb::Thread {
   bool handleJobs();
   void handleShutdown();
 
-  Mutex _lock;
+  /// @brief Migrate chains of distributeShardsLike to depth 1 
+  void fixPrototypeChain(VPackBuilder&);
+  
+  Mutex _lock; // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent; /**< @brief My agent */
   Node _snapshot;
+  Node _transient;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
                                               should run */
 
-  ///@brief last vital signs as reported through heartbeats to agency
-  ///
-  //  std::map<ServerID, std::shared_ptr<VitalSign>> _vitalSigns;
-
-  long _frequency;
-  long _gracePeriod;
+  double _frequency;
+  double _gracePeriod;
   uint64_t _jobId;
   uint64_t _jobIdMax;
 
@@ -183,9 +196,12 @@ class Supervision : public arangodb::Thread {
   // at least once so this flag got set at some point
   bool _selfShutdown;
 
-  std::string const serverHealth(const std::string&);
+  std::atomic<bool> _upgraded;
+  
+  std::string serverHealth(std::string const&);
 
-  static std::string _agencyPrefix;
+  static std::string _agencyPrefix;  // initialized in AgencyFeature
+
 };
 
 inline std::string timepointToString(Supervision::TimePoint const& t) {
@@ -193,28 +209,29 @@ inline std::string timepointToString(Supervision::TimePoint const& t) {
   struct tm tb;
   size_t const len(21);
   char buffer[len];
-  TRI_localtime(tt, &tb);
+  TRI_gmtime(tt, &tb);
   ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
   return std::string(buffer, len - 1);
 }
 
 inline Supervision::TimePoint stringToTimepoint(std::string const& s) {
-  std::tm tt;
-  try {
-    tt.tm_year = std::stoi(s.substr(0, 4)) - 1900;
-    tt.tm_mon = std::stoi(s.substr(5, 2)) - 1;
-    tt.tm_mday = std::stoi(s.substr(8, 2));
-    tt.tm_hour = std::stoi(s.substr(11, 2));
-    tt.tm_min = std::stoi(s.substr(14, 2));
-    tt.tm_sec = std::stoi(s.substr(17, 2));
-    tt.tm_isdst = -1;
-    auto time_c = ::mktime(&tt);
-    return std::chrono::system_clock::from_time_t(time_c);
-  } catch (...) {
-    return std::chrono::system_clock::now();
+  if (!s.empty()) {
+    try {
+      std::tm tt;
+      tt.tm_year = std::stoi(s.substr(0, 4)) - 1900;
+      tt.tm_mon = std::stoi(s.substr(5, 2)) - 1;
+      tt.tm_mday = std::stoi(s.substr(8, 2));
+      tt.tm_hour = std::stoi(s.substr(11, 2));
+      tt.tm_min = std::stoi(s.substr(14, 2));
+      tt.tm_sec = std::stoi(s.substr(17, 2));
+      tt.tm_isdst = 0;
+      auto time_c = TRI_timegm(&tt);
+      return std::chrono::system_clock::from_time_t(time_c);
+    } catch (...) {}
   }
+  return std::chrono::time_point<std::chrono::system_clock>();
 }
-}
-}  // Name spaces
+
+}}  // Name spaces
 
 #endif

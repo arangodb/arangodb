@@ -22,6 +22,8 @@
 
 #include "GeneralServerFeature.h"
 
+#include <stdexcept>
+
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
@@ -31,7 +33,6 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
-#include "Cluster/RestShardHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -40,7 +41,6 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
@@ -51,32 +51,33 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
-#include "RestHandler/RestExportHandler.h"
+#include "RestHandler/RestEngineHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
+#include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
-#include "RestHandler/RestReplicationHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestVersionHandler.h"
-#include "RestHandler/RestWalHandler.h"
+#include "RestHandler/RestViewHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "V8Server/V8DealerFeature.h"
-
-#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -90,9 +91,7 @@ GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
-      _proxyCheck(true),
-      _handlerFactory(nullptr),
-      _jobManager(nullptr) {
+      _proxyCheck(true) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Agency");
@@ -101,7 +100,7 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("FoxxQueues");
-  startsAfter("LogfileManager");
+  startsAfter("MMFilesLogfileManager");
   startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("Server");
@@ -183,9 +182,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
-  auto databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
 
   // get database name from request
   std::string const& dbName = request->databaseName();
@@ -208,9 +205,6 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
 }
 
 static bool SetRequestContext(GeneralRequest* request, void* data) {
-  auto authentication = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
-  TRI_ASSERT(authentication != nullptr);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request);
 
   // invalid database name specified, database not found etc.
@@ -218,12 +212,16 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
     return false;
   }
 
+  TRI_ASSERT(!vocbase->isDangling());
+
   // database needs upgrade
   if (vocbase->state() == TRI_vocbase_t::State::FAILED_VERSION) {
     request->setRequestPath("/_msg/please-upgrade");
+    vocbase->release();
     return false;
   }
 
+  // the vocbase context is now responsible for releasing the vocbase
   VocbaseContext* ctx = new arangodb::VocbaseContext(request, vocbase);
   request->setRequestContext(ctx, true);
 
@@ -237,7 +235,7 @@ void GeneralServerFeature::prepare() {
 }
 
 void GeneralServerFeature::start() {
-  _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
+  _jobManager.reset(new AsyncJobManager);
 
   JOB_MANAGER = _jobManager.get();
 
@@ -254,8 +252,8 @@ void GeneralServerFeature::start() {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  auto authentication = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
   if (authentication->isEnabled()) {
     authentication->authInfo()->outdate();
@@ -293,8 +291,9 @@ void GeneralServerFeature::buildServers() {
             "SslServer");
 
     if (ssl == nullptr) {
-      LOG(FATAL) << "no ssl context is known, cannot create https server, "
-                    "please enable SSL";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "no ssl context is known, cannot create https server, "
+             "please enable SSL";
       FATAL_ERROR_EXIT();
     }
 
@@ -359,16 +358,8 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestEdgesHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::EXPORT_PATH,
-      RestHandlerCreator<RestExportHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::IMPORT_PATH,
       RestHandlerCreator<RestImportHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::REPLICATION_PATH,
-      RestHandlerCreator<RestReplicationHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
@@ -381,10 +372,6 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>,
       queryRegistry);
-
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::WAL_PATH,
-      RestHandlerCreator<RestWalHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
@@ -401,7 +388,8 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestUploadHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
-      "/_api/shard-comm", RestHandlerCreator<RestShardHandler>::createNoData);
+      RestVocbaseBaseHandler::VIEW_PATH,
+      RestHandlerCreator<RestViewHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
@@ -418,6 +406,9 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_api/query-cache",
       RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
 
   if (agency->isEnabled()) {
     _handlerFactory->addPrefixHandler(
@@ -454,6 +445,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+
+  _handlerFactory->addHandler(
+      "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _handlerFactory->addHandler(
@@ -506,4 +500,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/", RestHandlerCreator<RestActionHandler>::createNoData);
+
+  // engine specific handlers
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
+  engine->addRestHandlers(_handlerFactory.get());
 }

@@ -1,8 +1,10 @@
-!CHAPTER Repositories and models
+Repositories and models
+=======================
 
 Previously Foxx was heavily built around the concept of repositories and models, which provided complex but rarely necessary abstractions on top of ArangoDB collections and documents. In ArangoDB 3.0 these have been removed entirely.
 
-!SECTION Repositories vs collections
+Repositories vs collections
+---------------------------
 
 Repositories mostly wrapped methods that already existed on ArangoDB collection objects and primarily dealt with converting between plain ArangoDB documents and Foxx model instances. In ArangoDB 3.0 you can simply use these collections directly and treat documents as plain JavaScript objects.
 
@@ -36,7 +38,8 @@ const docs = myDocs.byExample({color: 'green'});
 res.json(docs);
 ```
 
-!SECTION Schema validation
+Schema validation
+-----------------
 
 The main purpose of models in ArangoDB 2.x was to validate incoming data using joi schemas. In more recent versions of ArangoDB 2.x it was already possible to pass these schemas directly in most places where a model was expected as an argument. The only difference is that schemas should now be considered the default.
 
@@ -85,7 +88,8 @@ if (result.errors) {
 }
 ```
 
-!SECTION Migrating models
+Migrating models
+----------------
 
 While most use cases for models can now be replaced with plain joi schemas, there is still the concept of a "model" in Foxx in ArangoDB 3.0 although it is quite different from Foxx models in ArangoDB 2.x.
 
@@ -136,7 +140,8 @@ router.get(/* ... */)
 .body(MyModel);
 ```
 
-!SECTION Triggers
+Triggers
+--------
 
 When saving, updating, replacing or deleting models in ArangoDB 2.x using the repository methods the repository and model would fire events that could be subscribed to in order to perform side-effects.
 

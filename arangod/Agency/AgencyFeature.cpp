@@ -24,6 +24,9 @@
 #include "AgencyFeature.h"
 
 #include "Agency/Agent.h"
+#include "Agency/Job.h"
+#include "Agency/Supervision.h"
+#include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -40,20 +43,23 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _activated(false),
       _size(1),
       _poolSize(1),
-      _minElectionTimeout(0.5),
-      _maxElectionTimeout(2.5),
+      _minElectionTimeout(1.0),
+      _maxElectionTimeout(5.0),
       _supervision(false),
       _waitForSync(true),
-      _supervisionFrequency(5.0),
-      _compactionStepSize(1000),
-      _supervisionGracePeriod(120.0) {
+      _supervisionFrequency(1.0),
+      _compactionStepSize(200000),
+      _compactionKeepSize(500),
+      _supervisionGracePeriod(10.0),
+      _cmdLineTimings(false)
+{
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("QueryRegistry");
   startsAfter("Random");
-  startsAfter("Recovery");
+  startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Server");
 }
@@ -97,13 +103,18 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "arangodb cluster supervision frequency [s]",
                      new DoubleParameter(&_supervisionFrequency));
 
-  options->addOption("--agency.supervision-grace-period",
-                     "supervision time, after which a server is considered to have failed [s]",
-                     new DoubleParameter(&_supervisionGracePeriod));
+  options->addOption(
+      "--agency.supervision-grace-period",
+      "supervision time, after which a server is considered to have failed [s]",
+      new DoubleParameter(&_supervisionGracePeriod));
 
-  options->addOption("--agency.compaction-step-size",
-                     "step size between state machine compactions",
-                     new UInt64Parameter(&_compactionStepSize));
+  options->addHiddenOption("--agency.compaction-step-size",
+                           "step size between state machine compactions",
+                           new UInt64Parameter(&_compactionStepSize));
+
+  options->addOption("--agency.compaction-keep-size",
+                     "keep as many indices before compaction point",
+                     new UInt64Parameter(&_compactionKeepSize));
 
   options->addHiddenOption("--agency.wait-for-sync",
                            "wait for hard disk syncs on every persistence call "
@@ -117,6 +128,10 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!result.touched("agency.activate") || !_activated) {
     disable();
     return;
+  }
+
+  if (result.touched("agency.election-timeout-min")) {
+    _cmdLineTimings = true;
   }
 
   ServerState::instance()->setRole(ServerState::ROLE_AGENT);
@@ -166,7 +181,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  if (_maxElectionTimeout <= 2 * _minElectionTimeout) {
+  if (_maxElectionTimeout <= 2. * _minElectionTimeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "agency.election-timeout-max should probably be chosen longer!"
         << " " << __FILE__ << __LINE__;
@@ -193,6 +208,15 @@ void AgencyFeature::start() {
     return;
   }
 
+  // Find the agency prefix:
+  auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  if (!feature->agencyPrefix().empty()) {
+    arangodb::consensus::Supervision::setAgencyPrefix(
+      std::string("/") + feature->agencyPrefix());
+    arangodb::consensus::Job::agencyPrefix
+      = std::string("/") + feature->agencyPrefix();
+  }
+  
   // TODO: Port this to new options handling
   std::string endpoint;
 
@@ -221,7 +245,8 @@ void AgencyFeature::start() {
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
       _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
-      _compactionStepSize, _supervisionGracePeriod)));
+      _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
+      _cmdLineTimings)));
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
@@ -239,12 +264,10 @@ void AgencyFeature::beginShutdown() {
   _agent->beginShutdown();
 }
 
-void AgencyFeature::unprepare() {
+void AgencyFeature::stop() {
   if (!isEnabled()) {
     return;
   }
-
-  _agent->beginShutdown();
 
   if (_agent != nullptr) {
     int counter = 0;

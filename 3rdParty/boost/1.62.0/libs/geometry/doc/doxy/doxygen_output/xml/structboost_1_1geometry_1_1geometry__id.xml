@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1geometry__id" kind="struct" prot="public">
+    <compoundname>boost::geometry::geometry_id</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">core_dispatch::geometry_id&lt; tag&lt; Geometry &gt;::type &gt;</basecompoundref>
+    <includes local="no">geometry_id.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Meta-function returning the id of a geometry type. </para>    </briefdescription>
+    <detaileddescription>
+<para>The meta-function <ref refid="structboost_1_1geometry_1_1geometry__id" kindref="compound">geometry_id</ref> defines a numerical ID (based on boost::mpl::int_&lt;...&gt; ) for each geometry concept. A numerical ID is sometimes useful, and within Boost.Geometry it is used for the <ref refid="structboost_1_1geometry_1_1reverse__dispatch" kindref="compound">reverse_dispatch</ref> metafuntion. <simplesect kind="note"><para>Used for e.g. reverse meta-function </para></simplesect>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="412">
+        <label>boost::geometry::geometry_id&lt; Geometry &gt;</label>
+        <link refid="structboost_1_1geometry_1_1geometry__id"/>
+        <childnode refid="413" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="413">
+        <label>core_dispatch::geometry_id&lt; tag&lt; Geometry &gt;::type &gt;</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="414">
+        <label>boost::geometry::geometry_id&lt; Geometry &gt;</label>
+        <link refid="structboost_1_1geometry_1_1geometry__id"/>
+        <childnode refid="415" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="415">
+        <label>core_dispatch::geometry_id&lt; tag&lt; Geometry &gt;::type &gt;</label>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/geometry_id.hpp" line="97" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/geometry_id.hpp" bodystart="96" bodyend="97"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

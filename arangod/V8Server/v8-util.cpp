@@ -38,18 +38,8 @@ TRI_vocbase_t* GetContextVocBase(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_vocbase != nullptr);
+  TRI_ASSERT(!v8g->_vocbase->isDangling());
   return static_cast<TRI_vocbase_t*>(v8g->_vocbase);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 tick id value from the internal tick id
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> V8TickId(v8::Isolate* isolate, TRI_voc_tick_t tick) {
-  char buffer[21];
-  size_t len = TRI_StringUInt64InPlace(static_cast<uint64_t>(tick), &buffer[0]);
-
-  return TRI_V8_PAIR_STRING(&buffer[0], static_cast<int>(len));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +162,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
     }
     v8::String::Utf8Value str(revObj);
     bool isOld;
-    uint64_t rid = TRI_StringToRidWithCheck(*str, str.length(), isOld);
+    uint64_t rid = TRI_StringToRid(*str, str.length(), isOld, false);
 
     if (rid == 0) {
       return false;

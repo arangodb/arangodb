@@ -1,0 +1,7 @@
+//[example_output
+> example
+Running 1 test case...
+test.cpp(13): error in "test_is_even": check is_even( i ) has failed for ( 17 )
+
+*** 1 failures is detected in test suite "example"
+//]

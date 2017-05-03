@@ -41,9 +41,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 struct thread_data_t {
-  void (*starter)(void*);
+  void (*_starter)(void*);
   void* _data;
-  char* _name;
+  std::string _name;
+
+  thread_data_t(void (*starter)(void*), void* data, char const* name) 
+      : _starter(starter),
+        _data(data),
+        _name(name) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,22 +60,20 @@ static void* ThreadStarter(void* data) {
   sigfillset(&all);
   pthread_sigmask(SIG_SETMASK, &all, 0);
 
-  thread_data_t* d = static_cast<thread_data_t*>(data);
+  // this will automatically free the thread struct when leaving this function
+  std::unique_ptr<thread_data_t> d(static_cast<thread_data_t*>(data));
 
   TRI_ASSERT(d != nullptr);
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
-  prctl(PR_SET_NAME, d->_name, 0, 0, 0);
+  prctl(PR_SET_NAME, d->_name.c_str(), 0, 0, 0);
 #endif
 
   try {
-    d->starter(d->_data);
+    d->_starter(d->_data);
   } catch (...) {
     // we must not throw from here
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, d->_name);
-  TRI_Free(TRI_CORE_MEM_ZONE, d);
 
   return nullptr;
 }
@@ -89,31 +92,33 @@ void TRI_InitThread(TRI_thread_t* thread) {
 
 bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
                      char const* name, void (*starter)(void*), void* data) {
-  thread_data_t* d = static_cast<thread_data_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(thread_data_t), false));
+  std::unique_ptr<thread_data_t> d;
 
-  if (d == nullptr) {
-    LOG(ERR) << "could not start thread: out of memory";
+  try {
+    d.reset(new thread_data_t(starter, data, name));
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: out of memory";
     return false;
   }
 
-  d->starter = starter;
-  d->_data = data;
-  d->_name = TRI_DuplicateString(name);
+  TRI_ASSERT(d != nullptr);
 
-  int rc = pthread_create(thread, 0, &ThreadStarter, d);
+  int rc = pthread_create(thread, nullptr, &ThreadStarter, d.get());
 
   if (rc != 0) {
+    errno = rc;
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERR) << "could not start thread: " << strerror(errno);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: " << strerror(errno);
 
-    TRI_Free(TRI_CORE_MEM_ZONE, d);
     return false;
   }
 
   if (threadId != nullptr) {
     *threadId = (TRI_tid_t)*thread;
   }
+
+  // object must linger around until later
+  d.release();
 
   return true;
 }
@@ -157,7 +162,7 @@ void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
   int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
 
   if (s != 0) {
-    LOG(ERR) << "cannot set affinity to core " << core << ": "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
              << strerror(errno);
   }
 
@@ -171,7 +176,7 @@ void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
                                (thread_policy_t)&policy, 1);
 
   if (res != KERN_SUCCESS) {
-    LOG(ERR) << "cannot set affinity to core " << core << ": "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
              << strerror(errno);
   }
 

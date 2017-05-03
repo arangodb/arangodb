@@ -1,8 +1,10 @@
-!CHAPTER Audit Configuration
+Audit Configuration
+===================
 
 __This feature is available in the Enterprise Edition.__
 
-!SECTION Output
+Output
+------
 
 `--audit.output output`
 
@@ -16,7 +18,8 @@ into a syslog server.
 The option can be specified multiple times in order to configure the
 output for multiple targets.
 
-!SECTION Hostname
+Hostname
+--------
 
 `--audit.hostname name`
 

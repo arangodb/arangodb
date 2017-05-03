@@ -58,6 +58,102 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test JSON_STRINGIFY
+////////////////////////////////////////////////////////////////////////////////
+
+    testJsonStringify : function () {
+      var buildQuery = function(nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN JSON_STRINGIFY(${input})`;
+          case 1:
+            return `RETURN NOOPT(JSON_STRINGIFY(${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(JSON_STRINGIFY(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      for (var i = 0; i < 3; ++i) {
+        assertEqual([ "null" ], getQueryResults(buildQuery(i, "null")));
+        assertEqual([ "false" ], getQueryResults(buildQuery(i, "false")));
+        assertEqual([ "true" ], getQueryResults(buildQuery(i, "true")));
+        assertEqual([ "-19.3" ], getQueryResults(buildQuery(i, "-19.3")));
+        assertEqual([ "0" ], getQueryResults(buildQuery(i, "0")));
+        assertEqual([ "0" ], getQueryResults(buildQuery(i, "0.0")));
+        assertEqual([ "0.1" ], getQueryResults(buildQuery(i, "0.1")));
+        assertEqual([ "100" ], getQueryResults(buildQuery(i, "100")));
+        assertEqual([ "10001434.2" ], getQueryResults(buildQuery(i, "10001434.2")));
+        assertEqual([ "\"foo bar\"" ], getQueryResults(buildQuery(i, "\"foo bar\"")));
+        assertEqual([ "\"foo \\\" bar\"" ], getQueryResults(buildQuery(i, "\"foo \\\" bar\"")));
+        assertEqual([ "[]" ], getQueryResults(buildQuery(i, "[]")));
+        assertEqual([ "[1,2,3,4]" ], getQueryResults(buildQuery(i, "[ 1, 2, 3, 4 ]")));
+        assertEqual([ "[[1,2,3,4]]" ], getQueryResults(buildQuery(i, "[ [ 1, 2, 3, 4  ] ]")));
+        assertEqual([ "{}" ], getQueryResults(buildQuery(i, "{ }")));
+        assertEqual([ "{\"a\":1,\"b\":2}" ], getQueryResults(buildQuery(i, "{ a: 1, b : 2     }")));
+        assertEqual([ "{\"A\":2,\"a\":1}" ], getQueryResults(buildQuery(i, "{ A: 2, a: 1 }")));
+        assertEqual([ "{\"a\":1,\"b\":\"foo\",\"c\":null}" ], getQueryResults(buildQuery(i, "{ \"a\": 1, \"b\": \"foo\", c: null }")));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test JSON_PARSE
+////////////////////////////////////////////////////////////////////////////////
+
+    testJsonParse : function () {
+      var buildQuery = function(nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN JSON_PARSE(${input})`;
+          case 1:
+            return `RETURN NOOPT(JSON_PARSE(${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(JSON_PARSE(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      for (var i = 0; i < 3; ++i) {
+        // invalid JSON
+        assertEqual([ null ], getQueryResults(buildQuery(i, "null"))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "false"))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "true"))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1234"))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"\""))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\" \""))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"abcd\""))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "[]"))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "{}"))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"[\""))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"[]]\""))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"{\""))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"{}}\""))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"{a}\""))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"{\\\"a\\\"}\""))); 
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"{a:1}\""))); 
+
+        // valid JSON
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"null\"")));
+        assertEqual([ false ], getQueryResults(buildQuery(i, "\"false\"")));
+        assertEqual([ true ], getQueryResults(buildQuery(i, "\"true\"")));
+        assertEqual([ -19.3 ], getQueryResults(buildQuery(i, "\"-19.3\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"0\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"0.0\"")));
+        assertEqual([ 0.1 ], getQueryResults(buildQuery(i, "\"0.1\"")));
+        assertEqual([ 100 ], getQueryResults(buildQuery(i, "\"100\"")));
+        assertEqual([ 10001434.2 ], getQueryResults(buildQuery(i, "\"10001434.2\"")));
+        assertEqual([ "foo bar" ], getQueryResults(buildQuery(i, "\"\\\"foo bar\\\"\"")));
+        assertEqual([ [] ], getQueryResults(buildQuery(i, "\"[]\"")));
+        assertEqual([ [1,2,3,4] ], getQueryResults(buildQuery(i, "\"[ 1, 2, 3, 4 ]\"")));
+        assertEqual([ [[1,2,3,4]] ], getQueryResults(buildQuery(i, "\"[ [ 1, 2, 3, 4  ] ]\"")));
+        assertEqual([ {} ], getQueryResults(buildQuery(i, "\"{ }\"")));
+        assertEqual([ { a: 1, b: 2 } ], getQueryResults(buildQuery(i, "\"{ \\\"a\\\": 1, \\\"b\\\" : 2     }\"")));
+        assertEqual([ { A: 2, a: 1 } ], getQueryResults(buildQuery(i, "\"{ \\\"A\\\": 2, \\\"a\\\": 1 }\"")));
+        assertEqual([ { a: 1, b: "foo", c: null } ], getQueryResults(buildQuery(i, "\"{ \\\"a\\\": 1, \\\"b\\\": \\\"foo\\\", \\\"c\\\": null }\"")));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test regex function, invalid arguments
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -478,7 +574,7 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tear contains true1
+/// @brief test contains true1
 ////////////////////////////////////////////////////////////////////////////////
 
     testContainsTrue1 : function () {
@@ -558,7 +654,7 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tear contains indexed
+/// @brief test contains indexed
 ////////////////////////////////////////////////////////////////////////////////
 
     testContainsIndexed : function () {

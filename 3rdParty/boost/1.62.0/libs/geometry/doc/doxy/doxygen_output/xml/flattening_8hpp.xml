@@ -1,0 +1,188 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="flattening_8hpp" kind="file">
+    <compoundname>flattening.hpp</compoundname>
+    <includes refid="radius_8hpp" local="no">boost/geometry/core/radius.hpp</includes>
+    <includes refid="tag_8hpp" local="no">boost/geometry/core/tag.hpp</includes>
+    <includes refid="core_2tags_8hpp" local="no">boost/geometry/core/tags.hpp</includes>
+    <includes refid="not__implemented_8hpp" local="no">boost/geometry/algorithms/not_implemented.hpp</includes>
+    <includedby refid="andoyer__inverse_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/andoyer_inverse.hpp</includedby>
+    <includedby refid="result__inverse_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/result_inverse.hpp</includedby>
+    <includedby refid="thomas__inverse_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/thomas_inverse.hpp</includedby>
+    <includedby refid="vincenty__direct_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp</includedby>
+    <includedby refid="vincenty__inverse_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_inverse.hpp</includedby>
+    <incdepgraph>
+      <node id="22917">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="22912">
+        <label>boost/static_assert.hpp</label>
+      </node>
+      <node id="22913">
+        <label>boost/type_traits/is_pointer.hpp</label>
+      </node>
+      <node id="22921">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="22919">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="22915">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="22910">
+        <label>boost/geometry/core/radius.hpp</label>
+        <link refid="radius_8hpp"/>
+        <childnode refid="22911" relation="include">
+        </childnode>
+        <childnode refid="22912" relation="include">
+        </childnode>
+        <childnode refid="22913" relation="include">
+        </childnode>
+        <childnode refid="22914" relation="include">
+        </childnode>
+        <childnode refid="22915" relation="include">
+        </childnode>
+        <childnode refid="22916" relation="include">
+        </childnode>
+      </node>
+      <node id="22922">
+        <label>boost/mpl/identity.hpp</label>
+      </node>
+      <node id="22909">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/flattening.hpp</label>
+        <link refid="flattening.hpp"/>
+        <childnode refid="22910" relation="include">
+        </childnode>
+        <childnode refid="22914" relation="include">
+        </childnode>
+        <childnode refid="22915" relation="include">
+        </childnode>
+        <childnode refid="22920" relation="include">
+        </childnode>
+      </node>
+      <node id="22911">
+        <label>cstddef</label>
+      </node>
+      <node id="22914">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="22915" relation="include">
+        </childnode>
+        <childnode refid="22916" relation="include">
+        </childnode>
+      </node>
+      <node id="22916">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="22917" relation="include">
+        </childnode>
+        <childnode refid="22918" relation="include">
+        </childnode>
+        <childnode refid="22919" relation="include">
+        </childnode>
+      </node>
+      <node id="22918">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+      <node id="22920">
+        <label>boost/geometry/algorithms/not_implemented.hpp</label>
+        <link refid="not__implemented_8hpp"/>
+        <childnode refid="22921" relation="include">
+        </childnode>
+        <childnode refid="22922" relation="include">
+        </childnode>
+        <childnode refid="22915" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="22931">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</label>
+        <link refid="strategies_8hpp"/>
+      </node>
+      <node id="22924">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/andoyer_inverse.hpp</label>
+        <link refid="andoyer__inverse_8hpp"/>
+      </node>
+      <node id="22930">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track.hpp</label>
+        <link refid="distance__cross__track_8hpp"/>
+        <childnode refid="22931" relation="include">
+        </childnode>
+        <childnode refid="22932" relation="include">
+        </childnode>
+      </node>
+      <node id="22929">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/course.hpp</label>
+        <link refid="course_8hpp"/>
+        <childnode refid="22930" relation="include">
+        </childnode>
+        <childnode refid="22933" relation="include">
+        </childnode>
+      </node>
+      <node id="22926">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/thomas_inverse.hpp</label>
+        <link refid="thomas__inverse_8hpp"/>
+      </node>
+      <node id="22925">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/result_inverse.hpp</label>
+        <link refid="result__inverse_8hpp"/>
+        <childnode refid="22924" relation="include">
+        </childnode>
+        <childnode refid="22926" relation="include">
+        </childnode>
+        <childnode refid="22927" relation="include">
+        </childnode>
+      </node>
+      <node id="22927">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_inverse.hpp</label>
+        <link refid="vincenty__inverse_8hpp"/>
+        <childnode refid="22928" relation="include">
+        </childnode>
+      </node>
+      <node id="22933">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/side_by_cross_track.hpp</label>
+        <link refid="side__by__cross__track_8hpp"/>
+      </node>
+      <node id="22932">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp</label>
+        <link refid="distance__cross__track__point__box_8hpp"/>
+        <childnode refid="22931" relation="include">
+        </childnode>
+      </node>
+      <node id="22923">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/flattening.hpp</label>
+        <link refid="flattening.hpp"/>
+        <childnode refid="22924" relation="include">
+        </childnode>
+        <childnode refid="22925" relation="include">
+        </childnode>
+        <childnode refid="22926" relation="include">
+        </childnode>
+        <childnode refid="22934" relation="include">
+        </childnode>
+        <childnode refid="22927" relation="include">
+        </childnode>
+      </node>
+      <node id="22928">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/azimuth.hpp</label>
+        <link refid="azimuth_8hpp"/>
+        <childnode refid="22929" relation="include">
+        </childnode>
+      </node>
+      <node id="22934">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp</label>
+        <link refid="vincenty__direct_8hpp"/>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/flattening.hpp"/>
+  </compounddef>
+</doxygen>

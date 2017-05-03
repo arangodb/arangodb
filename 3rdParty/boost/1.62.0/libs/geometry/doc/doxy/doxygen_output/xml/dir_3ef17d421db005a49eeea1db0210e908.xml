@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_3ef17d421db005a49eeea1db0210e908" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail</compoundname>
+    <innerdir refid="dir_a3ea32c32e4892434ec17811730eee3c">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer</innerdir>
+    <innerdir refid="dir_3031b9e2f12f859ebfbf5ccda127064a">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/comparable_distance</innerdir>
+    <innerdir refid="dir_937a3bd4d0081552ae9b68f27650b616">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/disjoint</innerdir>
+    <innerdir refid="dir_42d5bc1cdd9bb87e7c1e23fe50079caa">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance</innerdir>
+    <innerdir refid="dir_f9d010407669c283f84388388d11766b">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope</innerdir>
+    <innerdir refid="dir_a389a9de0dc4da0f87ab463cc63bf11d">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals</innerdir>
+    <innerdir refid="dir_fb0871cff28874276e9df77a5e7224a3">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/expand</innerdir>
+    <innerdir refid="dir_e2a6022e9b6b893585e6efd32eb28246">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection</innerdir>
+    <innerdir refid="dir_dbb29707c3aec431150ec3f92a4a5d27">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple</innerdir>
+    <innerdir refid="dir_fd10a9410dc95d5be6a5c599ac3244eb">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid</innerdir>
+    <innerdir refid="dir_b67f73bc9fc64a4bd2753eadf8cac3b3">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay</innerdir>
+    <innerdir refid="dir_75e122e08cf075e5a1adee2d1bc7049c">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate</innerdir>
+    <innerdir refid="dir_647565eec0d94dc3299c955b84302d28">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relation</innerdir>
+    <innerdir refid="dir_8adfea765970617810d1a83b2c339557">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sections</innerdir>
+    <innerdir refid="dir_1ebdbb358340eb3b0364c9d3ed6c8a4f">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns</innerdir>
+    <innerdir refid="dir_7ce704194c15a3c97d5827509e8deb1f">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/within</innerdir>
+    <innerfile refid="andoyer__inverse_8hpp">andoyer_inverse.hpp</innerfile>
+    <innerfile refid="as__range_8hpp">as_range.hpp</innerfile>
+    <innerfile refid="assign__box__corners_8hpp">assign_box_corners.hpp</innerfile>
+    <innerfile refid="assign__indexed__point_8hpp">assign_indexed_point.hpp</innerfile>
+    <innerfile refid="assign__values_8hpp">assign_values.hpp</innerfile>
+    <innerfile refid="azimuth_8hpp">azimuth.hpp</innerfile>
+    <innerfile refid="calculate__null_8hpp">calculate_null.hpp</innerfile>
+    <innerfile refid="calculate__sum_8hpp">calculate_sum.hpp</innerfile>
+    <innerfile refid="check__iterator__range_8hpp">check_iterator_range.hpp</innerfile>
+    <innerfile refid="convert__indexed__to__indexed_8hpp">convert_indexed_to_indexed.hpp</innerfile>
+    <innerfile refid="convert__point__to__point_8hpp">convert_point_to_point.hpp</innerfile>
+    <innerfile refid="counting_8hpp">counting.hpp</innerfile>
+    <innerfile refid="course_8hpp">course.hpp</innerfile>
+    <innerfile refid="direction__code_8hpp">direction_code.hpp</innerfile>
+    <innerfile refid="expand__by__epsilon_8hpp">expand_by_epsilon.hpp</innerfile>
+    <innerfile refid="extreme__points_8hpp">extreme_points.hpp</innerfile>
+    <innerfile refid="flattening_8hpp">flattening.hpp</innerfile>
+    <innerfile refid="for__each__range_8hpp">for_each_range.hpp</innerfile>
+    <innerfile refid="get__left__turns_8hpp">get_left_turns.hpp</innerfile>
+    <innerfile refid="get__max__size_8hpp">get_max_size.hpp</innerfile>
+    <innerfile refid="has__self__intersections_8hpp">has_self_intersections.hpp</innerfile>
+    <innerfile refid="interior__iterator_8hpp">interior_iterator.hpp</innerfile>
+    <innerfile refid="max__interval__gap_8hpp">max_interval_gap.hpp</innerfile>
+    <innerfile refid="multi__modify_8hpp">multi_modify.hpp</innerfile>
+    <innerfile refid="multi__modify__with__predicate_8hpp">multi_modify_with_predicate.hpp</innerfile>
+    <innerfile refid="multi__sum_8hpp">multi_sum.hpp</innerfile>
+    <innerfile refid="normalize_8hpp">normalize.hpp</innerfile>
+    <innerfile refid="not_8hpp">not.hpp</innerfile>
+    <innerfile refid="num__distinct__consecutive__points_8hpp">num_distinct_consecutive_points.hpp</innerfile>
+    <innerfile refid="occupation__info_8hpp">occupation_info.hpp</innerfile>
+    <innerfile refid="partition_8hpp">partition.hpp</innerfile>
+    <innerfile refid="point__is__spike__or__equal_8hpp">point_is_spike_or_equal.hpp</innerfile>
+    <innerfile refid="point__on__border_8hpp">point_on_border.hpp</innerfile>
+    <innerfile refid="recalculate_8hpp">recalculate.hpp</innerfile>
+    <innerfile refid="result__inverse_8hpp">result_inverse.hpp</innerfile>
+    <innerfile refid="ring__identifier_8hpp">ring_identifier.hpp</innerfile>
+    <innerfile refid="signed__size__type_8hpp">signed_size_type.hpp</innerfile>
+    <innerfile refid="single__geometry_8hpp">single_geometry.hpp</innerfile>
+    <innerfile refid="sub__range_8hpp">sub_range.hpp</innerfile>
+    <innerfile refid="sweep_8hpp">sweep.hpp</innerfile>
+    <innerfile refid="thomas__inverse_8hpp">thomas_inverse.hpp</innerfile>
+    <innerfile refid="throw__on__empty__input_8hpp">throw_on_empty_input.hpp</innerfile>
+    <innerfile refid="vincenty__direct_8hpp">vincenty_direct.hpp</innerfile>
+    <innerfile refid="vincenty__inverse_8hpp">vincenty_inverse.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/"/>
+  </compounddef>
+</doxygen>

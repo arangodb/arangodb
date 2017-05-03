@@ -43,7 +43,7 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request,
 bool RestAdminLogHandler::isDirect() const { return true; }
 
 RestStatus RestAdminLogHandler::execute() {
-  size_t const len = _request->suffix().size();
+  size_t const len = _request->suffixes().size();
 
   if (len == 0) {
     reportLogs();
@@ -192,6 +192,14 @@ void RestAdminLogHandler::reportLogs() {
 
     result.close();
 
+    result.add("topic", VPackValue(VPackValueType::Array));
+
+    for (size_t i = 0; i < length; ++i) {
+      auto& buf = clean.at(i + static_cast<size_t>(offset));
+      result.add(VPackValue(LogTopic::lookup(buf._topicId)));
+    }
+    result.close();
+
     // second level
     result.add("level", VPackValue(VPackValueType::Array));
 
@@ -257,12 +265,12 @@ void RestAdminLogHandler::reportLogs() {
 }
 
 void RestAdminLogHandler::setLogLevel() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
   // was validated earlier
-  TRI_ASSERT(suffix.size() > 0); 
+  TRI_ASSERT(!suffixes.empty());
 
-  if (suffix[0] != "level") {
+  if (suffixes[0] != "level") {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting /_admin/log/level");
@@ -285,7 +293,7 @@ void RestAdminLogHandler::setLogLevel() {
   } else if (type == rest::RequestType::PUT) { 
     // set loglevel
     bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
     if (!parseSuccess) {
       return;
     }

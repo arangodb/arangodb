@@ -398,3 +398,197 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {
   throw 'cannot call abstract updateExample function';
 };
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / SECTION Indexes
+// //////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief add options from arguments to index specification
+// //////////////////////////////////////////////////////////////////////////////
+
+function addIndexOptions (body, parameters) {
+  body.fields = [];
+
+  var setOption = function (k) {
+    if (! body.hasOwnProperty(k)) {
+      body[k] = parameters[i][k];
+    }
+  };
+
+  var i;
+  for (i = 0; i < parameters.length; ++i) {
+    if (typeof parameters[i] === 'string') {
+      // set fields
+      body.fields.push(parameters[i]);
+    }
+    else if (typeof parameters[i] === 'object' &&
+      ! Array.isArray(parameters[i]) &&
+      parameters[i] !== null) {
+      // set arbitrary options
+      Object.keys(parameters[i]).forEach(setOption);
+      break;
+    }
+  }
+
+  return body;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a hash index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureHashIndex = function () {
+  'use strict';
+
+  return this.ensureIndex(addIndexOptions({
+    type: 'hash',
+  }, arguments));
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a unique constraint
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueConstraint = function () {
+  'use strict';
+
+  return this.ensureIndex(addIndexOptions({
+    type: 'hash',
+    unique: true
+  }, arguments));
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a unique skip-list index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueSkiplist = function () {
+  'use strict';
+
+  return this.ensureIndex(addIndexOptions({
+    type: 'skiplist',
+    unique: true
+  }, arguments));
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a skip-list index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureSkiplist = function () {
+  'use strict';
+
+  return this.ensureIndex(addIndexOptions({
+    type: 'skiplist',
+    unique: false
+  }, arguments));
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a fulltext index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
+  'use strict';
+
+  if (! Array.isArray(field)) {
+    field = [ field ];
+  }
+
+  return this.ensureIndex({
+    type: 'fulltext',
+    minLength: minLength || undefined,
+    fields: field
+  });
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a geo index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
+  'use strict';
+
+  if (typeof lat !== 'string') {
+    throw 'usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])';
+  }
+
+  if (typeof lon === 'boolean') {
+    return this.ensureIndex({
+      type: 'geo1',
+      fields: [ lat ],
+      geoJson: lon
+    });
+  }
+
+  if (lon === undefined) {
+    return this.ensureIndex({
+      type: 'geo1',
+      fields: [ lat ],
+      geoJson: false
+    });
+  }
+
+  return this.ensureIndex({
+    type: 'geo2',
+    fields: [ lat, lon ]
+  });
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a geo constraint
+// / since ArangoDB 2.5, this is just a redirection to ensureGeoIndex
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
+  return this.ensureGeoIndex(lat, lon);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a vertex-centric index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureVertexCentricIndex = function (...fields) {
+  let options = fields.pop();
+  if (!typeof options === 'object' || Array.isArray(options)) {
+    let err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = 'usage: ensureVertexCentricIndex(<...fields>, options), options has to be an object';
+    throw err;
+  }
+  let dir = options.direction;
+  if (typeof dir === 'string') {
+    dir = dir.toLowerCase();
+  }
+  if (fields.length === 0 && options.hasOwnProperty("fields") && Array.isArray(options.fields)) {
+    // This copies the content of the array.
+    fields = options.fields.slice(0);
+  }
+  if (fields.length === 0) {
+    let err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = 'usage: ensureVertexCentricIndex(<...fields>, options), we need a non empty list of fields';
+    throw err;
+  }
+  switch (dir) {
+    case "outbound":
+      fields.unshift("_from");
+      break;
+    case "inbound":
+      fields.unshift("_to");
+      break;
+    default:
+      let err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+      err.errorMessage = 'usage: ensureVertexCentricIndex(<...fields>, options), options.direction has to be "inbound" or "outbound"';
+      throw err;
+  }
+  options.fields = fields;
+  if (!options.hasOwnProperty('type')) {
+    options.type = 'hash';
+  }
+  return this.ensureIndex(options);
+};

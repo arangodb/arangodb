@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1concepts_1_1_point_distance_strategy" kind="struct" prot="public">
+    <compoundname>boost::geometry::concepts::PointDistanceStrategy</compoundname>
+    <includes local="no">distance_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+      <param>
+        <type>typename Point1</type>
+      </param>
+      <param>
+        <type>typename Point2</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Checks strategy for point-point or point-box or box-box distance. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/distance_concept.hpp" line="49" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/distance_concept.hpp" bodystart="48" bodyend="129"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -25,7 +25,7 @@
 #include "Basics/conversions.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-voccursor.h"
@@ -91,7 +91,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
   result.result = builder;
   result.cached = false;
-  result.context = std::make_shared<arangodb::StandaloneTransactionContext>(vocbase);
+  result.context = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
 
   TRI_ASSERT(builder.get() != nullptr);
 
@@ -100,9 +100,10 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::move(result), static_cast<size_t>(batchSize), nullptr, ttl, true);
 
     TRI_ASSERT(cursor != nullptr);
+    auto id = cursor->id(); // need to fetch id before release() as release() will delete the cursor
     cursors->release(cursor);
 
-    auto result = V8TickId(isolate, cursor->id());
+    auto result = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
     TRI_V8_RETURN(result);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -137,7 +138,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(cursors != nullptr);
 
   bool busy;
-  auto cursor = cursors->find(cursorId, busy);
+  auto cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
 
   if (cursor == nullptr) {
     if (busy) {
@@ -180,7 +181,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (hasNext) {
       result->ForceSet(TRI_V8_ASCII_STRING("id"),
-                       V8TickId(isolate, cursor->id()));
+                       TRI_V8UInt64String<TRI_voc_tick_t>(isolate, cursor->id()));
     }
 
     if (hasCount) {
@@ -210,10 +211,10 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
   // cursor functions. not intended to be used by end users
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("CREATE_CURSOR"),
                                JS_CreateCursor, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("JSON_CURSOR"),
                                JS_JsonCursor, true);
 }

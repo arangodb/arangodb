@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window*/
+/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window */
 (function () {
   'use strict';
 
@@ -10,6 +10,8 @@
     remove: function () {
       this.$el.empty().off(); /* off to unbind the events */
       this.stopListening();
+      this.unbind();
+      delete this.el;
       return this;
     },
 
@@ -35,7 +37,6 @@
       this.name = options.name;
       this.userConfig = options.userConfig;
       this.documentStore = options.documentStore;
-      this.initSigma();
 
       if (this.name !== undefined) {
         this.collection.fetch({
@@ -69,6 +70,7 @@
 
     events: {
       'click #downloadPNG': 'downloadPNG',
+      'click #loadFullGraph': 'loadFullGraphModal',
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
       'click #toggleForce': 'toggleLayout',
@@ -89,42 +91,6 @@
     graphConfig: null,
     graphSettings: null,
 
-    initSigma: function () {
-      // init sigma
-      try {
-        sigma.classes.graph.addMethod('neighbors', function (nodeId) {
-          var k;
-          var neighbors = {};
-          var index = this.allNeighborsIndex[nodeId] || {};
-
-          for (k in index) {
-            neighbors[k] = this.nodesIndex[k];
-          }
-          return neighbors;
-        });
-
-        sigma.classes.graph.addMethod('getNodeEdges', function (nodeId) {
-          var edges = this.edges();
-          var edgesToReturn = [];
-
-          _.each(edges, function (edge) {
-            if (edge.source === nodeId || edge.target === nodeId) {
-              edgesToReturn.push(edge.id);
-            }
-          });
-          return edgesToReturn;
-        });
-
-        sigma.classes.graph.addMethod('getNodeEdgesCount', function (id) {
-          return this.allNeighborsCount[id];
-        });
-
-        sigma.classes.graph.addMethod('getNodesCount', function () {
-          return this.nodesArray.length;
-        });
-      } catch (ignore) {}
-    },
-
     downloadPNG: function () {
       var size = parseInt($('#graph-container').width(), 10);
       sigma.plugins.image(this.currentGraph, this.currentGraph.renderers[0], {
@@ -135,6 +101,59 @@
         background: 'white',
         zoom: false
       });
+    },
+
+    loadFullGraphModal: function () {
+      var buttons = []; var tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          'load-full-graph-a',
+          'Caution',
+          'Really load full graph? If no limit is set, your result set could be too big.')
+      );
+
+      buttons.push(
+        window.modalView.createSuccessButton('Load full graph', this.loadFullGraph.bind(this))
+      );
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Load full graph',
+        buttons,
+        tableContent
+      );
+    },
+
+    loadFullGraph: function () {
+      var self = this;
+      var ajaxData = {};
+
+      if (this.graphConfig) {
+        ajaxData = _.clone(this.graphConfig);
+
+        // remove not needed params
+        delete ajaxData.layout;
+        delete ajaxData.edgeType;
+        delete ajaxData.renderer;
+      }
+      ajaxData.mode = 'all';
+
+      $.ajax({
+        type: 'GET',
+        url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+        contentType: 'application/json',
+        data: ajaxData,
+        success: function (data) {
+          self.killCurrentGraph();
+          self.renderGraph(data);
+        },
+        error: function (e) {
+          console.log(e);
+          arangoHelper.arangoError('Graph', 'Could not load full graph.');
+        }
+      });
+      window.modalView.hide();
     },
 
     resize: function () {
@@ -219,7 +238,15 @@
 
       // render
       this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
-      this.renderGraph(this.graphData.modified, null, true);
+
+      var success = false;
+      try {
+        this.renderGraph(this.graphData.modified, null, true);
+        success = true;
+      } catch (ignore) {
+      }
+
+      return success;
     },
 
     renderAQL: function (data) {
@@ -250,8 +277,12 @@
 
     killCurrentGraph: function () {
       for (var i in this.currentGraph.renderers) {
-        this.currentGraph.renderers[i].clear();
-        this.currentGraph.kill(i);
+        try {
+          this.currentGraph.renderers[i].clear();
+          this.currentGraph.kill(i);
+        } catch (ignore) {
+          // no need to cleanup
+        }
       }
     },
 
@@ -679,6 +710,7 @@
 
           // Override default settings:
           sigma.settings.drawEdgeLabels = true;
+          sigma.settings.clone = true;
         }
       }
     },
@@ -850,12 +882,12 @@
     addNode: function () {
       var self = this;
 
-      var collectionId = $('.modal-body #new-node-collection-attr').val();
+      var collection = $('.modal-body #new-node-collection-attr').val();
       var key = $('.modal-body #new-node-key-attr').last().val();
 
       var callback = function (error, id, msg) {
         if (error) {
-          arangoHelper.arangoError('Could not create node', msg.errorMessage);
+          arangoHelper.arangoError('Could not create node', msg);
         } else {
           $('#emptyGraph').remove();
           self.currentGraph.graph.addNode({
@@ -876,12 +908,20 @@
           self.cameraToNode(self.currentGraph.graph.nodes(id));
         }
       };
-
-      if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeDocument(collectionId, key, callback);
-      } else {
-        this.documentStore.createTypeDocument(collectionId, null, callback);
+      var data = {};
+      if (key !== '' && key !== undefined) {
+        data._key = key;
       }
+      if (this.graphSettings.isSmart) {
+        var smartAttribute = $('#new-smart-key-attr').val();
+        if (smartAttribute !== '' && smartAttribute !== undefined) {
+          data[this.graphSettings.smartGraphAttribute] = smartAttribute;
+        } else {
+          data[this.graphSettings.smartGraphAttribute] = null;
+        }
+      }
+
+      this.collection.createNode(self.name, collection, data, callback);
     },
 
     deleteEdgeModal: function (edgeId) {
@@ -931,7 +971,7 @@
         _.each(this.graphSettings.vertexCollections, function (val) {
           collections.push({
             label: val.name,
-            value: val.id
+            value: val.name
           });
         });
 
@@ -951,6 +991,27 @@
             ]
           )
         );
+
+        if (this.graphSettings.isSmart) {
+          tableContent.push(
+            window.modalView.createTextEntry(
+              'new-smart-key-attr',
+              this.graphSettings.smartGraphAttribute + '*',
+              undefined,
+              'The attribute value that is used to smartly shard the vertices of a graph. \n' +
+              'Every vertex in this Graph has to have this attribute. \n' +
+              'Cannot be modified later.',
+              'Cannot be modified later.',
+              false,
+              [
+                {
+                  rule: Joi.string().allow('').optional(),
+                  msg: ''
+                }
+              ]
+            )
+          );
+        }
 
         tableContent.push(
           window.modalView.createSelectEntry(
@@ -982,33 +1043,27 @@
       var from = self.contextState._from;
       var to = self.contextState._to;
 
-      var collectionName;
+      var collection;
       if ($('.modal-body #new-edge-collection-attr').val() === '') {
-        collectionName = $('.modal-body #new-edge-collection-attr').text();
+        collection = $('.modal-body #new-edge-collection-attr').text();
       } else {
-        collectionName = $('.modal-body #new-edge-collection-attr').val();
+        collection = $('.modal-body #new-edge-collection-attr').val();
       }
       var key = $('.modal-body #new-edge-key-attr').last().val();
 
-      var callback = function (error, data, msg) {
+      var callback = function (error, id, msg) {
         if (!error) {
-          // success
+          var edge = {
+            source: from,
+            target: to,
+            id: id,
+            color: self.graphConfig.edgeColor || self.ecolor
+          };
+
           if (self.graphConfig.edgeEditable === 'true') {
-            self.currentGraph.graph.addEdge({
-              source: from,
-              size: 1,
-              target: to,
-              id: data._id,
-              color: self.graphConfig.edgeColor || self.ecolor
-            });
-          } else {
-            self.currentGraph.graph.addEdge({
-              source: from,
-              target: to,
-              id: data._id,
-              color: self.graphConfig.edgeColor || self.ecolor
-            });
+            edge.size = 1;
           }
+          self.currentGraph.graph.addEdge(edge);
 
           // rerender graph
           if (self.graphConfig) {
@@ -1018,7 +1073,7 @@
           }
           self.currentGraph.refresh();
         } else {
-          arangoHelper.arangoError('Could not create edge', msg.errorMessage);
+          arangoHelper.arangoError('Could not create edge', msg);
         }
 
         // then clear states
@@ -1026,11 +1081,14 @@
         window.modalView.hide();
       };
 
-      if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeEdge(collectionName, from, to, key, callback);
-      } else {
-        this.documentStore.createTypeEdge(collectionName, from, to, null, callback);
+      var data = {
+        _from: from,
+        _to: to
+      };
+      if (key !== '' && key !== undefined) {
+        data._key = key;
       }
+      this.collection.createEdge(self.name, collection, data, callback);
     },
 
     addEdgeModal: function (edgeDefinitions) {
@@ -1079,7 +1137,7 @@
               'new-edge-collection-attr',
               'Edge collection',
               edgeDefinitions[0],
-              'The edges collection to be used.'
+              'The edge collection to be used.'
             )
           );
         }
@@ -1548,14 +1606,14 @@
           newNode.originalColor = newNode.color;
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
+        }
+      });
 
-          _.each(newEdges, function (edge) {
-            if (edge.source === newNode.id || edge.target === newNode.id) {
-              edge.originalColor = edge.color;
-              self.currentGraph.graph.addEdge(edge);
-              newEdgeCounter++;
-            }
-          });
+      _.each(newEdges, function (edge) {
+        if (self.currentGraph.graph.edges(edge.id) === undefined) {
+          edge.originalColor = edge.color;
+          self.currentGraph.graph.addEdge(edge);
+          newEdgeCounter++;
         }
       });
 
@@ -1838,6 +1896,7 @@
         autoRescale: true,
         mouseEnabled: true,
         touchEnabled: true,
+        approximateLabelWidth: true,
         font: 'Roboto'
       };
 
@@ -1880,7 +1939,7 @@
 
       if (aqlMode) {
         // aql editor settings
-        self.renderer = 'webgl';
+        self.renderer = 'canvas';
 
         if (graph.nodes.length < 500) {
           self.algorithm = 'fruchtermann';
@@ -1959,11 +2018,11 @@
               var callback = function (error, data, id) {
                 if (!error) {
                   var attributes = '';
-                  attributes += '<span class="title">ID </span> <span class="nodeId">' + data._id + '</span>';
-                  if (Object.keys(data).length > 3) {
+                  attributes += '<span class="title">ID </span> <span class="nodeId">' + data.documents[0]._id + '</span>';
+                  if (Object.keys(data.documents[0]).length > 3) {
                     attributes += '<span class="title">ATTRIBUTES </span>';
                   }
-                  _.each(data, function (value, key) {
+                  _.each(data.documents[0], function (value, key) {
                     if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
                       attributes += '<span class="nodeAttribute">' + key + '</span>';
                     }
@@ -2005,8 +2064,12 @@
 
             // validate edgeDefinitions
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
-            self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
-            self.clearOldContextMenu(false);
+            if (foundEdgeDefinitions.length === 0) {
+              arangoHelper.arangoNotification('Graph', 'No valid edge definition found.');
+            } else {
+              self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
+              self.clearOldContextMenu(false);
+            }
           } else {
             if (!self.dragging) {
               if (self.contextState.createEdge === true) {

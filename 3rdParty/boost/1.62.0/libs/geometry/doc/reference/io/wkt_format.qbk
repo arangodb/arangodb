@@ -1,0 +1,29 @@
+[/============================================================================
+  Boost.Geometry (aka GGL, Generic Geometry Library)
+
+  Copyright (c) 2009-2014 Barend Gehrels, Amsterdam, the Netherlands.
+  Copyright (c) 2014 Adam Wulkiewicz, Lodz, Poland.
+
+  Use, modification and distribution is subject to the Boost Software License,
+  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt)
+=============================================================================/]
+
+WKT is a general markup format in ASCII.
+It is described in detail on [@http://en.wikipedia.org/wiki/Well-known_text Wikipedia]
+
+Boost Geometry supports the common formats (POINT, LINESTRING, POLYGON, MULTIPOINT, MULTILINESTRING, MULTIPOLYGON).
+
+Because Boost.Geometry also supports Box and Segment geometries, which are not standard OGC geometries, there are some extensions:
+
+[heading Box]
+* can be read from WKT by specifying either a polygon (with 4 points) or a specific BOX string (non OGC)
+* streamed to WKT as a POLYGON
+
+[heading Segment]
+* can be read from WKT by specifying either a linestring (with 2 points) or a specific SEGMENT string (non OGC)
+* streamed to WKT as a LINESTRING
+
+[heading Ring]
+* can be read from WKT by specifying a polygon (with no holes)
+* streamed to WKT as POLYGON

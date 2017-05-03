@@ -72,6 +72,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
 
@@ -88,10 +89,10 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
   int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
-  int createDatabase(TRI_voc_tick_t id, std::string const& name, bool writeMarker, TRI_vocbase_t*& result);
+  int createDatabase(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
   int dropDatabaseCoordinator(TRI_voc_tick_t id, bool force);
-  int dropDatabase(std::string const& name, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory);
-  int dropDatabase(TRI_voc_tick_t id, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory);
+  int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
+  int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
 
   TRI_vocbase_t* useDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* useDatabaseCoordinator(TRI_voc_tick_t id);
@@ -100,6 +101,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   TRI_vocbase_t* lookupDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* lookupDatabase(std::string const& name);
+  void enumerateDatabases(std::function<void(TRI_vocbase_t*)>);
 
   void useSystemDatabase();
   TRI_vocbase_t* systemDatabase() const { return _vocbase; }
@@ -117,7 +119,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void enableUpgrade() { _upgrade = true; }
   bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
   void throwCollectionNotLoadedError(bool value) { _throwCollectionNotLoadedError.store(value); }
-  bool check30Revisions() const { return _check30Revisions; }
+  bool check30Revisions() const { return _check30Revisions == "true" || _check30Revisions == "fail"; }
+  bool fail30Revisions() const { return _check30Revisions == "fail"; }
+  void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
  private:
   void closeDatabases();
@@ -143,18 +147,14 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
 
-  /// @brief writes a create-database marker into the log
-  int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice);
   
-  /// @brief writes a drop-database marker into the log
-  int writeDropMarker(TRI_voc_tick_t id);
 
  private:
   uint64_t _maximalJournalSize;
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
-  bool _check30Revisions;
+  std::string _check30Revisions;
   std::atomic<bool> _throwCollectionNotLoadedError;
 
   TRI_vocbase_t* _vocbase;

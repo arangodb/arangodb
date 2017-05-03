@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/QueryCache.h"
+#include "QueryCache.h"
 #include "Basics/fasthash.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -507,7 +507,7 @@ void QueryCache::enforceMaxResults(size_t value) {
 /// @brief determine which lock to use for the cache entries
 unsigned int QueryCache::getPart(TRI_vocbase_t const* vocbase) const {
   return static_cast<int>(
-      fasthash64(vocbase, sizeof(decltype(vocbase)), 0xf12345678abcdef) %
+      fasthash64(&vocbase, sizeof(TRI_vocbase_t const*), 0xf12345678abcdef) %
       NumberOfParts);
 }
 

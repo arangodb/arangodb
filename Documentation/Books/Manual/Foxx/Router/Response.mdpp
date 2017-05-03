@@ -1,4 +1,5 @@
-!CHAPTER Response objects
+Response objects
+================
 
 The response object specifies the following properties:
 
@@ -18,11 +19,14 @@ The response object specifies the following properties:
 
   Status code of the response. Defaults to `200` (body set and not an empty string or buffer) or `204` (otherwise) if not changed from `undefined`.
 
-!SECTION attachment
+attachment
+----------
 
 `res.attachment([filename]): this`
 
 Sets the `content-disposition` header to indicate the response is a downloadable file with the given name.
+
+**Note:** This does not actually modify the response body or access the file system. To send a file from the file system see the `download` or `sendFile` methods.
 
 **Arguments**
 
@@ -34,7 +38,8 @@ Sets the `content-disposition` header to indicate the response is a downloadable
 
 Returns the response object.
 
-!SECTION cookie
+cookie
+------
 
 `res.cookie(name, value, [options]): this`
 
@@ -54,35 +59,35 @@ Sets a cookie with the given name.
 
   An object with any of the following properties:
 
+  * **ttl**: `number` (optional)
+
+    Time to live of the cookie in seconds.
+
+  * **algorithm**: `string` (Default: `"sha256"`)
+
+    Algorithm that will be used to sign the cookie.
+
   * **secret**: `string` (optional)
 
     Secret that will be used to sign the cookie.
 
     If a secret is specified, the cookie's signature will be stored in a second cookie with the same options, the same name and the suffix `.sig`. Otherwise no signature will be added.
 
-  * **algorithm**: `string` (Default: `"sha256"`)
+  * **path**: `string` (optional)
 
-    Algorithm that will be used to sign the cookie.
+    Path for which the cookie should be issued.
 
-  * **ttl**: `number` (optional)
+  * **domain**: `string` (optional)
 
-    Time to live of the cookie.
+    Domain for which the cookie should be issued.
 
-  * **path**: `number` (optional)
-
-    Path of the cookie.
-
-  * **domain**: `number` (optional)
-
-    Domain of the cookie.
-
-  * **secure**: `number` (Default: `false`)
+  * **secure**: `boolean` (Default: `false`)
 
     Whether the cookie should be marked as secure (i.e. HTTPS/SSL-only).
 
   * **httpOnly**: `boolean` (Default: `false`)
 
-    Whether the cookie should be marked as HTTP-only.
+    Whether the cookie should be marked as HTTP-only (rather than also exposing it to client-side code).
 
 If a string is passed instead of an options object it will be interpreted as the *secret* option.
 
@@ -90,7 +95,8 @@ If a number is passed instead of an options object it will be interpreted as the
 
 Returns the response object.
 
-!SECTION download
+download
+--------
 
 `res.download(path, [filename]): this`
 
@@ -110,7 +116,8 @@ The equivalent of calling `res.attachment(filename).sendFile(path)`.
 
 Returns the response object.
 
-!SECTION getHeader
+getHeader
+---------
 
 `res.getHeader(name): string`
 
@@ -124,7 +131,8 @@ Gets the value of the header with the given name.
 
 Returns the value of the header or `undefined`.
 
-!SECTION json
+json
+----
 
 `res.json(data): this`
 
@@ -138,7 +146,8 @@ Sets the response body to the JSON string value of the given data.
 
 Returns the response object.
 
-!SECTION redirect
+redirect
+--------
 
 `res.redirect([status], path): this`
 
@@ -162,7 +171,8 @@ Redirects the response by setting the response `location` header and status code
 
 Returns the response object.
 
-!SECTION removeHeader
+removeHeader
+------------
 
 `res.removeHeader(name): this`
 
@@ -176,7 +186,8 @@ Removes the header with the given name from the response.
 
 Returns the response object.
 
-!SECTION send
+send
+----
 
 `res.send(data, [type]): this`
 
@@ -210,7 +221,8 @@ Sets the response body to the given data with respect to the response definition
 
 Returns the response object.
 
-!SECTION sendFile
+sendFile
+--------
 
 `res.sendFile(path, [options]): this`
 
@@ -242,7 +254,8 @@ Returns the response object.
 res.sendFile(module.context.fileName('favicon.ico'));
 ```
 
-!SECTION sendStatus
+sendStatus
+----------
 
 `res.sendStatus(status): this`
 
@@ -259,7 +272,8 @@ The response status will be set to the given status code, the response body will
 
 Returns the response object.
 
-!SECTION setHeader / set
+setHeader / set
+---------------
 
 `res.setHeader(name, value): this`
 
@@ -285,7 +299,8 @@ Sets the value of the header with the given name.
 
 Returns the response object.
 
-!SECTION status
+status
+------
 
 `res.status(status): this`
 
@@ -301,7 +316,8 @@ Sets the response status to the given status code.
 
 Returns the response object.
 
-!SECTION throw
+throw
+-----
 
 `res.throw(status, [reason], [options]): void`
 
@@ -343,7 +359,25 @@ If an error is passed instead of an options object it will be interpreted as the
 
 Returns nothing.
 
-!SECTION vary
+type
+----
+
+`res.type([type]): string`
+
+Sets the response content-type to the given type if provided or returns the previously set content-type.
+
+**Arguments**
+
+* **type**: `string` (optional)
+
+  Content-type of the response body.
+
+  Unlike `res.set('content-type', type)` file extensions can be provided as values and will be translated to the corresponding MIME type (e.g. `json` becomes `application/json`).
+
+Returns the content-type of the response body.
+
+vary
+----
 
 `res.vary(names): this`
 
@@ -371,7 +405,8 @@ res.vary('user-agent', 'cookie');
 res.vary(['user-agent', 'cookie']);
 ```
 
-!SECTION write
+write
+-----
 
 `res.write(data): this`
 

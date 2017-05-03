@@ -296,7 +296,7 @@ void HttpRequest::parseHeader(size_t length) {
           }
 
           if (pathBegin < pathEnd) {
-            setRequestPath(pathBegin);
+            setRequestPath(pathBegin, pathEnd);
           }
 
           if (paramBegin < paramEnd) {
@@ -476,7 +476,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
         *(key - 2) = '\0';
         setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
       } else {
-        _values[std::string(keyBegin, key - keyBegin)] = valueBegin;
+        _values[std::string(keyBegin, key - keyBegin)] = std::string(valueBegin, value - valueBegin);
       }
 
       keyBegin = key = buffer + 1;
@@ -535,7 +535,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
       *(key - 2) = '\0';
       setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
     } else {
-      _values[std::string(keyBegin, key - keyBegin)] = valueBegin;
+      _values[std::string(keyBegin, key - keyBegin)] = std::string(valueBegin, value - valueBegin);
     }
   }
 }
@@ -546,25 +546,23 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   TRI_ASSERT(key != nullptr);
   TRI_ASSERT(value != nullptr);
 
-  if (keyLength == 14 &&
-      memcmp(key, "content-length", keyLength) ==
+  if (keyLength == StaticStrings::ContentLength.size() &&
+      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) ==
           0) {  // 14 = strlen("content-length")
     _contentLength = StringUtils::int64(value, valueLength);
     // do not store this header
     return;
   }
 
-  if (keyLength == 6 && memcmp(key, "accept", keyLength) == 0) {
-    if (valueLength == std::strlen("application/x-velocypack") &&
-        memcmp(value, "application/x-velocypack", valueLength) == 0) {
-      _contentTypeResponse = ContentType::VPACK;
-      return;
-    }
-  }
-
-  if (keyLength == 12 && valueLength == 24 &&
-      memcmp(key, "content-type", keyLength) == 0 &&
-      memcmp(value, "application/x-velocypack", valueLength) == 0) {
+  if (keyLength == StaticStrings::Accept.size() && 
+      valueLength == StaticStrings::MimeTypeVPack.size() &&
+      memcmp(key, StaticStrings::Accept.c_str(), keyLength) == 0 &&
+      memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
+    _contentTypeResponse = ContentType::VPACK;
+  } else if (keyLength == StaticStrings::ContentTypeHeader.size() && 
+      valueLength == StaticStrings::MimeTypeVPack.size() &&
+      memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0 &&
+      memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
     _contentType = ContentType::VPACK;
     return;
   }
@@ -739,24 +737,24 @@ void HttpRequest::setBody(char const* body, size_t length) {
 }
 
 VPackSlice HttpRequest::payload(VPackOptions const* options) {
-  // check options for nullptr?
+  TRI_ASSERT(options != nullptr);
 
   if (_contentType == ContentType::JSON) {
-    if (body().length() > 0) {
+    if (!_body.empty()) {
       if (_vpackBuilder == nullptr) {
         VPackParser parser(options);
-        parser.parse(body());
+        parser.parse(_body);
         _vpackBuilder = parser.steal();
-        return VPackSlice(_vpackBuilder->slice());
-      } else {
-        return VPackSlice(_vpackBuilder->slice());
       }
-    } 
+      return VPackSlice(_vpackBuilder->slice());
+    }
     return VPackSlice::noneSlice();  // no body
   } else /*VPACK*/ {
-    VPackValidator validator;
-    validator.validate(body().c_str(), body().length());
-    return VPackSlice(body().c_str());
+    VPackOptions validationOptions = *options; // intentional copy
+    validationOptions.validateUtf8Strings = true;
+    VPackValidator validator(&validationOptions);
+    validator.validate(_body.c_str(), _body.length());
+    return VPackSlice(_body.c_str());
   }
 }
 

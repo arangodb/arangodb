@@ -93,6 +93,10 @@
             },
 
             restore: function () {
+                if (arguments.length) {
+                    throw new Error("sandbox.restore() does not take any parameters. Perhaps you meant stub.restore()");
+                }
+
                 sinon.collection.restore.apply(this, arguments);
                 this.restoreContext();
             },

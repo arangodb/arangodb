@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__access" kind="group">
+    <compoundname>access</compoundname>
+    <title>access: get/set coordinate values, make objects, clear geometries, append point(s)</title>
+    <innerclass refid="structboost_1_1geometry_1_1radius__type" prot="public">boost::geometry::radius_type</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__access_1ga1e0627c198b569ca7f278acce06120ee" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>std::size_t</type>
+            <declname>I</declname>
+            <defname>I</defname>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>radius_type&lt; Geometry &gt;::type</type>
+        <definition>radius_type&lt;Geometry&gt;::type boost::geometry::get_radius</definition>
+        <argsstring>(Geometry const &amp;geometry)</argsstring>
+        <name>get_radius</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Function to get radius of a circle / sphere / ellipse / etc. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>radius The radius for a given axis</para></simplesect>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the geometry to get the radius from </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>I</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>index of the axis </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/radius.hpp" line="126" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/radius.hpp" bodystart="126" bodyend="135"/>
+      </memberdef>
+      <memberdef kind="function" id="group__access_1ga6c403657f606b2a4d3f64d6e4ae74437" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>std::size_t</type>
+            <declname>I</declname>
+            <defname>I</defname>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::set_radius</definition>
+        <argsstring>(Geometry &amp;geometry, typename radius_type&lt; Geometry &gt;::type const &amp;radius)</argsstring>
+        <name>set_radius</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>typename radius_type&lt; Geometry &gt;::type const &amp;</type>
+          <declname>radius</declname>
+        </param>
+        <briefdescription>
+<para>Function to set the radius of a circle / sphere / ellipse / etc. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>I</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>index of the axis </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the geometry to change </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>radius</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the radius to set </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/radius.hpp" line="145" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/radius.hpp" bodystart="145" bodyend="155"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

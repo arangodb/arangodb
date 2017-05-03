@@ -170,6 +170,130 @@ function HashIndexMultiFailuresSuite () {
   };
 }
 
+function HashIndexMultiBugsSuite() {
+  'use strict';
+  var cn = "UnitTestsCollectionBugHash";
+  var collection = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      internal.db._drop(cn);
+    },
+
+    testHashCollisionFail: function() {
+      collection.ensureIndex({"type" : "hash", "fields" : ["ipList[*].ip"],"unique" : false, "sparse" : false });
+      collection.insert({
+        "_key" : "233808782_Et0;0.32", 
+        "_id" : "copy/233808782_Et0;0.32", 
+        "_rev" : "_UHWKDi6---", 
+        "ipList" : [ 
+          { 
+            "ip" : "10.73.32.32", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "primary" 
+          }, 
+          { 
+            "ip" : "10.73.32.11", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.12", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.13", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.14", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.15", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.16", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.17", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.18", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.19", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.20", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.21", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.22", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          }, 
+          { 
+            "ip" : "10.73.32.26", 
+            "mask" : 24, 
+            "net" : "10.73.32.0/24", 
+            "type" : "secondary" 
+          } 
+        ], 
+        "name" : "Et0/0.32", 
+        "vrf" : "" 
+      });
+      assertEqual(collection.truncate(), undefined);
+    }
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,6 +302,7 @@ if (internal.debugCanUseFailAt()) {
   jsunity.run(UniqueHashIndexFailuresSuite);
   jsunity.run(HashIndexMultiFailuresSuite);
 }
+jsunity.run(HashIndexMultiBugsSuite);
 
 return jsunity.done();
 

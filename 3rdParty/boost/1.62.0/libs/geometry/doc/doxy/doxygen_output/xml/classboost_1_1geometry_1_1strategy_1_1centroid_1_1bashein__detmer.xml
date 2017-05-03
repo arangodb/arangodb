@@ -1,0 +1,136 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::centroid::bashein_detmer</compoundname>
+    <includes local="no">centroid_bashein_detmer.hpp</includes>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums" prot="private">boost::geometry::strategy::centroid::bashein_detmer::sums</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename PointOfSegment</type>
+        <defval>Point</defval>
+      </param>
+      <param>
+        <type>typename CalculationType</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1a9e09dd4618f4143f02ebdfd3d255564b" prot="private" static="no">
+        <type>boost::mpl::if_c&lt; boost::is_void&lt; CalculationType &gt;::type::value, typename <ref refid="structboost_1_1geometry_1_1select__most__precise" kindref="compound">select_most_precise</ref>&lt; typename <ref refid="structboost_1_1geometry_1_1select__coordinate__type" kindref="compound">select_coordinate_type</ref>&lt; Point, PointOfSegment &gt;::type, double &gt;::type, CalculationType &gt;::type</type>
+        <definition>typedef boost::mpl::if_c&lt; boost::is_void&lt;CalculationType&gt;::type::value, typename select_most_precise &lt; typename select_coordinate_type &lt; Point, PointOfSegment &gt;::type, double &gt;::type, CalculationType &gt;::type boost::geometry::strategy::centroid::bashein_detmer&lt; Point, PointOfSegment, CalculationType &gt;::calculation_type</definition>
+        <argsstring></argsstring>
+        <name>calculation_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="148" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="148" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1a1d72fc25ea074c7ff644c192f78480d3" prot="public" static="no">
+        <type>sums</type>
+        <definition>typedef sums boost::geometry::strategy::centroid::bashein_detmer&lt; Point, PointOfSegment, CalculationType &gt;::state_type</definition>
+        <argsstring></argsstring>
+        <name>state_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="169" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="169" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1a3ac9cabcaceb2dd6691c043c90956164" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void boost::geometry::strategy::centroid::bashein_detmer&lt; Point, PointOfSegment, CalculationType &gt;::apply</definition>
+        <argsstring>(PointOfSegment const &amp;p1, PointOfSegment const &amp;p2, sums &amp;state)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <param>
+          <type>sums &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="171" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="171" bodyend="195"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1aa4ea6f887dbe3817949259c4193355c3" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::centroid::bashein_detmer&lt; Point, PointOfSegment, CalculationType &gt;::result</definition>
+        <argsstring>(sums const &amp;state, Point &amp;centroid)</argsstring>
+        <name>result</name>
+        <param>
+          <type>sums const &amp;</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>Point &amp;</type>
+          <declname>centroid</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="197" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="197" bodyend="225"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Centroid calculation using algorithm Bashein / Detmer. </para>    </briefdescription>
+    <detaileddescription>
+<para>Calculates centroid using triangulation method published by Bashein / Detmer <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point type of centroid to calculate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>PointOfSegment</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point type of segments, defaults to Point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CalculationType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type for calculation (e.g. high precision); if [*void] then it is extracted automatically from the coordinate type and (if necessary) promoted to floating point</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="author"><para>Adapted from &quot;Centroid of a Polygon&quot; by Gerard Bashein and Paul R. Detmer<emphasis>, in &quot;Graphics Gems IV&quot;, Academic Press, 1994</emphasis></para></simplesect>
+ <qbk>
+[heading See also]
+[link geometry.reference.algorithms.centroid.centroid_3_with_strategy centroid (with strategy)]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="128" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="127" bodyend="227"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1a3ac9cabcaceb2dd6691c043c90956164" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1a9e09dd4618f4143f02ebdfd3d255564b" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer</scope><name>calculation_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1aa4ea6f887dbe3817949259c4193355c3" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer</scope><name>result</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1a1d72fc25ea074c7ff644c192f78480d3" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer</scope><name>state_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

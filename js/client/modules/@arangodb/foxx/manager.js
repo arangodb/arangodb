@@ -1,4 +1,5 @@
 /* jshint unused: false */
+/* global ARANGODB_CLIENT_VERSION */ 
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -173,7 +174,16 @@ var help = function () {
   arangodb.print();
   arangodb.print('Use  foxx-manager --help  to show a list of global options\n');
   arangodb.print('There is also an online manual available at:');
-  arangodb.print('https://docs.arangodb.com/Foxx/Install/');
+
+  // extract current version
+  var version;
+  try {
+    version = ARANGODB_CLIENT_VERSION().replace(/^(\d+\.\d+).*/, "$1");
+  } catch (err) {}
+  if (!version.match(/^(\d+\.\d+)$/)) {
+    version = 'latest';
+  }
+  arangodb.print('https://docs.arangodb.com/' + version + '/Manual/Foxx/');
 
   // additional newline
   arangodb.print();
@@ -327,6 +337,7 @@ var replace = function (serviceInfo, mount, options) {
   };
 
   res = arango.POST('/_admin/foxx/replace', JSON.stringify(req));
+  arangodb.db._flushCache();
   arangosh.checkRequestResult(res);
   return {
     name: res.name,

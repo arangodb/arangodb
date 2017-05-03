@@ -93,9 +93,11 @@
 
       if (!from) {
         fromServer = $(e.currentTarget).parent().parent().attr('leader');
+        fromServer = arangoHelper.getDatabaseServerId(fromServer);
       } else {
         leader = $(e.currentTarget).parent().parent().attr('leader');
-        fromServer = from;
+        leader = arangoHelper.getDatabaseServerId(leader);
+        fromServer = arangoHelper.getDatabaseServerId(from);
       }
 
       var buttons = [];
@@ -107,9 +109,9 @@
       self.dbServers[0].fetch({
         success: function () {
           self.dbServers[0].each(function (db) {
-            if (db.get('name') !== fromServer) {
+            if (db.get('id') !== fromServer) {
               obj[db.get('name')] = {
-                value: db.get('name'),
+                value: db.get('id'),
                 label: db.get('name')
               };
             }
@@ -140,7 +142,7 @@
               'Destination',
               undefined,
               // this.users !== null ? this.users.whoAmI() : 'root',
-              'Please select the target databse server. The selected database ' +
+              'Please select the target database server. The selected database ' +
                 'server will be the new leader of the shard.',
                 array
             )
@@ -168,8 +170,8 @@
 
       var data = {
         database: dbName,
-        collections: [collectionName],
-        shards: [shardName],
+        collection: collectionName,
+        shard: shardName,
         fromServer: fromServer,
         toServer: toServer
       };
@@ -184,14 +186,14 @@
         async: true,
         success: function (data) {
           if (data.id) {
-            arangoHelper.arangoNotification('Shard ' + shardName + ' will be moved to ' + toServer + '.');
+            arangoHelper.arangoNotification('Shard ' + shardName + ' will be moved to ' + arangoHelper.getDatabaseShortName(toServer) + '.');
             window.setTimeout(function () {
               window.App.shardsView.render();
-            }, 2000);
+            }, 3000);
           }
         },
         error: function () {
-          arangoHelper.arangoNotification('Shard ' + shardName + ' could not be moved to ' + toServer + '.');
+          arangoHelper.arangoError('Shard ' + shardName + ' could not be moved to ' + arangoHelper.getDatabaseShortName(toServer) + '.');
         }
       });
 
@@ -213,12 +215,12 @@
           if (data === true) {
             window.setTimeout(function () {
               self.render(false);
-            }, 1500);
+            }, 3000);
             arangoHelper.arangoNotification('Started rebalance process.');
           }
         },
         error: function () {
-          arangoHelper.arangoNotification('Could not start rebalance process.');
+          arangoHelper.arangoError('Could not start rebalance process.');
         }
       });
 
@@ -276,15 +278,19 @@
         collections: ordered
       }));
 
+      var doRerender = false;
       _.each(collections, function (shard) {
         _.each(shard.Plan, function (val, key) {
           if (val.progress) {
-            window.setTimeout(function () {
-              self.render();
-            }, 1500);
+            doRerender = true;
           }
         });
       });
+      if (doRerender) {
+        window.setTimeout(function () {
+          self.render();
+        }, 3000);
+      }
     },
 
     updateServerTime: function () {

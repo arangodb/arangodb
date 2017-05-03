@@ -1,0 +1,74 @@
+[#repeated1]
+[section repeated1]
+
+[h1 Synopsis]
+
+  template <class P>
+  struct repeated1;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`P`]  [[link parser parser]]]
+]
+
+[h1 Description]
+
+It applies `P` on the input string repeatedly as long as the parser accepts the
+input. The result of parsing is a sequence of the results of the individual
+applications of `P`.
+
+When `P` rejects the input for the first time, `repeated1` rejects it as well.
+At least one successful application of `P` is required for `repeated1` to accept
+the input.
+
+[h1 Header]
+
+  #include <boost/metaparse/repeated1.hpp>
+
+[h1 Expression semantics]
+
+For any `p` parser the following are equivalent:
+
+  repeated1<p>
+  
+  last_of<look_ahead<p>, repeated<p>>
+
+[h1 Example]
+
+  #include <boost/metaparse/repeated1.hpp>
+  #include <boost/metaparse/digit_val.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  
+  #include <boost/mpl/equal.hpp>
+  #include <boost/mpl/vector.hpp>
+  #include <boost/mpl/int.hpp>
+  
+  using namespace boost::metaparse;
+  
+  using digits = repeated1<digit_val>;
+  
+  static_assert(
+    boost::mpl::equal<
+      get_result<digits::apply<BOOST_METAPARSE_STRING("1234"), start>>::type,
+      boost::mpl::vector<
+        boost::mpl::int_<1>,
+        boost::mpl::int_<2>,
+        boost::mpl::int_<3>,
+        boost::mpl::int_<4>
+      >
+    >::type::value,
+    "the result of parsing should be the list of digit values"
+  );
+  
+  static_assert(
+    is_error<digits::apply<BOOST_METAPARSE_STRING("x"), start>>::type::value,
+    "repeated1 should reject the input when it can't parse anything with digit_val"
+  );
+
+[endsect]
+

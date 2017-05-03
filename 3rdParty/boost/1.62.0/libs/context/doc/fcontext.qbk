@@ -1,0 +1,210 @@
+[/
+          Copyright Oliver Kowalke 2014.
+ Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+          http://www.boost.org/LICENSE_1_0.txt
+]
+
+[section:context Struct fcontext_t]
+
+Each instance of __fcontext__ represents a context (CPU registers and stack
+space). Together with its related functions __jump_fcontext__ and
+__make_fcontext__ it provides a execution control transfer mechanism similar
+interface like
+[@http://www.kernel.org/doc/man-pages/online/pages/man2/getcontext.2.html
+ucontext_t].
+__fcontext__ and its functions are located in __context_ns__ and the functions
+are declared as extern "C". 
+
+[warning If __fcontext__ is used in a multi threaded application, it can migrated
+between threads, but must not reference __tls__.]
+
+[important The low level API is the part to port to new platforms.]
+
+[note If __fls__ is used on Windows, the user is responsible for calling 
+__fls_alloc__, __fls_free__.]
+
+
+[heading Executing a context]
+
+A new context supposed to execute a __context_fn__ (returning void and accepting
+void * as argument) will be created on top of the stack (at 16 byte boundary)
+by function __make_fcontext__.
+
+            // context-function
+            void f(intptr);
+
+            // creates a new stack
+            std::size_t size = 8192;
+            void* sp(std::malloc(size));
+
+            // context fc uses f() as context function
+            // fcontext_t is placed on top of context stack
+            // a pointer to fcontext_t is returned
+            fcontext_t fc(make_fcontext(sp,size,f));
+
+Calling __jump_fcontext__ invokes the __context_fn__ in a newly created context
+complete with registers, flags, stack and instruction pointers.  When control
+should be returned to the original calling context, call __jump_fcontext__.
+The current context information (registers, flags, and stack and instruction
+pointers) is saved and the original context information is restored. Calling
+__jump_fcontext__ again resumes execution in the second context after saving the
+new state of the original context.
+
+        boost::context::fcontext_t fcm,fc1,fc2;
+
+        void f1(void *)
+        {
+            std::cout<<"f1: entered"<<std::endl;
+            std::cout<<"f1: call jump_fcontext( & fc1, fc2, 0)"<< std::endl;
+            boost::context::jump_fcontext(&fc1,fc2,0);
+            std::cout<<"f1: return"<<std::endl;
+            boost::context::jump_fcontext(&fc1,fcm,0);
+        }
+
+        void f2(void *)
+        {
+            std::cout<<"f2: entered"<<std::endl;
+            std::cout<<"f2: call jump_fcontext( & fc2, fc1, 0)"<<std::endl;
+            boost::context::jump_fcontext(&fc2,fc1,0);
+            BOOST_ASSERT(false&&!"f2: never returns");
+        }
+
+        std::size_t size(8192);
+        void* sp1(std::malloc(size));
+        void* sp2(std::malloc(size));
+
+        fc1=boost::context::make_fcontext(sp1,size,f1);
+        fc2=boost::context::make_fcontext(sp2,size,f2);
+
+        std::cout<<"main: call jump_fcontext( & fcm, fc1, 0)"<<std::endl;
+        boost::context::jump_fcontext(&fcm,fc1,0);
+
+        output:
+            main: call jump_fcontext( & fcm, fc1, 0)
+            f1: entered
+            f1: call jump_fcontext( & fc1, fc2, 0)
+            f2: entered
+            f2: call jump_fcontext( & fc2, fc1, 0)
+            f1: return
+
+First call of __jump_fcontext__ enters the __context_fn__ `f1()` by starting
+context fc1 (context fcm saves the registers of `main()`). For jumping between
+context's fc1 and fc2 `jump_fcontext()` is called.
+Because context fcm is chained to fc1, `main()` is entered (returning from
+__jump_fcontext__) after context fc1 becomes complete (return from `f1()`).
+
+[warning Calling __jump_fcontext__ to the same context from inside the same
+context results in undefined behaviour.]
+
+[important The size of the stack is required to be larger than the size of fcontext_t.]
+
+[note In contrast to threads, which are preemtive, __fcontext__ switches are
+cooperative (programmer controls when switch will happen). The kernel is not
+involved in the context switches.]
+
+
+[heading Transfer of data]
+
+The third argument passed to __jump_fcontext__, in one context, is passed as
+the first argument of the __context_fn__ if the context is started for the
+first time.
+In all following invocations of __jump_fcontext__ the void * passed to
+__jump_fcontext__, in one context, is returned by __jump_fcontext__ in the
+other context. 
+
+        boost::context::fcontext_t fcm,fc;
+
+        typedef std::pair<int,int> pair_t;
+
+        void f(void * param)
+        {
+            pair_t* p=(pair_t*)param;
+            p=(pair_t*)boost::context::jump_fcontext(&fc,fcm,(void *)(p->first+p->second));
+            boost::context::jump_fcontext(&fc,fcm,(void *)(p->first+p->second));
+        }
+
+        std::size_t size(8192);
+        void* sp(std::malloc(size));
+
+        pair_t p(std::make_pair(2,7));
+        fc=boost::context::make_fcontext(sp,size,f);
+
+        int res=(int)boost::context::jump_fcontext(&fcm,fc,(void *)&p);
+        std::cout<<p.first<<" + "<<p.second<<" == "<<res<<std::endl;
+
+        p=std::make_pair(5,6);
+        res=(int)boost::context::jump_fcontext(&fcm,fc,(void *)&p);
+        std::cout<<p.first<<" + "<<p.second<<" == "<<res<<std::endl;
+
+        output:
+            2 + 7 == 9
+            5 + 6 == 11
+
+
+[heading Exceptions in __context_fn__]
+
+If the __context_fn__ emits an exception, the behaviour is undefined.
+
+[important __context_fn__ should wrap the code in a try/catch block.]
+[important Do not jump from inside a catch block and then re-throw the
+exception in another execution context.]
+
+
+[heading Stack unwinding]
+
+Sometimes it is necessary to unwind the stack of an unfinished context to
+destroy local stack variables so they can release allocated resources (RAII
+pattern). The user is responsible for this task.
+
+
+[heading `fcontext_t` and related functions]
+
+        struct stack_t
+        {
+            void* sp;
+            std::size_t size;
+        };
+
+        typedef <opaque pointer > fcontext_t;
+
+        void * jump_fcontext(fcontext_t* ofc,fcontext_t nfc,void * vp);
+        fcontext_t make_fcontext(void* sp,std::size_t size,void(*fn)(void *));
+
+[heading `sp`]
+[variablelist
+[[Member:] [Pointer to the beginning of the stack (depending of the architecture the stack grows
+downwards or upwards).]]
+]
+
+[heading `size`]
+[variablelist
+[[Member:] [Size of the stack in bytes.]]
+]
+
+[heading `fc_stack`]
+[variablelist
+[[Member:] [Tracks the memory for the context's stack.]]
+]
+
+[heading `void * jump_fcontext(fcontext_t* ofc,fcontext_t nfc,void * p)`]
+[variablelist
+[[Effects:] [Stores the current context data (stack pointer, instruction
+pointer, and CPU registers) to `*ofc` and restores the context data from `nfc`,
+which implies jumping to execution context `nfc`. The void * argument, `p`,
+is passed to the current context to be returned by the most recent call to
+`jump_fcontext()` in the same thread.]]
+[[Returns:] [The third pointer argument passed to the most recent call to
+`jump_fcontext()`, if any.]]
+]
+
+[heading `fcontext_t make_fcontext(void* sp,std::size_t size,void(*fn)(void *))`]
+[variablelist
+[[Precondition:] [Stack `sp` and function pointer `fn` are valid (depending on the architecture
+`sp` points to the top or bottom of the stack) and `size` > 0.]]
+[[Effects:] [Creates an fcontext_t on top of the stack and prepares the stack
+to execute the __context_fn__ `fn`.]]
+[[Returns:][Returns a fcontext_t which is placed on the stack.]]
+]
+
+[endsect]

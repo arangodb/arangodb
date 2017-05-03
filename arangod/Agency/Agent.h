@@ -28,6 +28,8 @@
 #include "Agency/AgentActivator.h"
 #include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
+#include "Agency/AgentInterface.h"
+#include "Agency/Compactor.h"
 #include "Agency/Constituent.h"
 #include "Agency/Inception.h"
 #include "Agency/State.h"
@@ -38,7 +40,9 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace consensus {
-class Agent : public arangodb::Thread {
+class Agent : public arangodb::Thread,
+              public AgentInterface {
+
  public:
   /// @brief Construct with program options
   explicit Agent(config_t const&);
@@ -72,7 +76,7 @@ class Agent : public arangodb::Thread {
   bool fitness() const;
 
   /// @brief Leader ID
-  arangodb::consensus::index_t lastCommitted() const;
+  std::pair<index_t, index_t> lastCommitted() const;
 
   /// @brief Leader ID
   std::string leaderID() const;
@@ -81,16 +85,37 @@ class Agent : public arangodb::Thread {
   bool leading() const;
 
   /// @brief Pick up leadership tasks
-  bool lead();
+  void lead();
+
+  /// @brief Prepare leadership
+  bool prepareLead();
 
   /// @brief Load persistent state
   bool load();
 
+  /// @brief Unpersisted key-value-store
+  trans_ret_t transient(query_t const&) override;
+
   /// @brief Attempt write
-  write_ret_t write(query_t const&);
+  write_ret_t write(query_t const&) override;
 
   /// @brief Read from agency
   read_ret_t read(query_t const&);
+
+  /// @brief Inquire success of logs given clientIds
+  inquire_ret_t inquire(query_t const&);
+
+  /// @brief Attempt read/write transaction
+  trans_ret_t transact(query_t const&) override;
+
+  /// @brief Put trxs into list of ongoing ones.
+  void addTrxsOngoing(Slice trxs);
+
+  /// @brief Remove trxs from list of ongoing ones.
+  void removeTrxsOngoing(Slice trxs);
+
+  /// @brief Check whether a trx is ongoing.
+  bool isTrxOngoing(std::string& id);
 
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
@@ -110,7 +135,7 @@ class Agent : public arangodb::Thread {
   bool booting();
 
   /// @brief Gossip in
-  query_t gossip(query_t const&, bool callback = false);
+  query_t gossip(query_t const&, bool callback = false, size_t version = 0);
 
   /// @brief Persisted agents
   bool persistedAgents();
@@ -128,16 +153,19 @@ class Agent : public arangodb::Thread {
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
-  void reportIn(std::string const& id, index_t idx);
+  void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Wait for slaves to confirm appended entries
-  bool waitFor(index_t last_entry, double timeout = 2.0);
+  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 2.0) override;
 
   /// @brief Convencience size of agency
   size_t size() const;
 
   /// @brief Rebuild DBs by applying state log to empty DB
-  bool rebuildDBs();
+  index_t rebuildDBs();
+
+  /// @brief Rebuild DBs by applying state log to empty DB
+  void compact();
 
   /// @brief Last log entry
   log_t lastLog() const;
@@ -145,11 +173,17 @@ class Agent : public arangodb::Thread {
   /// @brief State machine
   State const& state() const;
 
+  /// @brief Get read store and compaction index
+  index_t readDB(Node&) const;
+
   /// @brief Get read store
   Store const& readDB() const;
 
   /// @brief Get spearhead store
   Store const& spearhead() const;
+
+  /// @brief Get transient store
+  Store const& transient() const;
 
   /// @brief Serve active agent interface
   bool serveActiveAgent();
@@ -175,18 +209,43 @@ class Agent : public arangodb::Thread {
   /// @brief Am I active agent
   query_t activate(query_t const&);
 
-  /// @brief Inception thread still done?
+  /// @brief Report measured round trips to inception
+  void reportMeasurement(query_t const&);
+
+  /// @brief Are we ready for RAFT?
   bool ready() const;
+
+  /// @brief Set readyness for RAFT
   void ready(bool b);
+
+  /// @brief Reset RAFT timeout intervals
+  void resetRAFTTimes(double, double);
+
+  /// @brief Get start time of leadership
+  TimePoint const& leaderSince() const;
+
+  /// @brief Update a peers endpoint in my configuration
+  void updatePeerEndpoint(query_t const& message);
+
+  /// @brief Update a peers endpoint in my configuration
+  void updatePeerEndpoint(std::string const& id, std::string const& ep);
+
+  /// @brief Assemble an agency to commitId
+  query_t buildDB(index_t);
+
+  /// @brief Guarding taking over leadership
+  void beginPrepareLeadership() { _preparing = true; }
+  void endPrepareLeadership()  { _preparing = false; }
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;
+  friend class Compactor;
 
  private:
 
-  /// @brief Update my configuration as passive agent
-  void updateConfiguration();
-  
+  /// @brief persist agency configuration in RAFT
+  void persistConfiguration(term_t t);
+
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
@@ -206,13 +265,7 @@ class Agent : public arangodb::Thread {
   bool mergeConfiguration(VPackSlice const&);
 
   /// @brief Leader ID
-  void lastCommitted(arangodb::consensus::index_t);
-
-  /// @brief Vocbase for agency persistence
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief Query registry for agency persistence
-  aql::QueryRegistry* _queryRegistry;
+  void lastCommitted(index_t);
 
   /// @brief Leader election delegate
   Constituent _constituent;
@@ -229,11 +282,26 @@ class Agent : public arangodb::Thread {
   /// @brief Last commit index (raft)
   index_t _lastCommitIndex;
 
+  /// @brief Last compaction index
+  index_t _lastAppliedIndex;
+
+  /// @brief Last compaction index
+  index_t _lastCompactionIndex;
+
+  /// @brief Last compaction index
+  index_t _leaderCommitIndex;
+
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
 
   /// @brief Committed (read) kv-store
   Store _readDB;
+
+  /// @brief Committed (read) kv-store
+  Store _transient;
+
+  /// @brief Last compacted store
+  Store _compacted;
 
   /// @brief Condition variable for appendEntries
   arangodb::basics::ConditionVariable _appendCV;
@@ -241,31 +309,55 @@ class Agent : public arangodb::Thread {
   /// @brief Condition variable for waitFor
   arangodb::basics::ConditionVariable _waitForCV;
 
-  /// @brief Condition variable for waitFor
-  arangodb::basics::ConditionVariable _configCV;
-
   /// @brief Confirmed indices of all members of agency
-  // std::vector<index_t> _confirmed;
   std::map<std::string, index_t> _confirmed;
   std::map<std::string, index_t> _lastHighest;
 
   std::map<std::string, TimePoint> _lastAcked;
   std::map<std::string, TimePoint> _lastSent;
-  mutable arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
+  std::map<std::string, TimePoint> _earliestPackage;
 
-  /// @brief Server active agents rest handler
-  bool _serveActiveAgent;
+  /**< @brief RAFT consistency lock:
+     _spearhead
+     _read_db
+     _lastCommitedIndex (log index)
+     _lastAcked
+     _confirmed
+     _nextCompactionAfter
+   */
+  mutable arangodb::Mutex _ioLock;
+
+  // lock for _leaderCommitIndex
+  mutable arangodb::Mutex _liLock;
+
+  // @brief guard _activator 
+  mutable arangodb::Mutex _activatorLock;
 
   /// @brief Next compaction after
-  arangodb::consensus::index_t _nextCompationAfter;
+  index_t _nextCompationAfter;
 
-  std::map<std::string, bool> _gossipTmp;
-
+  /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;
+
+  /// @brief Activator thread for the leader to wake up a sleeping agent from pool
   std::unique_ptr<AgentActivator> _activator;
 
+  /// @brief Compactor
+  Compactor _compactor;
+
+  /// @brief Agent is ready for RAFT
   std::atomic<bool> _ready;
+  std::atomic<bool> _preparing;
+
+  /// @brief Keep track of when I last took on leadership
+  TimePoint _leaderSince;
   
+  /// @brief Ids of ongoing transactions, used for inquire:
+  std::set<std::string> _ongoingTrxs;
+
+  // lock for _ongoingTrxs
+  arangodb::Mutex _trxsLock;
+
 };
 }
 }

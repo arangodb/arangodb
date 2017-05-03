@@ -23,53 +23,53 @@
 
 #include "Aggregator.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb::basics;
+using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
-Aggregator* Aggregator::fromTypeString(arangodb::Transaction* trx,
-                                       std::string const& type) {
+std::unique_ptr<Aggregator> Aggregator::fromTypeString(transaction::Methods* trx,
+                                                       std::string const& type) {
   if (type == "LENGTH" || type == "COUNT") {
-    return new AggregatorLength(trx);
+    return std::make_unique<AggregatorLength>(trx);
   }
   if (type == "MIN") {
-    return new AggregatorMin(trx);
+    return std::make_unique<AggregatorMin>(trx);
   }
   if (type == "MAX") {
-    return new AggregatorMax(trx);
+    return std::make_unique<AggregatorMax>(trx);
   }
   if (type == "SUM") {
-    return new AggregatorSum(trx);
+    return std::make_unique<AggregatorSum>(trx);
   }
   if (type == "AVERAGE" || type == "AVG") {
-    return new AggregatorAverage(trx);
+    return std::make_unique<AggregatorAverage>(trx);
   }
   if (type == "VARIANCE_POPULATION" || type == "VARIANCE") {
-    return new AggregatorVariance(trx, true);
+    return std::make_unique<AggregatorVariance>(trx, true);
   }
   if (type == "VARIANCE_SAMPLE") {
-    return new AggregatorVariance(trx, false);
+    return std::make_unique<AggregatorVariance>(trx, false);
   }
   if (type == "STDDEV_POPULATION" || type == "STDDEV") {
-    return new AggregatorStddev(trx, true);
+    return std::make_unique<AggregatorStddev>(trx, true);
   }
   if (type == "STDDEV_SAMPLE") {
-    return new AggregatorStddev(trx, false);
+    return std::make_unique<AggregatorStddev>(trx, false);
   }
 
   // aggregator function name should have been validated before
-  TRI_ASSERT(false);
-  return nullptr;
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-Aggregator* Aggregator::fromVPack(arangodb::Transaction* trx,
-                                  arangodb::velocypack::Slice const& slice,
-                                  char const* variableName) {
+std::unique_ptr<Aggregator> Aggregator::fromVPack(transaction::Methods* trx,
+                                                  arangodb::velocypack::Slice const& slice,
+                                                  char const* variableName) {
   VPackSlice variable = slice.get(variableName);
 
   if (variable.isString()) {

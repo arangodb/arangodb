@@ -1,6 +1,7 @@
-!CHAPTER Projections and Filters 
+Projections and Filters
+=======================
 
-!SUBSECTION Returning unaltered documents
+### Returning unaltered documents
 
 To return three complete documents from collection *users*, the following query can be used:
 
@@ -49,7 +50,7 @@ Note that there is a *LIMIT* clause but no *SORT* clause. In this case it is not
 which of the user documents are returned. Effectively the document return order is unspecified
 if no *SORT* clause is used, and you should not rely on the order in such queries.
 
-!SUBSECTION Projections
+### Projections
 
 
 To return a projection from the collection *users* use a modified *RETURN* instruction:
@@ -88,7 +89,7 @@ FOR u IN users
 ]
 ```
 
-!SUBSECTION Filters
+### Filters
 
 To return a filtered projection from collection *users*, you can use the
 *FILTER* keyword. Additionally, a *SORT* clause is used to have the result

@@ -607,7 +607,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       this._longitude1 + (this._longitude2 - this._longitude1) * 0.5
     ];
 
-    result = this._collection.WITHIN(this._index, midpoint[0], midpoint[1], diameter);
+    result = this._collection.within(midpoint[0], midpoint[1], diameter).toArray();
 
     var idx = this._collection.index(this._index);
     var latLower, latUpper, lonLower, lonUpper;
@@ -652,7 +652,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       var parts = attribute.split('.');
 
       if (idx.geoJson) {
-        result.documents.forEach(function (document) {
+        result.forEach(function (document) {
           var doc = deref(document, parts);
           if (!Array.isArray(doc)) {
             return;
@@ -666,7 +666,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
           }
         });
       } else {
-        result.documents.forEach(function (document) {
+        result.forEach(function (document) {
           var doc = deref(document, parts);
           if (!Array.isArray(doc)) {
             return;
@@ -686,7 +686,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       var latParts = latAtt.split('.');
       var lonParts = lonAtt.split('.');
 
-      result.documents.forEach(function (document) {
+      result.forEach(function (document) {
         var latDoc = deref(document, latParts);
         if (latDoc === null || latDoc === undefined) {
           return;
@@ -706,8 +706,8 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
 
     documents = {
       documents: documents,
-      count: result.documents.length,
-      total: result.documents.length
+      count: result.length,
+      total: result.length
     };
 
     if (this._limit > 0) {

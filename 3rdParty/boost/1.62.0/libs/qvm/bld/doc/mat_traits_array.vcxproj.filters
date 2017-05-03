@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\..\doc\source\mat_traits_array.cpp">
+        <Filter>qvm\doc\source</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="qvm">
+      <UniqueIdentifier>{47EC5BEE-1D8C-1472-1E72-0E8E45503776}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="qvm\doc">
+      <UniqueIdentifier>{5AB30D1C-45F5-7DDB-76C5-126233EC1BE2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="qvm\doc\source">
+      <UniqueIdentifier>{413230D7-1D9D-54DD-6456-4C726DF4639D}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

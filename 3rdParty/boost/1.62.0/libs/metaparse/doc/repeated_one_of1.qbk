@@ -1,0 +1,83 @@
+[#repeated_one_of1]
+[section repeated_one_of1]
+
+[h1 Synopsis]
+
+  template <class P1, class P2, /* ... */, class Pn>
+  struct repeated_one_of1;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name]         [Type]]
+  [[`P1` .. `Pn`] [[link parser parser]s]]
+]
+
+[h1 Description]
+
+It applies the `P1` ... `Pn` parsers repeatedly as long as any of them accepts
+the input. In each iteration the parsers are tried in order and the first one
+accepting the input is used, therefore in case of ambiguous grammars the result
+of parsing depends on the order of the `P1` ... `Pn` parsers. The result of
+parsing with this [link parser_combinator parser combinator] is a sequence of
+the individual parsing results.
+
+When none of the `P1` ... `Pn` parsers accept the input in the first iteration,
+`repeated_one_of1` rejects the input.
+
+The maximum number of accepted parsers is defined by the
+`BOOST_METAPARSE_LIMIT_ONE_OF_SIZE` macro. Its default value is 20.
+
+[h1 Header]
+
+  #include <boost/metaparse/repeated_one_of1.hpp>
+
+[h1 Expression semantics]
+
+For any `p1`, ..., `pn` parsers
+
+  repeated_one_of1<p1, /* ... */, pn>
+
+is equivalent to
+
+  repeated1<one_of<p1, /* ... */, pn>>
+
+[h1 Example]
+
+  #include <boost/metaparse/repeated_one_of1.hpp>
+  #include <boost/metaparse/lit_c.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  
+  #include <boost/mpl/equal.hpp>
+  #include <boost/mpl/vector.hpp>
+  #include <boost/mpl/char.hpp>
+  
+  using namespace boost::metaparse;
+  
+  using as_and_bs = repeated_one_of1<lit_c<'a'>, lit_c<'b'>>;
+  
+  static_assert(
+    boost::mpl::equal<
+      get_result<as_and_bs::apply<BOOST_METAPARSE_STRING("abaab"), start>>::type,
+      boost::mpl::vector<
+        boost::mpl::char_<'a'>,
+        boost::mpl::char_<'b'>,
+        boost::mpl::char_<'a'>,
+        boost::mpl::char_<'a'>,
+        boost::mpl::char_<'b'>
+      >
+    >::type::value,
+    "the result of parsing should be the list of results"
+  );
+  
+  static_assert(
+    is_error<as_and_bs::apply<BOOST_METAPARSE_STRING("x"), start>>::type::value,
+    "repeated_one_of1 should reject the input when it"
+    " can't parse anything with digit_val"
+  );
+
+[endsect]
+

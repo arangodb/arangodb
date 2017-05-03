@@ -1,0 +1,273 @@
+[/
+ /  Copyright (c) 2001, 2002 Peter Dimov and Multi Media Ltd.
+ /  Copyright (c) 2003-2008 Peter Dimov
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:purpose Purpose]
+
+`boost::bind` is a generalization of the standard functions `std::bind1st` and
+`std::bind2nd`. It supports arbitrary function objects, functions, function
+pointers, and member function pointers, and is able to bind any argument to a
+specific value or route input arguments into arbitrary positions. `bind` does
+not place any requirements on the function object; in particular, it does not
+need the `result_type`, `first_argument_type` and `second_argument_type`
+standard typedefs.
+
+[section Using bind with functions and function pointers]
+
+Given these definitions:
+
+    int f(int a, int b)
+    {
+        return a + b;
+    }
+
+    int g(int a, int b, int c)
+    {
+        return a + b + c;
+    }
+
+`bind(f, 1, 2)` will produce a "nullary" function object that takes no
+arguments and returns `f(1, 2)`. Similarly, `bind(g, 1, 2, 3)()` is equivalent
+ `to g(1, 2, 3)`.
+
+It is possible to selectively bind only some of the arguments.
+`bind(f, _1, 5)(x)` is equivalent to `f(x, 5)`; here `_1` is a /placeholder/
+argument that means "substitute with the first input argument."
+
+For comparison, here is the same operation expressed with the standard library
+primitives:
+
+    std::bind2nd(std::ptr_fun(f), 5)(x);
+
+`bind` covers the functionality of `std::bind1st` as well:
+
+    std::bind1st(std::ptr_fun(f), 5)(x);   // f(5, x)
+    bind(f, 5, _1)(x);                     // f(5, x)
+
+`bind` can handle functions with more than two arguments, and its argument
+substitution mechanism is more general:
+
+    bind(f, _2, _1)(x, y);                 // f(y, x)
+    bind(g, _1, 9, _1)(x);                 // g(x, 9, x)
+    bind(g, _3, _3, _3)(x, y, z);          // g(z, z, z)
+    bind(g, _1, _1, _1)(x, y, z);          // g(x, x, x)
+
+Note that, in the last example, the function object produced by
+`bind(g, _1, _1, _1)` does not contain references to any arguments beyond the
+first, but it can still be used with more than one argument. Any extra
+arguments are silently ignored, just like the first and the second argument
+are ignored in the third example.
+
+The arguments that `bind` takes are copied and held internally by the returned
+function object. For example, in the following code:
+
+    int i = 5;
+    bind(f, i, _1);
+
+a copy of the value of `i` is stored into the function object.
+[@boost:/libs/core/doc/html/core/ref.html `boost::ref`] and
+[@boost:/libs/core/doc/html/core/ref.html `boost::cref`] can be used to make the function
+object store a reference to an object, rather than a copy:
+
+    int i = 5;
+    bind(f, ref(i), _1);
+    bind(f, cref(i), _1);
+
+[endsect]
+
+[section:with_function_objects Using bind with function objects]
+
+`bind` is not limited to functions; it accepts arbitrary function objects. In
+the general case, the return type of the generated function object's
+`operator()` has to be specified explicitly (without a `typeof` operator the
+return type cannot be inferred):
+
+    struct F
+    {
+        int operator()(int a, int b) { return a - b; }
+        bool operator()(long a, long b) { return a == b; }
+    };
+
+    F f;
+    int x = 104;
+    bind<int>(f, _1, _1)(x);		// f(x, x), i.e. zero
+
+Some compilers have trouble with the `bind<R>(f, ...)` syntax. For portability
+reasons, an alternative way to express the above is supported:
+
+    boost::bind(boost::type<int>(), f, _1, _1)(x);
+
+Note, however, that the alternative syntax is provided only as a workaround.
+It is not part of the interface.
+
+When the function object exposes a nested type named `result_type`, the explicit
+return type can be omitted:
+
+    int x = 8;
+    bind(std::less<int>(), _1, 9)(x);	// x < 9
+
+/[Note:/ the ability to omit the return type is not available on all compilers./]/
+
+By default, `bind` makes a copy of the provided function object. `boost::ref`
+and `boost::cref` can be used to make it store a reference to the function
+object, rather than a copy. This can be useful when the function object is
+non-copyable, expensive to copy, or contains state; of course, in this case
+the programmer is expected to ensure that the function object is not destroyed
+while it's still being used.
+
+    struct F2
+    {
+        int s;
+
+        typedef void result_type;
+        void operator()(int x) { s += x; }
+    };
+
+    F2 f2 = { 0 };
+    int a[] = { 1, 2, 3 };
+
+    std::for_each(a, a+3, bind(ref(f2), _1));
+
+    assert(f2.s == 6);
+
+[endsect]
+
+[section Using bind with pointers to members]
+
+Pointers to member functions and pointers to data members are not function
+objects, because they do not support `operator()`. For convenience, `bind`
+accepts member pointers as its first argument, and the behavior is as if
+[@boost:/libs/bind/mem_fn.html `boost::mem_fn`] has been used to convert the
+member pointer into a function object. In other words, the expression
+
+    bind(&X::f, args)
+
+is equivalent to
+
+    bind<R>(``[@boost:/libs/bind/mem_fn.html `mem_fn`]``(&X::f), args)
+
+where `R` is the return type of `X::f` (for member functions) or the type of
+the member (for data members.)
+
+/[Note:/ `mem_fn` creates function objects that are able to accept a pointer,
+a reference, or a smart pointer to an object as its first argument; for
+additional information, see the `mem_fn`
+[@boost:/libs/bind/mem_fn.html documentation]./]/
+
+Example:
+
+    struct X
+    {
+        bool f(int a);
+    };
+
+    X x;
+    shared_ptr<X> p(new X);
+    int i = 5;
+
+    bind(&X::f, ref(x), _1)(i);		// x.f(i)
+    bind(&X::f, &x, _1)(i);			// (&x)->f(i)
+    bind(&X::f, x, _1)(i);			// (internal copy of x).f(i)
+    bind(&X::f, p, _1)(i);			// (internal copy of p)->f(i)
+
+The last two examples are interesting in that they produce "self-contained"
+function objects. `bind(&X::f, x, _1)` stores a copy of `x`.
+`bind(&X::f, p, _1)` stores a copy of `p`, and since `p` is a
+[@boost:/libs/smart_ptr/shared_ptr.htm `boost::shared_ptr`], the function
+object retains a reference to its instance of `X` and will remain valid even
+when `p` goes out of scope or is `reset()`.
+
+[endsect]
+
+[section Using nested binds for function composition]
+
+Some of the arguments passed to `bind` may be nested /bind expressions/
+themselves:
+
+    bind(f, bind(g, _1))(x);               // f(g(x))
+
+The inner /bind expressions/ are evaluated, in unspecified order, before the
+outer `bind` when the function object is called; the results of the evaluation
+are then substituted in their place when the outer `bind` is evaluated. In the
+example above, when the function object is called with the argument list `(x)`,
+`bind(g, _1)(x)` is evaluated first, yielding `g(x)`, and then
+`bind(f, g(x))(x)` is evaluated, yielding the final result `f(g(x))`.
+
+This feature of `bind` can be used to perform function composition. See
+[@../../bind_as_compose.cpp bind_as_compose.cpp] for an example that
+demonstrates how to use `bind` to achieve similar functionality to
+[@http://www.boost.org/doc/libs/1_31_0/libs/compose/index.htm Boost.Compose].
+
+Note that the first argument - the bound function object - is not evaluated,
+even when it's a function object that is produced by `bind` or a /placeholder/
+argument, so the example below does not work as expected:
+
+    typedef void (*pf)(int);
+
+    std::vector<pf> v;
+    std::for_each(v.begin(), v.end(), bind(_1, 5));
+
+The desired effect can be achieved via a helper function object `apply` that
+applies its first argument, as a function object, to the rest of its argument
+list. For convenience, an implementation of `apply` is provided in the
+[@../../../../boost/bind/apply.hpp apply.hpp] header file. Here is how the
+modified version of the previous example looks like:
+
+    typedef void (*pf)(int);
+
+    std::vector<pf> v;
+    std::for_each(v.begin(), v.end(), bind(apply<void>(), _1, 5));
+
+Although the first argument is, by default, not evaluated, all other arguments
+are. Sometimes it is necessary not to evaluate arguments subsequent to the
+first, even when they are nested /bind subexpressions/. This can be achieved
+with the help of another function object, `protect`, that masks the type so
+that `bind` does not recognize and evaluate it. When called, protect simply
+forwards the argument list to the other function object unmodified.
+
+The header [@../../../../boost/bind/protect.hpp protect.hpp] contains an
+implementation of `protect`. To `protect` a bind function object from
+evaluation, use `protect(bind(f, ...))`.
+
+[endsect]
+
+[section Overloaded operators (new in Boost 1.33)]
+
+For convenience, the function objects produced by `bind` overload the logical
+not operator `!` and the relational and logical operators `==, !=, <, <=, >,
+>=, &&, ||`.
+
+`!bind(f, ...)` is equivalent to `bind(logical_not(), bind(f, ...))`, where
+`logical_not` is a function object that takes one argument `x` and returns
+`!x`.
+
+`bind(f, ...) op x`, where _op_ is a relational or logical operator, is
+equivalent to `bind(relation(), bind(f, ...), x)`, where `relation` is a
+function object that takes two arguments `a` and `b` and returns `a op b`.
+
+What this means in practice is that you can conveniently negate the result of
+`bind`:
+
+    std::remove_if(first, last, !bind(&X::visible, _1)); // remove invisible objects
+
+and compare the result of `bind` against a value:
+
+    std::find_if(first, last, bind(&X::name, _1) == "Peter");
+    std::find_if(first, last, bind(&X::name, _1) == "Peter" || bind(&X::name, _1) == "Paul");
+
+against a /placeholder/:
+
+    bind(&X::name, _1) == _2
+
+or against another /bind expression/:
+
+    std::sort(first, last, bind(&X::name, _1) < bind(&X::name, _2)); // sort by name
+
+[endsect]
+
+[endsect]

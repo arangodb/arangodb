@@ -71,7 +71,7 @@ function importTestSuite () {
 /// @brief execute a given query and return the results as an array
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getQueryResults (query) {
+  function getQueryResults (query, withKey) {
     var result = executeQuery(query);
     var results = [ ];
 
@@ -80,7 +80,7 @@ function importTestSuite () {
       var row = result.next();
       var k;
       for (k in row) {
-        if (row.hasOwnProperty(k) && k !== '_id' && k !== '_rev' && k !== '_key') {
+        if (row.hasOwnProperty(k) && k !== '_id' && k !== '_rev' && (k !== '_key' || withKey)) {
           keys.push(k);
         }
       }
@@ -286,6 +286,49 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import without converting
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportNoConvert : function () {
+      var expected = [ 
+        { value1: "1" },
+        { value1: "2", value2: false },
+        { value1: "3", value2: true },
+        { value1: "4", value2: "1" },
+        { value1: "5", value2: "2" },
+        { value1: "6", value2: "3" },
+        { value1: "7", value2: "a" },
+        { value1: "8", value2: "b" },
+        { value1: "9", value2: " a" },
+        { value1: "10", value2: "-1" },
+        { value1: "11", value2: "-.5" },
+        { value1: "12", value2: "3.566" },
+        { value1: "13", value2: "0" },
+        { value1: "14" },
+        { value1: "15", value2: "       c" },
+        { value1: "16", value2: "       1" }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsvNoConvert SORT TO_NUMBER(i.value1) RETURN i");
+      assertEqual(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import without trailing eol
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportNoEol : function () {
+      var expected = [ 
+        { value1: "a", value2: "b" },
+        { value1: "c", value2: "d" },
+        { value1: "e", value2: "f" }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsvNoEol SORT i.value1 RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test tsv import
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -326,6 +369,41 @@ function importTestSuite () {
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportEdge SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique constraint violations
+////////////////////////////////////////////////////////////////////////////////
+    
+    testJsonIgnore : function () {
+      var expected = [
+        { "_key" : "test1", "value" : "abc" }, 
+        { "_key" : "test3", "value" : "def" }, 
+        { "_key" : "test4", "value" : "xyz" }, 
+        { "_key" : "test6", "value" : "123" },
+        { "_key" : "test7", "value" : "999" } 
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportIgnore SORT i._key RETURN i", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique constraint violations
+////////////////////////////////////////////////////////////////////////////////
+    
+    testJsonUniqueConstraints : function () {
+      var expected = [ 
+        { "_key" : "test1", "value" : "foo" }, 
+        { "_key" : "test3", "value" : "def" }, 
+        { "_key" : "test4", "value" : "xyz" }, 
+        { "_key" : "test6", "value" : "234" }, 
+        { "_key" : "test7", "value" : "999" }, 
+        { "_key" : "test8", "value" : "aaa" } 
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportUniqueConstraints SORT i._key RETURN i", true);
       assertEqual(expected, actual);
     }
 
