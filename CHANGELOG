@@ -3,6 +3,7 @@ v3.1.20 (XXXX-XX-XX)
 
 * fixed incorrect sorting for distributeShardsLike
 
+* improve reliability of AgencyComm communication with Agency
 
 v3.1.19 (2017-04-28)
 --------------------
