@@ -39,7 +39,7 @@
 namespace rocksdb {
 class TransactionDB;
 class Iterator;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 class RocksDBEdgeIndex;
@@ -105,8 +105,14 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
+  int insertRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&) override;
+
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
+  
+  int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&) override;
 
   void batchInsert(
       transaction::Methods*,
@@ -152,6 +158,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   std::string _directionAttr;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -48,7 +48,7 @@ namespace aql {
 class SortCondition;
 struct Variable;
 enum AstNodeType : uint32_t;
-}
+}  // namespace aql
 class FixedSizeAllocator;
 class LogicalCollection;
 class RocksDBComparator;
@@ -142,8 +142,14 @@ class RocksDBVPackIndex : public RocksDBIndex {
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
+  int insertRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&) override;
+
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
+  
+  int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&) override;
 
   int drop() override;
 
@@ -189,33 +195,31 @@ class RocksDBVPackIndex : public RocksDBIndex {
       size_t& values, std::unordered_set<std::string>& nonNullAttributes,
       bool) const;
 
- protected:
-  /// @brief helper function to insert a document into any index type
-  int fillElement(transaction::Methods* trx, TRI_voc_rid_t revisionId,
-                  VPackSlice const& doc,
-                  std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements);
-
+ private:
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
 
- private:
   /// @brief helper function to transform AttributeNames into string lists
   void fillPaths(std::vector<std::vector<std::string>>& paths,
                  std::vector<int>& expanding);
 
-  /// @brief helper function to create a set of index combinations to insert
-  std::vector<std::pair<VPackSlice, uint32_t>> buildIndexValue(
-      VPackSlice const documentSlice);
+  /// @brief helper function to insert a document into any index type
+  int fillElement(velocypack::Builder& leased, TRI_voc_rid_t revisionId,
+                  VPackSlice const& doc, std::vector<RocksDBKey>& elements);
 
-  void addIndexValue(VPackSlice const& document,
-                     std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
+  /// @brief helper function to build the key and value for rocksdb from the
+  /// vector of slices
+  void addIndexValue(velocypack::Builder& leased, VPackSlice const& document,
+                     std::vector<RocksDBKey>& elements,
                      std::vector<VPackSlice>& sliceStack);
 
-  /// @brief helper function to create a set of index combinations to insert
-  void buildIndexValues(
-      VPackSlice const document, size_t level,
-      std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
-      std::vector<VPackSlice>& sliceStack);
+  /// @brief helper function to create a set of value combinations to insert
+  /// into the rocksdb index.
+  /// @param elements vector of resulting index entries
+  /// @param sliceStack working list of values to insert into the index
+  void buildIndexValues(velocypack::Builder& leased, VPackSlice const document,
+                        size_t level, std::vector<RocksDBKey>& elements,
+                        std::vector<VPackSlice>& sliceStack);
 
  private:
   std::unique_ptr<FixedSizeAllocator> _allocator;
@@ -232,6 +236,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief whether or not partial indexing is allowed
   bool _allowPartialIndex;
 };
-}
+}  // namespace arangodb
 
 #endif

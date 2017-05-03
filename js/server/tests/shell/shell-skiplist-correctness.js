@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual */
+/*global assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the correctness of a skip-list index
@@ -49,6 +49,7 @@ function SkipListCorrSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      internal.debugClearFailAt();
       internal.db._drop(cn);
       coll = internal.db._create(cn);
     },
@@ -68,6 +69,7 @@ function SkipListCorrSuite() {
 
       coll = null;
       internal.wait(0.0);
+      internal.debugClearFailAt();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,10 +284,52 @@ function SkipListCorrSuite() {
                   "FOR x IN " + cn + " FILTER x.v > 4 RETURN x").length, 2);
       assertEqual(getQueryResults(
                   "FOR x IN " + cn + " FILTER x.v >= 4 RETURN x").length, 3);
+    },
+    
+    // RoccksDB engine will use fillIndex outside of transactions
+    // we need to test this with >5000 documents
+    testFillIndex: function() {
+      var arr = [];
+      for(var i = 0; i < 10001; i++) {
+        arr.push({_key:""+i,v:i});
+      }
+      coll.insert(arr);
+      assertEqual(10001, coll.count());
+      
+      coll.ensureUniqueSkiplist("v");
+      // let's test random thins
+      assertEqual(getQueryResults(
+                                  "FOR x IN " + cn + " FILTER x.v == 3 RETURN x").length, 1);
+      assertEqual(getQueryResults(
+                                  "FOR x IN " + cn + " FILTER x.v < 3 RETURN x").length, 3);
+      assertEqual(getQueryResults(
+                                  "FOR x IN " + cn + " FILTER x.v <= 3 RETURN x").length, 4);
+      assertEqual(getQueryResults(
+                                  "FOR x IN " + cn + " FILTER x.v > 3 RETURN x").length, 9997);
+  },
+    testFillIndexFailure:function() {
+      // use a transaction to speed this up
+      var arr = [];
+      for(var i = 0; i < 10001; i++) {
+        arr.push({_key:""+i,v:i});
+      }
+      coll.insert(arr);
+      assertEqual(10001, coll.count());
+
+      var threwException = false;
+      internal.debugSetFailAt("RocksDBCollection::over9000");
+      try {
+        coll.ensureUniqueSkiplist("v");
+      } catch(e) {
+        threwException = true;
+      }
+      assertTrue(threwException);
+        
+      // should not have created an index
+      assertEqual(coll.getIndexes().length, 1);
     }
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
