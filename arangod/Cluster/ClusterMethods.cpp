@@ -2102,7 +2102,7 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     }
 
     // determine shard id
-    std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
+    std::string shardId = "s" + StringUtils::itoa(id + i);
 
     shards.emplace(shardId, serverIds);
   }
