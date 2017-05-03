@@ -1027,7 +1027,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (ServerState::instance()->isCoordinator()) {
     std::unique_ptr<LogicalCollection> col =
         ClusterMethods::createCollectionOnCoordinator(collectionType, vocbase,
-                                                      infoSlice);
+                                                      infoSlice, false);
     TRI_V8_RETURN(WrapCollection(isolate, col.release()));
   }
 

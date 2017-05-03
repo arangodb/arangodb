@@ -218,7 +218,7 @@ class ClusterMethods {
   static std::unique_ptr<LogicalCollection> createCollectionOnCoordinator(
       TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
       arangodb::velocypack::Slice parameters,
-      bool ignoreDistributeShardsLikeErrors = false);
+      bool ignoreDistributeShardsLikeErrors);
 
  private:
 
