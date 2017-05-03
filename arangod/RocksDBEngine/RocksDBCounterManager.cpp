@@ -134,6 +134,18 @@ void RocksDBCounterManager::updateCounter(uint64_t objectId,
   }
 }
 
+arangodb::Result RocksDBCounterManager::setAbsoluteCounter(uint64_t objectId, uint64_t value) {
+  arangodb::Result res;
+  WRITE_LOCKER(guard, _rwLock);
+  auto it = _counters.find(objectId);
+  if (it != _counters.end()) {
+    it->second._count = value;
+  } else {
+    res.reset(TRI_ERROR_INTERNAL, "counter value not found");
+  }
+  return res;
+}
+
 void RocksDBCounterManager::removeCounter(uint64_t objectId) {
   WRITE_LOCKER(guard, _rwLock);
   auto const& it = _counters.find(objectId);
