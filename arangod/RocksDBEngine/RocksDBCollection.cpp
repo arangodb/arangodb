@@ -1452,17 +1452,33 @@ int RocksDBCollection::lockRead(double timeout) {
 /// @brief read unlocks a collection
 int RocksDBCollection::unlockRead() {
   _exclusiveLock.unlockRead();
-
   return TRI_ERROR_NO_ERROR;
 }
 
+//rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
+  // start transaction to get a collection lock
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(
           _logicalCollection->vocbase()),
       _logicalCollection->cid(), AccessMode::Type::EXCLUSIVE);
+  auto res = trx.begin();
+  if (res.fail()){
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
+  // count documents
+  auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  _numberDocuments = rocksutils::countKeyRange(
+     globalRocksDB(), rocksdb::ReadOptions(), documentBounds);
 
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+  //update counter manager value
+  res = globalRocksEngine()->counterManager()->setAbsoluteCounter(_objectId,_numberDocuments);
+  if(res.ok()){
+    globalRocksEngine()->counterManager()->sync(true);
+  } else {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return _numberDocuments;
 }
