@@ -23,20 +23,14 @@
 
 #include "hashes.h"
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the FNV hash work horse
-////////////////////////////////////////////////////////////////////////////////
-
 static inline uint64_t FnvWork(uint8_t value, uint64_t hash) {
   static uint64_t const MagicPrime = 0x00000100000001b3ULL;
 
   return (hash ^ value) * MagicPrime;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a FNV hash for strings with a length
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t TRI_FnvHashBlock(uint64_t hash, void const* buffer, size_t length) {
   uint8_t const* p = (uint8_t const*)buffer;
   uint8_t const* end = p + length;
@@ -48,18 +42,12 @@ uint64_t TRI_FnvHashBlock(uint64_t hash, void const* buffer, size_t length) {
   return hash;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a FNV hash for memory blobs
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t TRI_FnvHashPointer(void const* buffer, size_t length) {
   return TRI_FnvHashBlock(0xcbf29ce484222325ULL, buffer, length);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a FNV hash for strings
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t TRI_FnvHashString(char const* buffer) {
   uint64_t const nMagicPrime = 0x00000100000001b3ULL;
   uint64_t nHashVal = 0xcbf29ce484222325ULL;
@@ -73,10 +61,7 @@ uint64_t TRI_FnvHashString(char const* buffer) {
   return nHashVal;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief precomputed lookup values for crc32 8 bytes-at-a-time calculation
-////////////////////////////////////////////////////////////////////////////////
-
 static const uint32_t Crc32Lookup[8][256] = {
     {0x00000000, 0xf26b8303, 0xe13b70f7, 0x1350f3f4, 0xc79a971f, 0x35f1141c,
      0x26a1e7e8, 0xd4ca64eb, 0x8ad958cf, 0x78b2dbcc, 0x6be22838, 0x9989ab3b,
@@ -423,10 +408,7 @@ static const uint32_t Crc32Lookup[8][256] = {
      0x14124958, 0x5d2e347f, 0xe54c35a1, 0xac704886, 0x7734cfef, 0x3e08b2c8,
      0xc451b7cc, 0x8d6dcaeb, 0x56294d82, 0x1f1530a5}};
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Detection of Intel SSE4.2 extensions at runtime:
-////////////////////////////////////////////////////////////////////////////////
-
 #if ENABLE_ASM_CRC32 == 1
 
 #include <cpuid.h>
@@ -470,7 +452,6 @@ extern "C" uint32_t TRI_BlockCrc32_intrinsics(uint32_t value,
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief CRC32 value of data block
 ///
 /// optimized code to process 8 bytes at a time. provides a substantial speedup
@@ -478,13 +459,20 @@ extern "C" uint32_t TRI_BlockCrc32_intrinsics(uint32_t value,
 ///
 /// code found at http://create.stephan-brumme.com/crc32/#slicing-by-8-overview,
 /// original source is http://sourceforge.net/projects/slicing-by-8/
-////////////////////////////////////////////////////////////////////////////////
-
 extern "C" {
-
+    
   uint32_t TRI_BlockCrc32_C(uint32_t value, char const* data, size_t length) {
-    uint32_t* current = (uint32_t*)data;
-    uint8_t* currentChar;
+#ifndef TRI_UNALIGNED_ACCESS
+    // byte-wise hashing to support platforms that don't permit
+    // unaligned accesses of uint32_t values
+    uint8_t* currentChar = reinterpret_cast<uint8_t const*>(data);
+    while (length--) {
+      value = (value >> 8) ^ Crc32Lookup[0][(value & 0xFF) ^ *currentChar++];
+    }
+    return value;
+#else
+    // hash two words in parallel
+    uint32_t const* current = reinterpret_cast<uint32_t const*>(data);
 
     // process eight bytes at once
     while (length >= 8) {
@@ -500,13 +488,13 @@ extern "C" {
       length -= 8;
     }
 
-    currentChar = (uint8_t*)current;
+    uint8_t const* currentChar = reinterpret_cast<uint8_t const*>(current);
     // remaining 1 to 7 bytes (standard CRC table-based algorithm)
     while (length--) {
       value = (value >> 8) ^ Crc32Lookup[0][(value & 0xFF) ^ *currentChar++];
     }
-
     return value;
+#endif
   }
 
 #if ENABLE_ASM_CRC32 == 1
@@ -531,10 +519,7 @@ extern "C" {
 
 }   // extern "C"
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a CRC32 for memory blobs
-////////////////////////////////////////////////////////////////////////////////
-
 uint32_t TRI_Crc32HashPointer(void const* data, size_t length) {
   uint32_t crc = TRI_InitialCrc32();
   crc = TRI_BlockCrc32(crc, static_cast<char const*>(data), length);
@@ -542,10 +527,7 @@ uint32_t TRI_Crc32HashPointer(void const* data, size_t length) {
   return TRI_FinalCrc32(crc);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a CRC32 for strings
-////////////////////////////////////////////////////////////////////////////////
-
 uint32_t TRI_Crc32HashString(char const* data) {
   size_t len = strlen(data);
 
