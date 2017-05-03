@@ -62,6 +62,7 @@ function dump (options) {
 
   if (instanceInfo === false) {
     return {
+      failed: 1,
       dump: {
         status: false,
         message: 'failed to start server!'
@@ -71,39 +72,53 @@ function dump (options) {
 
   print(CYAN + Date() + ': Setting up' + RESET);
 
-  let results = {};
+  let results = { failed: 1 };
   results.setup = tu.runInArangosh(options, instanceInfo,
     tu.makePathUnix('js/server/tests/dump/dump-setup' + cluster + '.js'));
+  results.setup.failed = 1;
 
   if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
     (results.setup.status === true)) {
+    results.setup.failed = 0;
+
     print(CYAN + Date() + ': Dump and Restore - dump' + RESET);
 
     results.dump = pu.run.arangoDumpRestore(options, instanceInfo, 'dump',
       'UnitTestsDumpSrc');
-
+    results.dump.failed = 1;
     if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
       (results.dump.status === true)) {
+      results.dump.failed = 0;
+
       print(CYAN + Date() + ': Dump and Restore - restore' + RESET);
 
       results.restore = pu.run.arangoDumpRestore(options, instanceInfo, 'restore',
         'UnitTestsDumpDst');
-
+      results.restore.failed = 1;
       if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
         (results.restore.status === true)) {
+        results.restore.failed = 0;
+
         print(CYAN + Date() + ': Dump and Restore - dump after restore' + RESET);
 
         results.test = tu.runInArangosh(options, instanceInfo,
           tu.makePathUnix('js/server/tests/dump/dump-' + storageEngine + cluster + '.js'), {
             'server.database': 'UnitTestsDumpDst'
           });
-
+        results.test.failed = 1;
         if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
           (results.test.status === true)) {
+          results.test.failed = 0;
+
           print(CYAN + Date() + ': Dump and Restore - teardown' + RESET);
 
           results.tearDown = tu.runInArangosh(options, instanceInfo,
-            tu.makePathUnix('js/server/tests/dump/dump-teardown' + cluster + '.js'));
+                                              tu.makePathUnix('js/server/tests/dump/dump-teardown' + cluster + '.js'));
+          results.tearDown.failed = 1;
+          if (results.tearDown.status) {
+            results.tearDown.failed = 0;
+            results.failed = 0;
+          }
         }
       }
     }

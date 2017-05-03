@@ -63,11 +63,13 @@ function endpoints (options) {
   };
 
   return Object.keys(endpoints).reduce((results, endpointName) => {
+    results.failed = 0;
     let testName = 'endpoint-' + endpointName;
     results[testName] = (function () {
       let endpoint = endpoints[endpointName]();
       if (endpoint === undefined || options.cluster || options.skipEndpoints) {
         return {
+          failed: 0,
           status: true,
           skipped: true
         };
@@ -77,7 +79,9 @@ function endpoints (options) {
         }, testName);
 
         if (instanceInfo === false) {
+          result.failed += 1;
           return {
+            failed: 1,
             status: false,
             message: 'failed to start server!'
           };
@@ -90,6 +94,9 @@ function endpoints (options) {
         pu.shutdownInstance(instanceInfo, Object.assign(options, {useKillExternal: true}));
         print(CYAN + 'done.' + RESET);
 
+        if (!result.status) {
+          result.failed += 1;
+        }
         return result;
       }
     }());

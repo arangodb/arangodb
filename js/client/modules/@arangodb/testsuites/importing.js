@@ -168,7 +168,9 @@ function importing (options) {
     }
 
     return {
+      'failed': 0,
       'importing': {
+        'failed': 0,
         'status': true,
         'message': 'skipped because of cluster',
         'skipped': true
@@ -180,20 +182,25 @@ function importing (options) {
 
   if (instanceInfo === false) {
     return {
+      'failed': 1,
       'importing': {
+        failed: 1,
         status: false,
         message: 'failed to start server!'
       }
     };
   }
 
-  let result = {};
+  let result = { failed: 0 };
 
   try {
     result.setup = tu.runInArangosh(options, instanceInfo,
       tu.makePathUnix('js/server/tests/import/import-setup.js'));
 
+    result.setup.failed = 0;
     if (result.setup.status !== true) {
+      result.setup.failed = 1;
+      result.failed += 1;
       throw new Error('cannot start import setup');
     }
 
@@ -201,17 +208,26 @@ function importing (options) {
       const impTodo = impTodos[i];
 
       result[impTodo.id] = pu.run.arangoImp(options, instanceInfo, impTodo);
+      result[impTodo.id].failed = 0;
 
       if (result[impTodo.id].status !== true && !options.force) {
+        result[impTodo.id].failed = 1;
+        result.failed += 1;
         throw new Error('cannot run import');
       }
     }
 
-    result.check = tu.runInArangosh(options, instanceInfo,
+    result.check = tu.runInArangosh(
+      options,
+      instanceInfo,
       tu.makePathUnix('js/server/tests/import/import.js'));
+    result.check.failed = result.check.success ? 0 : 1;
 
-    result.teardown = tu.runInArangosh(options, instanceInfo,
+    result.teardown = tu.runInArangosh(
+      options,
+      instanceInfo,
       tu.makePathUnix('js/server/tests/import/import-teardown.js'));
+    result.teardown.failed = result.teardown.success ? 0 : 1;
   } catch (banana) {
     print('An exceptions of the following form was caught:',
       yaml.safeDump(banana));
