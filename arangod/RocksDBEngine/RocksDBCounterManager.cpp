@@ -24,6 +24,7 @@
 #include "RocksDBCounterManager.h"
 
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
@@ -307,7 +308,7 @@ void RocksDBCounterManager::readCounterValues() {
 
 /// WAL parser, no locking required here, because we have been locked from the
 /// outside
-struct WBReader : public rocksdb::WriteBatch::Handler {
+struct WBReader final : public rocksdb::WriteBatch::Handler {
   // must be set by the counter manager
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqStart;
   std::unordered_map<uint64_t, RocksDBCounterManager::CounterAdjustment> deltas;
@@ -316,8 +317,10 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   uint64_t _maxHLC = 0;
 
   WBReader() : currentSeqNum(0) {}
-  virtual ~WBReader() {
+  ~WBReader() {
     // update ticks after parsing wal
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "max tick found in WAL: " << _maxTick << ", last HLC value: " << _maxHLC;
+
     TRI_UpdateTickServer(_maxTick);
     TRI_HybridLogicalClock(_maxHLC);
   }
@@ -337,14 +340,12 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   }
 
   void storeMaxHLC(uint64_t hlc) {
-    // updateMaxTickHelper
     if (hlc > _maxHLC) {
       _maxHLC = hlc;
     }
   }
 
   void storeMaxTick(uint64_t tick) {
-    // updateMaxTickHelper
     if (tick > _maxTick) {
       _maxTick = tick;
     }
@@ -360,10 +361,31 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
     // array
     //          - documents - _rev (revision as maxtick)
     //          - databases
+    auto const type = RocksDBKey::type(key);
 
-    if (RocksDBKey::type(key) == RocksDBEntryType::Document) {
+    if (type == RocksDBEntryType::Document) {
       storeMaxHLC(RocksDBKey::revisionId(key));
-    } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
+    } else if (type == RocksDBEntryType::PrimaryIndexValue) {
+      // document key
+      StringRef ref = RocksDBKey::primaryKey(key); 
+      TRI_ASSERT(!ref.empty());
+      // check if the key is numeric
+      if (ref[0] >= '1' && ref[0] <= '9') { 
+        // numeric start byte. looks good
+        try {
+          // extract uint64_t value from key. this will throw if the key
+          // is non-numeric
+          uint64_t tick = basics::StringUtils::uint64_check(ref.data(), ref.size());
+          // if no previous _maxTick set or the numeric value found is
+          // "near" our previous _maxTick, then we update it
+          if (tick > _maxTick && (_maxTick == 0 || tick - _maxTick < 2048)) {
+            storeMaxTick(tick);
+          }
+        } catch (...) {
+          // non-numeric key. simply ignore it
+        }
+      }
+    } else if (type == RocksDBEntryType::Collection) {
       storeMaxTick(RocksDBKey::collectionId(key));
       auto slice = RocksDBValue::data(value);
       storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice, "objectId"));
@@ -373,9 +395,9 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
             std::max(basics::VelocyPackHelper::stringUInt64(idx, "objectId"),
                      basics::VelocyPackHelper::stringUInt64(idx, "id")));
       }
-    } else if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
+    } else if (type == RocksDBEntryType::Database) {
       storeMaxTick(RocksDBKey::databaseId(key));
-    } else if (RocksDBKey::type(key) == RocksDBEntryType::View) {
+    } else if (type == RocksDBEntryType::View) {
       LOG_TOPIC(ERR, Logger::STARTUP)
           << "tick update for views needs to be implemented";
     }
@@ -420,7 +442,8 @@ bool RocksDBCounterManager::parseRocksWAL() {
 
   rocksdb::SequenceNumber start = UINT64_MAX;
   // Tell the WriteBatch reader the transaction markers to look for
-  std::unique_ptr<WBReader> handler(new WBReader());
+  auto handler = std::make_unique<WBReader>();
+  
   for (auto const& pair : _counters) {
     handler->seqStart.emplace(pair.first, pair.second._sequenceNum);
     start = std::min(start, pair.second._sequenceNum);
