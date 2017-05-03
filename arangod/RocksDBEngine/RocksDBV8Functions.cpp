@@ -145,6 +145,6 @@ void RocksDBV8Functions::registerResources() {
                                JS_PropertiesWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculate_counts"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculateCount"),
                        JS_RecalculateCounts);
 }
