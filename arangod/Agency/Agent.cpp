@@ -839,6 +839,8 @@ read_ret_t Agent::read(query_t const& query) {
     return read_ret_t(false, NO_LEADER);
   }
 
+  //LOG_TOPIC(WARN, Logger::AGENCY) << _state;
+
   // Retrieve data from readDB
   auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::vector<bool> success = _readDB.read(query, result);
@@ -1364,7 +1366,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       }
     }
     
-    size_t counter = 0;
     for (auto const& i : incoming) {
       
       /// disagreement over pool membership: fatal!

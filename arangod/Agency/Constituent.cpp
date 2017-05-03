@@ -565,7 +565,7 @@ void Constituent::run() {
   }
 
   std::vector<std::string> act = _agent->config().active();
-  LOG_TOPIC(WARN, Logger::AGENCY) << __FILE__ << __LINE__ << " " << act;
+
   while (
     !this->isStopping() // Obvious
     && (!_agent->ready()
