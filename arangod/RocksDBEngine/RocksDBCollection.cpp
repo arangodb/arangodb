@@ -1104,15 +1104,15 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
 
 arangodb::Result RocksDBCollection::fillIndexes(
     transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
-  ManagedDocumentResult mmr;
+  ManagedDocumentResult mmdr;
   std::unique_ptr<IndexIterator> iter(
-      primaryIndex()->allIterator(trx, &mmr, false));
+      primaryIndex()->allIterator(trx, &mmdr, false));
   int res = TRI_ERROR_NO_ERROR;
 
   auto cb = [&](DocumentIdentifierToken token) {
-    if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmr)) {
+    if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmdr)) {
       RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
-      res = ridx->insert(trx, mmr.lastRevisionId(), VPackSlice(mmr.vpack()),
+      res = ridx->insert(trx, mmdr.lastRevisionId(), VPackSlice(mmdr.vpack()),
                          false);
     }
   };
@@ -1475,9 +1475,9 @@ uint64_t RocksDBCollection::recalculateCounts() {
   //update counter manager value
   res = globalRocksEngine()->counterManager()->setAbsoluteCounter(_objectId,_numberDocuments);
   if(res.ok()){
+    // in case of fail the counter has never been written and hence does not
+    // need correction. The value is not changed and does not need to be synced
     globalRocksEngine()->counterManager()->sync(true);
-  } else {
-    THROW_ARANGO_EXCEPTION(res);
   }
 
   return _numberDocuments;

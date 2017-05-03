@@ -25,21 +25,22 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VocBase/LogicalCollection.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-externals.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <v8.h>
 
 using namespace arangodb;
 
-/// this is just a stub
+/// flush the WAL
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -102,6 +103,28 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+/// return rocksdb properties
+static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  RocksDBEngine* engine =
+      dynamic_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  if (engine == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  VPackBuilder builder;
+  engine->rocksdbProperties(builder);
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_RecalculateCounts(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -145,6 +168,8 @@ void RocksDBV8Functions::registerResources() {
                                JS_PropertiesWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ENGINE_STATS"),
+                               JS_EngineStats, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculateCount"),
                        JS_RecalculateCounts);
 }

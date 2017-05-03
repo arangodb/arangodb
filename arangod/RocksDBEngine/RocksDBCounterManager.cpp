@@ -141,7 +141,10 @@ arangodb::Result RocksDBCounterManager::setAbsoluteCounter(uint64_t objectId, ui
   if (it != _counters.end()) {
     it->second._count = value;
   } else {
-    res.reset(TRI_ERROR_INTERNAL, "counter value not found");
+    // nothing to do as the counter has never been written it can not be set to
+    // a value that would require correction. but we use the return value to
+    // signal that no sync is rquired
+    res.reset(TRI_ERROR_INTERNAL, "counter value not found - no sync required");
   }
   return res;
 }
@@ -162,10 +165,6 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
 
 /// Thread-Safe force sync
 Result RocksDBCounterManager::sync(bool force) {
-#if 0
-  writeSettings();
-#endif
-
   if (force) {
     while (true) {
       bool expected = false;
@@ -215,12 +214,34 @@ Result RocksDBCounterManager::sync(bool force) {
     rocksdb::Status s = rtrx->Put(key.string(), value);
     if (!s.ok()) {
       rtrx->Rollback();
+      LOG_TOPIC(WARN, Logger::ENGINES) << "writing counters failed";
       return rocksutils::convertStatus(s);
     }
   }
+    
+  // now write global settings
+  b.clear();
+  b.openObject();
+  b.add("tick", VPackValue(std::to_string(TRI_CurrentTickServer())));
+  b.add("hlc", VPackValue(std::to_string(TRI_HybridLogicalClock())));
+  b.close();
+
+  VPackSlice slice = b.slice();
+  LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
+
+  RocksDBKey key = RocksDBKey::SettingsValue();
+  rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
+
+  rocksdb::Status s = rtrx->Put(key.string(), value);
+
+  if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "writing settings failed";
+    rtrx->Rollback();
+    return rocksutils::convertStatus(s);
+  }
 
   // we have to commit all counters in one batch
-  rocksdb::Status s = rtrx->Commit();
+  s = rtrx->Commit();
   if (s.ok()) {
     for (std::pair<uint64_t, CMValue> const& pair : copy) {
       _syncedSeqNums[pair.first] = pair.second._sequenceNum;
@@ -249,32 +270,18 @@ void RocksDBCounterManager::readSettings() {
             basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
         LOG_TOPIC(TRACE, Logger::ENGINES) << "using last tick: " << lastTick;
         TRI_UpdateTickServer(lastTick);
+        
+        if (slice.hasKey("hlc")) {
+          uint64_t lastHlc =
+              basics::VelocyPackHelper::stringUInt64(slice.get("hlc"));
+          LOG_TOPIC(TRACE, Logger::ENGINES) << "using last hlc: " << lastHlc;
+          TRI_HybridLogicalClock(lastHlc);
+        }
       } catch (...) {
         LOG_TOPIC(WARN, Logger::ENGINES)
             << "unable to read initial settings: invalid data";
       }
     }
-  }
-}
-
-void RocksDBCounterManager::writeSettings() {
-  RocksDBKey key = RocksDBKey::SettingsValue();
-
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("tick", VPackValue(std::to_string(TRI_CurrentTickServer())));
-  builder.close();
-
-  VPackSlice slice = builder.slice();
-  LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
-
-  rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
-
-  rocksdb::Status status =
-      _db->Put(rocksdb::WriteOptions(), key.string(), value);
-
-  if (!status.ok()) {
-    LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings failed";
   }
 }
 
@@ -308,10 +315,10 @@ struct WBReader : public rocksdb::WriteBatch::Handler {
   uint64_t _maxTick = 0;
   uint64_t _maxHLC = 0;
 
-  explicit WBReader() : currentSeqNum(0) {}
+  WBReader() : currentSeqNum(0) {}
   virtual ~WBReader() {
     // update ticks after parsing wal
-    TRI_UpdateTickServer(std::max(_maxTick, TRI_CurrentTickServer()));
+    TRI_UpdateTickServer(_maxTick);
     TRI_HybridLogicalClock(_maxHLC);
   }
 

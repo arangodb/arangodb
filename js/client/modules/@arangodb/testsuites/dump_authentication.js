@@ -75,6 +75,7 @@ function dumpAuthentication (options) {
 
   if (instanceInfo === false) {
     return {
+      failed: 1,
       'dump_authentication': {
         status: false,
         message: 'failed to start server!'
@@ -84,13 +85,16 @@ function dumpAuthentication (options) {
 
   print(CYAN + Date() + ': Setting up' + RESET);
 
-  let results = {};
+  let results = { failed: 1 };
   results.setup = tu.runInArangosh(options, instanceInfo,
     tu.makePathUnix('js/server/tests/dump/dump-authentication-setup.js'),
     auth2);
+  results.setup.failed = 1;
 
   if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
     (results.setup.status === true)) {
+    results.setup.failed = 0;
+
     print(CYAN + Date() + ': Dump and Restore - dump' + RESET);
 
     let authOpts = {
@@ -102,29 +106,41 @@ function dumpAuthentication (options) {
 
     results.dump = pu.run.arangoDumpRestore(authOpts, instanceInfo, 'dump',
       'UnitTestsDumpSrc');
-
+    results.dump.failed = 1;
     if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
       (results.dump.status === true)) {
+      results.dump.failed = 0;
+
       print(CYAN + Date() + ': Dump and Restore - restore' + RESET);
 
       results.restore = pu.run.arangoDumpRestore(authOpts, instanceInfo, 'restore',
         'UnitTestsDumpDst');
-
+      results.restore.failed = 1;
       if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
         (results.restore.status === true)) {
+        results.restore.failed = 0;
+
         print(CYAN + Date() + ': Dump and Restore - dump after restore' + RESET);
 
         results.test = tu.runInArangosh(authOpts, instanceInfo,
           tu.makePathUnix('js/server/tests/dump/dump-authentication.js'), {
             'server.database': 'UnitTestsDumpDst'
           });
-
+        results.test.failed = 1;
         if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
           (results.test.status === true)) {
+          results.test.failed = 0;
+
           print(CYAN + Date() + ': Dump and Restore - teardown' + RESET);
 
           results.tearDown = tu.runInArangosh(options, instanceInfo,
             tu.makePathUnix('js/server/tests/dump/dump-teardown.js'), auth2);
+
+          results.tearDown.failed = 1;
+          if (results.tearDown.status) {
+            results.tearDown.failed = 0;
+            results.failed = 0;
+          }
         }
       }
     }

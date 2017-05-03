@@ -55,7 +55,7 @@ const optionsDocumentation = [
 // //////////////////////////////////////////////////////////////////////////////
 
 function arangosh (options) {
-  let ret = {};
+  let ret = { failed: 0 };
   [
     'testArangoshExitCodeNoConnect',
     'testArangoshExitCodeFail',
@@ -93,9 +93,13 @@ function arangosh (options) {
     const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === expectedReturnCode);
 
     if (!failSuccess) {
+      ret.failed += 1;
+      ret[section].failed = 1;
       ret[section]['message'] =
         'didn\'t get expected return code (' + expectedReturnCode + '): \n' +
         yaml.safeDump(rc);
+    } else {
+      ret[section].failed = 0;
     }
 
     ++ret[section]['total'];
@@ -160,9 +164,13 @@ function arangosh (options) {
     echoSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
     if (!echoSuccess) {
+      ret.failed += 1;
+      ret.testArangoshExitCodeEcho.failed = 1;
       ret.testArangoshExitCodeEcho['message'] =
         'didn\'t get expected return code (1): \n' +
         yaml.safeDump(rc);
+    } else {
+      ret.testArangoshExitCodeEcho.failed = 0;
     }
 
     fs.remove(execFile);
@@ -204,11 +212,14 @@ function arangosh (options) {
     shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
     if (!shebangSuccess) {
+      ret.failed += 1;
+      ret.testArangoshShebang.failed = 1;
       ret.testArangoshShebang['message'] =
         'didn\'t get expected return code (0): \n' +
         yaml.safeDump(rc);
+    } else {
+      ret.testArangoshShebang.failed = 0;
     }
-
     fs.remove(shebangFile);
 
     ++ret.testArangoshShebang['total'];
@@ -217,6 +228,7 @@ function arangosh (options) {
     print((shebangSuccess ? GREEN : RED) + 'Status: ' + (shebangSuccess ? 'SUCCESS' : 'FAIL') + RESET);
   } else {
     ret.testArangoshShebang['skipped'] = true;
+    ret.testArangoshShebang.failed = 0;
   }
 
   print();
@@ -225,7 +237,7 @@ function arangosh (options) {
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['arangosh'] = arangosh;
-  
+
   defaultFns.push('arangosh');
 
   opts['skipShebang'] = false;

@@ -43,11 +43,15 @@ function dfdb (options) {
   const args = ['-c', fs.join(pu.CONFIG_DIR, 'arango-dfdb.conf'), dataDir];
 
   fs.makeDirectoryRecursive(dataDir);
-  let results = {};
+  let results = { failed: 0 };
 
   results.dfdb = pu.executeAndWait(pu.ARANGOD_BIN, args, options, 'dfdb', dataDir);
 
   print();
+  results.dfdb.failed = results.dfdb.status ? 0 : 1;
+  if (!results.dfdb.status) {
+    results.failed += 1;
+  }
 
   return results;
 }

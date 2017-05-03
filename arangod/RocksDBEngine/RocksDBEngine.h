@@ -269,6 +269,8 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const FeatureName;
   RocksDBCounterManager* counterManager() const;
   RocksDBReplicationManager* replicationManager() const;
+  
+  void rocksdbProperties(VPackBuilder &builder);
 
  private:
   /// single rocksdb database used in this storage engine

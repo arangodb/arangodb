@@ -154,6 +154,7 @@ function rubyTests (options, ssl) {
       print('RSpec test case falied: \n' + msg);
       res[tName].message += '\n' + msg;
     }
+    return status ? 0 : 1;
   };
 
   let count = 0;
@@ -196,6 +197,7 @@ function rubyTests (options, ssl) {
 
         result[te] = {
           total: 0,
+          failed: 0,
           status: res.status
         };
 
@@ -209,8 +211,9 @@ function rubyTests (options, ssl) {
           }
 
           for (let j = 0; j < jsonResult.examples.length; ++j) {
-            parseRspecJson(jsonResult.examples[j], result[te],
-                           jsonResult.summary.duration);
+            result[te].failed += parseRspecJson(
+              jsonResult.examples[j], result[te],
+              jsonResult.summary.duration);
           }
 
           result[te].duration = jsonResult.summary.duration;
