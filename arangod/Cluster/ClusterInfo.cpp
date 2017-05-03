@@ -1191,11 +1191,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         if (result[0].isObject()) {
           auto tres = result[0];
           if (tres.hasKey(
-                std::vector<std::string>(
-                  {AgencyCommManager::path(), "Plan", "Collections", databaseName,collectionID}))) {
-            errorMsg += std::string( "Preexisting collection with ID ") + collectionID;
-          } else if (
-            tres.hasKey(
               std::vector<std::string>(
                 {AgencyCommManager::path(), "Supervision"}))) {
             for (const auto& s :
