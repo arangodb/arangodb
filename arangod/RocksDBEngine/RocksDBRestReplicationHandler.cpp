@@ -903,6 +903,11 @@ void RocksDBRestReplicationHandler::handleCommandRestoreCollection() {
     force = StringUtils::boolean(value3);
   }
 
+  std::string const& value9 =
+    _request->value("ignoreDistributeShardsLikeErrors", found);
+  bool ignoreDistributeShardsLikeErrors =
+    found ? StringUtils::boolean(value9) : false;
+
   uint64_t numberOfShards = 0;
   std::string const& value4 = _request->value("numberOfShards", found);
 
@@ -921,9 +926,9 @@ void RocksDBRestReplicationHandler::handleCommandRestoreCollection() {
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    res = processRestoreCollectionCoordinator(slice, overwrite, recycleIds,
-                                              force, numberOfShards, errorMsg,
-                                              replicationFactor);
+    res = processRestoreCollectionCoordinator(
+        slice, overwrite, recycleIds, force, numberOfShards, errorMsg,
+        replicationFactor, ignoreDistributeShardsLikeErrors);
   } else {
     res =
         processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
@@ -2352,7 +2357,7 @@ int RocksDBRestReplicationHandler::processRestoreCollection(
 int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
     uint64_t numberOfShards, std::string& errorMsg,
-    uint64_t replicationFactor) {
+    uint64_t replicationFactor, bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -2488,7 +2493,8 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
             "Cluster")
             ->createWaitsForSyncReplication();
     auto col = ClusterMethods::createCollectionOnCoordinator(
-        collectionType, _vocbase, merged, true, createWaitsForSyncReplication);
+        collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors,
+        createWaitsForSyncReplication);
     TRI_ASSERT(col != nullptr);
   } catch (basics::Exception const& e) {
     // Error, report it.

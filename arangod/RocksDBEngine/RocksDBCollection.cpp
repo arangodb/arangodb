@@ -48,9 +48,11 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -275,7 +277,6 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
-
   auto idx = lookupIndex(info);
   if (idx != nullptr) {
     created = false;
@@ -435,7 +436,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     // invalid index id or primary index
     return true;
   }
-  
+
   size_t i = 0;
   // TODO: need to protect _indexes with an RW-lock!!
   for (auto index : getIndexes()) {
@@ -1451,6 +1452,33 @@ int RocksDBCollection::lockRead(double timeout) {
 /// @brief read unlocks a collection
 int RocksDBCollection::unlockRead() {
   _exclusiveLock.unlockRead();
-
   return TRI_ERROR_NO_ERROR;
+}
+
+//rescans the collection to update document count
+uint64_t RocksDBCollection::recalculateCounts() {
+  // start transaction to get a collection lock
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(
+          _logicalCollection->vocbase()),
+      _logicalCollection->cid(), AccessMode::Type::EXCLUSIVE);
+  auto res = trx.begin();
+  if (res.fail()){
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // count documents
+  auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  _numberDocuments = rocksutils::countKeyRange(
+     globalRocksDB(), rocksdb::ReadOptions(), documentBounds);
+
+  //update counter manager value
+  res = globalRocksEngine()->counterManager()->setAbsoluteCounter(_objectId,_numberDocuments);
+  if(res.ok()){
+    // in case of fail the counter has never been written and hence does not
+    // need correction. The value is not changed and does not need to be synced
+    globalRocksEngine()->counterManager()->sync(true);
+  }
+
+  return _numberDocuments;
 }

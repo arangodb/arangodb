@@ -39,7 +39,7 @@ class Result;
 class RocksDBPrimaryIndex;
 class RocksDBVPackIndex;
 struct RocksDBToken;
-
+  
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
   friend class RocksDBVPackIndex;
@@ -47,19 +47,6 @@ class RocksDBCollection final : public PhysicalCollection {
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
-  static inline RocksDBCollection* toRocksDBCollection(
-      PhysicalCollection* physical) {
-    auto rv = static_cast<RocksDBCollection*>(physical);
-    TRI_ASSERT(rv != nullptr);
-    return rv;
-  }
-
-  static inline RocksDBCollection* toRocksDBCollection(
-      LogicalCollection* logical) {
-    auto phys = logical->getPhysical();
-    TRI_ASSERT(phys != nullptr);
-    return toRocksDBCollection(phys);
-  }
 
  public:
   explicit RocksDBCollection(LogicalCollection*, VPackSlice const& info);
@@ -191,6 +178,9 @@ class RocksDBCollection final : public PhysicalCollection {
   int lockRead(double timeout = 0.0);
   int unlockRead();
 
+  // recalculte counts for collection in case of failure
+  uint64_t recalculateCounts();
+
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(
@@ -234,6 +224,19 @@ class RocksDBCollection final : public PhysicalCollection {
 
   basics::ReadWriteLock _exclusiveLock;
 };
+
+inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
+  auto rv = static_cast<RocksDBCollection*>(physical);
+  TRI_ASSERT(rv != nullptr);
+  return rv;
+}
+
+inline RocksDBCollection* toRocksDBCollection(LogicalCollection* logical) {
+  auto phys = logical->getPhysical();
+  TRI_ASSERT(phys != nullptr);
+  return toRocksDBCollection(phys);
+}
+
 }
 
 #endif

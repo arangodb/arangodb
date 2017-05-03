@@ -55,7 +55,9 @@ using namespace arangodb;
 // for the RocksDB engine we do not need any additional data
 struct RocksDBTransactionData final : public TransactionData {};
 
-RocksDBSavePoint::RocksDBSavePoint(rocksdb::Transaction* trx, bool handled, std::function<void()> const& rollbackCallback)
+RocksDBSavePoint::RocksDBSavePoint(
+    rocksdb::Transaction* trx, bool handled,
+    std::function<void()> const& rollbackCallback)
     : _trx(trx), _rollbackCallback(rollbackCallback), _handled(handled) {
   TRI_ASSERT(trx != nullptr);
   if (!_handled) {
@@ -110,8 +112,8 @@ RocksDBTransactionState::~RocksDBTransactionState() {
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, _nestingLevel)
-      << "beginning " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type)
+                               << " transaction";
 
   Result result = useCollections(_nestingLevel);
 
@@ -157,12 +159,13 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
 
-    if (!isReadOnlyTransaction() && !hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+    if (!isReadOnlyTransaction() &&
+        !hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
       RocksDBLogValue header =
-      RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
+          RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
       _rocksTransaction->PutLogData(header.slice());
     }
-    
+
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -173,8 +176,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 /// @brief commit a transaction
 Result RocksDBTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel)
-      << "committing " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(this, _nestingLevel) << "committing " << AccessMode::typeString(_type)
+                               << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
@@ -185,13 +188,14 @@ Result RocksDBTransactionState::commitTransaction(
 
   if (_nestingLevel == 0) {
     if (_rocksTransaction != nullptr) {
-      if (hasOperations()) {
-      // set wait for sync flag if required
+      // if (hasOperations()) {
+      if (_rocksTransaction->GetNumKeys() > 0) {
+        // set wait for sync flag if required
         if (waitForSync()) {
           _rocksWriteOptions.sync = true;
           _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
         }
-        
+
         // TODO wait for response on github issue to see how we can use the
         // sequence number
         result = rocksutils::convertStatus(_rocksTransaction->Commit());
@@ -231,10 +235,8 @@ Result RocksDBTransactionState::commitTransaction(
         }
       } else {
         // don't write anything if the transaction is empty
-        // TODO: calling Rollback() here does not work for some reason but it should. 
-        // must investigate further!!
-        result = rocksutils::convertStatus(_rocksTransaction->Commit());
-        
+        result = rocksutils::convertStatus(_rocksTransaction->Rollback());
+
         if (_cacheTx != nullptr) {
           // note: endTransaction() will delete _cacheTx!
           CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
@@ -256,8 +258,8 @@ Result RocksDBTransactionState::commitTransaction(
 /// @brief abort and rollback a transaction
 Result RocksDBTransactionState::abortTransaction(
     transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel)
-      << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(this, _nestingLevel) << "aborting " << AccessMode::typeString(_type)
+                               << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   Result result;
 
@@ -265,7 +267,7 @@ Result RocksDBTransactionState::abortTransaction(
     if (_rocksTransaction != nullptr) {
       rocksdb::Status status = _rocksTransaction->Rollback();
       result = rocksutils::convertStatus(status);
-    
+
       if (_cacheTx != nullptr) {
         // note: endTransaction() will delete _cacheTx!
         CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
@@ -290,26 +292,25 @@ Result RocksDBTransactionState::abortTransaction(
 }
 
 void RocksDBTransactionState::prepareOperation(
-    TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-    StringRef const& key, TRI_voc_document_operation_e operationType) {
-
+    TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId, StringRef const& key,
+    TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(!isReadOnlyTransaction());
-   
+
   bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   // single operations should never call this method twice
-  TRI_ASSERT(!singleOp  || _lastUsedCollection == 0);
+  TRI_ASSERT(!singleOp || _lastUsedCollection == 0);
   if (collectionId != _lastUsedCollection) {
     switch (operationType) {
       case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
         if (singleOp) {
-          RocksDBLogValue logValue = RocksDBLogValue::SinglePut(_vocbase->id(),
-                                                                collectionId);
+          RocksDBLogValue logValue =
+              RocksDBLogValue::SinglePut(_vocbase->id(), collectionId);
           _rocksTransaction->PutLogData(logValue.slice());
         } else {
           RocksDBLogValue logValue =
-          RocksDBLogValue::DocumentOpsPrologue(collectionId);
+              RocksDBLogValue::DocumentOpsPrologue(collectionId);
           _rocksTransaction->PutLogData(logValue.slice());
         }
         break;
@@ -317,13 +318,12 @@ void RocksDBTransactionState::prepareOperation(
       case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
         if (singleOp) {
           TRI_ASSERT(!key.empty());
-          RocksDBLogValue logValue = RocksDBLogValue::SingleRemove(_vocbase->id(),
-                                                                   collectionId,
-                                                                   key);
+          RocksDBLogValue logValue =
+              RocksDBLogValue::SingleRemove(_vocbase->id(), collectionId, key);
           _rocksTransaction->PutLogData(logValue.slice());
         } else {
           RocksDBLogValue logValue =
-          RocksDBLogValue::DocumentOpsPrologue(collectionId);
+              RocksDBLogValue::DocumentOpsPrologue(collectionId);
           _rocksTransaction->PutLogData(logValue.slice());
         }
       } break;
@@ -332,11 +332,11 @@ void RocksDBTransactionState::prepareOperation(
     }
     _lastUsedCollection = collectionId;
   }
-  
-  // we need to log the remove log entry, if we don't have the single optimization
+
+  // we need to log the remove log entry, if we don't have the single
+  // optimization
   if (!singleOp && operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    RocksDBLogValue logValue =
-    RocksDBLogValue::DocumentRemove(key);
+    RocksDBLogValue logValue = RocksDBLogValue::DocumentRemove(key);
     _rocksTransaction->PutLogData(logValue.slice());
   }
 }

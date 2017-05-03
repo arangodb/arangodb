@@ -134,6 +134,21 @@ void RocksDBCounterManager::updateCounter(uint64_t objectId,
   }
 }
 
+arangodb::Result RocksDBCounterManager::setAbsoluteCounter(uint64_t objectId, uint64_t value) {
+  arangodb::Result res;
+  WRITE_LOCKER(guard, _rwLock);
+  auto it = _counters.find(objectId);
+  if (it != _counters.end()) {
+    it->second._count = value;
+  } else {
+    // nothing to do as the counter has never been written it can not be set to
+    // a value that would require correction. but we use the return value to
+    // signal that no sync is rquired
+    res.reset(TRI_ERROR_INTERNAL, "counter value not found - no sync required");
+  }
+  return res;
+}
+
 void RocksDBCounterManager::removeCounter(uint64_t objectId) {
   WRITE_LOCKER(guard, _rwLock);
   auto const& it = _counters.find(objectId);

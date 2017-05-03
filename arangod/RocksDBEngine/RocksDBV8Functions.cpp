@@ -27,11 +27,14 @@
 #include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/LogicalCollection.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/v8-externals.h"
 
 #include <v8.h>
 
@@ -117,11 +120,31 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder builder;
   engine->rocksdbProperties(builder);
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
-  
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_RecalculateCounts(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  arangodb::LogicalCollection* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                                   WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  auto physical = toRocksDBCollection(collection);
+
+  v8::Handle<v8::Value> result = v8::Integer::New(
+      isolate, static_cast<uint32_t>(physical->recalculateCounts()));
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
 
 void RocksDBV8Functions::registerResources() {
   ISOLATE;
@@ -146,4 +169,6 @@ void RocksDBV8Functions::registerResources() {
                                JS_TransactionsWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ENGINE_STATS"),
                                JS_EngineStats, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculateCount"),
+                       JS_RecalculateCounts);
 }
