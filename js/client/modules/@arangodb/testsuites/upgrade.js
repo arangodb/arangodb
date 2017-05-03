@@ -44,6 +44,7 @@ function upgrade (options) {
   if (options.cluster) {
     return {
       'upgrade': {
+        failed: 0,
         'status': true,
         'message': 'skipped because of cluster',
         'skipped': true
@@ -53,6 +54,7 @@ function upgrade (options) {
 
   let result = {
     upgrade: {
+      failed: 0,
       status: true,
       total: 1
     }
@@ -76,6 +78,7 @@ function upgrade (options) {
   result.upgrade.first = pu.executeAndWait(pu.ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir);
 
   if (result.upgrade.first.status !== true) {
+    result.upgrade.failed = 1;
     print('not removing ' + tmpDataDir);
     return result.upgrade;
   }
@@ -85,6 +88,7 @@ function upgrade (options) {
   result.upgrade.second = pu.executeAndWait(pu.ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir);
 
   if (result.upgrade.second.status !== true) {
+    result.upgrade.failed = 1;
     print('not removing ' + tmpDataDir);
     return result.upgrade;
   }

@@ -51,8 +51,6 @@ void RocksDBBackgroundThread::run() {
       guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
     }
 
-    _engine->counterManager()->writeSettings();
-
     if (!isStopping()) {
       _engine->counterManager()->sync(false);
     }
@@ -67,5 +65,5 @@ void RocksDBBackgroundThread::run() {
           });
     }
   }
-  _engine->counterManager()->writeSettings();  // final write on shutdown
+  _engine->counterManager()->sync(true); // final write on shutdown
 }

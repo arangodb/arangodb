@@ -177,6 +177,9 @@ void SchedulerFeature::stop() {
     usleep(100000);
   }
   
+  // shutdown user jobs again, in case new ones appear
+  TRI_ShutdownV8Dispatcher();
+
   _scheduler->shutdown();
 }
 
