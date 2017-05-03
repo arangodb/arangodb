@@ -297,7 +297,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   try {
     _hasMore = primary->nextWithKey(cb, chunkSize);
     _lastIteratorOffset++;
-  } catch (std::exception const& ex) {
+  } catch (std::exception const&) {
     return Result(TRI_ERROR_INTERNAL);
   }
   b.close();

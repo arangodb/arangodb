@@ -110,7 +110,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption(
       "--rocksdb.max-bytes-for-level-multiplier",
       "control maximum total data size for a level",
-      new UInt64Parameter(&_maxBytesForLevelMultiplier));
+      new DoubleParameter(&_maxBytesForLevelMultiplier));
 
   options->addHiddenOption(
       "--rocksdb.verify-checksums-in-compation",
@@ -188,7 +188,7 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
-  if (_maxBytesForLevelMultiplier == 0) {
+  if (_maxBytesForLevelMultiplier <= 0.0) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
     FATAL_ERROR_EXIT();
   }
