@@ -285,6 +285,8 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
+    auto oldSize = _contexts.size();
+
     for (auto it = _contexts.begin(); it != _contexts.end();
          /* no hoisting */) {
       auto context = it->second;
@@ -318,7 +320,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
     // FIXME effectively force should only be called on shutdown
     // nevertheless this is quite ugly
-    if (_contexts.size() == 0 && !force) {
+    if ((oldSize > 0) && (_contexts.size() == 0) && !force) {
       enableFileDeletions();
     }
   } catch (...) {
@@ -341,7 +343,7 @@ void RocksDBReplicationManager::disableFileDeletions() {
 
 void RocksDBReplicationManager::enableFileDeletions() {
   auto rocks = globalRocksDB();
-  auto s = rocks->DisableFileDeletions();
+  auto s = rocks->EnableFileDeletions(false);
   TRI_ASSERT(s.ok());
 }
 

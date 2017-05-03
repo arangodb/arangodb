@@ -747,9 +747,22 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys", "cid", "count",
                                              "objectId",
-                                             "statusString", "version"};
+                                             "statusString", "version",
+                                             "distributeShardsLike"};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false);
-  result.add(params.slice());
+  { VPackObjectBuilder guard(&result);
+    for (auto const& p : VPackObjectIterator(params.slice())) {
+      result.add(p.key);
+      result.add(p.value);
+    }
+    if (!_distributeShardsLike.empty()) {
+      CollectionNameResolver resolver(_vocbase);
+      result.add("distributeShardsLike",
+                 VPackValue(resolver.getCollectionNameCluster(
+                     static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
+                         distributeShardsLike())))));
+    }
+  }
 
   result.add(VPackValue("indexes"));
   getIndexesVPack(result, false);
