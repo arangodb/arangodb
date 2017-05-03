@@ -65,6 +65,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   bool _optimizeFiltersForHits;
   bool _useDirectReads;
   bool _useDirectWrites;
+  bool _useFSync;
   bool _skipCorrupted;
 };
 

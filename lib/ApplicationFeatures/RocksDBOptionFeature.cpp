@@ -61,6 +61,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
     _useDirectReads(rocksDBDefaults.use_direct_reads),
     _useDirectWrites(rocksDBDefaults.use_direct_writes),
+    _useFSync(rocksDBDefaults.use_fsync),
     _skipCorrupted(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
@@ -138,6 +139,11 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "use O_DIRECT for writing files",
       new BooleanParameter(&_useDirectWrites));
 #endif
+  
+  options->addHiddenOption(
+      "--rocksdb.use-fsync",
+      "issue an fsync when writing to disk (set to true for issuing fdatasync only)",
+      new BooleanParameter(&_useFSync));
 
   options->addHiddenOption(
       "--rocksdb.base-background-compactions",

@@ -188,6 +188,7 @@ void RocksDBEngine::start() {
       static_cast<int>(opts->_baseBackgroundCompactions);
   _options.max_background_compactions =
       static_cast<int>(opts->_maxBackgroundCompactions);
+  _options.use_fsync = opts->_useFSync;
 
   _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
   _options.keep_log_file_num = static_cast<size_t>(opts->_keepLogFileNum);
@@ -197,7 +198,7 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
 
-  _options.IncreaseParallelism((int)TRI_numberProcessors());
+  _options.IncreaseParallelism(static_cast<int>(TRI_numberProcessors()));
 
   _options.create_if_missing = true;
   _options.max_open_files = -1;
