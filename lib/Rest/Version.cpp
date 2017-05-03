@@ -134,7 +134,7 @@ void Version::initialize() {
   Values["assertions"] = "false";
 #endif
 
-  Values["rocksdb-version"] = std::to_string(ROCKSDB_MAJOR) + "." + std::to_string(ROCKSDB_MINOR) + "." + std::to_string(ROCKSDB_PATCH);
+  Values["rocksdb-version"] = getRocksDBVersion();
 
 #ifdef __cplusplus
   Values["cplusplus"] = std::to_string(__cplusplus);
@@ -234,6 +234,11 @@ std::string Version::getBoostReactorType() {
 #else
   return std::string("select");
 #endif
+}
+  
+/// @brief get RocksDB version
+std::string Version::getRocksDBVersion() {
+  return std::to_string(ROCKSDB_MAJOR) + "." + std::to_string(ROCKSDB_MINOR) + "." + std::to_string(ROCKSDB_PATCH);
 }
 
 /// @brief get V8 version
@@ -348,6 +353,7 @@ std::string Version::getVerboseVersionString() {
           << "jemalloc, "
 #endif
           << "VPack " << getVPackVersion() << ", "
+          << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", " << getOpenSSLVersion();
 
@@ -358,7 +364,7 @@ std::string Version::getVerboseVersionString() {
 std::string Version::getDetailed() {
   std::string result;
 
-  for (auto& it : Values) {
+  for (auto const& it : Values) {
     std::string const& value = it.second;
 
     if (!value.empty()) {
