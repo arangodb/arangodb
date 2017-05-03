@@ -141,7 +141,10 @@ arangodb::Result RocksDBCounterManager::setAbsoluteCounter(uint64_t objectId, ui
   if (it != _counters.end()) {
     it->second._count = value;
   } else {
-    res.reset(TRI_ERROR_INTERNAL, "counter value not found");
+    // nothing to do as the counter has never been written it can not be set to
+    // a value that would require correction. but we use the return value to
+    // signal that no sync is rquired
+    res.reset(TRI_ERROR_INTERNAL, "counter value not found - no sync required");
   }
   return res;
 }

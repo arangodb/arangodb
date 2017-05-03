@@ -1475,9 +1475,9 @@ uint64_t RocksDBCollection::recalculateCounts() {
   //update counter manager value
   res = globalRocksEngine()->counterManager()->setAbsoluteCounter(_objectId,_numberDocuments);
   if(res.ok()){
+    // in case of fail the counter has never been written and hence does not
+    // need correction. The value is not changed and does not need to be synced
     globalRocksEngine()->counterManager()->sync(true);
-  } else {
-    THROW_ARANGO_EXCEPTION(res);
   }
 
   return _numberDocuments;
