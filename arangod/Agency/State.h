@@ -134,8 +134,8 @@ class State {
   ///        exists are overwritten
   size_t removeConflicts(query_t const&);
 
-  /// @brief Persist active agency in pool
-  bool persistActiveAgents(query_t const& active, query_t const& pool);
+  /// @brief Persist active agency in pool, throws an exception in case of error
+  void persistActiveAgents(query_t const& active, query_t const& pool);
 
   /// @brief Get everything from the state machine
   query_t allLogs() const;
@@ -205,6 +205,8 @@ class State {
   /// @brief Empty log entry;
   static log_t emptyLog;
   
+  /// @brief Protect writing into configuration collection
+  arangodb::Mutex _configurationWriteLock;
 };
 
 }

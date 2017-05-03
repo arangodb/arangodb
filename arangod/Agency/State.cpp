@@ -605,6 +605,8 @@ bool State::loadOrPersistConfiguration() {
 
   } else {  // Fresh start
 
+    MUTEX_LOCKER(guard, _configurationWriteLock);
+
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "New agency!";
 
     TRI_ASSERT(_agent != nullptr);
@@ -830,28 +832,39 @@ bool State::persistReadDB(arangodb::consensus::index_t cind) {
   return false;
 }
 
-bool State::persistActiveAgents(query_t const& active, query_t const& pool) {
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
+void State::persistActiveAgents(query_t const& active, query_t const& pool) {
+  TRI_ASSERT(_vocbase != nullptr);
 
-  std::stringstream aql;
-  aql << "FOR c IN configuration UPDATE {_key:c._key} WITH {cfg:{active:";
-  aql << active->slice().toJson();
-  aql << ", pool:";
-  aql << pool->slice().toJson();
-  aql << "}} IN configuration";
-  std::string aqlStr = aql.str();
-
-  arangodb::aql::Query query(false, _vocbase, aqlStr.c_str(), aqlStr.size(),
-                             bindVars, nullptr, arangodb::aql::PART_MAIN);
-
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  Builder builder;
+  { VPackObjectBuilder guard(&builder);
+    builder.add("_key", VPackValue("0"));
+    builder.add(VPackValue("cfg"));
+    { VPackObjectBuilder guard2(&builder);
+      builder.add("active", active->slice());
+      builder.add("pool", pool->slice());
+    }
   }
 
-  return true;
+  MUTEX_LOCKER(guard, _configurationWriteLock);
+
+  auto transactionContext =
+      std::make_shared<transaction::StandaloneContext>(_vocbase);
+  SingleCollectionTransaction trx(
+    transactionContext, "configuration", AccessMode::Type::WRITE);
+
+  Result res = trx.begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  auto result = trx.update("configuration", builder.slice(), _options);
+  if (!result.successful()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(result.code, result.errorMessage);
+  }
+  res = trx.finish(result.code);
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  }
 }
 
 query_t State::allLogs() const {

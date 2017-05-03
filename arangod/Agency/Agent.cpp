@@ -513,8 +513,9 @@ bool Agent::activateAgency() {
     }
     bool persisted = false; 
     try {
-      persisted = _state.persistActiveAgents(_config.activeToBuilder(),
-                                             _config.poolToBuilder());
+      _state.persistActiveAgents(_config.activeToBuilder(),
+                                 _config.poolToBuilder());
+      persisted = true;
     } catch (std::exception const& e) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
         << "Failed to persist active agency: " << e.what();
