@@ -1157,11 +1157,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
   std::vector<AgencyPrecondition> precs;
-  precs.emplace_back(
-    AgencyPrecondition(
-      "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyPrecondition::Type::EMPTY, true));
-  
+
   // Any of the shards locked?
   if (otherCidShardMap != nullptr) {
     for (auto const& shard : *otherCidShardMap) {
