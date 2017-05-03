@@ -32,7 +32,6 @@ const optionsDocumentation = [
 ];
 
 const tu = require('@arangodb/test-utils');
-const pu = require('@arangodb/process-utils');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief agency tests

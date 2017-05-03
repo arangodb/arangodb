@@ -77,9 +77,9 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
   }
 
   // enable development debugging if extremeVerbosity is set
-  if (options.extremeVerbosity === true){
+  if (options.extremeVerbosity === true) {
     argv = argv.concat([
-      '--log.level', 'development=info',
+      '--log.level', 'development=info'
     ]);
   }
 
@@ -100,7 +100,7 @@ function recovery (options) {
   let results = {};
 
   if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
-      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === "false") {
+      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
     results.recovery = {
       status: false,
       message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'

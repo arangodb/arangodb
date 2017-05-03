@@ -35,7 +35,6 @@ const optionsDocumentation = [
 
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
-const fs = require('fs');
 const yaml = require('js-yaml');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
