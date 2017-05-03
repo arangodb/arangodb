@@ -1103,15 +1103,15 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
 
 arangodb::Result RocksDBCollection::fillIndexes(
     transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
-  ManagedDocumentResult mmr;
+  ManagedDocumentResult mmdr;
   std::unique_ptr<IndexIterator> iter(
-      primaryIndex()->allIterator(trx, &mmr, false));
+      primaryIndex()->allIterator(trx, &mmdr, false));
   int res = TRI_ERROR_NO_ERROR;
 
   auto cb = [&](DocumentIdentifierToken token) {
-    if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmr)) {
+    if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmdr)) {
       RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
-      res = ridx->insert(trx, mmr.lastRevisionId(), VPackSlice(mmr.vpack()),
+      res = ridx->insert(trx, mmdr.lastRevisionId(), VPackSlice(mmdr.vpack()),
                          false);
     }
   };

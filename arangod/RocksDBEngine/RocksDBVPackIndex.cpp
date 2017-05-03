@@ -510,9 +510,8 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
 
     if (res == TRI_ERROR_NO_ERROR) {
       auto s = rtrx->Put(key.string(), value.string());
-
-      auto status = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
-      if (!status.ok()) {
+      if (!s.ok()) {
+        auto status = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
         res = status.errorNumber();
       }
     }

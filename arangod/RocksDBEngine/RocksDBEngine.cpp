@@ -1209,5 +1209,34 @@ RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
   TRI_ASSERT(_replicationManager);
   return _replicationManager.get();
 }
+  
+void RocksDBEngine::rocksdbProperties(VPackBuilder &builder) {
+  builder.openObject();
+  // add int properties
+  auto c1 = [&](std::string const& s) {
+    std::string v;
+    if (_db->GetProperty(s, &v)) {
+      builder.add(s, VPackValue(v));
+    }
+  };
+  c1(rocksdb::DB::Properties::kNumImmutableMemTable);
+  c1(rocksdb::DB::Properties::kMemTableFlushPending);
+  c1(rocksdb::DB::Properties::kCompactionPending);
+  c1(rocksdb::DB::Properties::kBackgroundErrors);
+  c1(rocksdb::DB::Properties::kCurSizeActiveMemTable);
+  c1(rocksdb::DB::Properties::kCurSizeAllMemTables);
+  c1(rocksdb::DB::Properties::kSizeAllMemTables);
+  c1(rocksdb::DB::Properties::kNumEntriesImmMemTables);
+  c1(rocksdb::DB::Properties::kNumSnapshots);
+  c1(rocksdb::DB::Properties::kDBStats);
+  c1(rocksdb::DB::Properties::kCFStats);
+  c1(rocksdb::DB::Properties::kSSTables);
+  c1(rocksdb::DB::Properties::kNumRunningCompactions);
+  c1(rocksdb::DB::Properties::kNumRunningFlushes);
+  c1(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
+  c1(rocksdb::DB::Properties::kBaseLevel);
+  c1(rocksdb::DB::Properties::kTotalSstFilesSize);
 
+  builder.close();
+}
 }  // namespace
