@@ -308,6 +308,10 @@ function SkipListCorrSuite() {
                                   "FOR x IN " + cn + " FILTER x.v > 3 RETURN x").length, 9997);
   },
     testFillIndexFailure:function() {
+      if (internal.db._engine().name !== "rocksdb") {
+        return;
+      }
+      
       // use a transaction to speed this up
       var arr = [];
       for(var i = 0; i < 10001; i++) {
