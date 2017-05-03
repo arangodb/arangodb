@@ -119,7 +119,7 @@ class RocksDBEngine final : public StorageEngine {
                      arangodb::LogicalCollection* col,
                      std::string const& keysId, std::string const& cid,
                      std::string const& collectionName, TRI_voc_tick_t maxTick,
-                     std::string& errorMsg);
+                     std::string& errorMsg) override;
   // database, collection and index management
   // -----------------------------------------
 
