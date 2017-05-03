@@ -839,7 +839,7 @@ read_ret_t Agent::read(query_t const& query) {
     return read_ret_t(false, NO_LEADER);
   }
 
-  LOG_TOPIC(WARN, Logger::AGENCY) << _state;
+  //LOG_TOPIC(WARN, Logger::AGENCY) << _state;
 
   // Retrieve data from readDB
   auto result = std::make_shared<arangodb::velocypack::Builder>();
