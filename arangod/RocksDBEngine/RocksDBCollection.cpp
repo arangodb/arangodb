@@ -58,6 +58,7 @@
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/write_batch_with_index.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -1102,16 +1103,30 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-/// non-transactional fill index with existing documents
+/// non-transactional: fill index with existing documents
 /// from this collection
 arangodb::Result RocksDBCollection::fillIndexes(
     transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
   ManagedDocumentResult mmdr;
   
+  
+  usleep(1000000);
+  usleep(1000000);
+  usleep(1000000);
+  usleep(1000000);
+  usleep(1000000);
+  
+  
   RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  std::unique_ptr<IndexIterator> iter(primaryIndex()->allIterator(trx, &mmdr, false));
+  rocksdb::TransactionDB *db = globalRocksDB();
+  
   uint64_t numDocsWritten = 0;
   // write batch will be reset each 5000 documents
-  rocksdb::WriteBatch batch(32 * 1024 * 1024); // 32 MB
+  rocksdb::WriteBatchWithIndex batch(db->GetOptions().comparator,
+                                     32 * 1024 * 1024);
+  rocksdb::ReadOptions readOptions;
   
   int res = TRI_ERROR_NO_ERROR;
   auto cb = [&](DocumentIdentifierToken token) {
@@ -1122,10 +1137,6 @@ arangodb::Result RocksDBCollection::fillIndexes(
       }
     }
   };
-  
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::TransactionDB *db = globalRocksDB();
-  std::unique_ptr<IndexIterator> iter(primaryIndex()->allIterator(trx, &mmdr, false));
   
   Result r;
   bool hasMore = true;
@@ -1142,7 +1153,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
       r = Result(res);
       break;
     }
-    rocksdb::Status s = db->Write(state->writeOptions(), &batch);
+    rocksdb::Status s = db->Write(state->writeOptions(), batch.GetWriteBatch());
     if (!s.ok()) {
       r = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
       break;
@@ -1153,8 +1164,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
   // we will need to remove index elements created before an error
   // occured, this needs to happen since we are non transactional
   if (!r.ok()) {
-    batch.Clear();
     iter->reset();
+    rocksdb::WriteBatch removeBatch(32*1024*1024);
     
     res = TRI_ERROR_NO_ERROR;
     auto removeCb = [&](DocumentIdentifierToken token) {
@@ -1162,7 +1173,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
           this->readDocument(trx, token, mmdr)) {
         
         // we need to remove already inserted documents up to numDocsWritten
-        res = ridx->removeRaw(&batch, mmdr.lastRevisionId(), VPackSlice(mmdr.vpack()));
+        res = ridx->removeRaw(&removeBatch, mmdr.lastRevisionId(), VPackSlice(mmdr.vpack()));
         if (res == TRI_ERROR_NO_ERROR) {
           numDocsWritten--;
         }
@@ -1175,7 +1186,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
     }
     // TODO: if this fails, do we have any recourse?
     // Simon: Don't think so
-    db->Write(state->writeOptions(), &batch);
+    db->Write(state->writeOptions(), &removeBatch);
   }
   
   return r;

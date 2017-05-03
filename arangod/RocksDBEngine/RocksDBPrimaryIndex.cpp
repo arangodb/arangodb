@@ -446,15 +446,9 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBPrimaryIndex::insertRaw(rocksdb::WriteBatch* writeBatch,
-                                   TRI_voc_rid_t revisionId, VPackSlice const& slice) {
-  RocksDBKey key = RocksDBKey::PrimaryIndexValue(_objectId,
-                                                 StringRef(slice.get(StaticStrings::KeyString)));
-  RocksDBValue value = RocksDBValue::PrimaryIndexValue(revisionId);
-  // we will not ussethe cache here, the use case for this functions is
-  // the fillIndex method, which will iterator over ALL documents
-  writeBatch->Put(key.string(), value.string());
-  return TRI_ERROR_NO_ERROR;
+int RocksDBPrimaryIndex::insertRaw(rocksdb::WriteBatchWithIndex*,
+                                   TRI_voc_rid_t, VPackSlice const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
@@ -494,13 +488,9 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   return converted.errorNumber();
 }
 
-int RocksDBPrimaryIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
-                                   TRI_voc_rid_t revisionId, VPackSlice const& slice) {
-  // no cache use, only used in combination with insertRaw
-  auto key = RocksDBKey::PrimaryIndexValue(_objectId,
-                                           StringRef(slice.get(StaticStrings::KeyString)));
-  writeBatch->Delete(key.string());
-  return TRI_ERROR_NO_ERROR;
+int RocksDBPrimaryIndex::removeRaw(rocksdb::WriteBatch*,
+                                   TRI_voc_rid_t, VPackSlice const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief called when the index is dropped

@@ -44,6 +44,7 @@
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/utilities/write_batch_with_index.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -531,7 +532,7 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatch* writeBatch,
+int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatchWithIndex* writeBatch,
                                  TRI_voc_rid_t revisionId,
                                  VPackSlice const& doc) {
   std::vector<RocksDBKey> elements;
@@ -553,7 +554,18 @@ int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatch* writeBatch,
                                : RocksDBValue::IndexValue();
 
   for (RocksDBKey const& key : elements) {
-    writeBatch->Put(key.string(), value.string());
+    if (_unique) {
+      rocksdb::ReadOptions readOpts;
+      std::string v;
+      auto status = writeBatch->GetFromBatchAndDB(rocksutils::globalRocksDB(),
+                                                  readOpts, key.string(), &v);
+      if (!status.IsNotFound()) {
+        res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+      }
+    }
+    if (res == TRI_ERROR_NO_ERROR) {
+      writeBatch->Put(key.string(), value.string());
+    }
   }
   return res;
 }
