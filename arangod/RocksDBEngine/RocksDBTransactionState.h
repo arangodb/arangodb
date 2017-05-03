@@ -120,7 +120,9 @@ class RocksDBTransactionState final : public TransactionState {
     return _rocksTransaction.get();
   }
 
-  rocksdb::ReadOptions const& readOptions() { return _rocksReadOptions; }
+  rocksdb::ReadOptions const& readOptions() const { return _rocksReadOptions; }
+  
+  rocksdb::WriteOptions const& writeOptions() const { return _rocksWriteOptions; }
 
   uint64_t sequenceNumber() const;
 

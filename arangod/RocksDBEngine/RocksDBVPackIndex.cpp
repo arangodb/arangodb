@@ -104,7 +104,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
 /// @brief Reset the cursor
 void RocksDBVPackIndexIterator::reset() {
   TRI_ASSERT(_trx->state()->isRunning());
-  
+
   if (_reverse) {
     _iterator->SeekForPrev(_bounds.end());
   } else {
@@ -231,9 +231,10 @@ bool RocksDBVPackIndex::implicitlyUnique() const {
 /// @brief helper function to insert a document into any index type
 /// Should result in an elements vector filled with the new index entries
 /// uses the _unique field to determine the kind of key structure
-int RocksDBVPackIndex::fillElement(
-    transaction::Methods* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc,
-    std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements) {
+int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
+                                   TRI_voc_rid_t revisionId,
+                                   VPackSlice const& doc,
+                                   std::vector<RocksDBKey>& elements) {
   if (doc.isNone()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "encountered invalid marker with slice of type None";
@@ -242,11 +243,10 @@ int RocksDBVPackIndex::fillElement(
 
   TRI_IF_FAILURE("FillElementIllegalSlice") { return TRI_ERROR_INTERNAL; }
 
+  TRI_ASSERT(leased.isEmpty());
   if (!_useExpansion) {
     // fast path for inserts... no array elements used
-
-    transaction::BuilderLeaser indexVals(trx);
-    indexVals->openArray();
+    leased.openArray();
 
     size_t const n = _paths.size();
     for (size_t i = 0; i < n; ++i) {
@@ -261,16 +261,14 @@ int RocksDBVPackIndex::fillElement(
           return TRI_ERROR_NO_ERROR;
         }
         // null, note that this will be copied later!
-        indexVals->add(VPackSlice::nullSlice());
+        leased.add(VPackSlice::nullSlice());
       } else {
-        indexVals->add(slice);
+        leased.add(slice);
       }
     }
-    indexVals->close();
-    
-    TRI_IF_FAILURE("FillElementOOM") {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
+    leased.close();
+
+    TRI_IF_FAILURE("FillElementOOM") { return TRI_ERROR_OUT_OF_MEMORY; }
     TRI_IF_FAILURE("FillElementOOM2") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -282,71 +280,64 @@ int RocksDBVPackIndex::fillElement(
       // value(s)
       // + separator (NUL) byte
       // - Value: primary key
-      elements.emplace_back(
-          RocksDBKey::UniqueIndexValue(_objectId, indexVals->slice()),
-          RocksDBValue::UniqueIndexValue(key));
+      elements.push_back(
+          RocksDBKey::UniqueIndexValue(_objectId, leased.slice()));
     } else {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index
       // value(s)
       // + separator (NUL) byte + primary key
       // - Value: empty
-      elements.emplace_back(
-          RocksDBKey::IndexValue(_objectId, key, indexVals->slice()),
-          RocksDBValue::IndexValue());
+      elements.push_back(
+          RocksDBKey::IndexValue(_objectId, key, leased.slice()));
     }
   } else {
     // other path for handling array elements, too
+
     std::vector<VPackSlice> sliceStack;
-
-    transaction::BuilderLeaser indexVals(trx);
-
-    buildIndexValues(doc, 0, elements, sliceStack);
+    buildIndexValues(leased, doc, 0, elements, sliceStack);
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
-void RocksDBVPackIndex::addIndexValue(
-    VPackSlice const& document,
-    std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
-    std::vector<VPackSlice>& sliceStack) {
-  // TODO maybe use leased Builder from transaction.
-  VPackBuilder b;
-  b.openArray();
+void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased,
+                                      VPackSlice const& document,
+                                      std::vector<RocksDBKey>& elements,
+                                      std::vector<VPackSlice>& sliceStack) {
+  leased.clear();
+  leased.openArray();
   for (VPackSlice const& s : sliceStack) {
-    b.add(s);
+    leased.add(s);
   }
-  b.close();
+  leased.close();
 
   StringRef key(document.get(StaticStrings::KeyString));
   if (_unique) {
     // Unique VPack index values are stored as follows:
     // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
     // - Value: primary key
-    elements.emplace_back(RocksDBKey::UniqueIndexValue(_objectId, b.slice()),
-                          RocksDBValue::UniqueIndexValue(key));
+    elements.push_back(RocksDBKey::UniqueIndexValue(_objectId, leased.slice()));
   } else {
     // Non-unique VPack index values are stored as follows:
     // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
     // + primary key
     // - Value: empty
-    elements.emplace_back(
-        RocksDBKey::IndexValue(_objectId, key, b.slice()),
-        RocksDBValue::IndexValue());
+    elements.push_back(RocksDBKey::IndexValue(_objectId, key, leased.slice()));
   }
 }
 
 /// @brief helper function to create a set of index combinations to insert
-void RocksDBVPackIndex::buildIndexValues(
-    VPackSlice const document, size_t level,
-    std::vector<std::pair<RocksDBKey, RocksDBValue>>& elements,
-    std::vector<VPackSlice>& sliceStack) {
+void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
+                                         VPackSlice const document,
+                                         size_t level,
+                                         std::vector<RocksDBKey>& elements,
+                                         std::vector<VPackSlice>& sliceStack) {
   // Invariant: level == sliceStack.size()
 
   // Stop the recursion:
   if (level == _paths.size()) {
-    addIndexValue(document, elements, sliceStack);
+    addIndexValue(leased, document, elements, sliceStack);
     return;
   }
 
@@ -360,7 +351,7 @@ void RocksDBVPackIndex::buildIndexValues(
     } else {
       sliceStack.emplace_back(slice);
     }
-    buildIndexValues(document, level + 1, elements, sliceStack);
+    buildIndexValues(leased, document, level + 1, elements, sliceStack);
     sliceStack.pop_back();
     return;
   }
@@ -381,7 +372,7 @@ void RocksDBVPackIndex::buildIndexValues(
     for (size_t i = level; i < _paths.size(); i++) {
       sliceStack.emplace_back(illegalSlice);
     }
-    addIndexValue(document, elements, sliceStack);
+    addIndexValue(leased, document, elements, sliceStack);
     for (size_t i = level; i < _paths.size(); i++) {
       sliceStack.pop_back();
     }
@@ -416,7 +407,7 @@ void RocksDBVPackIndex::buildIndexValues(
     if (it == seen.end()) {
       seen.insert(something);
       sliceStack.emplace_back(something);
-      buildIndexValues(document, level + 1, elements, sliceStack);
+      buildIndexValues(leased, document, level + 1, elements, sliceStack);
       sliceStack.pop_back();
     }
   };
@@ -478,11 +469,11 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 int RocksDBVPackIndex::insert(transaction::Methods* trx,
                               TRI_voc_rid_t revisionId, VPackSlice const& doc,
                               bool isRollback) {
-  std::vector<std::pair<RocksDBKey, RocksDBValue>> elements;
-
+  std::vector<RocksDBKey> elements;
   int res;
   try {
-    res = fillElement(trx, revisionId, doc, elements);
+    transaction::BuilderLeaser leased(trx);
+    res = fillElement(*(leased.get()), revisionId, doc, elements);
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -495,10 +486,16 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   auto options = state->readOptions();
 
+  // now we are going to construct the value to insert into rocksdb
+  // unique indexes have a different key structure
+  StringRef docKey(doc.get(StaticStrings::KeyString));
+  RocksDBValue value = _unique ? RocksDBValue::UniqueIndexValue(docKey)
+                               : RocksDBValue::IndexValue();
+
   size_t const count = elements.size();
+
   for (size_t i = 0; i < count; ++i) {
-    RocksDBKey& key = elements[i].first;
-    RocksDBValue& value = elements[i].second;
+    RocksDBKey& key = elements[i];
     if (_unique) {
       RocksDBValue existing =
           RocksDBValue::Empty(RocksDBEntryType::UniqueIndexValue);
@@ -509,16 +506,17 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      auto s = rtrx->Put(key.string(), value.string());
+      rocksdb::Status s = rtrx->Put(key.string(), value.string());
       if (!s.ok()) {
-        auto status = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+        auto status =
+            rocksutils::convertStatus(s, rocksutils::StatusHint::index);
         res = status.errorNumber();
       }
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = 0; j < i; ++j) {
-        rtrx->Delete(elements[j].first.string());
+        rtrx->Delete(elements[j].string());
       }
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
@@ -533,15 +531,43 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
   return res;
 }
 
+int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatch* writeBatch,
+                                 TRI_voc_rid_t revisionId,
+                                 VPackSlice const& doc) {
+  std::vector<RocksDBKey> elements;
+  int res;
+  try {
+    VPackBuilder leased;
+    res = fillElement(leased, revisionId, doc, elements);
+  } catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  // now we are going to construct the value to insert into rocksdb
+  // unique indexes have a different key structure
+  StringRef docKey(doc.get(StaticStrings::KeyString));
+  RocksDBValue value = _unique ? RocksDBValue::UniqueIndexValue(docKey)
+                               : RocksDBValue::IndexValue();
+
+  for (RocksDBKey const& key : elements) {
+    writeBatch->Put(key.string(), value.string());
+  }
+  return res;
+}
+
 /// @brief removes a document from the index
 int RocksDBVPackIndex::remove(transaction::Methods* trx,
                               TRI_voc_rid_t revisionId, VPackSlice const& doc,
                               bool isRollback) {
-  std::vector<std::pair<RocksDBKey, RocksDBValue>> elements;
+  std::vector<RocksDBKey> elements;
 
   int res;
   try {
-    res = fillElement(trx, revisionId, doc, elements);
+    transaction::BuilderLeaser leased(trx);
+    res = fillElement(*(leased.get()), revisionId, doc, elements);
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -555,16 +581,40 @@ int RocksDBVPackIndex::remove(transaction::Methods* trx,
 
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
-    auto s = rtrx->Delete(elements[i].first.string());
-
-    auto status = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
-    if (!status.ok()) {
+    rocksdb::Status s = rtrx->Delete(elements[i].string());
+    if (!s.ok()) {
+      auto status = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
       res = status.errorNumber();
     }
   }
 
   return res;
 }
+
+int RocksDBVPackIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
+                                TRI_voc_rid_t revisionId, VPackSlice const& doc) {
+  std::vector<RocksDBKey> elements;
+  
+  int res;
+  try {
+    VPackBuilder leased;
+    res = fillElement(leased, revisionId, doc, elements);
+  } catch (...) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  
+  size_t const count = elements.size();
+  for (size_t i = 0; i < count; ++i) {
+    writeBatch->Delete(elements[i].string());
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 /// @brief called when the index is dropped
 int RocksDBVPackIndex::drop() {
@@ -1219,7 +1269,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-  
+
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;

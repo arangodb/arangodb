@@ -355,7 +355,7 @@ class RandomDeviceMersenne : public RandomDevice {
       : engine(RandomDevice::seed()) {}
 
   uint32_t random() { return engine(); }
-  void seed(uint64_t seed) { engine.seed(seed); }
+  void seed(uint64_t seed) { engine.seed(static_cast<decltype(engine)::result_type>(seed)); }
 
   std::mt19937 engine;
 };

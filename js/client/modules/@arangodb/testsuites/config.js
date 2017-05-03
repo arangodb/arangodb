@@ -54,6 +54,7 @@ function config (options) {
   if (options.skipConfig) {
     return {
       config: {
+        failed: 0,
         status: true,
         skipped: true
       }
@@ -61,12 +62,15 @@ function config (options) {
   }
 
   let results = {
+    failed: 0,
     absolut: {
+      failed: 0,
       status: true,
       total: 0,
       duration: 0
     },
     relative: {
+      failed: 0,
       status: true,
       total: 0,
       duration: 0
@@ -108,6 +112,8 @@ function config (options) {
 
     if (!results.absolut[test].status) {
       results.absolut.status = false;
+      results.absolut.failed += 1;
+      results.failed += 1;
     }
 
     results.absolut.total++;
@@ -141,6 +147,8 @@ function config (options) {
     results.relative[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir);
 
     if (!results.relative[test].status) {
+      results.failed += 1;
+      results.relative.failed += 1;
       results.relative.status = false;
     }
 

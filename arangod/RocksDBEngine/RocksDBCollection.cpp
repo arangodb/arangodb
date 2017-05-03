@@ -1102,26 +1102,83 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
+/// non-transactional fill index with existing documents
+/// from this collection
 arangodb::Result RocksDBCollection::fillIndexes(
     transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
   ManagedDocumentResult mmdr;
-  std::unique_ptr<IndexIterator> iter(
-      primaryIndex()->allIterator(trx, &mmdr, false));
+  
+  RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
+  uint64_t numDocsWritten = 0;
+  // write batch will be reset each 5000 documents
+  rocksdb::WriteBatch batch(32 * 1024 * 1024); // 32 MB
+  
   int res = TRI_ERROR_NO_ERROR;
-
   auto cb = [&](DocumentIdentifierToken token) {
     if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmdr)) {
-      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
-      res = ridx->insert(trx, mmdr.lastRevisionId(), VPackSlice(mmdr.vpack()),
-                         false);
+      res = ridx->insertRaw(&batch, mmdr.lastRevisionId(), VPackSlice(mmdr.vpack()));
+      if (res == TRI_ERROR_NO_ERROR) {
+        numDocsWritten++;
+      }
     }
   };
-  while (iter->next(cb, 1000) && res == TRI_ERROR_NO_ERROR) {
+  
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::TransactionDB *db = globalRocksDB();
+  std::unique_ptr<IndexIterator> iter(primaryIndex()->allIterator(trx, &mmdr, false));
+  
+  Result r;
+  bool hasMore = true;
+  while (hasMore) {
+    hasMore = iter->next(cb, 5000);
     if (_logicalCollection->deleted()) {
-      return Result(TRI_ERROR_INTERNAL);
+      res = TRI_ERROR_INTERNAL;
     }
+    TRI_IF_FAILURE("RocksDBCollection::over9000") {
+      if (numDocsWritten > 9000)
+        res = TRI_ERROR_DEBUG; // its over 9000!
+    }
+    if (res != TRI_ERROR_NO_ERROR) {
+      r = Result(res);
+      break;
+    }
+    rocksdb::Status s = db->Write(state->writeOptions(), &batch);
+    if (!s.ok()) {
+      r = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+      break;
+    }
+    batch.Clear();
   }
-  return Result(res);
+  
+  // we will need to remove index elements created before an error
+  // occured, this needs to happen since we are non transactional
+  if (!r.ok()) {
+    batch.Clear();
+    iter->reset();
+    
+    res = TRI_ERROR_NO_ERROR;
+    auto removeCb = [&](DocumentIdentifierToken token) {
+      if (res == TRI_ERROR_NO_ERROR && numDocsWritten > 0 &&
+          this->readDocument(trx, token, mmdr)) {
+        
+        // we need to remove already inserted documents up to numDocsWritten
+        res = ridx->removeRaw(&batch, mmdr.lastRevisionId(), VPackSlice(mmdr.vpack()));
+        if (res == TRI_ERROR_NO_ERROR) {
+          numDocsWritten--;
+        }
+      }
+    };
+    
+    hasMore = true;
+    while (hasMore && numDocsWritten > 0) {
+      hasMore = iter->next(removeCb, 5000);
+    }
+    // TODO: if this fails, do we have any recourse?
+    // Simon: Don't think so
+    db->Write(state->writeOptions(), &batch);
+  }
+  
+  return r;
 }
 
 // @brief return the primary index

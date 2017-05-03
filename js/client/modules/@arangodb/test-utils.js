@@ -514,6 +514,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
     result[0].hasOwnProperty('status')) {
     return result[0];
   } else {
+    rc.failed = rc.status ? 0 : 1;
     return rc;
   }
 }

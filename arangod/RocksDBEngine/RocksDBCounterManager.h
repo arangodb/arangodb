@@ -88,7 +88,6 @@ class RocksDBCounterManager {
   arangodb::Result sync(bool force);
 
   void readSettings();
-  void writeSettings();
 
  protected:
   struct CMValue {

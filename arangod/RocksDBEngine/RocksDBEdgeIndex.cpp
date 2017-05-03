@@ -231,6 +231,18 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   }
 }
 
+int RocksDBEdgeIndex::insertRaw(rocksdb::WriteBatch* writeBatch,
+                                   TRI_voc_rid_t revisionId, VPackSlice const& doc) {
+  VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
+  VPackSlice fromTo = doc.get(_directionAttr);
+  TRI_ASSERT(primaryKey.isString() && fromTo.isString());
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
+                                              primaryKey.copyString());
+  
+  writeBatch->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
+  return TRI_ERROR_NO_ERROR;
+}
+
 int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
@@ -249,6 +261,18 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   } else {
     return rocksutils::convertStatus(status).errorNumber();
   }
+}
+
+int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
+                                TRI_voc_rid_t, VPackSlice const& doc) {
+  VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
+  VPackSlice fromTo = doc.get(_directionAttr);
+  TRI_ASSERT(primaryKey.isString() && fromTo.isString());
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
+                                              primaryKey.copyString());
+  
+  writeBatch->Delete(rocksdb::Slice(key.string()));
+  return TRI_ERROR_NO_ERROR;
 }
 
 void RocksDBEdgeIndex::batchInsert(

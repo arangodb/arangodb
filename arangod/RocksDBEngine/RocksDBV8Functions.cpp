@@ -157,6 +157,10 @@ void RocksDBV8Functions::registerResources() {
   v8::Handle<v8::ObjectTemplate> rt =
       v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
+  
+  v8::Handle<v8::ObjectTemplate> db =
+  v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseTempl);
+  TRI_ASSERT(!db.IsEmpty());
 
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_FLUSH"),
@@ -168,8 +172,8 @@ void RocksDBV8Functions::registerResources() {
                                JS_PropertiesWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ENGINE_STATS"),
-                               JS_EngineStats, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculateCount"),
                        JS_RecalculateCounts);
+  TRI_AddMethodVocbase(isolate, db, TRI_V8_ASCII_STRING("_engineStats"),
+                       JS_EngineStats);
 }
