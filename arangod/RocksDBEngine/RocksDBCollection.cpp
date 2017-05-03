@@ -1109,14 +1109,6 @@ arangodb::Result RocksDBCollection::fillIndexes(
     transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
   ManagedDocumentResult mmdr;
   
-  
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  
-  
   RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   std::unique_ptr<IndexIterator> iter(primaryIndex()->allIterator(trx, &mmdr, false));
@@ -1124,7 +1116,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   
   uint64_t numDocsWritten = 0;
   // write batch will be reset each 5000 documents
-  rocksdb::WriteBatchWithIndex batch(db->GetOptions().comparator,
+  rocksdb::WriteBatchWithIndex batch(db->DefaultColumnFamily()->GetComparator(),
                                      32 * 1024 * 1024);
   rocksdb::ReadOptions readOptions;
   

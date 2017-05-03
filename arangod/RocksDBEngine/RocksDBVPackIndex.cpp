@@ -553,12 +553,13 @@ int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatchWithIndex* writeBatch,
   RocksDBValue value = _unique ? RocksDBValue::UniqueIndexValue(docKey)
                                : RocksDBValue::IndexValue();
 
+  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
   for (RocksDBKey const& key : elements) {
     if (_unique) {
       rocksdb::ReadOptions readOpts;
       std::string v;
-      auto status = writeBatch->GetFromBatchAndDB(rocksutils::globalRocksDB(),
-                                                  readOpts, key.string(), &v);
+      auto status = writeBatch->GetFromBatchAndDB(db, readOpts,
+                                                  key.string(), &v);
       if (!status.IsNotFound()) {
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
       }
