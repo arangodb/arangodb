@@ -739,6 +739,7 @@ arangodb::Result RocksDBEngine::dropCollection(
       return TRI_ERROR_NO_ERROR;
     }
   }
+  coll->compact();
 
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.

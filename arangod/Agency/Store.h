@@ -130,7 +130,12 @@ class Store : public arangodb::Thread {
   /// @brief Copy out a node
   Node get(std::string const& path = std::string("/")) const;
 
+  /// @brief Copy out a node
+  bool has(std::string const& path = std::string("/")) const;
+
   std::string toJson() const;
+
+  void clear();
 
   friend class Node;
 

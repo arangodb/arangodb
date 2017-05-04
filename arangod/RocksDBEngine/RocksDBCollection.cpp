@@ -546,6 +546,9 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
       int rv = cindex->drop();
 
       if (rv == TRI_ERROR_NO_ERROR) {
+        // trigger compaction before deleting the object
+        cindex->compact();
+        
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
 
@@ -1235,11 +1238,9 @@ arangodb::Result RocksDBCollection::fillIndexes(
   bool hasMore = true;
   while (hasMore) {
     hasMore = iter->next(cb, 5000);
-    if (_logicalCollection->deleted()) {
+    if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED
+        || _logicalCollection->deleted()) {
       res = TRI_ERROR_INTERNAL;
-    }
-    TRI_IF_FAILURE("RocksDBCollection::over9000") {
-      if (numDocsWritten > 9000) res = TRI_ERROR_DEBUG;  // its over 9000!
     }
     if (res != TRI_ERROR_NO_ERROR) {
       r = Result(res);

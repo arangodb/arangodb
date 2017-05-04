@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -820,3 +820,12 @@ Slice Node::getArray() const {
   return Slice(_vecBuf.data());
 }
 
+
+void Node::clear() {
+  _children.clear();
+  _ttl = std::chrono::system_clock::time_point();
+  _value.clear();
+  _vecBuf.clear();
+  _vecBufDirty = true;
+  _isArray = false;
+}

@@ -2021,7 +2021,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
         //  TRI_V8_THROW_EXCEPTION_USAGE(
         //                               "Vertex collection needs to be shared after '_key'");
         //}
-        if (coll->deleted()) {
+        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
         }
       } catch (...) {
@@ -2029,7 +2029,8 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
     } else  if (ss->getRole() == ServerState::ROLE_SINGLE) {
       LogicalCollection *coll = vocbase->lookupCollection(name);
-      if (coll == nullptr || coll->deleted()) {
+      if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED
+          || coll->deleted()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
     } else {
@@ -2056,7 +2057,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                          "smart graphs");
           }
         }
-        if (coll->deleted()) {
+        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
         }
         // smart edge collections contain multiple actual collections

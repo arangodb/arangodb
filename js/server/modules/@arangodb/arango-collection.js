@@ -134,7 +134,12 @@ ArangoCollection.prototype.truncate = function () {
       this.load();
     }
   }
-  return this.TRUNCATE();
+  var ret = this.TRUNCATE();
+  // manually trigger compaction, otherwise the SST files stay large
+  if (internal.db._engine().name === "rocksdb" && this.compact) {
+    this.compact();
+  }
+  return ret;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
