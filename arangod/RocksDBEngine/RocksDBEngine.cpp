@@ -46,6 +46,7 @@
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
+#include "RocksDBEngine/RocksDBInitialSync.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
@@ -57,7 +58,6 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBView.h"
-#include "RocksDBEngine/RocksDBInitialSync.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
@@ -69,6 +69,7 @@
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
+#include <rocksdb/transaction_log.h>
 #include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
@@ -154,12 +155,12 @@ void RocksDBEngine::start() {
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = databasePathFeature->subdirectoryName("engine-rocksdb");
 
-  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "initializing rocksdb, path: "
-                                              << _path;
+  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP)
+      << "initializing rocksdb, path: " << _path;
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
-  //transactionOptions.num_stripes = TRI_numberProcessors();
+  // transactionOptions.num_stripes = TRI_numberProcessors();
 
   // options imported set by RocksDBOptionFeature
   auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
@@ -207,8 +208,10 @@ void RocksDBEngine::start() {
   _options.comparator = _cmp.get();
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
-  _options.WAL_ttl_seconds = 600;  //(uint64_t)(counter_sync_seconds * 2.0);
-  _options.WAL_size_limit_MB = 0;  
+  _options.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
+                                                 // ourselves, don't let RocksDB
+                                                 // garbage collect them
+  _options.WAL_size_limit_MB = 0;
   double counter_sync_seconds = 2.5;
   // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
 
@@ -339,8 +342,8 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
           basics::StringUtils::uint64(idSlice.copyString()));
 
       // database is deleted, skip it!
-      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "found dropped database "
-                                                  << id;
+      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
+          << "found dropped database " << id;
 
       dropDatabase(id);
       continue;
@@ -659,8 +662,7 @@ arangodb::Result RocksDBEngine::persistCollection(
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (result.ok()) {
-    RocksDBCollection* rcoll =
-        toRocksDBCollection(collection->getPhysical());
+    RocksDBCollection* rcoll = toRocksDBCollection(collection->getPhysical());
     TRI_ASSERT(rcoll->numberDocuments() == 0);
   }
 #endif
@@ -708,8 +710,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // Now Collection is gone.
   // Cleanup data-mess
 
-  RocksDBCollection* coll =
-      toRocksDBCollection(collection->getPhysical());
+  RocksDBCollection* coll = toRocksDBCollection(collection->getPhysical());
 
   // Unregister counter
   _counterManager->removeCounter(coll->objectId());
@@ -1012,6 +1013,46 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   return res;
 }
 
+void RocksDBEngine::pruneWalFiles(TRI_voc_tick_t minTickToKeep) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "PRUNING WAL to " << minTickToKeep;
+  rocksdb::VectorLogPtr files;
+
+  auto status = _db->GetSortedWalFiles(files);
+  if (!status.ok()) {
+    return;  // TODO: error here?
+  }
+
+  size_t lastLess = files.size();
+  for (size_t current = 0; current < files.size(); current++) {
+    auto f = files[current].get();
+    if (f->StartSequence() < minTickToKeep) {
+      lastLess = current;
+    } else {
+      break;
+    }
+  }
+
+  if (lastLess > 0 && lastLess < files.size()) {
+    for (size_t current = 0; current < lastLess; current++) {
+      auto f = files[current].get();
+      if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+        LOG_TOPIC(ERR, Logger::FIXME) << "deleting wal file " << f->PathName()
+                                      << " with start " << f->StartSequence();
+        auto s = _db->DeleteFile(f->PathName());
+        if (!s.ok()) {
+          // TODO: exception?
+          break;
+        }
+      }
+    }
+  }
+  if (lastLess < files.size()) {
+    LOG_TOPIC(ERR, Logger::FIXME)
+        << "keeping wal file " << files[lastLess]->PathName() << " with start "
+        << files[lastLess]->StartSequence();
+  }
+}
+
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
   Result res;
@@ -1153,8 +1194,8 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       view->getImplementation()->open();
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
-                                            << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error while opening database: " << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -1190,14 +1231,14 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
           static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
 
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "added document collection '"
-                                                << collection->name() << "'";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+          << "added document collection '" << collection->name() << "'";
     }
 
     return vocbase.release();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
-                                            << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error while opening database: " << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -1215,7 +1256,7 @@ RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
   TRI_ASSERT(_replicationManager);
   return _replicationManager.get();
 }
-  
+
 void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   builder.openObject();
   // add int properties
@@ -1256,4 +1297,4 @@ int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
   return handleSyncKeysRocksDB(syncer, col, keysId, cid, collectionName,
                                maxTick, errorMsg);
 }
-}  // namespace
+}  // namespace arangodb

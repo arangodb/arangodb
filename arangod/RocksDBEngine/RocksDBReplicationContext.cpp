@@ -73,8 +73,7 @@ uint64_t RocksDBReplicationContext::lastTick() const { return _lastTick; }
 uint64_t RocksDBReplicationContext::count() const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_collection != nullptr);
-  RocksDBCollection* rcoll =
-      toRocksDBCollection(_collection->getPhysical());
+  RocksDBCollection* rcoll = toRocksDBCollection(_collection->getPhysical());
   return rcoll->numberDocuments(_trx.get());
 }
 
@@ -83,6 +82,7 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   if ((_trx.get() == nullptr) || (_trx->vocbase() != vocbase)) {
     releaseDumpingResources();
     _trx = createTransaction(vocbase);
+    _lastTick = toRocksTransactionState(_trx.get())->sequenceNumber();
   }
 }
 
@@ -117,7 +117,6 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
   }
 
   auto tick = TRI_CurrentTickServer();
-  _lastTick = toRocksTransactionState(_trx.get())->sequenceNumber();
   std::shared_ptr<VPackBuilder> inventory = vocbase->inventory(
       tick, filterCollection, &includeSystem, true, sortCollections);
 

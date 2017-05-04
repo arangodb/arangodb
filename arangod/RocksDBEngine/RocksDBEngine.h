@@ -75,7 +75,7 @@ class RocksDBEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void unprepare() override;
-  
+
   bool supportsDfdb() const override { return false; }
 
   transaction::ContextData* createTransactionContextData() override;
@@ -133,8 +133,8 @@ class RocksDBEngine final : public StorageEngine {
       arangodb::velocypack::Slice const& parameters, bool isUpgrade,
       int&) override;
   TRI_vocbase_t* createDatabase(TRI_voc_tick_t id,
-                           arangodb::velocypack::Slice const& args,
-                           int& status) override;
+                                arangodb::velocypack::Slice const& args,
+                                int& status) override;
   int writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                 VPackSlice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker,
@@ -252,12 +252,15 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBComparator* cmp() const { return _cmp.get(); }
 
   int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                  VPackSlice const& slice, RocksDBLogValue&& logValue);
+                                  VPackSlice const& slice,
+                                  RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
   std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 
   Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder);
+
+  void pruneWalFiles(TRI_voc_tick_t minTickToKeep);
 
  private:
   Result dropDatabase(TRI_voc_tick_t);
@@ -273,7 +276,7 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const FeatureName;
   RocksDBCounterManager* counterManager() const;
   RocksDBReplicationManager* replicationManager() const;
-  
+
  private:
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
@@ -305,5 +308,5 @@ class RocksDBEngine final : public StorageEngine {
   std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
       _collectionMap;
 };
-}
+}  // namespace arangodb
 #endif

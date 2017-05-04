@@ -23,6 +23,7 @@
 #include "RocksDBBackgroundThread.h"
 #include "Basics/ConditionLocker.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
@@ -58,12 +59,22 @@ void RocksDBBackgroundThread::run() {
     bool force = isStopping();
     _engine->replicationManager()->garbageCollect(force);
 
-    DatabaseFeature::DATABASE->enumerateDatabases(
-        [force](TRI_vocbase_t* vocbase) {
-          vocbase->cursorRepository()->garbageCollect(force);
-          // FIXME: configurable interval tied to WAL timeout
-          vocbase->garbageCollectReplicationClients(60.0 * 10.0);
-        });
+    TRI_voc_tick_t minTick = rocksutils::latestSequenceNumber();
+    if (DatabaseFeature::DATABASE != nullptr) {
+      DatabaseFeature::DATABASE->enumerateDatabases(
+          [force, &minTick](TRI_vocbase_t* vocbase) {
+            vocbase->cursorRepository()->garbageCollect(force);
+            // FIXME: configurable interval tied to follower timeout
+            vocbase->garbageCollectReplicationClients(60.0);
+            auto clients = vocbase->getReplicationClients();
+            for (auto c : clients) {
+              if (std::get<2>(c) < minTick) {
+                minTick = std::get<2>(c);
+              }
+            }
+          });
+      _engine->pruneWalFiles(minTick);
+    }
   }
-  _engine->counterManager()->sync(true); // final write on shutdown
+  _engine->counterManager()->sync(true);  // final write on shutdown
 }

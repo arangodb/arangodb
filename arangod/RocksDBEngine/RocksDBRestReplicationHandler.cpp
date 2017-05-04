@@ -332,8 +332,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
   auto res = globalRocksEngine()->createLoggerState(_vocbase, builder);
   if (res.fail()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state"
-                                          << res.errorMessage();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "failed to create logger-state" << res.errorMessage();
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   res.errorMessage());
     return;
@@ -383,6 +383,19 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("id", VPackValue(std::to_string(ctx->id())));  // id always string
     b.close();
 
+    // add client
+    bool found;
+    std::string const& value = _request->value("serverId", found);
+    TRI_server_id_t serverId = 0;
+
+    if (found) {
+      serverId = (TRI_server_id_t)StringUtils::uint64(value);
+    } else {
+      serverId = ctx->id();
+    }
+
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
@@ -413,6 +426,19 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     } else if (ctx == nullptr) {
       res = TRI_ERROR_CURSOR_NOT_FOUND;
     }
+
+    // add client
+    bool found;
+    std::string const& value = _request->value("serverId", found);
+    TRI_server_id_t serverId = 0;
+
+    if (found) {
+      serverId = (TRI_server_id_t)StringUtils::uint64(value);
+    } else {
+      serverId = ctx->id();
+    }
+
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
 
     // now extend the blocker
     // StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -617,19 +643,19 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   if (found) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
   }
-  
+
   // extract collection
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
   if (found) {
     arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
-    
+
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       return;
     }
-    
+
     cid = c->cid();
   }
 
@@ -638,8 +664,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   VPackBuilder builder(transactionContext->getVPackOptions());
   builder.openArray();
-  auto result = tailWal(_vocbase, tickStart, tickEnd,
-                        chunkSize, includeSystem, cid, builder);
+  auto result = tailWal(_vocbase, tickStart, tickEnd, chunkSize, includeSystem,
+                        cid, builder);
   builder.close();
   auto data = builder.slice();
 
@@ -705,13 +731,11 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     bool found;
     std::string const& value = _request->value("serverId", found);
 
+    TRI_server_id_t serverId = 0;
     if (found) {
-      TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
-
-      if (serverId > 0) {
-        _vocbase->updateReplicationClient(serverId, result.maxTick());
-      }
+      serverId = (TRI_server_id_t)StringUtils::uint64(value);
     }
+    _vocbase->updateReplicationClient(serverId, result.maxTick());
   }
 }
 
@@ -904,9 +928,9 @@ void RocksDBRestReplicationHandler::handleCommandRestoreCollection() {
   }
 
   std::string const& value9 =
-    _request->value("ignoreDistributeShardsLikeErrors", found);
+      _request->value("ignoreDistributeShardsLikeErrors", found);
   bool ignoreDistributeShardsLikeErrors =
-    found ? StringUtils::boolean(value9) : false;
+      found ? StringUtils::boolean(value9) : false;
 
   uint64_t numberOfShards = 0;
   std::string const& value4 = _request->value("numberOfShards", found);
@@ -1199,7 +1223,6 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "invalid 'type' value");
     return;
   }
-  
 
   std::string const& id = suffixes[1];
 
@@ -2356,8 +2379,8 @@ int RocksDBRestReplicationHandler::processRestoreCollection(
 
 int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
-    uint64_t numberOfShards, std::string& errorMsg,
-    uint64_t replicationFactor, bool ignoreDistributeShardsLikeErrors) {
+    uint64_t numberOfShards, std::string& errorMsg, uint64_t replicationFactor,
+    bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -2412,16 +2435,16 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to drop collection '" + name + "': " +
-                   std::string(TRI_errno_string(res));
+        errorMsg = "unable to drop collection '" + name +
+                   "': " + std::string(TRI_errno_string(res));
 
         return res;
       }
     } else {
       int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
 
-      errorMsg = "unable to create collection '" + name + "': " +
-                 std::string(TRI_errno_string(res));
+      errorMsg = "unable to create collection '" + name +
+                 "': " + std::string(TRI_errno_string(res));
 
       return res;
     }

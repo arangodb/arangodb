@@ -281,7 +281,8 @@ int InitialSyncer::sendFlush(std::string& errorMsg) {
 int InitialSyncer::sendStartBatch(std::string& errorMsg) {
   _batchId = 0;
 
-  std::string const url = BaseUrl + "/batch";
+  std::string const url =
+      BaseUrl + "/batch" + "?serverId=" + _localServerIdString;
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
@@ -343,7 +344,8 @@ int InitialSyncer::sendExtendBatch() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId);
+  std::string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId) +
+                          "?serverId=" + _localServerIdString;
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
@@ -380,7 +382,8 @@ int InitialSyncer::sendFinishBatch() {
   }
 
   try {
-    std::string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId);
+    std::string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId) +
+                            "?serverId=" + _localServerIdString;
 
     // send request
     std::string const progress = "send batch finish command to url " + url;
