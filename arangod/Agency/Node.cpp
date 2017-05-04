@@ -797,7 +797,7 @@ bool Node::getBool() const {
 
 double Node::getDouble() const {
   if (type() == NODE) {
-    throw StoreException("Must not convert NODE type to int");
+    throw StoreException("Must not convert NODE type to double");
   }
   return slice().getNumber<double>();
 }
