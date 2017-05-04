@@ -76,6 +76,10 @@ class Hints {
   inline void unset(Hint value) {
     unset(static_cast<ValueType>(value));
   }
+  
+  inline ValueType toInt() const {
+    return static_cast<ValueType>(_value);
+  }
 
  private:
   ValueType _value;

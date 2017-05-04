@@ -45,7 +45,8 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _operationSize(0),
       _numInserts(0),
       _numUpdates(0),
-      _numRemoves(0) {}
+      _numRemoves(0),
+      _usageLocked(false) {}
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
 
@@ -153,9 +154,24 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
   }
 
   if (_collection == nullptr) {
-    TRI_vocbase_col_status_e status;
-    LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-    _collection = _transaction->vocbase()->useCollection(_cid, status);
+    // open the collection
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
+        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+      // use and usage-lock
+      TRI_vocbase_col_status_e status;
+      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      _collection = _transaction->vocbase()->useCollection(_cid, status);
+      if (_collection != nullptr) {
+        _usageLocked = true;
+      }
+    } else {
+      // use without usage-lock (lock already set externally)
+      _collection = _transaction->vocbase()->lookupCollection(_cid);
+
+      if (_collection == nullptr) {
+        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      }
+    }
 
     if (_collection == nullptr) {
       int res = TRI_errno();
@@ -206,7 +222,10 @@ void RocksDBTransactionCollection::release() {
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
-    _transaction->vocbase()->releaseCollection(_collection);
+    if (_usageLocked) {
+      _transaction->vocbase()->releaseCollection(_collection);
+      _usageLocked = false;
+    }
     _collection = nullptr;
   }
 }
