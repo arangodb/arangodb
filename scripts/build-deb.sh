@@ -25,6 +25,7 @@ done
     --buildDir build-${EP}deb \
     --targetDir /var/tmp/ \
     --jemalloc \
+    --downloadStarter \
     --noopt \
     $@
 
