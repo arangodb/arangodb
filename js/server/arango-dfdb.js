@@ -33,24 +33,25 @@ var fs = require("fs");
 
 var printf = internal.printf;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unload a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 function UnloadCollection (collection) {
-  var last = Math.round(internal.time());
+  var tries = 0;
 
   // unload collection if not yet unloaded (2) & not corrupted (0)
   while (collection.status() !== 2 && collection.status() !== 0) {
     collection.unload();
 
-    var next = Math.round(internal.time());
-
-    if (next !== last) {
-      printf("Trying to unload collection '%s'\n", collection.name());
-      last = next;
+    if (++tries >= 20) {
+      break;
     }
+    if (tries == 1) {
+      printf("Trying to unload collection '%s', current status: %s\n", collection.name(), collection.status());
+    }
+
+    internal.wait(1, true);
   }
 }
 
