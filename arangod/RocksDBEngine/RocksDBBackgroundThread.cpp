@@ -58,12 +58,12 @@ void RocksDBBackgroundThread::run() {
     bool force = isStopping();
     _engine->replicationManager()->garbageCollect(force);
 
-    if (!isStopping()) {
-      DatabaseFeature::DATABASE->enumerateDatabases(
-          [force](TRI_vocbase_t* vocbase) {
-            vocbase->cursorRepository()->garbageCollect(force);
-          });
-    }
+    DatabaseFeature::DATABASE->enumerateDatabases(
+        [force](TRI_vocbase_t* vocbase) {
+          vocbase->cursorRepository()->garbageCollect(force);
+          // FIXME: configurable interval tied to WAL timeout
+          vocbase->garbageCollectReplicationClients(60.0 * 10.0);
+        });
   }
   _engine->counterManager()->sync(true); // final write on shutdown
 }

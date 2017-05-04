@@ -1547,6 +1547,27 @@ TRI_vocbase_t::getReplicationClients() {
   return result;
 }
 
+void TRI_vocbase_t::garbageCollectReplicationClients(double ttl) {
+  WRITE_LOCKER(writeLocker, _replicationClientsLock);
+  
+  try {
+    double now = TRI_microtime();
+    auto it = _replicationClients.cbegin();
+    while (it != _replicationClients.cend()) {
+      double lastUpdate = it->second.first;
+      double diff = now - lastUpdate;
+      if (diff > ttl) {
+        it = _replicationClients.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  } catch (...) {
+    // silently fail...
+    // all we would be missing is the progress information of a slave
+  }
+}
+
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;
 
