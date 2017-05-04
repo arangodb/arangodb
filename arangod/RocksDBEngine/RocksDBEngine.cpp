@@ -188,6 +188,7 @@ void RocksDBEngine::start() {
       static_cast<int>(opts->_baseBackgroundCompactions);
   _options.max_background_compactions =
       static_cast<int>(opts->_maxBackgroundCompactions);
+  _options.use_fsync = opts->_useFSync;
 
   _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
   _options.keep_log_file_num = static_cast<size_t>(opts->_keepLogFileNum);
@@ -197,7 +198,7 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
 
-  _options.IncreaseParallelism((int)TRI_numberProcessors());
+  _options.IncreaseParallelism(static_cast<int>(TRI_numberProcessors()));
 
   _options.create_if_missing = true;
   _options.max_open_files = -1;
@@ -205,6 +206,7 @@ void RocksDBEngine::start() {
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
   _options.WAL_ttl_seconds = 600;  //(uint64_t)(counter_sync_seconds * 2.0);
+  _options.WAL_size_limit_MB = 0;  
   double counter_sync_seconds = 2.5;
   // TODO: prefix_extractior +  memtable_insert_with_hint_prefix
 
@@ -1209,6 +1211,36 @@ RocksDBCounterManager* RocksDBEngine::counterManager() const {
 RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
   TRI_ASSERT(_replicationManager);
   return _replicationManager.get();
+}
+  
+void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
+  builder.openObject();
+  // add int properties
+  auto c1 = [&](std::string const& s) {
+    std::string v;
+    if (_db->GetProperty(s, &v)) {
+      builder.add(s, VPackValue(v));
+    }
+  };
+  c1(rocksdb::DB::Properties::kNumImmutableMemTable);
+  c1(rocksdb::DB::Properties::kMemTableFlushPending);
+  c1(rocksdb::DB::Properties::kCompactionPending);
+  c1(rocksdb::DB::Properties::kBackgroundErrors);
+  c1(rocksdb::DB::Properties::kCurSizeActiveMemTable);
+  c1(rocksdb::DB::Properties::kCurSizeAllMemTables);
+  c1(rocksdb::DB::Properties::kSizeAllMemTables);
+  c1(rocksdb::DB::Properties::kNumEntriesImmMemTables);
+  c1(rocksdb::DB::Properties::kNumSnapshots);
+  c1(rocksdb::DB::Properties::kDBStats);
+  c1(rocksdb::DB::Properties::kCFStats);
+  c1(rocksdb::DB::Properties::kSSTables);
+  c1(rocksdb::DB::Properties::kNumRunningCompactions);
+  c1(rocksdb::DB::Properties::kNumRunningFlushes);
+  c1(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
+  c1(rocksdb::DB::Properties::kBaseLevel);
+  c1(rocksdb::DB::Properties::kTotalSstFilesSize);
+
+  builder.close();
 }
 
 int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,

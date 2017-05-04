@@ -446,6 +446,11 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
+int RocksDBPrimaryIndex::insertRaw(rocksdb::WriteBatchWithIndex*,
+                                   TRI_voc_rid_t, VPackSlice const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
                                 TRI_voc_rid_t revisionId,
                                 VPackSlice const& slice, bool) {
@@ -481,6 +486,11 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
       rocksutils::convertStatus(status, rocksutils::StatusHint::index);
 
   return converted.errorNumber();
+}
+
+int RocksDBPrimaryIndex::removeRaw(rocksdb::WriteBatch*,
+                                   TRI_voc_rid_t, VPackSlice const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief called when the index is dropped

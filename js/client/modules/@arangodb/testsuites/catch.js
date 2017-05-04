@@ -54,7 +54,7 @@ function locateCatchTest (name) {
 }
 
 function catchRunner (options) {
-  let results = {};
+  let results = { failed: 0 };
   let rootDir = pu.UNITTESTS_DIR;
 
   const run = locateCatchTest('arangodbtests');
@@ -67,8 +67,14 @@ function catchRunner (options) {
         '-o',
         fs.join(options.testOutputDirectory, 'catch-standard.xml')];
       results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir);
+      results.basics.failed = results.basics.status ? 0 : 1;
+      if (!results.basics.status) {
+        results.failed += 1;
+      }
     } else {
+      results.failed += 1;
       results.basics = {
+        failed: 1,
         status: false,
         message: 'binary "basics_suite" not found'
       };
@@ -85,8 +91,14 @@ function catchRunner (options) {
                  ];
       results.cache_suite = pu.executeAndWait(run, argv, options,
                                            'cache_suite', rootDir);
+      results.cache_suite.failed = results.cache_suite.status ? 0 : 1;
+      if (!results.cache_suite.status) {
+        results.failed += 1;
+      }
     } else {
+      results.failed += 1;
       results.cache_suite = {
+        failed: 1,
         status: false,
         message: 'binary "cache_suite" not found'
       };
@@ -102,8 +114,14 @@ function catchRunner (options) {
                   fs.join(options.testOutputDirectory, 'catch-geo.xml')
                  ];
       results.geo_suite = pu.executeAndWait(run, argv, options, 'geo_suite', rootDir);
+      results.geo_suite.failed = results.geo_suite.status ? 0 : 1;
+      if (!results.geo_suite.status) {
+        results.failed += 1;
+      }
     } else {
+      results.failed += 1;
       results.geo_suite = {
+        failed: 1,
         status: false,
         message: 'binary "geo_suite" not found'
       };

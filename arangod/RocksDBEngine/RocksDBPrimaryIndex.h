@@ -73,7 +73,9 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
 
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token, StringRef const& key)> TokenKeyCallback;
+  typedef std::function<void(DocumentIdentifierToken const& token,
+                             StringRef const& key)>
+      TokenKeyCallback;
   RocksDBAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
                           ManagedDocumentResult* mmdr,
@@ -85,7 +87,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
   bool next(TokenCallback const& cb, size_t limit) override;
   void reset() override;
-  
+
   // engine specific optimizations
   bool nextWithKey(TokenKeyCallback const& cb, size_t limit);
   void seek(StringRef const& key);
@@ -173,8 +175,14 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
+  int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&) override;
+
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
+  
+  int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&) override;
 
   int drop() override;
 
@@ -218,6 +226,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode, bool isId) const;
 };
-}
+}  // namespace arangodb
 
 #endif

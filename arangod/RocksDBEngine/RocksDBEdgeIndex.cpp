@@ -231,6 +231,11 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   }
 }
 
+int RocksDBEdgeIndex::insertRaw(rocksdb::WriteBatchWithIndex*,
+                                TRI_voc_rid_t, VPackSlice const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
@@ -249,6 +254,11 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   } else {
     return rocksutils::convertStatus(status).errorNumber();
   }
+}
+
+int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
+                                TRI_voc_rid_t, VPackSlice const& doc) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 void RocksDBEdgeIndex::batchInsert(

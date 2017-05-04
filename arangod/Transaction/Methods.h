@@ -64,6 +64,7 @@ class BaseEngine;
 }
 
 namespace transaction {
+class CallbackInvoker;
 class Context;
 }
 
@@ -81,6 +82,7 @@ namespace transaction {
 
 class Methods {
   friend class traverser::BaseEngine;
+  friend class CallbackInvoker;
 
  public:
 
@@ -141,6 +143,9 @@ class Methods {
     ANY
   };
 
+  /// @brief register a callback for transaction commit or abort
+  void registerCallback(std::function<void(arangodb::transaction::Methods* trx)> const& onFinish) { _onFinish = onFinish; }
+
   /// @brief return database of transaction
   TRI_vocbase_t* vocbase() const;
   inline std::string const& databaseName() const { return vocbase()->name(); }
@@ -167,6 +172,9 @@ class Methods {
 
   /// @brief get the status of the transaction
   Status status() const;
+  
+  /// @brief get the status of the transaction, as a string
+  char const* statusString() const { return transaction::statusString(status()); }
 
   /// @brief begin the transaction
   Result begin();
@@ -556,11 +564,29 @@ class Methods {
   /// @brief transaction hints
   transaction::Hints _localHints;
 
+  /// @brief name-to-cid lookup cache for last collection seen
   struct {
     TRI_voc_cid_t cid = 0;
     std::string name;
   }
   _collectionCache;
+  
+  /// @brief optional callback function that will be called on transaction
+  /// commit or abort
+  std::function<void(arangodb::transaction::Methods* trx)> _onFinish;
+};
+
+class CallbackInvoker {
+ public:
+  explicit CallbackInvoker(transaction::Methods* trx) : _trx(trx) {}
+  ~CallbackInvoker() {
+    invoke();
+  }
+
+  void invoke() noexcept;
+
+ private:
+  transaction::Methods* _trx;
 };
 
 }

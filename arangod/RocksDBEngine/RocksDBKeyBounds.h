@@ -56,7 +56,7 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents belonging to a specified collection
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds CollectionDocuments(uint64_t collectionId);
+  static RocksDBKeyBounds CollectionDocuments(uint64_t collectionObjectId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries- belonging to a specified primary index

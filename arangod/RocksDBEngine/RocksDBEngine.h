@@ -75,6 +75,8 @@ class RocksDBEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void unprepare() override;
+  
+  bool supportsDfdb() const override { return false; }
 
   transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
@@ -88,6 +90,8 @@ class RocksDBEngine final : public StorageEngine {
 
   // create storage-engine specific view
   PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) override;
+
+  void getStatistics(VPackBuilder& builder) const override;
 
   // inventory functionality
   // -----------------------
@@ -119,7 +123,7 @@ class RocksDBEngine final : public StorageEngine {
                      arangodb::LogicalCollection* col,
                      std::string const& keysId, std::string const& cid,
                      std::string const& collectionName, TRI_voc_tick_t maxTick,
-                     std::string& errorMsg);
+                     std::string& errorMsg) override;
   // database, collection and index management
   // -----------------------------------------
 
@@ -269,7 +273,7 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const FeatureName;
   RocksDBCounterManager* counterManager() const;
   RocksDBReplicationManager* replicationManager() const;
-
+  
  private:
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;

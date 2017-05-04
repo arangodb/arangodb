@@ -513,8 +513,9 @@ bool Agent::activateAgency() {
     }
     bool persisted = false; 
     try {
-      persisted = _state.persistActiveAgents(_config.activeToBuilder(),
-                                             _config.poolToBuilder());
+      _state.persistActiveAgents(_config.activeToBuilder(),
+                                 _config.poolToBuilder());
+      persisted = true;
     } catch (std::exception const& e) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
         << "Failed to persist active agency: " << e.what();
@@ -560,23 +561,24 @@ bool Agent::load() {
   reportIn(id(), _state.lastLog().index);
 
   _compactor.start();
+  TRI_ASSERT(queryRegistry != nullptr);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
   if (size() == 1 || !this->isStopping()) {
     _spearhead.start();
     _readDB.start();
   }
-
+ 
   TRI_ASSERT(queryRegistry != nullptr);
   if (size() == 1) {
     activateAgency();
   }
-
+ 
   if (size() == 1 || !this->isStopping()) {
     _constituent.start(vocbase, queryRegistry);
     persistConfiguration(term());
   }
-
+ 
   if (size() == 1 || (!this->isStopping() && _config.supervision())) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
     _supervision.start(this);
@@ -836,6 +838,8 @@ read_ret_t Agent::read(query_t const& query) {
     _constituent.candidate();
     return read_ret_t(false, NO_LEADER);
   }
+
+  //LOG_TOPIC(WARN, Logger::AGENCY) << _state;
 
   // Retrieve data from readDB
   auto result = std::make_shared<arangodb::velocypack::Builder>();
@@ -1311,8 +1315,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         20002, "Gossip message must contain string parameter 'id'");
   }
 
-  
-  
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20003, "Gossip message must contain string parameter 'endpoint'");
@@ -1331,6 +1333,12 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         20003, "Gossip message must contain object parameter 'pool'");
   }
   VPackSlice pslice = slice.get("pool");
+
+  if (slice.hasKey("active") && slice.get("active").isArray()) {
+    for (auto const& a : VPackArrayIterator(slice.get("active"))) {
+      _config.activePushBack(a.copyString());
+    }
+  }
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
 
@@ -1358,15 +1366,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       }
     }
     
-    size_t counter = 0;
     for (auto const& i : incoming) {
-      
-      /// more data than pool size: fatal!
-      if (++counter > _config.poolSize()) {
-        LOG_TOPIC(FATAL, Logger::AGENCY)
-          << "Too many peers in pool: " << counter << ">" << _config.poolSize();
-        FATAL_ERROR_EXIT();
-      }
       
       /// disagreement over pool membership: fatal!
       if (!_config.addToPool(i)) {
@@ -1377,15 +1377,22 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     }
     
     if (!isCallback) { // no gain in callback to a callback.
-      std::map<std::string, std::string> pool = _config.pool();
-      
-      out->add("endpoint", VPackValue(_config.endpoint()));
-      out->add("id", VPackValue(_config.id()));
+      auto pool = _config.pool();
+      auto active = _config.active();
+
+      // Wrapped in envelope in RestAgencyPriveHandler
       out->add(VPackValue("pool"));
       {
         VPackObjectBuilder bb(out.get());
         for (auto const& i : pool) {
           out->add(i.first, VPackValue(i.second));
+        }
+      }
+      out->add(VPackValue("active"));
+      {
+        VPackArrayBuilder bb(out.get());
+        for (auto const& i : active) {
+          out->add(VPackValue(i));
         }
       }
     }

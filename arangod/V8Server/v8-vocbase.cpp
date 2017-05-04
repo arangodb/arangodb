@@ -1517,12 +1517,11 @@ static void JS_ObjectHash(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> WrapVocBase(v8::Isolate* isolate,
-                                          TRI_vocbase_t const* database) {
+                                          TRI_vocbase_t* database) {
   TRI_GET_GLOBALS();
 
   v8::Handle<v8::Object> result =
-      WrapClass(isolate, v8g->VocbaseTempl, WRP_VOCBASE_TYPE,
-                const_cast<TRI_vocbase_t*>(database));
+      WrapClass(isolate, v8g->VocbaseTempl, WRP_VOCBASE_TYPE, database);
   return result;
 }
 
@@ -1687,10 +1686,10 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the name of the storage engine
+/// @brief return the name and capabilities of the storage engine
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_EngineServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_Engine(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1701,6 +1700,28 @@ static void JS_EngineServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return statistics for the storage engine
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  // return engine data
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  VPackBuilder builder;
+  engine->getStatistics(builder);
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2607,19 +2628,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // register the database
   v8g->_vocbase = vocbase;
 
-  v8::Handle<v8::ObjectTemplate> ArangoNS;
-  v8::Handle<v8::ObjectTemplate> rt;
-  v8::Handle<v8::FunctionTemplate> ft;
-  v8::Handle<v8::Template> pt;
-
   // .............................................................................
   // generate the TRI_vocbase_t template
   // .............................................................................
 
-  ft = v8::FunctionTemplate::New(isolate);
+  v8::Handle<v8::FunctionTemplate> ft = v8::FunctionTemplate::New(isolate);
   ft->SetClassName(TRI_V8_ASCII_STRING("ArangoDatabase"));
 
-  ArangoNS = ft->InstanceTemplate();
+  v8::Handle<v8::ObjectTemplate> ArangoNS = ft->InstanceTemplate();
   ArangoNS->SetInternalFieldCount(2);
   ArangoNS->SetNamedPropertyHandler(MapGetVocBase);
 
@@ -2627,7 +2643,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // JS_CompletionsVocbase, too for the auto-completion
 
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_engine"),
-                       JS_EngineServer);
+                       JS_Engine);
+  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_engineStats"),
+                       JS_EngineStats);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_version"),
                        JS_VersionServer);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_id"),
@@ -2651,6 +2669,11 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_UseDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_flushCache"),
                        JS_FakeFlushCache, true);
+  
+  v8g->VocbaseTempl.Reset(isolate, ArangoNS);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING("ArangoDatabase"),
+                               ft->GetFunction());
 
   TRI_InitV8Statistics(isolate, context);
 
@@ -2658,11 +2681,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8Collections(context, vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Views(context, vocbase, v8g, isolate, ArangoNS);
-
-  v8g->VocbaseTempl.Reset(isolate, ArangoNS);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("ArangoDatabase"),
-                               ft->GetFunction());
 
   TRI_InitV8cursor(context, v8g);
 
@@ -2767,7 +2785,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("DECODE_REV"),
-                               JS_DecodeRev);
+                               JS_DecodeRev, true);
 
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("ARANGODB_CONTEXT"),
@@ -2780,11 +2798,11 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   v8::Handle<v8::Object> v = WrapVocBase(isolate, vocbase);
   if (v.IsEmpty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "out of memory when initializing VocBase";
-  } else {
-    TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING("db"),
-                                 v);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory when initializing VocBase";
+    FATAL_ERROR_ABORT();
   }
+
+  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING("db"), v);
 
   // add collections cache object
   context->Global()->ForceSet(TRI_V8_ASCII_STRING("__dbcache__"),

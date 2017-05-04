@@ -41,8 +41,9 @@ EngineSelectorFeature::EngineSelectorFeature(
     : ApplicationFeature(server, "EngineSelector"), _engine("auto") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
   startsAfter("DatabasePath");
+  startsAfter("Greetings");
+  startsAfter("Logger");
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

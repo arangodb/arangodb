@@ -61,6 +61,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
     _useDirectReads(rocksDBDefaults.use_direct_reads),
     _useDirectWrites(rocksDBDefaults.use_direct_writes),
+    _useFSync(rocksDBDefaults.use_fsync),
     _skipCorrupted(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
@@ -110,7 +111,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption(
       "--rocksdb.max-bytes-for-level-multiplier",
       "control maximum total data size for a level",
-      new UInt64Parameter(&_maxBytesForLevelMultiplier));
+      new DoubleParameter(&_maxBytesForLevelMultiplier));
 
   options->addHiddenOption(
       "--rocksdb.verify-checksums-in-compation",
@@ -138,6 +139,11 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "use O_DIRECT for writing files",
       new BooleanParameter(&_useDirectWrites));
 #endif
+  
+  options->addHiddenOption(
+      "--rocksdb.use-fsync",
+      "issue an fsync when writing to disk (set to true for issuing fdatasync only)",
+      new BooleanParameter(&_useFSync));
 
   options->addHiddenOption(
       "--rocksdb.base-background-compactions",
@@ -188,7 +194,7 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
-  if (_maxBytesForLevelMultiplier == 0) {
+  if (_maxBytesForLevelMultiplier <= 0.0) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
     FATAL_ERROR_EXIT();
   }

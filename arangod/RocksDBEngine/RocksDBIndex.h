@@ -29,6 +29,11 @@
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 
+namespace rocksdb {
+class WriteBatch;
+class WriteBatchWithIndex;
+}
+
 namespace arangodb {
 namespace cache {
 class Cache;
@@ -38,6 +43,7 @@ class RocksDBComparator;
 
 class RocksDBIndex : public Index {
  protected:
+
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
                    attributes,
@@ -69,6 +75,16 @@ class RocksDBIndex : public Index {
 
   void load();
 
+  /// insert index elements into the specified write batch. Should be used
+  /// as an optimization for the non transactional fillIndex method
+  virtual int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) = 0;
+  
+  /// remove index elements and put it in the specified write batch. Should be used
+  /// as an optimization for the non transactional fillIndex method
+  virtual int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) = 0;
+
  protected:
   void createCache();
   void disableCache();
@@ -79,9 +95,11 @@ class RocksDBIndex : public Index {
   RocksDBComparator* _cmp;
 
   mutable std::shared_ptr<cache::Cache> _cache;
-  bool _cachePresent; // we use this boolean for testing whether _cache is set. it's quicker than accessing the shared_ptr each time
+  // we use this boolean for testing whether _cache is set.
+  // it's quicker than accessing the shared_ptr each time
+  bool _cachePresent;
   bool _useCache;
 };
-}
+}  // namespace arangodb
 
 #endif

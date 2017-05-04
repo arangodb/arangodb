@@ -1,5 +1,4 @@
 /* jshint strict: false, sub: true */
-/* global print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -63,7 +62,7 @@ function fail (options) {
       }
     }
   };
-};
+}
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['fail'] = fail;

@@ -78,6 +78,9 @@ class RocksDBCounterManager {
   /// the sequence number used
   void updateCounter(uint64_t objectId, CounterAdjustment const&);
 
+  //does not modify seq or revisionid
+  arangodb::Result setAbsoluteCounter(uint64_t objectId, uint64_t absouluteCount);
+
   /// Thread-Safe remove a counter
   void removeCounter(uint64_t objectId);
 
@@ -85,7 +88,6 @@ class RocksDBCounterManager {
   arangodb::Result sync(bool force);
 
   void readSettings();
-  void writeSettings();
 
  protected:
   struct CMValue {

@@ -165,7 +165,7 @@ function arangobench (options) {
     };
   }
 
-  let results = {};
+  let results = { failed: 0 };
   let continueTesting = true;
 
   for (let i = 0; i < benchTodos.length; i++) {
@@ -205,9 +205,12 @@ function arangobench (options) {
 
       results[name] = oneResult;
       results[name].total++;
+      results[name].failed = 0;
 
       if (!results[name].status) {
+        results[name].failed = 1;
         results.status = false;
+        results.failed += 1;
       }
 
       continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);

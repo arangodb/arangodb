@@ -85,6 +85,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void start() {}
   virtual void stop() {}
 
+  virtual bool supportsDfdb() const = 0;
+
   virtual transaction::ContextData* createTransactionContextData() = 0;
   virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
@@ -420,6 +422,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.openObject();
     builder.add("name", VPackValue(typeName()));
     builder.add("supports", VPackValue(VPackValueType::Object));
+    builder.add("dfdb", VPackValue(supportsDfdb()));
     builder.add("indexes", VPackValue(VPackValueType::Array));
 
     for (auto const& it : indexFactory()->supportedIndexes()) {
@@ -429,6 +432,11 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.close(); // indexes
     builder.close(); // supports
     builder.close(); // object
+  }
+  
+  virtual void getStatistics(VPackBuilder& builder) const {
+    builder.openObject();
+    builder.close();
   }
 
  protected:

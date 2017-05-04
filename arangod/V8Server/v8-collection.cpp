@@ -2887,6 +2887,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING("_dropDatabase()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_dropView()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_engine()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_engineStats()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_executeTransaction()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_exists()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_id"));

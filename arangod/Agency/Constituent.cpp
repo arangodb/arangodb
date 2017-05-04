@@ -565,6 +565,7 @@ void Constituent::run() {
   }
 
   std::vector<std::string> act = _agent->config().active();
+
   while (
     !this->isStopping() // Obvious
     && (!_agent->ready()

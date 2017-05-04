@@ -22,24 +22,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBV8Functions.h"
+#include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VocBase/LogicalCollection.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-externals.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <v8.h>
 
 using namespace arangodb;
 
-/// this is just a stub
+/// flush the WAL
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -117,8 +119,8 @@ static void JS_RecalculateCounts(
 
   auto physical = toRocksDBCollection(collection);
 
-  v8::Handle<v8::Value> result = v8::Integer::New(
-      isolate, static_cast<uint32_t>(physical->recalculateCounts()));
+  v8::Handle<v8::Value> result = v8::Number::New(
+      isolate, static_cast<double>(physical->recalculateCounts()));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -134,17 +136,17 @@ void RocksDBV8Functions::registerResources() {
   v8::Handle<v8::ObjectTemplate> rt =
       v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
-
+  
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculateCount"),
+                       JS_RecalculateCounts, true);
+  
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_FLUSH"),
                                JS_FlushWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("WAL_WAITCOLLECTOR"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_WAITCOLLECTOR"),
                                JS_WaitCollectorWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_PROPERTIES"),
                                JS_PropertiesWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculate_counts"),
-                       JS_RecalculateCounts);
 }

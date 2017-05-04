@@ -48,15 +48,18 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/write_batch_with_index.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -1199,26 +1202,86 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
+/// non-transactional: fill index with existing documents
+/// from this collection
 arangodb::Result RocksDBCollection::fillIndexes(
     transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
-  ManagedDocumentResult mmr;
-  std::unique_ptr<IndexIterator> iter(
-      primaryIndex()->allIterator(trx, &mmr, false));
-  int res = TRI_ERROR_NO_ERROR;
+  ManagedDocumentResult mmdr;
 
+  RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  std::unique_ptr<IndexIterator> iter(
+      primaryIndex()->allIterator(trx, &mmdr, false));
+  rocksdb::TransactionDB* db = globalRocksDB();
+
+  uint64_t numDocsWritten = 0;
+  // write batch will be reset each 5000 documents
+  rocksdb::WriteBatchWithIndex batch(db->DefaultColumnFamily()->GetComparator(),
+                                     32 * 1024 * 1024);
+  rocksdb::ReadOptions readOptions;
+
+  int res = TRI_ERROR_NO_ERROR;
   auto cb = [&](DocumentIdentifierToken token) {
-    if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmr)) {
-      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
-      res = ridx->insert(trx, mmr.lastRevisionId(), VPackSlice(mmr.vpack()),
-                         false);
+    if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmdr)) {
+      res = ridx->insertRaw(&batch, mmdr.lastRevisionId(),
+                            VPackSlice(mmdr.vpack()));
+      if (res == TRI_ERROR_NO_ERROR) {
+        numDocsWritten++;
+      }
     }
   };
-  while (iter->next(cb, 1000) && res == TRI_ERROR_NO_ERROR) {
+
+  Result r;
+  bool hasMore = true;
+  while (hasMore) {
+    hasMore = iter->next(cb, 5000);
     if (_logicalCollection->deleted()) {
-      return Result(TRI_ERROR_INTERNAL);
+      res = TRI_ERROR_INTERNAL;
     }
+    TRI_IF_FAILURE("RocksDBCollection::over9000") {
+      if (numDocsWritten > 9000) res = TRI_ERROR_DEBUG;  // its over 9000!
+    }
+    if (res != TRI_ERROR_NO_ERROR) {
+      r = Result(res);
+      break;
+    }
+    rocksdb::Status s = db->Write(state->writeOptions(), batch.GetWriteBatch());
+    if (!s.ok()) {
+      r = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+      break;
+    }
+    batch.Clear();
   }
-  return Result(res);
+
+  // we will need to remove index elements created before an error
+  // occured, this needs to happen since we are non transactional
+  if (!r.ok()) {
+    iter->reset();
+    rocksdb::WriteBatch removeBatch(32 * 1024 * 1024);
+
+    res = TRI_ERROR_NO_ERROR;
+    auto removeCb = [&](DocumentIdentifierToken token) {
+      if (res == TRI_ERROR_NO_ERROR && numDocsWritten > 0 &&
+          this->readDocument(trx, token, mmdr)) {
+        // we need to remove already inserted documents up to numDocsWritten
+        res = ridx->removeRaw(&removeBatch, mmdr.lastRevisionId(),
+                              VPackSlice(mmdr.vpack()));
+        if (res == TRI_ERROR_NO_ERROR) {
+          numDocsWritten--;
+        }
+      }
+    };
+
+    hasMore = true;
+    while (hasMore && numDocsWritten > 0) {
+      hasMore = iter->next(removeCb, 5000);
+    }
+    // TODO: if this fails, do we have any recourse?
+    // Simon: Don't think so
+    db->Write(state->writeOptions(), &removeBatch);
+  }
+
+  return r;
 }
 
 // @brief return the primary index
@@ -1549,11 +1612,34 @@ int RocksDBCollection::lockRead(double timeout) {
 /// @brief read unlocks a collection
 int RocksDBCollection::unlockRead() {
   _exclusiveLock.unlockRead();
-
   return TRI_ERROR_NO_ERROR;
 }
 
+// rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
+  // start transaction to get a collection lock
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(
+          _logicalCollection->vocbase()),
+      _logicalCollection->cid(), AccessMode::Type::EXCLUSIVE);
+  auto res = trx.begin();
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // count documents
+  auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  _numberDocuments = rocksutils::countKeyRange(
+      globalRocksDB(), rocksdb::ReadOptions(), documentBounds);
+
+  // update counter manager value
+  res = globalRocksEngine()->counterManager()->setAbsoluteCounter(
+      _objectId, _numberDocuments);
+  if (res.ok()) {
+    // in case of fail the counter has never been written and hence does not
+    // need correction. The value is not changed and does not need to be synced
+    globalRocksEngine()->counterManager()->sync(true);
+  }
+
+  return _numberDocuments;
 }

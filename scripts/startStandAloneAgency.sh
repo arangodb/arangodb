@@ -190,7 +190,7 @@ mkdir -p agency
 PIDS=""
 
 aaid=(`seq 0 $(( $POOLSZ - 1 ))`)
-shuffle
+#shuffle
 
 count=1
 

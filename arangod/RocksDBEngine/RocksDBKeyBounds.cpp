@@ -48,8 +48,8 @@ RocksDBKeyBounds RocksDBKeyBounds::DatabaseCollections(
   return RocksDBKeyBounds(RocksDBEntryType::Collection, databaseId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionId) {
-  return RocksDBKeyBounds(RocksDBEntryType::Document, collectionId);
+RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionObjectId) {
+  return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId) {

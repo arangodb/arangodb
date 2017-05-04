@@ -53,7 +53,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   uint64_t _minWriteBufferNumberToMerge;
   uint64_t _numLevels;
   uint64_t _maxBytesForLevelBase;
-  uint64_t _maxBytesForLevelMultiplier;
+  double _maxBytesForLevelMultiplier;
   uint64_t _baseBackgroundCompactions;
   uint64_t _maxBackgroundCompactions;
   uint64_t _maxLogFileSize;
@@ -65,6 +65,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   bool _optimizeFiltersForHits;
   bool _useDirectReads;
   bool _useDirectWrites;
+  bool _useFSync;
   bool _skipCorrupted;
 };
 

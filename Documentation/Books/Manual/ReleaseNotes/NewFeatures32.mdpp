@@ -92,29 +92,29 @@ The RocksDB storage engine in this release has a few known issues and missing fe
 These will be resolved in the following releases:
 
 * index selectivity estimates are missing. All indexes will report their selectivity
-  estimate as `0.2`. This may lead to a non-optimal index being used in a query.
+  estimate as `0.2`. This may lead to non-optimal indexes being used in a query.
 
 * geo and fulltext indexes are not yet implemented
 
 * the number of documents reported for collections (`db.<collection>.count()`) may be
-  slightly wrong during transactions.
-
-* the engine may produce spurious `unique constraint violation` errors for auto-generated
-  `_key` values. 
+  slightly wrong during transactions
 
 * transactions are de facto limited in size, but no size restriction is currently
-  enforced. These restrictions will be implemented in a future release.
+  enforced. These restrictions will be implemented in a future release
 
-* the engine is not yet performance-optimized and well configured.
+* the engine is not yet performance-optimized and well configured
 
-* replication as well as cluster dump/restore are not fully working
+* the datafile debugger (arango-dfdb) cannot be used with this storage engine
+
+
+### RocksDB storage engine: supported index types
 
 The existing indexes in the RocksDB engine are all persistent. The following indexes are
 supported there:
 
-* primary: automatically created, indexes `_id` / `_key`
+* primary: automatically created, indexing `_id` / `_key`
 
-* edge: automatically created for edge collections, indexes `_from` and `_to`
+* edge: automatically created for edge collections, indexing `_from` and `_to`
 
 * hash, skiplist, persistent: user-defined index, technically it is neither a hash
   nor a skiplist index. All these index types map to the same RocksDB-based
