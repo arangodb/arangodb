@@ -1515,8 +1515,6 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
                                             TRI_voc_tick_t lastFetchedTick) {
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "UPDATING CLIENT with " << lastFetchedTick;
-
   try {
     auto it = _replicationClients.find(serverId);
 
@@ -1559,8 +1557,6 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double ttl) {
       double lastUpdate = it->second.first;
       double diff = now - lastUpdate;
       if (diff > ttl) {
-        LOG_TOPIC(ERR, Logger::FIXME)
-            << "REMOVING CLIENT with " << it->second.second;
         it = _replicationClients.erase(it);
       } else {
         ++it;

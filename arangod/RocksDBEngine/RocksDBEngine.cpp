@@ -1014,7 +1014,6 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
 }
 
 void RocksDBEngine::pruneWalFiles(TRI_voc_tick_t minTickToKeep) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "PRUNING WAL to " << minTickToKeep;
   rocksdb::VectorLogPtr files;
 
   auto status = _db->GetSortedWalFiles(files);
@@ -1036,8 +1035,6 @@ void RocksDBEngine::pruneWalFiles(TRI_voc_tick_t minTickToKeep) {
     for (size_t current = 0; current < lastLess; current++) {
       auto f = files[current].get();
       if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "deleting wal file " << f->PathName()
-                                      << " with start " << f->StartSequence();
         auto s = _db->DeleteFile(f->PathName());
         if (!s.ok()) {
           // TODO: exception?
@@ -1045,11 +1042,6 @@ void RocksDBEngine::pruneWalFiles(TRI_voc_tick_t minTickToKeep) {
         }
       }
     }
-  }
-  if (lastLess < files.size()) {
-    LOG_TOPIC(ERR, Logger::FIXME)
-        << "keeping wal file " << files[lastLess]->PathName() << " with start "
-        << files[lastLess]->StartSequence();
   }
 }
 
