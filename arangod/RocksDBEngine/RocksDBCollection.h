@@ -178,8 +178,12 @@ class RocksDBCollection final : public PhysicalCollection {
   int lockRead(double timeout = 0.0);
   int unlockRead();
 
-  // recalculte counts for collection in case of failure
+  /// recalculte counts for collection in case of failure
   uint64_t recalculateCounts();
+  
+  /// trigger rocksdb compaction for documentDB and indexes
+  void compact();
+  void estimateSize(velocypack::Builder &builder);
 
  private:
   /// @brief return engine-specific figures

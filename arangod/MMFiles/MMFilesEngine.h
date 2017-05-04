@@ -83,6 +83,8 @@ class MMFilesEngine final : public StorageEngine {
 
   // flush wal wait for collector
   void stop() override;
+  
+  bool supportsDfdb() const override { return true; }
 
   std::shared_ptr<arangodb::velocypack::Builder>
   getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,

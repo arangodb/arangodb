@@ -741,6 +741,8 @@ Result transaction::Methods::commit() {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
+  
+  CallbackInvoker invoker(this);
 
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
@@ -758,6 +760,8 @@ Result transaction::Methods::abort() {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
+
+  CallbackInvoker invoker(this);
 
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
@@ -2884,4 +2888,17 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   outLength = length - (key - handle);
 
   return TRI_ERROR_NO_ERROR;
+}
+  
+/// @brief invoke a callback method when a transaction has finished  
+void transaction::CallbackInvoker::invoke() noexcept {
+  if (!_trx->_onFinish) {
+    return;
+  }
+
+  try {
+    _trx->_onFinish(_trx);
+  } catch (...) {
+    // we must not propagate exceptions from here
+  }
 }

@@ -105,8 +105,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int insertRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
+  int insertRaw(rocksdb::WriteBatchWithIndex*,
+                TRI_voc_rid_t, VPackSlice const&) override;
 
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
@@ -141,6 +141,9 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   ///        entries.
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
+  
+  void compact() override;
+  uint64_t estimateSize() override;
 
  private:
   /// @brief create the iterator

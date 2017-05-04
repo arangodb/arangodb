@@ -75,6 +75,8 @@ class RocksDBEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void unprepare() override;
+  
+  bool supportsDfdb() const override { return false; }
 
   transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
@@ -88,6 +90,8 @@ class RocksDBEngine final : public StorageEngine {
 
   // create storage-engine specific view
   PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) override;
+
+  void getStatistics(VPackBuilder& builder) const override;
 
   // inventory functionality
   // -----------------------
@@ -270,8 +274,6 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBCounterManager* counterManager() const;
   RocksDBReplicationManager* replicationManager() const;
   
-  void rocksdbProperties(VPackBuilder &builder);
-
  private:
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;

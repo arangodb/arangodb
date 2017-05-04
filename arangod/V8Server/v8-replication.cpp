@@ -155,9 +155,11 @@ static void JS_TickRangesLoggerReplication(
       df->ForceSet(TRI_V8_ASCII_STRING("tickMin"),
                    TRI_V8UInt64String<TRI_voc_tick_t>(isolate, min));
       
-      rocksdb::SequenceNumber max = UINT64_MAX;
+      rocksdb::SequenceNumber max;
       if (i+1 < walFiles.size()) {
         max = walFiles[i+1]->StartSequence();
+      } else {
+        max = tdb->GetLatestSequenceNumber();
       }
       df->ForceSet(TRI_V8_ASCII_STRING("tickMax"),
                    TRI_V8UInt64String<rocksdb::SequenceNumber>(isolate, max));

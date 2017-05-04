@@ -158,6 +158,8 @@ void RocksDBEngine::start() {
                                               << _path;
 
   rocksdb::TransactionDBOptions transactionOptions;
+  // number of locks per column_family
+  //transactionOptions.num_stripes = TRI_numberProcessors();
 
   // options imported set by RocksDBOptionFeature
   auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
@@ -188,6 +190,7 @@ void RocksDBEngine::start() {
       static_cast<int>(opts->_baseBackgroundCompactions);
   _options.max_background_compactions =
       static_cast<int>(opts->_maxBackgroundCompactions);
+  _options.use_fsync = opts->_useFSync;
 
   _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
   _options.keep_log_file_num = static_cast<size_t>(opts->_keepLogFileNum);
@@ -197,7 +200,7 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
 
-  _options.IncreaseParallelism((int)TRI_numberProcessors());
+  _options.IncreaseParallelism(static_cast<int>(TRI_numberProcessors()));
 
   _options.create_if_missing = true;
   _options.max_open_files = -1;
@@ -736,6 +739,7 @@ arangodb::Result RocksDBEngine::dropCollection(
       return TRI_ERROR_NO_ERROR;
     }
   }
+  coll->compact();
 
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.
@@ -1212,7 +1216,7 @@ RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
   return _replicationManager.get();
 }
   
-void RocksDBEngine::rocksdbProperties(VPackBuilder &builder) {
+void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   builder.openObject();
   // add int properties
   auto c1 = [&](std::string const& s) {

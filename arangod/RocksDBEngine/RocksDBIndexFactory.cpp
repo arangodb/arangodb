@@ -331,13 +331,13 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     if (generateKey) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid index type definition");
     }
   }
 
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
+  std::string const typeString = value.copyString();
+  arangodb::Index::IndexType const type = arangodb::Index::type(typeString);
 
   std::shared_ptr<Index> newIdx;
 
@@ -404,7 +404,8 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
 
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     default: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
+      std::string msg = "invalid or unsupported index type '" + typeString + "'";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, msg);
     }
   }
 

@@ -88,6 +88,9 @@ class Version {
 
   /// @brief get boost reactor type
   static std::string getBoostReactorType();
+  
+  /// @brief get RocksDB version
+  static std::string getRocksDBVersion();
 
   /// @brief get V8 version
   static std::string getV8Version();

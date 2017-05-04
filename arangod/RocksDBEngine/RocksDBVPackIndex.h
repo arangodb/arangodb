@@ -108,7 +108,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   ~RocksDBVPackIndex();
 
- public:
   bool hasSelectivityEstimate() const override { return true; }
 
   double selectivityEstimate(
@@ -142,7 +141,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int insertRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+  int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   int remove(transaction::Methods*, TRI_voc_rid_t,
@@ -178,6 +177,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  
+  void compact() override;
+  uint64_t estimateSize() override;
 
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,

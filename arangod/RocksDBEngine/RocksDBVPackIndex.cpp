@@ -44,6 +44,7 @@
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/utilities/write_batch_with_index.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -531,7 +532,7 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatch* writeBatch,
+int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatchWithIndex* writeBatch,
                                  TRI_voc_rid_t revisionId,
                                  VPackSlice const& doc) {
   std::vector<RocksDBKey> elements;
@@ -552,8 +553,20 @@ int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatch* writeBatch,
   RocksDBValue value = _unique ? RocksDBValue::UniqueIndexValue(docKey)
                                : RocksDBValue::IndexValue();
 
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   for (RocksDBKey const& key : elements) {
-    writeBatch->Put(key.string(), value.string());
+    if (_unique) {
+      rocksdb::ReadOptions readOpts;
+      std::string v;
+      auto status =
+          writeBatch->GetFromBatchAndDB(db, readOpts, key.string(), &v);
+      if (!status.IsNotFound()) {
+        res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+      }
+    }
+    if (res == TRI_ERROR_NO_ERROR) {
+      writeBatch->Put(key.string(), value.string());
+    }
   }
   return res;
 }
@@ -592,9 +605,10 @@ int RocksDBVPackIndex::remove(transaction::Methods* trx,
 }
 
 int RocksDBVPackIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
-                                TRI_voc_rid_t revisionId, VPackSlice const& doc) {
+                                 TRI_voc_rid_t revisionId,
+                                 VPackSlice const& doc) {
   std::vector<RocksDBKey> elements;
-  
+
   int res;
   try {
     VPackBuilder leased;
@@ -602,19 +616,18 @@ int RocksDBVPackIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
     writeBatch->Delete(elements[i].string());
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
-
 
 /// @brief called when the index is dropped
 int RocksDBVPackIndex::drop() {
@@ -1387,4 +1400,23 @@ bool RocksDBVPackIndex::isDuplicateOperator(
   }
 
   return duplicate;
+}
+
+void RocksDBVPackIndex::compact() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::CompactRangeOptions opts;
+  RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueIndex(_objectId)
+                                    : RocksDBKeyBounds::IndexEntries(_objectId);
+  rocksdb::Slice b = bounds.start(), e = bounds.end();
+  db->CompactRange(opts, &b, &e);
+}
+
+uint64_t RocksDBVPackIndex::estimateSize() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueIndex(_objectId)
+                                    : RocksDBKeyBounds::IndexEntries(_objectId);
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out;
+  db->GetApproximateSizes(&r, 1, &out, true);
+  return out;
 }

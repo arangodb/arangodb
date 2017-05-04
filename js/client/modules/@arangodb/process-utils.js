@@ -304,8 +304,8 @@ function makeArgsArangod (options, appDir, role) {
     'http.trusted-origin': options.httpTrustedOrigin || 'all',
     'cluster.create-waits-for-sync-replication': false
   };
-  if (options.storageEngine !== 'mmfiles') {
-    args['server.storage-engine'] = 'rocksdb';
+  if (options.storageEngine !== undefined) {
+    args['server.storage-engine'] = options.storageEngine;
   }
   return args;
 }
