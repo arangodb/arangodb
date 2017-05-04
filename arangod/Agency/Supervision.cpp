@@ -489,12 +489,16 @@ void Supervision::run() {
     }
     
     MUTEX_LOCKER(locker, _lock);
-    try {
-      _snapshot = _agent->readDB().get(_agencyPrefix);
-      if (_snapshot.children().size() > 0) {
-        break;
+    if (_agent->readDB().has(_agencyPrefix)) {
+      try {
+        _snapshot = _agent->readDB().get(_agencyPrefix);
+        if (_snapshot.children().size() > 0) {
+          break;
+        }
+      } catch (...) {
+        LOG_TOPIC(WARN, Logger::SUPERVISION) <<
+          "Main node in agency gone. Contact your db administrator.";
       }
-    } catch (...) {
     }
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
       "initialize its data.";
