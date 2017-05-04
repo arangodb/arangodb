@@ -20,6 +20,7 @@ done
     --buildDir build-${EP}bundle \
     --prefix "/opt/arangodb" \
     --targetDir /var/tmp/ \
+    --downloadStarter \
     --clang \
     $@
 
