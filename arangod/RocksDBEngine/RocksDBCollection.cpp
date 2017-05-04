@@ -692,6 +692,104 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   }
 }
 
+/*
+void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
+  TRI_ASSERT(_objectId != 0);
+  
+  rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
+  TRI_voc_cid_t cid = _logicalCollection->cid();
+  
+  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+  rocksdb::WriteBatch batch(32 * 1024 * 1024);
+  // delete documents
+  RocksDBKeyBounds documentBounds =
+  RocksDBKeyBounds::CollectionDocuments(this->objectId());
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+
+  // isolate against newer writes
+  rocksdb::ReadOptions readOptions;
+  readOptions.snapshot = state->rocksTransaction()->GetSnapshot();
+  
+  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(readOptions));
+  iter->Seek(documentBounds.start());
+  
+  while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    VPackSlice key =
+    VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
+    TRI_ASSERT(key.isString());
+    
+    // add possible log statement
+    state->prepareOperation(cid, revisionId, StringRef(key),
+                            TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    rocksdb::Status s = rtrx->Delete(iter->key());
+    if (!s.ok()) {
+      auto converted = convertStatus(s);
+      THROW_ARANGO_EXCEPTION(converted);
+    }
+    // report size of key
+    RocksDBOperationResult result =
+    state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
+                        0, iter->key().size());
+    
+    // transaction size limit reached -- fail
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
+    
+    // force intermediate commit
+    if (result.commitRequired()) {
+      // force commit
+    }
+    
+    iter->Next();
+  }
+  
+  // delete index items
+  
+  // TODO maybe we could also reuse Index::drop, if we ensure the
+  // implementations
+  // don't do anything beyond deleting their contents
+  for (std::shared_ptr<Index> const& index : _indexes) {
+    RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
+    
+    RocksDBKeyBounds indexBounds = RocksDBKeyBounds::Empty();
+    switch (rindex->type()) {
+      case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
+        indexBounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
+        break;
+      case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
+        indexBounds = RocksDBKeyBounds::EdgeIndex(rindex->objectId());
+        break;
+        
+      case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
+      case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
+      case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
+        if (rindex->unique()) {
+          indexBounds = RocksDBKeyBounds::UniqueIndex(rindex->objectId());
+        } else {
+          indexBounds = RocksDBKeyBounds::IndexEntries(rindex->objectId());
+        }
+        break;
+        // TODO add options for geoindex, fulltext etc
+        
+      default:
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    }
+    
+    iter->Seek(indexBounds.start());
+    while (iter->Valid() && cmp->Compare(iter->key(), indexBounds.end()) < 0) {
+      rocksdb::Status s = rtrx->Delete(iter->key());
+      if (!s.ok()) {
+        auto converted = convertStatus(s);
+        THROW_ARANGO_EXCEPTION(converted);
+      }
+      
+      iter->Next();
+    }
+  }
+}*/
+
 DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods* trx,
                                                      VPackSlice const& key) {
   TRI_ASSERT(key.isString());

@@ -117,6 +117,10 @@ class RocksDBCollection final : public PhysicalCollection {
   ///////////////////////////////////
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  /// non transactional truncate, will continoiusly commit the deletes
+  /// and no fully rollback on failure. Uses trx snapshots to isolate
+  /// against newer PUTs
+  //void truncateNoTrx(transaction::Methods* trx);
 
   DocumentIdentifierToken lookupKey(
       transaction::Methods* trx,

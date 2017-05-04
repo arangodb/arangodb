@@ -488,9 +488,13 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   return converted.errorNumber();
 }
 
-int RocksDBPrimaryIndex::removeRaw(rocksdb::WriteBatch*,
-                                   TRI_voc_rid_t, VPackSlice const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+/// optimization for truncateNoTrx, never called in fillIndex
+int RocksDBPrimaryIndex::removeRaw(rocksdb::WriteBatch* batch,
+                                   TRI_voc_rid_t, VPackSlice const& slice) {
+  auto key = RocksDBKey::PrimaryIndexValue(
+                                           _objectId, StringRef(slice.get(StaticStrings::KeyString)));
+  batch->Delete(key.string());
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief called when the index is dropped
