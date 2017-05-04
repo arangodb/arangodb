@@ -18,6 +18,7 @@ done
     --buildDir /cygdrive/c/b/${EP}/ \
     --package NSIS \
     --targetDir /var/tmp/ \
+    --downloadStarter \
     $@
 
 cd ${DIR}/..
