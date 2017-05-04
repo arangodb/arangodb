@@ -389,10 +389,10 @@ def walk_on_files(inDirPath, outDirPath):
     skipped = 0
     for root, dirs, files in os.walk(inDirPath):
         for file in files:
-            if file.endswith(".mdpp"):
+            if file.endswith(".md") and not file.endswith("SUMMARY.md"):
                 count += 1
                 inFileFull = os.path.join(root, file)
-                outFileFull = os.path.join(outDirPath, re.sub(r'mdpp$', 'md', inFileFull))
+                outFileFull = os.path.join(outDirPath, inFileFull)
                 if fileFilter != None:
                     if fileFilter.match(inFileFull) == None:
                         skipped += 1

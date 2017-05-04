@@ -456,3 +456,20 @@ void RocksDBEdgeIndex::handleValNode(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 }
+
+void RocksDBEdgeIndex::compact() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::CompactRangeOptions opts;
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
+  rocksdb::Slice b = bounds.start(), e = bounds.end();
+  db->CompactRange(opts, &b, &e);
+}
+
+uint64_t RocksDBEdgeIndex::estimateSize() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out;
+  db->GetApproximateSizes(&r, 1, &out, true);
+  return out;
+}

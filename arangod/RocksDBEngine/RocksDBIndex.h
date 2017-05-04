@@ -84,6 +84,9 @@ class RocksDBIndex : public Index {
   /// as an optimization for the non transactional fillIndex method
   virtual int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) = 0;
+  
+  virtual void compact() = 0;
+  virtual uint64_t estimateSize() = 0;
 
  protected:
   void createCache();
