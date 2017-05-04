@@ -86,7 +86,6 @@ class RocksDBIndex : public Index {
                         arangodb::velocypack::Slice const&) = 0;
   
   virtual void compact() = 0;
-  virtual uint64_t estimateSize() = 0;
 
  protected:
   void createCache();

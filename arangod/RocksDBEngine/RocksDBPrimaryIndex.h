@@ -213,8 +213,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       std::function<bool(DocumentIdentifierToken const&)> callback) const;
   
   void compact() override;
-  uint64_t estimateSize() override;
-
+  
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,

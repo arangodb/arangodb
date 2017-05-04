@@ -187,8 +187,12 @@ double RocksDBEdgeIndex::selectivityEstimate(
 
 /// @brief return the memory usage for the index
 size_t RocksDBEdgeIndex::memory() const {
-  // TODO
-  return 0;
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out;
+  db->GetApproximateSizes(&r, 1, &out, true);
+  return (size_t)out;
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -470,13 +474,4 @@ void RocksDBEdgeIndex::compact() {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, &b, &e);
-}
-
-uint64_t RocksDBEdgeIndex::estimateSize() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return out;
 }

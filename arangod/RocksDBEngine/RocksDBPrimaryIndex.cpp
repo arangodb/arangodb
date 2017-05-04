@@ -328,7 +328,12 @@ size_t RocksDBPrimaryIndex::size() const {
 
 /// @brief return the memory usage of the index
 size_t RocksDBPrimaryIndex::memory() const {
-  return 0;  // TODO
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out;
+  db->GetApproximateSizes(&r, 1, &out, true);
+  return (size_t)out;
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -702,13 +707,4 @@ void RocksDBPrimaryIndex::compact() {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, &b, &e);
-}
-
-uint64_t RocksDBPrimaryIndex::estimateSize() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return out;
 }
