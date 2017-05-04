@@ -53,6 +53,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "VocBase/voc-types.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction.h>
@@ -176,8 +177,8 @@ void RocksDBCollection::open(bool ignoreErrors) {
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   auto counterValue = engine->counterManager()->loadCounter(this->objectId());
-  LOG_TOPIC(ERR, Logger::DEVEL) << " number of documents: "
-                                << counterValue.added();
+  LOG_TOPIC(ERR, Logger::DEVEL)
+      << " number of documents: " << counterValue.added();
   _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
   //_numberDocuments = countKeyRange(db, readOptions,
@@ -210,6 +211,8 @@ void RocksDBCollection::prepareIndexes(
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
   TRI_ASSERT(idxFactory != nullptr);
+  bool splitEdgeIndex = false;
+  TRI_idx_iid_t last = 0;
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
                                                             false)) {
@@ -219,13 +222,107 @@ void RocksDBCollection::prepareIndexes(
       continue;
     }
 
-    auto idx =
-        idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+    bool alreadyHandled = false;
+    // check for combined edge index from MMFiles; must split!
+    auto value = v.get("type");
+    if (value.isString()) {
+      std::string tmp = value.copyString();
+      arangodb::Index::IndexType const type =
+          arangodb::Index::type(tmp.c_str());
+      if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+        VPackSlice fields = v.get("fields");
+        if (fields.isArray() && fields.length() == 2) {
+          VPackBuilder from;
+          from.openObject();
+          for (auto const& f : VPackObjectIterator(v)) {
+            if (arangodb::StringRef(f.key) == "fields") {
+              from.add(VPackValue("fields"));
+              from.openArray();
+              from.add(VPackValue(StaticStrings::FromString));
+              from.close();
+            } else {
+              from.add(f.key);
+              from.add(f.value);
+            }
+          }
+          from.close();
 
-    if (ServerState::instance()->isRunningInCluster()) {
-      addIndexCoordinator(idx);
-    } else {
-      addIndex(idx);
+          VPackBuilder to;
+          to.openObject();
+          for (auto const& f : VPackObjectIterator(v)) {
+            if (arangodb::StringRef(f.key) == "fields") {
+              to.add(VPackValue("fields"));
+              to.openArray();
+              to.add(VPackValue(StaticStrings::ToString));
+              to.close();
+            } else if (arangodb::StringRef(f.key) == "id") {
+              auto iid = basics::StringUtils::uint64(f.value.copyString()) + 1;
+              last = iid;
+              to.add("id", VPackValue(std::to_string(iid)));
+            } else {
+              to.add(f.key);
+              to.add(f.value);
+            }
+          }
+          to.close();
+
+          auto idxFrom = idxFactory->prepareIndexFromSlice(
+              from.slice(), false, _logicalCollection, true);
+
+          if (ServerState::instance()->isRunningInCluster()) {
+            addIndexCoordinator(idxFrom);
+          } else {
+            addIndex(idxFrom);
+          }
+
+          auto idxTo = idxFactory->prepareIndexFromSlice(
+              to.slice(), false, _logicalCollection, true);
+
+          if (ServerState::instance()->isRunningInCluster()) {
+            addIndexCoordinator(idxTo);
+          } else {
+            addIndex(idxTo);
+          }
+
+          alreadyHandled = true;
+          splitEdgeIndex = true;
+        }
+      } else if (splitEdgeIndex) {
+        VPackBuilder b;
+        b.openObject();
+        for (auto const& f : VPackObjectIterator(v)) {
+          if (arangodb::StringRef(f.key) == "id") {
+            last++;
+            b.add("id", VPackValue(std::to_string(last)));
+          } else {
+            b.add(f.key);
+            b.add(f.value);
+          }
+        }
+        b.close();
+
+        auto idx = idxFactory->prepareIndexFromSlice(b.slice(), false,
+                                                     _logicalCollection, true);
+
+        if (ServerState::instance()->isRunningInCluster()) {
+          addIndexCoordinator(idx);
+        } else {
+          addIndex(idx);
+        }
+
+        alreadyHandled = true;
+      }
+    }
+
+    if (!alreadyHandled) {
+      auto idx =
+          idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+
+      if (ServerState::instance()->isRunningInCluster()) {
+        addIndexCoordinator(idx);
+      } else {
+        addIndex(idx);
+      }
     }
   }
 
@@ -275,7 +372,6 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
-
   auto idx = lookupIndex(info);
   if (idx != nullptr) {
     created = false;
@@ -322,9 +418,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     idx->toVelocyPack(indexInfo, false, true);
     int res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
         _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
-        builder.slice(), RocksDBLogValue::IndexCreate(
-                             _logicalCollection->vocbase()->id(),
-                             _logicalCollection->cid(), indexInfo.slice()));
+        builder.slice(),
+        RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
+                                     _logicalCollection->cid(),
+                                     indexInfo.slice()));
     if (res != TRI_ERROR_NO_ERROR) {
       // We could not persist the index creation. Better abort
       // Remove the Index in the local list again.
@@ -404,9 +501,10 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     TRI_ASSERT(engine != nullptr);
     int res = engine->writeCreateCollectionMarker(
         _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
-        builder.slice(), RocksDBLogValue::IndexCreate(
-                             _logicalCollection->vocbase()->id(),
-                             _logicalCollection->cid(), indexInfo.slice()));
+        builder.slice(),
+        RocksDBLogValue::IndexCreate(_logicalCollection->vocbase()->id(),
+                                     _logicalCollection->cid(),
+                                     indexInfo.slice()));
     if (res != TRI_ERROR_NO_ERROR) {
       // We could not persist the index creation. Better abort
       // Remove the Index in the local list again.
@@ -435,7 +533,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     // invalid index id or primary index
     return true;
   }
-  
+
   size_t i = 0;
   // TODO: need to protect _indexes with an RW-lock!!
   for (auto index : getIndexes()) {
@@ -1455,7 +1553,7 @@ int RocksDBCollection::unlockRead() {
   return TRI_ERROR_NO_ERROR;
 }
 
-uint64_t RocksDBCollection::recalculateCounts(){
+uint64_t RocksDBCollection::recalculateCounts() {
   THROW_ARANGO_NOT_YET_IMPLEMENTED();
   return 0;
 }
