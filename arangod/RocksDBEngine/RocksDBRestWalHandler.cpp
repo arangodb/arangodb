@@ -31,7 +31,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/TransactionManager.h"
 
-
 #include <rocksdb/utilities/transaction_db.h>
 
 using namespace arangodb;
@@ -166,7 +165,6 @@ void RocksDBRestWalHandler::flush() {
 }
 
 void RocksDBRestWalHandler::transactions() {
-  
   TransactionManager* mngr = TransactionManagerFeature::MANAGER;
   VPackBuilder builder;
   builder.openObject();
