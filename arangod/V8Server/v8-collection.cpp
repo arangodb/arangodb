@@ -1387,7 +1387,7 @@ static void JS_PropertiesVocbaseCol(
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(),
-      isModification ? AccessMode::Type::WRITE : AccessMode::Type::READ);
+      isModification ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
 
   if (!isModification) {
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);

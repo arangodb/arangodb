@@ -96,6 +96,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
+  bool _usageLocked;
 };
 
 }

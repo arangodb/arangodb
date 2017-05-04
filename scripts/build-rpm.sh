@@ -20,6 +20,7 @@ done
     --buildDir build-${EP}rpm \
     --targetDir /var/tmp/ \
     --jemalloc \
+    --downloadStarter \
     --noopt \
     $@
 

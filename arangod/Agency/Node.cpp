@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -797,7 +797,7 @@ bool Node::getBool() const {
 
 double Node::getDouble() const {
   if (type() == NODE) {
-    throw StoreException("Must not convert NODE type to int");
+    throw StoreException("Must not convert NODE type to double");
   }
   return slice().getNumber<double>();
 }
@@ -820,3 +820,12 @@ Slice Node::getArray() const {
   return Slice(_vecBuf.data());
 }
 
+
+void Node::clear() {
+  _children.clear();
+  _ttl = std::chrono::system_clock::time_point();
+  _value.clear();
+  _vecBuf.clear();
+  _vecBufDirty = true;
+  _isArray = false;
+}

@@ -24,6 +24,9 @@
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
+// FIXME to be removed (should be storage engine independent - get it working now)
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -33,14 +36,11 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "v8-replication.h"
-
-// FIXME to be removed (should be storage engine independent - get it working now)
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/mmfiles-replication-dump.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
@@ -114,7 +114,7 @@ static void JS_TickRangesLoggerReplication(
   v8::Handle<v8::Array> result;
   
   std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  if(engineName == "mmfiles"){
+  if (engineName == "mmfiles") {
     auto const& ranges = MMFilesLogfileManager::instance()->ranges();
     result = v8::Array::New(isolate, (int)ranges.size());
     
@@ -131,7 +131,7 @@ static void JS_TickRangesLoggerReplication(
       result->Set(i++, df);
     }
   } else if (engineName == "rocksdb") {
-    rocksdb::TransactionDB *tdb = rocksutils::globalRocksDB();
+    rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
     rocksdb::VectorLogPtr walFiles;
     rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
     if (!s.ok()) {
@@ -164,7 +164,7 @@ static void JS_TickRangesLoggerReplication(
       df->ForceSet(TRI_V8_ASCII_STRING("tickMax"),
                    TRI_V8UInt64String<rocksdb::SequenceNumber>(isolate, max));
       
-      result->Set(i++, df);
+      result->Set(i, df);
     }
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
@@ -184,7 +184,7 @@ static void JS_FirstTickLoggerReplication(
 
   TRI_voc_tick_t tick = UINT64_MAX;
   std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  if(engineName == "mmfiles"){
+  if (engineName == "mmfiles") {
     auto const& ranges = MMFilesLogfileManager::instance()->ranges();
     
     

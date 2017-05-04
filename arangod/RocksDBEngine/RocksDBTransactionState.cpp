@@ -114,6 +114,11 @@ RocksDBTransactionState::~RocksDBTransactionState() {
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type)
                                << " transaction";
+   
+  if (_nestingLevel == 0) { 
+    // set hints
+    _hints = hints;
+  }
 
   Result result = useCollections(_nestingLevel);
 
@@ -165,7 +170,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
           RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
       _rocksTransaction->PutLogData(header.slice());
     }
-
+    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }

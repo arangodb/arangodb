@@ -61,6 +61,18 @@ void ListenTask::start() {
   }
 
   _handler = [this](boost::system::error_code const& ec) {
+    // copy the shared_ptr so nobody can delete the Acceptor while the
+    // callback is running
+    std::shared_ptr<Acceptor> acceptorCopy(_acceptor);
+
+    if (acceptorCopy == nullptr) {
+      // ListenTask already stopped
+      return;
+    }
+
+    // now it is safe to use _acceptor
+    TRI_ASSERT(_acceptor != nullptr);
+
     if (ec) {
       if (ec == boost::asio::error::operation_aborted) {
         return;

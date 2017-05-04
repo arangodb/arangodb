@@ -46,8 +46,16 @@
     require('@arangodb/statistics').startup();
   }
 
+  // check if --server.rest-server is disabled
+  // in this case we do not (and should not) initialize and start Foxx
+  var options = internal.options();
+  var restServer = true;
+  if (options.hasOwnProperty("server.rest-server")) {
+   restServer = options["server.rest-server"];
+  }
+
   // load all foxxes
-  if (internal.threadNumber === 0) {
+  if (internal.threadNumber === 0 && restServer) {
     internal.loadStartup('server/bootstrap/foxxes.js').foxxes();
   }
 
@@ -55,7 +63,9 @@
   internal.loadStartup('server/bootstrap/autoload.js').startup();
 
   // reload routing information
-  internal.loadStartup('server/bootstrap/routing.js').startup();
+  if (restServer) {
+    internal.loadStartup('server/bootstrap/routing.js').startup();
+  }
 
   // start the queue manager once
   if (internal.threadNumber === 0) {
