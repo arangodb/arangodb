@@ -690,10 +690,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       iter->Next();
     }
   }
-  
-  // we want to trigger compaction here, because rocksdb
-  // does not appear to do it automatically
-  this->compact();
 }
 
 DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods* trx,
