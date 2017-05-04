@@ -21,18 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TransactionManager.h"
+#include "MMFilesTransactionManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 
 using namespace arangodb;
 
-TransactionManager::TransactionManager() {}
-
-TransactionManager::~TransactionManager() {}
-
 // register a list of failed transactions
-void TransactionManager::registerFailedTransactions(
+void MMFilesTransactionManager::registerFailedTransactions(
     std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
@@ -46,7 +42,7 @@ void TransactionManager::registerFailedTransactions(
 }
 
 // unregister a list of failed transactions
-void TransactionManager::unregisterFailedTransactions(
+void MMFilesTransactionManager::unregisterFailedTransactions(
     std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
     
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
@@ -59,7 +55,7 @@ void TransactionManager::unregisterFailedTransactions(
   }
 }
 
-void TransactionManager::registerTransaction(TRI_voc_tid_t transactionId, std::unique_ptr<TransactionData> data) {
+void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId, std::unique_ptr<TransactionData> data) {
   TRI_ASSERT(data != nullptr);
 
   size_t bucket = getBucket(transactionId);
@@ -72,7 +68,7 @@ void TransactionManager::registerTransaction(TRI_voc_tid_t transactionId, std::u
 }
 
 // unregisters a transaction
-void TransactionManager::unregisterTransaction(TRI_voc_tid_t transactionId,
+void MMFilesTransactionManager::unregisterTransaction(TRI_voc_tid_t transactionId,
                                                bool markAsFailed) {
   size_t bucket = getBucket(transactionId);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
@@ -87,7 +83,7 @@ void TransactionManager::unregisterTransaction(TRI_voc_tid_t transactionId,
 }
 
 // return the set of failed transactions
-std::unordered_set<TRI_voc_tid_t> TransactionManager::getFailedTransactions() {
+std::unordered_set<TRI_voc_tid_t> MMFilesTransactionManager::getFailedTransactions() {
   std::unordered_set<TRI_voc_tid_t> failedTransactions;
 
   {
@@ -105,7 +101,7 @@ std::unordered_set<TRI_voc_tid_t> TransactionManager::getFailedTransactions() {
   return failedTransactions;
 }
 
-void TransactionManager::iterateActiveTransactions(std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) {
+void MMFilesTransactionManager::iterateActiveTransactions(std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) {
   WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
   // iterate over all active transactions 
@@ -118,7 +114,7 @@ void TransactionManager::iterateActiveTransactions(std::function<void(TRI_voc_ti
   }
 }
 
-uint64_t TransactionManager::getActiveTransactionCount() {
+uint64_t MMFilesTransactionManager::getActiveTransactionCount() {
   WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
   
   uint64_t count = 0;

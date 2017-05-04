@@ -29,7 +29,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VocBase/TransactionManager.h"
+#include "StorageEngine/TransactionManager.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 
@@ -165,7 +165,7 @@ void RocksDBRestWalHandler::flush() {
 }
 
 void RocksDBRestWalHandler::transactions() {
-  TransactionManager* mngr = TransactionManagerFeature::MANAGER;
+  TransactionManager* mngr = TransactionManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
   builder.add("runningTransactions",

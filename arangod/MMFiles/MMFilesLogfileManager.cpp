@@ -331,7 +331,7 @@ bool MMFilesLogfileManager::open() {
   for (auto const& it : _recoverState->failedTransactions) {
     failedTransactions.emplace(it.first);
   }
-  TransactionManagerFeature::MANAGER->registerFailedTransactions(failedTransactions);
+  TransactionManagerFeature::manager()->registerFailedTransactions(failedTransactions);
   _droppedDatabases = _recoverState->droppedDatabases;
   _droppedCollections = _recoverState->droppedCollections;
 
@@ -563,7 +563,7 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId, bool
 
   try {
     auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
-    TransactionManagerFeature::MANAGER->registerTransaction(transactionId, std::move(data));
+    TransactionManagerFeature::manager()->registerTransaction(transactionId, std::move(data));
     return TRI_ERROR_NO_ERROR;
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1360,7 +1360,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   };
 
   // iterate over all active transactions and find their minimum used logfile id
-  TransactionManagerFeature::MANAGER->iterateActiveTransactions(cb);
+  TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
 
   {
     READ_LOCKER(readLocker, _logfilesLock);
@@ -1406,7 +1406,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getRemovableLogfile() {
     }
   };
 
-  TransactionManagerFeature::MANAGER->iterateActiveTransactions(cb);
+  TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
 
   {
     uint32_t numberOfLogfiles = 0;
@@ -1582,7 +1582,7 @@ MMFilesLogfileManager::runningTransactions() {
   };
   
   // iterate over all active transactions
-  TransactionManagerFeature::MANAGER->iterateActiveTransactions(cb);
+  TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
 
   return std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType>(
       count, lastCollectedId, lastSealedId);

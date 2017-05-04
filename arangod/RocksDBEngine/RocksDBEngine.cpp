@@ -53,6 +53,7 @@
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionContextData.h"
+#include "RocksDBEngine/RocksDBTransactionManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBV8Functions.h"
@@ -267,9 +268,13 @@ void RocksDBEngine::unprepare() {
     _db = nullptr;
   }
 }
+  
+TransactionManager* RocksDBEngine::createTransactionManager() {
+  return new RocksDBTransactionManager();
+}
 
 transaction::ContextData* RocksDBEngine::createTransactionContextData() {
-  return new RocksDBTransactionContextData;
+  return new RocksDBTransactionContextData();
 }
 
 TransactionState* RocksDBEngine::createTransactionState(

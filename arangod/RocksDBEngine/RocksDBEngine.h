@@ -78,6 +78,7 @@ class RocksDBEngine final : public StorageEngine {
 
   bool supportsDfdb() const override { return false; }
 
+  TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
   TransactionCollection* createTransactionCollection(

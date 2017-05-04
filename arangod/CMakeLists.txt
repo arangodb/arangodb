@@ -367,7 +367,6 @@ SET(ARANGOD_SOURCES
   VocBase/ManagedDocumentResult.cpp
   VocBase/PathEnumerator.cpp
   VocBase/SingleServerTraverser.cpp
-  VocBase/TransactionManager.cpp
   VocBase/Traverser.cpp
   VocBase/TraverserCache.cpp
   VocBase/TraverserCacheFactory.cpp
