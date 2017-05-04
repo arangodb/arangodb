@@ -137,3 +137,4 @@ int RocksDBIndex::drop() {
   }
   return TRI_ERROR_NO_ERROR;
 }
+

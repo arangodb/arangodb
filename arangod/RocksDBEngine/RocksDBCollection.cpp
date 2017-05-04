@@ -1643,3 +1643,41 @@ uint64_t RocksDBCollection::recalculateCounts() {
 
   return _numberDocuments;
 }
+
+void RocksDBCollection::compact() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::CompactRangeOptions opts;
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  rocksdb::Slice b = bounds.start(), e = bounds.end();
+  db->CompactRange(opts, &b, &e);
+
+  for (std::shared_ptr<Index> i : _indexes) {
+    RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
+    index->compact();
+  }
+}
+
+void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
+  TRI_ASSERT(!builder.isOpenObject() && !builder.isOpenArray());
+
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out = 0, total = 0;
+  db->GetApproximateSizes(&r, 1, &out, true);
+  total += out;
+
+  builder.openObject();
+  builder.add("documents", VPackValue(out));
+  builder.add("indexes", VPackValue(VPackValueType::Object));
+
+  for (std::shared_ptr<Index> i : _indexes) {
+    RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
+    out = index->estimateSize();
+    builder.add(std::to_string(index->id()), VPackValue(out));
+    total += out;
+  }
+  builder.close();
+  builder.add("total", VPackValue(total));
+  builder.close();
+}

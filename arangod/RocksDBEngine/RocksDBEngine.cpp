@@ -158,6 +158,8 @@ void RocksDBEngine::start() {
                                               << _path;
 
   rocksdb::TransactionDBOptions transactionOptions;
+  // number of locks per column_family
+  //transactionOptions.num_stripes = TRI_numberProcessors();
 
   // options imported set by RocksDBOptionFeature
   auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(

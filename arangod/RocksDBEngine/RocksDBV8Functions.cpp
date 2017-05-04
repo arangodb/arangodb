@@ -126,6 +126,48 @@ static void JS_RecalculateCounts(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_CompactCollection(
+                                 v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  arangodb::LogicalCollection* collection =
+  TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                               WRP_VOCBASE_COL_TYPE);
+  
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  
+  RocksDBCollection* physical = toRocksDBCollection(collection);
+  physical->compact();
+  
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_EstimateCollectionSize(
+                                 v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  arangodb::LogicalCollection* collection =
+  TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                               WRP_VOCBASE_COL_TYPE);
+  
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  
+  RocksDBCollection* physical = toRocksDBCollection(collection);
+  VPackBuilder builder;
+  physical->estimateSize(builder);
+  
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 void RocksDBV8Functions::registerResources() {
   ISOLATE;
   v8::HandleScope scope(isolate);
@@ -139,6 +181,10 @@ void RocksDBV8Functions::registerResources() {
   
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculateCount"),
                        JS_RecalculateCounts, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("compact"),
+                       JS_CompactCollection);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("estimatedSize"),
+                       JS_EstimateCollectionSize);
   
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_FLUSH"),
