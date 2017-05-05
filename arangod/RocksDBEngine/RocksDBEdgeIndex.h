@@ -143,7 +143,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
   
-  void compact() override;
+  int cleanup() override;
   
  private:
   /// @brief create the iterator

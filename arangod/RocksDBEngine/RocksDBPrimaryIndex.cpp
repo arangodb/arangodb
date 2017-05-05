@@ -336,6 +336,15 @@ size_t RocksDBPrimaryIndex::memory() const {
   return (size_t)out;
 }
 
+int RocksDBPrimaryIndex::cleanup() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::CompactRangeOptions opts;
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
+  rocksdb::Slice b = bounds.start(), e = bounds.end();
+  db->CompactRange(opts, &b, &e);
+  return TRI_ERROR_NO_ERROR;
+}
+
 /// @brief return a VelocyPack representation of the index
 void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                        bool forPersistence) const {
@@ -699,12 +708,4 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
                              valNode->getStringLength(),
                              VPackValueType::String));
   }
-}
-
-void RocksDBPrimaryIndex::compact() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, &b, &e);
 }

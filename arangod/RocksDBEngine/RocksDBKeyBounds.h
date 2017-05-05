@@ -26,9 +26,9 @@
 #define ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
-
 #include <rocksdb/slice.h>
 
 #include <velocypack/Slice.h>
@@ -73,7 +73,7 @@ class RocksDBKeyBounds {
   /// to the specified vertex
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds EdgeIndexVertex(uint64_t indexId,
-                                          std::string const& vertexId);
+                                          arangodb::StringRef const& vertexId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified non-unique index
@@ -109,6 +109,12 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all counter values
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds CounterValues();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all entries of a fulltext index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds FulltextIndexEntries(uint64_t,
+                                               arangodb::StringRef const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -140,7 +146,7 @@ class RocksDBKeyBounds {
   explicit RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                   std::string const& second);
+                   arangodb::StringRef const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);
 

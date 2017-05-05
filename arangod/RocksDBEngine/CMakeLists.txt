@@ -11,6 +11,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
   RocksDBEngine/RocksDBExportCursor.cpp
+  RocksDBEngine/RocksDBFulltextIndex.cpp
   RocksDBEngine/RocksDBIndex.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
   RocksDBEngine/RocksDBHashIndex.cpp

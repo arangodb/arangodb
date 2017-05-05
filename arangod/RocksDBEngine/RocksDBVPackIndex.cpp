@@ -1408,11 +1408,12 @@ bool RocksDBVPackIndex::isDuplicateOperator(
   return duplicate;
 }
 
-void RocksDBVPackIndex::compact() {
+int RocksDBVPackIndex::cleanup() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueIndex(_objectId)
                                     : RocksDBKeyBounds::IndexEntries(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, &b, &e);
+  return TRI_ERROR_NO_ERROR;
 }

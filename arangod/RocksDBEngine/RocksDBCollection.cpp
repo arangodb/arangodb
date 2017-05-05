@@ -547,7 +547,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 
       if (rv == TRI_ERROR_NO_ERROR) {
         // trigger compaction before deleting the object
-        cindex->compact();
+        cindex->cleanup();
         
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
@@ -1752,7 +1752,7 @@ void RocksDBCollection::compact() {
 
   for (std::shared_ptr<Index> i : _indexes) {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
-    index->compact();
+    index->cleanup();
   }
 }
 
