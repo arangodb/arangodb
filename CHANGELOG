@@ -9,6 +9,8 @@ v3.1.20 (XXXX-XX-XX)
 
 * remove an unnecessary precondition in createCollectionCoordinator
 
+* funny fail rotation fix
+
 v3.1.19 (2017-04-28)
 --------------------
 
