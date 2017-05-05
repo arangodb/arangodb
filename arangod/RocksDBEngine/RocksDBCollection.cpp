@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -1320,6 +1319,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
   rocksdb::WriteBatchWithIndex batch(db->DefaultColumnFamily()->GetComparator(),
                                      32 * 1024 * 1024);
   rocksdb::ReadOptions readOptions;
+  rocksdb::WriteOptions writeOpts = state->writeOptions();
+  writeOpts.disableWAL = true;
 
   int res = TRI_ERROR_NO_ERROR;
   auto cb = [&](DocumentIdentifierToken token) {
@@ -1344,7 +1345,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
       r = Result(res);
       break;
     }
-    rocksdb::Status s = db->Write(state->writeOptions(), batch.GetWriteBatch());
+    rocksdb::Status s = db->Write(writeOpts, batch.GetWriteBatch());
     if (!s.ok()) {
       r = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
       break;
@@ -1377,7 +1378,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
     }
     // TODO: if this fails, do we have any recourse?
     // Simon: Don't think so
-    db->Write(state->writeOptions(), &removeBatch);
+    db->Write(writeOpts, &removeBatch);
   }
 
   return r;

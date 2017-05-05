@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H
@@ -33,8 +32,34 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+
+/// @brief maximum length of an indexed word in characters
+/// a character may consist of up to 4 bytes
+#define TRI_FULLTEXT_MAX_WORD_LENGTH 40
+
+/// @brief default minimum word length for a fulltext index
+#define TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT 2
+
 namespace arangodb {
 struct DocumentIdentifierToken;
+
+struct FulltextQueryToken {
+  /// @brief fulltext query match options
+  /// substring not implemented, maybe later
+  enum MatchType {COMPLETE, PREFIX, SUBSTRING};
+  /// @brief fulltext query logical operators
+  enum Operation {AND, OR, EXCLUDE};
+  
+  std::string value;
+  MatchType matchType;
+  Operation operation;
+};
+/// A query consists of a list of tokens evaluated left to right:
+/// An AND operation causes the entire result set on the left to
+/// be intersected with every result containing the token.
+/// Similarly an OR triggers union
+typedef std::vector<FulltextQueryToken> FulltextQuery;
+
 
 class RocksDBFulltextIndex final : public RocksDBIndex {
  public:
@@ -78,24 +103,27 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
     TRI_AttributeNamesToString(fields()[0], fieldString);
     return (_minWordLength == minWordLength && fieldString == field);
   }
-  
+
   /// insert index elements into the specified write batch. Should be used
   /// as an optimization for the non transactional fillIndex method
   int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
-                        arangodb::velocypack::Slice const&) override;
-  
-  /// remove index elements and put it in the specified write batch. Should be used
-  /// as an optimization for the non transactional fillIndex method
+                arangodb::velocypack::Slice const&) override;
+
+  /// remove index elements and put it in the specified write batch. Should be
+  /// used as an optimization for the non transactional fillIndex method
   int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
-                        arangodb::velocypack::Slice const&) override;
-  
-//  TRI_fts_index_t* internals() { return _fulltextIndex; }
+                arangodb::velocypack::Slice const&) override;
+
+  //  TRI_fts_index_t* internals() { return _fulltextIndex; }
 
   static TRI_voc_rid_t fromDocumentIdentifierToken(
       DocumentIdentifierToken const& token);
   static DocumentIdentifierToken toDocumentIdentifierToken(
       TRI_voc_rid_t revisionId);
-
+  
+  arangodb::Result executeQuery(std::string const& queryString,
+                                velocypack::Builder &builder);
+  
  private:
   std::vector<std::string> wordlist(arangodb::velocypack::Slice const&);
 
@@ -105,6 +133,6 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   /// @brief minimum word length
   int _minWordLength;
 };
-}
+}  // namespace arangodb
 
 #endif
