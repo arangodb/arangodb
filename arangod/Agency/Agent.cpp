@@ -431,7 +431,7 @@ void Agent::sendAppendEntriesRPC() {
           <<  std::chrono::duration<double, std::milli>(
             _earliestPackage[followerId]-system_clock::now()).count() << "ms";
       } else {
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
+        LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Just keeping follower " << followerId
           << " devout with " << builder.toJson();
       }
@@ -1198,11 +1198,13 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Rebuilding key-value stores from index "
-    << _lastAppliedIndex << " to " << _leaderCommitIndex;
+    << _lastAppliedIndex << " to " << _leaderCommitIndex << " " << _state;
 
-  auto logs = _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1);
+  auto logs = _state.slices(_lastCompactionIndex+1, _leaderCommitIndex+1);
 
+  _spearhead.clear();
   _spearhead.apply(logs, _leaderCommitIndex, _constituent.term());
+  _readDB.clear();
   _readDB.apply(logs, _leaderCommitIndex, _constituent.term());
   
   LOG_TOPIC(TRACE, Logger::AGENCY)
