@@ -62,7 +62,7 @@ class RocksDBTransactionManager final : public TransactionManager {
   // iterate all the active transactions
   void iterateActiveTransactions(std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) override {}
   
-  uint64_t getActiveTransactionCount() {
+  uint64_t getActiveTransactionCount() override {
     return _nrRunning;
   }
 

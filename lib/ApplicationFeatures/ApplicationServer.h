@@ -220,6 +220,10 @@ class ApplicationServer {
   static ApplicationFeature* lookupFeature(std::string const&);
   
   char const* getBinaryPath() { return _binaryPath;}
+  
+  void registerStartupCallback(std::function<void()> const& callback) {
+    _startupCallbacks.emplace_back(callback);
+  }
 
  private:
   // throws an exception that a requested feature was not found
@@ -304,6 +308,9 @@ class ApplicationServer {
 
   // reporter for progress
   std::vector<ProgressHandler> _progressReports;
+
+  // callbacks that are called after start
+  std::vector<std::function<void()>> _startupCallbacks;
 
   // help section displayed
   std::string _helpSection;

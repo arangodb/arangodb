@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Scheduler/AcceptorUnixDomain.h"
-
+#include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Endpoint/EndpointUnixDomain.h"
 #include "Scheduler/SocketUnixDomain.h"
@@ -53,6 +53,9 @@ void AcceptorUnixDomain::open() {
 void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
   createPeer();
   auto peer = dynamic_cast<SocketUnixDomain*>(_peer.get());
+  if (peer == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected socket type");
+  }
   _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
 }
 

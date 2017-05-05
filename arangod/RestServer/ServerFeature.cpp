@@ -155,21 +155,9 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void ServerFeature::start() {
-  if (_operationMode != OperationMode::MODE_CONSOLE) {
-    auto scheduler =
-        ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
-
-    scheduler->buildControlCHandler();
-  }
-
   waitForHeartbeat();
 
   *_result = EXIT_SUCCESS;
-
-  // flush all log output before we go on... this is sensible because any
-  // of the following options may print or prompt, and pending log entries
-  // might overwrite that
-  Logger::flush();
 
   switch (_operationMode) {
     case OperationMode::MODE_UNITTESTS:
@@ -181,6 +169,19 @@ void ServerFeature::start() {
       LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: SERVER";
       break;
   }
+  
+  // flush all log output before we go on... this is sensible because any
+  // of the following options may print or prompt, and pending log entries
+  // might overwrite that
+  Logger::flush();
+ 
+  if (!isConsoleMode()) {
+    // install CTRL-C handlers
+    server()->registerStartupCallback([]() {
+      ApplicationServer::getFeature<SchedulerFeature>("Scheduler")->buildControlCHandler();
+    });
+  }
+
 }
 
 void ServerFeature::beginShutdown() {
