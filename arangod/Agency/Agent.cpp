@@ -1200,18 +1200,18 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Rebuilding key-value stores from index "
-    << _lastAppliedIndex << " to " << _leaderCommitIndex << " " << _state;
+    << _lastCompactionIndex << " to " << _leaderCommitIndex << " " << _state;
 
-  auto logs = _state.slices(_lastCompactionIndex+1, _leaderCommitIndex+1);
+  auto logs = _state.slices(_lastCompactionIndex+1);
 
-  _spearhead.clear();
-  _spearhead.apply(logs, _leaderCommitIndex, _constituent.term());
-  _readDB.clear();
-  _readDB.apply(logs, _leaderCommitIndex, _constituent.term());
-  
-  LOG_TOPIC(TRACE, Logger::AGENCY)
-    << "ReadDB: " << _readDB;
-  
+  if (!logs.empty()) {
+    _spearhead.clear();
+    _spearhead.apply(logs, , _constituent.term());
+    _readDB.clear();
+    _readDB.apply(logs, _leaderCommitIndex, _constituent.term());
+    LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
+    }
+    
   _lastAppliedIndex = _leaderCommitIndex;
   //_lastCompactionIndex = _leaderCommitIndex;
   
