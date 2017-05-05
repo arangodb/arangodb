@@ -31,12 +31,12 @@
 'use strict';
 
 var FoxxManager = require('@arangodb/foxx/manager');
-var expect = require('expect.js');
+const expect = require('chai').expect;
 
 FoxxManager.update();
 
 var list = FoxxManager.availableJson(false);
-expect(list).not.to.be.empty();
+expect(list).not.to.be.empty;
 
 describe('Foxx Manager', function () {
   const _it = it;
@@ -45,11 +45,11 @@ describe('Foxx Manager', function () {
     describe(`service "${service.name}" from the store`, () => {
       it('should have proper name and author', function () {
         expect(service).to.have.property('name');
-        expect(service.name).to.not.be.empty();
+        expect(service.name).to.not.be.empty;
         expect(service).to.have.property('latestVersion');
-        expect(service.latestVersion).to.not.be.empty();
+        expect(service.latestVersion).to.not.be.empty;
         expect(service).to.have.property('description');
-        expect(service.description).to.not.be.empty();
+        expect(service.description).to.not.be.empty;
       });
 
       if (service.name === 'hello-foxx') {

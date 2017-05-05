@@ -2,7 +2,7 @@
 'use strict';
 
 var sinon = require('sinon');
-var expect = require('expect.js');
+const expect = require('chai').expect;
 var FoxxRepository = require('@arangodb/foxx/legacy/repository').Repository;
 var Model = require('@arangodb/foxx/legacy/model').Model;
 
@@ -28,38 +28,38 @@ describe('Model Events', function () {
   it('should emit beforeCreate and afterCreate events when creating the model', function () {
     addHooks(instance, 'Create');
     expect(repository.save(instance)).to.eql(instance);
-    expect(instance.get('beforeCalled')).to.be(true);
-    expect(instance.get('afterCalled')).to.be(true);
+    expect(instance.get('beforeCalled')).to.be.true;
+    expect(instance.get('afterCalled')).to.be.true;
   });
 
   it('should emit beforeSave and afterSave events when creating the model', function () {
     addHooks(instance, 'Save');
     expect(repository.save(instance)).to.eql(instance);
-    expect(instance.get('beforeCalled')).to.be(true);
-    expect(instance.get('afterCalled')).to.be(true);
+    expect(instance.get('beforeCalled')).to.be.true;
+    expect(instance.get('afterCalled')).to.be.true;
   });
 
   it('should emit beforeUpdate and afterUpdate events when updating the model', function () {
     var newData = { newAttribute: 'test' };
     addHooks(instance, 'Update', newData);
     expect(repository.update(instance, newData)).to.eql(instance);
-    expect(instance.get('beforeCalled')).to.be(true);
-    expect(instance.get('afterCalled')).to.be(true);
+    expect(instance.get('beforeCalled')).to.be.true;
+    expect(instance.get('afterCalled')).to.be.true;
   });
 
   it('should emit beforeSave and afterSave events when updating the model', function () {
     var newData = { newAttribute: 'test' };
     addHooks(instance, 'Save', newData);
     expect(repository.update(instance, newData)).to.eql(instance);
-    expect(instance.get('beforeCalled')).to.be(true);
-    expect(instance.get('afterCalled')).to.be(true);
+    expect(instance.get('beforeCalled')).to.be.true;
+    expect(instance.get('afterCalled')).to.be.true;
   });
 
   it('should emit beforeRemove and afterRemove events when removing the model', function () {
     addHooks(instance, 'Remove');
     repository.remove(instance);
-    expect(instance.get('beforeCalled')).to.be(true);
-    expect(instance.get('afterCalled')).to.be(true);
+    expect(instance.get('beforeCalled')).to.be.true;
+    expect(instance.get('afterCalled')).to.be.true;
   });
 });
 
@@ -76,7 +76,7 @@ function addHooks (model, ev, dataToReceive) {
     expect(this).to.eql(model);
     expect(data).to.eql(dataToReceive);
     this.set('afterCalled', true);
-    expect(this.get('beforeCalled')).to.be(true);
+    expect(this.get('beforeCalled')).to.be.true;
     expect(this.get('random')).to.eql(random);
   });
 }
