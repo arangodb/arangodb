@@ -66,7 +66,7 @@ void RocksDBBackgroundThread::run() {
             [force, &minTick](TRI_vocbase_t* vocbase) {
               vocbase->cursorRepository()->garbageCollect(force);
               // FIXME: configurable interval tied to follower timeout
-              vocbase->garbageCollectReplicationClients(60.0);
+              vocbase->garbageCollectReplicationClients(120.0);
               auto clients = vocbase->getReplicationClients();
               for (auto c : clients) {
                 if (std::get<2>(c) < minTick) {
@@ -74,8 +74,13 @@ void RocksDBBackgroundThread::run() {
                 }
               }
             });
-        _engine->pruneWalFiles(minTick);
+
       }
+     
+      // determine which WAL files can be pruned 
+      _engine->determinePrunableWalFiles(minTick);
+      // and then prune them when they expired
+      _engine->pruneWalFiles();
     } catch (std::exception const& ex) {
       LOG_TOPIC(WARN, Logger::FIXME) << "caught exception in rocksdb background thread: " << ex.what();
     } catch (...) {
