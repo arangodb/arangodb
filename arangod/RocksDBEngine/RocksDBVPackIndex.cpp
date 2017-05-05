@@ -181,7 +181,13 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
 RocksDBVPackIndex::~RocksDBVPackIndex() {}
 
 size_t RocksDBVPackIndex::memory() const {
-  return 0;  // TODO
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueIndex(_objectId)
+  : RocksDBKeyBounds::IndexEntries(_objectId);
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out;
+  db->GetApproximateSizes(&r, 1, &out, true);
+  return (size_t)out;
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -1402,21 +1408,12 @@ bool RocksDBVPackIndex::isDuplicateOperator(
   return duplicate;
 }
 
-void RocksDBVPackIndex::compact() {
+int RocksDBVPackIndex::cleanup() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueIndex(_objectId)
                                     : RocksDBKeyBounds::IndexEntries(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, &b, &e);
-}
-
-uint64_t RocksDBVPackIndex::estimateSize() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueIndex(_objectId)
-                                    : RocksDBKeyBounds::IndexEntries(_objectId);
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return out;
+  return TRI_ERROR_NO_ERROR;
 }

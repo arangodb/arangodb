@@ -178,8 +178,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
   
-  void compact() override;
-  uint64_t estimateSize() override;
+  int cleanup() override;
 
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,

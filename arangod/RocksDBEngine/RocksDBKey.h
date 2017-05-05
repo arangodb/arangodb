@@ -79,8 +79,8 @@ class RocksDBKey {
   /// for the `_to` sub-index and one for the `_from` sub-index.
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey EdgeIndexValue(uint64_t indexId,
-                                   std::string const& vertexId,
-                                   std::string const& primaryKey);
+                                   arangodb::StringRef const& vertexId,
+                                   arangodb::StringRef const& primaryKey);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a user-defined,
@@ -122,6 +122,13 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for a replication applier config
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey ReplicationApplierConfig(TRI_voc_tick_t databaseId);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for the fulltext index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKey FulltextIndexValue(uint64_t indexId,
+                                       arangodb::StringRef const& word,
+                                       arangodb::StringRef const& primaryKey);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -224,8 +231,8 @@ class RocksDBKey {
              arangodb::StringRef const& docKey, VPackSlice const& indexData);
   RocksDBKey(RocksDBEntryType type, uint64_t first,
              arangodb::StringRef const& second);
-  RocksDBKey(RocksDBEntryType type, uint64_t first, std::string const& second,
-             std::string const& third);
+  RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second,
+             arangodb::StringRef const& third);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
