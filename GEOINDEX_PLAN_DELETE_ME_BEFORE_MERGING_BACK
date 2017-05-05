@@ -1,0 +1,13 @@
+1.  Create new GeoIndex.
+2.  Attach to existing GeoIndex
+3.  Drop GeoIndex
+4.  Disconnect from GeoIndex
+5.  PotRead
+6.  PotWrite
+7.  SlotRead
+8.  SlotWrite
+9.  CreatePot (take the next number)
+10. CreateSlot (take the next number)
+11.	Also needs start and stop transaction routine and to use them Das sind die
+	Punkte, die Richard eingeplant hatte zum Anschluss. Über die obere Ebene
+	weiß er praktisch nichts.
