@@ -1,0 +1,7 @@
+#!/bin/bash
+
+verb="$1"
+shift
+
+@HDIUTIL_EXECUTABLE@ $verb -megabytes @CMAKE_DMG_SIZE@ $@
+
