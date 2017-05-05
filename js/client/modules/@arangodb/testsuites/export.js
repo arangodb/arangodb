@@ -51,7 +51,7 @@ const toArgv = require('internal').toArgv;
 
 function exportTest (options) {
   const cluster = options.cluster ? '-cluster' : '';
-  const tmpPath = fs.getTempPath();
+  const tmpPath = fs.join(options.testOutputDirectory, 'export');
   const DOMParser = new xmldom.DOMParser({
     locator: {},
     errorHandler: {
@@ -118,7 +118,6 @@ function exportTest (options) {
   results.exportJson.failed = results.exportJson.status ? 0 : 1;
 
   try {
-    // const filesContent = JSON.parse(fs.read(fs.join(tmpPath, 'UnitTestsExport.json')));
     results.parseJson = {
       failed: 0,
       status: true

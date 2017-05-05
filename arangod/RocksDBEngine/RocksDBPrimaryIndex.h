@@ -212,9 +212,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback) const;
   
-  void compact() override;
-  uint64_t estimateSize() override;
-
+  int cleanup() override;
+  
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
