@@ -218,11 +218,11 @@ function dumpTestSuite () {
       assertTrue(c.getIndexes()[6].sparse);
       assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[6].fields);
 
-      if (db._engine().name !== "rocksdb") {
-        assertFalse(c.getIndexes()[7].unique);
-        assertEqual("fulltext", c.getIndexes()[7].type);
-        assertEqual([ "a_f" ], c.getIndexes()[7].fields);
+      assertFalse(c.getIndexes()[7].unique);
+      assertEqual("fulltext", c.getIndexes()[7].type);
+      assertEqual([ "a_f" ], c.getIndexes()[7].fields);
 
+      if (db._engine().name !== "rocksdb") {
         assertEqual("geo2", c.getIndexes()[8].type);
         assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
         assertFalse(c.getIndexes()[8].unique);

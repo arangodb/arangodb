@@ -487,11 +487,15 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
 
   auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   auto idx = physical->primaryIndex();
-  std::set<std::string>::iterator it = resultSet.cbegin();
   ManagedDocumentResult mmdr;
+  
+  if (maxResults == 0) {// 0 appearantly means "all results"
+    maxResults = SIZE_T_MAX;
+  }
 
   builder.openArray();
   // get the first N results
+  std::set<std::string>::iterator it = resultSet.cbegin();
   while (maxResults > 0 && it != resultSet.cend()) {
     RocksDBToken token = idx->lookupKey(trx, StringRef(*it));
     if (token.revisionId()) {
