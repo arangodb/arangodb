@@ -141,7 +141,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
-    res = fulltextIndex->executeQuery(query, maxResults, *(builder.get()));
+    res = fulltextIndex->executeQuery(trx, query, maxResults, *(builder.get()));
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }

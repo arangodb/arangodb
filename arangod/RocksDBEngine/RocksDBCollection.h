@@ -43,6 +43,7 @@ struct RocksDBToken;
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
   friend class RocksDBVPackIndex;
+  friend class RocksDBFulltextIndex;
 
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 

@@ -129,7 +129,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   
   
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
-  arangodb::Result executeQuery(FulltextQuery const&, size_t maxResults,
+  arangodb::Result executeQuery(transaction::Methods* trx,
+                                FulltextQuery const&, size_t maxResults,
                                 velocypack::Builder &builder);
   
  private:
@@ -140,6 +141,10 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   /// @brief minimum word length
   int _minWordLength;
+  
+  arangodb::Result applyQueryToken(transaction::Methods* trx,
+                                   FulltextQueryToken const&,
+                                   std::set<std::string>& resultSet);
 };
 }  // namespace arangodb
 

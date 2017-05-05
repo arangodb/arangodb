@@ -28,7 +28,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -38,6 +40,8 @@
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <algorithm>
 
 using namespace arangodb;
 
@@ -92,7 +96,7 @@ RocksDBFulltextIndex::~RocksDBFulltextIndex() {}
 size_t RocksDBFulltextIndex::memory() const {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds =
-      RocksDBKeyBounds::FulltextIndexEntries(_objectId, StringRef());
+      RocksDBKeyBounds::FulltextIndexPrefix(_objectId, StringRef());
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
   db->GetApproximateSizes(&r, 1, &out, true);
@@ -103,7 +107,7 @@ size_t RocksDBFulltextIndex::memory() const {
 void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                         bool forPersistence) const {
   builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   builder.add("unique", VPackValue(false));
   builder.add("sparse", VPackValue(true));
   builder.add("minLength", VPackValue(_minWordLength));
@@ -307,7 +311,7 @@ int RocksDBFulltextIndex::cleanup() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds =
-      RocksDBKeyBounds::FulltextIndexEntries(_objectId, StringRef());
+      RocksDBKeyBounds::FulltextIndexPrefix(_objectId, StringRef());
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, &b, &e);
   return TRI_ERROR_NO_ERROR;
@@ -359,7 +363,7 @@ std::vector<std::string> RocksDBFulltextIndex::wordlist(VPackSlice const& doc) {
   return words;
 }
 
-arangodb::Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
+Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
                                                         FulltextQuery& query) {
   if (qstr.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER);
@@ -386,14 +390,17 @@ arangodb::Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
     // get operation
     if (c == '+') {
       operation = FulltextQueryToken::AND;
+      ++ptr;
     } else if (c == '|') {
       operation = FulltextQueryToken::OR;
+      ++ptr;
     } if (c == '-') {
       operation = FulltextQueryToken::EXCLUDE;
+      ++ptr;
     }
-    ++ptr;
     
     // find a word with ':' at the end, i.e. prefix: or complete:
+    // swt ptr to the end of the word
     char const* split = nullptr;
     char const* start = ptr;
     while (*ptr) {
@@ -462,11 +469,88 @@ arangodb::Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
     }
   }
   
+  if (!query.empty()) {
+    query[0].operation = FulltextQueryToken::OR;
+  }
+  
   return Result(i == 0 ? TRI_ERROR_BAD_PARAMETER : TRI_ERROR_NO_ERROR);
 }
 
-arangodb::Result RocksDBFulltextIndex::executeQuery(FulltextQuery const& query,
+Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
+                                          FulltextQuery const& query,
                                                     size_t maxResults,
                                                     VPackBuilder &builder) {
+  std::set<std::string> resultSet;
+  for (FulltextQueryToken const& token : query) {
+    applyQueryToken(trx, token, resultSet);
+  }
+  
+  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
+  auto idx = physical->primaryIndex();
+  std::set<std::string>::iterator it = resultSet.cbegin();
+  ManagedDocumentResult mmdr;
+  
+  builder.openArray();
+  // get the first N results
+  while(maxResults > 0 && it != resultSet.cend()) {
+    
+    RocksDBToken token = idx->lookupKey(trx, StringRef(*it));
+    if (token.revisionId()) {
+      if (physical->readDocument(trx, token, mmdr)) {
+        mmdr.addToBuilder(builder, true);
+        maxResults--;
+      }
+    }
+    ++it;
+  }
+  builder.close();
+  
+  return Result();
+}
+
+static RocksDBKeyBounds MakeBounds(uint64_t oid, FulltextQueryToken const& token) {
+  if (token.matchType == FulltextQueryToken::COMPLETE) {
+    return RocksDBKeyBounds::FulltextIndexComplete(oid,
+                                                   StringRef(token.value));
+  } else if (token.matchType == FulltextQueryToken::PREFIX) {
+    return RocksDBKeyBounds::FulltextIndexPrefix(oid, StringRef(token.value));
+  }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
+                                             FulltextQueryToken const& token,
+                                 std::set<std::string>& resultSet) {
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  auto const& options = state->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
+  
+  // why can't I have an assignment operator when I want one
+  RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
+  
+  std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(options));
+  iter->Seek(bounds.start());
+  
+  std::set<std::string> intersect;
+  
+  while (iter->Valid() && _cmp->Compare(iter->key(), bounds.end()) < 0) {
+    StringRef key = RocksDBKey::primaryKey(iter->key());
+    
+    if (token.operation == FulltextQueryToken::AND) {
+      intersect.insert(key.toString());
+    } else if (token.operation == FulltextQueryToken::OR) {
+      resultSet.insert(key.toString());
+    } else if (token.operation == FulltextQueryToken::EXCLUDE) {
+      resultSet.erase(key.toString());
+    }
+    iter->Next();
+  }
+  if (!resultSet.empty() && !intersect.empty() && token.operation == FulltextQueryToken::AND) {
+    std::set<std::string> output;
+    std::set_intersection(resultSet.begin(), resultSet.end(), intersect.begin(), intersect.end(),
+                          std::inserter(output,output.begin()));
+    resultSet = output;
+  }
   return Result();
 }

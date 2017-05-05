@@ -427,7 +427,8 @@ arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
                                  keySize);
     }
     case RocksDBEntryType::EdgeIndexValue:
-    case RocksDBEntryType::IndexValue: {
+    case RocksDBEntryType::IndexValue:
+    case RocksDBEntryType::FulltextIndexValue: {
       TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t) + sizeof(uint8_t)));
       size_t keySize = static_cast<size_t>(data[size - 1]);
       return arangodb::StringRef(data + (size - (keySize + sizeof(uint8_t))),

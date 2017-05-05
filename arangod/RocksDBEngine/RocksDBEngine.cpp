@@ -39,6 +39,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "RocksDBEngine/RocksDBAqlFunctions.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -934,8 +935,7 @@ int RocksDBEngine::openCollection(TRI_vocbase_t* vocbase,
 
 /// @brief Add engine-specific AQL functions.
 void RocksDBEngine::addAqlFunctions() {
-  // there are no specific AQL functions here
-  // TODO: potentially add NEAR, WITHIN?
+  RocksDBAqlFunctions::registerResources();
 }
 
 /// @brief Add engine-specific optimizer rules
