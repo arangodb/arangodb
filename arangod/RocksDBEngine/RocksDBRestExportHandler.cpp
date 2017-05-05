@@ -229,15 +229,7 @@ void RocksDBRestExportHandler::createCursor() {
       options, "flush", false);
 
   if (flush) {
-    rocksdb::TransactionDB* db =
-        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
-
-    rocksdb::Status status = db->GetBaseDB()->SyncWAL();
-
-    if (!status.ok()) {
-      Result res = rocksutils::convertStatus(status);
-      THROW_ARANGO_EXCEPTION(res.errorNumber());
-    }
+    static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
 
     double flushWait =
         arangodb::basics::VelocyPackHelper::getNumericValue<double>(

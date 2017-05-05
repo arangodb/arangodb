@@ -46,15 +46,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  rocksdb::TransactionDB* db =
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
-
-  rocksdb::Status status = db->GetBaseDB()->SyncWAL();
-
-  if (!status.ok()) {
-    Result res = rocksutils::convertStatus(status);
-    TRI_V8_THROW_EXCEPTION(res.errorNumber());
-  }
+  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

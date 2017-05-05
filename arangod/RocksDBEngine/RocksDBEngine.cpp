@@ -974,15 +974,22 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
   return it->second;
 }
 
-Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
-                                        VPackBuilder& builder) {
-  Result res;
-
+bool RocksDBEngine::syncWal() {
+#ifdef _WIN32
+  // SyncWAL always reports "not implemented" on Windows
+  return true;
+#else
   rocksdb::Status status = _db->GetBaseDB()->SyncWAL();
   if (!status.ok()) {
-    res = rocksutils::convertStatus(status).errorNumber();
-    return res;
+    return false;
   }
+  return true;
+#endif
+}
+
+Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
+                                        VPackBuilder& builder) {
+  syncWal();
 
   builder.add(VPackValue(VPackValueType::Object));  // Base
   rocksdb::SequenceNumber lastTick = _db->GetLatestSequenceNumber();
@@ -1026,7 +1033,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
 
   builder.close();  // base
 
-  return res;
+  return Result();
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
