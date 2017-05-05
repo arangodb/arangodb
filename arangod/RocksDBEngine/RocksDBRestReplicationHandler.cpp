@@ -1640,17 +1640,7 @@ void RocksDBRestReplicationHandler::handleCommandSync() {
   config._useCollectionId = useCollectionId;
 
   // wait until all data in current logfile got synced
-  // MMFilesLogfileManager::instance()->waitForSync(5.0);
-  rocksdb::TransactionDB* db =
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
-
-  rocksdb::Status status = db->GetBaseDB()->SyncWAL();
-  if (!status.ok()) {
-    Result res = rocksutils::convertStatus(status).errorNumber();
-    generateError(rest::ResponseCode::BAD, res.errorNumber(),
-                  res.errorMessage());
-    return;
-  }
+  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
 
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
                        verbose);
