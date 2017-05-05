@@ -1204,13 +1204,12 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
 
   auto logs = _state.slices(_lastCompactionIndex+1);
 
-  if (!logs.empty()) {
-    _spearhead.clear();
-    _spearhead.apply(logs, , _constituent.term());
-    _readDB.clear();
-    _readDB.apply(logs, _leaderCommitIndex, _constituent.term());
-    LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
-    }
+  _spearhead.clear();
+  _spearhead.apply(logs, _leaderCommitIndex, _constituent.term());
+  _readDB.clear();
+  _readDB.apply(logs, _leaderCommitIndex, _constituent.term());
+  LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
+
     
   _lastAppliedIndex = _leaderCommitIndex;
   //_lastCompactionIndex = _leaderCommitIndex;
