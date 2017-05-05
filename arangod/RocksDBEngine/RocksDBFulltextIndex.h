@@ -32,7 +32,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 /// @brief maximum length of an indexed word in characters
 /// a character may consist of up to 4 bytes
 #define TRI_FULLTEXT_MAX_WORD_LENGTH 40
@@ -49,13 +48,13 @@ struct DocumentIdentifierToken;
 struct FulltextQueryToken {
   /// @brief fulltext query match options
   /// substring not implemented, maybe later
-  enum MatchType {COMPLETE, PREFIX, SUBSTRING};
+  enum MatchType { COMPLETE, PREFIX, SUBSTRING };
   /// @brief fulltext query logical operators
-  enum Operation {AND, OR, EXCLUDE};
-  
+  enum Operation { AND, OR, EXCLUDE };
+
   FulltextQueryToken(std::string const& v, MatchType t, Operation o)
-    :  value(v), matchType(t), operation(o) {}
-  
+      : value(v), matchType(t), operation(o) {}
+
   std::string value;
   MatchType matchType;
   Operation operation;
@@ -65,7 +64,6 @@ struct FulltextQueryToken {
 /// be intersected with every result containing the token.
 /// Similarly an OR triggers union
 typedef std::vector<FulltextQueryToken> FulltextQuery;
-
 
 class RocksDBFulltextIndex final : public RocksDBIndex {
  public:
@@ -126,13 +124,12 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
       DocumentIdentifierToken const& token);
   static DocumentIdentifierToken toDocumentIdentifierToken(
       TRI_voc_rid_t revisionId);
-  
-  
+
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
-  arangodb::Result executeQuery(transaction::Methods* trx,
-                                FulltextQuery const&, size_t maxResults,
-                                velocypack::Builder &builder);
-  
+  arangodb::Result executeQuery(transaction::Methods* trx, FulltextQuery const&,
+                                size_t maxResults,
+                                velocypack::Builder& builder);
+
  private:
   std::vector<std::string> wordlist(arangodb::velocypack::Slice const&);
 
@@ -141,7 +138,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   /// @brief minimum word length
   int _minWordLength;
-  
+
   arangodb::Result applyQueryToken(transaction::Methods* trx,
                                    FulltextQueryToken const&,
                                    std::set<std::string>& resultSet);

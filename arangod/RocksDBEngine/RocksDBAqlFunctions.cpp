@@ -22,13 +22,13 @@
 
 #include "RocksDBAqlFunctions.h"
 
-#include "Aql/Function.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Function.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -82,7 +82,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     if (!limit.isNull(true) && !limit.isNumber()) {
       THROW_ARANGO_EXCEPTION_PARAMS(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
-    } 
+    }
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
       if (value > 0) {
@@ -98,8 +98,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   LogicalCollection* collection = trx->documentCollection(cid);
 
   if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "", collectionName.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "",
+                                  collectionName.c_str());
   }
 
   // NOTE: The shared_ptr is protected by trx lock.
@@ -132,23 +132,21 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
                                   collectionName.c_str());
   }
-
+  // do we need this in rocksdb?
   trx->pinData(cid);
-  try {
-    transaction::BuilderLeaser builder(trx);
-    FulltextQuery query;
-    Result res = fulltextIndex->parseQueryString(queryString, query);
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-    }
-    res = fulltextIndex->executeQuery(trx, query, maxResults, *(builder.get()));
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-    }
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  
+  transaction::BuilderLeaser builder(trx);
+  FulltextQuery parsedQuery;
+  Result res = fulltextIndex->parseQueryString(queryString, parsedQuery);
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
+  res = fulltextIndex->executeQuery(trx, parsedQuery, maxResults,
+                                    *(builder.get()));
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  }
+  return AqlValue(builder.get());
 }
 
 /// @brief function NEAR
@@ -173,8 +171,8 @@ void RocksDBAqlFunctions::registerResources() {
 
   // fulltext functions
   functions->add({"FULLTEXT", "AQL_FULLTEXT", "hs,s,s|n", true, false, true,
-                 false, true, &RocksDBAqlFunctions::Fulltext,
-                 NotInCoordinator});
+                  false, true, &RocksDBAqlFunctions::Fulltext,
+                  NotInCoordinator});
   functions->add({"NEAR", "AQL_NEAR", "hs,n,n|nz,s", true, false, true, false,
                   true, &RocksDBAqlFunctions::Near, NotInCoordinator});
   functions->add({"WITHIN", "AQL_WITHIN", "hs,n,n,n|s", true, false, true,

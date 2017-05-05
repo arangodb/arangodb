@@ -364,16 +364,15 @@ std::vector<std::string> RocksDBFulltextIndex::wordlist(VPackSlice const& doc) {
 }
 
 Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
-                                                        FulltextQuery& query) {
+                                              FulltextQuery& query) {
   if (qstr.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   const char* ptr = qstr.data();
   int i = 0;
-  
+
   while (*ptr) {
-    
     char c = *ptr;
     // ignore whitespace
     if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' ||
@@ -381,11 +380,11 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
       ++ptr;
       continue;
     }
-    
+
     // defaults
     FulltextQueryToken::Operation operation = FulltextQueryToken::AND;
     FulltextQueryToken::MatchType matchType = FulltextQueryToken::COMPLETE;
-    
+
     // word begin
     // get operation
     if (c == '+') {
@@ -394,11 +393,11 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
     } else if (c == '|') {
       operation = FulltextQueryToken::OR;
       ++ptr;
-    } if (c == '-') {
+    } else if (c == '-') {
       operation = FulltextQueryToken::EXCLUDE;
       ++ptr;
     }
-    
+
     // find a word with ':' at the end, i.e. prefix: or complete:
     // swt ptr to the end of the word
     char const* split = nullptr;
@@ -415,13 +414,13 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
       ++ptr;
     }
     char const* end = ptr;
-    
+
     if ((end - start == 0) || (split != nullptr && split - start == 0) ||
         (split != nullptr && end - split == 0)) {
       // invalid string
       return Result(TRI_ERROR_BAD_PARAMETER);
     }
-    
+
     // get command
     if (split != nullptr) {
       if (TRI_CaseEqualString(start, "prefix:", strlen("prefix:"))) {
@@ -431,69 +430,69 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
       }
       start = split;
     }
-    
-    
-    // normalize a word for a fulltext search query this will create a copy of the word
+
+    // normalize a word for a fulltext search query this will create a copy of
+    // the word
     char const* word = start;
     size_t wordLength = (size_t)(end - start);
-    
+
     TRI_ASSERT(end >= start);
     size_t outLength;
-    char* normalized = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength,
-                                           &outLength);
+    char* normalized = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word,
+                                                 wordLength, &outLength);
     if (normalized == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
-    
+
     // lower case string
     int32_t outLength2;
     char* lowered = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, normalized,
                                      (int32_t)outLength, &outLength2);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, normalized);
-    
+
     if (lowered == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
-    
+
     // calculate the proper prefix
-    char* prefixEnd = TRI_PrefixUtf8String(lowered, TRI_FULLTEXT_MAX_WORD_LENGTH);
+    char* prefixEnd =
+        TRI_PrefixUtf8String(lowered, TRI_FULLTEXT_MAX_WORD_LENGTH);
     ptrdiff_t prefixLength = prefixEnd - lowered;
-    
+
     std::string value;
     value.append(lowered, (size_t)prefixLength);
     query.push_back(FulltextQueryToken(value, matchType, operation));
-    
+
     ++i;
     if (i >= TRI_FULLTEXT_SEARCH_MAX_WORDS) {
       break;
     }
   }
-  
+
   if (!query.empty()) {
     query[0].operation = FulltextQueryToken::OR;
   }
-  
+
   return Result(i == 0 ? TRI_ERROR_BAD_PARAMETER : TRI_ERROR_NO_ERROR);
 }
 
 Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
                                           FulltextQuery const& query,
-                                                    size_t maxResults,
-                                                    VPackBuilder &builder) {
+                                          size_t maxResults,
+                                          VPackBuilder& builder) {
   std::set<std::string> resultSet;
   for (FulltextQueryToken const& token : query) {
     applyQueryToken(trx, token, resultSet);
   }
-  
+
   auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   auto idx = physical->primaryIndex();
   std::set<std::string>::iterator it = resultSet.cbegin();
   ManagedDocumentResult mmdr;
-  
+
   builder.openArray();
   // get the first N results
-  while(maxResults > 0 && it != resultSet.cend()) {
-    
+  while (maxResults > 0 && it != resultSet.cend()) {
     RocksDBToken token = idx->lookupKey(trx, StringRef(*it));
     if (token.revisionId()) {
       if (physical->readDocument(trx, token, mmdr)) {
@@ -504,14 +503,14 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
     ++it;
   }
   builder.close();
-  
+
   return Result();
 }
 
-static RocksDBKeyBounds MakeBounds(uint64_t oid, FulltextQueryToken const& token) {
+static RocksDBKeyBounds MakeBounds(uint64_t oid,
+                                   FulltextQueryToken const& token) {
   if (token.matchType == FulltextQueryToken::COMPLETE) {
-    return RocksDBKeyBounds::FulltextIndexComplete(oid,
-                                                   StringRef(token.value));
+    return RocksDBKeyBounds::FulltextIndexComplete(oid, StringRef(token.value));
   } else if (token.matchType == FulltextQueryToken::PREFIX) {
     return RocksDBKeyBounds::FulltextIndexPrefix(oid, StringRef(token.value));
   }
@@ -520,23 +519,23 @@ static RocksDBKeyBounds MakeBounds(uint64_t oid, FulltextQueryToken const& token
 
 Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
                                              FulltextQueryToken const& token,
-                                 std::set<std::string>& resultSet) {
+                                             std::set<std::string>& resultSet) {
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   auto const& options = state->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
-  
+
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
-  
+
   std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(options));
   iter->Seek(bounds.start());
-  
+
   std::set<std::string> intersect;
-  
+
   while (iter->Valid() && _cmp->Compare(iter->key(), bounds.end()) < 0) {
     StringRef key = RocksDBKey::primaryKey(iter->key());
-    
+
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(key.toString());
     } else if (token.operation == FulltextQueryToken::OR) {
@@ -546,10 +545,12 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
     }
     iter->Next();
   }
-  if (!resultSet.empty() && !intersect.empty() && token.operation == FulltextQueryToken::AND) {
+  if (!resultSet.empty() && !intersect.empty() &&
+      token.operation == FulltextQueryToken::AND) {
     std::set<std::string> output;
-    std::set_intersection(resultSet.begin(), resultSet.end(), intersect.begin(), intersect.end(),
-                          std::inserter(output,output.begin()));
+    std::set_intersection(resultSet.begin(), resultSet.end(), intersect.begin(),
+                          intersect.end(),
+                          std::inserter(output, output.begin()));
     resultSet = output;
   }
   return Result();
