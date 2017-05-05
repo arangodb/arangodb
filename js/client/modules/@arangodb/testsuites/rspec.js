@@ -178,7 +178,7 @@ function rubyTests (options, ssl) {
           instanceInfo.exitStatus = 'server is gone.';
           break;
         }
-        const subFolder = ssl ? 'ssl_server' : 'http_server'
+        const subFolder = ssl ? 'ssl_server' : 'http_server';
         const resultfn = fs.join(options.testOutputDirectory, subFolder, te + '.json');
 
         args = ['--color',
