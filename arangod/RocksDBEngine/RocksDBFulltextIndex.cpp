@@ -26,6 +26,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBToken.h"
@@ -358,7 +359,114 @@ std::vector<std::string> RocksDBFulltextIndex::wordlist(VPackSlice const& doc) {
   return words;
 }
 
-arangodb::Result RocksDBFulltextIndex::executeQuery(std::string const& queryString,
-                                                    VPackBuilder &builder) {
+arangodb::Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
+                                                        FulltextQuery& query) {
+  if (qstr.empty()) {
+    return Result(TRI_ERROR_BAD_PARAMETER);
+  }
   
+  const char* ptr = qstr.data();
+  int i = 0;
+  
+  while (*ptr) {
+    
+    char c = *ptr;
+    // ignore whitespace
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' ||
+        c == '\b' || c == ',') {
+      ++ptr;
+      continue;
+    }
+    
+    // defaults
+    FulltextQueryToken::Operation operation = FulltextQueryToken::AND;
+    FulltextQueryToken::MatchType matchType = FulltextQueryToken::COMPLETE;
+    
+    // word begin
+    // get operation
+    if (c == '+') {
+      operation = FulltextQueryToken::AND;
+    } else if (c == '|') {
+      operation = FulltextQueryToken::OR;
+    } if (c == '-') {
+      operation = FulltextQueryToken::EXCLUDE;
+    }
+    ++ptr;
+    
+    // find a word with ':' at the end, i.e. prefix: or complete:
+    char const* split = nullptr;
+    char const* start = ptr;
+    while (*ptr) {
+      c = *ptr;
+      if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' ||
+          c == '\b' || c == ',') {
+        // end of word
+        break;
+      } else if (split == nullptr && c == ':') {
+        split = ptr + 1;
+      }
+      ++ptr;
+    }
+    char const* end = ptr;
+    
+    if ((end - start == 0) || (split != nullptr && split - start == 0) ||
+        (split != nullptr && end - split == 0)) {
+      // invalid string
+      return Result(TRI_ERROR_BAD_PARAMETER);
+    }
+    
+    // get command
+    if (split != nullptr) {
+      if (TRI_CaseEqualString(start, "prefix:", strlen("prefix:"))) {
+        matchType = FulltextQueryToken::PREFIX;
+      } else if (TRI_CaseEqualString(start, "complete:", strlen("complete:"))) {
+        matchType = FulltextQueryToken::COMPLETE;
+      }
+      start = split;
+    }
+    
+    
+    // normalize a word for a fulltext search query this will create a copy of the word
+    char const* word = start;
+    size_t wordLength = (size_t)(end - start);
+    
+    TRI_ASSERT(end >= start);
+    size_t outLength;
+    char* normalized = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength,
+                                           &outLength);
+    if (normalized == nullptr) {
+      return Result(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    
+    // lower case string
+    int32_t outLength2;
+    char* lowered = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, normalized,
+                                     (int32_t)outLength, &outLength2);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, normalized);
+    
+    if (lowered == nullptr) {
+      return Result(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    
+    // calculate the proper prefix
+    char* prefixEnd = TRI_PrefixUtf8String(lowered, TRI_FULLTEXT_MAX_WORD_LENGTH);
+    ptrdiff_t prefixLength = prefixEnd - lowered;
+    
+    std::string value;
+    value.append(lowered, (size_t)prefixLength);
+    query.push_back(FulltextQueryToken(value, matchType, operation));
+    
+    ++i;
+    if (i >= TRI_FULLTEXT_SEARCH_MAX_WORDS) {
+      break;
+    }
+  }
+  
+  return Result(i == 0 ? TRI_ERROR_BAD_PARAMETER : TRI_ERROR_NO_ERROR);
+}
+
+arangodb::Result RocksDBFulltextIndex::executeQuery(FulltextQuery const& query,
+                                                    size_t maxResults,
+                                                    VPackBuilder &builder) {
+  return Result();
 }

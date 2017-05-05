@@ -40,6 +40,9 @@
 /// @brief default minimum word length for a fulltext index
 #define TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT 2
 
+/// @brief maximum number of search words in a query
+#define TRI_FULLTEXT_SEARCH_MAX_WORDS 32
+
 namespace arangodb {
 struct DocumentIdentifierToken;
 
@@ -49,6 +52,9 @@ struct FulltextQueryToken {
   enum MatchType {COMPLETE, PREFIX, SUBSTRING};
   /// @brief fulltext query logical operators
   enum Operation {AND, OR, EXCLUDE};
+  
+  FulltextQueryToken(std::string const& v, MatchType t, Operation o)
+    :  value(v), matchType(t), operation(o) {}
   
   std::string value;
   MatchType matchType;
@@ -121,7 +127,9 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   static DocumentIdentifierToken toDocumentIdentifierToken(
       TRI_voc_rid_t revisionId);
   
-  arangodb::Result executeQuery(std::string const& queryString,
+  
+  arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
+  arangodb::Result executeQuery(FulltextQuery const&, size_t maxResults,
                                 velocypack::Builder &builder);
   
  private:

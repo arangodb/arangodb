@@ -136,7 +136,12 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   trx->pinData(cid);
   try {
     transaction::BuilderLeaser builder(trx);
-    Result res = fulltextIndex->executeQuery(queryString, *(builder.get()));
+    FulltextQuery query;
+    Result res = fulltextIndex->parseQueryString(queryString, query);
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+    res = fulltextIndex->executeQuery(query, maxResults, *(builder.get()));
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
@@ -144,51 +149,6 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  /*TRI_fulltext_query_t* ft =
-      TRI_CreateQueryMMFilesFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
-
-  if (ft == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  bool isSubstringQuery = false;
-  int res =
-      TRI_ParseQueryMMFilesFulltextIndex(ft, queryString.c_str(), &isSubstringQuery);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeQueryMMFilesFulltextIndex(ft);
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  // note: the following call will free "ft"!
-  TRI_fulltext_result_t* queryResult =
-      TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
-
-  if (queryResult == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  
-  TRI_ASSERT(trx->isPinned(cid));
-
-  transaction::BuilderLeaser builder(trx);
-  try {
-    builder->openArray();
-
-    ManagedDocumentResult mmdr;
-    size_t const numResults = queryResult->_numDocuments;
-    for (size_t i = 0; i < numResults; ++i) {
-      if (collection->readDocument(trx, queryResult->_documents[i], mmdr)) {
-        mmdr.addToBuilder(*builder.get(), true);
-      }
-    }
-    builder->close();
-    TRI_FreeResultRocksDBFulltextIndex(queryResult);
-    return AqlValue(builder.get());
-  } catch (...) {
-    TRI_FreeResultRocksDBFulltextIndex(queryResult);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }*/
 }
 
 /// @brief function NEAR
