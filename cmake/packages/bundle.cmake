@@ -50,7 +50,7 @@ set(CPACK_BUNDLE_STARTUP_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/arangodb-cli.sh")
 
 add_custom_target(package-arongodb-server-bundle
   COMMAND ${CMAKE_COMMAND} .
-  COMMAND ${CMAKE_CPACK_COMMAND} -G Bundle -C ${CMAKE_BUILD_TYPE} -V --debug
+  COMMAND ${CMAKE_CPACK_COMMAND} -G Bundle -C ${CMAKE_BUILD_TYPE}
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 
 list(APPEND PACKAGES_LIST package-arongodb-server-bundle)
