@@ -730,7 +730,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
   // create a state for the collector, beginning with the list of failed
   // transactions
   CollectorState state;
-  state.failedTransactions = TransactionManagerFeature::MANAGER->getFailedTransactions();
+  state.failedTransactions = TransactionManagerFeature::manager()->getFailedTransactions();
   /*
     if (_inRecovery) {
       state.droppedCollections = _logfileManager->getDroppedCollections();
@@ -862,7 +862,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
 
   // remove all handled transactions from failedTransactions list
   if (!state.handledTransactions.empty()) {
-    TransactionManagerFeature::MANAGER->unregisterFailedTransactions(state.handledTransactions);
+    TransactionManagerFeature::manager()->unregisterFailedTransactions(state.handledTransactions);
   }
 
   return TRI_ERROR_NO_ERROR;

@@ -37,9 +37,14 @@ class TransactionManagerFeature final
  public:
   void prepare() override final;
   void unprepare() override final;
+  
+  static TransactionManager* manager() {
+    TRI_ASSERT(MANAGER != nullptr);
+    return MANAGER.get();
+  }
 
- public:
-  static TransactionManager* MANAGER;
+ private:
+  static std::unique_ptr<TransactionManager> MANAGER;
 };
 }
 

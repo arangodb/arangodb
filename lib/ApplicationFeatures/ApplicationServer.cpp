@@ -597,6 +597,10 @@ void ApplicationServer::start() {
       THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("startup aborted: ") + TRI_errno_string(res));
     }
   }
+
+  for (auto const& callback : _startupCallbacks) { 
+    callback();
+  }
 }
 
 void ApplicationServer::stop() {
@@ -693,3 +697,4 @@ void ApplicationServer::reportFeatureProgress(ServerState state,
     reporter._feature(state, name);
   }
 }
+

@@ -102,7 +102,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
 
     _contexts.emplace(id, context.get());
     if (_contexts.size() == 1) {
-      disableFileDeletions();
+      // disableFileDeletions();
     }
   }
   return context.release();
@@ -141,7 +141,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
     // context not in use by someone else
     _contexts.erase(it);
     if (_contexts.empty()) {
-      enableFileDeletions();
+      // enableFileDeletions();
     }
   }
 

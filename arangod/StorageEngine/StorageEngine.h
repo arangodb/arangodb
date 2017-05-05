@@ -47,6 +47,7 @@ class PhysicalCollection;
 class PhysicalView;
 class Result;
 class TransactionCollection;
+class TransactionManager;
 class TransactionState;
 class InitialSyncer;
 
@@ -87,6 +88,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual bool supportsDfdb() const = 0;
 
+  virtual TransactionManager* createTransactionManager() = 0;
   virtual transaction::ContextData* createTransactionContextData() = 0;
   virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
@@ -214,7 +216,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   /// @brief function to be run when recovery is done
   virtual void recoveryDone(TRI_vocbase_t* vocbase) {}
-
 
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack

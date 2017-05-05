@@ -947,7 +947,7 @@ AqlValue Expression::executeSimpleExpressionPlus(AstNode const* node,
       return AqlValue(s.getNumber<int64_t>());
     } else if (s.isUInt()) {
       // can use uint64
-      return AqlValue(s.getNumber<uint64_t>());
+      return AqlValue(s.getUInt());
     }
     // fallthrouh intentional
   }

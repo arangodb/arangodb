@@ -46,6 +46,7 @@
 #include "MMFiles/MMFilesRestHandlers.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
 #include "MMFiles/MMFilesTransactionContextData.h"
+#include "MMFiles/MMFilesTransactionManager.h"
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesV8Functions.h"
 #include "MMFiles/MMFilesView.h"
@@ -249,9 +250,13 @@ void MMFilesEngine::stop() {
     logfileManager->waitForCollector();
   }
 }
+  
+TransactionManager* MMFilesEngine::createTransactionManager() {
+  return new MMFilesTransactionManager();
+}
 
 transaction::ContextData* MMFilesEngine::createTransactionContextData() {
-  return new MMFilesTransactionContextData;
+  return new MMFilesTransactionContextData();
 }
 
 TransactionState* MMFilesEngine::createTransactionState(

@@ -46,6 +46,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesSynchronizerThread.cpp
   MMFiles/MMFilesTransactionCollection.cpp
   MMFiles/MMFilesTransactionContextData.cpp
+  MMFiles/MMFilesTransactionManager.cpp
   MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesV8Functions.cpp
   MMFiles/MMFilesView.cpp

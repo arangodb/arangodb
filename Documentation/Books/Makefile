@@ -59,17 +59,6 @@ book-check-restheader-leftovers:
 		exit 1; \
 	fi
 
-# Check for all lines starting with exclamation marks, except image links which are exclamation mar + bracket
-book-check-mdpp-leftovers:
-	@echo "${STD_COLOR}##### checking for mdpp leftovers for $(NAME)${RESET}"
-	@if test "`find ppbooks/$(NAME) -name '*.md' -exec grep -- '^![^\[!]' {} \; -print | wc -l`" -gt 0; then \
-		echo "${ERR_COLOR}"; \
-		echo "found these unconverted Markdown-PP tags: "; \
-		find ppbooks/$(NAME) -name '*.md' -exec grep '^![^\[!]' {} \; -print; \
-		echo "${RESET}"; \
-		exit 1; \
-	fi
-
 ppbook-precheck-bad-code-sections:
 	@echo "${STD_COLOR}##### checking for bad code sections in $(NAME)${RESET}"
 	@if grep -qR  '^``` *.* ' $(NAME); then \
@@ -293,7 +282,6 @@ build-book:
 	make check-summary
 	make book-check-leftover-docublocks
 	make book-check-restheader-leftovers
-	make book-check-mdpp-leftovers
 	make ppbook-check-directory-link
 	make book-check-images-referenced
 

@@ -237,7 +237,7 @@ bool CtrlHandler(DWORD eventType) {
   static bool seen = false;
 
   if (!seen) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << shutdownMessage << ", beginning shut down sequence";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage << ", beginning shut down sequence";
 
     if (application_features::ApplicationServer::server != nullptr) {
       application_features::ApplicationServer::server->beginShutdown();
@@ -251,7 +251,7 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << shutdownMessage << ", terminating";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
@@ -278,6 +278,18 @@ void SchedulerFeature::buildControlCHandler() {
     }
   }
 #else
+
+#ifndef WIN32
+  // Signal masking on POSIX platforms
+  //
+  // POSIX allows signals to be blocked using functions such as sigprocmask()
+  // and pthread_sigmask(). For signals to be delivered, programs must ensure
+  // that any signals registered using signal_set objects are unblocked in at
+  // least one thread.
+  sigset_t all;
+  sigemptyset(&all);
+  pthread_sigmask(SIG_SETMASK, &all, 0);
+#endif
 
   auto ioService = _scheduler->managerService();
   _exitSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGINT,

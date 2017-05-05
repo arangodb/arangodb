@@ -45,7 +45,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         << res->result->getBodyVelocyPack()->toJson();
       _agent->reportIn(_slaveID, _last, _toLog);
     }
-    LOG_TOPIC(DEBUG, Logger::AGENCY) 
+    LOG_TOPIC(TRACE, Logger::AGENCY) 
       << "Got good callback from AppendEntriesRPC: "
       << "comm_status(" << res->status
       << "), last(" << _last << "), follower("
