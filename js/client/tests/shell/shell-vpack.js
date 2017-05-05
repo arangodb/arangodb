@@ -31,7 +31,7 @@
 'use strict';
 
 var jsunity = require('jsunity');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var request = require('@arangodb/request');
 var url = require('url');
 var querystring = require('querystring');
@@ -71,7 +71,7 @@ function versionJsonJson() {
 
   var res = request.post(buildUrl(path, false), {headers : headers, timeout: 300});
 
-  expect(res).to.be.a(request.Response);
+  expect(res).to.be.an.instanceof(request.Response);
   expect(res.body).to.be.a('string');
   expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   expect(String(res.headers['content-type'])).to.have.string("application/json");
@@ -82,7 +82,7 @@ function versionJsonJson() {
   expect(obj).to.have.property('version');
   expect(obj).to.have.property('license');
 
-  expect(obj.server).to.be('arango');
+  expect(obj.server).to.be.equal('arango');
   expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   
   expect(obj.license).to.match(/enterprise|community/g);
@@ -97,7 +97,7 @@ function versionVpackJson() {
 
   var res = request.post(buildUrl(path, false), {headers : headers, timeout: 300});
 
-  expect(res).to.be.a(request.Response);
+  expect(res).to.be.an.instanceof(request.Response);
   expect(res.body).to.be.a('string');
   expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   expect(String(res.headers['content-type'])).to.have.string("application/json");
@@ -108,7 +108,7 @@ function versionVpackJson() {
   expect(obj).to.have.property('version');
   expect(obj).to.have.property('license');
 
-  expect(obj.server).to.be('arango');
+  expect(obj.server).to.be.equal('arango');
   expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
 };
@@ -122,7 +122,7 @@ function versionJsonVpack () {
 
   var res = request.post(buildUrl(path,false), {headers : headers, timeout: 300});
 
-  expect(res).to.be.a(request.Response);
+  expect(res).to.be.an.instanceof(request.Response);
   expect(res.body).to.be.a('string');
   expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
@@ -133,7 +133,7 @@ function versionJsonVpack () {
   expect(obj).to.have.property('version');
   expect(obj).to.have.property('license');
 
-  expect(obj.server).to.be('arango');
+  expect(obj.server).to.be.equal('arango');
   expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
 };
@@ -147,7 +147,7 @@ function versionVpackVpack () {
 
   var res = request.post(buildUrl(path,false), {headers : headers, timeout: 300});
 
-  expect(res).to.be.a(request.Response);
+  expect(res).to.be.an.instanceof(request.Response);
   expect(res.body).to.be.a('string');
   expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
@@ -158,7 +158,7 @@ function versionVpackVpack () {
   expect(obj).to.have.property('version');
   expect(obj).to.have.property('license');
 
-  expect(obj.server).to.be('arango');
+  expect(obj.server).to.be.equal('arango');
   expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
 };
@@ -176,7 +176,7 @@ function echoVpackVpack () {
   var body = V8_TO_VPACK(obj);
   var res = request.post(buildUrl(path),{ headers : headers, body : body, timeout: 300});
 
-  expect(res).to.be.a(request.Response);
+  expect(res).to.be.an.instanceof(request.Response);
   expect(res.body).to.be.a('string');
   expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
 };
