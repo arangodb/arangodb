@@ -337,3 +337,20 @@ class ArangoDB
     logfile.close
   end
 end
+
+# super carrot fix for strange SSL behaviour on windows
+# on some windowses the first SSL request somehow throws strange SSL errors
+# after that everything is fine...so make a dummy request first
+if $ssl == '1'
+  retries = 0
+  begin
+    ArangoDB.get("/_api/version")
+  rescue
+    retries+=1
+    if retries < 5 then
+      retry
+    else
+      raise
+    end
+  end
+end
