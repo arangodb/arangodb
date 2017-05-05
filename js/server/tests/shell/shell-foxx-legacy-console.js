@@ -177,13 +177,10 @@ function ConsoleTestSuite () {
     testConsoleAssertThrows: function () {
       rmrf();
       console.setAssertThrows(true);
-      print('blarg')
-
       expect(function () {
         console.assert(false, 'potato');
       }).to.throw(AssertionError).with.property('message', 'potato');
       var logs = ls();
-      print(logs)
       expect(logs.length).to.equal(1);
       expect(logs[0].message).to.match(/AssertionError: potato/);
     },
