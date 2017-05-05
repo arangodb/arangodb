@@ -195,8 +195,10 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
       }
 
       if (resCode == rest::ResponseCode::OK) {
+        auto *execContext = new ExecContext(_request->user(), _request->databaseName());
         // get auth context for user - database combination
         // and set it into _request
+
         return resCode;
       }
       // fallthrough intentional

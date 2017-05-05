@@ -20,6 +20,8 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "VocBase/AuthInfo.h"
+
 namespace arangodb {
 
 class AuthContext {
@@ -27,14 +29,15 @@ class AuthContext {
     AuthContext() {}
 
   protected:
-    std::string _databaseAccess; // AuthLevel
-    std::map<std::string, std::string> _collectionAccess; // AuthLevel
+    AuthLevel _databaseAccess;
+    std::map<std::string, AuthLevel> _collectionAccess;
 
 };
 
 class ExecContext {
   public:
-    ExecContext() {}
+    ExecContext(std::string const& user, std::string const& database)
+      : _user(user), _database(database) {}
 
   protected:
     std::string _user;
