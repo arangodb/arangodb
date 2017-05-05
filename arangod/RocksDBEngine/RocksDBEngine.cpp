@@ -93,13 +93,16 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       _maxTransactionSize((std::numeric_limits<uint64_t>::max)()),
       _intermediateTransactionCommitSize(32 * 1024 * 1024),
       _intermediateTransactionCommitCount(100000),
-      _intermediateTransactionCommitEnabled(false) {
+      _intermediateTransactionCommitEnabled(false),
+      _pruneWaitTime(10.0) {
   // inherits order from StorageEngine but requires RocksDBOption that are used
   // to configure this Engine and the MMFiles PesistentIndexFeature
   startsAfter("RocksDBOption");
 }
 
-RocksDBEngine::~RocksDBEngine() { delete _db; }
+RocksDBEngine::~RocksDBEngine() {
+  delete _db; 
+}
 
 // inherited from ApplicationFeature
 // ---------------------------------
@@ -114,20 +117,24 @@ void RocksDBEngine::collectOptions(
                      "transaction size limit (in bytes)",
                      new UInt64Parameter(&_maxTransactionSize));
 
-  options->addOption("--rocksdb.intermediate-transaction-count",
+  options->addHiddenOption("--rocksdb.intermediate-transaction-count",
                      "an intermediate commit will be tried when a transaction "
                      "has accumulated operations of this size (in bytes)",
                      new UInt64Parameter(&_intermediateTransactionCommitSize));
 
-  options->addOption("--rocksdb.intermediate-transaction-count",
+  options->addHiddenOption("--rocksdb.intermediate-transaction-count",
                      "an intermediate commit will be tried when this number of "
                      "operations is reached in a transaction",
                      new UInt64Parameter(&_intermediateTransactionCommitCount));
   _intermediateTransactionCommitCount = 100 * 1000;
 
-  options->addOption(
+  options->addHiddenOption(
       "--rocksdb.intermediate-transaction", "enable intermediate transactions",
       new BooleanParameter(&_intermediateTransactionCommitEnabled));
+  
+  options->addOption(
+      "--rocksdb.wal-file-timeout", "timeout after which unused WAL files are deleted",
+      new DoubleParameter(&_pruneWaitTime));
 }
 
 // validate the storage engine's specific options
@@ -263,6 +270,10 @@ void RocksDBEngine::unprepare() {
     if (_counterManager) {
       _counterManager->sync(true);
     }
+
+    // now prune all obsolete WAL files
+    determinePrunableWalFiles(0);
+    pruneWalFiles();
 
     delete _db;
     _db = nullptr;
@@ -963,15 +974,22 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
   return it->second;
 }
 
-Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
-                                        VPackBuilder& builder) {
-  Result res;
-
+bool RocksDBEngine::syncWal() {
+#ifdef _WIN32
+  // SyncWAL always reports "not implemented" on Windows
+  return true;
+#else
   rocksdb::Status status = _db->GetBaseDB()->SyncWAL();
   if (!status.ok()) {
-    res = rocksutils::convertStatus(status).errorNumber();
-    return res;
+    return false;
   }
+  return true;
+#endif
+}
+
+Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
+                                        VPackBuilder& builder) {
+  syncWal();
 
   builder.add(VPackValue(VPackValueType::Object));  // Base
   rocksdb::SequenceNumber lastTick = _db->GetLatestSequenceNumber();
@@ -1015,10 +1033,10 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
 
   builder.close();  // base
 
-  return res;
+  return Result();
 }
 
-void RocksDBEngine::pruneWalFiles(TRI_voc_tick_t minTickToKeep) {
+void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
   rocksdb::VectorLogPtr files;
 
   auto status = _db->GetSortedWalFiles(files);
@@ -1036,17 +1054,32 @@ void RocksDBEngine::pruneWalFiles(TRI_voc_tick_t minTickToKeep) {
     }
   }
 
+  // insert all candidate files into the map of deletable files
   if (lastLess > 0 && lastLess < files.size()) {
     for (size_t current = 0; current < lastLess; current++) {
-      auto f = files[current].get();
+      auto const& f = files[current].get();
       if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-        auto s = _db->DeleteFile(f->PathName());
-        if (!s.ok()) {
-          // TODO: exception?
-          break;
-        }
+        if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+        } 
       }
     }
+  }
+}
+
+void RocksDBEngine::pruneWalFiles() {
+  // go through the map of WAL files that we have already and check if they are "expired"
+  for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end(); /* no hoisting */) {
+    // check if WAL file is expired
+    if ((*it).second < TRI_microtime()) {
+      auto s = _db->DeleteFile((*it).first);
+      if (s.ok()) {
+        it = _prunableWalFiles.erase(it);
+        continue;
+      }
+    }
+    // cannot delete this file yet... must forward iterator to prevent an endless loop
+    ++it;
   }
 }
 

@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2469: Authentication = true does not protect foxx-routes
+
 * fixed issue #2459: compile success but can not run with rocksdb
 
 * `--server.maximal-queue-size` is now an absolute maximum. If the queue is
