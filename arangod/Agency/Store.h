@@ -40,7 +40,7 @@ struct check_ret_t {
   
   check_ret_t() : success(true), failed(nullptr) {}
   
-  check_ret_t(bool s) : success(s) {}
+  explicit check_ret_t(bool s) : success(s) {}
   
   inline bool successful() const { return success; }
   
@@ -130,7 +130,12 @@ class Store : public arangodb::Thread {
   /// @brief Copy out a node
   Node get(std::string const& path = std::string("/")) const;
 
+  /// @brief Copy out a node
+  bool has(std::string const& path = std::string("/")) const;
+
   std::string toJson() const;
+
+  void clear();
 
   friend class Node;
 

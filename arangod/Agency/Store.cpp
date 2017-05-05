@@ -151,7 +151,11 @@ Store& Store::operator=(Store&& rhs) {
 }
 
 /// Default dtor
-Store::~Store() { shutdown(); }
+Store::~Store() {
+  if (!isStopping()) {
+    shutdown();
+  }
+}
 
 /// Apply array of queries multiple queries to store
 /// Return vector of according success
@@ -682,6 +686,16 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   return true;
 }
 
+
+// Clear my data
+void Store::clear() {
+  _timeTable.clear();
+  _observerTable.clear();
+  _observedTable.clear();
+  _node.clear();
+}
+
+
 /// Apply a request to my key value store
 Store& Store::operator=(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
@@ -747,6 +761,12 @@ std::multimap<std::string, std::string> const& Store::observedTable() const {
 Node Store::get(std::string const& path) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
   return _node(path);
+}
+
+/// Get node at path under mutex
+bool Store::has(std::string const& path) const {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+  return _node.has(path);
 }
 
 /// Remove ttl entry for path, guarded by caller

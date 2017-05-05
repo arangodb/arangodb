@@ -232,6 +232,9 @@ class Node {
   /// @brief Get array value
   Slice getArray() const;
 
+  /// @brief Clear key value store
+  void clear();
+
  protected:
   /// @brief Add time to live entry
   virtual bool addTimeToLive(long millis);
