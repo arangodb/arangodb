@@ -568,8 +568,8 @@ void Constituent::run() {
 
   while (
     !this->isStopping() // Obvious
-    && (!_agent->ready()
-        || find(act.begin(), act.end(), _id) == act.end())) { // Active agent 
+    && (!_agent->ready() ||
+        find(act.begin(), act.end(), _id) == act.end())) { // Active agent 
     CONDITION_LOCKER(guardv, _cv);
     _cv.wait(50000);
     act = _agent->config().active();
@@ -611,8 +611,8 @@ void Constituent::run() {
           }
         }
        
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Random timeout: " << randTimeout
-                                         << ", wait: " << randWait;
+        LOG_TOPIC(TRACE, Logger::AGENCY)
+          << "Random timeout: " << randTimeout << ", wait: " << randWait;
 
         if (randWait > 0.0) {
           CONDITION_LOCKER(guardv, _cv);
