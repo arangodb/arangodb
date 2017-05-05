@@ -11,6 +11,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
   RocksDBEngine/RocksDBExportCursor.cpp
+  RocksDBEngine/RocksDBGeoIndex.cpp
   RocksDBEngine/RocksDBGeoIndexImpl.cpp
   RocksDBEngine/RocksDBHashIndex.cpp
   RocksDBEngine/RocksDBIndex.cpp

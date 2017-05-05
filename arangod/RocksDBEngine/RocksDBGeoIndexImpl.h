@@ -29,7 +29,7 @@
 
 #include "Basics/Common.h"
 
-namespace arangodb { namespace rocks {
+namespace arangodb { namespace rocksdbengine {
 
 /* first the things that a user might want to change */
 

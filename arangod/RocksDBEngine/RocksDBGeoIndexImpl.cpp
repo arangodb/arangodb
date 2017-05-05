@@ -57,7 +57,7 @@
 #define GeoIndexFIXEDPOINTS 1
 #endif
 
-namespace arangodb { namespace rocks {
+namespace arangodb { namespace rocksdbengine {
 
 /* =================================================== */
 /*                GeoIndexFixed structure.             */
