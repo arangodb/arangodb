@@ -34,7 +34,7 @@ to_native_path("CPACK_ARANGO_LOG_DIR")
 # we wrap HDIUTIL to inject our own parameter:
 find_program(HDIUTIL_EXECUTABLE hdiutil)
 # for now 240MB seems to be enough:
-set(CMAKE_DMG_SIZE 240)
+set(CMAKE_DMG_SIZE 260)
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/hdiutilwrapper.sh.in"
   "${CMAKE_CURRENT_BINARY_DIR}/hdiutilwrapper.sh"
   @ONLY)
