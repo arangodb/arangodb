@@ -34,7 +34,7 @@ def file_content(filepath):
 
   for line in enumerate(filelines):
     if "@startDocuBlock" in line[1]:
-      # in the mdpp's we have non-terminated startDocuBlocks, else its an error:
+      # in the unprocessed md files we have non-terminated startDocuBlocks, else it is an error:
       if ((_start != None) and
           (not searchMDPPPaths[0] in filepath) and 
           (not searchMDPPPaths[1] in filepath) and 
