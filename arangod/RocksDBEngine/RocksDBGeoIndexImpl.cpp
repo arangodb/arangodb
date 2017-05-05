@@ -24,10 +24,11 @@
 /* GeoIndex.c -   GeoIndex algorithms                */
 /* Version 2.1   8.1.2012  R. A. Parker              */
 #define _USE_MATH_DEFINES
-#include <math.h>
+#include <cmath>
 #include <cstddef>
+#include <iostream>
 
-#include "RocksDBGeoIndexImpl.h"
+#include <RocksDBEngine/RocksDBGeoIndexImpl.h>
 
 /* Radius of the earth used for distances  */
 #define EARTHRADIAN 6371000.0
@@ -125,13 +126,14 @@ typedef struct {
 /* get smaller when the majority of points are deleted */
 /* =================================================== */
 typedef struct {
+  uint64_t objectId;   /* Rocksdb Index objectId    */
   GeoIndexFixed fixed; /* fixed point data          */
   int potct;           /* pots allocated            */
   int slotct;          /* slots allocated           */
-  GeoPot* ypots;        /* the pots themselves       */
-  GeoCoordinate* gxc;   /* the slots themselves      */
+  GeoPot* ypots;       /* the pots themselves       */
+  GeoCoordinate* gxc;  /* the slots themselves      */
   size_t _memoryUsed;  /* the amount of memory currently used */
-} GeoIx;
+}  GeoIx;
 /* =================================================== */
 /*              GeoDetailedPoint  structure            */
 /* The routine GeoMkDetail is given a point - really   */
@@ -251,6 +253,12 @@ typedef struct {
   int pathlength;
   int path[50];
 } GeoPath;
+}}
+
+// must be included here after struct definition
+#include <RocksDBEngine/RocksDBGeoIndexImplHelper.h>
+
+namespace arangodb { namespace rocksdbengine {
 
 /* =================================================== */
 /*                GeoIndex_Distance routine            */
@@ -359,7 +367,7 @@ int GeoIndexNewPot(GeoIx* gix) {
 /* GeoString values of real (latitude, longitude)      */
 /* points                                              */
 /* =================================================== */
-GeoIdx* GeoIndex_new(void) {
+GeoIdx* GeoIndex_new(uint64_t objectId) {
   GeoIx* gix;
   int i, j;
 
@@ -369,6 +377,8 @@ GeoIdx* GeoIndex_new(void) {
   if (gix == nullptr) {
     return (GeoIdx*)gix;
   }
+
+  gix->objectId = objectId;
 
   /* try to allocate all the things we need  */
   gix->ypots = static_cast<GeoPot*>(
@@ -732,19 +742,21 @@ void GeoSetDistance(GeoDetailedPoint* gd, double snmd) {
 }
 
 /* CRUD interface */
-int SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc)
+int SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
 {
+    //gc GeoCoordinate, element in point array of real geo index
     memcpy(gc,gix->gxc+slot,sizeof(GeoCoordinate));
-    return 0;
-}
-int PotRead(GeoIx * gix, int pot, GeoPot * gp)
-{
-    memcpy(gp,gix->ypots+pot,sizeof(GeoPot));
     return 0;
 }
 void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
 {
     memcpy(gix->gxc+slot,gc,sizeof(GeoCoordinate));
+}
+
+int PotRead(GeoIx * gix, int pot, GeoPot * gp)
+{
+    memcpy(gp,gix->ypots+pot,sizeof(GeoPot));
+    return 0;
 }
 void PotWrite(GeoIx * gix,int pot, GeoPot * gp)
 {
@@ -2251,7 +2263,8 @@ void RecursivePotDump(GeoIx* gix, FILE* f, int pot) {
   PotRead(gix,pot,&gp);
   fprintf(f, "GP. pot %d level %d  Kids %d %d\n", pot, gp.level, gp.LorLeaf,
           gp.RorPoints);
-  fprintf(f, "strings %llx %llx %llx\n", gp.start, gp.middle, gp.end);
+  fprintf(f, "strings %llx %llx %llx\n", gp.start, gp.middle, gp.end); // fixme - usage of printf is broken
+                                                                       // fast_uint64_t is not necessarily a long long
   fprintf(f, "maxdists ");
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++) fprintf(f, " %x", gp.maxdist[i]);
   fprintf(f, "\n");

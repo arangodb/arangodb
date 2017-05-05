@@ -1,11 +1,11 @@
-1.  Create new GeoIndex.
-2.  Attach to existing GeoIndex
+1.  Create new GeoIndex.               - partial
+2.  Attach to existing GeoIndex        - parital
 3.  Drop GeoIndex
 4.  Disconnect from GeoIndex
-5.  PotRead
-6.  PotWrite
-7.  SlotRead
-8.  SlotWrite
+5.  PotRead                            - partial
+6.  PotWrite                           - partial
+7.  SlotRead                           - partial
+8.  SlotWrite                          - partial
 9.  CreatePot (take the next number)
 10. CreateSlot (take the next number)
 11.	Also needs start and stop transaction routine and to use them Das sind die

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBGeoIndex.h"
@@ -278,7 +278,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
         "RocksDBGeoIndex can only be created with one or two fields.");
   }
 
-  _geoIndex = GeoIndex_new();
+  _geoIndex = GeoIndex_new(_objectId);
 
   if (_geoIndex == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -514,7 +514,7 @@ int RocksDBGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
 
 int RocksDBGeoIndex::unload() {
   // create a new, empty index
-  auto empty = GeoIndex_new();
+  auto empty = GeoIndex_new(_objectId);
 
   if (empty == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

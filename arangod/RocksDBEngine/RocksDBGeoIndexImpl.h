@@ -28,13 +28,14 @@
 #define ARANGOD_ROCKSDB_GEO_INDEX_IMPL_H 1
 
 #include "Basics/Common.h"
+#include <cstdint>
 
 namespace arangodb { namespace rocksdbengine {
 
 /* first the things that a user might want to change */
 
 /* a GeoString - a signed type of at least 64 bits   */
-typedef long long GeoString;
+typedef std::uint_fast64_t GeoString;
 
 /* percentage growth of slot or slotslot tables     */
 #define GeoIndexGROW 50
@@ -61,10 +62,10 @@ typedef long long GeoString;
 /*     only centimeters apart.  Default                */
 #define GEOFIXLEN 4
 #if GEOFIXLEN == 2
-typedef unsigned short GeoFix;
+typedef std::uint16_t GeoFix;
 #endif
 #if GEOFIXLEN == 4
-typedef unsigned int GeoFix;
+typedef std::uint32_t GeoFix;
 #endif
 
 /* If this #define is there, then the INDEXDUMP and */
@@ -73,7 +74,7 @@ typedef unsigned int GeoFix;
 /* the INDEXDUMP function also prints the data,     */
 /* assumed to be a character string, if DEBUG is    */
 /* set to 2.                                        */
-#define TRI_GEO_DEBUG 1
+//#define TRI_GEO_DEBUG 1
 
 typedef struct {
   double latitude;
@@ -92,7 +93,7 @@ typedef void GeoCursor; /* to keep the structure private  */
 
 size_t GeoIndex_MemoryUsage(void*);
 
-GeoIdx* GeoIndex_new(void);
+GeoIdx* GeoIndex_new(uint64_t objectId);
 void GeoIndex_free(GeoIdx* gi);
 double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);
 int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c);
