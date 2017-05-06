@@ -399,7 +399,7 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
     }
 
     // find a word with ':' at the end, i.e. prefix: or complete:
-    // swt ptr to the end of the word
+    // set ptr to the end of the word
     char const* split = nullptr;
     char const* start = ptr;
     while (*ptr) {
@@ -449,19 +449,19 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
     char* lowered = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, normalized,
                                      (int32_t)outLength, &outLength2);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, normalized);
-
     if (lowered == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
+    // emplace_back below may throw
+    TRI_DEFER(TRI_Free(TRI_UNKNOWN_MEM_ZONE, lowered));
 
     // calculate the proper prefix
     char* prefixEnd =
         TRI_PrefixUtf8String(lowered, TRI_FULLTEXT_MAX_WORD_LENGTH);
     ptrdiff_t prefixLength = prefixEnd - lowered;
 
-    std::string value;
-    value.append(lowered, (size_t)prefixLength);
-    query.push_back(FulltextQueryToken(value, matchType, operation));
+    query.emplace_back(std::string(lowered, (size_t)prefixLength),
+                       matchType, operation);
 
     ++i;
     if (i >= TRI_FULLTEXT_SEARCH_MAX_WORDS) {
@@ -537,9 +537,14 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
 
   std::set<std::string> intersect;
 
+  // apply left to right logic, merging all current results with ALL previous
   while (iter->Valid() && _cmp->Compare(iter->key(), bounds.end()) < 0) {
+    rocksdb::Status s = iter->status();
+    if (!s.ok()) {
+      return rocksutils::convertStatus(s);
+    }
+    
     StringRef key = RocksDBKey::primaryKey(iter->key());
-
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(key.toString());
     } else if (token.operation == FulltextQueryToken::OR) {
@@ -555,7 +560,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
     std::set_intersection(resultSet.begin(), resultSet.end(), intersect.begin(),
                           intersect.end(),
                           std::inserter(output, output.begin()));
-    resultSet = output;
+    resultSet = std::move(output);
   }
   return Result();
 }
