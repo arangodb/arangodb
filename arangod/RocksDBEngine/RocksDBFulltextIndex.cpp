@@ -490,7 +490,7 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
   ManagedDocumentResult mmdr;
   
   if (maxResults == 0) {// 0 appearantly means "all results"
-    maxResults = SIZE_T_MAX;
+    maxResults = SIZE_MAX;
   }
 
   builder.openArray();
