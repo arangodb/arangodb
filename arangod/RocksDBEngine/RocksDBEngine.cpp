@@ -101,9 +101,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
   startsAfter("RocksDBOption");
 }
 
-RocksDBEngine::~RocksDBEngine() {
-  delete _db; 
-}
+RocksDBEngine::~RocksDBEngine() { delete _db; }
 
 // inherited from ApplicationFeature
 // ---------------------------------
@@ -118,24 +116,26 @@ void RocksDBEngine::collectOptions(
                      "transaction size limit (in bytes)",
                      new UInt64Parameter(&_maxTransactionSize));
 
-  options->addHiddenOption("--rocksdb.intermediate-transaction-count",
-                     "an intermediate commit will be tried when a transaction "
-                     "has accumulated operations of this size (in bytes)",
-                     new UInt64Parameter(&_intermediateTransactionCommitSize));
+  options->addHiddenOption(
+      "--rocksdb.intermediate-transaction-count",
+      "an intermediate commit will be tried when a transaction "
+      "has accumulated operations of this size (in bytes)",
+      new UInt64Parameter(&_intermediateTransactionCommitSize));
 
-  options->addHiddenOption("--rocksdb.intermediate-transaction-count",
-                     "an intermediate commit will be tried when this number of "
-                     "operations is reached in a transaction",
-                     new UInt64Parameter(&_intermediateTransactionCommitCount));
+  options->addHiddenOption(
+      "--rocksdb.intermediate-transaction-count",
+      "an intermediate commit will be tried when this number of "
+      "operations is reached in a transaction",
+      new UInt64Parameter(&_intermediateTransactionCommitCount));
   _intermediateTransactionCommitCount = 100 * 1000;
 
   options->addHiddenOption(
       "--rocksdb.intermediate-transaction", "enable intermediate transactions",
       new BooleanParameter(&_intermediateTransactionCommitEnabled));
-  
-  options->addOption(
-      "--rocksdb.wal-file-timeout", "timeout after which unused WAL files are deleted",
-      new DoubleParameter(&_pruneWaitTime));
+
+  options->addOption("--rocksdb.wal-file-timeout",
+                     "timeout after which unused WAL files are deleted",
+                     new DoubleParameter(&_pruneWaitTime));
 }
 
 // validate the storage engine's specific options
@@ -200,6 +200,7 @@ void RocksDBEngine::start() {
       static_cast<int>(opts->_baseBackgroundCompactions);
   _options.max_background_compactions =
       static_cast<int>(opts->_maxBackgroundCompactions);
+  _options.max_background_flushes = static_cast<int>(opts->_maxFlushes);
   _options.use_fsync = opts->_useFSync;
 
   _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
@@ -210,7 +211,10 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
 
-  _options.IncreaseParallelism(static_cast<int>(TRI_numberProcessors()));
+  _options.env->SetBackgroundThreads(opts->_numThreadsHigh,
+                                     rocksdb::Env::Priority::HIGH);
+  _options.env->SetBackgroundThreads(opts->_numThreadsLow,
+                                     rocksdb::Env::Priority::LOW);
 
   _options.create_if_missing = true;
   _options.max_open_files = -1;
@@ -280,7 +284,7 @@ void RocksDBEngine::unprepare() {
     _db = nullptr;
   }
 }
-  
+
 TransactionManager* RocksDBEngine::createTransactionManager() {
   return new RocksDBTransactionManager();
 }
@@ -1060,16 +1064,19 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
       auto const& f = files[current].get();
       if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
         if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
-        } 
+          _prunableWalFiles.emplace(f->PathName(),
+                                    TRI_microtime() + _pruneWaitTime);
+        }
       }
     }
   }
 }
 
 void RocksDBEngine::pruneWalFiles() {
-  // go through the map of WAL files that we have already and check if they are "expired"
-  for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end(); /* no hoisting */) {
+  // go through the map of WAL files that we have already and check if they are
+  // "expired"
+  for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end();
+       /* no hoisting */) {
     // check if WAL file is expired
     if ((*it).second < TRI_microtime()) {
       auto s = _db->DeleteFile((*it).first);
@@ -1078,7 +1085,8 @@ void RocksDBEngine::pruneWalFiles() {
         continue;
       }
     }
-    // cannot delete this file yet... must forward iterator to prevent an endless loop
+    // cannot delete this file yet... must forward iterator to prevent an
+    // endless loop
     ++it;
   }
 }
