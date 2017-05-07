@@ -1203,12 +1203,30 @@ exception from the GPL license:
 * Project Home: https://github.com/Raynos/xtend
 * License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/xtend/package.json)
 
+### Backend libraries
+
+#### jshint
+
+* Project Home: http://jshint.com
+* GITHUB: https://github.com/jshint/jshint
+* License: [free as-is license](https://github.com/jshint/jshint/blob/master/LICENSE))
+
+#### JSUnity
+
+* GitHub: https://github.com/atesgoral/jsunity
+* License: [MIT License](https://github.com/atesgoral/jsunity/blob/master/LICENSE.txt)
+
 ### Frontend libraries
+
+#### Ace
+
+* GitHub: https://github.com/ajaxorg/ace
+* License: [BSD-style 3-Clause License](https://github.com/ajaxorg/ace/blob/master/LICENSE)
 
 #### Animate.css
 
-* https://github.com/daneden/animate.css
-* [MIT License](https://github.com/daneden/animate.css) under "License"
+* GitHub: https://github.com/daneden/animate.css
+* License: [MIT License](https://github.com/daneden/animate.css) under "License"
 
 #### Backbone.js
 
@@ -1243,11 +1261,6 @@ exception from the GPL license:
 
 * Project Home: http://www.embeddedjs.com
 * License: [MIT License](http://www.embeddedjs.com/) under Highlights
-
-#### prettyBytes.js
-
-* GitHub: https://github.com/sindresorhus/pretty-bytes
-* License: [MIT License](https://github.com/sindresorhus/pretty-bytes/blob/master/license)
 
 #### Jasmine
 
@@ -1313,6 +1326,11 @@ exception from the GPL license:
 * GitHub: https://github.com/josdejong/jsoneditor/
 * License: [Apache 2 License](https://github.com/josdejong/jsoneditor/blob/master/LICENSE)
 
+#### Moment.js
+
+* GitHub: https://github.com/moment/moment/
+* License: [MIT License](https://github.com/moment/moment/blob/develop/LICENSE)
+
 #### nvd3
 
 * GitHub: https://github.com/novus/nvd3
@@ -1320,18 +1338,28 @@ exception from the GPL license:
 
 #### Noty
 
-* https://github.com/needim/noty/
-* [MIT License](https://github.com/needim/noty) under "License"
+* GitHub: https://github.com/needim/noty/
+* License: [MIT License](https://github.com/needim/noty) under "License"
+
+#### Numeral.js
+
+* GitHub: https://github.com/adamwdraper/Numeral-js
+* License: [MIT License](https://github.com/adamwdraper/Numeral-js/blob/master/LICENSE)
+
+#### prettyBytes.js
+
+* GitHub: https://github.com/sindresorhus/pretty-bytes
+* License: [MIT License](https://github.com/sindresorhus/pretty-bytes/blob/master/license)
 
 #### select2
 
 * GitHub: https://github.com/select2/select2
 * License: [MIT License](https://github.com/select2/select2/blob/master/LICENSE.md)
 
-#### Numeral.js
+#### sigma.js
 
-* GitHub: https://github.com/adamwdraper/Numeral-js
-* License: [MIT License](https://github.com/adamwdraper/Numeral-js/blob/master/LICENSE)
+* GitHub: https://github.com/jacomyal/sigma.js
+* License: [MIT License](https://github.com/jacomyal/sigma.js/blob/master/LICENSE.txt)
 
 #### Swagger UI
 
@@ -1339,22 +1367,12 @@ exception from the GPL license:
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
 
-#### sigma.js
+#### tippyjs.js
 
-* GitHub: https://github.com/jacomyal/sigma.js
-* License: [MIT License](https://github.com/jacomyal/sigma.js/blob/master/LICENSE.txt)
+* GitHub: https://github.com/atomiks/tippyjs
+* License: [MIT License](https://github.com/atomiks/tippyjs/blob/master/LICENSE)
 
 #### wheelnav.js
 
 * GitHub: https://github.com/softwaretailoring/wheelnav
 * License: [MIT License](https://github.com/softwaretailoring/wheelnav/blob/master/LICENSE)
-
-#### Moment.js
-
-* GitHub: https://github.com/moment/moment/
-* License: [MIT License](https://github.com/moment/moment/blob/develop/LICENSE)
-
-#### tippyjs.js
-
-* GitHub: https://github.com/atomiks/tippyjs
-* License: [MIT License](https://github.com/atomiks/tippyjs/blob/master/LICENSE)
