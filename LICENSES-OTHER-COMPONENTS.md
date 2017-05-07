@@ -29,12 +29,12 @@
 
 ### fpconv_dtoa
 
-* GitHub: https://github.com/night-shift/fpconv/
+* Project Home: https://github.com/night-shift/fpconv/
 * License: [MIT License](https://github.com/night-shift/fpconv/blob/master/license)
 
 ### Google V8 5.7.0.0
 
-* GitHub: https://github.com/v8/v8
+* Project Home: https://github.com/v8/v8
 * License: V8 [BSD-style 3-Clause License](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v5.7.0.0/LICENSE.v8)
 * License: strongtalk [BSD-style 3-Clause License](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v5.7.0.0/LICENSE.strongtalk)
 * License: valgrind [BSD-style 4-Clause license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v5.7.0.0/LICENSE.valgrind)
