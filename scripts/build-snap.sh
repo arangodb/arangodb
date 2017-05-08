@@ -29,6 +29,7 @@ cd ${DIR}/..
     --snap \
     --buildDir build-${EP}snap \
     --targetDir /var/tmp/ \
+    --downloadStarter \
     --noopt \
     $@
 

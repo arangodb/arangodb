@@ -417,16 +417,20 @@ void Constituent::callElection() {
        << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
        << "&prevLogTerm=" << _agent->lastLog().term;
 
+  auto cc = ClusterComm::instance();
+
   // Ask everyone for their vote
   for (auto const& i : active) {
     if (i != _id) {
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
-      ClusterComm::instance()->asyncRequest(
-        "", coordinatorTransactionID, _agent->config().poolAt(i),
-        rest::RequestType::GET, path.str(),
-        std::make_shared<std::string>(body), headerFields,
-        nullptr, 0.9 * _agent->config().minPing(), true);
+      if (!isStopping() && cc != nullptr) {
+         cc->asyncRequest(
+          "", coordinatorTransactionID, _agent->config().poolAt(i),
+          rest::RequestType::GET, path.str(),
+          std::make_shared<std::string>(body), headerFields,
+          nullptr, 0.9 * _agent->config().minPing(), true);
+      }
     }
   }
 
@@ -447,33 +451,35 @@ void Constituent::callElection() {
       follow(_term);        
       break;
     }
-    
-    auto res = ClusterComm::instance()->wait(
-      "", coordinatorTransactionID, 0, "",
-      duration<double>(timeout - steady_clock::now()).count());
 
-    if (res.status == CL_COMM_SENT) {
-      auto body = res.result->getBodyVelocyPack();
-      VPackSlice slc = body->slice();
+    if (!isStopping() && cc != nullptr) {
+      auto res = ClusterComm::instance()->wait(
+        "", coordinatorTransactionID, 0, "",
+        duration<double>(timeout - steady_clock::now()).count());
       
-      // Got ballot
-      if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
+      if (res.status == CL_COMM_SENT) {
+        auto body = res.result->getBodyVelocyPack();
+        VPackSlice slc = body->slice();
         
-        // Follow right away?
-        term_t t = slc.get("term").getUInt();
-        if (t > _term) {
-          follow(t);
-          break;
-        }
-        
-        // Check result and counts
-        if(slc.get("voteGranted").getBool()) { // majority in favour?
-          if (++yea >= majority) {
-            lead(savedTerm);
+        // Got ballot
+        if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
+          
+          // Follow right away?
+          term_t t = slc.get("term").getUInt();
+          if (t > _term) {
+            follow(t);
             break;
           }
-          // Vote is counted as yea, continue loop
-          continue;
+          
+          // Check result and counts
+          if(slc.get("voteGranted").getBool()) { // majority in favour?
+            if (++yea >= majority) {
+              lead(savedTerm);
+              break;
+            }
+            // Vote is counted as yea, continue loop
+            continue;
+          }
         }
       }
     }
@@ -482,15 +488,17 @@ void Constituent::callElection() {
       follow(_term);
       break;
     }
-
+    
   }
-
+  
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Election: Have received " << yea << " yeas and " << nay << " nays, the "
     << (yea >= majority ? "yeas" : "nays") << " have it.";
-
+  
   // Clean up
-  ClusterComm::instance()->drop("", coordinatorTransactionID, 0, "");
+  if (!isStopping() && cc != nullptr) {
+    ClusterComm::instance()->drop("", coordinatorTransactionID, 0, "");
+  }
   
 }
 
@@ -568,8 +576,8 @@ void Constituent::run() {
 
   while (
     !this->isStopping() // Obvious
-    && (!_agent->ready()
-        || find(act.begin(), act.end(), _id) == act.end())) { // Active agent 
+    && (!_agent->ready() ||
+        find(act.begin(), act.end(), _id) == act.end())) { // Active agent 
     CONDITION_LOCKER(guardv, _cv);
     _cv.wait(50000);
     act = _agent->config().active();
@@ -611,8 +619,8 @@ void Constituent::run() {
           }
         }
        
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Random timeout: " << randTimeout
-                                         << ", wait: " << randWait;
+        LOG_TOPIC(TRACE, Logger::AGENCY)
+          << "Random timeout: " << randTimeout << ", wait: " << randWait;
 
         if (randWait > 0.0) {
           CONDITION_LOCKER(guardv, _cv);

@@ -244,7 +244,7 @@ void Thread::shutdown() {
   if (_state.load() == ThreadState::STARTED) {
     beginShutdown();
 
-    if (!isSilent()) {
+    if (!isSilent() && _state.load() != ThreadState::STOPPING) {
       LOG_TOPIC(WARN, Logger::THREADS) << "forcefully shutting down thread '"
                                        << _name << "' in state "
                                        << stringify(_state.load());

@@ -1,4 +1,5 @@
 message("enabling MacOSX 'Bundle' package")
+
 if (${USE_ENTERPRISE})
   set(CPACK_PACKAGE_NAME           "ArangoDB3e-CLI")
 else()
@@ -12,6 +13,7 @@ configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist.in" 
 set(CPACK_BUNDLE_PLIST           "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
 
 set(CPACK_BUNDLE_PREFIX          "Contents/MacOS")
+set(CPACK_BUNDLE_APPLE_CERT_APP  "Developer ID Application: ArangoDB GmbH (W7UC4UQXPV)")
 set(CPACK_INSTALL_PREFIX         "${CPACK_PACKAGE_NAME}.app/${CPACK_BUNDLE_PREFIX}${CMAKE_INSTALL_PREFIX}")
 
 set(INST_USR_LIBDIR "/Library/ArangoDB")
@@ -29,9 +31,20 @@ to_native_path("CPACK_ARANGO_DATA_DIR")
 to_native_path("CPACK_ARANGO_STATE_DIR")
 to_native_path("CPACK_ARANGO_LOG_DIR")
 
+# we wrap HDIUTIL to inject our own parameter:
+find_program(HDIUTIL_EXECUTABLE hdiutil)
+# for now 240MB seems to be enough:
+set(CMAKE_DMG_SIZE 260)
+configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/hdiutilwrapper.sh.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/hdiutilwrapper.sh"
+  @ONLY)
+set(CPACK_COMMAND_HDIUTIL "${CMAKE_CURRENT_BINARY_DIR}/hdiutilwrapper.sh")
+
+
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh.in"
   "${CMAKE_CURRENT_BINARY_DIR}/arangodb-cli.sh"
   @ONLY)
+
 
 set(CPACK_BUNDLE_STARTUP_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/arangodb-cli.sh")
 

@@ -32,8 +32,13 @@ if(SNAPCRAFT_FOUND)
     DESTINATION "${SNAPCRAFT_SOURCE_DIR}/"
     )
 
+snapcraft clean arangodb3 -s pull
+
+arangodb3
+  
   add_custom_target(snap
     COMMENT "create snap-package"
+    COMMAND ${SNAP_EXE} clean ${CPACK_PACKAGE_NAME}
     COMMAND ${SNAP_EXE} snap
     COMMAND ${CMAKE_COMMAND} -E copy ${SNAPCRAFT_SOURCE_DIR}/${CPACK_PACKAGE_NAME}_${CPACK_PACKAGE_VERSION}*_${ARANGODB_PACKAGE_ARCHITECTURE}.snap ${PROJECT_BINARY_DIR}
     DEPENDS TGZ_package

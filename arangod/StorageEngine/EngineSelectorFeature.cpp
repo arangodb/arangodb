@@ -41,8 +41,9 @@ EngineSelectorFeature::EngineSelectorFeature(
     : ApplicationFeature(server, "EngineSelector"), _engine("auto") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
   startsAfter("DatabasePath");
+  startsAfter("Greetings");
+  startsAfter("Logger");
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -55,7 +56,7 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 
 void EngineSelectorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // engine from command line
-  if(_engine == "auto"){
+  if (_engine == "auto") {
     _engine = MMFilesEngine::EngineName;
   }
 }
@@ -68,7 +69,7 @@ void EngineSelectorFeature::prepare() {
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "looking for previously selected engine in file '" << _engineFilePath << "'";
 
   // file if engine in file does not match command-line option
-  if (basics::FileUtils::isRegularFile(_engineFilePath)){
+  if (basics::FileUtils::isRegularFile(_engineFilePath)) {
     std::string content = basics::FileUtils::slurp(_engineFilePath);
     if (content != _engine) {
       LOG_TOPIC(FATAL, Logger::STARTUP) << "content of 'ENGINE' file '" << _engineFilePath << "' and command-line/configuration option value do not match: '" << content << "' != '" << _engine << "'. please validate the command-line/configuration option value of '--server.storage-engine' or use a different database directory if the change is intentional";
@@ -99,8 +100,8 @@ void EngineSelectorFeature::prepare() {
 }
 
 void EngineSelectorFeature::start() {
-  //write engine File
-  if(!basics::FileUtils::isRegularFile(_engineFilePath)){
+  // write engine File
+  if (!basics::FileUtils::isRegularFile(_engineFilePath)) {
     try {
       basics::FileUtils::spit(_engineFilePath, _engine);
     } catch (std::exception const& ex) {

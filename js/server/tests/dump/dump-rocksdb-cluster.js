@@ -184,7 +184,7 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      assertEqual(7, c.getIndexes().length); 
+      assertEqual(8, c.getIndexes().length); 
       assertEqual("primary", c.getIndexes()[0].type);
 
       assertEqual("hash", c.getIndexes()[1].type);
@@ -217,6 +217,10 @@ function dumpTestSuite () {
       assertTrue(c.getIndexes()[6].sparse);
       assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[6].fields);
       
+      assertFalse(c.getIndexes()[7].unique);
+      assertEqual("fulltext", c.getIndexes()[7].type);
+      assertEqual([ "a_f" ], c.getIndexes()[7].fields);
+
       assertEqual(0, c.count());
     },
 

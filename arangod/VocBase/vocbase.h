@@ -210,6 +210,9 @@ struct TRI_vocbase_t {
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
   getReplicationClients();
+  /// garbage collect replication clients
+  void garbageCollectReplicationClients(double ttl);
+  
   TRI_replication_applier_t* replicationApplier() const {
     return _replicationApplier.get();
   }

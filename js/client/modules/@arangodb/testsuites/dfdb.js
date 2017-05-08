@@ -41,6 +41,10 @@ const pu = require('@arangodb/process-utils');
 function dfdb (options) {
   const dataDir = fs.getTempFile();
   const args = ['-c', fs.join(pu.CONFIG_DIR, 'arango-dfdb.conf'), dataDir];
+  if (options.storageEngine !== undefined) {
+    args.push('--server.storage-engine');
+    args.push(options.storageEngine);
+  }
 
   fs.makeDirectoryRecursive(dataDir);
   let results = { failed: 0 };

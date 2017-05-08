@@ -27,6 +27,8 @@
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -34,13 +36,6 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "v8-replication.h"
 
-// FIXME to be removed (should be storage engine independent - get it working now)
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/mmfiles-replication-dump.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
@@ -62,42 +57,16 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  if(engineName == "mmfiles"){
-    v8::Handle<v8::Object> state = v8::Object::New(isolate);
-    MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
-    state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
-    state->Set(TRI_V8_ASCII_STRING("lastLogTick"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
-    state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
-    state->Set(TRI_V8_ASCII_STRING("totalEvents"),
-             v8::Number::New(isolate, static_cast<double>(s.numEvents + s.numEventsSync)));
-    state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
-    result->Set(TRI_V8_ASCII_STRING("state"), state);
-
-    v8::Handle<v8::Object> server = v8::Object::New(isolate);
-    server->Set(TRI_V8_ASCII_STRING("version"),
-                TRI_V8_ASCII_STRING(ARANGODB_VERSION));
-    server->Set(TRI_V8_ASCII_STRING("serverId"),
-                TRI_V8_STD_STRING(StringUtils::itoa(ServerIdFeature::getId())));
-    result->Set(TRI_V8_ASCII_STRING("server"), server);
-
-    v8::Handle<v8::Object> clients = v8::Object::New(isolate);
-    result->Set(TRI_V8_ASCII_STRING("clients"), clients);
-  } else if (engineName == "rocksdb") {
-    VPackBuilder builder;
-    auto res = rocksutils::globalRocksEngine()->createLoggerState(nullptr,builder);
-    if(res.fail()){
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-    v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
-    result = v8::Handle<v8::Object>::Cast(resultValue);
-  } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  VPackBuilder builder;
+  auto res = engine->createLoggerState(nullptr,builder);
+  if(res.fail()){
+    TRI_V8_THROW_EXCEPTION(res);
   }
+  v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
+  result = v8::Handle<v8::Object>::Cast(resultValue);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -112,61 +81,16 @@ static void JS_TickRangesLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   v8::Handle<v8::Array> result;
-  
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  if(engineName == "mmfiles"){
-    auto const& ranges = MMFilesLogfileManager::instance()->ranges();
-    result = v8::Array::New(isolate, (int)ranges.size());
-    
-    uint32_t i = 0;
-    
-    for (auto& it : ranges) {
-      v8::Handle<v8::Object> df = v8::Object::New(isolate);
-      
-      df->ForceSet(TRI_V8_ASCII_STRING("datafile"), TRI_V8_STD_STRING(it.filename));
-      df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(it.state));
-      df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMin));
-      df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMax));
-      
-      result->Set(i++, df);
-    }
-  } else if (engineName == "rocksdb") {
-    rocksdb::TransactionDB *tdb = rocksutils::globalRocksDB();
-    rocksdb::VectorLogPtr walFiles;
-    rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
-    if (!s.ok()) {
-      Result r = rocksutils::convertStatus(s);
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
-    
-    result = v8::Array::New(isolate, (int)walFiles.size());
-    for(uint32_t i = 0; i < walFiles.size(); i++) {
-      std::unique_ptr<rocksdb::LogFile>& logfile = walFiles[i];
-      
-      v8::Handle<v8::Object> df = v8::Object::New(isolate);
-      df->ForceSet(TRI_V8_ASCII_STRING("datafile"), TRI_V8_STD_STRING(logfile->PathName()));
-      // setting state of each file
-      if (logfile->Type() == rocksdb::WalFileType::kAliveLogFile) {
-        df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STRING("open"));
-      } else if (logfile->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-        df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STRING("collected"));
-      }
-      rocksdb::SequenceNumber min = logfile->StartSequence();
-      df->ForceSet(TRI_V8_ASCII_STRING("tickMin"),
-                   TRI_V8UInt64String<TRI_voc_tick_t>(isolate, min));
-      
-      rocksdb::SequenceNumber max = UINT64_MAX;
-      if (i+1 < walFiles.size()) {
-        max = walFiles[i+1]->StartSequence();
-      }
-      df->ForceSet(TRI_V8_ASCII_STRING("tickMax"),
-                   TRI_V8UInt64String<rocksdb::SequenceNumber>(isolate, max));
-      
-      result->Set(i++, df);
-    }
-  } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
-  }
+
+  VPackBuilder builder;
+  Result res = EngineSelectorFeature::ENGINE->createTickRanges(builder);
+  if(res.fail()){
+    TRI_V8_THROW_EXCEPTION(res);
+   }
+
+  v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
+  result = v8::Handle<v8::Array>::Cast(resultValue);
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -181,35 +105,11 @@ static void JS_FirstTickLoggerReplication(
   v8::HandleScope scope(isolate);
 
   TRI_voc_tick_t tick = UINT64_MAX;
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  if(engineName == "mmfiles"){
-    auto const& ranges = MMFilesLogfileManager::instance()->ranges();
-    
-    
-    for (auto& it : ranges) {
-      if (it.tickMin == 0) {
-        continue;
-      }
-      
-      if (it.tickMin < tick) {
-        tick = it.tickMin;
-      }
-    }
-  } else if (engineName == "rocksdb") {
-    rocksdb::TransactionDB *tdb = rocksutils::globalRocksDB();
-    rocksdb::VectorLogPtr walFiles;
-    rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
-    if (!s.ok()) {
-      Result r = rocksutils::convertStatus(s);
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
-    // read minium possible tick
-    if (!walFiles.empty()) {
-      tick = walFiles[0]->StartSequence();
-    }
-  } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  Result res  = EngineSelectorFeature::ENGINE->firstTick(tick);
+  if(res.fail()){
+    TRI_V8_THROW_EXCEPTION(res);
   }
+
   if (tick == UINT64_MAX) {
     TRI_V8_RETURN(v8::Null(isolate));
   }
@@ -222,72 +122,39 @@ static void JS_FirstTickLoggerReplication(
 /// @brief get the last WAL entries
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LastLoggerReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-  
+
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-                                 "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
+
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
   if (tickEnd <= tickStart) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-                                 "tickStart < tickEnd");
+    TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
-  
-  
-  v8::Handle<v8::Value> result;
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  if(engineName == "mmfiles"){
-    auto transactionContext = std::make_shared<transaction::StandaloneContext>(vocbase);
-    
-    MMFilesReplicationDumpContext dump(transactionContext, 0, true, 0);
-    
-    
-    int res = MMFilesDumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
-                                        0, tickStart, tickEnd, true);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-    // parsing JSON
-    VPackParser parser;
-    parser.parse(dump._buffer->_buffer);
-    result = TRI_VPackToV8(isolate, VPackSlice(parser.start()));
 
-  } else if (engineName == "rocksdb") {
-    bool includeSystem = true;
-    size_t chunkSize = 32 * 1024 * 1024; // TODO: determine good default value?
-    
-    // construct vocbase with proper handler
-    std::shared_ptr<transaction::Context> transactionContext =
-    transaction::StandaloneContext::Create(vocbase);
-    VPackBuilder builder(transactionContext->getVPackOptions());
-    
-    builder.openArray();
-    RocksDBReplicationResult rep = rocksutils::tailWal(vocbase, tickStart,
-                                                       tickEnd, chunkSize,
-                                                       includeSystem, 0, builder);
-    builder.close();
-    
-    if (rep.ok()) {
-      result = TRI_VPackToV8(isolate, builder.slice(),
-                             transactionContext->getVPackOptions());
-    } else {
-      result = v8::Null(isolate);
-    }
-  } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  auto transactionContext = transaction::StandaloneContext::Create(vocbase);
+  auto builderSPtr = std::make_shared<VPackBuilder>();
+  Result res = EngineSelectorFeature::ENGINE->lastLogger(
+    vocbase, transactionContext, tickStart, tickEnd, builderSPtr);
+
+  v8::Handle<v8::Value> result;
+  if(res.fail()){
+    result = v8::Null(isolate);
+    TRI_V8_THROW_EXCEPTION(res);
   }
+
+  result = TRI_VPackToV8(isolate, builderSPtr->slice(),
+                         transactionContext->getVPackOptions());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

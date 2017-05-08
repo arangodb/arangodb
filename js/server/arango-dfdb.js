@@ -33,24 +33,25 @@ var fs = require("fs");
 
 var printf = internal.printf;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unload a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 function UnloadCollection (collection) {
-  var last = Math.round(internal.time());
+  var tries = 0;
 
   // unload collection if not yet unloaded (2) & not corrupted (0)
   while (collection.status() !== 2 && collection.status() !== 0) {
     collection.unload();
 
-    var next = Math.round(internal.time());
-
-    if (next !== last) {
-      printf("Trying to unload collection '%s'\n", collection.name());
-      last = next;
+    if (++tries >= 20) {
+      break;
     }
+    if (tries == 1) {
+      printf("Trying to unload collection '%s', current status: %s\n", collection.name(), collection.status());
+    }
+
+    internal.wait(1, true);
   }
 }
 
@@ -490,6 +491,18 @@ function CheckCollection (collection, issues, details) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
+  printf("%s\n", "    ___      _         __ _ _           ___  ___    ___ ");
+  printf("%s\n", "   /   \\__ _| |_ __ _ / _(_) | ___     /   \\/ __\\  / _ \\");
+  printf("%s\n", "  / /\\ / _` | __/ _` | |_| | |/ _ \\   / /\\ /__\\// / /_\\/");
+  printf("%s\n", " / /_// (_| | || (_| |  _| | |  __/  / /_// \\/  \\/ /_\\\\ ");
+  printf("%s\n", "/___,' \\__,_|\\__\\__,_|_| |_|_|\\___| /___,'\\_____/\\____/ ");
+  printf("\n");
+  
+  if (!internal.db._engine().supports.dfdb) {
+    printf("\ndfdb is not usable with this storage engine.\n");
+    return;
+  }
+
   var databases = internal.db._databases();
   var i;
 
@@ -504,13 +517,6 @@ function main (argv) {
     return 0;
   };
 
-  printf("%s\n", "    ___      _         __ _ _           ___  ___    ___ ");
-  printf("%s\n", "   /   \\__ _| |_ __ _ / _(_) | ___     /   \\/ __\\  / _ \\");
-  printf("%s\n", "  / /\\ / _` | __/ _` | |_| | |/ _ \\   / /\\ /__\\// / /_\\/");
-  printf("%s\n", " / /_// (_| | || (_| |  _| | |  __/  / /_// \\/  \\/ /_\\\\ ");
-  printf("%s\n", "/___,' \\__,_|\\__\\__,_|_| |_|_|\\___| /___,'\\_____/\\____/ ");
-  printf("\n");
-  
   var pad = function (s, l) {
     if (s.length < l) {
       s += Array(l - s.length).join(" ");
@@ -667,5 +673,3 @@ function main (argv) {
     printf("\nNo issues found.\n");
   }
 }
-
-

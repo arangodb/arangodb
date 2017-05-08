@@ -60,7 +60,7 @@ class ListenTask : virtual public rest::Task {
 
   boost::asio::io_service* _ioService;
 
-  std::unique_ptr<Acceptor> _acceptor;
+  std::shared_ptr<Acceptor> _acceptor;
 
   std::function<void(boost::system::error_code const&)> _handler;
 };

@@ -108,7 +108,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   ~RocksDBVPackIndex();
 
- public:
   bool hasSelectivityEstimate() const override { return true; }
 
   double selectivityEstimate(
@@ -178,6 +177,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  
+  int cleanup() override;
 
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,

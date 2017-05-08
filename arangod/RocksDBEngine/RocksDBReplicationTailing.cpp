@@ -73,7 +73,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       : _vocbase(vocbase),
         _includeSystem(includeSystem),
         _onlyCollectionId(collectionId),
-        _builder(builder) {}
+        _builder(builder),
+        _currentSequence(0) {}
 
   void LogData(rocksdb::Slice const& blob) override {
     RocksDBLogType type = RocksDBLogValue::type(blob);

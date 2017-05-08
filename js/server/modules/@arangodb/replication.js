@@ -50,7 +50,7 @@ logger.state = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return the tick ranges provided by the replication logger 
+// / @brief return the tick ranges provided by the replication logger
 // //////////////////////////////////////////////////////////////////////////////
 
 logger.tickRanges = function () {
@@ -183,7 +183,7 @@ function serverId () {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief finishes off a synchronization of a single collection
 // / `collection` is the name of a collection on the other server that should
-// / have been synchronized using syncCollection (incremental or not) 
+// / have been synchronized using syncCollection (incremental or not)
 // / recently. `from` is the tick as a string of that synchronization.
 // / `config` can contain the following attributes:
 // /   - "endpoint": endpoint of the other server
@@ -212,7 +212,8 @@ var mType = {
 
 function syncCollectionFinalize (database, collname, from, config) {
   var url = endpointToURL(config.endpoint) + '/_db/' + database +
-    '/_api/replication/logger-follow?collection=' + collname + '&from=';
+    '/_api/replication/logger-follow?collection=' + collname + '&serverId=' +
+    serverId() + '&from=';
 
   var coll = require('internal').db[collname];
 

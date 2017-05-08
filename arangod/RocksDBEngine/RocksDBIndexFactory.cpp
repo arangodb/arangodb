@@ -28,6 +28,7 @@
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
 #include "RocksDBEngine/RocksDBPersistentIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -210,6 +211,28 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
   return res;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexFulltext(VPackSlice const definition,
+                                    VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(definition, builder, 1, create);
+  if (res == TRI_ERROR_NO_ERROR) {
+    // handle "minLength" attribute
+    int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
+    VPackSlice minLength = definition.get("minLength");
+    if (minLength.isNumber()) {
+      minWordLength = minLength.getNumericValue<int>();
+    } else if (!minLength.isNull() && !minLength.isNone()) {
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+    builder.add("minLength", VPackValue(minWordLength));
+  }
+  return res;
+}
+
 int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
                                                 VPackBuilder& enhanced,
                                                 bool create, bool isCoordinator) const {
@@ -300,6 +323,10 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
         res = EnhanceJsonIndexPersistent(definition, enhanced, create);
         break;
+        
+      case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
+        res = EnhanceJsonIndexFulltext(definition, enhanced, create);
+        break;
 
       case Index::TRI_IDX_TYPE_UNKNOWN:
       default: {
@@ -331,13 +358,13 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     if (generateKey) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid index type definition");
     }
   }
 
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
+  std::string const typeString = value.copyString();
+  arangodb::Index::IndexType const type = arangodb::Index::type(typeString);
 
   std::shared_ptr<Index> newIdx;
 
@@ -401,10 +428,15 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       newIdx.reset(new arangodb::RocksDBPersistentIndex(iid, col, info));
       break;
     }
+    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
+      newIdx.reset(new arangodb::RocksDBFulltextIndex(iid, col, info));
+      break;
+    }
 
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     default: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
+      std::string msg = "invalid or unsupported index type '" + typeString + "'";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, msg);
     }
   }
 
@@ -433,5 +465,5 @@ void RocksDBIndexFactory::fillSystemIndexes(
 
 std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
   return std::vector<std::string>{"primary", "edge", "hash", "skiplist",
-                                  "persistent"};
+                                  "persistent", "fulltext"};
 }

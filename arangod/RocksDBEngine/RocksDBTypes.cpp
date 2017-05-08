@@ -89,6 +89,13 @@ static rocksdb::Slice ReplicationApplierConfig(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &replicationApplierConfig),
     1);
+
+static RocksDBEntryType fulltextIndexValue =
+    RocksDBEntryType::FulltextIndexValue;
+static rocksdb::Slice FulltextIndexValue(
+     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &fulltextIndexValue),
+     1);
 }
 
 rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
@@ -115,6 +122,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return SettingsValue;
     case RocksDBEntryType::ReplicationApplierConfig:
       return ReplicationApplierConfig;
+    case RocksDBEntryType::FulltextIndexValue:
+      return FulltextIndexValue;
   }
 
   return Document;  // avoids warning - errorslice instead ?!

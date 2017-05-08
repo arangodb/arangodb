@@ -38,9 +38,9 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionManager.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/TransactionManager.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
@@ -114,6 +114,11 @@ RocksDBTransactionState::~RocksDBTransactionState() {
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type)
                                << " transaction";
+   
+  if (_nestingLevel == 0) { 
+    // set hints
+    _hints = hints;
+  }
 
   Result result = useCollections(_nestingLevel);
 
@@ -141,8 +146,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     // register a protector
     auto data =
         std::make_unique<RocksDBTransactionData>();  // intentionally empty
-    TransactionManagerFeature::MANAGER->registerTransaction(_id,
-                                                            std::move(data));
+    TransactionManagerFeature::manager()->registerTransaction(_id,
+                                                              std::move(data));
 
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(_cacheTx == nullptr);
@@ -165,7 +170,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
           RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
       _rocksTransaction->PutLogData(header.slice());
     }
-
+    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }

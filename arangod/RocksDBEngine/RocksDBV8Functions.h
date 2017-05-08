@@ -24,7 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_V8_FUNCTIONS_H
 #define ARANGOD_ROCKSDB_ROCKSDB_V8_FUNCTIONS_H 1
 
-#include "Aql/Functions.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 

@@ -26,13 +26,13 @@
 #include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionManager.h"
 #include "Transaction/ContextData.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/TransactionManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -81,7 +81,7 @@ transaction::Context::Context(TRI_vocbase_t* vocbase)
 transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
-    TransactionManagerFeature::MANAGER->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
+    TransactionManagerFeature::manager()->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
   }
 
   // free all VPackBuilders we handed out

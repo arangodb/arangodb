@@ -47,6 +47,7 @@ class PhysicalCollection;
 class PhysicalView;
 class Result;
 class TransactionCollection;
+class TransactionManager;
 class TransactionState;
 class InitialSyncer;
 
@@ -55,10 +56,12 @@ class RestHandlerFactory;
 }
 
 namespace transaction {
+class Context;
 class ContextData;
 }
 
 class StorageEngine : public application_features::ApplicationFeature {
+
  public:
 
   // create the storage engine
@@ -85,6 +88,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void start() {}
   virtual void stop() {}
 
+  virtual bool supportsDfdb() const = 0;
+
+  virtual TransactionManager* createTransactionManager() = 0;
   virtual transaction::ContextData* createTransactionContextData() = 0;
   virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
@@ -212,7 +218,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   /// @brief function to be run when recovery is done
   virtual void recoveryDone(TRI_vocbase_t* vocbase) {}
-
 
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
@@ -415,11 +420,19 @@ class StorageEngine : public application_features::ApplicationFeature {
                           std::string const& collectionName,
                           TRI_voc_tick_t maxTick,
                           std::string& errorMsg) = 0;
-  
+  virtual Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) = 0;
+  virtual Result createTickRanges(VPackBuilder& builder) = 0;
+  virtual Result firstTick(uint64_t& tick) = 0;
+  virtual Result lastLogger(TRI_vocbase_t* vocbase
+                           ,std::shared_ptr<transaction::Context>
+                           ,uint64_t tickStart, uint64_t tickEnd
+                           ,std::shared_ptr<VPackBuilder>& builderSPtr) = 0;
+
   void getCapabilities(VPackBuilder& builder) const {
     builder.openObject();
     builder.add("name", VPackValue(typeName()));
     builder.add("supports", VPackValue(VPackValueType::Object));
+    builder.add("dfdb", VPackValue(supportsDfdb()));
     builder.add("indexes", VPackValue(VPackValueType::Array));
 
     for (auto const& it : indexFactory()->supportedIndexes()) {
@@ -429,6 +442,11 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.close(); // indexes
     builder.close(); // supports
     builder.close(); // object
+  }
+  
+  virtual void getStatistics(VPackBuilder& builder) const {
+    builder.openObject();
+    builder.close();
   }
 
  protected:

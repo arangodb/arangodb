@@ -249,9 +249,9 @@ void TRI_vocbase_t::registerView(bool doLock,
       if (!it2.second) {
         _viewsByName.erase(name);
 
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "duplicate view identifier "
-                                                << view->id() << " for name '"
-                                                << name << "'";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "duplicate view identifier " << view->id() << " for name '"
+            << name << "'";
 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
       }
@@ -530,9 +530,9 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   }
 
   std::string const colName(collection->name());
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown collection status "
-                                          << collection->status() << " for '"
-                                          << colName << "'";
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "unknown collection status " << collection->status() << " for '"
+      << colName << "'";
 
   return TRI_set_errno(TRI_ERROR_INTERNAL);
 }
@@ -1547,6 +1547,27 @@ TRI_vocbase_t::getReplicationClients() {
   return result;
 }
 
+void TRI_vocbase_t::garbageCollectReplicationClients(double ttl) {
+  WRITE_LOCKER(writeLocker, _replicationClientsLock);
+
+  try {
+    double now = TRI_microtime();
+    auto it = _replicationClients.cbegin();
+    while (it != _replicationClients.cend()) {
+      double lastUpdate = it->second.first;
+      double diff = now - lastUpdate;
+      if (diff > ttl) {
+        it = _replicationClients.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  } catch (...) {
+    // silently fail...
+    // all we would be missing is the progress information of a slave
+  }
+}
+
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;
 
@@ -1559,8 +1580,9 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   }
   return views;
 }
-  
-void TRI_vocbase_t::processCollections(std::function<void(LogicalCollection*)> const& cb, bool includeDeleted) {
+
+void TRI_vocbase_t::processCollections(
+    std::function<void(LogicalCollection*)> const& cb, bool includeDeleted) {
   READ_LOCKER(readLocker, _collectionsLock);
 
   if (includeDeleted) {

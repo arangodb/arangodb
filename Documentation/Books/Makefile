@@ -59,17 +59,6 @@ book-check-restheader-leftovers:
 		exit 1; \
 	fi
 
-# Check for all lines starting with exclamation marks, except image links which are exclamation mar + bracket
-book-check-mdpp-leftovers:
-	@echo "${STD_COLOR}##### checking for mdpp leftovers for $(NAME)${RESET}"
-	@if test "`find ppbooks/$(NAME) -name '*.md' -exec grep -- '^![^\[!]' {} \; -print | wc -l`" -gt 0; then \
-		echo "${ERR_COLOR}"; \
-		echo "found these unconverted Markdown-PP tags: "; \
-		find ppbooks/$(NAME) -name '*.md' -exec grep '^![^\[!]' {} \; -print; \
-		echo "${RESET}"; \
-		exit 1; \
-	fi
-
 ppbook-precheck-bad-code-sections:
 	@echo "${STD_COLOR}##### checking for bad code sections in $(NAME)${RESET}"
 	@if grep -qR  '^``` *.* ' $(NAME); then \
@@ -138,21 +127,21 @@ book-check-markdown-leftovers:
 	@if test "`find books/$(NAME) -name '*.html' -exec grep '\`\`\`' {} \; -print | wc -l`" -gt 0; then \
 		echo "${ERR_COLOR}"; \
 		echo "found dangling markdown code sections: "; \
-		find books/$(NAME) -name '*.html' -exec grep '```' {} \; -print| sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.mdpp\n\n;"; \
+		find books/$(NAME) -name '*.html' -exec grep '```' {} \; -print| sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.md\n\n;"; \
 		echo "${RESET}"; \
 		exit 1; \
 	fi
 	@if test "`find books/$(NAME) -name '*.html' -exec grep '\]<a href' {} \; -print | wc -l`" -gt 0; then \
 		echo "${ERR_COLOR}"; \
 		echo "found unconverted markdown links: "; \
-		find books/$(NAME) -name '*.html' -exec grep '\]<a href' {} \; -print| sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.mdpp\n\n;"; \
+		find books/$(NAME) -name '*.html' -exec grep '\]<a href' {} \; -print| sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.md\n\n;"; \
 		echo "${RESET}"; \
 		exit 1; \
 	fi
 	@if test "`find books/$(NAME) -name '*.html' -exec grep '\[.*\](.*[\.html|\.md|http|#.*])' {} \; -print | wc -l`" -gt 0; then \
 		echo "${ERR_COLOR}"; \
 		echo "found unconverted markdown links: "; \
-		find books/$(NAME) -name '*.html' -exec grep '\[.*\](.*[\.html|\.md|http.*|#.*])' {} \; -print| sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.mdpp\n\n;"; \
+		find books/$(NAME) -name '*.html' -exec grep '\[.*\](.*[\.html|\.md|http.*|#.*])' {} \; -print| sed "s;^books/$(NAME)/\(.*\).html;\n   In file: $(NAME)/\1.md\n\n;"; \
 		echo "${RESET}"; \
 		exit 1; \
 	fi
@@ -227,8 +216,8 @@ book-check-images-referenced:
 build-book-symlinks:
 	echo "${STD_COLOR}##### generate backwards compatibility symlinks for $(NAME)${RESET}"
 	cd books/$(NAME); pwd; \
-	find . -name "README.mdpp" |\
-	sed -e 's:README\.mdpp$$::' |\
+	find . -name "README.md" |\
+	sed -e 's:README\.md$$::' |\
 	awk '{print "ln -s index.html " $$1 "README.html"}' |\
 	bash
 
@@ -263,6 +252,7 @@ build-book:
 	else \
 		if ! test -f ppbooks/$(NAME)/book.json ; then cat $(NAME)/book.json |sed "s;/devel;/${RELEASE_DIRECTORY};" > ppbooks/$(NAME)/book.json ; fi; \
 	fi
+	ls -l $(NAME)/SUMMARY.md
 	cd ppbooks/$(NAME); cp -a ../../$(NAME)/styles/* styles/
 	WD=`pwd`; \
 	for pic in `find $(NAME) -name \*.png`; do \
@@ -271,24 +261,27 @@ build-book:
 		echo cp $${WD}/$${pic} $${pic}; \
 		cp $${WD}/$${pic} $${pic}; \
 	done
+	ls -l $(NAME)/SUMMARY.md
 	python ../Scripts/generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json $(FILTER)
+	ls -l $(NAME)/SUMMARY.md
 
 	if echo $(newVersionNumber) | grep devel; then \
 		export VERSION="$(newVersionNumber) `date +' %d. %b %Y '`"; \
 	else \
 		export VERSION="$(newVersionNumber)"; \
 	fi; \
+	ls -l $(NAME)/SUMMARY.md
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" styles/header.js); \
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" HEADER.html); \
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" README.md); \
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" book.json)
 
+	ls -l $(NAME)/SUMMARY.md
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
 
 	make check-summary
 	make book-check-leftover-docublocks
 	make book-check-restheader-leftovers
-	make book-check-mdpp-leftovers
 	make ppbook-check-directory-link
 	make book-check-images-referenced
 
@@ -333,7 +326,7 @@ clean-book-intermediate:
 #  - all docublocks are used somewhere in the documentation
 #
 check-docublocks:
-	grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
+	grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
 		grep -v '@startDocuBlockInline' |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
@@ -341,7 +334,7 @@ check-docublocks:
 		grep -v '.*~:.*' |\
 		grep -v '.*#.*:.*' \
 		   > /tmp/rawindoc.txt
-	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
+	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
@@ -349,9 +342,9 @@ check-docublocks:
 		grep -v '.*#.*:.*' \
 		   >> /tmp/rawindoc.txt
 	cat /tmp/rawindoc.txt | sed  -e "s;.*ck ;;" -e "s;.*ne ;;" |sort -u > /tmp/indoc.txt
-	grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
+	grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
 	# searching the Inline docublocks needs some more blacklisting:
-	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
+	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\

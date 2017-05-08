@@ -83,6 +83,8 @@ class MMFilesEngine final : public StorageEngine {
 
   // flush wal wait for collector
   void stop() override;
+  
+  bool supportsDfdb() const override { return true; }
 
   std::shared_ptr<arangodb::velocypack::Builder>
   getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
@@ -97,6 +99,12 @@ class MMFilesEngine final : public StorageEngine {
                      std::string const& collectionName, TRI_voc_tick_t maxTick,
                      std::string& errorMsg) override;
 
+  Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) override;
+  Result createTickRanges(VPackBuilder& builder) override;
+  Result firstTick(uint64_t& tick) override;
+  Result lastLogger(TRI_vocbase_t* vocbase, std::shared_ptr<transaction::Context>, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) override;
+
+  TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
   TransactionCollection* createTransactionCollection(

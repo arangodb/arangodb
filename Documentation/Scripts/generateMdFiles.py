@@ -2,7 +2,6 @@ import sys
 import re
 import os
 import json
-#import MarkdownPP
 
 
 RESET  = '\033[0m'
@@ -389,10 +388,10 @@ def walk_on_files(inDirPath, outDirPath):
     skipped = 0
     for root, dirs, files in os.walk(inDirPath):
         for file in files:
-            if file.endswith(".mdpp"):
+            if file.endswith(".md") and not file.endswith("SUMMARY.md"):
                 count += 1
                 inFileFull = os.path.join(root, file)
-                outFileFull = os.path.join(outDirPath, re.sub(r'mdpp$', 'md', inFileFull))
+                outFileFull = os.path.join(outDirPath, inFileFull)
                 if fileFilter != None:
                     if fileFilter.match(inFileFull) == None:
                         skipped += 1
@@ -400,17 +399,11 @@ def walk_on_files(inDirPath, outDirPath):
                         continue;
                 # print "%s -> %s" % (inFileFull, outFileFull)
                 _mkdir_recursive(os.path.join(outDirPath, root))
-                mdpp = open(inFileFull, "r")
-                md = open(outFileFull, "w")
-                #MarkdownPP.MarkdownPP(input=mdpp, output=md, modules=MarkdownPP.modules.keys())
-                md.write(mdpp.read())
-                mdpp.close()
-                md.close()
-                findStartCode(md, outFileFull)
+                findStartCode(inFileFull, outFileFull)
     print STD_COLOR + "Processed %d files, skipped %d" % (count, skipped) + RESET
 
-def findStartCode(fd,full_path):
-    inFD = open(full_path, "r")
+def findStartCode(inFileFull, outFileFull):
+    inFD = open(inFileFull, "r")
     textFile = inFD.read()
     inFD.close()
     #print "-" * 80
@@ -419,8 +412,8 @@ def findStartCode(fd,full_path):
     if matchInline:
         for find in matchInline:
             #print "7"*80
-            #print full_path + " " + find
-            textFile = replaceTextInline(textFile, full_path, find)
+            #print inFileFull + " " + find
+            textFile = replaceTextInline(textFile, inFileFull, find)
             #print textFile
 
     match = re.findall(r'@startDocuBlock\s*(\w+)', textFile)
@@ -428,25 +421,23 @@ def findStartCode(fd,full_path):
         for find in match:
             #print "8"*80
             #print find
-            textFile = replaceText(textFile, full_path, find)
+            textFile = replaceText(textFile, inFileFull, find)
             #print textFile
 
     try:
         textFile = replaceCodeFullFile(textFile)
     except:
-        print >>sys.stderr, ERR_COLOR + "while parsing :      "  + full_path + RESET
+        print >>sys.stderr, ERR_COLOR + "while parsing :      "  + inFileFull + RESET
         raise
     #print "9" * 80
     #print textFile
-    outFD = open(full_path, "w")
-
-    outFD.truncate()
+    outFD = open(outFileFull, "w")
     outFD.write(textFile)
     outFD.close()
 #JSF_put_api_replication_synchronize
 
 def replaceText(text, pathOfFile, searchText):
-  ''' reads the mdpp and generates the md '''
+  ''' inserts docublocks into md '''
   #print '7'*80
   global dokuBlocks
   if not searchText in dokuBlocks[0]:
@@ -462,7 +453,7 @@ def replaceText(text, pathOfFile, searchText):
   return rc
 
 def replaceTextInline(text, pathOfFile, searchText):
-  ''' reads the mdpp and generates the md '''
+  ''' inserts docublocks into md '''
   global dokuBlocks
   if not searchText in dokuBlocks[1]:
       print >> sys.stderr, "%sFailed to locate the inline docublock '%s' for replacing it into the file '%s'\n have: %s" % (ERR_COLOR, searchText, pathOfFile, RESET)

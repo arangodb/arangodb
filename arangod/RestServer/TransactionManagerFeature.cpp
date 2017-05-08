@@ -23,28 +23,31 @@
 #include "TransactionManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "VocBase/TransactionManager.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionManager.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
   
-TransactionManager* TransactionManagerFeature::MANAGER = nullptr;
+std::unique_ptr<TransactionManager> TransactionManagerFeature::MANAGER;
 
 TransactionManagerFeature::TransactionManagerFeature(ApplicationServer* server)
     : ApplicationFeature(server, "TransactionManager") {
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("EngineSelector");
   startsAfter("WorkMonitor");
 }
 
 void TransactionManagerFeature::prepare() {
   TRI_ASSERT(MANAGER == nullptr);
-  MANAGER = new TransactionManager;
+  TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
+  MANAGER.reset(EngineSelectorFeature::ENGINE->createTransactionManager());
 }
 
 void TransactionManagerFeature::unprepare() {
-  delete MANAGER;
-  MANAGER = nullptr;
+  MANAGER.reset();
 }

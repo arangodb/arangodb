@@ -36,16 +36,16 @@ namespace arangodb {
 // that are never activated at the same time take options set
 // in this feature
 
-class RocksDBOptionFeature final : public application_features::ApplicationFeature {
+class RocksDBOptionFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit RocksDBOptionFeature(application_features::ApplicationServer* server);
+  explicit RocksDBOptionFeature(
+      application_features::ApplicationServer* server);
   ~RocksDBOptionFeature() {}
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final {};
-  void start() override final {}
-  void unprepare() override final {}
+  void start() override final;
 
   uint64_t _writeBufferSize;
   uint64_t _maxWriteBufferNumber;
@@ -56,6 +56,11 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   double _maxBytesForLevelMultiplier;
   uint64_t _baseBackgroundCompactions;
   uint64_t _maxBackgroundCompactions;
+  uint64_t _maxFlushes;
+  uint64_t _numThreadsHigh;
+  uint64_t _numThreadsLow;
+  uint64_t _blockCacheSize;
+  uint64_t _blockCacheShardBits;
   uint64_t _maxLogFileSize;
   uint64_t _keepLogFileNum;
   uint64_t _recycleLogFileNum;
@@ -65,9 +70,10 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   bool _optimizeFiltersForHits;
   bool _useDirectReads;
   bool _useDirectWrites;
+  bool _useFSync;
   bool _skipCorrupted;
 };
 
-}
+}  // namespace arangodb
 
 #endif

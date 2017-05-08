@@ -21,8 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Scheduler/AcceptorTcp.h"
-
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Endpoint/EndpointIp.h"
 #include "Scheduler/SocketTcp.h"
 
@@ -79,6 +79,9 @@ void AcceptorTcp::open() {
 void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
   createPeer();
   auto peer = dynamic_cast<SocketTcp*>(_peer.get());
+  if (peer == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected socket type");
+  }
   _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
 }
 

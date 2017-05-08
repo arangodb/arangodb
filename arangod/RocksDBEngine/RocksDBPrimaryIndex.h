@@ -181,6 +181,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
   
+  /// optimization for truncateNoTrx, never called in fillIndex
   int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
@@ -210,7 +211,9 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback) const;
-
+  
+  int cleanup() override;
+  
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,

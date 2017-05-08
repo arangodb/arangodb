@@ -848,7 +848,8 @@ function executePlanForCollections(plannedCollections) {
                   'indexBuckets' ];
 
                 let properties = cmp.reduce((obj, key) => {
-                  if (localCollections[shardName][key] !== collectionInfo[key]) {
+                  if (localCollections[shardName].hasOwnProperty(key) &&
+                      localCollections[shardName][key] !== collectionInfo[key]) {
                     // property change
                     obj[key] = collectionInfo[key];
                   }
@@ -882,6 +883,7 @@ function executePlanForCollections(plannedCollections) {
                   console.debug("unloading local shard '%s/%s'",
                     database,
                     shardName);
+
                   collection.unload();
                 } else if (collectionInfo.status === ArangoCollection.STATUS_LOADED) {
                   console.debug("loading local shard '%s/%s'",

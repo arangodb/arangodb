@@ -29,8 +29,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VocBase/TransactionManager.h"
-
+#include "StorageEngine/TransactionManager.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 
@@ -141,20 +140,8 @@ void RocksDBRestWalHandler::flush() {
   if (ServerState::instance()->isCoordinator()) {
     res = flushWalOnAllDBServers(waitForSync, waitForCollector);
   } else {
-    rocksdb::TransactionDB* db =
-        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
-
     if (waitForSync) {
-      rocksdb::Status status = db->GetBaseDB()->SyncWAL();
-      if (!status.ok()) {
-        res = rocksutils::convertStatus(status).errorNumber();
-      }
-    }
-    if (waitForCollector) {
-      // does not make sense in rocksdb
-      /*rocksdb::FlushOptions flushOptions;
-      flushOptions.wait = true;
-      db->Flush(flushOptions);*/
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
     }
   }
 
@@ -166,8 +153,7 @@ void RocksDBRestWalHandler::flush() {
 }
 
 void RocksDBRestWalHandler::transactions() {
-  
-  TransactionManager* mngr = TransactionManagerFeature::MANAGER;
+  TransactionManager* mngr = TransactionManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
   builder.add("runningTransactions",

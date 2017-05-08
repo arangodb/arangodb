@@ -115,7 +115,7 @@ function ldap (options) {
         pass: 'password'
       },
       result: {
-        statusCode: 500
+        statusCode: 401
       }
     },
     {

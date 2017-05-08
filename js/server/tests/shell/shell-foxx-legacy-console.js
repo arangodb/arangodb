@@ -28,11 +28,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require('jsunity');
-var expect = require('expect.js');
+const expect = require('chai').expect;
 var util = require('util');
 var Console = require('@arangodb/foxx/legacy/console').Console;
 var db = require('@arangodb').db;
 var qb = require('aqb');
+var AssertionError = require('assert').AssertionError;
 
 var mountPath = '##TEST##';
 
@@ -96,7 +97,7 @@ function ConsoleTestSuite () {
       rmrf();
       console.log('hi');
       var logs = ls();
-      expect(logs.length).to.be(1);
+      expect(logs.length).to.be.equal(1);
       expect(logs[0]).to.have.property('level', 'INFO');
       expect(logs[0]).to.have.property('levelNum', console._logLevels.INFO);
       expect(logs[0]).to.have.property('message', 'hi');
@@ -128,21 +129,22 @@ function ConsoleTestSuite () {
       console.time('hi');
       var min = Date.now();
       while (Date.now() - start < 3) {var a = true; a=false;} // make sure a measurable amount of time passes
-      console.timeEnd('hi');
       var max = Date.now();
+      console.timeEnd('hi');
+      var end = Date.now();
       expect(max).to.be.greaterThan(min); // sanity checking
       var logs = ls();
       var match = logs[0].message.match(/^([^:]+):\s+(\d+)ms$/);
-      expect(match).to.be.ok();
+      expect(match).to.be.ok;
       expect(match[1]).to.equal('hi');
       var elapsed = Number(match[2]);
-      expect(elapsed).not.to.be.lessThan(min - start);
-      expect(elapsed).not.to.be.greaterThan(max - start);
+      expect(elapsed).not.to.be.lessThan(max - min);
+      expect(elapsed).not.to.be.greaterThan(end - start);
     },
     testConsoleTimeThrowsForInvalidLabel: function () {
       expect(function () {
         console.timeEnd('this is a label that does not exist');
-      }).to.throwError();
+      }).to.throw(Error);
     },
 
     testConsoleDirUsesInspect: function () {
@@ -165,7 +167,7 @@ function ConsoleTestSuite () {
       console.setAssertThrows(false);
       expect(function () {
         console.assert(false, 'potato');
-      }).not.to.throwError();
+      }).not.to.throw(Error);
       var logs = ls();
       expect(logs.length).to.equal(1);
       expect(logs[0]).to.have.property('level', 'ERROR');
@@ -178,10 +180,7 @@ function ConsoleTestSuite () {
       console.setAssertThrows(true);
       expect(function () {
         console.assert(false, 'potato');
-      }).to.throwError(function (e) {
-        expect(e.name).to.be('AssertionError');
-        expect(e.message).to.be('potato');
-      });
+      }).to.throw(AssertionError).with.property('message', 'potato');
       var logs = ls();
       expect(logs.length).to.equal(1);
       expect(logs[0].message).to.match(/AssertionError: potato/);
@@ -196,7 +195,7 @@ function ConsoleTestSuite () {
       console.log.level = 'INFO';
       delete console._logLevels.POTATO;
       var logs = ls();
-      expect(logs).to.be.empty();
+      expect(logs).to.be.empty;
     },
     testConsoleTracingAddsInfo: function () {
       rmrf();
@@ -239,7 +238,7 @@ function ConsoleTestSuite () {
       console.log('sup');
       console.log('banana');
       var logs = console.logs.list();
-      expect(logs.length).to.be(2);
+      expect(logs.length).to.be.equal(2);
       expect(logs[0]).to.have.property('message', 'sup');
       expect(logs[1]).to.have.property('message', 'banana');
     },
@@ -249,7 +248,7 @@ function ConsoleTestSuite () {
       console.log('sup');
       console.log('banana');
       var logs = console.logs.list({sort: 'DESC'});
-      expect(logs.length).to.be(2);
+      expect(logs.length).to.be.equal(2);
       expect(logs[0]).to.have.property('message', 'banana');
       expect(logs[1]).to.have.property('message', 'sup');
     },
@@ -259,7 +258,7 @@ function ConsoleTestSuite () {
       console.log('sup');
       console.log('banana');
       var logs = console.logs.list({limit: 1});
-      expect(logs.length).to.be(1);
+      expect(logs.length).to.be.equal(1);
       expect(logs[0]).to.have.property('message', 'sup');
     },
 
@@ -268,7 +267,7 @@ function ConsoleTestSuite () {
       console.log('sup');
       console.log('banana');
       var logs = console.logs.list({limit: 1, offset: 1});
-      expect(logs.length).to.be(1);
+      expect(logs.length).to.be.equal(1);
       expect(logs[0]).to.have.property('message', 'banana');
     },
 
@@ -278,12 +277,12 @@ function ConsoleTestSuite () {
       console.debug('lol');
       console.error('hey');
       logs = console.logs.list({minLevel: 'DEBUG'});
-      expect(logs.length).to.be(2);
+      expect(logs.length).to.be.equal(2);
       logs = console.logs.list({minLevel: console._logLevels.DEBUG + 1});
-      expect(logs.length).to.be(1);
+      expect(logs.length).to.be.equal(1);
       expect(logs[0]).to.have.property('message', 'hey');
       logs = console.logs.list({minLevel: console._logLevels.ERROR + 1});
-      expect(logs.length).to.be(0);
+      expect(logs.length).to.be.equal(0);
     },
 
     testLogsListWithLevel: function () {
@@ -292,7 +291,7 @@ function ConsoleTestSuite () {
       console.debug('lol');
       console.error('hey');
       logs = console.logs.list({level: 'DEBUG'});
-      expect(logs.length).to.be(1);
+      expect(logs.length).to.be.equal(1);
       expect(logs[0]).to.have.property('message', 'lol');
     },
 
@@ -300,9 +299,7 @@ function ConsoleTestSuite () {
       console.setTracing(false);
       expect(function () {
         console.logs.searchByFileName('lol');
-      }).to.throwError(function (e) {
-        expect(e.message).to.match(/tracing/i);
-      });
+      }).to.throw(Error).with.property('message', 'Tracing must be enabled in order to search by filename.');
     },
 
     testLogsSearchByFileName: function () {
@@ -329,6 +326,7 @@ function ConsoleTestSuite () {
       expect(console.logs.searchByMessage('ef')).to.have.property('length', 1);
       expect(console.logs.searchByMessage('fail')).to.have.property('length', 0);
     }
+
   };
 }
 

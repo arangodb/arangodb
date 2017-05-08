@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,7 @@ struct RocksDBToken;
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
   friend class RocksDBVPackIndex;
+  friend class RocksDBFulltextIndex;
 
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
@@ -117,6 +118,10 @@ class RocksDBCollection final : public PhysicalCollection {
   ///////////////////////////////////
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  /// non transactional truncate, will continoiusly commit the deletes
+  /// and no fully rollback on failure. Uses trx snapshots to isolate
+  /// against newer PUTs
+  //void truncateNoTrx(transaction::Methods* trx);
 
   DocumentIdentifierToken lookupKey(
       transaction::Methods* trx,
@@ -178,8 +183,12 @@ class RocksDBCollection final : public PhysicalCollection {
   int lockRead(double timeout = 0.0);
   int unlockRead();
 
-  // recalculte counts for collection in case of failure
+  /// recalculte counts for collection in case of failure
   uint64_t recalculateCounts();
+  
+  /// trigger rocksdb compaction for documentDB and indexes
+  void compact();
+  void estimateSize(velocypack::Builder &builder);
 
  private:
   /// @brief return engine-specific figures

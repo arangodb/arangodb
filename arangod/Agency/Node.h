@@ -232,6 +232,9 @@ class Node {
   /// @brief Get array value
   Slice getArray() const;
 
+  /// @brief Clear key value store
+  void clear();
+
  protected:
   /// @brief Add time to live entry
   virtual bool addTimeToLive(long millis);
@@ -241,7 +244,7 @@ class Node {
 
   void rebuildVecBuf() const;
 
-  std::string _node_name;  ///< @brief my name
+  std::string _nodeName;  ///< @brief my name
   Node* _parent;           ///< @brief parent
   Store* _store;           ///< @brief Store
   Children _children;      ///< @brief child nodes

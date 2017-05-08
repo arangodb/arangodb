@@ -59,6 +59,10 @@ class ServerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> const& scripts() const { return _scripts; }
   std::vector<std::string> const& unitTests() const { return _unitTests; }
   uint32_t const& vppMaxSize() const { return _vppMaxSize; }
+  
+  bool isConsoleMode() const {
+    return (_operationMode == OperationMode::MODE_CONSOLE);
+  }
  
  private:
   void waitForHeartbeat();

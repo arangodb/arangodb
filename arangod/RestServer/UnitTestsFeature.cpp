@@ -25,7 +25,6 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "V8/v8-conv.h"

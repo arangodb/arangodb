@@ -36,7 +36,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/TransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/Hints.h"
@@ -70,7 +71,8 @@ ContinuousSyncer::ContinuousSyncer(
       _requireFromPresent(configuration->_requireFromPresent),
       _verbose(configuration->_verbose),
       _masterIs27OrHigher(false),
-      _hasWrittenState(false) {
+      _hasWrittenState(false),
+      _supportsSingleOperations(false) {
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
     c = static_cast<uint64_t>(256 * 1024);  // 256 kb
@@ -90,6 +92,10 @@ ContinuousSyncer::ContinuousSyncer(
     _barrierId = barrierId;
     _barrierUpdateTime = TRI_microtime();
   }
+  
+  // FIXME: move this into engine code  
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  _supportsSingleOperations = (engineName == "mmfiles");
 }
 
 ContinuousSyncer::~ContinuousSyncer() { 
@@ -575,7 +581,10 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase),
                                             cid, AccessMode::Type::WRITE);
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  
+    if (_supportsSingleOperations) {
+      trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    }
 
     Result res = trx.begin();
 
