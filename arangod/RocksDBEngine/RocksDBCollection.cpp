@@ -1320,7 +1320,6 @@ arangodb::Result RocksDBCollection::fillIndexes(
                                      32 * 1024 * 1024);
   rocksdb::ReadOptions readOptions;
   rocksdb::WriteOptions writeOpts = state->writeOptions();
-  writeOpts.disableWAL = true;
 
   int res = TRI_ERROR_NO_ERROR;
   auto cb = [&](DocumentIdentifierToken token) {
