@@ -104,6 +104,11 @@ class RocksDBKey {
                                      VPackSlice const& indexValues);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for a geoIndexValue
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKey GeoIndexValue(uint64_t indexId, bool isSlot, uint64_t offset);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a view
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId);
@@ -226,6 +231,7 @@ class RocksDBKey {
              arangodb::StringRef const& second);
   RocksDBKey(RocksDBEntryType type, uint64_t first, std::string const& second,
              std::string const& third);
+  RocksDBKey(RocksDBEntryType type, bool, uint64_t);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);

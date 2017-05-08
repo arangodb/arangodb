@@ -77,6 +77,10 @@ RocksDBKey RocksDBKey::UniqueIndexValue(uint64_t indexId,
   return RocksDBKey(RocksDBEntryType::UniqueIndexValue, indexId, indexValues);
 }
 
+RocksDBKey GeoIndexValue(uint64_t indexId, bool isSlot, uint64_t offset){
+  RocksDBKey(RocksDBEntryType::GeoIndexValue, isSlot, offset);
+}
+
 RocksDBKey RocksDBKey::View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) {
   return RocksDBKey(RocksDBEntryType::View, databaseId, viewId);
 }
@@ -294,6 +298,24 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   }
 }
 
+RocksDBKey::RocksDBKey(RocksDBEntryType type, bool isSlot, uint64_t offset)
+    : _type(type), _buffer() {
+  switch (_type) {
+    case RocksDBEntryType::GeoIndexValue: {
+
+      size_t length = sizeof(char) + sizeof(isSlot) + sizeof(offset);
+      _buffer.reserve(length);
+      _buffer.push_back(static_cast<char>(_type));
+      _buffer.append(isSlot, sizeof(isSlot));
+      uint64ToPersistent(_buffer, offset);
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
                        std::string const& second, std::string const& third)
     : _type(type), _buffer() {
@@ -365,7 +387,9 @@ TRI_voc_cid_t RocksDBKey::objectId(char const* data, size_t size) {
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::IndexValue:
-    case RocksDBEntryType::UniqueIndexValue: {
+    case RocksDBEntryType::UniqueIndexValue:
+    case RocksDBEntryType::GeoIndexValue:
+    {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
       return uint64FromPersistent(data + sizeof(char));
     }

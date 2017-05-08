@@ -34,6 +34,7 @@
 
 #include <RocksDBEngine/RocksDBCommon.h>
 #include <RocksDBEngine/RocksDBEngine.h>
+#include <RocksDBEngine/RocksDBKey.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Builder.h>
