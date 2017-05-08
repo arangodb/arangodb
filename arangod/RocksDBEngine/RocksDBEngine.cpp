@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
+#include "Basics/RocksDBLogger.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
@@ -217,6 +218,11 @@ void RocksDBEngine::start() {
   _options.env->SetBackgroundThreads(opts->_numThreadsLow,
                                      rocksdb::Env::Priority::LOW);
 
+  _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
+  // intentionally do not start the logger (yet)
+  // as it will produce a lot of log spam
+  // _options.info_log = std::make_shared<RocksDBLogger>(rocksdb::InfoLogLevel::ERROR_LEVEL);
+
   if (opts->_blockCacheSize > 0) {
     auto cache =
         rocksdb::NewLRUCache(opts->_blockCacheSize, opts->_blockCacheShardBits);
@@ -251,6 +257,7 @@ void RocksDBEngine::start() {
         << "unable to initialize RocksDB engine: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
+  
 
   TRI_ASSERT(_db != nullptr);
   _counterManager.reset(new RocksDBCounterManager(_db));

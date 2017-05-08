@@ -263,3 +263,27 @@ void RocksDBOptionFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 }
+
+void RocksDBOptionFeature::start() {
+  LOG_TOPIC(TRACE, Logger::FIXME) << "using RocksDB options:"
+                                  << " write_buffer_size: " << _writeBufferSize
+                                  << " max_write_buffer_number: " << _maxWriteBufferNumber
+                                  << " delayed_write_rate: " << _delayedWriteRate
+                                  << " min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
+                                  << " num_levels: " << _numLevels
+                                  << " max_bytes_for_level_base: " << _maxBytesForLevelBase
+                                  << " max_bytes_for_level_multiplier: " << _maxBytesForLevelMultiplier
+                                  << " base_background_compactions: " << _baseBackgroundCompactions
+                                  << " max_background_compactions: " << _maxBackgroundCompactions
+                                  << " max_flushes: " << _maxFlushes
+                                  << " num_threads_high: " << _numThreadsHigh
+                                  << " num_threads_low: " << _numThreadsLow
+                                  << " block_cache_size: " << _blockCacheSize
+                                  << " block_cache_shard_bits: " << _blockCacheShardBits
+                                  << " compaction_read_ahead_size: " << _compactionReadaheadSize
+                                  << " verify_checksums_in_compaction: " << std::boolalpha << _verifyChecksumsInCompaction
+                                  << " optimize_filters_for_hits: " << std::boolalpha << _optimizeFiltersForHits
+                                  << " use_direct_reads: " << std::boolalpha << _useDirectReads
+                                  << " use_direct_writes: " << std::boolalpha << _useDirectWrites
+                                  << " use_fsync: " << std::boolalpha << _useFSync;
+}
