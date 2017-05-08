@@ -72,7 +72,7 @@ inline static std::vector<std::string> split(const std::string& str,
 
 /// Construct with node name
 Node::Node(std::string const& name)
-    : _node_name(name),
+    : _nodeName(name),
       _parent(nullptr),
       _store(nullptr),
       _vecBufDirty(true),
@@ -80,7 +80,7 @@ Node::Node(std::string const& name)
 
 /// Construct with node name in tree structure
 Node::Node(std::string const& name, Node* parent)
-    : _node_name(name),
+    : _nodeName(name),
       _parent(parent),
       _store(nullptr),
       _vecBufDirty(true),
@@ -88,7 +88,7 @@ Node::Node(std::string const& name, Node* parent)
 
 /// Construct for store
 Node::Node(std::string const& name, Store* store)
-    : _node_name(name),
+    : _nodeName(name),
       _parent(nullptr),
       _store(store),
       _vecBufDirty(true),
@@ -128,7 +128,7 @@ void Node::rebuildVecBuf() const {
 }
 
 /// Get name of this node
-std::string const& Node::name() const { return _node_name; }
+std::string const& Node::name() const { return _nodeName; }
 
 /// Get full path of this node
 std::string Node::uri() const {
@@ -148,7 +148,7 @@ std::string Node::uri() const {
 
 /// Move constructor
 Node::Node(Node&& other)
-    : _node_name(std::move(other._node_name)),
+    : _nodeName(std::move(other._nodeName)),
       _parent(nullptr),
       _store(nullptr),
       _children(std::move(other._children)),
@@ -159,7 +159,7 @@ Node::Node(Node&& other)
 
 /// Copy constructor
 Node::Node(Node const& other)
-    : _node_name(other._node_name),
+    : _nodeName(other._nodeName),
       _parent(nullptr),
       _store(nullptr),
       _value(other._value),
@@ -205,7 +205,7 @@ Node& Node::operator=(Node&& rhs) {
   // 3. move value over
   // Must not move ober rhs's _parent, _ttl, _observers
   removeTimeToLive();
-  _node_name = std::move(rhs._node_name);
+  _nodeName = std::move(rhs._nodeName);
   _children = std::move(rhs._children);
   _value = std::move(rhs._value);
   _vecBuf = std::move(rhs._vecBuf);
@@ -221,7 +221,7 @@ Node& Node::operator=(Node const& rhs) {
   // 3. move from rhs to buffer pointer
   // Must not move rhs's _parent, _ttl, _observers
   removeTimeToLive();
-  _node_name = rhs._node_name;
+  _nodeName = rhs._nodeName;
   _children.clear();
   for (auto const& p : rhs._children) {
     auto copy = std::make_shared<Node>(*p.second);
@@ -249,7 +249,7 @@ bool Node::operator!=(VPackSlice const& rhs) const { return !(*this == rhs); }
 /// Remove this node from store
 bool Node::remove() {
   Node& parent = *_parent;
-  return parent.removeChild(_node_name);
+  return parent.removeChild(_nodeName);
 }
 
 /// Remove child by name
@@ -284,12 +284,14 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 // rh-value at path vector
 Node const& Node::operator()(std::vector<std::string> const& pv) const {
   if (!pv.empty()) {
-    std::string const& key = pv.front();
-    if (_children.find(key) == _children.end()) {
-      throw StoreException(std::string("Node ") + key +
-                           std::string(" not found"));
+    auto const& key = pv.front();
+    auto const it = _children.find(key);
+    if (it == _children.end()/* ||
+        (it->second->_ttl != std::chrono::system_clock::time_point() &&
+        it->second->_ttl < std::chrono::system_clock::now())*/) {
+      throw StoreException(std::string("Node ") + key + " not found!");
     }
-    const Node& child = *_children.at(key);
+    auto const& child = *_children.at(key);
     auto pvc(pv);
     pvc.erase(pvc.begin());
     return child(pvc);
@@ -353,6 +355,7 @@ bool Node::addTimeToLive(long millis) {
 bool Node::removeTimeToLive() {
   if (_ttl != std::chrono::system_clock::time_point()) {
     store().removeTTL(uri());
+    _ttl = std::chrono::system_clock::time_point();
   }
   return true;
 }
@@ -622,7 +625,7 @@ bool Node::applieOp(VPackSlice const& slice) {
       _value.clear();
       return true;
     } else {
-      return _parent->removeChild(_node_name);
+      return _parent->removeChild(_nodeName);
     }
   } else if (oper == "set") {  // "op":"set"
     return handle<SET>(slice);
@@ -648,7 +651,7 @@ bool Node::applieOp(VPackSlice const& slice) {
         _value.clear();
         return true;
       } else {
-        return _parent->removeChild(_node_name);
+        return _parent->removeChild(_nodeName);
       }
     }
     return true;
@@ -747,13 +750,15 @@ std::string Node::toJson() const {
 Node const* Node::parent() const { return _parent; }
 
 std::vector<std::string> Node::exists(
-    std::vector<std::string> const& rel) const {
+  std::vector<std::string> const& rel) const {
   std::vector<std::string> result;
   Node const* cur = this;
   for (auto const& sub : rel) {
-    auto tmp = cur->children().find(sub);
-    if (tmp != cur->children().end()) {
-      cur = tmp->second.get();
+    auto it = cur->children().find(sub);
+    if (it != cur->children().end() &&
+        (it->second->_ttl == std::chrono::system_clock::time_point() ||
+         it->second->_ttl >= std::chrono::system_clock::now())) {
+      cur = it->second.get();
       result.push_back(sub);
     } else {
       break;
