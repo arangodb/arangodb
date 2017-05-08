@@ -635,6 +635,13 @@ void SimpleHttpClient::setRequest(
 // -----------------------------------------------------------------------------
 
 void SimpleHttpClient::processHeader() {
+  if (_readBufferOffset > _readBuffer.length()) {
+    #warning Forgetmenot
+    
+    LOG_TOPIC(WARN, Logger::FIXME)
+      <<  _readBufferOffset << " " << _readBuffer.length()
+      << " " << std::string(_readBuffer.c_str(), _readBuffer.length());
+  }
   TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
   size_t remain = _readBuffer.length() - _readBufferOffset;
   char const* ptr = _readBuffer.c_str() + _readBufferOffset;
@@ -658,12 +665,16 @@ void SimpleHttpClient::processHeader() {
     if (*ptr == '\r' || *ptr == '\n' || *ptr == '\0') {
       size_t len = pos - ptr;
       _readBufferOffset += len + 1;
+        TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+
       ptr += len + 1;
       remain -= len + 1;
 
       if (*pos == '\r') {
         // adjust offset if line ended with \r\n
         ++_readBufferOffset;
+          TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+
         ptr++;
         remain--;
       }
@@ -729,6 +740,8 @@ void SimpleHttpClient::processHeader() {
 
       ptr += len + 1;
       _readBufferOffset += len + 1;
+        TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+
       remain -= (len + 1);
 
       TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
@@ -738,6 +751,8 @@ void SimpleHttpClient::processHeader() {
 
       if (pos == nullptr) {
         _readBufferOffset++;
+          TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+
         ptr++;
         remain--;
       }
@@ -783,6 +798,8 @@ void SimpleHttpClient::processBody() {
   }
 
   _readBufferOffset += _result->getContentLength();
+            TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+
   _result->setResultType(SimpleHttpResult::COMPLETE);
   _state = FINISHED;
 
@@ -815,6 +832,8 @@ void SimpleHttpClient::processChunkedHeader() {
   // adjust offset if line ended with \r\n
   if (*pos == '\r') {
     ++_readBufferOffset;
+              TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+
     ++len;
   }
 
@@ -894,6 +913,7 @@ void SimpleHttpClient::processChunkedBody() {
     }
 
     _readBufferOffset += (size_t)_nextChunkedSize + 2;
+    
     _state = IN_READ_CHUNKED_HEADER;
     processChunkedHeader();
   }
