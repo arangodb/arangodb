@@ -653,13 +653,21 @@ fi
 PARTIAL_STATE=$?
 set -e
 
+if test "${isCygwin}" == 1 -a "${PARTIAL_STATE}" == 0; then
+    # windows fails to partialy re-configure - so do a complete configure run.
+    if test -f CMakeFiles/generate.stamp -a CMakeFiles/generate.stamp -ot "${SOURCE_DIR}/CMakeList.txt"; then
+        echo "CMakeList older - Forcing complete configure run!"
+        PARTIAL_STATE=1
+    fi
+fi
+
 if test "${PARTIAL_STATE}" == 0; then
     rm -rf CMakeFiles CMakeCache.txt CMakeCPackOptions.cmake cmake_install.cmake CPackConfig.cmake CPackSourceConfig.cmake
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
 fi
 
-if [ -n "$CPACK"  -a -n "${TARGET_DIR}" -a -z "${MSVC}" ];  then
+if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
     if ! grep -q CMAKE_STRIP CMakeCache.txt; then
         echo "cmake failed to detect strip; refusing to build unstripped packages!"
         exit 1
