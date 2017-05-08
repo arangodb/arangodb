@@ -113,11 +113,13 @@ void RocksDBOptionFeature::collectOptions(
                      new UInt64Parameter(&_numLevels));
 
   options->addHiddenOption("--rocksdb.max-bytes-for-level-base",
-                           "control maximum total data size for a level",
+                           "control maximum total data size for level-1",
                            new UInt64Parameter(&_maxBytesForLevelBase));
 
   options->addOption("--rocksdb.max-bytes-for-level-multiplier",
-                     "control maximum total data size for a level",
+                     "maximum number of bytes for level L can be calculated as "
+                     "max-bytes-for-level-base * "
+                     "(max-bytes-for-level-multiplier ^ (L-1))",
                      new DoubleParameter(&_maxBytesForLevelMultiplier));
 
   options->addHiddenOption(

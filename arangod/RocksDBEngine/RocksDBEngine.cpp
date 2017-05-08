@@ -216,6 +216,20 @@ void RocksDBEngine::start() {
   _options.env->SetBackgroundThreads(opts->_numThreadsLow,
                                      rocksdb::Env::Priority::LOW);
 
+  if (opts->_blockCacheSize > 0) {
+    auto cache =
+        rocksdb::NewLRUCache(opts->_blockCacheSize, opts->_blockCacheShardBits);
+    rocksdb::BlockBasedTableOptions table_options;
+    table_options.block_cache = cache;
+    _options.table_factory.reset(
+        rocksdb::NewBlockBasedTableFactory(table_options));
+  } else {
+    rocksdb::BlockBasedTableOptions table_options;
+    table_options.no_block_cache = true;
+    _options.table_factory.reset(
+        rocksdb::NewBlockBasedTableFactory(table_options));
+  }
+
   _options.create_if_missing = true;
   _options.max_open_files = -1;
   _options.comparator = _cmp.get();
