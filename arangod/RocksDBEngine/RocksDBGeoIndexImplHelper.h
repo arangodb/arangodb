@@ -21,7 +21,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // MUST BE ONLY INCLUDED IN RocksDBGeoIndexImpl.cpp after struct definitions!
 // IT CAN NOT BE USED IN OTHER
 // This file has only been added to keep Richards code clean. So it is easier
@@ -36,85 +35,83 @@
 #include <RocksDBEngine/RocksDBEngine.h>
 #include <RocksDBEngine/RocksDBKey.h>
 
-#include <velocypack/Iterator.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace arangodb { namespace rocksdbengine {
+namespace arangodb {
+namespace rocksdbengine {
 
-VPackBuilder CoordToVpack(GeoCoordinate* coord){
+VPackBuilder CoordToVpack(GeoCoordinate* coord) {
   VPackBuilder rv{};
   rv.openArray();
-  rv.add(VPackValue(coord->latitude));  //double
-  rv.add(VPackValue(coord->longitude)); //double
-  rv.add(VPackValue(coord->data));      //uint64_t
+  rv.add(VPackValue(coord->latitude));   // double
+  rv.add(VPackValue(coord->longitude));  // double
+  rv.add(VPackValue(coord->data));       // uint64_t
   rv.close();
   return rv;
 }
 
-GeoCoordinate VpackToCoord(VPackSlice const& slice){
+void VpackToCoord(VPackSlice const& slice, GeoCoordinate* gc) {
   TRI_ASSERT(slice.isArray() && slice.length() == 3);
-  return GeoCoordinate{slice.at(0).getDouble()
-                      ,slice.at(1).getDouble()
-                      ,slice.at(2).getUInt()
-                      };
+  gc->latitude = slice.at(0).getDouble();
+  gc->longitude = slice.at(1).getDouble();
+  gc->data = slice.at(2).getUInt();
 }
 
-VPackBuilder PotToVpack(GeoPot* pot){
+VPackBuilder PotToVpack(GeoPot* pot) {
   VPackBuilder rv{};
-  rv.openArray();                   // open
-  rv.add(VPackValue(pot->LorLeaf));        // int
-  rv.add(VPackValue(pot->RorPoints));      // int
-  rv.add(VPackValue(pot->middle));         // GeoString
+  rv.openArray();                      // open
+  rv.add(VPackValue(pot->LorLeaf));    // int
+  rv.add(VPackValue(pot->RorPoints));  // int
+  rv.add(VPackValue(pot->middle));     // GeoString
   {
-    rv.openArray();                        // array GeoFix //uint 16/32
-    for(std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++){
-      rv.add(VPackValue(pot->maxdist[i])); //unit 16/32
+    rv.openArray();  // array GeoFix //uint 16/32
+    for (std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++) {
+      rv.add(VPackValue(pot->maxdist[i]));  // unit 16/32
     }
-    rv.close();                            // close array
+    rv.close();  // close array
   }
-  rv.add(VPackValue(pot->start));          // GeoString
-  rv.add(VPackValue(pot->end));            // GeoString
-  rv.add(VPackValue(pot->level));          // int
+  rv.add(VPackValue(pot->start));  // GeoString
+  rv.add(VPackValue(pot->end));    // GeoString
+  rv.add(VPackValue(pot->level));  // int
   {
-    rv.openArray();                        // arrray of int
-    for(std::size_t i = 0; i < GeoIndexPOTSIZE; i++){
+    rv.openArray();  // arrray of int
+    for (std::size_t i = 0; i < GeoIndexPOTSIZE; i++) {
       rv.add(VPackValue(pot->points[i]));  // int
     }
-    rv.close();                            // close array
+    rv.close();  // close array
   }
-  rv.close();                       // close
+  rv.close();  // close
   return rv;
 }
 
-GeoPot VpackToPot(VPackSlice const& slice){
-  GeoPot rv{};
+void VpackToPot(VPackSlice const& slice, GeoPot* rv) {
   TRI_ASSERT(slice.isArray());
-  rv.LorLeaf = (int) slice.at(0).getInt();                         // int
-  rv.RorPoints = (int) slice.at(1).getInt();                       // int
-  rv.middle = slice.at(2).getUInt();                         // GeoString
+  rv->LorLeaf = (int)slice.at(0).getInt();    // int
+  rv->RorPoints = (int)slice.at(1).getInt();  // int
+  rv->middle = slice.at(2).getUInt();         // GeoString
   {
     auto maxdistSlice = slice.at(3);
     TRI_ASSERT(maxdistSlice.isArray());
     TRI_ASSERT(maxdistSlice.length() == GeoIndexFIXEDPOINTS);
-    for(std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++){
-      rv.maxdist[i] = (int) maxdistSlice.at(i).getUInt();          //unit 16/33
+    for (std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++) {
+      rv->maxdist[i] = (int)maxdistSlice.at(i).getUInt();  // unit 16/33
     }
   }
-  rv.start = (int) slice.at(4).getUInt();                          // GeoString
-  rv.end = slice.at(5).getUInt();                            // GeoString
-  rv.level = (int) slice.at(6).getInt();                           // int
+  rv->start = (int)slice.at(4).getUInt();  // GeoString
+  rv->end = slice.at(5).getUInt();         // GeoString
+  rv->level = (int)slice.at(6).getInt();   // int
   {
     auto pointsSlice = slice.at(7);
     TRI_ASSERT(pointsSlice.isArray());
     TRI_ASSERT(pointsSlice.length() == GeoIndexFIXEDPOINTS);
-    for(std::size_t i = 0; i < GeoIndexPOTSIZE; i++){
-      rv.points[i] = (int) pointsSlice.at(i).getInt();             //int
+    for (std::size_t i = 0; i < GeoIndexPOTSIZE; i++) {
+      rv->points[i] = (int)pointsSlice.at(i).getInt();  // int
     }
   }
-  return rv;
 }
 
-
-}}
+}  // namespace rocksdbengine
+}  // namespace arangodb
 #endif

@@ -188,7 +188,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   /// @brief the actual geo index
   GeoIdx* _geoIndex;
 };
-}
+}  // namespace arangodb
 
 namespace std {
 template <>
@@ -200,6 +200,6 @@ class default_delete<GeoCoordinates> {
     }
   }
 };
-}
+}  // namespace std
 
 #endif

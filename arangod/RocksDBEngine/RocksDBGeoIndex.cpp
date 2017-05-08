@@ -29,8 +29,8 @@
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "StorageEngine/TransactionState.h"
 #include "RocksDBEngine/RocksDBToken.h"
+#include "StorageEngine/TransactionState.h"
 
 using namespace arangodb;
 
@@ -384,7 +384,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int RocksDBGeoIndex::insert(transaction::Methods *, TRI_voc_rid_t revisionId,
+int RocksDBGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
                             VPackSlice const& doc, bool isRollback) {
   double latitude;
   double longitude;
@@ -522,7 +522,6 @@ int RocksDBGeoIndex::removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t revisionId,
                                arangodb::velocypack::Slice const& doc) {
   return this->remove(nullptr, revisionId, doc, false);
 }
-
 
 int RocksDBGeoIndex::unload() {
   // create a new, empty index
