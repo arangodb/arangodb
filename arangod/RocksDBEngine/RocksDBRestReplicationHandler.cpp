@@ -372,10 +372,10 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // int res = engine->insertCompactionBlocker(_vocbase, expires, id);
 
     RocksDBReplicationContext* ctx = _manager->createContext();
-    RocksDBReplicationContextGuard(_manager, ctx);
     if (ctx == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to create replication context");
     }
+    RocksDBReplicationContextGuard(_manager, ctx);
     ctx->bind(_vocbase);  // create transaction+snapshot
 
     VPackBuilder b;
@@ -423,8 +423,12 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     RocksDBReplicationContextGuard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
+      generateError(GeneralResponse::responseCode(res), res);
+      return;
     } else if (ctx == nullptr) {
       res = TRI_ERROR_CURSOR_NOT_FOUND;
+      generateError(GeneralResponse::responseCode(res), res);
+      return;
     }
 
     // add client
@@ -1636,17 +1640,7 @@ void RocksDBRestReplicationHandler::handleCommandSync() {
   config._useCollectionId = useCollectionId;
 
   // wait until all data in current logfile got synced
-  // MMFilesLogfileManager::instance()->waitForSync(5.0);
-  rocksdb::TransactionDB* db =
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->db();
-
-  rocksdb::Status status = db->GetBaseDB()->SyncWAL();
-  if (!status.ok()) {
-    Result res = rocksutils::convertStatus(status).errorNumber();
-    generateError(rest::ResponseCode::BAD, res.errorNumber(),
-                  res.errorMessage());
-    return;
-  }
+  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
 
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
                        verbose);

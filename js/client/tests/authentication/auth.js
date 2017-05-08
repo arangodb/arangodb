@@ -34,7 +34,7 @@ var db = require("internal").db;
 var users = require("@arangodb/users");
 var request = require('@arangodb/request');
 var crypto = require('@arangodb/crypto');
-var expect = require('expect.js');
+const expect = require('chai').expect;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -287,7 +287,7 @@ function AuthSuite () {
     
     testAuthOpen: function() {
       var res = request(baseUrl() + "/_open/auth");
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       // mop: GET is an unsupported method, but it is skipping auth
       expect(res).to.have.property('statusCode', 405);
     },
@@ -297,7 +297,7 @@ function AuthSuite () {
         url: baseUrl() + "/_open/auth",
         body: JSON.stringify({"username": "root", "password": ""})
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
 
       expect(res.body).to.be.an('string');
@@ -305,7 +305,7 @@ function AuthSuite () {
       expect(obj).to.have.property('jwt');
       expect(obj).to.have.property('must_change_password');
       expect(obj.jwt).to.be.a('string');
-      expect(obj.jwt.split('.').length).to.be(3);
+      expect(obj.jwt.split('.').length).to.be.equal(3);
       expect(obj.must_change_password).to.be.a('boolean');
     },
     
@@ -317,14 +317,14 @@ function AuthSuite () {
         url: baseUrl() + "/_open/auth",
         body: JSON.stringify({"username": "hackers@arangodb.com", "password": "foobar"})
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
       expect(res.body).to.be.an('string');
       var obj = JSON.parse(res.body);
       expect(obj).to.have.property('jwt');
       expect(obj).to.have.property('must_change_password');
       expect(obj.jwt).to.be.a('string');
-      expect(obj.jwt.split('.').length).to.be(3);
+      expect(obj.jwt.split('.').length).to.be.equal(3);
       expect(obj.must_change_password).to.be.a('boolean');
     },
     
@@ -336,7 +336,7 @@ function AuthSuite () {
         url: baseUrl() + "/_open/auth",
         body: JSON.stringify({"username": "hackers@arangodb.com", "password": "foobar"})
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
     
@@ -345,7 +345,7 @@ function AuthSuite () {
         url: baseUrl() + "/_open/auth",
         body: JSON.stringify({"username": "hackers@arangodb.com", "passwordaa": "foobar"}),
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 400);
     },
     
@@ -354,13 +354,13 @@ function AuthSuite () {
         url: baseUrl() + "/_open/auth",
         body: JSON.stringify({"usern": "hackers@arangodb.com", "password": "foobar"}),
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 400);
     },
 
     testAuthRequired: function() {
       var res = request.get(baseUrl() + "/_api/version");
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
     
@@ -378,7 +378,7 @@ function AuthSuite () {
         }
       });
 
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
     },
     
@@ -391,7 +391,7 @@ function AuthSuite () {
           bearer: jwt,
         }
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
     },
     
@@ -404,7 +404,7 @@ function AuthSuite () {
           bearer: jwt,
         }
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
     
@@ -417,7 +417,7 @@ function AuthSuite () {
           bearer: jwt,
         }
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
     
@@ -430,7 +430,7 @@ function AuthSuite () {
           bearer: jwt,
         }
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
     
@@ -443,7 +443,7 @@ function AuthSuite () {
           bearer: jwt,
         }
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
     },
     
@@ -456,7 +456,7 @@ function AuthSuite () {
           bearer: jwt,
         }
       });
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
   };

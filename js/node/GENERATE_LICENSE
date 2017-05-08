@@ -169,6 +169,5 @@ for module in $MODULES; do
     echo     
     echo "$PROJECT_HOME"
     echo -e "$LICENSE"
-    echo     
-  fi
-done
+  fi | tr "\n" "~" && echo
+done | sort | tr "~" "\n"

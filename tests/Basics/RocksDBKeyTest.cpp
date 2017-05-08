@@ -220,7 +220,7 @@ SECTION("test_primary_index") {
 
 /// @brief test edge index
 SECTION("test_edge_index") {
-  RocksDBKey key1 = RocksDBKey::EdgeIndexValue(0, "a/1", "foobar"); 
+  RocksDBKey key1 = RocksDBKey::EdgeIndexValue(0, StringRef("a/1"), StringRef("foobar"));
   auto const& s1 = key1.string();
   
   CHECK(s1.size() == sizeof(char) + sizeof(uint64_t) + strlen("a/1") + sizeof(char) + strlen("foobar") + sizeof(char));

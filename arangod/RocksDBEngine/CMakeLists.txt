@@ -2,6 +2,7 @@
 
 # add sources for rocksdb engine
 set(ROCKSDB_SOURCES
+  RocksDBEngine/RocksDBAqlFunctions.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBCollection.cpp
   RocksDBEngine/RocksDBCollectionExport.cpp
@@ -11,6 +12,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
   RocksDBEngine/RocksDBExportCursor.cpp
+  RocksDBEngine/RocksDBFulltextIndex.cpp
   RocksDBEngine/RocksDBGeoIndex.cpp
   RocksDBEngine/RocksDBGeoIndexImpl.cpp
   RocksDBEngine/RocksDBHashIndex.cpp

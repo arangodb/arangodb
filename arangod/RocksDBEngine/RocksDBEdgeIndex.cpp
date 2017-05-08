@@ -80,7 +80,7 @@ bool RocksDBEdgeIndexIterator::updateBounds() {
     }
     TRI_ASSERT(fromTo.isString());
     _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId,
-                                                fromTo.copyString());
+                                                StringRef(fromTo));
 
     _iterator->Seek(_bounds.start());
     return true;
@@ -187,8 +187,12 @@ double RocksDBEdgeIndex::selectivityEstimate(
 
 /// @brief return the memory usage for the index
 size_t RocksDBEdgeIndex::memory() const {
-  // TODO
-  return 0;
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out;
+  db->GetApproximateSizes(&r, 1, &out, true);
+  return (size_t)out;
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -215,8 +219,8 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
-                                              primaryKey.copyString());
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, StringRef(fromTo),
+                                              StringRef(primaryKey));
 
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
@@ -242,8 +246,8 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
-                                              primaryKey.copyString());
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, StringRef(fromTo),
+                                              StringRef(primaryKey));
 
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
@@ -262,8 +266,8 @@ int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
-                                              primaryKey.copyString());
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, StringRef(fromTo),
+                                              StringRef(primaryKey));
   writeBatch->Delete(rocksdb::Slice(key.string()));
   return TRI_ERROR_NO_ERROR;
 }
@@ -280,8 +284,8 @@ void RocksDBEdgeIndex::batchInsert(
     VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
     VPackSlice fromTo = doc.second.get(_directionAttr);
     TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-    RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromTo.copyString(),
-                                                primaryKey.copyString());
+    RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, StringRef(fromTo),
+                                                StringRef(primaryKey));
 
     rocksdb::Status status =
         rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
@@ -464,19 +468,11 @@ void RocksDBEdgeIndex::handleValNode(
   }
 }
 
-void RocksDBEdgeIndex::compact() {
+int RocksDBEdgeIndex::cleanup() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, &b, &e);
-}
-
-uint64_t RocksDBEdgeIndex::estimateSize() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return out;
+  return TRI_ERROR_NO_ERROR;
 }

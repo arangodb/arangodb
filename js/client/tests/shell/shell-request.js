@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require('jsunity');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var request = require('@arangodb/request');
 var url = require('url');
 var querystring = require('querystring');
@@ -61,11 +61,14 @@ function RequestSuite () {
     testDeleteMethod: function () {
       var path = '/lol';
       var res = request.delete(buildUrl(path), {timeout: 300});
-      expect(res).to.be.a(request.Response);
+
+      expect(res).to.be.an.instanceof(request.Response);
+
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +78,7 @@ function RequestSuite () {
     testGetMethod: function () {
       var path = '/lol';
       var res = request.get(buildUrl(path), {timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       var obj = JSON.parse(res.body);
@@ -90,8 +93,8 @@ function RequestSuite () {
     testHeadMethod: function () {
       var path = '/lol';
       var res = request.head(buildUrl(path), {timeout: 300});
-      expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.empty();
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res.body).to.be.empty;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +104,7 @@ function RequestSuite () {
     testPostMethod: function () {
       var path = '/lol';
       var res = request.post(buildUrl(path), {timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       var obj = JSON.parse(res.body);
@@ -116,7 +119,7 @@ function RequestSuite () {
       var path = '/lol';
       var body = {hello: 'world'};
       var res = request.post(buildUrl(path), {body: body, json: true, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       expect(res.json).to.be.an('object');
       var obj = res.json;
@@ -133,7 +136,7 @@ function RequestSuite () {
       var path = '/lol';
       var body = {hello: 'world'};
       var res = request.put(buildUrl(path), {body: body, json: true, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       expect(res.json).to.be.an('object');
       var obj = res.json;
@@ -154,7 +157,7 @@ function RequestSuite () {
         'x-hovercraft': 'full-of-eels'
       };
       var res = request.post(buildUrl(path), {headers: headers, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('headers');
@@ -173,7 +176,7 @@ function RequestSuite () {
         hovercraft: ['full', 'of', 'eels']
       };
       var res = request.post(buildUrl(path), {qs: qstring, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       var urlObj = url.parse(obj.url);
       var query = qs.parse(urlObj.query);
@@ -186,7 +189,7 @@ function RequestSuite () {
         hovercraft: ['full', 'of', 'eels']
       };
       var res = request.post(buildUrl(path), {qs: qstring, useQuerystring: true, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       var urlObj = url.parse(obj.url);
       var query = querystring.parse(urlObj.query);
@@ -199,7 +202,7 @@ function RequestSuite () {
         hovercraft: ['full', 'of', 'eels']
       });
       var res = request.post(buildUrl(path), {qs: qstring, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       var urlObj = url.parse(obj.url);
       expect(urlObj.query).to.eql(qstring);
@@ -212,7 +215,7 @@ function RequestSuite () {
     testUrlObject: function () {
       var path = url.parse(buildUrl('/lol'));
       var res = request.post({url: path, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.url).to.equal(path.pathname);
     },
@@ -224,7 +227,7 @@ function RequestSuite () {
     test404: function () {
       var url = buildUrlBroken('/lol');
       var res = request.get(url, {timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('message', 'Not Found');
       expect(res).to.have.property('statusCode', 404);
       expect(res).to.have.property('status', 404);
@@ -237,8 +240,8 @@ function RequestSuite () {
     testBadJson: function () {
       var url = buildUrl('/_admin/aardvark/index.html', false);
       var res = request.get(url, {json: true, timeout: 300});
-      expect(res).to.be.a(request.Response);
-      expect(res.json).to.be(undefined);
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res.json).to.be.equal(undefined);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,7 +255,7 @@ function RequestSuite () {
         password: 'bionicman'
       };
       var res = request.post(buildUrl(path), {auth: auth, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('headers');
@@ -271,7 +274,7 @@ function RequestSuite () {
       var res = request.post(buildUrl(path).replace(/^(https?:\/\/)/, function (m) {
         return m + encodeURIComponent(auth.username) + ':' + encodeURIComponent(auth.password) + '@';
       }), {timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('headers');
@@ -287,7 +290,7 @@ function RequestSuite () {
         bearer: 'full of bears'
       };
       var res = request.post(buildUrl(path), {auth: auth, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('headers');
@@ -307,7 +310,7 @@ function RequestSuite () {
         hovercraft: ['full', 'of', 'eels']
       };
       var res = request.post(buildUrl(path), {body: reqBody, json: true, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       expect(res.json).to.be.an('object');
       var obj = res.json;
       expect(obj.path).to.equal(path);
@@ -323,7 +326,7 @@ function RequestSuite () {
         hovercraft: ['full', 'of', 'eels']
       };
       var res = request.post(buildUrl(path), {form: reqBody, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
@@ -338,7 +341,7 @@ function RequestSuite () {
         hovercraft: ['full', 'of', 'eels']
       };
       var res = request.post(buildUrl(path), {form: reqBody, useQuerystring: true, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
@@ -353,7 +356,7 @@ function RequestSuite () {
         hovercraft: ['full', 'of', 'eels']
       };
       var res = request.post(buildUrl(path), {form: qs.stringify(reqBody), timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
@@ -364,7 +367,7 @@ function RequestSuite () {
       var path = '/lol';
       var reqBody = 'hello world';
       var res = request.post(buildUrl(path), {body: reqBody, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
@@ -376,7 +379,7 @@ function RequestSuite () {
       var reqBody = new Buffer('hello world');
       var headers = {'content-type': 'application/octet-stream'};
       var res = request.post(buildUrl(path), {body: reqBody, headers: headers, timeout: 300});
-      expect(res).to.be.a(request.Response);
+      expect(res).to.be.an.instanceof(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
@@ -386,10 +389,9 @@ function RequestSuite () {
     testBufferResponse: function () {
       var path = '/_admin/aardvark/favicon.ico';
       var res = request.get(buildUrl(path, false), {encoding: null, timeout: 300});
-      expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a(Buffer);
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res.body).to.be.an.instanceof(Buffer);
     }
-
   };
 }
 

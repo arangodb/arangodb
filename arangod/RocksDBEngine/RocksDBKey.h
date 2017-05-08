@@ -79,8 +79,8 @@ class RocksDBKey {
   /// for the `_to` sub-index and one for the `_from` sub-index.
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey EdgeIndexValue(uint64_t indexId,
-                                   std::string const& vertexId,
-                                   std::string const& primaryKey);
+                                   arangodb::StringRef const& vertexId,
+                                   arangodb::StringRef const& primaryKey);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a user-defined,
@@ -127,6 +127,13 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for a replication applier config
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey ReplicationApplierConfig(TRI_voc_tick_t databaseId);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for the fulltext index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKey FulltextIndexValue(uint64_t indexId,
+                                       arangodb::StringRef const& word,
+                                       arangodb::StringRef const& primaryKey);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -191,7 +198,7 @@ class RocksDBKey {
   /// @brief Extracts the primary key (`_key`) from a key
   ///
   /// May be called only on the following key types: PrimaryIndexValue,
-  /// EdgeIndexValue, and IndexValue. Other types will throw.
+  /// EdgeIndexValue, IndexValue, FulltextIndexValue. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static StringRef primaryKey(RocksDBKey const&);
   static StringRef primaryKey(rocksdb::Slice const&);
@@ -231,6 +238,8 @@ class RocksDBKey {
              arangodb::StringRef const& second);
   RocksDBKey(RocksDBEntryType type, uint64_t first, std::string const& second,
              std::string const& third);
+  RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second,
+             arangodb::StringRef const& third);
   RocksDBKey(RocksDBEntryType type, bool, uint64_t);
 
  private:

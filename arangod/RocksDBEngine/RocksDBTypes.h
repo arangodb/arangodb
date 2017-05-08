@@ -43,7 +43,8 @@ enum class RocksDBEntryType : char {
   View = '8',
   SettingsValue = '9',
   ReplicationApplierConfig = ':',
-  GeoIndexValue = ';'
+  FulltextIndexValue = ';',
+  GeoIndexValue = '<'
 };
 
 enum class RocksDBLogType : char {

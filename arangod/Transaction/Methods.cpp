@@ -137,7 +137,7 @@ static OperationResult emptyResult(bool waitForSync) {
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          waitForSync, errorCounter);
 }
-}
+}  // namespace
 
 /// @brief Get the field names of the used index
 std::vector<std::vector<std::string>>
@@ -741,7 +741,7 @@ Result transaction::Methods::commit() {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
-  
+
   CallbackInvoker invoker(this);
 
   if (_state->isCoordinator()) {
@@ -873,10 +873,9 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
         // special error message to indicate which collection was undeclared
-        THROW_ARANGO_EXCEPTION_MESSAGE(res,
-                                       std::string(TRI_errno_string(res)) +
-                                           ": " + collectionName + " [" +
-                                           AccessMode::typeString(type) + "]");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            res, std::string(TRI_errno_string(res)) + ": " + collectionName +
+                     " [" + AccessMode::typeString(type) + "]");
       }
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -1332,10 +1331,10 @@ OperationResult transaction::Methods::insertCoordinator(
 /// @brief choose a timeout for synchronous replication, based on the
 /// number of documents we ship over
 static double chooseTimeout(size_t count) {
-  // We usually assume that a server can process at least 5000 documents
+  // We usually assume that a server can process at least 2500 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
-  double timeout = static_cast<double>(count / 5000);
+  double timeout = static_cast<double>(count / 2500);
   if (timeout < 0.5) {
     return 0.5;
   } else if (timeout > 120) {
@@ -2793,10 +2792,9 @@ Result transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid,
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          res,
-          std::string(TRI_errno_string(res)) + ": " +
-              resolver()->getCollectionNameCluster(cid) + " [" +
-              AccessMode::typeString(type) + "]");
+          res, std::string(TRI_errno_string(res)) + ": " +
+                   resolver()->getCollectionNameCluster(cid) + " [" +
+                   AccessMode::typeString(type) + "]");
     } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       throwCollectionNotFound(name);
     }
@@ -2825,10 +2823,9 @@ Result transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid,
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          res,
-          std::string(TRI_errno_string(res)) + ": " +
-              resolver()->getCollectionNameCluster(cid) + " [" +
-              AccessMode::typeString(type) + "]");
+          res, std::string(TRI_errno_string(res)) + ": " +
+                   resolver()->getCollectionNameCluster(cid) + " [" +
+                   AccessMode::typeString(type) + "]");
     } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       throwCollectionNotFound(name);
     }
@@ -2889,8 +2886,8 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
 
   return TRI_ERROR_NO_ERROR;
 }
-  
-/// @brief invoke a callback method when a transaction has finished  
+
+/// @brief invoke a callback method when a transaction has finished
 void transaction::CallbackInvoker::invoke() noexcept {
   if (!_trx->_onFinish) {
     return;

@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -547,7 +546,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 
       if (rv == TRI_ERROR_NO_ERROR) {
         // trigger compaction before deleting the object
-        cindex->compact();
+        cindex->cleanup();
         
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
@@ -1320,6 +1319,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   rocksdb::WriteBatchWithIndex batch(db->DefaultColumnFamily()->GetComparator(),
                                      32 * 1024 * 1024);
   rocksdb::ReadOptions readOptions;
+  rocksdb::WriteOptions writeOpts = state->writeOptions();
 
   int res = TRI_ERROR_NO_ERROR;
   auto cb = [&](DocumentIdentifierToken token) {
@@ -1344,7 +1344,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
       r = Result(res);
       break;
     }
-    rocksdb::Status s = db->Write(state->writeOptions(), batch.GetWriteBatch());
+    rocksdb::Status s = db->Write(writeOpts, batch.GetWriteBatch());
     if (!s.ok()) {
       r = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
       break;
@@ -1377,7 +1377,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
     }
     // TODO: if this fails, do we have any recourse?
     // Simon: Don't think so
-    db->Write(state->writeOptions(), &removeBatch);
+    db->Write(writeOpts, &removeBatch);
   }
 
   return r;
@@ -1752,7 +1752,7 @@ void RocksDBCollection::compact() {
 
   for (std::shared_ptr<Index> i : _indexes) {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
-    index->compact();
+    index->cleanup();
   }
 }
 
@@ -1772,7 +1772,7 @@ void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
 
   for (std::shared_ptr<Index> i : _indexes) {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
-    out = index->estimateSize();
+    out = index->memory();
     builder.add(std::to_string(index->id()), VPackValue(out));
     total += out;
   }

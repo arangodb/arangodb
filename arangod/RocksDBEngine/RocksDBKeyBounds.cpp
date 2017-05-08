@@ -61,7 +61,7 @@ RocksDBKeyBounds RocksDBKeyBounds::EdgeIndex(uint64_t indexId) {
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::EdgeIndexVertex(
-    uint64_t indexId, std::string const& vertexId) {
+    uint64_t indexId, arangodb::StringRef const& vertexId) {
   return RocksDBKeyBounds(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
 }
 
@@ -93,6 +93,29 @@ RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
 RocksDBKeyBounds RocksDBKeyBounds::CounterValues() {
   return RocksDBKeyBounds(RocksDBEntryType::CounterValue);
 }
+
+RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t indexId,
+                                                       arangodb::StringRef const& word) {
+  // I don't 
+  RocksDBKeyBounds bounds;
+  size_t length =
+  sizeof(char) + sizeof(uint64_t) + word.size();
+  bounds._startBuffer.reserve(length);
+  bounds._startBuffer.push_back(static_cast<char>(RocksDBEntryType::FulltextIndexValue));
+  uint64ToPersistent(bounds._startBuffer, indexId);
+  bounds._startBuffer.append(word.data(), word.length());
+  
+  bounds._endBuffer.append(bounds._startBuffer);
+  bounds._endBuffer.push_back(0xFF);// invalid UTF-8 character, higher than with memcmp
+  return bounds;
+}
+
+RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
+                                              arangodb::StringRef const& word) {
+  return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId, word);
+}
+
+// ============================ Member Methods ==============================
 
 rocksdb::Slice const RocksDBKeyBounds::start() const {
   return rocksdb::Slice(_startBuffer);
@@ -222,22 +245,22 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 }
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                                   std::string const& second)
+                                   arangodb::StringRef const& second)
     : _type(type), _startBuffer(), _endBuffer() {
   switch (_type) {
+    case RocksDBEntryType::FulltextIndexValue:
     case RocksDBEntryType::EdgeIndexValue: {
       size_t length =
           sizeof(char) + sizeof(uint64_t) + second.size() + sizeof(char);
       _startBuffer.reserve(length);
       _startBuffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_startBuffer, first);
-      _startBuffer.append(second);
+      _startBuffer.append(second.data(), second.length());
       _startBuffer.push_back(_stringSeparator);
 
       _endBuffer.clear();
       _endBuffer.append(_startBuffer);
       nextPrefix(_endBuffer);
-
       break;
     }
 

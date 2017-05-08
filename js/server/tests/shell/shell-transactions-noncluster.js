@@ -1356,9 +1356,6 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateFulltextIndex : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       
       c1 = db._create(cn1);
 
@@ -1975,9 +1972,6 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFulltext : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       
       c1 = db._create(cn1);
       var idx = c1.ensureFulltextIndex("text");
