@@ -46,11 +46,7 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-GeneralServer::~GeneralServer() {
-  for (auto& task : _listenTasks) {
-    delete task;
-  }
-}
+GeneralServer::~GeneralServer() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -106,7 +102,7 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
     }
   }
 
-  std::unique_ptr<ListenTask> task(new GeneralListenTask(
+  std::shared_ptr<ListenTask> task(new GeneralListenTask(
       SchedulerFeature::SCHEDULER->eventLoop(), this, endpoint, protocolType));
   task->start();
 
@@ -114,7 +110,6 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
     return false;
   }
 
-  _listenTasks.emplace_back(task.get());
-  task.release();
+  _listenTasks.emplace_back(std::move(task));
   return true;
 }
