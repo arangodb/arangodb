@@ -70,8 +70,8 @@ void ListenTask::start() {
       return;
     }
 
-    // now it is safe to use _acceptor
-    TRI_ASSERT(_acceptor != nullptr);
+    // now it is safe to use acceptorCopy
+    TRI_ASSERT(acceptorCopy != nullptr);
 
     if (ec) {
       if (ec == boost::asio::error::operation_aborted) {
@@ -90,7 +90,7 @@ void ListenTask::start() {
 
     ConnectionInfo info;
 
-    auto peer = _acceptor->movePeer();
+    auto peer = acceptorCopy->movePeer();
 
     // set the endpoint
     info.endpoint = _endpoint->specification();
@@ -104,7 +104,7 @@ void ListenTask::start() {
     handleConnected(std::move(peer), std::move(info));
 
     if (_bound) {
-      _acceptor->asyncAccept(_handler);
+      acceptorCopy->asyncAccept(_handler);
     }
   };
 

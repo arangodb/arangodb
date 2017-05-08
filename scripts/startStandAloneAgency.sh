@@ -238,7 +238,7 @@ for aid in "${aaid[@]}"; do
     --server.endpoint $TRANSPORT://[::]:$port \
     --server.statistics false \
     $SSLKEYFILE \
-    | tee cluster/$PORT.stdout 2>&1 &
+    | tee agency/$PORT.stdout 2>&1 &
   PIDS+=$!
   PIDS+=" "
   if [ "$GOSSIP_MODE" == "1" ]; then

@@ -662,7 +662,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
         indexBounds = RocksDBKeyBounds::EdgeIndex(rindex->objectId());
         break;
-
       case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
       case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
       case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
@@ -672,8 +671,10 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
           indexBounds = RocksDBKeyBounds::IndexEntries(rindex->objectId());
         }
         break;
-      // TODO add options for geoindex, fulltext etc
-
+      case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
+        indexBounds = RocksDBKeyBounds::FulltextIndex(rindex->objectId());
+        break;
+        // TODO add options for geoindex, fulltext etc
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }

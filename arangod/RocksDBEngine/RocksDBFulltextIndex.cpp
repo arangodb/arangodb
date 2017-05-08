@@ -194,9 +194,7 @@ int RocksDBFulltextIndex::insert(transaction::Methods* trx,
                                  VPackSlice const& doc, bool isRollback) {
   std::vector<std::string> words = wordlist(doc);
   if (words.empty()) {
-    // TODO: distinguish the cases "empty wordlist" and "out of memory"
-    // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_NO_ERROR;
   }
 
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
@@ -238,9 +236,7 @@ int RocksDBFulltextIndex::insertRaw(rocksdb::WriteBatchWithIndex* batch,
                                     arangodb::velocypack::Slice const& doc) {
   std::vector<std::string> words = wordlist(doc);
   if (words.empty()) {
-    // TODO: distinguish the cases "empty wordlist" and "out of memory"
-    // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";
-    return TRI_ERROR_OUT_OF_MEMORY;
+    return TRI_ERROR_NO_ERROR;
   }
 
   // now we are going to construct the value to insert into rocksdb
@@ -480,6 +476,7 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
                                           FulltextQuery const& query,
                                           size_t maxResults,
                                           VPackBuilder& builder) {
+  
   std::set<std::string> resultSet;
   for (FulltextQueryToken const& token : query) {
     applyQueryToken(trx, token, resultSet);
@@ -554,13 +551,16 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
     }
     iter->Next();
   }
-  if (!resultSet.empty() && !intersect.empty() &&
-      token.operation == FulltextQueryToken::AND) {
-    std::set<std::string> output;
-    std::set_intersection(resultSet.begin(), resultSet.end(), intersect.begin(),
-                          intersect.end(),
-                          std::inserter(output, output.begin()));
-    resultSet = std::move(output);
+  if (token.operation == FulltextQueryToken::AND) {
+    if (resultSet.empty() || intersect.empty()) {
+      resultSet.clear();
+    } else {
+      std::set<std::string> output;
+      std::set_intersection(resultSet.begin(), resultSet.end(), intersect.begin(),
+                            intersect.end(),
+                            std::inserter(output, output.begin()));
+      resultSet = std::move(output);
+    }
   }
   return Result();
 }

@@ -116,13 +116,18 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds CounterValues();
   
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all entries of a fulltext index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds FulltextIndex(uint64_t indexId);
+  
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching prefixes
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds FulltextIndexPrefix(uint64_t,
                                              arangodb::StringRef const&);
   
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries of a fulltext index, matching prefixes
+  /// @brief Bounds for all entries of a fulltext index, matching the word
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds FulltextIndexComplete(uint64_t,
                                                 arangodb::StringRef const&);
