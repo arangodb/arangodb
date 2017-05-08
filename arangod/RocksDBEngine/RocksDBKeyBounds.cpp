@@ -73,6 +73,10 @@ RocksDBKeyBounds RocksDBKeyBounds::UniqueIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueIndexValue, indexId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::FulltextIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::GeoIndexValue, indexId);
 }
@@ -97,11 +101,6 @@ RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
 RocksDBKeyBounds RocksDBKeyBounds::CounterValues() {
   return RocksDBKeyBounds(RocksDBEntryType::CounterValue);
 }
-
-RocksDBKeyBounds RocksDBKeyBounds::FulltextIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId);
-}
-
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t indexId,
                                                        arangodb::StringRef const& word) {
@@ -236,8 +235,9 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
-    case RocksDBEntryType::View:
-    case RocksDBEntryType::FulltextIndexValue: {
+    case RocksDBEntryType::FulltextIndexValue:
+    case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::View: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _startBuffer.reserve(length);
       _startBuffer.push_back(static_cast<char>(_type));

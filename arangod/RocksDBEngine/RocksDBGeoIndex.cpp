@@ -384,7 +384,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int RocksDBGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
+int RocksDBGeoIndex::insert(transaction::Methods *, TRI_voc_rid_t revisionId,
                             VPackSlice const& doc, bool isRollback) {
   double latitude;
   double longitude;
@@ -453,6 +453,12 @@ int RocksDBGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
   return TRI_ERROR_NO_ERROR;
 }
 
+int RocksDBGeoIndex::insertRaw(rocksdb::WriteBatchWithIndex* batch,
+                               TRI_voc_rid_t revisionId,
+                               arangodb::velocypack::Slice const& doc) {
+  return this->insert(nullptr, revisionId, doc, false);
+}
+
 int RocksDBGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
                             VPackSlice const& doc, bool isRollback) {
   double latitude = 0.0;
@@ -511,6 +517,12 @@ int RocksDBGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+int RocksDBGeoIndex::removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t revisionId,
+                               arangodb::velocypack::Slice const& doc) {
+  return this->remove(nullptr, revisionId, doc, false);
+}
+
 
 int RocksDBGeoIndex::unload() {
   // create a new, empty index

@@ -211,9 +211,9 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
 
-  _options.env->SetBackgroundThreads(opts->_numThreadsHigh,
+  _options.env->SetBackgroundThreads((int)opts->_numThreadsHigh,
                                      rocksdb::Env::Priority::HIGH);
-  _options.env->SetBackgroundThreads(opts->_numThreadsLow,
+  _options.env->SetBackgroundThreads((int)opts->_numThreadsLow,
                                      rocksdb::Env::Priority::LOW);
 
   _options.create_if_missing = true;

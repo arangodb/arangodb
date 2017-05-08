@@ -90,26 +90,26 @@ VPackBuilder PotToVpack(GeoPot* pot){
 GeoPot VpackToPot(VPackSlice const& slice){
   GeoPot rv{};
   TRI_ASSERT(slice.isArray());
-  rv.LorLeaf = slice.at(0).getInt();                         // int
-  rv.RorPoints = slice.at(1).getInt();                       // int
+  rv.LorLeaf = (int) slice.at(0).getInt();                         // int
+  rv.RorPoints = (int) slice.at(1).getInt();                       // int
   rv.middle = slice.at(2).getUInt();                         // GeoString
   {
     auto maxdistSlice = slice.at(3);
     TRI_ASSERT(maxdistSlice.isArray());
     TRI_ASSERT(maxdistSlice.length() == GeoIndexFIXEDPOINTS);
     for(std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++){
-      rv.maxdist[i] = maxdistSlice.at(i).getUInt();          //unit 16/33
+      rv.maxdist[i] = (int) maxdistSlice.at(i).getUInt();          //unit 16/33
     }
   }
-  rv.start = slice.at(4).getUInt();                          // GeoString
+  rv.start = (int) slice.at(4).getUInt();                          // GeoString
   rv.end = slice.at(5).getUInt();                            // GeoString
-  rv.level = slice.at(6).getInt();                           // int
+  rv.level = (int) slice.at(6).getInt();                           // int
   {
     auto pointsSlice = slice.at(7);
     TRI_ASSERT(pointsSlice.isArray());
     TRI_ASSERT(pointsSlice.length() == GeoIndexFIXEDPOINTS);
     for(std::size_t i = 0; i < GeoIndexPOTSIZE; i++){
-      rv.points[i] = pointsSlice.at(i).getInt();             //int
+      rv.points[i] = (int) pointsSlice.at(i).getInt();             //int
     }
   }
   return rv;
