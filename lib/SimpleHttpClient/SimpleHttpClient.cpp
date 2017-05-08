@@ -665,7 +665,6 @@ void SimpleHttpClient::processHeader() {
     if (*ptr == '\r' || *ptr == '\n' || *ptr == '\0') {
       size_t len = pos - ptr;
       _readBufferOffset += len + 1;
->>>>>>> 61444b61547e118585a41da0a18c59126daf8dd6
 
       ptr += len + 1;
       remain -= len + 1;
@@ -673,7 +672,6 @@ void SimpleHttpClient::processHeader() {
       if (*pos == '\r') {
         // adjust offset if line ended with \r\n
         ++_readBufferOffset;
->>>>>>> 61444b61547e118585a41da0a18c59126daf8dd6
 
         ptr++;
         remain--;
