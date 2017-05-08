@@ -306,15 +306,16 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   }
 }
 
-RocksDBKey::RocksDBKey(RocksDBEntryType type, bool isSlot, uint64_t offset)
+RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t objectId, uint64_t offset, bool isSlot)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::GeoIndexValue: {
 
-      size_t length = sizeof(char) + sizeof(isSlot) + sizeof(offset);
+      size_t length = sizeof(char) + sizeof(objectId) + sizeof(offset);
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
-      _buffer.append(isSlot, sizeof(isSlot));
+      offset |= std::uint64_t{isSlot} << 63; //encode slot|pot in highest bit
+      uint64ToPersistent(_buffer, objectId);
       uint64ToPersistent(_buffer, offset);
       break;
     }

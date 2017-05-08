@@ -240,7 +240,7 @@ class RocksDBKey {
              std::string const& third);
   RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second,
              arangodb::StringRef const& third);
-  RocksDBKey(RocksDBEntryType type, bool, uint64_t);
+  RocksDBKey(RocksDBEntryType type, uint64_t objectId, uint64_t index, bool isSlot);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
