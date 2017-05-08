@@ -635,6 +635,13 @@ void SimpleHttpClient::setRequest(
 // -----------------------------------------------------------------------------
 
 void SimpleHttpClient::processHeader() {
+  if (_readBufferOffset > _readBuffer.length()) {
+    #warning Forgetmenot
+    
+    LOG_TOPIC(WARN, Logger::FIXME)
+      <<  _readBufferOffset << " " << _readBuffer.length()
+      << " " << std::string(_readBuffer.c_str(), _readBuffer.length());
+  }
   TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
   size_t remain = _readBuffer.length() - _readBufferOffset;
   char const* ptr = _readBuffer.c_str() + _readBufferOffset;
@@ -658,6 +665,7 @@ void SimpleHttpClient::processHeader() {
     if (*ptr == '\r' || *ptr == '\n' || *ptr == '\0') {
       size_t len = pos - ptr;
       _readBufferOffset += len + 1;
+>>>>>>> 61444b61547e118585a41da0a18c59126daf8dd6
 
       ptr += len + 1;
       remain -= len + 1;
@@ -665,6 +673,7 @@ void SimpleHttpClient::processHeader() {
       if (*pos == '\r') {
         // adjust offset if line ended with \r\n
         ++_readBufferOffset;
+>>>>>>> 61444b61547e118585a41da0a18c59126daf8dd6
 
         ptr++;
         remain--;
@@ -813,6 +822,8 @@ void SimpleHttpClient::processChunkedHeader() {
   // adjust offset if line ended with \r\n
   if (*pos == '\r') {
     ++_readBufferOffset;
+              TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+
     ++len;
   }
 
