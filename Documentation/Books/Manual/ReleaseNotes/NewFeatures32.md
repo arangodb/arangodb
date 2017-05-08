@@ -94,7 +94,7 @@ These will be resolved in the following releases:
 * index selectivity estimates are missing. All indexes will report their selectivity
   estimate as `0.2`. This may lead to non-optimal indexes being used in a query.
 
-* geo and fulltext indexes are not yet implemented
+* the geo index is not yet implemented
 
 * the number of documents reported for collections (`db.<collection>.count()`) may be
   slightly wrong during transactions
@@ -112,14 +112,18 @@ These will be resolved in the following releases:
 The existing indexes in the RocksDB engine are all persistent. The following indexes are
 supported there:
 
-* primary: automatically created, indexing `_id` / `_key`
+* primary: this type of index is automatically created. It indexes `_id` / `_key`
 
-* edge: automatically created for edge collections, indexing `_from` and `_to`
+* edge: this index is automatically created for edge collections. It indexes 
+  `_from` and `_to`
 
-* hash, skiplist, persistent: user-defined index, technically it is neither a hash
-  nor a skiplist index. All these index types map to the same RocksDB-based
-  sorted index implementation. The names "hash", "skiplist" and "persistent" are
-  only used for compatibility with the MMFiles engine.
+* hash, skiplist, persistent: these are user-defined indexes, Despite their names, they are 
+  neither hash nor skiplist indexes. These index types map to the same RocksDB-based
+  sorted index implementation. The same is true for the "persistent" index. The names 
+  "hash", "skiplist" and "persistent" are only used for compatibility with the MMFiles 
+  engine where these indexes existed in previous and the current version of ArangoDB.
+
+* fulltext: user-defined sorted reverted index on words occurring in documents
 
 
 Memory management
