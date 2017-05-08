@@ -94,9 +94,14 @@ RocksDBKeyBounds RocksDBKeyBounds::CounterValues() {
   return RocksDBKeyBounds(RocksDBEntryType::CounterValue);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::FulltextIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId);
+}
+
+
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t indexId,
                                                        arangodb::StringRef const& word) {
-  // I don't 
+  // I did not want to pass a bool to the constructor for this
   RocksDBKeyBounds bounds;
   size_t length =
   sizeof(char) + sizeof(uint64_t) + word.size();
@@ -227,7 +232,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
-    case RocksDBEntryType::View: {
+    case RocksDBEntryType::View:
+    case RocksDBEntryType::FulltextIndexValue: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _startBuffer.reserve(length);
       _startBuffer.push_back(static_cast<char>(_type));
