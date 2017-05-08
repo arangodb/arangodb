@@ -192,8 +192,7 @@ bool RocksDBGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
 
     for (size_t i = 0; i < numDocs; ++i) {
-      cb(::RocksDBGeoIndex::toDocumentIdentifierToken(
-          coords->coordinates[i].data));
+      cb(RocksDBToken(coords->coordinates[i].data));
     }
     // If we return less then limit many docs we are done.
     _done = numDocs < limit;
@@ -212,17 +211,6 @@ void RocksDBGeoIndexIterator::replaceCursor(::GeoCursor* c) {
 void RocksDBGeoIndexIterator::createCursor(double lat, double lon) {
   _coor = GeoCoordinate{lat, lon, 0};
   replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
-}
-
-uint64_t RocksDBGeoIndex::fromDocumentIdentifierToken(
-    DocumentIdentifierToken const& token) {
-  auto tkn = static_cast<RocksDBToken const*>(&token);
-  return static_cast<uint64_t>(tkn->revisionId());
-}
-
-DocumentIdentifierToken RocksDBGeoIndex::toDocumentIdentifierToken(
-    uint64_t internal) {
-  return RocksDBToken{internal};
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -300,7 +288,7 @@ void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                    bool forPersistence) const {
   builder.openObject();
   // Basic index
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
 
   if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
       _variant == INDEX_GEO_COMBINED_LON_LAT) {

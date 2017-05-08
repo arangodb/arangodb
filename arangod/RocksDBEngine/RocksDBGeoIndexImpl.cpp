@@ -747,69 +747,74 @@ int SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
     //gc GeoCoordinate, element in point array of real geo index
     memcpy(gc,gix->gxc+slot,sizeof(GeoCoordinate));
   
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, true, slot);
-  RocksDBValue val = RocksDBValue::Empty(RocksDBEntryType::GeoIndexValue);
-  
-  rocksdb::ReadOptions opts;
-  rocksdb::Status s = db->Get(opts, key.string(), val.buffer());
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-  }
-  
-  VpackToCoord(val.slice(), gc);
-  return 0;
+    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+    RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+    RocksDBValue val = RocksDBValue::Empty(RocksDBEntryType::GeoIndexValue);
+    
+    rocksdb::ReadOptions opts;
+    rocksdb::Status s = db->Get(opts, key.string(), val.buffer());
+    if (s.IsNotFound()) { // TODO how to indicate not found?
+        memset(gc, 0, sizeof(GeoCoordinate));
+        return -1;
+    } else if (!s.ok()) {
+        arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+        THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
+    VpackToCoord(val.slice(), gc);
+    return 0;
 }
 void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
 {
     memcpy(gix->gxc+slot,gc,sizeof(GeoCoordinate));
   
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-  VPackBuilder serialized = CoordToVpack(gc);
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, true, slot);
-  RocksDBValue val = RocksDBValue::Empty(RocksDBEntryType::GeoIndexValue);
-  
-  rocksdb::WriteOptions opts;
-  rocksdb::Status s = db->Put(opts, key.string(), val.string());
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-  }
+    VPackBuilder serialized = CoordToVpack(gc);
+    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+    RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+    RocksDBValue val = RocksDBValue::Document(serialized.slice());
+    
+    rocksdb::WriteOptions opts;
+    rocksdb::Status s = db->Put(opts, key.string(), val.string());
+    if (!s.ok()) {
+        arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+        THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
 }
 
 int PotRead(GeoIx * gix, int pot, GeoPot * gp)
 {
     memcpy(gp,gix->ypots+pot,sizeof(GeoPot));
   
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, false, pot);
-  RocksDBValue val = RocksDBValue::Empty(RocksDBEntryType::GeoIndexValue);
-  
-  rocksdb::ReadOptions opts;
-  rocksdb::Status s = db->Get(opts, key.string(), val.buffer());
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-  }
-  
-  VpackToPot(val.slice(), gp);
-  return 0;
+    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+    RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+    RocksDBValue val = RocksDBValue::Empty(RocksDBEntryType::GeoIndexValue);
+    
+    rocksdb::ReadOptions opts;
+    rocksdb::Status s = db->Get(opts, key.string(), val.buffer());
+    if (s.IsNotFound()) { // TODO how to indicate not found?
+        gp->LorLeaf = 0;
+        gp->RorPoints = 0;
+        return -1;
+    } else if (!s.ok()) {
+        arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+        THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
+    VpackToPot(val.slice(), gp);
+    return 0;
 }
 void PotWrite(GeoIx * gix, int pot, GeoPot * gp) {
     memcpy(gix->ypots+pot,gp,sizeof(GeoPot));
   
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-  VPackBuilder serialized = PotToVpack(gp);
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, false, pot);
-  RocksDBValue val = RocksDBValue::Document(serialized.slice());
-  
-  rocksdb::WriteOptions opts;
-  rocksdb::Status s = db->Put(opts, key.string(), val.string());
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-  }
+    VPackBuilder serialized = PotToVpack(gp);
+    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+    RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+    RocksDBValue val = RocksDBValue::Document(serialized.slice());
+    
+    rocksdb::WriteOptions opts;
+    rocksdb::Status s = db->Put(opts, key.string(), val.string());
+    if (!s.ok()) {
+        arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+        THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
 }
 
 /* =================================================== */

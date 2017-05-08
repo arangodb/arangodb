@@ -164,6 +164,13 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       if (_collection != nullptr) {
         _usageLocked = true;
       }
+      
+      // geo index needs exclusive write access
+      RocksDBCollection* rc = static_cast<RocksDBCollection*>(_collection->getPhysical());
+      if (AccessMode::isWrite(_accessType) && rc->hasGeoIndex()) {
+        _accessType = AccessMode::Type::EXCLUSIVE;
+      }
+      
     } else {
       // use without usage-lock (lock already set externally)
       _collection = _transaction->vocbase()->lookupCollection(_cid);
@@ -187,11 +194,9 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
 
-    _initialNumberDocuments =
-        static_cast<RocksDBCollection*>(_collection->getPhysical())
-            ->numberDocuments();
-    _revision =
-        static_cast<RocksDBCollection*>(_collection->getPhysical())->revision();
+    RocksDBCollection* rc = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    _initialNumberDocuments = rc->numberDocuments();
+    _revision = rc->revision();
   }
 
   if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {

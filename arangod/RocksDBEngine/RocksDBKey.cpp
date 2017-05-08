@@ -83,8 +83,17 @@ RocksDBKey RocksDBKey::FulltextIndexValue(uint64_t indexId,
   return RocksDBKey(RocksDBEntryType::FulltextIndexValue, indexId, word, primaryKey);
 }
 
-RocksDBKey RocksDBKey::GeoIndexValue(uint64_t indexId, bool isSlot, uint64_t offset){
-  return RocksDBKey(RocksDBEntryType::GeoIndexValue, isSlot, offset);
+RocksDBKey RocksDBKey::GeoIndexValue(uint64_t indexId, uint32_t offset, bool isSlot) {
+  RocksDBKey key(RocksDBEntryType::GeoIndexValue);
+  size_t length = sizeof(char) + sizeof(indexId) + sizeof(offset);
+  key._buffer.reserve(length);
+  key._buffer.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
+  uint64ToPersistent(key._buffer, indexId);
+  uint64_t norm = offset;
+  if (isSlot) norm |= uint64_t(1) << 63;//encode slot|pot in highest bit
+  uint64ToPersistent(key._buffer, norm);
+  
+  return key;
 }
 
 RocksDBKey RocksDBKey::View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) {
@@ -194,6 +203,7 @@ std::string const& RocksDBKey::string() const { return _buffer; }
 
 RocksDBKey::RocksDBKey(RocksDBEntryType type) : _type(type), _buffer() {
   switch (_type) {
+    case RocksDBEntryType::GeoIndexValue:
     case RocksDBEntryType::SettingsValue: {
       _buffer.push_back(static_cast<char>(_type));
       break;
@@ -307,26 +317,6 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
       _buffer.append(second.data(), second.size());
-      break;
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-}
-
-RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t objectId, uint32_t offset, bool isSlot)
-    : _type(type), _buffer() {
-  switch (_type) {
-    case RocksDBEntryType::GeoIndexValue: {
-
-      size_t length = sizeof(char) + sizeof(objectId) + sizeof(offset);
-      _buffer.reserve(length);
-      _buffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_buffer, objectId);
-      uint64_t norm = offset;
-      if (isSlot) norm |= uint64_t(1) << 63;//encode slot|pot in highest bit
-      uint64ToPersistent(_buffer, norm);
       break;
     }
 

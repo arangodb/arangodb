@@ -183,11 +183,14 @@ void RocksDBCollection::open(bool ignoreErrors) {
       << " number of documents: " << counterValue.added();
   _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
-  //_numberDocuments = countKeyRange(db, readOptions,
-  // RocksDBKeyBounds::CollectionDocuments(_objectId));
 
-  for (auto it : getIndexes()) {
+  for (std::shared_ptr<Index> it : getIndexes()) {
     static_cast<RocksDBIndex*>(it.get())->load();
+    
+    if (it->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        it->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      _hasGeoIndex = true;
+    }
   }
 }
 
@@ -1263,8 +1266,11 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   }
 
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
-
   _indexes.emplace_back(idx);
+  if (idx->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
+      idx->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+    _hasGeoIndex = true;
+  }
 }
 
 void RocksDBCollection::addIndexCoordinator(

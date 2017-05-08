@@ -167,11 +167,6 @@ class RocksDBGeoIndex final : public RocksDBIndex {
             _latitude == latitude && _longitude == longitude);
   }
 
-  static uint64_t fromDocumentIdentifierToken(
-      DocumentIdentifierToken const& token);
-
-  static DocumentIdentifierToken toDocumentIdentifierToken(uint64_t internal);
-
  private:
   /// @brief attribute paths
   std::vector<std::string> _location;
