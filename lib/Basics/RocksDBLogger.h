@@ -25,8 +25,6 @@
 #define ARANGODB_BASICS_ROCKSDB_LOGGER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
-#include "Logger/Logger.h"
 
 #include <rocksdb/env.h>
 
@@ -34,63 +32,17 @@ namespace arangodb {
 
 class RocksDBLogger final : public rocksdb::Logger {
  public:
-  explicit RocksDBLogger(rocksdb::InfoLogLevel level) : rocksdb::Logger(level) {}
-  ~RocksDBLogger() {}
+  explicit RocksDBLogger(rocksdb::InfoLogLevel level); 
+  ~RocksDBLogger();
   
   // intentionally do not log header information here
   // as this does not seem to honor the loglevel correctly
   void LogHeader(const char* format, va_list ap) override {}
 
-  void Logv(char const* format, va_list ap) override {
-    static constexpr size_t prefixSize = 9; // strlen("rocksdb: ");
-    char buffer[2048];
-    memcpy(&buffer[0], "rocksdb: \0", prefixSize); // add trailing \0 byte already for safety
-
-    va_list backup;
-    va_copy(backup, ap);
-    int length = vsnprintf(&buffer[0] + prefixSize, sizeof(buffer) - prefixSize - 1, format, backup);
-    va_end(backup);
-    buffer[sizeof(buffer) - 1] = '\0';  // Windows
-
-    if (length == 0) {
-      return;
-    }
-
-    size_t l = static_cast<size_t>(length) + prefixSize;
-    if (l >= sizeof(buffer)) {
-      // truncation!
-      l = sizeof(buffer) - 1;
-    }
-
-    TRI_ASSERT(l > 0 && l < sizeof(buffer));
-    if (buffer[l - 1] == '\n' || buffer[l - 1] == '\0') {
-      // strip tailing \n or \0 in log message
-      --l;
-    }
-
-    switch (GetInfoLogLevel()) {
-      case rocksdb::InfoLogLevel::DEBUG_LEVEL:
-        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << StringRef(buffer, l);
-        break;
-      case rocksdb::InfoLogLevel::INFO_LEVEL:
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << StringRef(buffer, l);
-        break;
-      case rocksdb::InfoLogLevel::WARN_LEVEL:
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << StringRef(buffer, l);
-        break;
-      case rocksdb::InfoLogLevel::ERROR_LEVEL:
-      case rocksdb::InfoLogLevel::FATAL_LEVEL:
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << StringRef(buffer, l);
-        break;
-      default: {
-        // ignore these levels
-      }
-    }
-  }
+  void Logv(char const* format, va_list ap) override;
 
   // nothing to do here, as ArangoDB logger infrastructure takes care of flushing itself
   void Flush() override {}
- 
 };
 
 }  // namespace arangodb
