@@ -184,7 +184,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   while (_hasMore && buff.length() < chunkSize) {
     try {
       _hasMore = _iter->next(cb, 1);  // TODO: adjust limit?
-    } catch (std::exception const& ex) {
+    } catch (std::exception const&) {
       _hasMore = false;
       return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     } catch (RocksDBReplicationResult const& ex) {
@@ -244,7 +244,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       b.add("hash", VPackValue(std::to_string(hash)));
       b.close();
       lowKey = "";
-    } catch (std::exception const& ex) {
+    } catch (std::exception const&) {
       return Result(TRI_ERROR_INTERNAL);
     }
   }
