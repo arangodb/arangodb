@@ -3362,9 +3362,10 @@ int MMFilesEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
   
 Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder){
   MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
-
+  builder.openObject();  // Base
   // "state" part
   builder.add("state", VPackValue(VPackValueType::Object));  // open
+  builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
   builder.add("lastUncommittedLogTick", VPackValue(std::to_string(s.lastAssignedTick)));
   builder.add("totalEvents", VPackValue(static_cast<double>(s.numEvents + s.numEventsSync)));  // s.numEvents + s.numEventsSync
@@ -3405,7 +3406,7 @@ Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
 
 Result MMFilesEngine::createTickRanges(VPackBuilder& builder){
     auto const& ranges = MMFilesLogfileManager::instance()->ranges();
-    builder.isOpenArray();
+    builder.openArray();
     for (auto& it : ranges) {
       builder.openObject();
       //filename and state are already of type string

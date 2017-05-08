@@ -996,7 +996,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
                                         VPackBuilder& builder) {
   syncWal();
 
-  builder.add(VPackValue(VPackValueType::Object));  // Base
+  builder.openObject();  // Base
   rocksdb::SequenceNumber lastTick = _db->GetLatestSequenceNumber();
 
   // "state" part
@@ -1345,7 +1345,7 @@ Result RocksDBEngine::createTickRanges(VPackBuilder& builder){
       return res;
     }
 
-    builder.isOpenArray();
+    builder.openArray();
     for (auto lfile = walFiles.begin(); lfile != walFiles.end(); ++lfile) {
       auto& logfile = *lfile;
       builder.openObject();
