@@ -658,7 +658,7 @@ void SimpleHttpClient::processHeader() {
     if (*ptr == '\r' || *ptr == '\n' || *ptr == '\0') {
       size_t len = pos - ptr;
       _readBufferOffset += len + 1;
-        TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+      TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
 
       ptr += len + 1;
       remain -= len + 1;
@@ -666,7 +666,7 @@ void SimpleHttpClient::processHeader() {
       if (*pos == '\r') {
         // adjust offset if line ended with \r\n
         ++_readBufferOffset;
-          TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+        TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
 
         ptr++;
         remain--;
@@ -734,7 +734,7 @@ void SimpleHttpClient::processHeader() {
       // account for \n
       ptr += len + 1;
       _readBufferOffset += len + 1;
-        TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+      TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
 
       remain -= (len + 1);
 
@@ -785,7 +785,7 @@ void SimpleHttpClient::processBody() {
   }
 
   _readBufferOffset += _result->getContentLength();
-            TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+  TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
 
   _result->setResultType(SimpleHttpResult::COMPLETE);
   _state = FINISHED;
@@ -819,8 +819,7 @@ void SimpleHttpClient::processChunkedHeader() {
   // adjust offset if line ended with \r\n
   if (*pos == '\r') {
     ++_readBufferOffset;
-              TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
-
+    TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
     ++len;
   }
 
