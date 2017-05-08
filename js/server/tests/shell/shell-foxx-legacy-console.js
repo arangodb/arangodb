@@ -129,16 +129,17 @@ function ConsoleTestSuite () {
       console.time('hi');
       var min = Date.now();
       while (Date.now() - start < 3) {var a = true; a=false;} // make sure a measurable amount of time passes
-      console.timeEnd('hi');
       var max = Date.now();
+      console.timeEnd('hi');
+      var end = Date.now();
       expect(max).to.be.greaterThan(min); // sanity checking
       var logs = ls();
       var match = logs[0].message.match(/^([^:]+):\s+(\d+)ms$/);
       expect(match).to.be.ok;
       expect(match[1]).to.equal('hi');
       var elapsed = Number(match[2]);
-      expect(elapsed).not.to.be.lessThan(min - start);
-      expect(elapsed).not.to.be.greaterThan(max - start);
+      expect(elapsed).not.to.be.lessThan(max - min);
+      expect(elapsed).not.to.be.greaterThan(end - start);
     },
     testConsoleTimeThrowsForInvalidLabel: function () {
       expect(function () {
