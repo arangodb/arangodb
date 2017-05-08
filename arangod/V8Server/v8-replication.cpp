@@ -62,42 +62,16 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  if(engineName == "mmfiles"){
-    v8::Handle<v8::Object> state = v8::Object::New(isolate);
-    MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
-    state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
-    state->Set(TRI_V8_ASCII_STRING("lastLogTick"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
-    state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
-    state->Set(TRI_V8_ASCII_STRING("totalEvents"),
-             v8::Number::New(isolate, static_cast<double>(s.numEvents + s.numEventsSync)));
-    state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
-    result->Set(TRI_V8_ASCII_STRING("state"), state);
-
-    v8::Handle<v8::Object> server = v8::Object::New(isolate);
-    server->Set(TRI_V8_ASCII_STRING("version"),
-                TRI_V8_ASCII_STRING(ARANGODB_VERSION));
-    server->Set(TRI_V8_ASCII_STRING("serverId"),
-                TRI_V8_STD_STRING(StringUtils::itoa(ServerIdFeature::getId())));
-    result->Set(TRI_V8_ASCII_STRING("server"), server);
-
-    v8::Handle<v8::Object> clients = v8::Object::New(isolate);
-    result->Set(TRI_V8_ASCII_STRING("clients"), clients);
-  } else if (engineName == "rocksdb") {
-    VPackBuilder builder;
-    auto res = rocksutils::globalRocksEngine()->createLoggerState(nullptr,builder);
-    if(res.fail()){
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-    v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
-    result = v8::Handle<v8::Object>::Cast(resultValue);
-  } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  VPackBuilder builder;
+  auto res = engine->createLoggerState(nullptr,builder);
+  if(res.fail()){
+    TRI_V8_THROW_EXCEPTION(res);
   }
+  v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
+  result = v8::Handle<v8::Object>::Cast(resultValue);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

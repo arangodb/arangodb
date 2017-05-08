@@ -22,15 +22,16 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesEngine.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/build.h"
 #include "Basics/encoding.h"
 #include "Basics/files.h"
+#include "MMFilesEngine.h"
 #include "MMFiles/MMFilesAqlFunctions.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -54,6 +55,7 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -3355,4 +3357,47 @@ int MMFilesEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
                           TRI_voc_tick_t maxTick,
                           std::string& errorMsg) {
   return handleSyncKeysMMFiles(syncer, col, keysId, cid, collectionName,maxTick, errorMsg);
+}
+  
+Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder){
+  MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
+
+  // "state" part
+  builder.add("state", VPackValue(VPackValueType::Object));  // open
+  builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
+  builder.add("lastUncommittedLogTick", VPackValue(std::to_string(s.lastAssignedTick)));
+  builder.add("totalEvents", VPackValue(static_cast<double>(s.numEvents + s.numEventsSync)));  // s.numEvents + s.numEventsSync
+  builder.add("time", VPackValue(s.timeString));
+  builder.close();
+
+  // "server" part
+  builder.add("server", VPackValue(VPackValueType::Object));  // open
+  builder.add("version", VPackValue(ARANGODB_VERSION));
+  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  builder.close();
+
+  // "clients" part
+  builder.add("clients", VPackValue(VPackValueType::Array));  // open
+  if (vocbase != nullptr) {                                   // add clients
+    auto allClients = vocbase->getReplicationClients();
+    for (auto& it : allClients) {
+      // One client
+      builder.add(VPackValue(VPackValueType::Object));
+      builder.add("serverId", VPackValue(std::to_string(std::get<0>(it))));
+
+      char buffer[21];
+      TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
+      builder.add("time", VPackValue(buffer));
+
+      builder.add("lastServedTick",
+                  VPackValue(std::to_string(std::get<2>(it))));
+
+      builder.close();
+    }
+  }
+  builder.close();  // clients
+
+  builder.close();  // base
+
+  return Result();
 }

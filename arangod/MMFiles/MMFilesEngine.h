@@ -99,6 +99,8 @@ class MMFilesEngine final : public StorageEngine {
                      std::string const& collectionName, TRI_voc_tick_t maxTick,
                      std::string& errorMsg) override;
 
+  Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) override;
+
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
