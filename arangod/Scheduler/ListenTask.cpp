@@ -64,6 +64,7 @@ void ListenTask::start() {
   TRI_ASSERT(_bound);
 
   auto self = shared_from_this();
+
   _handler = [this, self](boost::system::error_code const& ec) {
     // copy the shared_ptr so nobody can delete the Acceptor while the
     // callback is running
@@ -111,7 +112,7 @@ void ListenTask::start() {
       acceptorCopy->asyncAccept(_handler);
     }
   };
-
+  
   _acceptor->asyncAccept(_handler);
 }
 
