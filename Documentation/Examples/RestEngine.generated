@@ -2,7 +2,20 @@ shell> curl --dump - http://localhost:8529/_api/engine
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"mmfiles"</span> 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"mmfiles"</span>, 
+  <span class="hljs-string">"supports"</span> : { 
+    <span class="hljs-string">"dfdb"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"indexes"</span> : [ 
+      <span class="hljs-string">"primary"</span>, 
+      <span class="hljs-string">"edge"</span>, 
+      <span class="hljs-string">"hash"</span>, 
+      <span class="hljs-string">"skiplist"</span>, 
+      <span class="hljs-string">"persistent"</span>, 
+      <span class="hljs-string">"geo"</span>, 
+      <span class="hljs-string">"fulltext"</span> 
+    ] 
+  } 
 }
