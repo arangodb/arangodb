@@ -122,8 +122,7 @@ static void JS_FirstTickLoggerReplication(
 /// @brief get the last WAL entries
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LastLoggerReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -143,20 +142,19 @@ static void JS_LastLoggerReplication(
     TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
 
+  auto transactionContext = transaction::StandaloneContext::Create(vocbase);
   auto builderSPtr = std::make_shared<VPackBuilder>();
   Result res = EngineSelectorFeature::ENGINE->lastLogger(
-    vocbase, tickStart, tickEnd, builderSPtr);
-  v8::Handle<v8::Value> result;
+    vocbase, transactionContext, tickStart, tickEnd, builderSPtr);
 
+  v8::Handle<v8::Value> result;
   if(res.fail()){
     result = v8::Null(isolate);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  // do we need the options?
-  //result = TRI_VPackToV8(isolate, builderSPtr->slice(),
-  //                       transactionContext->getVPackOptions());
-  result = TRI_VPackToV8(isolate, VPackSlice(builderSPtr->slice()));
+  result = TRI_VPackToV8(isolate, builderSPtr->slice(),
+                         transactionContext->getVPackOptions());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

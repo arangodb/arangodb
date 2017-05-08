@@ -1038,7 +1038,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
 
   builder.close();  // base
 
-  return Result();
+  return Result{};
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
@@ -1337,38 +1337,38 @@ int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
                                maxTick, errorMsg);
 }
 Result RocksDBEngine::createTickRanges(VPackBuilder& builder){
-    rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
-    rocksdb::VectorLogPtr walFiles;
-    rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
-    Result res = rocksutils::convertStatus(s);
-    if (res.fail()){
-      return res;
-    }
+  rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
+  rocksdb::VectorLogPtr walFiles;
+  rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
+  Result res = rocksutils::convertStatus(s);
+  if (res.fail()){
+    return res;
+  }
 
-    builder.openArray();
-    for (auto lfile = walFiles.begin(); lfile != walFiles.end(); ++lfile) {
-      auto& logfile = *lfile;
-      builder.openObject();
-      //filename and state are already of type string
-      builder.add("datafile", VPackValue(logfile->PathName()));
-      if (logfile->Type() == rocksdb::WalFileType::kAliveLogFile) {
-        builder.add("state", VPackValue("open"));
-      } else if (logfile->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-        builder.add("state", VPackValue("collected"));
-      }
-      rocksdb::SequenceNumber min = logfile->StartSequence();
-      builder.add("tickMin", VPackValue(std::to_string(min)));
-      rocksdb::SequenceNumber max;
-      if (std::next(lfile) != walFiles.end()) {
-        max = (*std::next(lfile))->StartSequence();
-      } else {
-        max = tdb->GetLatestSequenceNumber();
-      }
-      builder.add("tickMax", VPackValue(std::to_string(max)));
-      builder.close();
+  builder.openArray();
+  for (auto lfile = walFiles.begin(); lfile != walFiles.end(); ++lfile) {
+    auto& logfile = *lfile;
+    builder.openObject();
+    //filename and state are already of type string
+    builder.add("datafile", VPackValue(logfile->PathName()));
+    if (logfile->Type() == rocksdb::WalFileType::kAliveLogFile) {
+      builder.add("state", VPackValue("open"));
+    } else if (logfile->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+      builder.add("state", VPackValue("collected"));
     }
+    rocksdb::SequenceNumber min = logfile->StartSequence();
+    builder.add("tickMin", VPackValue(std::to_string(min)));
+    rocksdb::SequenceNumber max;
+    if (std::next(lfile) != walFiles.end()) {
+      max = (*std::next(lfile))->StartSequence();
+    } else {
+      max = tdb->GetLatestSequenceNumber();
+    }
+    builder.add("tickMax", VPackValue(std::to_string(max)));
     builder.close();
-    return Result{};
+  }
+  builder.close();
+  return Result{};
 }
 
 Result RocksDBEngine::firstTick(uint64_t& tick){
@@ -1388,20 +1388,20 @@ Result RocksDBEngine::firstTick(uint64_t& tick){
   return res;
 }
 
-Result RocksDBEngine::lastLogger(TRI_vocbase_t* vocbase, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr){
+Result RocksDBEngine::lastLogger(TRI_vocbase_t* vocbase, std::shared_ptr<transaction::Context> transactionContext, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr){
   bool includeSystem = true;
   size_t chunkSize = 32 * 1024 * 1024; // TODO: determine good default value?
 
   // construct vocbase with proper handler
-  std::shared_ptr<transaction::Context> transactionContext =
-  transaction::StandaloneContext::Create(vocbase);
-  VPackBuilder builder(transactionContext->getVPackOptions());
+  auto builder = std::make_unique<VPackBuilder>(transactionContext->getVPackOptions());
 
-  builder.openArray();
+  builder->openArray();
   RocksDBReplicationResult rep = rocksutils::tailWal(vocbase, tickStart,
                                                      tickEnd, chunkSize,
-                                                     includeSystem, 0, builder);
-  builder.close();
+                                                     includeSystem, 0, *builder);
+  builder->close();
+  builderSPtr = std::move(builder);
+
   return rep;
 }
 

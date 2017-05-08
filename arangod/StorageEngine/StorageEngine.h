@@ -56,6 +56,7 @@ class RestHandlerFactory;
 }
 
 namespace transaction {
+class Context;
 class ContextData;
 }
 
@@ -422,7 +423,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) = 0;
   virtual Result createTickRanges(VPackBuilder& builder) = 0;
   virtual Result firstTick(uint64_t& tick) = 0;
-  virtual Result lastLogger(TRI_vocbase_t* vocbase, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) = 0;
+  virtual Result lastLogger(TRI_vocbase_t* vocbase
+                           ,std::shared_ptr<transaction::Context>
+                           ,uint64_t tickStart, uint64_t tickEnd
+                           ,std::shared_ptr<VPackBuilder>& builderSPtr) = 0;
 
   void getCapabilities(VPackBuilder& builder) const {
     builder.openObject();
