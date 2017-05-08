@@ -48,7 +48,9 @@ for (const localName of edgeCollections) {
   }
 }
 
-db._collection(users).ensureIndex({
+const qualifiedUsers = module.context.collectionName('users');
+
+db._collection(qualifiedUsers).ensureIndex({
   type: 'hash',
   fields: ['username'],
   unique: true
