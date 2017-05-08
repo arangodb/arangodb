@@ -60,6 +60,7 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBView.h"
+#include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
@@ -1009,7 +1010,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
                                         VPackBuilder& builder) {
   syncWal();
 
-  builder.add(VPackValue(VPackValueType::Object));  // Base
+  builder.openObject();  // Base
   rocksdb::SequenceNumber lastTick = _db->GetLatestSequenceNumber();
 
   // "state" part
@@ -1051,7 +1052,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
 
   builder.close();  // base
 
-  return Result();
+  return Result{};
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
@@ -1349,4 +1350,73 @@ int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
   return handleSyncKeysRocksDB(syncer, col, keysId, cid, collectionName,
                                maxTick, errorMsg);
 }
+Result RocksDBEngine::createTickRanges(VPackBuilder& builder){
+  rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
+  rocksdb::VectorLogPtr walFiles;
+  rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
+  Result res = rocksutils::convertStatus(s);
+  if (res.fail()){
+    return res;
+  }
+
+  builder.openArray();
+  for (auto lfile = walFiles.begin(); lfile != walFiles.end(); ++lfile) {
+    auto& logfile = *lfile;
+    builder.openObject();
+    //filename and state are already of type string
+    builder.add("datafile", VPackValue(logfile->PathName()));
+    if (logfile->Type() == rocksdb::WalFileType::kAliveLogFile) {
+      builder.add("state", VPackValue("open"));
+    } else if (logfile->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+      builder.add("state", VPackValue("collected"));
+    }
+    rocksdb::SequenceNumber min = logfile->StartSequence();
+    builder.add("tickMin", VPackValue(std::to_string(min)));
+    rocksdb::SequenceNumber max;
+    if (std::next(lfile) != walFiles.end()) {
+      max = (*std::next(lfile))->StartSequence();
+    } else {
+      max = tdb->GetLatestSequenceNumber();
+    }
+    builder.add("tickMax", VPackValue(std::to_string(max)));
+    builder.close();
+  }
+  builder.close();
+  return Result{};
+}
+
+Result RocksDBEngine::firstTick(uint64_t& tick){
+  Result res{};
+  rocksdb::TransactionDB *tdb = rocksutils::globalRocksDB();
+  rocksdb::VectorLogPtr walFiles;
+  rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
+
+  if (!s.ok()) {
+    res = rocksutils::convertStatus(s);
+    return res;
+  }
+  // read minium possible tick
+  if (!walFiles.empty()) {
+    tick = walFiles[0]->StartSequence();
+  }
+  return res;
+}
+
+Result RocksDBEngine::lastLogger(TRI_vocbase_t* vocbase, std::shared_ptr<transaction::Context> transactionContext, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr){
+  bool includeSystem = true;
+  size_t chunkSize = 32 * 1024 * 1024; // TODO: determine good default value?
+
+  // construct vocbase with proper handler
+  auto builder = std::make_unique<VPackBuilder>(transactionContext->getVPackOptions());
+
+  builder->openArray();
+  RocksDBReplicationResult rep = rocksutils::tailWal(vocbase, tickStart,
+                                                     tickEnd, chunkSize,
+                                                     includeSystem, 0, *builder);
+  builder->close();
+  builderSPtr = std::move(builder);
+
+  return rep;
+}
+
 }  // namespace arangodb

@@ -125,6 +125,11 @@ class RocksDBEngine final : public StorageEngine {
                      std::string const& keysId, std::string const& cid,
                      std::string const& collectionName, TRI_voc_tick_t maxTick,
                      std::string& errorMsg) override;
+  Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) override;
+  Result createTickRanges(VPackBuilder& builder) override;
+  Result firstTick(uint64_t& tick) override;
+  Result lastLogger(TRI_vocbase_t* vocbase, std::shared_ptr<transaction::Context>
+                   ,uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) override;
   // database, collection and index management
   // -----------------------------------------
 
@@ -258,8 +263,6 @@ class RocksDBEngine final : public StorageEngine {
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
   std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
-
-  Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder);
 
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();

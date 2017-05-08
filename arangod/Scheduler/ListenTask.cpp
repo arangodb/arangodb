@@ -58,9 +58,13 @@ void ListenTask::start() {
   } catch (std::exception const& err) {
     LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
               << "' with error: " << err.what();
+    return;
   }
 
-  _handler = [this](boost::system::error_code const& ec) {
+  TRI_ASSERT(_bound);
+
+  auto self = shared_from_this();
+  _handler = [this, self](boost::system::error_code const& ec) {
     // copy the shared_ptr so nobody can delete the Acceptor while the
     // callback is running
     std::shared_ptr<Acceptor> acceptorCopy(_acceptor);
