@@ -635,13 +635,6 @@ void SimpleHttpClient::setRequest(
 // -----------------------------------------------------------------------------
 
 void SimpleHttpClient::processHeader() {
-  if (_readBufferOffset > _readBuffer.length()) {
-    #warning Forgetmenot
-    
-    LOG_TOPIC(WARN, Logger::FIXME)
-      <<  _readBufferOffset << " " << _readBuffer.length()
-      << " " << std::string(_readBuffer.c_str(), _readBuffer.length());
-  }
   TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
   size_t remain = _readBuffer.length() - _readBufferOffset;
   char const* ptr = _readBuffer.c_str() + _readBufferOffset;
