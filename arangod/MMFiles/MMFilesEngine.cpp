@@ -3401,3 +3401,32 @@ Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
 
   return Result();
 }
+
+Result MMFilesEngine::createTickRanges(VPackBuilder& builder){
+    auto const& ranges = MMFilesLogfileManager::instance()->ranges();
+    builder.isOpenArray();
+    for (auto& it : ranges) {
+      builder.openObject();
+      //filename and state are already of type string
+      builder.add("datafile", VPackValue(it.filename));
+      builder.add("state", VPackValue(it.state));
+      builder.add("tickMin", VPackValue(std::to_string(it.tickMin)));
+      builder.add("tickMax", VPackValue(std::to_string(it.tickMax)));
+      builder.close();
+    }
+    builder.close();
+    return Result{};
+}
+
+Result MMFilesEngine::firstTick(uint64_t& tick){
+  auto const& ranges = MMFilesLogfileManager::instance()->ranges();
+  for (auto& it : ranges) {
+    if (it.tickMin == 0) {
+      continue;
+    }
+    if (it.tickMin < tick) {
+      tick = it.tickMin;
+    }
+  }
+  return Result{};
+};

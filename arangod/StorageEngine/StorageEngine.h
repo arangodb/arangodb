@@ -419,6 +419,8 @@ class StorageEngine : public application_features::ApplicationFeature {
                           TRI_voc_tick_t maxTick,
                           std::string& errorMsg) = 0;
   virtual Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) = 0;
+  virtual Result createTickRanges(VPackBuilder& builder) = 0;
+  virtual Result firstTick(uint64_t& tick) = 0;
   
   void getCapabilities(VPackBuilder& builder) const {
     builder.openObject();

@@ -1335,4 +1335,56 @@ int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
   return handleSyncKeysRocksDB(syncer, col, keysId, cid, collectionName,
                                maxTick, errorMsg);
 }
+Result RocksDBEngine::createTickRanges(VPackBuilder& builder){
+    rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
+    rocksdb::VectorLogPtr walFiles;
+    rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
+    Result res = rocksutils::convertStatus(s);
+    if (res.fail()){
+      return res;
+    }
+
+    builder.isOpenArray();
+    for (auto lfile = walFiles.begin(); lfile != walFiles.end(); ++lfile) {
+      auto& logfile = *lfile;
+      builder.openObject();
+      //filename and state are already of type string
+      builder.add("datafile", VPackValue(logfile->PathName()));
+      if (logfile->Type() == rocksdb::WalFileType::kAliveLogFile) {
+        builder.add("state", VPackValue("open"));
+      } else if (logfile->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+        builder.add("state", VPackValue("collected"));
+      }
+      rocksdb::SequenceNumber min = logfile->StartSequence();
+      builder.add("tickMin", VPackValue(std::to_string(min)));
+      rocksdb::SequenceNumber max;
+      if (std::next(lfile) != walFiles.end()) {
+        max = (*std::next(lfile))->StartSequence();
+      } else {
+        max = tdb->GetLatestSequenceNumber();
+      }
+      builder.add("tickMax", VPackValue(std::to_string(max)));
+      builder.close();
+    }
+    builder.close();
+    return Result{};
+}
+
+Result RocksDBEngine::firstTick(uint64_t& tick){
+  Result res{};
+  rocksdb::TransactionDB *tdb = rocksutils::globalRocksDB();
+  rocksdb::VectorLogPtr walFiles;
+  rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
+
+  if (!s.ok()) {
+    res = rocksutils::convertStatus(s);
+    return res;
+  }
+  // read minium possible tick
+  if (!walFiles.empty()) {
+    tick = walFiles[0]->StartSequence();
+  }
+  return res;
+}
+
 }  // namespace arangodb

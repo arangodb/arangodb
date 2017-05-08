@@ -36,6 +36,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "v8-replication.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -86,63 +87,16 @@ static void JS_TickRangesLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   v8::Handle<v8::Array> result;
-  
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  if (engineName == "mmfiles") {
-    auto const& ranges = MMFilesLogfileManager::instance()->ranges();
-    result = v8::Array::New(isolate, (int)ranges.size());
-    
-    uint32_t i = 0;
-    
-    for (auto& it : ranges) {
-      v8::Handle<v8::Object> df = v8::Object::New(isolate);
-      
-      df->ForceSet(TRI_V8_ASCII_STRING("datafile"), TRI_V8_STD_STRING(it.filename));
-      df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(it.state));
-      df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMin));
-      df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMax));
-      
-      result->Set(i++, df);
-    }
-  } else if (engineName == "rocksdb") {
-    rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
-    rocksdb::VectorLogPtr walFiles;
-    rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
-    if (!s.ok()) {
-      Result r = rocksutils::convertStatus(s);
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
-    
-    result = v8::Array::New(isolate, (int)walFiles.size());
-    for(uint32_t i = 0; i < walFiles.size(); i++) {
-      std::unique_ptr<rocksdb::LogFile>& logfile = walFiles[i];
-      
-      v8::Handle<v8::Object> df = v8::Object::New(isolate);
-      df->ForceSet(TRI_V8_ASCII_STRING("datafile"), TRI_V8_STD_STRING(logfile->PathName()));
-      // setting state of each file
-      if (logfile->Type() == rocksdb::WalFileType::kAliveLogFile) {
-        df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STRING("open"));
-      } else if (logfile->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-        df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STRING("collected"));
-      }
-      rocksdb::SequenceNumber min = logfile->StartSequence();
-      df->ForceSet(TRI_V8_ASCII_STRING("tickMin"),
-                   TRI_V8UInt64String<TRI_voc_tick_t>(isolate, min));
-      
-      rocksdb::SequenceNumber max;
-      if (i+1 < walFiles.size()) {
-        max = walFiles[i+1]->StartSequence();
-      } else {
-        max = tdb->GetLatestSequenceNumber();
-      }
-      df->ForceSet(TRI_V8_ASCII_STRING("tickMax"),
-                   TRI_V8UInt64String<rocksdb::SequenceNumber>(isolate, max));
-      
-      result->Set(i, df);
-    }
-  } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
-  }
+
+  VPackBuilder builder;
+  Result res = EngineSelectorFeature::ENGINE->createTickRanges(builder);
+  if(res.fail()){
+    TRI_V8_THROW_EXCEPTION(res);
+   }
+
+  v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
+  result = v8::Handle<v8::Array>::Cast(resultValue);
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -157,35 +111,11 @@ static void JS_FirstTickLoggerReplication(
   v8::HandleScope scope(isolate);
 
   TRI_voc_tick_t tick = UINT64_MAX;
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  if (engineName == "mmfiles") {
-    auto const& ranges = MMFilesLogfileManager::instance()->ranges();
-    
-    
-    for (auto& it : ranges) {
-      if (it.tickMin == 0) {
-        continue;
-      }
-      
-      if (it.tickMin < tick) {
-        tick = it.tickMin;
-      }
-    }
-  } else if (engineName == "rocksdb") {
-    rocksdb::TransactionDB *tdb = rocksutils::globalRocksDB();
-    rocksdb::VectorLogPtr walFiles;
-    rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
-    if (!s.ok()) {
-      Result r = rocksutils::convertStatus(s);
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
-    // read minium possible tick
-    if (!walFiles.empty()) {
-      tick = walFiles[0]->StartSequence();
-    }
-  } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  Result res  = EngineSelectorFeature::ENGINE->firstTick(tick);
+  if(res.fail()){
+    TRI_V8_THROW_EXCEPTION(res);
   }
+
   if (tick == UINT64_MAX) {
     TRI_V8_RETURN(v8::Null(isolate));
   }
