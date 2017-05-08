@@ -73,6 +73,10 @@ RocksDBKeyBounds RocksDBKeyBounds::UniqueIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueIndexValue, indexId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::GeoIndexValue, indexId);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::IndexRange(uint64_t indexId,
                                               VPackSlice const& left,
                                               VPackSlice const& right) {

@@ -104,6 +104,13 @@ class RocksDBKey {
                                      VPackSlice const& indexValues);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for the fulltext index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKey FulltextIndexValue(uint64_t indexId,
+                                       arangodb::StringRef const& word,
+                                       arangodb::StringRef const& primaryKey);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a geoIndexValue
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey GeoIndexValue(uint64_t indexId, bool isSlot, uint64_t offset);
@@ -127,13 +134,6 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for a replication applier config
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey ReplicationApplierConfig(TRI_voc_tick_t databaseId);
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified key for the fulltext index
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKey FulltextIndexValue(uint64_t indexId,
-                                       arangodb::StringRef const& word,
-                                       arangodb::StringRef const& primaryKey);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -172,8 +172,8 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the objectId from a key
   ///
-  /// May be called only on the the following key types: Document.
-  /// Other types will throw.
+  /// May be called only on the the following key types: Document, 
+  /// all kinds of index entries. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static uint64_t objectId(RocksDBKey const&);
   static uint64_t objectId(rocksdb::Slice const&);
@@ -221,6 +221,13 @@ class RocksDBKey {
   static VPackSlice indexedVPack(RocksDBKey const&);
   static VPackSlice indexedVPack(rocksdb::Slice const&);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the geo pot offset 
+  ///
+  /// May be called only on GeoIndexValues
+  //////////////////////////////////////////////////////////////////////////////
+  std::pair<bool, uint64_t> geoValues(rocksdb::Slice const&);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the full, constructed key
@@ -240,7 +247,7 @@ class RocksDBKey {
              std::string const& third);
   RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second,
              arangodb::StringRef const& third);
-  RocksDBKey(RocksDBEntryType type, uint64_t objectId, uint64_t index, bool isSlot);
+  RocksDBKey(RocksDBEntryType type, uint64_t objectId, uint32_t index, bool isSlot);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
