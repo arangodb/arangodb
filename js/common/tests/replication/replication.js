@@ -725,9 +725,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo1 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -750,9 +747,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo2 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -775,9 +769,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo3 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -802,9 +793,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo4 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -829,9 +817,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo5 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();

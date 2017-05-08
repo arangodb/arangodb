@@ -13,3 +13,12 @@
 Das sind die
 	Punkte, die Richard eingeplant hatte zum Anschluss. Über die obere Ebene
 	weiß er praktisch nichts.
+
+Questions for Richard:
+
+- How to communicate non existent values in SlotRead, PotRead ?
+   - Return value != 0 ?
+
+- The GeoIx struct contains some fields, `potct` and `slotct` which we would need to store and recover from RocksDB.
+
+- Above the functions `CreatePot` and `CreateSlot` are mentioned, but they are not in the source code ? 
