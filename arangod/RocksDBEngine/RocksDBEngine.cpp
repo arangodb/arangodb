@@ -60,6 +60,7 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBView.h"
+#include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
@@ -1385,6 +1386,23 @@ Result RocksDBEngine::firstTick(uint64_t& tick){
     tick = walFiles[0]->StartSequence();
   }
   return res;
+}
+
+Result RocksDBEngine::lastLogger(TRI_vocbase_t* vocbase, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr){
+  bool includeSystem = true;
+  size_t chunkSize = 32 * 1024 * 1024; // TODO: determine good default value?
+
+  // construct vocbase with proper handler
+  std::shared_ptr<transaction::Context> transactionContext =
+  transaction::StandaloneContext::Create(vocbase);
+  VPackBuilder builder(transactionContext->getVPackOptions());
+
+  builder.openArray();
+  RocksDBReplicationResult rep = rocksutils::tailWal(vocbase, tickStart,
+                                                     tickEnd, chunkSize,
+                                                     includeSystem, 0, builder);
+  builder.close();
+  return rep;
 }
 
 }  // namespace arangodb

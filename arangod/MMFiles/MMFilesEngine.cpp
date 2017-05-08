@@ -31,13 +31,13 @@
 #include "Basics/build.h"
 #include "Basics/encoding.h"
 #include "Basics/files.h"
-#include "MMFilesEngine.h"
 #include "MMFiles/MMFilesAqlFunctions.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesCompactorThread.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIndexFactory.h"
 #include "MMFiles/MMFilesInitialSync.h"
 #include "MMFiles/MMFilesLogfileManager.h"
@@ -52,6 +52,7 @@
 #include "MMFiles/MMFilesV8Functions.h"
 #include "MMFiles/MMFilesView.h"
 #include "MMFiles/MMFilesWalRecoveryFeature.h"
+#include "MMFiles/mmfiles-replication-dump.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -3430,3 +3431,20 @@ Result MMFilesEngine::firstTick(uint64_t& tick){
   }
   return Result{};
 };
+
+Result MMFilesEngine::lastLogger(TRI_vocbase_t* vocbase, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) {
+  Result res{};
+  auto transactionContext = std::make_shared<transaction::StandaloneContext>(vocbase);
+  MMFilesReplicationDumpContext dump(transactionContext, 0, true, 0);
+  int r = MMFilesDumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
+                                      0, tickStart, tickEnd, true);
+  if (r != TRI_ERROR_NO_ERROR) {
+    res.reset(r);
+    return res;
+  }
+  // parsing JSON
+  VPackParser parser;
+  parser.parse(dump._buffer->_buffer);
+  builderSPtr = parser.steal();
+  return res;
+}

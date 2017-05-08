@@ -24,23 +24,17 @@
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
-// FIXME to be removed (should be storage engine independent - get it working now)
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "v8-replication.h"
-#include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBReplicationTailing.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -132,68 +126,37 @@ static void JS_LastLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-  
+
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-                                 "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
+
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
   if (tickEnd <= tickStart) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-                                 "tickStart < tickEnd");
+    TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
-  
-  
-  v8::Handle<v8::Value> result;
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  if(engineName == "mmfiles"){
-    auto transactionContext = std::make_shared<transaction::StandaloneContext>(vocbase);
-    
-    MMFilesReplicationDumpContext dump(transactionContext, 0, true, 0);
-    
-    
-    int res = MMFilesDumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
-                                        0, tickStart, tickEnd, true);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-    // parsing JSON
-    VPackParser parser;
-    parser.parse(dump._buffer->_buffer);
-    result = TRI_VPackToV8(isolate, VPackSlice(parser.start()));
 
-  } else if (engineName == "rocksdb") {
-    bool includeSystem = true;
-    size_t chunkSize = 32 * 1024 * 1024; // TODO: determine good default value?
-    
-    // construct vocbase with proper handler
-    std::shared_ptr<transaction::Context> transactionContext =
-    transaction::StandaloneContext::Create(vocbase);
-    VPackBuilder builder(transactionContext->getVPackOptions());
-    
-    builder.openArray();
-    RocksDBReplicationResult rep = rocksutils::tailWal(vocbase, tickStart,
-                                                       tickEnd, chunkSize,
-                                                       includeSystem, 0, builder);
-    builder.close();
-    
-    if (rep.ok()) {
-      result = TRI_VPackToV8(isolate, builder.slice(),
-                             transactionContext->getVPackOptions());
-    } else {
-      result = v8::Null(isolate);
-    }
-  } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  auto builderSPtr = std::make_shared<VPackBuilder>();
+  Result res = EngineSelectorFeature::ENGINE->lastLogger(
+    vocbase, tickStart, tickEnd, builderSPtr);
+  v8::Handle<v8::Value> result;
+
+  if(res.fail()){
+    result = v8::Null(isolate);
+    TRI_V8_THROW_EXCEPTION(res);
   }
+
+  // do we need the options?
+  //result = TRI_VPackToV8(isolate, builderSPtr->slice(),
+  //                       transactionContext->getVPackOptions());
+  result = TRI_VPackToV8(isolate, VPackSlice(builderSPtr->slice()));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

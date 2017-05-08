@@ -128,6 +128,7 @@ class RocksDBEngine final : public StorageEngine {
   Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) override;
   Result createTickRanges(VPackBuilder& builder) override;
   Result firstTick(uint64_t& tick) override;
+  Result lastLogger(TRI_vocbase_t* vocbase, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) override;
   // database, collection and index management
   // -----------------------------------------
 
