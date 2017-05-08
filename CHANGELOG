@@ -11,6 +11,8 @@ v3.1.20 (XXXX-XX-XX)
 
 * funny fail rotation fix
 
+* fix in SimpleHttpClient for correct advancement of readBufferOffset
+
 v3.1.19 (2017-04-28)
 --------------------
 
@@ -18,7 +20,7 @@ v3.1.19 (2017-04-28)
 
 * fixed issue #2448: Intermittent issue where ArangoDB Web UI takes no action when Delete button is clicked for a document
 
-* fixed issue #2442: Frontend shows already deleted databases during login 
+* fixed issue #2442: Frontend shows already deleted databases during login
 
 * added 'x-content-type-options: nosniff' to avoid MSIE bug
 

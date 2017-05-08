@@ -738,13 +738,9 @@ void SimpleHttpClient::processHeader() {
       TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
       TRI_ASSERT(ptr == _readBuffer.c_str() + _readBufferOffset);
       TRI_ASSERT(remain == _readBuffer.length() - _readBufferOffset);
+
       pos = static_cast<char const*>(memchr(ptr, '\n', remain));
 
-      if (pos == nullptr) {
-        _readBufferOffset++;
-        ptr++;
-        remain--;
-      }
     }
   }
 }
