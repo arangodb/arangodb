@@ -24,9 +24,6 @@
 #include "Basics/Common.h"
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-#include <sys/time.h>
-#include <unistd.h>
-
 #include <new>
 #endif
 
