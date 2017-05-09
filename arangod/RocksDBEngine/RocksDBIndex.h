@@ -89,6 +89,7 @@ class RocksDBIndex : public Index {
   void createCache();
   void disableCache();
   inline bool useCache() const { return (_useCache && _cachePresent); }
+  void cacheBlackListKey(char const* data, std::size_t len);
 
  protected:
   uint64_t _objectId;

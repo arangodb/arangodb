@@ -24,6 +24,7 @@
 #include "RocksDBIndex.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CacheManagerFeature.h"
+#include "Cache/TransactionalCache.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -138,3 +139,22 @@ int RocksDBIndex::drop() {
   return TRI_ERROR_NO_ERROR;
 }
 
+void RocksDBIndex::cacheBlackListKey(char const* data, std::size_t len){
+  if (useCache()) {
+    TRI_ASSERT(_cache != nullptr);
+    // blacklist from cache
+    bool blacklisted = false;
+    uint64_t attempts = 0;
+    while (!blacklisted) {
+      blacklisted = _cache->blacklist(data,len);
+      attempts++;
+      if (attempts > 10) {
+        if (_cache->isShutdown()) {
+          disableCache();
+          break;
+        }
+        attempts = 0;
+      }
+    }
+  }
+}

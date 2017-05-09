@@ -431,24 +431,7 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
-  if (useCache()) {
-    TRI_ASSERT(_cache != nullptr);
-    // blacklist from cache
-    bool blacklisted = false;
-    uint64_t attempts = 0;
-    while (!blacklisted) {
-      blacklisted = _cache->blacklist(
-          key.string().data(), static_cast<uint32_t>(key.string().size()));
-      attempts++;
-      if (attempts > 10) {
-        if (_cache->isShutdown()) {
-          disableCache();
-          break;
-        }
-        attempts = 0;
-      }
-    }
-  }
+  cacheBlackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   auto status = rtrx->Put(key.string(), value.string());
   if (!status.ok()) {
@@ -472,24 +455,7 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
 
-  if (useCache()) {
-    TRI_ASSERT(_cache != nullptr);
-    // blacklist from cache
-    bool blacklisted = false;
-    uint64_t attempts = 0;
-    while (!blacklisted) {
-      blacklisted = _cache->blacklist(
-          key.string().data(), static_cast<uint32_t>(key.string().size()));
-      attempts++;
-      if (attempts > 10) {
-        if (_cache->isShutdown()) {
-          disableCache();
-          break;
-        }
-        attempts = 0;
-      }
-    }
-  }
+  cacheBlackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);

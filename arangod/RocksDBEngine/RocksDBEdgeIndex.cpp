@@ -288,8 +288,11 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, StringRef(fromTo),
+  auto fromToRef=StringRef(fromTo);
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef,
                                               StringRef(primaryKey));
+  //blacklist key in cache
+  cacheBlackListKey(fromToRef.data(),fromToRef.size());
 
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
@@ -314,9 +317,13 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                              bool isRollback) {
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
+  auto fromToRef=StringRef(fromTo);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, StringRef(fromTo),
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef,
                                               StringRef(primaryKey));
+
+  //blacklist key in cache
+  cacheBlackListKey(fromToRef.data(),fromToRef.size());
 
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
@@ -335,8 +342,11 @@ int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, StringRef(fromTo),
+  auto fromToRef=StringRef(fromTo);
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef,
                                               StringRef(primaryKey));
+  //blacklist key in cache
+  cacheBlackListKey(fromToRef.data(),fromToRef.size());
   writeBatch->Delete(rocksdb::Slice(key.string()));
   return TRI_ERROR_NO_ERROR;
 }
@@ -353,9 +363,11 @@ void RocksDBEdgeIndex::batchInsert(
     VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
     VPackSlice fromTo = doc.second.get(_directionAttr);
     TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-    RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, StringRef(fromTo),
+    auto fromToRef=StringRef(fromTo);
+    RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef,
                                                 StringRef(primaryKey));
 
+    cacheBlackListKey(fromToRef.data(),fromToRef.size());
     rocksdb::Status status =
         rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
     if (!status.ok()) {
@@ -492,7 +504,7 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   keys->close();
 
   return new RocksDBEdgeIndexIterator(
-      _collection, trx, mmdr, this, keys, _useCache, _cache.get());
+      _collection, trx, mmdr, this, keys, useCache(), _cache.get());
 }
 
 /// @brief create the iterator
@@ -519,7 +531,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   keys->close();
 
   return new RocksDBEdgeIndexIterator(
-      _collection, trx, mmdr, this, keys, _useCache, _cache.get());
+      _collection, trx, mmdr, this, keys, useCache(), _cache.get());
 }
 
 /// @brief add a single value node to the iterator's keys
