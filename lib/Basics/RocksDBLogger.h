@@ -18,52 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_LISTEN_TASK_H
-#define ARANGOD_SCHEDULER_LISTEN_TASK_H 1
+#ifndef ARANGODB_BASICS_ROCKSDB_LOGGER_H
+#define ARANGODB_BASICS_ROCKSDB_LOGGER_H 1
 
-#include "Scheduler/Task.h"
+#include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
-#include "Endpoint/ConnectionInfo.h"
-#include "Endpoint/Endpoint.h"
-#include "Scheduler/Acceptor.h"
-#include "Scheduler/Socket.h"
+#include <rocksdb/env.h>
 
 namespace arangodb {
-class ListenTask : virtual public rest::Task {
+
+class RocksDBLogger final : public rocksdb::Logger {
  public:
-  static size_t const MAX_ACCEPT_ERRORS = 128;
-
- public:
-  ListenTask(EventLoop, Endpoint*);
-  ~ListenTask();
-
- public:
-  virtual void handleConnected(std::unique_ptr<Socket>, ConnectionInfo&&) = 0;
-
- public:
-  Endpoint* endpoint() const { return _endpoint; }
-
-  bool start();
-  void stop();
-
- private:
-  void createPeer();
-
- private:
-  Endpoint* _endpoint;
-  size_t _acceptFailures = 0;
+  explicit RocksDBLogger(rocksdb::InfoLogLevel level); 
+  ~RocksDBLogger();
   
-  Mutex _shutdownMutex; 
-  bool _bound;
+  // intentionally do not log header information here
+  // as this does not seem to honor the loglevel correctly
+  void LogHeader(const char* format, va_list ap) override {}
 
-  std::unique_ptr<Acceptor> _acceptor;
-  std::function<void(boost::system::error_code const&)> _handler;
+  void Logv(char const* format, va_list ap) override;
+  void Logv(const rocksdb::InfoLogLevel, char const* format, va_list ap) override;
+
+  // nothing to do here, as ArangoDB logger infrastructure takes care of flushing itself
+  void Flush() override {}
 };
-}
+
+}  // namespace arangodb
 
 #endif

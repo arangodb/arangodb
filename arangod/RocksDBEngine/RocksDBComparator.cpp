@@ -25,6 +25,7 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
 using namespace arangodb;
@@ -77,15 +78,25 @@ int RocksDBComparator::compareLexicographic(rocksdb::Slice const& lhs,
 
 int RocksDBComparator::compareIndexValues(rocksdb::Slice const& lhs,
                                           rocksdb::Slice const& rhs) const {
-  TRI_ASSERT(lhs.size() > sizeof(char) + sizeof(uint64_t));
-  TRI_ASSERT(rhs.size() > sizeof(char) + sizeof(uint64_t));
-
   size_t offset = sizeof(char);
   int result =
       memcmp((lhs.data() + offset), (rhs.data() + offset), sizeof(uint64_t));
   if (result != 0) {
     return result;
   }
+
+  size_t prefixLength = RocksDBPrefixExtractor::getPrefixLength(
+      static_cast<RocksDBEntryType>(lhs[0]));
+  if (lhs.size() == prefixLength || rhs.size() == prefixLength) {
+    if (lhs.size() == rhs.size()) {
+      return 0;
+    }
+
+    return ((lhs.size() < rhs.size()) ? -1 : 1);
+  }
+
+  TRI_ASSERT(lhs.size() > sizeof(char) + sizeof(uint64_t));
+  TRI_ASSERT(rhs.size() > sizeof(char) + sizeof(uint64_t));
 
   VPackSlice const lSlice = RocksDBKey::indexedVPack(lhs);
   VPackSlice const rSlice = RocksDBKey::indexedVPack(rhs);
@@ -127,7 +138,9 @@ int RocksDBComparator::compareIndexedValues(VPackSlice const& lhs,
   size_t const rLength = rhs.length();
   size_t const n = lLength < rLength ? rLength : lLength;
 
-  // LOG_TOPIC(ERR, Logger::FIXME) << "COMPARING INDEX VALUES: " << lhs.toJson() << "; " << rhs.toJson() << "; LLENGTH: " << lLength << ", RLENGTH: " << rLength << ", N: " << n;
+  // LOG_TOPIC(ERR, Logger::FIXME) << "COMPARING INDEX VALUES: " << lhs.toJson()
+  // << "; " << rhs.toJson() << "; LLENGTH: " << lLength << ", RLENGTH: " <<
+  // rLength << ", N: " << n;
 
   for (size_t i = 0; i < n; ++i) {
     int res = arangodb::basics::VelocyPackHelper::compare(

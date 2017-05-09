@@ -24,10 +24,10 @@
 
 #include "ListenTask.h"
 
+#include "Basics/MutexLocker.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Acceptor.h"
-#include "Ssl/SslServerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -40,38 +40,39 @@ ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
     : Task(loop, "ListenTask"),
       _endpoint(endpoint),
       _bound(false),
-      _ioService(loop._ioService),
       _acceptor(Acceptor::factory(*loop._ioService, endpoint)) {}
+
+ListenTask::~ListenTask() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-void ListenTask::start() {
+bool ListenTask::start() {
+  MUTEX_LOCKER(mutex, _shutdownMutex);
+
   try {
     _acceptor->open();
-    _bound = true;
   } catch (boost::system::system_error const& err) {
     LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
               << "' with error: " << err.what();
-    return;
+    return false;
   } catch (std::exception const& err) {
     LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
               << "' with error: " << err.what();
+    return true;
   }
 
   _handler = [this](boost::system::error_code const& ec) {
-    // copy the shared_ptr so nobody can delete the Acceptor while the
-    // callback is running
-    std::shared_ptr<Acceptor> acceptorCopy(_acceptor);
+    MUTEX_LOCKER(mutex, _shutdownMutex);
 
-    if (acceptorCopy == nullptr) {
-      // ListenTask already stopped
+    if (!_bound) {
+      _handler = nullptr;
       return;
     }
 
-    // now it is safe to use acceptorCopy
-    TRI_ASSERT(acceptorCopy != nullptr);
+    TRI_ASSERT(_handler != nullptr);
+    TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {
       if (ec == boost::asio::error::operation_aborted) {
@@ -90,7 +91,7 @@ void ListenTask::start() {
 
     ConnectionInfo info;
 
-    auto peer = acceptorCopy->movePeer();
+    auto peer = _acceptor->movePeer();
 
     // set the endpoint
     info.endpoint = _endpoint->specification();
@@ -103,20 +104,24 @@ void ListenTask::start() {
 
     handleConnected(std::move(peer), std::move(info));
 
-    if (_bound) {
-      acceptorCopy->asyncAccept(_handler);
-    }
+    _acceptor->asyncAccept(_handler);
   };
 
+  _bound = true;
   _acceptor->asyncAccept(_handler);
+  return true;
 }
 
 void ListenTask::stop() {
+  MUTEX_LOCKER(mutex, _shutdownMutex);
+
   if (!_bound) {
     return;
   }
 
   _bound = false;
+  _handler = nullptr;
+
   _acceptor->close();
   _acceptor.reset();
 }

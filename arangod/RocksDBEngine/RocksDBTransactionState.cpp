@@ -203,7 +203,13 @@ Result RocksDBTransactionState::commitTransaction(
 
         // TODO wait for response on github issue to see how we can use the
         // sequence number
+        double t1 = TRI_microtime();
         result = rocksutils::convertStatus(_rocksTransaction->Commit());
+
+        double t2 = TRI_microtime();
+        if (t2 - t1 > 0.25) {
+          LOG_TOPIC(ERR, Logger::FIXME) << "COMMIT TOOK: " << (t2 - t1) << " S. NUMINSERTS: " << _numInserts << ", NUMUPDATES: " << _numUpdates << ", NUMREMOVES: " << _numRemoves << ", TRANSACTIONSIZE: " << _transactionSize;
+        }
         rocksdb::SequenceNumber latestSeq =
             rocksutils::globalRocksDB()->GetLatestSequenceNumber();
         if (!result.ok()) {

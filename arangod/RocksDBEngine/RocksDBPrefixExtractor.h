@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,45 +18,41 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 /// @author Jan Steemann
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_H
-#define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
+#ifndef ARANGO_ROCKSDB_ROCKSDB_PREFIX_EXTRACTOR_H
+#define ARANGO_ROCKSDB_ROCKSDB_PREFIX_EXTRACTOR_H 1
 
 #include "Basics/Common.h"
+#include "RocksDBEngine/RocksDBTypes.h"
 
-#include "GeneralServer/HttpCommTask.h"
-#include "Scheduler/ListenTask.h"
+#include <rocksdb/slice.h>
+#include <rocksdb/slice_transform.h>
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-class EndpointList;
-class ListenTask;
 
-namespace rest {
-class GeneralServer {
-  GeneralServer(GeneralServer const&) = delete;
-  GeneralServer const& operator=(GeneralServer const&) = delete;
-
+class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
  public:
-  GeneralServer() = default;
-  virtual ~GeneralServer();
+  RocksDBPrefixExtractor();
+  ~RocksDBPrefixExtractor();
 
- public:
-  void setEndpointList(EndpointList const* list);
-  void startListening();
-  void stopListening();
+  const char* Name() const;
+  rocksdb::Slice Transform(rocksdb::Slice const& key) const;
+  bool InDomain(rocksdb::Slice const& key) const;
+  bool InRange(rocksdb::Slice const& dst) const;
 
- protected:
-  bool openEndpoint(Endpoint* endpoint);
+  static size_t getPrefixLength(RocksDBEntryType type);
 
  private:
-  std::vector<std::unique_ptr<ListenTask>> _listenTasks;
-  EndpointList const* _endpointList = nullptr;
+  const std::string _name;
+  static const size_t _prefixLength[];
 };
-}
-}
+
+}  // namespace arangodb
 
 #endif
