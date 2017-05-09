@@ -653,7 +653,7 @@ fi
 PARTIAL_STATE=$?
 set -e
 
-if test "${isCygwin}" == 1 -a "${PARTIAL_STATE}" == 0; then
+if test "${isCygwin}" == 0 -a "${PARTIAL_STATE}" == 0; then
     # windows fails to partialy re-configure - so do a complete configure run.
     if test -f CMakeFiles/generate.stamp -a CMakeFiles/generate.stamp -ot "${SOURCE_DIR}/CMakeList.txt"; then
         echo "CMakeList older - Forcing complete configure run!"
