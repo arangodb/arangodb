@@ -87,11 +87,13 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   b._startBuffer.reserve(length);
   b._startBuffer.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
   uint64ToPersistent(b._startBuffer, indexId);
+  
+  b._endBuffer.clear();
   b._endBuffer.append(b._startBuffer);// append common prefix
   
-  uint64_t norm = isSlot ? 0xFF : 0;//encode slot|pot in lowest bit
+  uint64_t norm = isSlot ? 0xFFU : 0;//encode slot|pot in lowest bit
   uint64ToPersistent(b._startBuffer, norm);// lower endian
-  norm |= 0xFFFFFFFFULL << 32;
+  norm = norm | (0xFFFFFFFFULL << 32);
   uint64ToPersistent(b._endBuffer, norm);
   return b;
 }
@@ -129,8 +131,9 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t indexId,
   uint64ToPersistent(bounds._startBuffer, indexId);
   bounds._startBuffer.append(word.data(), word.length());
   
+  bounds._endBuffer.clear();
   bounds._endBuffer.append(bounds._startBuffer);
-  bounds._endBuffer.push_back(0xFF);// invalid UTF-8 character, higher than with memcmp
+  bounds._endBuffer.push_back(0xFFU);// invalid UTF-8 character, higher than with memcmp
   return bounds;
 }
 

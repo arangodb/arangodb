@@ -91,8 +91,6 @@ typedef struct {
 typedef void GeoIdx;  /* to keep the structure private  */
 typedef void GeoCursor; /* to keep the structure private  */
 
-size_t GeoIndex_MemoryUsage(void*);
-
 GeoIdx* GeoIndex_new(uint64_t objectId, int slo, int);
 void GeoIndex_free(GeoIdx* gi);
 double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);

@@ -286,7 +286,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
   RocksDBKeyBounds b1 = RocksDBKeyBounds::GeoIndex(_objectId, false);
   iter->SeekForPrev(b1.end());
   if (iter->Valid()
-      && _cmp->Compare(iter->key(), b1.start()) >= 0
+      && _cmp->Compare(b1.start(), iter->key()) < 0
       && _cmp->Compare(iter->key(), b1.end()) < 0) {
     // found a key smaller than bounds end
     std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
@@ -298,7 +298,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
   RocksDBKeyBounds b2 = RocksDBKeyBounds::GeoIndex(_objectId, true);
   iter->SeekForPrev(b2.end());
   if (iter->Valid()
-      && _cmp->Compare(iter->key(), b2.start()) >= 0
+      && _cmp->Compare(b2.start(), iter->key()) < 0
       && _cmp->Compare(iter->key(), b2.end()) < 0) {
     // found a key smaller than bounds end
     std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
@@ -319,7 +319,12 @@ RocksDBGeoIndex::~RocksDBGeoIndex() {
 }
 
 size_t RocksDBGeoIndex::memory() const {
-  return GeoIndex_MemoryUsage(_geoIndex);
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::GeoIndex(_objectId);
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out;
+  db->GetApproximateSizes(&r, 1, &out, true);
+  return (size_t)out;
 }
 
 /// @brief return a JSON representation of the index
@@ -552,7 +557,7 @@ int RocksDBGeoIndex::removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t revisionId,
 
 int RocksDBGeoIndex::unload() {
   // create a new, empty index
-  auto empty = GeoIndex_new(_objectId, 0, 0);
+  /*auto empty = GeoIndex_new(_objectId, 0, 0);
 
   if (empty == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -564,7 +569,7 @@ int RocksDBGeoIndex::unload() {
   }
 
   // and assign it
-  _geoIndex = empty;
+  _geoIndex = empty;*/
 
   return TRI_ERROR_NO_ERROR;
 }

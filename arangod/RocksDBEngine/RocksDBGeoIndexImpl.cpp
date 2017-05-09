@@ -485,15 +485,6 @@ GeoIdx* GeoIndex_new(uint64_t objectId,
     return (GeoIdx*)gix;
   }
 
-  gix->objectId = objectId;
-  if (numPots == 0 || numSlots == 0) { // first run
-    gix->nextFreePot = 2;
-    gix->nextFreeSlot = 1;
-  } else {
-    gix->nextFreePot = numPots + 1;
-    gix->nextFreeSlot = numSlots + 1;
-  }
-
   /* set up the fixed points structure  */
 
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++) {
@@ -609,26 +600,24 @@ GeoIdx* GeoIndex_new(uint64_t objectId,
   }
   /* set up the root pot  */
   
-  GeoPot gp;
-  //j = GeoIndexNewPot(gix);
-  gp.LorLeaf = 0;   //leaf pot
-  gp.RorPoints = 0; // with no points in it!
-  gp.middle = 0ll;
-  gp.start = 0ll;
-  gp.end = 0x1FFFFFFFFFFFFFll;
-  gp.level = 1;
-  for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
-
-  PotWrite(gix, 1, &gp);
-
-  /*j = GeoIndexNewPot(gix);
-  gix->ypots[j].LorLeaf = 0;   //leaf pot
-  gix->ypots[j].RorPoints = 0; // with no points in it!
-  gix->ypots[j].middle = 0ll;
-  gix->ypots[j].start = 0ll;
-  gix->ypots[j].end = 0x1FFFFFFFFFFFFFll;
-  gix->ypots[j].level = 1;
-  for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gix->ypots[j].maxdist[i] = 0;*/
+  gix->objectId = objectId;
+  if (numPots == 0 || numSlots == 0) { // first run
+    gix->nextFreePot = 2;
+    gix->nextFreeSlot = 1;
+    
+    GeoPot gp;
+    gp.LorLeaf = 0;   //leaf pot
+    gp.RorPoints = 0; // with no points in it!
+    gp.middle = 0ll;
+    gp.start = 0ll;
+    gp.end = 0x1FFFFFFFFFFFFFll;
+    gp.level = 1;
+    for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
+    PotWrite(gix, 1, &gp);
+  } else {
+    gix->nextFreePot = numPots + 1;
+    gix->nextFreeSlot = numSlots + 1;
+  }
   return (GeoIdx*)gix;
 }
 /* =================================================== */
@@ -2445,15 +2434,5 @@ int GeoIndex_INDEXVALID(GeoIdx* gi) {
 }
 
 #endif
-
-  // change to Approximate memory
-size_t GeoIndex_MemoryUsage(void* theIndex) {
-  //GeoIx* geoIndex = (GeoIx*)theIndex;
-  //if (geoIndex != nullptr) {
-  //  return geoIndex->_memoryUsed;
-  //}
-#warning FIXME
-  return 0;
-}
 }}
 /* end of GeoIndex.c  */
