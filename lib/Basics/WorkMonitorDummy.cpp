@@ -48,3 +48,8 @@ void WorkMonitor::addWorkOverview(std::shared_ptr<rest::RestHandler>,
 void WorkMonitor::clearAllHandlers() {
   TRI_ASSERT(false);
 }
+
+bool WorkMonitor::clearWorkDescriptions() {
+  TRI_ASSERT(false);
+  return false;
+}

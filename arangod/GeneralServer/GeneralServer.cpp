@@ -27,13 +27,9 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Endpoint/EndpointList.h"
-#include "GeneralServer/AsyncJobManager.h"
+#include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralListenTask.h"
-#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
-#include "Rest/CommonDefines.h"
-#include "Rest/GeneralResponse.h"
-#include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Task.h"
@@ -46,7 +42,9 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-GeneralServer::~GeneralServer() {}
+GeneralServer::~GeneralServer() {
+  _listenTasks.clear();
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -102,11 +100,9 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
     }
   }
 
-  std::shared_ptr<ListenTask> task(new GeneralListenTask(
+  std::unique_ptr<ListenTask> task(new GeneralListenTask(
       SchedulerFeature::SCHEDULER->eventLoop(), this, endpoint, protocolType));
-  task->start();
-
-  if (!task->isBound()) {
+  if (!task->start()) {
     return false;
   }
 

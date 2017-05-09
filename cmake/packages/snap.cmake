@@ -31,10 +31,6 @@ if(SNAPCRAFT_FOUND)
     COPY        "${SNAPCRAFT_TEMPLATE_DIR}/arangodb.png"
     DESTINATION "${SNAPCRAFT_SOURCE_DIR}/"
     )
-
-snapcraft clean arangodb3 -s pull
-
-arangodb3
   
   add_custom_target(snap
     COMMENT "create snap-package"

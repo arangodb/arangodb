@@ -31,6 +31,10 @@
 
 namespace arangodb {
 
+////////////////////////////////////////////////////////////////////////////////
+/// If these values change, make sure to reflect the changes in
+/// RocksDBPrefixExtractor as well.
+////////////////////////////////////////////////////////////////////////////////
 enum class RocksDBEntryType : char {
   Database = '0',
   Collection = '1',
@@ -67,6 +71,6 @@ enum class RocksDBLogType : char {
 };
 
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
-}
+}  // namespace arangodb
 
 #endif
