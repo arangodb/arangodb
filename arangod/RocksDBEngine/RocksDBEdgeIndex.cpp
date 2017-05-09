@@ -29,6 +29,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cache/CachedValue.h"
+#include "Cache/TransactionalCache.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -57,35 +59,29 @@ using namespace arangodb::basics;
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBEdgeIndex const* index,
-    std::unique_ptr<VPackBuilder>& keys)
+    std::unique_ptr<VPackBuilder>& keys,
+    bool useCache, cache::Cache* cache)
     : IndexIterator(collection, trx, mmdr, index),
       _keys(keys.get()),
       _keysIterator(_keys->slice()),
       _index(index),
-      _bounds(RocksDBKeyBounds::EdgeIndex(0)) {
+      _cacheIndexPosition(0),
+      _bounds(RocksDBKeyBounds::EdgeIndex(0)),
+      _doUpdateBounds(true),
+      _useCache(useCache),
+      _cache(cache)
+{
   keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
   TRI_ASSERT(state != nullptr);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   _iterator.reset(rtrx->GetIterator(state->readOptions()));
-  updateBounds();
 }
 
-bool RocksDBEdgeIndexIterator::updateBounds() {
-  if (_keysIterator.valid()) {
-    VPackSlice fromTo = _keysIterator.value();
-    if (fromTo.isObject()) {
-      fromTo = fromTo.get(StaticStrings::IndexEq);
-    }
-    TRI_ASSERT(fromTo.isString());
-    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId,
-                                                StringRef(fromTo));
-
+void RocksDBEdgeIndexIterator::updateBounds(StringRef fromTo) {
+    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
     _iterator->Seek(_bounds.start());
-    return true;
-  }
-  return false;
 }
 
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
@@ -95,9 +91,18 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
   }
 }
 
+StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const& it){
+    VPackSlice fromTo = it.value();
+    if (fromTo.isObject()) {
+      fromTo = fromTo.get(StaticStrings::IndexEq);
+    }
+    TRI_ASSERT(fromTo.isString());
+    return StringRef(fromTo);
+}
+
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
-   
+
   if (limit == 0 || !_keysIterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -106,38 +111,99 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   }
 
   // acquire rocksdb collection
-  auto rocksColl = toRocksDBCollection(_collection);
-  
-  while (true) {
+  RocksDBToken token;
+
+  while (_keysIterator.valid()) {
     TRI_ASSERT(limit > 0);
+    StringRef fromTo = getFromToFromIterator(_keysIterator);
 
-    while (_iterator->Valid() &&
-           (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
-      StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
-
-      // acquire the document token through the primary index
-      RocksDBToken token;
-      Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
-      _iterator->Next();
-      if (res.ok()) {
-        cb(token);
-        --limit;
-        if (limit == 0) {
-          return true;
+    if (_useCache){
+      // find in cache
+      auto f = _cache->find(fromTo.data(),fromTo.size());
+      if (f.found()) {
+        //iterate over cached primary keys
+        VPackSlice cachedPrimaryKeys(f.value()->value());
+        for(std::size_t i = _cacheIndexPosition; i < cachedPrimaryKeys.length(); i++){
+          StringRef edgeKey(cachedPrimaryKeys.at(i));
+          if(lookupDocumentAndUseCb(edgeKey, cb, limit, token)){
+            return true; // more documents - funtion will be re-entered
+          } else {
+          //iterate over keys
+          }
+          _cacheIndexPosition = 0; //reset
         }
-      }  // TODO do we need to handle failed lookups here?
+        continue; // do not use the code below that does a lookup in rocksdb
+      }
     }
 
-    _keysIterator.next();
-    if (!updateBounds()) {
-      return false;
+    // cache lookup failed for key value we need to look up
+    // primary keys in rocksdb
+
+    // if there are more documents in the iterator then
+    // we are not allowed to reset the index.
+    // if _doUpdateBound is set to false we resume
+    // returning from an valid iterator after hitting 
+    // the batch size limit
+    if(_doUpdateBounds){
+      updateBounds(fromTo);
+      _cacheValueBuilder.openArray();
+    } else {
+      _doUpdateBounds = true;
     }
+
+    while (_iterator->Valid() && (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
+      StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
+      if(_useCache){
+        _cacheValueBuilder.add(VPackValuePair(edgeKey.data(),edgeKey.size()));
+      }
+      //insert into cache - how many documents do we have in range? estimate
+      if(lookupDocumentAndUseCb(edgeKey, cb, limit, token)){
+        return true; // more documents - funtion will be re-entered
+      } else {
+        // batch size limit not reached continue loop
+      }
+    }
+    _cacheValueBuilder.close();
+
+    if (_useCache) {
+      auto entry = cache::CachedValue::construct(
+          fromTo.data(), static_cast<uint32_t>(fromTo.size()),
+          _cacheValueBuilder.slice().start(), static_cast<uint64_t>(_cacheValueBuilder.slice().byteSize()));
+      bool cached = _cache->insert(entry);
+      if (!cached) {
+        delete entry;
+      }
+    }
+
+    _keysIterator.next(); // handle next key
   }
+  return false; // no more documents in this iterator
+}
+
+// acquire the document token through the primary index
+bool RocksDBEdgeIndexIterator::lookupDocumentAndUseCb(
+    StringRef primaryKey, TokenCallback const& cb,
+    size_t& limit, RocksDBToken& token){
+  //we pass the token in as ref to avoid allocations
+  auto rocksColl = toRocksDBCollection(_collection);
+  Result res = rocksColl->lookupDocumentToken(_trx, primaryKey, token);
+  _iterator->Next();
+  if (res.ok()) {
+    cb(token);
+    --limit;
+    if (limit == 0) {
+      _doUpdateBounds=false; //limit hit continue with next batch
+      return true;
+    }
+  }  // TODO do we need to handle failed lookups here?
+  return false; // limit not hit continue in while loop
 }
 
 void RocksDBEdgeIndexIterator::reset() {
+  _doUpdateBounds = true;
+  //rest offsets into iterators
   _keysIterator.reset();
-  updateBounds();
+  _cacheIndexPosition = 0;
 }
 
 // ============================= Index ====================================
@@ -152,6 +218,9 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _directionAttr(attr) {
   TRI_ASSERT(iid != 0);
+  if (_objectId != 0 && !ServerState::instance()->isCoordinator()) {
+    _useCache = true;
+  }
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
@@ -321,22 +390,24 @@ bool RocksDBEdgeIndex::supportsFilterCondition(
 IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
+
     arangodb::aql::Variable const* reference, bool reverse) {
+
+  //get computation node
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
   TRI_ASSERT(node->numMembers() == 1);
-
   auto comp = node->getMember(0);
 
   // assume a.b == value
   auto attrNode = comp->getMember(0);
   auto valNode = comp->getMember(1);
 
+  // got value == a.b  -> flip sides
   if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    // got value == a.b  -> flip sides
     attrNode = comp->getMember(1);
     valNode = comp->getMember(0);
   }
+
   TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
   TRI_ASSERT(attrNode->stringEquals(_directionAttr));
 
@@ -351,7 +422,6 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
       // a.b IN non-array
       return new EmptyIndexIterator(_collection, trx, mmdr, this);
     }
-
     return createInIterator(trx, mmdr, attrNode, valNode);
   }
 
@@ -421,7 +491,8 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys);
+  return new RocksDBEdgeIndexIterator(
+      _collection, trx, mmdr, this, keys, _useCache, _cache.get());
 }
 
 /// @brief create the iterator
@@ -447,7 +518,8 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys);
+  return new RocksDBEdgeIndexIterator(
+      _collection, trx, mmdr, this, keys, _useCache, _cache.get());
 }
 
 /// @brief add a single value node to the iterator's keys

@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBToken.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -50,24 +51,30 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
                            transaction::Methods* trx,
                            ManagedDocumentResult* mmdr,
                            arangodb::RocksDBEdgeIndex const* index,
-                           std::unique_ptr<VPackBuilder>& keys);
-
+                           std::unique_ptr<VPackBuilder>& keys,
+                           bool useCache, cache::Cache*);
   ~RocksDBEdgeIndexIterator();
-
   char const* typeName() const override { return "edge-index-iterator"; }
-
   bool next(TokenCallback const& cb, size_t limit) override;
-
   void reset() override;
 
  private:
-  bool updateBounds();
-
+  void updateBounds(StringRef fromTo);
+  bool lookupDocumentAndUseCb(
+      StringRef primaryKey, TokenCallback const&, size_t& limit, RocksDBToken&);
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _keysIterator;
   RocksDBEdgeIndex const* _index;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
+  
+  //the following 2 values are required for correct batch handling
+  std::unique_ptr<rocksdb::Iterator> _iterator; //iterator position in rocksdb
+  std::size_t _cacheIndexPosition; //position in cache for multiple batches
+
   RocksDBKeyBounds _bounds;
+  bool _doUpdateBounds;
+  bool _useCache;
+  cache::Cache* _cache;
+  VPackBuilder _cacheValueBuilder;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {
