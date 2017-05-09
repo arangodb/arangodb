@@ -175,7 +175,7 @@ void RocksDBEngine::start() {
   // transactionOptions.num_stripes = TRI_numberProcessors();
 
   // options imported set by RocksDBOptionFeature
-  auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
+  auto const* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
       "RocksDBOption");
 
   _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
