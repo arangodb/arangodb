@@ -29,8 +29,10 @@
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "StorageEngine/TransactionState.h"
+#include <rocksdb/utilities/transaction_db.h>
 
 using namespace arangodb;
 
@@ -265,9 +267,46 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
         TRI_ERROR_BAD_PARAMETER,
         "RocksDBGeoIndex can only be created with one or two fields.");
   }
+        
+        
+  // cheap trick to get the last inserted pot and slot number
+  rocksdb::TransactionDB *db  = rocksutils::globalRocksDB();
+  rocksdb::ReadOptions opts;
+  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(opts));
+        
+        usleep(1000000);
+        usleep(1000000);
+        usleep(1000000);
+        usleep(1000000);
+        usleep(1000000);
+        usleep(1000000);
+    
+  // cheap trick to find the number of last use pots and slots
+  int numPots = 0;
+  RocksDBKeyBounds b1 = RocksDBKeyBounds::GeoIndex(_objectId, false);
+  iter->SeekForPrev(b1.end());
+  if (iter->Valid()
+      && _cmp->Compare(iter->key(), b1.start()) >= 0
+      && _cmp->Compare(iter->key(), b1.end()) < 0) {
+    // found a key smaller than bounds end
+    std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
+    TRI_ASSERT(pair.first == false);
+    numPots = pair.second;
+  }
+        
+  int numSlots = 0;
+  RocksDBKeyBounds b2 = RocksDBKeyBounds::GeoIndex(_objectId, true);
+  iter->SeekForPrev(b2.end());
+  if (iter->Valid()
+      && _cmp->Compare(iter->key(), b2.start()) >= 0
+      && _cmp->Compare(iter->key(), b2.end()) < 0) {
+    // found a key smaller than bounds end
+    std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
+    TRI_ASSERT(pair.first);
+    numSlots = pair.second;
+  }
 
-  _geoIndex = GeoIndex_new(_objectId);
-
+  _geoIndex = GeoIndex_new(_objectId, numPots, numSlots);
   if (_geoIndex == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -513,7 +552,7 @@ int RocksDBGeoIndex::removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t revisionId,
 
 int RocksDBGeoIndex::unload() {
   // create a new, empty index
-  auto empty = GeoIndex_new(_objectId);
+  auto empty = GeoIndex_new(_objectId, 0, 0);
 
   if (empty == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

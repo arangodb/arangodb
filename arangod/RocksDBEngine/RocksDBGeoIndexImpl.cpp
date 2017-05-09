@@ -471,7 +471,10 @@ int GeoIndexNewPot(GeoIx* gix) {// rocksdb initial put
 /* GeoString values of real (latitude, longitude)      */
 /* points                                              */
 /* =================================================== */
-GeoIdx* GeoIndex_new(uint64_t objectId) {
+GeoIdx* GeoIndex_new(uint64_t objectId,
+                     int numPots,
+                     int numSlots) {
+  TRI_ASSERT(objectId != 0);
   GeoIx* gix;
   int i;
 
@@ -483,55 +486,14 @@ GeoIdx* GeoIndex_new(uint64_t objectId) {
   }
 
   gix->objectId = objectId;
-
-  /* try to allocate all the things we need  */
-  /*gix->ypots = static_cast<GeoPot*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOPOTSTART * sizeof(GeoPot), false));
-  gix->gxc = static_cast<GeoCoordinate*>(TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART * sizeof(GeoCoordinate), false));
-
-  // if any of them fail, free the ones that succeeded
-  // and then return the nullptr for our user
-  if ((gix->ypots == nullptr) || (gix->gxc == nullptr)) {
-    if (gix->ypots != nullptr) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->ypots);
-    }
-
-    if (gix->gxc != nullptr) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->gxc);
-    }
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix);
-
-    return nullptr;
-  }*/
-
-  // set initial memory usage
-  //gix->_memoryUsed =
-  //    GEOPOTSTART * sizeof(GeoPot) + GEOSLOTSTART * sizeof(GeoCoordinate);
-
-  /* initialize chain of empty slots  */
-  /*for (i = 0; i < GEOSLOTSTART; i++) {
-    if (i < GEOSLOTSTART - 1)
-      (gix->gxc[i]).latitude = i + 1;
-    else
-      (gix->gxc[i]).latitude = 0;
+  if (numPots == 0 || numSlots == 0) { // first run
+    gix->nextFreePot = 2;
+    gix->nextFreeSlot = 1;
+  } else {
+    gix->nextFreePot = numPots + 1;
+    gix->nextFreeSlot = numSlots + 1;
   }
 
-  // similarly set up free chain of empty pots
-  for (i = 0; i < GEOPOTSTART; i++) {
-    if (i < GEOPOTSTART - 1)
-      gix->ypots[i].LorLeaf = i + 1;
-    else
-      gix->ypots[i].LorLeaf = 0;
-  }*/
-  
-  //RocksDBCounterManager *mgr = rocksutils::globalRocksEngine()->counterManager();
-  //RocksDBCounterManager::CounterAdjustment adj = mgr->loadCounter(objectId);
-  gix->nextFreePot = 2;//(adj.added() & 0xffffffff);
-  gix->nextFreeSlot = 1;//adj.added() >> 32;
-
-  // leave intact
   /* set up the fixed points structure  */
 
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++) {

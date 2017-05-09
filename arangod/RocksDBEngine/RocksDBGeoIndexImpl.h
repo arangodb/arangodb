@@ -93,7 +93,7 @@ typedef void GeoCursor; /* to keep the structure private  */
 
 size_t GeoIndex_MemoryUsage(void*);
 
-GeoIdx* GeoIndex_new(uint64_t objectId);
+GeoIdx* GeoIndex_new(uint64_t objectId, int slo, int);
 void GeoIndex_free(GeoIdx* gi);
 double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);
 int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c);

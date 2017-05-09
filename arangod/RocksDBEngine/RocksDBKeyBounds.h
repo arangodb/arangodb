@@ -94,6 +94,7 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all entries belonging to a specified unique index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds GeoIndex(uint64_t indexId);
+  static RocksDBKeyBounds GeoIndex(uint64_t indexId, bool isSlot);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries within a value range belonging to a

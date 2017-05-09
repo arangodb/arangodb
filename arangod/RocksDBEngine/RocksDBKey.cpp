@@ -83,12 +83,13 @@ RocksDBKey RocksDBKey::FulltextIndexValue(uint64_t indexId,
   return RocksDBKey(RocksDBEntryType::FulltextIndexValue, indexId, word, primaryKey);
 }
 
-RocksDBKey RocksDBKey::GeoIndexValue(uint64_t indexId, uint32_t offset, bool isSlot) {
+RocksDBKey RocksDBKey::GeoIndexValue(uint64_t indexId, int32_t offset, bool isSlot) {
   RocksDBKey key(RocksDBEntryType::GeoIndexValue);
   size_t length = sizeof(char) + sizeof(indexId) + sizeof(offset);
   key._buffer.reserve(length);
   key._buffer.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
   uint64ToPersistent(key._buffer, indexId);
+  
   uint64_t norm = offset;
   if (isSlot) norm |= uint64_t(1) << 63;//encode slot|pot in highest bit
   uint64ToPersistent(key._buffer, norm);
@@ -190,13 +191,13 @@ VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
   return indexedVPack(slice.data(), slice.size());
 }
 
-std::pair<bool, uint32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
+std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(char) + sizeof(uint64_t) * 2);
   RocksDBEntryType type = static_cast<RocksDBEntryType>(*slice.data());
   TRI_ASSERT(type == RocksDBEntryType::GeoIndexValue);
   uint64_t val = uint64FromPersistent(slice.data() + sizeof(char) + sizeof(uint64_t));
-  bool isSlot = (val >> 63) & 0x1;
-  return std::pair<bool, uint32_t>(isSlot, (val & 0xffffffff));
+  bool isSlot = val & 0xFF;// lowest byte is 0xFF if true
+  return std::pair<bool, int32_t>(isSlot, (val >> 32));
 }
 
 std::string const& RocksDBKey::string() const { return _buffer; }

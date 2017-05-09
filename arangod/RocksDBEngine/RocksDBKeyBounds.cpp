@@ -81,6 +81,22 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::GeoIndexValue, indexId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
+  RocksDBKeyBounds b;
+  size_t length = sizeof(char) + sizeof(uint64_t) * 2;
+  b._startBuffer.reserve(length);
+  b._startBuffer.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
+  uint64ToPersistent(b._startBuffer, indexId);
+  b._endBuffer.append(b._startBuffer);// append common prefix
+  
+  uint64_t norm = isSlot ? 0xFF : 0;//encode slot|pot in lowest bit
+  uint64ToPersistent(b._startBuffer, norm);// lower endian
+  norm |= 0xFFFFFFFFULL << 32;
+  uint64ToPersistent(b._endBuffer, norm);
+  return b;
+}
+
+
 RocksDBKeyBounds RocksDBKeyBounds::IndexRange(uint64_t indexId,
                                               VPackSlice const& left,
                                               VPackSlice const& right) {
@@ -212,7 +228,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     }
       
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Document:{
+    case RocksDBEntryType::Document:
+    case RocksDBEntryType::GeoIndexValue: {
       // Collections are stored as follows:
       // Key: 1 + 8-byte ArangoDB database ID + 8-byte ArangoDB collection ID
       //
@@ -236,7 +253,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::FulltextIndexValue:
-    case RocksDBEntryType::GeoIndexValue:
     case RocksDBEntryType::View: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _startBuffer.reserve(length);
