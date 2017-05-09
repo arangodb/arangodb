@@ -618,8 +618,8 @@ fi
 
 if test "${DOWNLOAD_STARTER}" == 1; then
     # we utilize https://developer.github.com/v3/repos/ to get the newest release:
-    STARTER_REV=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases |grep tag_name |head -n 1 |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
-    STARTER_URL=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases/tags/${STARTER_REV} |grep browser_download_url |grep "${OSNAME}" |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    STARTER_REV=`curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases |grep tag_name |head -n 1 |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    STARTER_URL=`curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases/tags/${STARTER_REV} |grep browser_download_url |grep "${OSNAME}" |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
     if test -n "${STARTER_URL}"; then
         mkdir -p ${BUILD_DIR}
         if test "${isCygwin}" == 1; then
@@ -653,13 +653,21 @@ fi
 PARTIAL_STATE=$?
 set -e
 
+if test "${isCygwin}" == 1 -a "${PARTIAL_STATE}" == 1; then
+    # windows fails to partialy re-configure - so do a complete configure run.
+    if test -f CMakeFiles/generate.stamp -a CMakeFiles/generate.stamp -ot "${SOURCE_DIR}/CMakeList.txt"; then
+        echo "CMakeList older - Forcing complete configure run!"
+        PARTIAL_STATE=0
+    fi
+fi
+
 if test "${PARTIAL_STATE}" == 0; then
     rm -rf CMakeFiles CMakeCache.txt CMakeCPackOptions.cmake cmake_install.cmake CPackConfig.cmake CPackSourceConfig.cmake
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
 fi
 
-if [ -n "$CPACK"  -a -n "${TARGET_DIR}" -a -z "${MSVC}" ];  then
+if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
     if ! grep -q CMAKE_STRIP CMakeCache.txt; then
         echo "cmake failed to detect strip; refusing to build unstripped packages!"
         exit 1

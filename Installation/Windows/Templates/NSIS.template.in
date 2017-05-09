@@ -4,7 +4,8 @@
 !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
 !addplugindir  '@CPACK_PLUGIN_PATH@/SharedMemory/Plugins'
 !addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
-
+!addincludedir '@CPACK_PLUGIN_PATH@/'
+!include StrRep.nsh
 ;--------------------------------
 ; Include LogicLib for more readable code
   !include "LogicLib.nsh"
@@ -47,7 +48,8 @@
 
   Var INSTALL_DESKTOP           ; x bool: add desktop icon
   Var IS_DEFAULT_INSTALLDIR
-        
+
+  Var STORAGE_ENGINE            ; x string auto/mmfiles/rocksdb
   Var PASSWORD                  ; x string
   Var PASSWORD_AGAIN            ; x string / only for comparison
 
@@ -566,6 +568,7 @@ FunctionEnd
 ;--------------------------------
 
 Function WaitForServiceUp
+  DetailPrint "starting ArangoDB Service..."
   Push 0
   Pop $retryCount
   try_again:
@@ -579,7 +582,7 @@ Function WaitForServiceUp
     ${EndIf}
     Sleep 1000
     ${If} $retryCount == 40
-      MessageBox MB_OK "Service waiting retry count reached"
+      MessageBox MB_OK "Waited 40 seconds for ArangoDB to come up; Please look at the Windows Eventlog for eventual errors!"
       Return
     ${EndIf}
     IntOp $retryCount $retryCount + 1
@@ -589,6 +592,7 @@ FunctionEnd
 ;--------------------------------
 
 Function WaitForServiceDown
+  DetailPrint "stopping ArangoDB Service..."
   Push 0
   Pop $retryCount
   try_again:
@@ -602,7 +606,7 @@ Function WaitForServiceDown
     ${EndIf}
     Sleep 1000
     ${If} $retryCount == 40
-      MessageBox MB_OK "Service shutdown waiting retry count reached; you may need to remove files by hand"
+      MessageBox MB_OK "Waited 40 seconds for the ArangoDB Service to shutdown; you may need to remove files by hand"
       Return
     ${EndIf}
     IntOp $retryCount $retryCount + 1
@@ -610,6 +614,7 @@ Function WaitForServiceDown
 FunctionEnd
 
 Function un.WaitForServiceDown
+  DetailPrint "stopping ArangoDB Service..."
   Push 0
   Pop $retryCount
   try_again:
@@ -623,7 +628,7 @@ Function un.WaitForServiceDown
     ${EndIf}
     Sleep 1000
     ${If} $retryCount == 40
-      MessageBox MB_OK "Service shutdown waiting retry count reached; you may need to remove files by hand"
+      MessageBox MB_OK "Waited 40 seconds for the ArangoDB Service to shutdown; you may need to remove files by hand"
       Return
     ${EndIf}
     IntOp $retryCount $retryCount + 1
@@ -779,6 +784,12 @@ Section "-Core installation"
   ; this variable was defined by eld and included in NSIS.template.in
   ; we probably need this for the install/uninstall software list.
   SetRegView ${BITS}
+
+   StrCmp $TRI_INSTALL_TYPE  'Service' 0 noServiceToStop
+     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
+     Call WaitForServiceDown
+     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
+noServiceToStop:
   @CPACK_NSIS_FULL_INSTALL@
 
   ;Store installation folder
@@ -861,6 +872,8 @@ Section "-Core installation"
 
   !insertmacro MUI_STARTMENU_WRITE_END
 
+  !insertmacro _ReplaceInFile "$INSTDIR\etc\arangodb3\arangod.conf" "storage-engine = auto" "storage-engine = $STORAGE_ENGINE"
+
   System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
     ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database"
@@ -870,9 +883,6 @@ Section "-Core installation"
   done:
 @CPACK_NSIS_EXTRA_INSTALL_COMMANDS@
    StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
-     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
-     Call WaitForServiceDown
-     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
      SimpleSC::InstallService '${TRI_SVC_NAME}' '${TRI_SVC_NAME}'  '16'  '2'  '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' '' ''
      SimpleSC::SetServiceDescription '${TRI_SVC_NAME}' '${TRI_FRIENDLY_SVC_NAME}'
      SimpleSC::StartService '${TRI_SVC_NAME}' '' 30
@@ -923,6 +933,7 @@ displayAgain:
   !insertmacro MUI_INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
   !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
   !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $STORAGE_ENGINE "NSIS.InstallOptions.ini" "Field 11" "State"
 
   StrCmp $PASSWORD $PASSWORD_AGAIN +3 0
     MessageBox MB_OK|MB_ICONSTOP "Passwords don't match, try again"
@@ -1401,6 +1412,12 @@ Function .onInit
   IfErrors 0 +3
   StrCpy $ADD_TO_PATH_CURRENT_USER "0"
 
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/STORAGE_ENGINE="      $STORAGE_ENGINE
+  IfErrors 0 +3
+  StrCpy $ADD_TO_PATH_CURRENT_USER "0"
+
   IfSilent 0 dontValidatePathOption
   StrCpy $allPathOpts "0"
   IntOp $allPathOpts $allPathOpts + $DO_NOT_ADD_TO_PATH
@@ -1450,6 +1467,7 @@ inst:
   ; Reads components status for registry
   !insertmacro SectionList "InitSection"
 
+  StrCpy $STORAGE_ENGINE "auto"
   ; check to see if /D has been used to change
   ; the install directory by comparing it to the
   ; install directory that is expected to be the

@@ -21,6 +21,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBKey.cpp
   RocksDBEngine/RocksDBKeyBounds.cpp
   RocksDBEngine/RocksDBLogValue.cpp
+  RocksDBEngine/RocksDBPrefixExtractor.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBReplicationCommon.cpp
   RocksDBEngine/RocksDBReplicationContext.cpp

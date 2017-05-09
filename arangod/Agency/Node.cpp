@@ -152,6 +152,7 @@ Node::Node(Node&& other)
       _parent(nullptr),
       _store(nullptr),
       _children(std::move(other._children)),
+      _ttl(std::move(other._ttl)),
       _value(std::move(other._value)),
       _vecBuf(std::move(other._vecBuf)),
       _vecBufDirty(std::move(other._vecBufDirty)),
@@ -162,6 +163,7 @@ Node::Node(Node const& other)
     : _nodeName(other._nodeName),
       _parent(nullptr),
       _store(nullptr),
+      _ttl(other._ttl),
       _value(other._value),
       _vecBuf(other._vecBuf),
       _vecBufDirty(other._vecBufDirty),
@@ -203,14 +205,14 @@ Node& Node::operator=(Node&& rhs) {
   // 1. remove any existing time to live entry
   // 2. move children map over
   // 3. move value over
-  // Must not move ober rhs's _parent, _ttl, _observers
-  removeTimeToLive();
+  // Must not move ober rhs's _parent, _observers
   _nodeName = std::move(rhs._nodeName);
   _children = std::move(rhs._children);
   _value = std::move(rhs._value);
   _vecBuf = std::move(rhs._vecBuf);
   _vecBufDirty = std::move(rhs._vecBufDirty);
   _isArray = std::move(rhs._isArray);
+  _ttl = std::move(rhs._ttl);
   return *this;
 }
 
@@ -219,7 +221,7 @@ Node& Node::operator=(Node const& rhs) {
   // 1. remove any existing time to live entry
   // 2. clear children map
   // 3. move from rhs to buffer pointer
-  // Must not move rhs's _parent, _ttl, _observers
+  // Must not move rhs's _parent, _observers
   removeTimeToLive();
   _nodeName = rhs._nodeName;
   _children.clear();
@@ -231,6 +233,7 @@ Node& Node::operator=(Node const& rhs) {
   _vecBuf = rhs._vecBuf;
   _vecBufDirty = rhs._vecBufDirty;
   _isArray = rhs._isArray;
+  _ttl = rhs._ttl;
   return *this;
 }
 
@@ -286,9 +289,9 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
   if (!pv.empty()) {
     auto const& key = pv.front();
     auto const it = _children.find(key);
-    if (it == _children.end()/* ||
+    if (it == _children.end() ||
         (it->second->_ttl != std::chrono::system_clock::time_point() &&
-        it->second->_ttl < std::chrono::system_clock::now())*/) {
+        it->second->_ttl < std::chrono::system_clock::now())) {
       throw StoreException(std::string("Node ") + key + " not found!");
     }
     auto const& child = *_children.at(key);
@@ -696,15 +699,19 @@ bool Node::applies(VPackSlice const& slice) {
 }
 
 void Node::toBuilder(Builder& builder, bool showHidden) const {
+
+  typedef std::chrono::system_clock clock;
   try {
     if (type() == NODE) {
       VPackObjectBuilder guard(&builder);
       for (auto const& child : _children) {
-        if (child.first[0] == '.' && !showHidden) {
+        auto const& cptr = child.second;
+        if ((cptr->_ttl != clock::time_point() && cptr->_ttl < clock::now()) ||
+            (child.first[0] == '.' && !showHidden )) {
           continue;
         }
         builder.add(VPackValue(child.first));
-        child.second->toBuilder(builder);
+        cptr->toBuilder(builder);
       }
     } else {
       if (!slice().isNone()) {

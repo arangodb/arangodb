@@ -1280,7 +1280,7 @@ bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
     // LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "checking word " << wordlist->_words[w];
 
     if (w > 0) {
-      std::string tmp = wordlist[w];
+      std::string const& tmp = wordlist[w];
       // check if current word has a shared/common prefix with the previous word
       // inserted
       // in case this is true, we can use an optimisation and do not need to

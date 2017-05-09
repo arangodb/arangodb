@@ -486,7 +486,10 @@ exports.historian = function () {
       }
     }
   } catch (err) {
-    require('console').warn('catch error in historian: %s', err.stack);
+    // errors on shutdown are expected. do not log them in case they occur
+    if (err.errorNum !== internal.errors.ERROR_SHUTTING_DOWN.code) {
+      require('console').warn('catch error in historian: %s', err.stack);
+    }
   }
 };
 
