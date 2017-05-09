@@ -28,11 +28,8 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/ConditionVariable.h"
-#include "Endpoint/ConnectionInfo.h"
-#include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/HttpCommTask.h"
-#include "GeneralServer/RestHandler.h"
+#include "Scheduler/ListenTask.h"
 
 namespace arangodb {
 class EndpointList;
@@ -48,7 +45,7 @@ class GeneralServer {
   virtual ~GeneralServer();
 
  public:
-  void setEndpointList(const EndpointList* list);
+  void setEndpointList(EndpointList const* list);
   void startListening();
   void stopListening();
 
@@ -56,7 +53,7 @@ class GeneralServer {
   bool openEndpoint(Endpoint* endpoint);
 
  private:
-  std::vector<std::shared_ptr<ListenTask>> _listenTasks;
+  std::vector<std::unique_ptr<ListenTask>> _listenTasks;
   EndpointList const* _endpointList = nullptr;
 };
 }

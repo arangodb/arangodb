@@ -27,6 +27,7 @@
 
 #include "Scheduler/Task.h"
 
+#include "Basics/Mutex.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
 #include "Scheduler/Acceptor.h"
@@ -39,15 +40,15 @@ class ListenTask : virtual public rest::Task {
 
  public:
   ListenTask(EventLoop, Endpoint*);
+  ~ListenTask();
 
  public:
   virtual void handleConnected(std::unique_ptr<Socket>, ConnectionInfo&&) = 0;
 
  public:
-  bool isBound() const { return _bound.load(); }
   Endpoint* endpoint() const { return _endpoint; }
 
-  void start();
+  bool start();
   void stop();
 
  private:
@@ -56,12 +57,11 @@ class ListenTask : virtual public rest::Task {
  private:
   Endpoint* _endpoint;
   size_t _acceptFailures = 0;
-  std::atomic<bool> _bound;
+  
+  Mutex _shutdownMutex; 
+  bool _bound;
 
-  boost::asio::io_service* _ioService;
-
-  std::shared_ptr<Acceptor> _acceptor;
-
+  std::unique_ptr<Acceptor> _acceptor;
   std::function<void(boost::system::error_code const&)> _handler;
 };
 }
