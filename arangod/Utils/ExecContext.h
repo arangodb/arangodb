@@ -36,8 +36,11 @@ class AuthContext {
 
 class ExecContext {
   public:
-    ExecContext(std::string const& user, std::string const& database)
-      : _user(user), _database(database) {}
+    ExecContext(std::string const& user, std::string const& database,
+    std::shared_ptr<AuthContext> authContext)
+      : _user(user), _database(database) {
+        _auth = authContext;
+      }
 
   protected:
     std::string _user;

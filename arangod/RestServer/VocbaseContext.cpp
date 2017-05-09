@@ -195,9 +195,11 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
       }
 
       if (resCode == rest::ResponseCode::OK) {
-        auto *execContext = new ExecContext(_request->user(), _request->databaseName());
+        auto *execContext = new ExecContext(_request->user(), _request->databaseName(), nullptr);
         // get auth context for user - database combination
         // and set it into _request
+
+        _request->setExecContext(execContext);
 
         return resCode;
       }
