@@ -30,7 +30,11 @@ using namespace arangodb;
 RocksDBLogger::RocksDBLogger(rocksdb::InfoLogLevel level) : rocksdb::Logger(level) {}
 RocksDBLogger::~RocksDBLogger() {}
   
-void RocksDBLogger::Logv(char const* format, va_list ap) {
+void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* format, va_list ap) {
+  if (logLevel < GetInfoLogLevel()) {
+    return;
+  }
+  
   static constexpr size_t prefixSize = 9; // strlen("rocksdb: ");
   char buffer[2048];
   memcpy(&buffer[0], "rocksdb: \0", prefixSize); // add trailing \0 byte already for safety
@@ -57,7 +61,7 @@ void RocksDBLogger::Logv(char const* format, va_list ap) {
     --l;
   }
 
-  switch (GetInfoLogLevel()) {
+  switch (logLevel) {
     case rocksdb::InfoLogLevel::DEBUG_LEVEL:
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << StringRef(buffer, l);
       break;
@@ -75,4 +79,9 @@ void RocksDBLogger::Logv(char const* format, va_list ap) {
       // ignore other levels 
     }
   }
+}
+
+void RocksDBLogger::Logv(char const* format, va_list ap) {
+  // forward to the level-aware method
+  Logv(rocksdb::InfoLogLevel::INFO_LEVEL, format, ap);
 }

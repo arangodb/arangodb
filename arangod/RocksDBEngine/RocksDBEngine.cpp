@@ -222,8 +222,10 @@ void RocksDBEngine::start() {
   _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
   // intentionally do not start the logger (yet)
   // as it will produce a lot of log spam
-  // _options.info_log =
-  // std::make_shared<RocksDBLogger>(rocksdb::InfoLogLevel::ERROR_LEVEL);
+  // _options.info_log = std::make_shared<RocksDBLogger>(_options.info_log_level);
+
+  // _options.statistics = rocksdb::CreateDBStatistics();
+  // _options.stats_dump_period_sec = 1;
 
   rocksdb::BlockBasedTableOptions table_options;
   if (opts->_blockCacheSize > 0) {
