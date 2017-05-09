@@ -111,7 +111,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t indexId,
   bounds._startBuffer.append(word.data(), word.length());
   
   bounds._endBuffer.append(bounds._startBuffer);
-  bounds._endBuffer.push_back(0xFF);// invalid UTF-8 character, higher than with memcmp
+  bounds._endBuffer.push_back((const unsigned char)0xFF);// invalid UTF-8 character, higher than with memcmp
   return bounds;
 }
 
