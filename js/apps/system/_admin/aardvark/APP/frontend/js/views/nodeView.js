@@ -67,20 +67,42 @@
 
     continueRender: function () {
       var self = this;
+      var dashboard;
 
-      this.dashboards[this.coordinator.get('name')] = new window.DashboardView({
-        dygraphConfig: window.dygraphConfig,
-        database: window.App.arangoDatabase,
-        serverToShow: {
-          raw: this.coordinator.get('address'),
-          isDBServer: false,
-          endpoint: this.coordinator.get('protocol') + '://' + this.coordinator.get('address'),
-          target: this.coordinator.get('name')
-        }
-      });
-      this.dashboards[this.coordinator.get('name')].render();
+      if (this.coordinator) {
+        dashboard = this.coordinator.get('name');
+        // coordinator
+        this.dashboards[this.coordinator.get('name')] = new window.DashboardView({
+          dygraphConfig: window.dygraphConfig,
+          database: window.App.arangoDatabase,
+          serverToShow: {
+            raw: this.coordinator.get('address'),
+            isDBServer: false,
+            endpoint: this.coordinator.get('protocol') + '://' + this.coordinator.get('address'),
+            target: this.coordinator.get('name')
+          }
+        });
+      } else {
+        // db server
+        var attributes = this.dbServer.toJSON();
+        dashboard = attributes.name;
+        this.dashboards[attributes.name] = new window.DashboardView({
+          dygraphConfig: null,
+          database: window.App.arangoDatabase,
+          serverToShow: {
+            raw: attributes.address,
+            isDBServer: true,
+            endpoint: attributes.endpoint,
+            id: attributes.id,
+            name: attributes.name,
+            status: attributes.status,
+            target: attributes.id
+          }
+        });
+      }
+      this.dashboards[dashboard].render();
       window.setTimeout(function () {
-        self.dashboards[self.coordinator.get('name')].resize();
+        self.dashboards[dashboard].resize();
       }, 500);
     },
 
@@ -111,8 +133,9 @@
           self.dbServer = self.dbServers[0];
 
           self.dbServer.each(function (model) {
-            if (model.get('name') === 'DBServer001') {
-              self.dbServer = model;
+            var id = model.get('id');
+            if (id === window.location.hash.split('/')[1]) {
+              self.dbServer = self.dbServer.findWhere({id: id});
             }
           });
 

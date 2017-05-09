@@ -77,6 +77,24 @@ RocksDBKey RocksDBKey::UniqueIndexValue(uint64_t indexId,
   return RocksDBKey(RocksDBEntryType::UniqueIndexValue, indexId, indexValues);
 }
 
+RocksDBKey RocksDBKey::FulltextIndexValue(uint64_t indexId,
+                                          arangodb::StringRef const& word,
+                                          arangodb::StringRef const& primaryKey) {
+  return RocksDBKey(RocksDBEntryType::FulltextIndexValue, indexId, word, primaryKey);
+}
+
+RocksDBKey RocksDBKey::GeoIndexValue(uint64_t indexId, int32_t offset, bool isSlot) {
+  RocksDBKey key(RocksDBEntryType::GeoIndexValue);
+  size_t length = sizeof(char) + sizeof(indexId) + sizeof(offset);
+  key._buffer.reserve(length);
+  uint64ToPersistent(key._buffer, indexId);
+
+  uint64_t norm = uint64_t(offset) << 32;
+  norm |= isSlot ? 0xFFU : 0; //encode slot|pot in lowest bit
+  uint64ToPersistent(key._buffer, norm);
+  return key;
+}
+
 RocksDBKey RocksDBKey::View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) {
   return RocksDBKey(RocksDBEntryType::View, databaseId, viewId);
 }
@@ -91,12 +109,6 @@ RocksDBKey RocksDBKey::SettingsValue() {
 
 RocksDBKey RocksDBKey::ReplicationApplierConfig(TRI_voc_tick_t databaseId) {
   return RocksDBKey(RocksDBEntryType::ReplicationApplierConfig, databaseId);
-}
-
-RocksDBKey RocksDBKey::FulltextIndexValue(uint64_t indexId,
-                                          arangodb::StringRef const& word,
-                                          arangodb::StringRef const& primaryKey) {
-  return RocksDBKey(RocksDBEntryType::FulltextIndexValue, indexId, word, primaryKey);
 }
 
 // ========================= Member methods ===========================
@@ -177,10 +189,20 @@ VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
   return indexedVPack(slice.data(), slice.size());
 }
 
+std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
+  TRI_ASSERT(slice.size() >= sizeof(char) + sizeof(uint64_t) * 2);
+  RocksDBEntryType type = static_cast<RocksDBEntryType>(*slice.data());
+  TRI_ASSERT(type == RocksDBEntryType::GeoIndexValue);
+  uint64_t val = uint64FromPersistent(slice.data() + sizeof(char) + sizeof(uint64_t));
+  bool isSlot = val & 0xFFU;// lowest byte is 0xFF if true
+  return std::pair<bool, int32_t>(isSlot, (val >> 32));
+}
+
 std::string const& RocksDBKey::string() const { return _buffer; }
 
 RocksDBKey::RocksDBKey(RocksDBEntryType type) : _type(type), _buffer() {
   switch (_type) {
+    case RocksDBEntryType::GeoIndexValue:
     case RocksDBEntryType::SettingsValue: {
       _buffer.push_back(static_cast<char>(_type));
       break;
@@ -327,6 +349,8 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   }
 }
 
+// ====================== Private Methods ==========================
+
 RocksDBEntryType RocksDBKey::type(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
@@ -375,7 +399,9 @@ TRI_voc_cid_t RocksDBKey::objectId(char const* data, size_t size) {
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::IndexValue:
-    case RocksDBEntryType::UniqueIndexValue: {
+    case RocksDBEntryType::UniqueIndexValue:
+    case RocksDBEntryType::GeoIndexValue:
+    {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
       return uint64FromPersistent(data + sizeof(char));
     }

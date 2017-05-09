@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, window, arangoHelper, nv, d3, prettyBytes */
+/* global Backbone, $, window, arangoHelper, moment, nv, d3, prettyBytes */
 /* global document, console, frontendConfig, Dygraph, _,templateEngine */
 
 (function () {
@@ -603,6 +603,131 @@
       }
     },
 
+    renderStatisticBox: function (name, value, title) {
+      // box already rendered, just update value
+      if ($('#node-info #nodeattribute-' + name).length) {
+        $('#node-info #nodeattribute-' + name).html(value);
+      } else {
+        var elem = '';
+        elem += '<div class="pure-u-1-2 pure-u-md-1-4" style="background-color: #fff">';
+        elem += '<div class="valueWrapper">';
+        if (title) {
+          elem += '<div id="nodeattribute-' + name + '" class="value tippy" title="' + value + '">' + value + '</div>';
+        } else {
+          elem += '<div id="nodeattribute-' + name + '" class="value">' + value + '</div>';
+        }
+        elem += '<div class="graphLabel">' + name + '</div>';
+        elem += '</div>';
+        elem += '</div>';
+        $('#node-info').append(elem);
+      }
+    },
+
+    getNodeInfo: function () {
+      var self = this;
+
+      if (frontendConfig.isCluster) {
+        // Cluster node
+        if (this.serverInfo.isDBServer) {
+          this.renderStatisticBox('Role', 'DBServer');
+        } else {
+          this.renderStatisticBox('Role', 'Coordinator');
+        }
+
+        this.renderStatisticBox('Host', this.serverInfo.raw, this.serverInfo.raw);
+        if (this.serverInfo.endpoint) {
+          this.renderStatisticBox('Protocol', this.serverInfo.endpoint.substr(0, this.serverInfo.endpoint.indexOf('/') - 1));
+        } else {
+          this.renderStatisticBox('Protocol', 'Error');
+        }
+
+        this.renderStatisticBox('ID', this.serverInfo.target, this.serverInfo.target);
+
+        // get node version + license
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_admin/clusterNodeVersion?ServerID=' + this.serverInfo.target),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.renderStatisticBox('Version', frontendConfig.version.version);
+            self.renderStatisticBox('License', frontendConfig.version.license);
+          },
+          error: function (data) {
+            self.renderStatisticBox('Version', 'Error');
+            self.renderStatisticBox('License', 'Error');
+          }
+        });
+
+        // get server engine
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_admin/clusterNodeEngine?ServerID=' + this.serverInfo.target),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.renderStatisticBox('Engine', data.name);
+          },
+          error: function (data) {
+            self.renderStatisticBox('Engine', 'Error');
+          }
+        });
+
+        // get server statistics
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_admin/clusterNodeStats?ServerID=' + this.serverInfo.target),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.renderStatisticBox('Uptime', moment.duration(data.server.uptime, 'seconds').humanize());
+          },
+          error: function (data) {
+            self.renderStatisticBox('Uptime', 'Error');
+          }
+        });
+      } else {
+        // Standalone
+        // version + license
+        this.renderStatisticBox('Version', frontendConfig.version.version);
+        this.renderStatisticBox('License', frontendConfig.version.license);
+
+        // engine status
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/engine'),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.renderStatisticBox('Engine', data.name);
+          },
+          error: function () {
+            self.renderStatisticBox('Engine', 'Error');
+          }
+        });
+
+        // uptime status
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_admin/statistics'),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.renderStatisticBox('Uptime', moment.duration(data.server.uptime, 'seconds').humanize());
+          },
+          error: function () {
+            self.renderStatisticBox('Uptime', 'Error');
+          }
+        });
+      }
+      arangoHelper.createTooltips();
+    },
+
     getStatistics: function (callback, modalView) {
       var self = this;
       self.checkState();
@@ -991,78 +1116,95 @@
     template: templateEngine.createTemplate('dashboardView.ejs'),
 
     render: function (modalView) {
-      this.delegateEvents(this.events);
-      var callback = function (enabled, modalView) {
-        if (!modalView) {
-          $(this.el).html(this.template.render());
-        }
-
-        if (!enabled || frontendConfig.db !== '_system') {
-          $(this.el).html('');
-          if (this.server) {
-            $(this.el).append(
-              '<div style="color: red">Server statistics (' + this.server + ') are disabled.</div>'
-            );
-          } else {
-            $(this.el).append(
-              '<div style="color: red">Server statistics are disabled.</div>'
-            );
+      if (this.serverInfo === undefined) {
+        this.serverInfo = {
+          isDBServer: false
+        };
+      }
+      if (this.serverInfo.isDBServer !== true) {
+        this.delegateEvents(this.events);
+        var callback = function (enabled, modalView) {
+          if (!modalView) {
+            $(this.el).html(this.template.render({
+              hideStatistics: false
+            }));
+            this.getNodeInfo();
           }
+
+          if (!enabled || frontendConfig.db !== '_system') {
+            $(this.el).html('');
+            if (this.server) {
+              $(this.el).append(
+                '<div style="color: red">Server statistics (' + this.server + ') are disabled.</div>'
+              );
+            } else {
+              $(this.el).append(
+                '<div style="color: red">Server statistics are disabled.</div>'
+              );
+            }
+            return;
+          }
+
+          this.prepareDygraphs();
+          if (this.isUpdating) {
+            this.prepareD3Charts();
+            this.prepareResidentSize();
+            this.updateTendencies();
+            $(window).trigger('resize');
+          }
+          this.startUpdating();
+          $(window).resize();
+        }.bind(this);
+
+        var errorFunction = function () {
+          $(this.el).html('');
+          $('.contentDiv').remove();
+          $('.headerBar').remove();
+          $('.dashboard-headerbar').remove();
+          $('.dashboard-row').remove();
+          $(this.el).append(
+            '<div style="color: red">You do not have permission to view this page.</div>'
+          );
+          $(this.el).append(
+            '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
+          );
+        }.bind(this);
+
+        if (frontendConfig.db !== '_system') {
+          errorFunction();
           return;
         }
 
-        this.prepareDygraphs();
-        if (this.isUpdating) {
-          this.prepareD3Charts();
-          this.prepareResidentSize();
-          this.updateTendencies();
-          $(window).trigger('resize');
-        }
-        this.startUpdating();
-        $(window).resize();
-      }.bind(this);
-
-      var errorFunction = function () {
-        $(this.el).html('');
-        $('.contentDiv').remove();
-        $('.headerBar').remove();
-        $('.dashboard-headerbar').remove();
-        $('.dashboard-row').remove();
-        $(this.el).append(
-          '<div style="color: red">You do not have permission to view this page.</div>'
-        );
-        $(this.el).append(
-          '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
-        );
-      }.bind(this);
-
-      if (frontendConfig.db !== '_system') {
-        errorFunction();
-        return;
-      }
-
-      var callback2 = function (error, authorized) {
-        if (!error) {
-          if (!authorized) {
-            errorFunction();
-          } else {
-            this.getStatistics(callback, modalView);
+        var callback2 = function (error, authorized) {
+          if (!error) {
+            if (!authorized) {
+              errorFunction();
+            } else {
+              this.getStatistics(callback, modalView);
+            }
           }
-        }
-      }.bind(this);
+        }.bind(this);
 
-      if (window.App.currentDB.get('name') === undefined) {
-        window.setTimeout(function () {
-          if (window.App.currentDB.get('name') !== '_system') {
-            errorFunction();
-            return;
-          }
+        if (window.App.currentDB.get('name') === undefined) {
+          window.setTimeout(function () {
+            if (window.App.currentDB.get('name') !== '_system') {
+              errorFunction();
+              return;
+            }
+            // check if user has _system permission
+            this.options.database.hasSystemAccess(callback2);
+          }.bind(this), 300);
+        } else {
           // check if user has _system permission
           this.options.database.hasSystemAccess(callback2);
-        }.bind(this), 300);
+        }
       } else {
-        // check if user has _system permission
-        this.options.database.hasSystemAccess(callback2);
+        $(this.el).html(this.template.render({
+          hideStatistics: true
+        }));
+        // hide menu entries
+        $('.subMenuEntry').remove();
+        this.getNodeInfo();
       }
     }
   });

@@ -222,11 +222,9 @@ function dumpTestSuite () {
       assertEqual("fulltext", c.getIndexes()[7].type);
       assertEqual([ "a_f" ], c.getIndexes()[7].fields);
 
-      if (db._engine().name !== "rocksdb") {
-        assertEqual("geo2", c.getIndexes()[8].type);
-        assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
-        assertFalse(c.getIndexes()[8].unique);
-      }
+      assertEqual("geo2", c.getIndexes()[8].type);
+      assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
+      assertFalse(c.getIndexes()[8].unique);
 
       assertEqual(0, c.count());
     },

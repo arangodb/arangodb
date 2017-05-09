@@ -35,8 +35,6 @@ struct OptimizerRule;
 
 struct MMFilesOptimizerRules {
   static void registerResources();
-
-  static void geoIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
   
   static void removeSortRandRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
 };

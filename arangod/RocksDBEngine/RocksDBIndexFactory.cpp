@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
+#include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
 #include "RocksDBEngine/RocksDBPersistentIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -426,6 +427,11 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     }
     case arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
       newIdx.reset(new arangodb::RocksDBPersistentIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:{
+      newIdx.reset(new arangodb::RocksDBGeoIndex(iid, col, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, Backbone, document, templateEngine, $, arangoHelper, window */
+/* global _, Backbone, frontendConfig, document, templateEngine, $, arangoHelper, window */
 
 (function () {
   'use strict';
@@ -180,6 +180,7 @@
         processData: false,
         async: true,
         success: function (data) {
+          frontendConfig.version = data;
           self.showServerStatus(true);
           if (self.isOffline === true) {
             self.isOffline = false;

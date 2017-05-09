@@ -70,6 +70,31 @@ RocksDBKeyBounds RocksDBKeyBounds::UniqueIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueIndexValue, indexId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::FulltextIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId);
+}
+
+RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::GeoIndexValue, indexId);
+}
+
+RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
+  RocksDBKeyBounds b;
+  size_t length = sizeof(char) + sizeof(uint64_t) * 2;
+  b._startBuffer.reserve(length);
+  b._startBuffer.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
+  uint64ToPersistent(b._startBuffer, indexId);
+
+  b._endBuffer.clear();
+  b._endBuffer.append(b._startBuffer);  // append common prefix
+
+  uint64_t norm = isSlot ? 0xFFU : 0;        // encode slot|pot in lowest bit
+  uint64ToPersistent(b._startBuffer, norm);  // lower endian
+  norm = norm | (0xFFFFFFFFULL << 32);
+  uint64ToPersistent(b._endBuffer, norm);
+  return b;
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::IndexRange(uint64_t indexId,
                                               VPackSlice const& left,
                                               VPackSlice const& right) {
@@ -91,10 +116,6 @@ RocksDBKeyBounds RocksDBKeyBounds::CounterValues() {
   return RocksDBKeyBounds(RocksDBEntryType::CounterValue);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::FulltextIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId);
-}
-
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
     uint64_t indexId, arangodb::StringRef const& word) {
   // I did not want to pass a bool to the constructor for this
@@ -106,10 +127,10 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
   uint64ToPersistent(bounds._startBuffer, indexId);
   bounds._startBuffer.append(word.data(), word.length());
 
+  bounds._endBuffer.clear();
   bounds._endBuffer.append(bounds._startBuffer);
-  bounds._endBuffer.push_back((const unsigned char)0xFF);  // invalid UTF-8
-                                                           // character, higher
-                                                           // than with memcmp
+  bounds._endBuffer.push_back(
+      0xFFU);  // invalid UTF-8 character, higher than with memcmp
 
   bounds._start = rocksdb::Slice(bounds._startBuffer);
   bounds._end = rocksdb::Slice(bounds._endBuffer);
@@ -225,7 +246,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     }
 
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Document: {
+    case RocksDBEntryType::Document:
+    case RocksDBEntryType::GeoIndexValue: {
       // Collections are stored as follows:
       // Key: 1 + 8-byte ArangoDB database ID + 8-byte ArangoDB collection ID
       //
@@ -247,8 +269,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
-    case RocksDBEntryType::View:
-    case RocksDBEntryType::FulltextIndexValue: {
+    case RocksDBEntryType::FulltextIndexValue:
+    case RocksDBEntryType::View: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _startBuffer.reserve(length);
       _startBuffer.push_back(static_cast<char>(_type));
