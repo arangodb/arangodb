@@ -67,6 +67,7 @@ class WorkMonitor : public Thread {
   static void initialize();
   static void shutdown();
   static void clearHandlers();
+  static bool clearWorkDescriptions();
 
  private:
   static WorkDescription* createWorkDescription(WorkType);

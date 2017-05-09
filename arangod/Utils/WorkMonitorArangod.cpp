@@ -43,6 +43,24 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       WorkMonitor
 // -----------------------------------------------------------------------------
+      
+bool WorkMonitor::clearWorkDescriptions() {
+  bool found = false;
+  WorkDescription* desc;
+
+  // handle freeable work descriptions
+  while (_freeableWorkDescription.pop(desc)) {
+    found = true;
+
+    if (desc != nullptr) {
+      deleteWorkDescription(desc, false);
+      found = true;
+      desc = nullptr;
+    }
+  }
+
+  return found;
+}
 
 void WorkMonitor::run() {
   CONDITION_LOCKER(guard, _waiter);
@@ -54,17 +72,7 @@ void WorkMonitor::run() {
   // clean old entries and create summary if requested
   while (!isStopping()) {
     try {
-      bool found = false;
-      WorkDescription* desc;
-
-      // handle freeable work descriptions
-      while (_freeableWorkDescription.pop(desc)) {
-        found = true;
-
-        if (desc != nullptr) {
-          deleteWorkDescription(desc, false);
-        }
-      }
+      bool found = clearWorkDescriptions();
 
       if (found) {
         s = minSleep;
@@ -129,14 +137,9 @@ void WorkMonitor::run() {
   _stopped.store(true);
 
   // cleanup old entries
+  clearWorkDescriptions();
+
   WorkDescription* desc;
-
-  while (_freeableWorkDescription.pop(desc)) {
-    if (desc != nullptr) {
-      deleteWorkDescription(desc, false);
-    }
-  }
-
   while (_emptyWorkDescription.pop(desc)) {
     if (desc != nullptr) {
       delete desc;
