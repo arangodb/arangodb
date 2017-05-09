@@ -617,8 +617,8 @@ fi
 
 if test "${DOWNLOAD_STARTER}" == 1; then
     # we utilize https://developer.github.com/v3/repos/ to get the newest release:
-    STARTER_REV=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases |grep tag_name |head -n 1 |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
-    STARTER_URL=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases/tags/${STARTER_REV} |grep browser_download_url |grep "${OSNAME}" |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    STARTER_REV=`curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases |grep tag_name |head -n 1 |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    STARTER_URL=`curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases/tags/${STARTER_REV} |grep browser_download_url |grep "${OSNAME}" |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
     if test -n "${STARTER_URL}"; then
         export BUILD_DIR
         export STARTER_URL
