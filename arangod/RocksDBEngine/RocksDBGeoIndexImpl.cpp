@@ -473,7 +473,7 @@ int GeoIndexNewPot(GeoIx* gix) {// rocksdb initial put
 /* =================================================== */
 GeoIdx* GeoIndex_new(uint64_t objectId) {
   GeoIx* gix;
-  int i, j;
+  int i;
 
   gix = static_cast<GeoIx*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false));
@@ -1330,9 +1330,9 @@ void GeoIndexFreeSlot(GeoIx* gix, int slot) {
 /* added to the index.                                 */
 /* =================================================== */
 int GeoIndexNewSlot(GeoIx* gix) {
-  //int j;
+  /*int j;
   GeoCoordinate* gc;
-  /*if (gix->gxc[0].latitude == 0.0) {
+  if (gix->gxc[0].latitude == 0.0) {
     // do the growth calculation in long long to make sure it doesn't
     // overflow when the size gets to be near 2^31
     long long x = gix->slotct;
@@ -1359,7 +1359,6 @@ int GeoIndexNewSlot(GeoIx* gix) {
   }
   j = (int)(gix->gxc[0].latitude);
   gix->gxc[0].latitude = gix->gxc[j].latitude;*/
-  
   return gix->nextFreeSlot++;
 }
 /* =================================================== */
