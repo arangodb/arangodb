@@ -79,8 +79,8 @@ bool RocksDBEdgeIndexIterator::updateBounds() {
       fromTo = fromTo.get(StaticStrings::IndexEq);
     }
     TRI_ASSERT(fromTo.isString());
-    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId,
-                                                StringRef(fromTo));
+    _bounds =
+        RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, StringRef(fromTo));
 
     _iterator->Seek(_bounds.start());
     return true;
@@ -97,7 +97,7 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
-   
+
   if (limit == 0 || !_keysIterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -107,10 +107,11 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   // acquire rocksdb collection
   auto rocksColl = toRocksDBCollection(_collection);
-  
+
   while (true) {
     TRI_ASSERT(limit > 0);
 
+    // TODO: set options.iterate_upper_bound and remove compare?
     while (_iterator->Valid() &&
            (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
       StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
@@ -146,8 +147,9 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    arangodb::LogicalCollection* collection,
                                    VPackSlice const& info,
                                    std::string const& attr)
-    : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
-                                        {{AttributeName(attr, false)}}),
+    : RocksDBIndex(iid, collection,
+                   std::vector<std::vector<AttributeName>>(
+                       {{AttributeName(attr, false)}}),
                    false, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _directionAttr(attr) {
@@ -235,8 +237,8 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   }
 }
 
-int RocksDBEdgeIndex::insertRaw(rocksdb::WriteBatchWithIndex*,
-                                TRI_voc_rid_t, VPackSlice const&) {
+int RocksDBEdgeIndex::insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+                                VPackSlice const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -261,8 +263,8 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
 }
 
 /// optimization for truncateNoTrx, never called in fillIndex
-int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
-                                TRI_voc_rid_t, VPackSlice const& doc) {
+int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatch* writeBatch, TRI_voc_rid_t,
+                                VPackSlice const& doc) {
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());

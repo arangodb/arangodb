@@ -175,8 +175,9 @@ void RocksDBEngine::start() {
   // transactionOptions.num_stripes = TRI_numberProcessors();
 
   // options imported set by RocksDBOptionFeature
-  auto const* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
-      "RocksDBOption");
+  auto const* opts =
+      ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
+          "RocksDBOption");
 
   _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
   _options.max_write_buffer_number =
@@ -222,7 +223,8 @@ void RocksDBEngine::start() {
   _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
   // intentionally do not start the logger (yet)
   // as it will produce a lot of log spam
-  // _options.info_log = std::make_shared<RocksDBLogger>(_options.info_log_level);
+  // _options.info_log =
+  // std::make_shared<RocksDBLogger>(_options.info_log_level);
 
   // _options.statistics = rocksdb::CreateDBStatistics();
   // _options.stats_dump_period_sec = 1;

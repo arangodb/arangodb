@@ -146,7 +146,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
-  
+
   int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
@@ -177,7 +177,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
-  
+
   int cleanup() override;
 
  private:

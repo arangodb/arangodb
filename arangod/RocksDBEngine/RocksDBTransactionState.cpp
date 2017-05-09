@@ -112,10 +112,10 @@ RocksDBTransactionState::~RocksDBTransactionState() {
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type)
-                               << " transaction";
-   
-  if (_nestingLevel == 0) { 
+  LOG_TRX(this, _nestingLevel)
+      << "beginning " << AccessMode::typeString(_type) << " transaction";
+
+  if (_nestingLevel == 0) {
     // set hints
     _hints = hints;
   }
@@ -163,6 +163,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksWriteOptions, rocksdb::TransactionOptions()));
     _rocksTransaction->SetSnapshot();
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
+    _rocksReadOptions.prefix_same_as_start = true;
 
     if (!isReadOnlyTransaction() &&
         !hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
@@ -170,7 +171,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
           RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
       _rocksTransaction->PutLogData(header.slice());
     }
-    
+
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -181,8 +182,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 /// @brief commit a transaction
 Result RocksDBTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel) << "committing " << AccessMode::typeString(_type)
-                               << " transaction";
+  LOG_TRX(this, _nestingLevel)
+      << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
@@ -208,7 +209,12 @@ Result RocksDBTransactionState::commitTransaction(
 
         double t2 = TRI_microtime();
         if (t2 - t1 > 0.25) {
-          LOG_TOPIC(ERR, Logger::FIXME) << "COMMIT TOOK: " << (t2 - t1) << " S. NUMINSERTS: " << _numInserts << ", NUMUPDATES: " << _numUpdates << ", NUMREMOVES: " << _numRemoves << ", TRANSACTIONSIZE: " << _transactionSize;
+          LOG_TOPIC(ERR, Logger::FIXME)
+              << "COMMIT TOOK: " << (t2 - t1)
+              << " S. NUMINSERTS: " << _numInserts
+              << ", NUMUPDATES: " << _numUpdates
+              << ", NUMREMOVES: " << _numRemoves
+              << ", TRANSACTIONSIZE: " << _transactionSize;
         }
         rocksdb::SequenceNumber latestSeq =
             rocksutils::globalRocksDB()->GetLatestSequenceNumber();
@@ -269,8 +275,8 @@ Result RocksDBTransactionState::commitTransaction(
 /// @brief abort and rollback a transaction
 Result RocksDBTransactionState::abortTransaction(
     transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel) << "aborting " << AccessMode::typeString(_type)
-                               << " transaction";
+  LOG_TRX(this, _nestingLevel)
+      << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   Result result;
 
