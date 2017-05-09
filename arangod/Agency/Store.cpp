@@ -648,7 +648,7 @@ void Store::run() {
 
     toClear = clearExpired();
     if (_agent && _agent->leading()) {
-      _agent->write(toClear);
+      //_agent->write(toClear);
     }
   }
 }
