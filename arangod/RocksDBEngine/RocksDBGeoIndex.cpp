@@ -273,15 +273,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
   rocksdb::TransactionDB *db  = rocksutils::globalRocksDB();
   rocksdb::ReadOptions opts;
   std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(opts));
-        
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
-    
-  // cheap trick to find the number of last use pots and slots
+
   int numPots = 0;
   RocksDBKeyBounds b1 = RocksDBKeyBounds::GeoIndex(_objectId, false);
   iter->SeekForPrev(b1.end());
