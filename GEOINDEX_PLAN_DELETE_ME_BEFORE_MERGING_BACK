@@ -16,8 +16,8 @@ Das sind die
 
 Questions for Richard:
 
-- How to communicate non existent values in SlotRead, PotRead ?
-   - Return value != 0 ?
+//- How to communicate non existent values in SlotRead, PotRead ?
+//   - Return value != 0 ?
 
 - The GeoIx struct contains some fields, `potct` and `slotct` which we would need to store and recover from RocksDB.
 

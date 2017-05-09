@@ -128,11 +128,11 @@ typedef struct {
 typedef struct {
   uint64_t objectId;   /* Rocksdb Index objectId    */
   GeoIndexFixed fixed; /* fixed point data          */
-  int potct;           /* pots allocated            */
-  int slotct;          /* slots allocated           */
-  GeoPot* ypots;       /* the pots themselves       */
-  GeoCoordinate* gxc;  /* the slots themselves      */
-  size_t _memoryUsed;  /* the amount of memory currently used */
+  int nextFreePot;           /* pots allocated      */
+  int nextFreeSlot;          /* slots allocated     */
+  //GeoPot* ypots;       /* the pots themselves     */// gone
+  //GeoCoordinate* gxc;  /* the slots themselves    */// gone
+  //size_t _memoryUsed;  /* the amount of memory currently used */// gone
 }  GeoIx;
 /* =================================================== */
 /*              GeoDetailedPoint  structure            */
@@ -173,7 +173,7 @@ typedef struct {
 /* The routine GeoPotJunk is used to test this,        */
 /* by comparing the distances in the pot the this array*/
 /* =================================================== */
-typedef struct {
+typedef struct {// stays
   GeoIx* gix;
   GeoCoordinate* gc;
   double x;
@@ -256,9 +256,86 @@ typedef struct {
 }}
 
 // must be included here after struct definition
-#include <RocksDBEngine/RocksDBGeoIndexImplHelper.h>
+#include <RocksDBEngine/RocksDBCommon.h>
+#include <RocksDBEngine/RocksDBKey.h>
+#include <RocksDBEngine/RocksDBCounterManager.h>
+#include <RocksDBEngine/RocksDBEngine.h>
+#include <RocksDBEngine/RocksDBGeoIndexImpl.h>
+#include <StorageEngine/EngineSelectorFeature.h>
 
 namespace arangodb { namespace rocksdbengine {
+  
+  
+/* CRUD interface */
+int SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
+{
+  //gc GeoCoordinate, element in point array of real geo index
+  //memcpy(gc,gix->gxc+slot,sizeof(GeoCoordinate));
+  
+  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  std::string slotValue;
+  
+  rocksdb::ReadOptions opts;
+  rocksdb::Status s = db->Get(opts, key.string(), &slotValue);
+  if (!s.ok()) {
+    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+  //VpackToCoord(val.slice(), gc);
+  memcpy(gc, slotValue.data(), slotValue.size());
+  
+  return 0;
+}
+void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
+{
+  //memcpy(gix->gxc+slot,gc,sizeof(GeoCoordinate));
+  
+  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  
+  rocksdb::WriteOptions opts;
+  rocksdb::Status s = db->Put(opts, key.string(),
+                              rocksdb::Slice((char*)gc,
+                                             sizeof(GeoCoordinate)));
+  if (!s.ok()) {
+    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+}
+
+int PotRead(GeoIx * gix, int pot, GeoPot * gp)
+{
+  //memcpy(gp,gix->ypots+pot,sizeof(GeoPot));
+  
+  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  std::string potValue;
+  
+  rocksdb::ReadOptions opts;
+  rocksdb::Status s = db->Get(opts, key.string(), &potValue);
+  if (!s.ok()) {
+    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+  memcpy(gp, potValue.data(), potValue.size());
+  return 0;
+}
+void PotWrite(GeoIx * gix, int pot, GeoPot * gp) {
+  //memcpy(gix->ypots+pot,gp,sizeof(GeoPot));
+  
+  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  
+  rocksdb::WriteOptions opts;
+  rocksdb::Status s = db->Put(opts, key.string(),
+                              rocksdb::Slice((char*)gp,
+                                             sizeof(GeoPot)));
+  if (!s.ok()) {
+    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+}
 
 /* =================================================== */
 /*                GeoIndex_Distance routine            */
@@ -292,9 +369,19 @@ double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2) {
 /* takes the supplied pot, and puts it back onto the   */
 /* free list.                                          */
 /* =================================================== */
-void GeoIndexFreePot(GeoIx* gix, int pot) {
-  gix->ypots[pot].LorLeaf = gix->ypots[0].LorLeaf;
-  gix->ypots[0].LorLeaf = pot;
+void GeoIndexFreePot(GeoIx* gix, int pot) {// rewrite delete in rocksdb
+ // gix->ypots[pot].LorLeaf = gix->ypots[0].LorLeaf;
+  //gix->ypots[0].LorLeaf = pot;
+  
+  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  
+  rocksdb::WriteOptions opts;
+  rocksdb::Status s = db->Delete(opts, key.string());
+  if (!s.ok()) {
+    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
 }
 /* =================================================== */
 /*            GeoIndexNewPot                           */
@@ -313,12 +400,12 @@ void GeoIndexFreePot(GeoIx* gix, int pot) {
 /* therefore careful to get the new pots (if any are   */
 /* needed) before it gets too far into things.         */
 /* =================================================== */
-int GeoIndexNewPot(GeoIx* gix) {
-  int j;
+int GeoIndexNewPot(GeoIx* gix) {// rocksdb initial put
+  /*int j;
   GeoPot* gp;
   if (gix->ypots[0].LorLeaf == 0) {
-    /* do the growth calculation in long long to make sure it doesn't  */
-    /* overflow when the size gets to be near 2^31                     */
+    // do the growth calculation in long long to make sure it doesn't
+    // overflow when the size gets to be near 2^31
     long long x = gix->potct;
     long long y = 100 + GeoIndexGROW;
     x = x * y + 99;
@@ -342,10 +429,27 @@ int GeoIndexNewPot(GeoIx* gix) {
       GeoIndexFreePot(gix, j);
     }
     gix->potct = newpotct;
-  }
-  j = gix->ypots[0].LorLeaf;
-  gix->ypots[0].LorLeaf = gix->ypots[j].LorLeaf;
-  return j;
+  }*/
+  //j = gix->ypots[0].LorLeaf;
+  //gix->ypots[0].LorLeaf = gix->ypots[j].LorLeaf;
+  //return j;
+  
+  //
+  //gp.LorLeaf = pot - 1;
+  //gix->ypots[0].LorLeaf = pot;
+  
+  /*rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  
+  GeoPot gp = {};
+  rocksdb::WriteOptions opts;
+  rocksdb::Status s = db->Put(opts, key.string(), rocksdb::Slice((char*)(&gp),
+                                                                 sizeof(GeoPot)));
+  if (!s.ok()) {
+    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }*/
+  return gix->nextFreePot++;
 }
 /* =================================================== */
 /*         GeoIndex_new routine                        */
@@ -381,13 +485,13 @@ GeoIdx* GeoIndex_new(uint64_t objectId) {
   gix->objectId = objectId;
 
   /* try to allocate all the things we need  */
-  gix->ypots = static_cast<GeoPot*>(
+  /*gix->ypots = static_cast<GeoPot*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOPOTSTART * sizeof(GeoPot), false));
   gix->gxc = static_cast<GeoCoordinate*>(TRI_Allocate(
       TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART * sizeof(GeoCoordinate), false));
 
-  /* if any of them fail, free the ones that succeeded  */
-  /* and then return the nullptr for our user      */
+  // if any of them fail, free the ones that succeeded
+  // and then return the nullptr for our user
   if ((gix->ypots == nullptr) || (gix->gxc == nullptr)) {
     if (gix->ypots != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->ypots);
@@ -400,31 +504,34 @@ GeoIdx* GeoIndex_new(uint64_t objectId) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix);
 
     return nullptr;
-  }
+  }*/
 
   // set initial memory usage
-  gix->_memoryUsed =
-      GEOPOTSTART * sizeof(GeoPot) + GEOSLOTSTART * sizeof(GeoCoordinate);
+  //gix->_memoryUsed =
+  //    GEOPOTSTART * sizeof(GeoPot) + GEOSLOTSTART * sizeof(GeoCoordinate);
 
   /* initialize chain of empty slots  */
-  for (i = 0; i < GEOSLOTSTART; i++) {
+  /*for (i = 0; i < GEOSLOTSTART; i++) {
     if (i < GEOSLOTSTART - 1)
       (gix->gxc[i]).latitude = i + 1;
     else
       (gix->gxc[i]).latitude = 0;
   }
 
-  /* similarly set up free chain of empty pots  */
+  // similarly set up free chain of empty pots
   for (i = 0; i < GEOPOTSTART; i++) {
     if (i < GEOPOTSTART - 1)
       gix->ypots[i].LorLeaf = i + 1;
     else
       gix->ypots[i].LorLeaf = 0;
-  }
+  }*/
+  
+  //RocksDBCounterManager *mgr = rocksutils::globalRocksEngine()->counterManager();
+  //RocksDBCounterManager::CounterAdjustment adj = mgr->loadCounter(objectId);
+  gix->nextFreePot = 2;//(adj.added() & 0xffffffff);
+  gix->nextFreeSlot = 1;//adj.added() >> 32;
 
-  gix->potct = GEOPOTSTART;
-  gix->slotct = GEOSLOTSTART;
-
+  // leave intact
   /* set up the fixed points structure  */
 
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++) {
@@ -539,15 +646,27 @@ GeoIdx* GeoIndex_new(uint64_t objectId) {
     (gix->fixed.z)[i] = z;
   }
   /* set up the root pot  */
+  
+  GeoPot gp;
+  //j = GeoIndexNewPot(gix);
+  gp.LorLeaf = 0;   //leaf pot
+  gp.RorPoints = 0; // with no points in it!
+  gp.middle = 0ll;
+  gp.start = 0ll;
+  gp.end = 0x1FFFFFFFFFFFFFll;
+  gp.level = 1;
+  for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
 
-  j = GeoIndexNewPot(gix);
-  gix->ypots[j].LorLeaf = 0;   /* leaf pot  */
-  gix->ypots[j].RorPoints = 0; /* with no points in it!  */
+  PotWrite(gix, 1, &gp);
+
+  /*j = GeoIndexNewPot(gix);
+  gix->ypots[j].LorLeaf = 0;   //leaf pot
+  gix->ypots[j].RorPoints = 0; // with no points in it!
   gix->ypots[j].middle = 0ll;
   gix->ypots[j].start = 0ll;
   gix->ypots[j].end = 0x1FFFFFFFFFFFFFll;
   gix->ypots[j].level = 1;
-  for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gix->ypots[j].maxdist[i] = 0;
+  for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gix->ypots[j].maxdist[i] = 0;*/
   return (GeoIdx*)gix;
 }
 /* =================================================== */
@@ -557,7 +676,7 @@ GeoIdx* GeoIndex_new(uint64_t objectId) {
 /* objects that may have been pointed to by the user's */
 /* data pointers are (of course) not freed by this call*/
 /* =================================================== */
-void GeoIndex_free(GeoIdx* gi) {
+void GeoIndex_free(GeoIdx* gi) {// like drop
   GeoIx* gix;
 
   if (gi == nullptr) {
@@ -565,8 +684,8 @@ void GeoIndex_free(GeoIdx* gi) {
   }
 
   gix = (GeoIx*)gi;
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->gxc);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->ypots);
+  //TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->gxc);
+  //TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->ypots);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix);
 }
 /* =================================================== */
@@ -739,82 +858,6 @@ void GeoSetDistance(GeoDetailedPoint* gd, double snmd) {
     else
       (gd->distrej)[i] = (gd->fixdist)[i] - gf;
   }
-}
-
-/* CRUD interface */
-int SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
-{
-    //gc GeoCoordinate, element in point array of real geo index
-    memcpy(gc,gix->gxc+slot,sizeof(GeoCoordinate));
-  
-    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-    RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
-    RocksDBValue val = RocksDBValue::Empty(RocksDBEntryType::GeoIndexValue);
-    
-    rocksdb::ReadOptions opts;
-    rocksdb::Status s = db->Get(opts, key.string(), val.buffer());
-    if (s.IsNotFound()) { // TODO how to indicate not found?
-        memset(gc, 0, sizeof(GeoCoordinate));
-        return -1;
-    } else if (!s.ok()) {
-        arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-        THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
-    VpackToCoord(val.slice(), gc);
-    return 0;
-}
-void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
-{
-    memcpy(gix->gxc+slot,gc,sizeof(GeoCoordinate));
-  
-    VPackBuilder serialized = CoordToVpack(gc);
-    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-    RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
-    RocksDBValue val = RocksDBValue::Document(serialized.slice());
-    
-    rocksdb::WriteOptions opts;
-    rocksdb::Status s = db->Put(opts, key.string(), val.string());
-    if (!s.ok()) {
-        arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-        THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
-}
-
-int PotRead(GeoIx * gix, int pot, GeoPot * gp)
-{
-    memcpy(gp,gix->ypots+pot,sizeof(GeoPot));
-  
-    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-    RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
-    RocksDBValue val = RocksDBValue::Empty(RocksDBEntryType::GeoIndexValue);
-    
-    rocksdb::ReadOptions opts;
-    rocksdb::Status s = db->Get(opts, key.string(), val.buffer());
-    if (s.IsNotFound()) { // TODO how to indicate not found?
-        gp->LorLeaf = 0;
-        gp->RorPoints = 0;
-        return -1;
-    } else if (!s.ok()) {
-        arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-        THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
-    VpackToPot(val.slice(), gp);
-    return 0;
-}
-void PotWrite(GeoIx * gix, int pot, GeoPot * gp) {
-    memcpy(gix->ypots+pot,gp,sizeof(GeoPot));
-  
-    VPackBuilder serialized = PotToVpack(gp);
-    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-    RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
-    RocksDBValue val = RocksDBValue::Document(serialized.slice());
-    
-    rocksdb::WriteOptions opts;
-    rocksdb::Status s = db->Put(opts, key.string(), val.string());
-    if (!s.ok()) {
-        arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-        THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
 }
 
 /* =================================================== */
@@ -1267,8 +1310,9 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
 /* return the specified slot to the free list          */
 /* =================================================== */
 void GeoIndexFreeSlot(GeoIx* gix, int slot) {
-  gix->gxc[slot].latitude = gix->gxc[0].latitude;
-  gix->gxc[0].latitude = slot;
+  //gix->gxc[slot].latitude = gix->gxc[0].latitude;
+  //gix->gxc[0].latitude = slot;
+  // TODO delete slot
 }
 /* =================================================== */
 /*           GeoIndexNewSlot                           */
@@ -1286,11 +1330,11 @@ void GeoIndexFreeSlot(GeoIx* gix, int slot) {
 /* added to the index.                                 */
 /* =================================================== */
 int GeoIndexNewSlot(GeoIx* gix) {
-  int j;
+  //int j;
   GeoCoordinate* gc;
-  if (gix->gxc[0].latitude == 0.0) {
-    /* do the growth calculation in long long to make sure it doesn't  */
-    /* overflow when the size gets to be near 2^31                     */
+  /*if (gix->gxc[0].latitude == 0.0) {
+    // do the growth calculation in long long to make sure it doesn't
+    // overflow when the size gets to be near 2^31
     long long x = gix->slotct;
     long long y = 100 + GeoIndexGROW;
     x = x * y + 99;
@@ -1314,8 +1358,9 @@ int GeoIndexNewSlot(GeoIx* gix) {
     gix->slotct = newslotct;
   }
   j = (int)(gix->gxc[0].latitude);
-  gix->gxc[0].latitude = gix->gxc[j].latitude;
-  return j;
+  gix->gxc[0].latitude = gix->gxc[j].latitude;*/
+  
+  return gix->nextFreeSlot++;
 }
 /* =================================================== */
 /*                 GeoFind                             */
@@ -1573,7 +1618,7 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
   /* new point, so we try to put it in  */
   slot = GeoIndexNewSlot(gix);
   if (slot == -2) return -2; /* no room  :(  */
-  SlotRead(gix,slot,&Xslot);
+  //SlotRead(gix,slot,&Xslot);
   Xslot.latitude = c->latitude;
   Xslot.longitude = c->longitude;
   Xslot.data = c->data;
@@ -1585,7 +1630,7 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
     rebalance = 1;
     pot1 = GeoIndexNewPot(gix);
     int pot2 = GeoIndexNewPot(gix);
-    PotRead(gix,pot,&gp); /* XQXQ won't have to do this on Rocks */
+    //PotRead(gix,pot,&gp); /* XQXQ won't have to do this on Rocks */
     if ((pot1 == -2) || (pot2 == -2)) {
       GeoIndexFreeSlot(gix, slot);
       if (pot1 != -2) GeoIndexFreePot(gix, pot1);
@@ -1608,8 +1653,8 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
     /* new point (which has still not been inserted) shoud */
     /* go.   Continued below . . . .                       */
     /* =================================================== */
-    PotRead(gix,pot1,&gp1);  //XQXQ don't think this is even needed now!
-    PotRead(gix,pot2,&gp2);  //XQXQ on Rocks it is reading a pot that is not there.
+    //PotRead(gix,pot1,&gp1);  //XQXQ don't think this is even needed now!
+    //PotRead(gix,pot2,&gp2);  //XQXQ on Rocks it is reading a pot that is not there.
     /* pot is old one, pot1 and pot2 are the new ones  */
     gp1.LorLeaf = 0;   /* leaf pot  */
     gp1.RorPoints = 0; /* no points in it yet  */
@@ -2403,6 +2448,7 @@ int RecursivePotValidate(GeoIx* gix, int pot, int* usage) {
   }
 }
 
+  // rethink this function
 int GeoIndex_INDEXVALID(GeoIdx* gi) {
   int usage[2];  // pots and slots
   int j, pot, slot;
@@ -2439,11 +2485,13 @@ int GeoIndex_INDEXVALID(GeoIdx* gi) {
 
 #endif
 
+  // change to Approximate memory
 size_t GeoIndex_MemoryUsage(void* theIndex) {
-  GeoIx* geoIndex = (GeoIx*)theIndex;
-  if (geoIndex != nullptr) {
-    return geoIndex->_memoryUsed;
-  }
+  //GeoIx* geoIndex = (GeoIx*)theIndex;
+  //if (geoIndex != nullptr) {
+  //  return geoIndex->_memoryUsed;
+  //}
+#warning FIXME
   return 0;
 }
 }}
