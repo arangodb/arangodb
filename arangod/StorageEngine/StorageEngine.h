@@ -78,6 +78,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     // storage engines must not use elevated privileges for files etc
     requiresElevatedPrivileges(false);
 
+    startsAfter("CacheManager");
     startsAfter("DatabasePath");
     startsAfter("EngineSelector");
     startsAfter("FileDescriptors");

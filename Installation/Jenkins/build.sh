@@ -618,8 +618,8 @@ fi
 
 if test "${DOWNLOAD_STARTER}" == 1; then
     # we utilize https://developer.github.com/v3/repos/ to get the newest release:
-    STARTER_REV=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases |grep tag_name |head -n 1 |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
-    STARTER_URL=`curl -s https://api.github.com/repos/arangodb-helper/ArangoDBStarter/releases/tags/${STARTER_REV} |grep browser_download_url |grep "${OSNAME}" |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    STARTER_REV=`curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases |grep tag_name |head -n 1 |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
+    STARTER_URL=`curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases/tags/${STARTER_REV} |grep browser_download_url |grep "${OSNAME}" |${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'`
     if test -n "${STARTER_URL}"; then
         mkdir -p ${BUILD_DIR}
         if test "${isCygwin}" == 1; then
@@ -653,11 +653,11 @@ fi
 PARTIAL_STATE=$?
 set -e
 
-if test "${isCygwin}" == 0 -a "${PARTIAL_STATE}" == 0; then
+if test "${isCygwin}" == 1 -a "${PARTIAL_STATE}" == 1; then
     # windows fails to partialy re-configure - so do a complete configure run.
     if test -f CMakeFiles/generate.stamp -a CMakeFiles/generate.stamp -ot "${SOURCE_DIR}/CMakeList.txt"; then
         echo "CMakeList older - Forcing complete configure run!"
-        PARTIAL_STATE=1
+        PARTIAL_STATE=0
     fi
 fi
 

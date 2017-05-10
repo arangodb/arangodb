@@ -72,6 +72,20 @@ static rocksdb::Slice UniqueIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &uniqueIndexValue),
     1);
+  
+static RocksDBEntryType fulltextIndexValue =
+RocksDBEntryType::FulltextIndexValue;
+static rocksdb::Slice FulltextIndexValue(
+     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &fulltextIndexValue),
+     1);
+  
+static RocksDBEntryType geoIndexValue =
+RocksDBEntryType::GeoIndexValue;
+static rocksdb::Slice GeoIndexValue(
+     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &geoIndexValue),
+     1);
 
 static RocksDBEntryType view = RocksDBEntryType::View;
 static rocksdb::Slice View(
@@ -89,13 +103,6 @@ static rocksdb::Slice ReplicationApplierConfig(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &replicationApplierConfig),
     1);
-
-static RocksDBEntryType fulltextIndexValue =
-    RocksDBEntryType::FulltextIndexValue;
-static rocksdb::Slice FulltextIndexValue(
-     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &fulltextIndexValue),
-     1);
 }
 
 rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
@@ -116,14 +123,16 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return IndexValue;
     case RocksDBEntryType::UniqueIndexValue:
       return UniqueIndexValue;
+    case RocksDBEntryType::FulltextIndexValue:
+      return FulltextIndexValue;
+    case RocksDBEntryType::GeoIndexValue:
+      return GeoIndexValue;
     case RocksDBEntryType::View:
       return View;
     case RocksDBEntryType::SettingsValue:
       return SettingsValue;
     case RocksDBEntryType::ReplicationApplierConfig:
       return ReplicationApplierConfig;
-    case RocksDBEntryType::FulltextIndexValue:
-      return FulltextIndexValue;
   }
 
   return Document;  // avoids warning - errorslice instead ?!

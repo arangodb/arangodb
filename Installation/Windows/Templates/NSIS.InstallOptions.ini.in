@@ -1,11 +1,11 @@
 [Settings]
-NumFields=9
+NumFields=11
 
 [Field 1]
 Type=label
 Text=By default @CPACK_PACKAGE_INSTALL_DIRECTORY@ does not add its directory to the system PATH.
 Left=0
-Right=-1
+Right=140
 Top=0
 Bottom=20
 
@@ -13,7 +13,7 @@ Bottom=20
 Type=radiobutton
 Text=as service into the default directory
 Left=5
-Right=-1
+Right=140
 Top=30
 Bottom=40
 State=1
@@ -22,7 +22,7 @@ State=1
 Type=radiobutton
 Text=for all users
 Left=5
-Right=-1
+Right=140
 Top=40
 Bottom=50
 State=0
@@ -31,7 +31,7 @@ State=0
 Type=radiobutton
 Text=for the current user
 Left=5
-Right=-1
+Right=140
 Top=50
 Bottom=60
 State=0
@@ -67,7 +67,7 @@ State=
 Type=label
 Text=Install @CPACK_PACKAGE_NAME@
 Left=0
-Right=-1
+Right=160
 Top=20
 Bottom=29
 
@@ -78,3 +78,21 @@ Left=0
 Right=-1
 Top=75
 Bottom=85
+
+[Field 10]
+Type=label
+Text=Choose the stogare engine to use for this ArangoDB Installation
+Left=160
+Right=-1
+Top=0
+Bottom=20
+
+[Field 11]
+Type=Droplist
+ListItems=auto|mmfiles|rocksdb
+State=auto
+Left=160
+Right=-1
+Top=20
+Bottom=29
+

@@ -32,7 +32,7 @@
 namespace rocksdb {
 class WriteBatch;
 class WriteBatchWithIndex;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 namespace cache {
@@ -43,7 +43,6 @@ class RocksDBComparator;
 
 class RocksDBIndex : public Index {
  protected:
-
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
                    attributes,
@@ -79,15 +78,16 @@ class RocksDBIndex : public Index {
   /// as an optimization for the non transactional fillIndex method
   virtual int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) = 0;
-  
-  /// remove index elements and put it in the specified write batch. Should be used
-  /// as an optimization for the non transactional fillIndex method
+
+  /// remove index elements and put it in the specified write batch. Should be
+  /// used as an optimization for the non transactional fillIndex method
   virtual int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) = 0;
 
- protected:
   void createCache();
   void disableCache();
+
+ protected:
   inline bool useCache() const { return (_useCache && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(StringRef& ref){

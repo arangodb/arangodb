@@ -29,7 +29,9 @@
 
 #include "catch.hpp"
 
+#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "Basics/Exceptions.h"
 
@@ -39,7 +41,7 @@ using namespace arangodb;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-/// @brief setup
+/// @brief test RocksDBKey class
 TEST_CASE("RocksDBKeyTest", "[rocksdbkeytest]") {
 
 /// @brief test database
@@ -227,6 +229,26 @@ SECTION("test_edge_index") {
   CHECK(s1 == std::string("5\0\0\0\0\0\0\0\0a/1\0foobar\x06", 20));
   
 }
+}
 
-
+/// @brief test RocksDBKeyBounds class
+TEST_CASE("RocksDBKeyBoundsTest", "[rocksdbkeybounds]") {
+  
+/// @brief test geo index key and bounds consistency
+SECTION("test_geo_index") {
+  
+  RocksDBComparator cmp;
+  
+  RocksDBKey k1 = RocksDBKey::GeoIndexValue(256, 128, false);
+  RocksDBKeyBounds bb1 = RocksDBKeyBounds::GeoIndex(256, false);
+  
+  CHECK(cmp.Compare(k1.string(), bb1.start()) > 0);
+  CHECK(cmp.Compare(k1.string(), bb1.end()) < 0);
+  
+  RocksDBKey k2 = RocksDBKey::GeoIndexValue(256, 128, true);
+  RocksDBKeyBounds bb2 = RocksDBKeyBounds::GeoIndex(256, true);
+  CHECK(cmp.Compare(k2.string(), bb2.start()) > 0);
+  CHECK(cmp.Compare(k2.string(), bb2.end()) < 0);
+}
+  
 }

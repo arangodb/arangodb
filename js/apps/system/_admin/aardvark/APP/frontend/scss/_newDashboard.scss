@@ -203,7 +203,7 @@
     .dashboard-interior-chart {
       @extend %pull-left;
 
-     .nv-bar rect {
+      .nv-bar rect {
         fill-opacity: .9;
         stroke-opacity: 1;
         stroke-width: .5px;
@@ -462,6 +462,27 @@
   margin-bottom: 0;
   margin-left: 2px;
   margin-right: 0;
+
+  .valueWrapper {
+    .value {
+      font-size: 12pt !important;
+      font-weight: 100;
+      height: 73px !important;
+      line-height: 53px !important;
+      margin-top: -6px;
+      overflow: hidden;
+      padding-left: 10px;
+      padding-right: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .graphLabel {
+      font-size: 8pt;
+      margin-top: -39px;
+      padding-bottom: 5px;
+    }
+  }
 
   .fa-arrows-alt {
     display: none;

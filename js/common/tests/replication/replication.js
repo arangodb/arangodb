@@ -725,9 +725,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo1 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -750,9 +747,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo2 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -775,9 +769,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo3 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -802,9 +793,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo4 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -829,9 +817,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo5 : function () {
-      if (db._engine().name === "rocksdb") {
-        return;
-      }
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -928,7 +913,7 @@ function ReplicationLoggerSuite () {
       }
 
       var entry = getLogEntries(tick, 2300);
-      assertEqual(100, entry.length);
+      assertEqual(100, entry.length, JSON.stringify(entry));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1562,7 +1547,7 @@ function ReplicationLoggerSuite () {
       });
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
-      assertEqual(4, entry.length);
+      assertEqual(4, entry.length, JSON.stringify(entry));
 
       assertEqual(2200, entry[0].type);
       assertEqual(2300, entry[1].type);

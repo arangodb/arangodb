@@ -32,6 +32,8 @@
 
 #include <rocksdb/options.h>
 
+#include <thread>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -71,9 +73,15 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _useDirectWrites(rocksDBDefaults.use_direct_writes),
       _useFSync(rocksDBDefaults.use_fsync),
       _skipCorrupted(false) {
+  
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
+  
+  // increase parallelism and re-fetch the number of threads
+  rocksDBDefaults.IncreaseParallelism(std::thread::hardware_concurrency());
+  _numThreadsHigh = rocksDBDefaults.max_background_flushes;
+  _numThreadsLow = rocksDBDefaults.max_background_compactions;
 }
 
 void RocksDBOptionFeature::collectOptions(

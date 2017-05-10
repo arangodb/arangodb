@@ -624,7 +624,7 @@ function ReplicationSuite() {
             assertTrue(replication.applier.state().state.running);
             return "wait";
           } catch (err) {
-            // task does not exist. we're done
+            // task does not exist anymore. we're done
             state.lastLogTick = replication.logger.state().state.lastLogTick;
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);

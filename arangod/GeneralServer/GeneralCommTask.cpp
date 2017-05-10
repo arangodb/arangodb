@@ -61,15 +61,13 @@ GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
       _server(server) {}
 
 GeneralCommTask::~GeneralCommTask() {
-  for (auto&& statistics : _statisticsMap) {
+  for (auto& statistics : _statisticsMap) {
     auto stat = statistics.second;
 
     if (stat != nullptr) {
       stat->release();
     }
   }
-
-  _statisticsMap.clear();
 }
 
 // -----------------------------------------------------------------------------

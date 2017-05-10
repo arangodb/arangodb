@@ -44,6 +44,10 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+
+let didSplitBuckets = false;
+
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief build a unix path
 // //////////////////////////////////////////////////////////////////////////////
@@ -65,6 +69,10 @@ function makePathGeneric (path) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function performTests (options, testList, testname, runFn, serverOptions, startStopHandlers) {
+  if (options.testBuckets && !didSplitBuckets) {
+    throw new Error("You parametrized to split buckets, but this testsuite doesn't support it!!!");
+  }
+
   if (testList.length === 0) {
     print('Testsuite is empty!');
 
@@ -366,6 +374,7 @@ function splitBuckets (options, cases) {
     return cases;
   }
 
+  didSplitBuckets = true;
   let m = cases.length;
   let n = options.testBuckets.split('/');
   let r = parseInt(n[0]);

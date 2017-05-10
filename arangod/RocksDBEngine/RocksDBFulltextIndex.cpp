@@ -456,8 +456,8 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
         TRI_PrefixUtf8String(lowered, TRI_FULLTEXT_MAX_WORD_LENGTH);
     ptrdiff_t prefixLength = prefixEnd - lowered;
 
-    query.emplace_back(std::string(lowered, (size_t)prefixLength),
-                       matchType, operation);
+    query.emplace_back(std::string(lowered, (size_t)prefixLength), matchType,
+                       operation);
 
     ++i;
     if (i >= TRI_FULLTEXT_SEARCH_MAX_WORDS) {
@@ -476,7 +476,6 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
                                           FulltextQuery const& query,
                                           size_t maxResults,
                                           VPackBuilder& builder) {
-  
   std::set<std::string> resultSet;
   for (FulltextQueryToken const& token : query) {
     applyQueryToken(trx, token, resultSet);
@@ -485,8 +484,8 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
   auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   auto idx = physical->primaryIndex();
   ManagedDocumentResult mmdr;
-  
-  if (maxResults == 0) {// 0 appearantly means "all results"
+
+  if (maxResults == 0) {  // 0 appearantly means "all results"
     maxResults = SIZE_MAX;
   }
 
@@ -534,13 +533,14 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
 
   std::set<std::string> intersect;
 
+  // TODO: set options.iterate_upper_bound and remove compare?
   // apply left to right logic, merging all current results with ALL previous
   while (iter->Valid() && _cmp->Compare(iter->key(), bounds.end()) < 0) {
     rocksdb::Status s = iter->status();
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    
+
     StringRef key = RocksDBKey::primaryKey(iter->key());
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(key.toString());
@@ -556,8 +556,8 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
       resultSet.clear();
     } else {
       std::set<std::string> output;
-      std::set_intersection(resultSet.begin(), resultSet.end(), intersect.begin(),
-                            intersect.end(),
+      std::set_intersection(resultSet.begin(), resultSet.end(),
+                            intersect.begin(), intersect.end(),
                             std::inserter(output, output.begin()));
       resultSet = std::move(output);
     }

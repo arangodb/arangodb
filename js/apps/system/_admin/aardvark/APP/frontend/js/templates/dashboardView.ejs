@@ -93,23 +93,28 @@
 
   <div id="requests">
     <div class="contentDiv">
-      <div class="dashboard-row pure-u">
-        <% largeChart("requestsChart", "Requests per Second") %>
+      <div class="dashboard-row pure-u cluster-values" id="node-info" style="width: 100%; margin-top: 0; padding-right: 2px; box-sizing: border-box;">
+      </div>
 
-        <% tendency("Request Types", "asyncRequests", false); %>
-        <% tendency("Number of Client Connections", "clientConnections", false); %>
+      <% if (hideStatistics !== true) { %>
+        <div class="dashboard-row pure-u">
+          <% largeChart("requestsChart", "Requests per Second") %>
+
+          <% tendency("Request Types", "asyncRequests", false); %>
+          <% tendency("Number of Client Connections", "clientConnections", false); %>
+        </div>
+        
+        <div class="dashboard-row pure-u small-label-padding">
+          <% largeChart("dataTransferChart", "Transfer Size per Second") %>
+          <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)", false) %>
+        </div>
+        
+        <div class="dashboard-row pure-u small-label-padding">
+          <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
+          <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
+        </div>
       </div>
-      
-      <div class="dashboard-row pure-u small-label-padding">
-        <% largeChart("dataTransferChart", "Transfer Size per Second") %>
-        <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)", false) %>
-      </div>
-      
-      <div class="dashboard-row pure-u small-label-padding">
-        <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
-        <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
-      </div>
-    </div>
+    <% } %>
   </div>
 
   <div id="system" class="tendency-box-sizing" style="display: none";>

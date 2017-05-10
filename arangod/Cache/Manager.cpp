@@ -46,8 +46,6 @@
 #include <stack>
 #include <utility>
 
-#include <iostream>  // TODO
-
 using namespace arangodb::cache;
 
 const uint64_t Manager::minSize = 1024 * 1024;
