@@ -458,21 +458,6 @@ bool Utf8Helper::getWords(std::set<std::string>& words,
     return false;
   }
 
-  // estimate an initial vector size. this is not accurate, but setting the
-  // initial size to some
-  // value in the correct order of magnitude will save a lot of vector
-  // reallocations later
-  size_t initialWordCount = textLength / (2 * (minimalLength + 1));
-  if (initialWordCount < 32) {
-    // alloc at least 32 pointers (= 256b)
-    initialWordCount = 32;
-  } else if (initialWordCount > 8192) {
-    // alloc at most 8192 pointers (= 64kb)
-    initialWordCount = 8192;
-  }
-  // Reserve initialWordCount additional words in the vector
-  //words.reserve(words.size() + initialWordCount);
-
   BreakIterator* wordIterator =
       BreakIterator::createWordInstance(locale, status);
   TRI_ASSERT(wordIterator != nullptr);

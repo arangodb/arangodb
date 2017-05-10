@@ -217,14 +217,29 @@ class Node {
   /// @brief Get integer value (throws if type NODE or if conversion fails)
   int getInt() const;
 
+  /// @brief Is UInt
+  bool isInt() const noexcept;
+
   /// @brief Get insigned value (throws if type NODE or if conversion fails)
   uint64_t getUInt() const;
+
+  /// @brief Is UInt
+  bool isUInt() const noexcept;
 
   /// @brief Get bool value (throws if type NODE or if conversion fails)
   bool getBool() const;
 
+  /// @brief Is boolean
+  bool isBool() const noexcept;
+
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
+
+  /// @brief Is double
+  bool isDouble() const noexcept;
+
+  /// @brief Is double
+  bool isString() const noexcept;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::string getString() const;

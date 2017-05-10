@@ -1845,6 +1845,7 @@ int ClusterInfo::ensureIndexCoordinator(
       errorMsg += trx.toJson();
       errorMsg += "ClientId: " + result._clientId + " ";
       errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
+      errorMsg += " HttpCode: " + std::to_string(result.httpCode()) + " ";
       errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
       resultBuilder = *resBuilder;
     }
