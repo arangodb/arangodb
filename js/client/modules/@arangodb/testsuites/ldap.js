@@ -29,6 +29,7 @@ const functionsDocumentation = {
   'ldap': 'ldap tests'
 };
 const optionsDocumentation = [
+  '   - `skipLdap` : if set to true the LDAP tests are skipped',
   '   - `ldapUrl : testing authentication and authentication_paramaters will be skipped.'
 ];
 
