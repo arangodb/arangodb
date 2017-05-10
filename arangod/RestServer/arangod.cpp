@@ -99,9 +99,8 @@
 
 using namespace arangodb;
 
-static int runServer(int argc, char** argv) {
+static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
   try {
-    ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
     context.installSegv();
     context.runStartupChecks();
 
@@ -215,7 +214,6 @@ static int runServer(int argc, char** argv) {
       ret = EXIT_FAILURE;
     }
     Logger::flush();
-
     return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -244,7 +242,8 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000);
 
-  runServer(ARGC, ARGV);
+  ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
+  runServer(ARGC, ARGV, context);
 
   // service has stopped
   SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0);
@@ -264,10 +263,12 @@ int main(int argc, char* argv[]) {
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
-        << GetLastError() << std::endl;
+                << GetLastError() << std::endl;
       exit(EXIT_FAILURE);
     }
-  } else
+    return 0;
+  }
 #endif
-    return runServer(argc, argv);
+  ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
+  return runServer(argc, argv, context);
 }
