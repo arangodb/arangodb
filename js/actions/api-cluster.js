@@ -241,6 +241,168 @@ actions.defineHttp({
 });
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_cluster_node_version_GET
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/clusterNodeVersion',
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only GET requests are allowed');
+      return;
+    }
+
+    let serverId;
+    try {
+      if (req.parameters.ServerID) {
+        serverId = req.parameters.ServerID;
+      }
+    } catch (e) {
+    }
+
+    if (typeof serverId !== 'string') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'required parameter ServerID was not given');
+      return;
+    }
+
+    var options = { timeout: 10 };
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, '_system',
+      '/_api/version', '', {}, options);
+    var r = ArangoClusterComm.wait(op);
+    res.contentType = 'application/json; charset=utf-8';
+    if (r.status === 'RECEIVED') {
+      res.responseCode = actions.HTTP_OK;
+      res.body = r.body;
+    } else if (r.status === 'TIMEOUT') {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify({'error': true,
+      'errorMessage': 'operation timed out'});
+    } else {
+      res.responseCode = actions.HTTP_BAD;
+      var bodyobj;
+      try {
+        bodyobj = JSON.parse(r.body);
+      } catch (err) {}
+      res.body = JSON.stringify({'error': true,
+        'errorMessage': 'error from Server, possibly Server unknown',
+      'body': bodyobj});
+    }
+  }
+});
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_cluster_node_stats_GET
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/clusterNodeStats',
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only GET requests are allowed');
+      return;
+    }
+
+    let serverId;
+    try {
+      if (req.parameters.ServerID) {
+        serverId = req.parameters.ServerID;
+      }
+    } catch (e) {
+    }
+
+    if (typeof serverId !== 'string') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'required parameter ServerID was not given');
+      return;
+    }
+
+    var options = { timeout: 10 };
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, '_system',
+      '/_admin/statistics', '', {}, options);
+    var r = ArangoClusterComm.wait(op);
+    res.contentType = 'application/json; charset=utf-8';
+    if (r.status === 'RECEIVED') {
+      res.responseCode = actions.HTTP_OK;
+      res.body = r.body;
+    } else if (r.status === 'TIMEOUT') {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify({'error': true,
+      'errorMessage': 'operation timed out'});
+    } else {
+      res.responseCode = actions.HTTP_BAD;
+      var bodyobj;
+      try {
+        bodyobj = JSON.parse(r.body);
+      } catch (err) {}
+      res.body = JSON.stringify({'error': true,
+        'errorMessage': 'error from Server, possibly Server unknown',
+      'body': bodyobj});
+    }
+  }
+});
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_cluster_node_engine_GET
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/clusterNodeEngine',
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only GET requests are allowed');
+      return;
+    }
+
+    let serverId;
+    try {
+      if (req.parameters.ServerID) {
+        serverId = req.parameters.ServerID;
+      }
+    } catch (e) {
+    }
+
+    if (typeof serverId !== 'string') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'required parameter ServerID was not given');
+      return;
+    }
+
+    var options = { timeout: 10 };
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, '_system',
+      '/_api/engine', '', {}, options);
+    var r = ArangoClusterComm.wait(op);
+    res.contentType = 'application/json; charset=utf-8';
+    if (r.status === 'RECEIVED') {
+      res.responseCode = actions.HTTP_OK;
+      res.body = r.body;
+    } else if (r.status === 'TIMEOUT') {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify({'error': true,
+      'errorMessage': 'operation timed out'});
+    } else {
+      res.responseCode = actions.HTTP_BAD;
+      var bodyobj;
+      try {
+        bodyobj = JSON.parse(r.body);
+      } catch (err) {}
+      res.body = JSON.stringify({'error': true,
+        'errorMessage': 'error from Server, possibly Server unknown',
+      'body': bodyobj});
+    }
+  }
+});
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_cluster_statistics_GET
 // //////////////////////////////////////////////////////////////////////////////
 
