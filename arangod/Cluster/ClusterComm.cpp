@@ -118,6 +118,9 @@ void ClusterCommResult::setDestination(std::string const& dest,
   endpoint = ci->getServerEndpoint(serverID);
   if (endpoint.empty()) {
     status = CL_COMM_BACKEND_UNAVAILABLE;
+    if (serverID.find(',') != std::string::npos) {
+      TRI_ASSERT(false);
+    }
     errorMessage = "did not find endpoint of server '" + serverID + "'";
     if (logConnectionErrors) {
       LOG_TOPIC(ERR, Logger::CLUSTER)
