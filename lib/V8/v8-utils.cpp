@@ -4007,7 +4007,7 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
     lowerCase = TRI_ObjectToBoolean(args[3]);
   }
 
-  std::vector<std::string> wordList;
+  std::set<std::string> wordList;
 
   if (!Utf8Helper::DefaultUtf8Helper.getWords(
           wordList, stringToTokenize, minLength, maxLength, lowerCase)) {
@@ -4017,11 +4017,11 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> v8WordList =
       v8::Array::New(isolate, static_cast<int>(wordList.size()));
 
-  size_t const n = static_cast<uint32_t>(wordList.size());
-
-  for (uint32_t i = 0; i < n; i++) {
-    v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(wordList[i]);
+  uint32_t i = 0;
+  for (std::string const& word : wordList) {
+    v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(word);
     v8WordList->Set(i, oneWord);
+    i++;
   }
 
   TRI_V8_RETURN(v8WordList);

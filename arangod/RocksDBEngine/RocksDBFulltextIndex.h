@@ -131,7 +131,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
                                 velocypack::Builder& builder);
 
  private:
-  std::vector<std::string> wordlist(arangodb::velocypack::Slice const&);
+  std::set<std::string> wordlist(arangodb::velocypack::Slice const&);
 
   /// @brief the indexed attribute (path)
   std::vector<std::string> _attr;

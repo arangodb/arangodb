@@ -172,26 +172,28 @@ SECTION("tst_3") {
 SECTION("tst_4") {
   std::string testString   = "Der Müller geht in die Post.";
   
-  std::vector<std::string> words;
+  std::set<std::string> words;
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 3, UINT32_MAX, true);
   CHECK(!words.empty());
   
   CHECK((5UL) == words.size());
-  CHECK(std::string("der") == words[0]);
-  CHECK(std::string("müller") == words[1]);
-  CHECK(std::string("geht") == words[2]);
-  CHECK(std::string("die") == words[3]);
-  CHECK(std::string("post") == words[4]);
+  CHECK(words.find(std::string("der")) != words.end());
+  CHECK(words.find(std::string("müller")) != words.end());
+  CHECK(words.find(std::string("geht")) != words.end());
+  CHECK(words.find(std::string("die")) != words.end());
+  CHECK(words.find(std::string("post")) != words.end());
   
   words.clear();
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 4, UINT32_MAX, true);
   CHECK(!words.empty());
   
   CHECK((3UL) == words.size());
-  CHECK(std::string("müller") == words[0]);
-  CHECK(std::string("geht") == words[1]);
-  CHECK(std::string("post") == words[2]);
-    
+  CHECK(words.find(std::string("müller")) != words.end());
+  CHECK(words.find(std::string("geht")) != words.end());
+  CHECK(words.find(std::string("post")) != words.end());
+  CHECK(words.find(std::string("der")) == words.end());
+  CHECK(words.find(std::string("die")) == words.end());
+  
   words.clear();
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, "", 3, UINT32_MAX, true);
   CHECK(words.empty());
@@ -200,26 +202,28 @@ SECTION("tst_4") {
 SECTION("tst_5") {
   std::string testString   = "Der Müller geht in die Post.";
   
-  std::vector<std::string> words;
+  std::set<std::string> words;
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 3, UINT32_MAX, false);
   CHECK(!words.empty());
   
   CHECK((5UL) == words.size());
-  CHECK(std::string("Der") == words[0]);
-  CHECK(std::string("Müller") == words[1]);
-  CHECK(std::string("geht") == words[2]);
-  CHECK(std::string("die") == words[3]);
-  CHECK(std::string("Post") == words[4]);
+  CHECK(words.find(std::string("Der")) != words.end());
+  CHECK(words.find(std::string("Müller")) != words.end());
+  CHECK(words.find(std::string("geht")) != words.end());
+  CHECK(words.find(std::string("die")) != words.end());
+  CHECK(words.find(std::string("Post")) != words.end());
     
   words.clear();
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 4, UINT32_MAX, false);
   CHECK(!words.empty());
   
   CHECK((3UL) == words.size());
-  CHECK(std::string("Müller") == words[0]);
-  CHECK(std::string("geht") == words[1]);
-  CHECK(std::string("Post") == words[2]);
-    
+  CHECK(words.find(std::string("Müller")) != words.end());
+  CHECK(words.find(std::string("geht")) != words.end());
+  CHECK(words.find(std::string("Post")) != words.end());
+  CHECK(words.find(std::string("der")) == words.end());
+  CHECK(words.find(std::string("die")) == words.end());
+  
   words.clear();
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, "", 4, UINT32_MAX, false);
   CHECK(words.empty());

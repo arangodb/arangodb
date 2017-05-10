@@ -89,7 +89,7 @@ class MMFilesFulltextIndex final : public Index {
       TRI_voc_rid_t revisionId);
 
  private:
-  std::vector<std::string> wordlist(arangodb::velocypack::Slice const&);
+  std::set<std::string> wordlist(arangodb::velocypack::Slice const&);
 
  private:
   /// @brief the indexed attribute (path)
