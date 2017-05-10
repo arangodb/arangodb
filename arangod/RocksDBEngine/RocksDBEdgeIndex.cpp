@@ -271,17 +271,10 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                     bool forPersistence) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-  // add slectivity estimate hard-coded
+  // add selectivity estimate hard-coded
   builder.add("unique", VPackValue(false));
   builder.add("sparse", VPackValue(false));
   builder.close();
-}
-
-/// @brief return a VelocyPack representation of the index figures
-void RocksDBEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  Index::toVelocyPackFigures(builder);
-  // TODO
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
 }
 
 int RocksDBEdgeIndex::insert(transaction::Methods* trx,

@@ -201,12 +201,6 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.close();
 }
 
-/// @brief return a VelocyPack representation of the index figures
-void RocksDBVPackIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add("memory", VPackValue(memory()));
-}
-
 /// @brief whether or not the index is implicitly unique
 /// this can be the case if the index is not declared as unique, but contains
 /// a
