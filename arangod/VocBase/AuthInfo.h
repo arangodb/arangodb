@@ -63,6 +63,8 @@ class HexHashResult : public arangodb::Result {
     std::string const _hexHash;
 };
 
+class AuthContext;
+
 class AuthEntry {
  public:
   AuthEntry() 
@@ -127,6 +129,7 @@ class AuthEntry {
   double _created;
   AuthSource _source;
   std::unordered_map<std::string, AuthLevel> const _databases;
+  std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
   AuthLevel const _allDatabases;
 };
 
@@ -152,7 +155,6 @@ class AuthJwtResult: public AuthResult {
 
 
 class AuthenticationHandler;
-class AuthContext;
 
 class AuthInfo {
  public:
