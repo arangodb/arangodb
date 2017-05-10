@@ -295,7 +295,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
     TRI_ASSERT(pair.first);
     numSlots = pair.second;
   }
-
+        
   _geoIndex = GeoIndex_new(_objectId, numPots, numSlots);
   if (_geoIndex == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

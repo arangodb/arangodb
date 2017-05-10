@@ -329,6 +329,25 @@ inline void RocksWrite(GeoIx * gix,
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 }
+  
+inline void RocksDelete(GeoIx* gix, RocksDBKey const& key) {
+  rocksdb::Status s;
+  if (gix->rocksTransaction != nullptr) {
+    s = gix->rocksTransaction->Delete(key.string());
+  } else {
+    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+    if (gix->rocksBatch != nullptr) {
+      gix->rocksBatch->Delete(key.string());
+    } else {
+      rocksdb::WriteOptions opts;
+      s = db->Delete(opts, key.string());
+    }
+  }
+  if (!s.ok()) {
+    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+}
 
 void SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
 {
@@ -390,18 +409,8 @@ double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2) {
 /* free list.                                          */
 /* =================================================== */
 void GeoIndexFreePot(GeoIx* gix, int pot) {// rewrite delete in rocksdb
- // gix->ypots[pot].LorLeaf = gix->ypots[0].LorLeaf;
-  //gix->ypots[0].LorLeaf = pot;
-  
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
-  
-  rocksdb::WriteOptions opts;
-  rocksdb::Status s = db->Delete(opts, key.string());
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-  }
+  RocksDelete(gix, key);
 }
 /* =================================================== */
 /*            GeoIndexNewPot                           */
@@ -421,54 +430,6 @@ void GeoIndexFreePot(GeoIx* gix, int pot) {// rewrite delete in rocksdb
 /* needed) before it gets too far into things.         */
 /* =================================================== */
 int GeoIndexNewPot(GeoIx* gix) {// rocksdb initial put
-  /*int j;
-  GeoPot* gp;
-  if (gix->ypots[0].LorLeaf == 0) {
-    // do the growth calculation in long long to make sure it doesn't
-    // overflow when the size gets to be near 2^31
-    long long x = gix->potct;
-    long long y = 100 + GeoIndexGROW;
-    x = x * y + 99;
-    y = 100;
-    x = x / y;
-    if (x > 1000000000L) return -2;
-    int newpotct = (int)x;
-    gp = static_cast<GeoPot*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->ypots,
-                                             newpotct * sizeof(GeoPot)));
-
-    if (gp == nullptr) {
-      return -2;
-    }
-    gix->ypots = gp;
-
-    // update memory usage
-    gix->_memoryUsed -= gix->potct * sizeof(GeoPot);
-    gix->_memoryUsed += newpotct * sizeof(GeoPot);
-
-    for (j = gix->potct; j < newpotct; j++) {
-      GeoIndexFreePot(gix, j);
-    }
-    gix->potct = newpotct;
-  }*/
-  //j = gix->ypots[0].LorLeaf;
-  //gix->ypots[0].LorLeaf = gix->ypots[j].LorLeaf;
-  //return j;
-  
-  //
-  //gp.LorLeaf = pot - 1;
-  //gix->ypots[0].LorLeaf = pot;
-  
-  /*rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
-  
-  GeoPot gp = {};
-  rocksdb::WriteOptions opts;
-  rocksdb::Status s = db->Put(opts, key.string(), rocksdb::Slice((char*)(&gp),
-                                                                 sizeof(GeoPot)));
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-  }*/
   return gix->nextFreePot++;
 }
 /* =================================================== */
@@ -1284,9 +1245,8 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
 /* return the specified slot to the free list          */
 /* =================================================== */
 void GeoIndexFreeSlot(GeoIx* gix, int slot) {
-  //gix->gxc[slot].latitude = gix->gxc[0].latitude;
-  //gix->gxc[0].latitude = slot;
-  // TODO delete slot
+  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  RocksDelete(gix, key);
 }
 /* =================================================== */
 /*           GeoIndexNewSlot                           */
