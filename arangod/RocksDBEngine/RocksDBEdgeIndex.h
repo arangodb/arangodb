@@ -149,9 +149,9 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   ///        entries.
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
-  
+ 
   int cleanup() override;
-  
+
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,

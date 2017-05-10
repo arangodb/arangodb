@@ -123,6 +123,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       if (f.found()) {
         //iterate over cached primary keys
         VPackSlice cachedPrimaryKeys(f.value()->value());
+        TRI_ASSERT(cachedPrimaryKeys.isArray());
         for(std::size_t i = _cacheIndexPosition; i < cachedPrimaryKeys.length(); i++){
           StringRef edgeKey(cachedPrimaryKeys.at(i));
           if(lookupDocumentAndUseCb(edgeKey, cb, limit, token)){
@@ -201,6 +202,7 @@ bool RocksDBEdgeIndexIterator::lookupDocumentAndUseCb(
 
 void RocksDBEdgeIndexIterator::reset() {
   _doUpdateBounds = true;
+  _cacheValueBuilder.clear();
   //rest offsets into iterators
   _keysIterator.reset();
   _cacheIndexPosition = 0;
@@ -292,7 +294,7 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef,
                                               StringRef(primaryKey));
   //blacklist key in cache
-  cacheBlackListKey(fromToRef.data(),fromToRef.size());
+  blackListKey(fromToRef);
 
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
@@ -323,7 +325,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                                               StringRef(primaryKey));
 
   //blacklist key in cache
-  cacheBlackListKey(fromToRef.data(),fromToRef.size());
+  blackListKey(fromToRef);
 
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
@@ -346,7 +348,7 @@ int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef,
                                               StringRef(primaryKey));
   //blacklist key in cache
-  cacheBlackListKey(fromToRef.data(),fromToRef.size());
+  blackListKey(fromToRef);
   writeBatch->Delete(rocksdb::Slice(key.string()));
   return TRI_ERROR_NO_ERROR;
 }
@@ -367,7 +369,7 @@ void RocksDBEdgeIndex::batchInsert(
     RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef,
                                                 StringRef(primaryKey));
 
-    cacheBlackListKey(fromToRef.data(),fromToRef.size());
+    blackListKey(fromToRef);
     rocksdb::Status status =
         rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
     if (!status.ok()) {

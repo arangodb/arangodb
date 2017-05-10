@@ -84,12 +84,15 @@ class RocksDBIndex : public Index {
   /// as an optimization for the non transactional fillIndex method
   virtual int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) = 0;
-  
+
  protected:
   void createCache();
   void disableCache();
   inline bool useCache() const { return (_useCache && _cachePresent); }
-  void cacheBlackListKey(char const* data, std::size_t len);
+  void blackListKey(char const* data, std::size_t len);
+  void blackListKey(StringRef& ref){
+    blackListKey(ref.data(), ref.size());
+  };
 
  protected:
   uint64_t _objectId;

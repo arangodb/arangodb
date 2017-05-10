@@ -139,21 +139,19 @@ int RocksDBIndex::drop() {
   return TRI_ERROR_NO_ERROR;
 }
 
-void RocksDBIndex::cacheBlackListKey(char const* data, std::size_t len){
+// blacklist given key from transactional cache
+void RocksDBIndex::blackListKey(char const* data, std::size_t len){
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
-    // blacklist from cache
     bool blacklisted = false;
     uint64_t attempts = 0;
     while (!blacklisted) {
       blacklisted = _cache->blacklist(data,len);
-      attempts++;
-      if (attempts > 10) {
+      if (attempts++ % 10 == 0) {
         if (_cache->isShutdown()) {
           disableCache();
           break;
         }
-        attempts = 0;
       }
     }
   }

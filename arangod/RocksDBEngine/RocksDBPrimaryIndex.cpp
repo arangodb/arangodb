@@ -431,7 +431,7 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
-  cacheBlackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   auto status = rtrx->Put(key.string(), value.string());
   if (!status.ok()) {
@@ -455,7 +455,7 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
 
-  cacheBlackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
