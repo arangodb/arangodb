@@ -81,7 +81,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
-      _revisionId(0) {
+      _revisionId(0),
+      _hasGeoIndex(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
@@ -91,7 +92,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
       _numberDocuments(0),
-      _revisionId(0) {
+      _revisionId(0),
+      _hasGeoIndex(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
