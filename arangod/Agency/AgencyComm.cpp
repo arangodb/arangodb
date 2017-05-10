@@ -1344,7 +1344,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
           return result;
         }
 
-        std::this_thread::sleep_for(waitUntil-std::chrono::steady_clock::now());
+        std::this_thread::sleep_until(waitUntil);
         if (waitInterval.count() == 0.0) {
           waitInterval = std::chrono::duration<double>(0.25);
         } else if (waitInterval.count() < 5.0) { 
