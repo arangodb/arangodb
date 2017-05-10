@@ -54,6 +54,7 @@ class RocksDBIndex : public Index {
 
  public:
   ~RocksDBIndex();
+  void toVelocyPackFigures(VPackBuilder& builder) const override;
 
   uint64_t objectId() const { return _objectId; }
 

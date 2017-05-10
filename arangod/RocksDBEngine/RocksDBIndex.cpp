@@ -81,6 +81,11 @@ RocksDBIndex::~RocksDBIndex() {
   }
 }
 
+void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("cacheSize", VPackValue(useCache() ? _cache->size() : 0));
+}
+
 int RocksDBIndex::unload() {
   LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
   if (useCache()) {
