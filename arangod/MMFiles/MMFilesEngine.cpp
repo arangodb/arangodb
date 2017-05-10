@@ -1604,30 +1604,6 @@ void MMFilesEngine::signalCleanup(TRI_vocbase_t* vocbase) {
   (*it).second->signal();
 }
 
-// iterate all documents of the underlying collection
-// this is called when a collection is openend, and all its documents need to be
-// added to
-// indexes etc.
-void MMFilesEngine::iterateDocuments(
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    std::function<void(arangodb::velocypack::Slice const&)> const& cb) {}
-
-// adds a document to the storage engine
-// this will be called by the WAL collector when surviving documents are being
-// moved
-// into the storage engine's realm
-void MMFilesEngine::addDocumentRevision(
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    arangodb::velocypack::Slice const& document) {}
-
-// removes a document from the storage engine
-// this will be called by the WAL collector when non-surviving documents are
-// being removed
-// from the storage engine's realm
-void MMFilesEngine::removeDocumentRevision(
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    arangodb::velocypack::Slice const& document) {}
-
 /// @brief scans a collection and locates all files
 MMFilesEngineCollectionFiles MMFilesEngine::scanCollectionDirectory(
     std::string const& path) {

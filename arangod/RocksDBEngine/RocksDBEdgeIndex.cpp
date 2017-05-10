@@ -209,9 +209,10 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 /// @brief return a VelocyPack representation of the index figures
 void RocksDBEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  Index::toVelocyPackFigures(builder);
-  // TODO
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  RocksDBIndex::toVelocyPackFigures(builder);
+  //builder.add(_directionAttr, VPackValue(VPackValueType::Object));
+  //_edgesFrom->appendToVelocyPack(builder);
+  //builder.close();
 }
 
 int RocksDBEdgeIndex::insert(transaction::Methods* trx,

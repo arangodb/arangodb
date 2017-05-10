@@ -46,8 +46,10 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
-
+  arangodb::Result ret = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
+  if (!ret.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(ret.errorNumber(), ret.errorMessage());
+  }
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }

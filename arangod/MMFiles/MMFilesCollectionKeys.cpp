@@ -27,8 +27,8 @@
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesLogfileManager.h" 
+#include "MMFiles/MMFilesEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -60,7 +60,7 @@ MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::string
 
 MMFilesCollectionKeys::~MMFilesCollectionKeys() {
   // remove compaction blocker
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   engine->removeCompactionBlocker(_vocbase, _blockerId);
 
   if (_ditch != nullptr) {
@@ -76,7 +76,7 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
   MMFilesLogfileManager::instance()->waitForCollectorQueue(
       _collection->cid(), 30.0);
   
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
     _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
@@ -104,9 +104,10 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
     }
 
     ManagedDocumentResult mmdr;
+    MMFilesCollection *mmColl = MMFilesCollection::toMMFilesCollection(_collection);
     trx.invokeOnAllElements(
-        _collection->name(), [this, &trx, &maxTick, &mmdr](DocumentIdentifierToken const& token) {
-          if (_collection->readDocumentConditional(&trx, token, maxTick, mmdr)) {
+        _collection->name(), [this, &trx, &maxTick, &mmdr, &mmColl](DocumentIdentifierToken const& token) {
+          if (mmColl->readDocumentConditional(&trx, token, maxTick, mmdr)) {
             _vpack.emplace_back(mmdr.vpack());
           }
           return true;

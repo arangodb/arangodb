@@ -234,9 +234,9 @@ class MMFilesCollection final : public PhysicalCollection {
   void open(bool ignoreErrors) override;
 
   /// @brief iterate all markers of a collection on load
-  int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
+  int iterateMarkersOnLoad(arangodb::transaction::Methods* trx);
 
-  bool isFullyCollected() const override;
+  bool isFullyCollected() const;
 
   bool doCompact() const { return _doCompact; }
 
@@ -330,7 +330,7 @@ class MMFilesCollection final : public PhysicalCollection {
   bool readDocumentConditional(transaction::Methods* trx,
                                DocumentIdentifierToken const& token,
                                TRI_voc_tick_t maxTick,
-                               ManagedDocumentResult& result) override;
+                               ManagedDocumentResult& result);
 
   int insert(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const newSlice,

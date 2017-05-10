@@ -80,11 +80,6 @@ class RocksDBCollection final : public PhysicalCollection {
   size_t memory() const override;
   void open(bool ignoreErrors) override;
 
-  /// @brief iterate all markers of a collection on load
-  int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
-
-  bool isFullyCollected() const override;
-
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -132,11 +127,6 @@ class RocksDBCollection final : public PhysicalCollection {
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result) override;
-
-  bool readDocumentConditional(transaction::Methods* trx,
-                               DocumentIdentifierToken const& token,
-                               TRI_voc_tick_t maxTick,
-                               ManagedDocumentResult& result) override;
 
   int insert(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const newSlice,
