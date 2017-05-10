@@ -41,7 +41,7 @@ class Cache;
 }
 class LogicalCollection;
 class RocksDBComparator;
-  
+
 class RocksDBIndex : public Index {
  protected:
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
@@ -68,6 +68,8 @@ class RocksDBIndex : public Index {
 
   int unload() override;
 
+  virtual void truncate(transaction::Methods*);
+
   /// @brief provides a size hint for the index
   int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {
     // nothing to do here
@@ -88,11 +90,18 @@ class RocksDBIndex : public Index {
   void disableCache();
 
  protected:
+  // Will be called during truncate to allow the index to update selectivity
+  // estimates, blacklist keys, etc.
+  virtual Result postprocessRemove(transaction::Methods* trx,
+                                   rocksdb::Slice const& key, rocksdb::Slice const& value);
+
   inline bool useCache() const { return (_useCache && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(StringRef& ref){
     blackListKey(ref.data(), ref.size());
   };
+
+  RocksDBKeyBounds getBounds() const;
 
  protected:
   uint64_t _objectId;

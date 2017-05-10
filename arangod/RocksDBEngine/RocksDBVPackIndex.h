@@ -179,6 +179,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   int cleanup() override;
 
+protected:
+ Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
+                          rocksdb::Slice const& value) override;
+
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
                            std::unordered_set<int> const&) const;

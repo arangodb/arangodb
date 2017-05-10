@@ -27,13 +27,16 @@
 #include "Cache/TransactionalCache.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
+using namespace arangodb::rocksutils;
 
 RocksDBIndex::RocksDBIndex(
     TRI_idx_iid_t id, LogicalCollection* collection,
@@ -153,6 +156,40 @@ int RocksDBIndex::drop() {
   return TRI_ERROR_NO_ERROR;
 }
 
+void RocksDBIndex::truncate(transaction::Methods* trx) {
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  RocksDBKeyBounds indexBounds = getBounds();
+
+  rocksdb::ReadOptions options = state->readOptions();
+  options.iterate_upper_bound = &(indexBounds.end());
+
+  std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(options));
+  iter->Seek(indexBounds.start());
+
+  while (iter->Valid()) {
+    rocksdb::Status s = rtrx->Delete(iter->key());
+    if (!s.ok()) {
+      auto converted = convertStatus(s);
+      THROW_ARANGO_EXCEPTION(converted);
+    }
+
+    Result r = postprocessRemove(trx, iter->key(), iter->value());
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
+
+    iter->Next();
+  }
+}
+
+Result RocksDBIndex::postprocessRemove(transaction::Methods* trx,
+                                       rocksdb::Slice const& key,
+                                      rocksdb::Slice const& value) {
+  return {TRI_ERROR_NO_ERROR};
+}
+
+
 // blacklist given key from transactional cache
 void RocksDBIndex::blackListKey(char const* data, std::size_t len){
   if (useCache()) {
@@ -168,5 +205,29 @@ void RocksDBIndex::blackListKey(char const* data, std::size_t len){
         }
       }
     }
+  }
+}
+
+RocksDBKeyBounds RocksDBIndex::getBounds() const {
+  switch (type()) {
+    case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
+      return RocksDBKeyBounds::PrimaryIndex(objectId());
+    case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
+      return RocksDBKeyBounds::EdgeIndex(objectId());
+    case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
+    case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
+    case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
+      if (unique()) {
+        return RocksDBKeyBounds::UniqueIndex(objectId());
+      }
+      return RocksDBKeyBounds::IndexEntries(objectId());
+    case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
+      return RocksDBKeyBounds::FulltextIndex(objectId());
+    case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
+    case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
+      return RocksDBKeyBounds::GeoIndex(objectId());
+    case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 }

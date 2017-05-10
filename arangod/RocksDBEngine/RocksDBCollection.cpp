@@ -644,52 +644,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // don't do anything beyond deleting their contents
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
-
-    RocksDBKeyBounds indexBounds = RocksDBKeyBounds::Empty();
-    switch (rindex->type()) {
-      case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
-        indexBounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
-        break;
-      case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
-        indexBounds = RocksDBKeyBounds::EdgeIndex(rindex->objectId());
-        break;
-      case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
-      case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
-      case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
-        if (rindex->unique()) {
-          indexBounds = RocksDBKeyBounds::UniqueIndex(rindex->objectId());
-        } else {
-          indexBounds = RocksDBKeyBounds::IndexEntries(rindex->objectId());
-        }
-        break;
-      case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
-        indexBounds = RocksDBKeyBounds::FulltextIndex(rindex->objectId());
-        break;
-      case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
-      case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
-        indexBounds = RocksDBKeyBounds::GeoIndex(rindex->objectId());
-        break;
-      case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    }
-
-    rocksdb::ReadOptions options = state->readOptions();
-    options.iterate_upper_bound = &(indexBounds.end());
-    iter.reset(rtrx->GetIterator(options));
-
-    iter->Seek(indexBounds.start());
-    rindex->disableCache();  // TODO: proper blacklisting of keys?
-    TRI_DEFER(rindex->createCache());
-
-    while (iter->Valid()) {
-      rocksdb::Status s = rtrx->Delete(iter->key());
-      if (!s.ok()) {
-        auto converted = convertStatus(s);
-        THROW_ARANGO_EXCEPTION(converted);
-      }
-
-      iter->Next();
-    }
+    rindex->truncate(trx);
   }
 }
 
