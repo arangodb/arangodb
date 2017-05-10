@@ -93,7 +93,6 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   void seek(StringRef const& key);
 
  private:
-  RocksDBComparator const* _cmp;
   bool const _reverse;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   RocksDBKeyBounds _bounds;
