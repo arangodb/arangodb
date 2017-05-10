@@ -92,8 +92,7 @@
 
 using namespace arangodb;
 
-static int runServer(int argc, char** argv) {
-  ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
+static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
   context.installSegv();
   context.runStartupChecks();
 
@@ -190,6 +189,8 @@ static int runServer(int argc, char** argv) {
       // --help was displayed
       ret = EXIT_SUCCESS;
     }
+    Logger::flush();
+    return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();
@@ -199,9 +200,7 @@ static int runServer(int argc, char** argv) {
                 "unknown type";
     ret = EXIT_FAILURE;
   }
-  Logger::flush();
-
-  return context.exit(ret);
+  exit(EXIT_FAILURE);
 }
 
 #if _WIN32
@@ -219,7 +218,8 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000);
 
-  runServer(ARGC, ARGV);
+  ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
+  runServer(ARGC, ARGV, context);
 
   // service has stopped
   SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0);
@@ -235,14 +235,16 @@ int main(int argc, char* argv[]) {
     ARGV = argv;
 
     SERVICE_TABLE_ENTRY ste[] = {
-        {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
+      {TEXT(""), (LPSERVICE_<MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
                 << GetLastError() << std::endl;
       exit(EXIT_FAILURE);
     }
-  } else
+    return 0;
+  }
 #endif
-  return runServer(argc, argv);
+  ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
+  return runServer(argc, argv, context);
 }
