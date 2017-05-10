@@ -81,7 +81,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
-      _revisionId(0) {
+      _revisionId(0),
+      _hasGeoIndex(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
@@ -91,7 +92,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
       _numberDocuments(0),
-      _revisionId(0) {
+      _revisionId(0),
+      _hasGeoIndex(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
@@ -691,6 +693,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
     iter->Seek(indexBounds.start());
     rindex->disableCache();  // TODO: proper blacklisting of keys?
+    TRI_DEFER(rindex->createCache());
+
     while (iter->Valid()) {
       rocksdb::Status s = rtrx->Delete(iter->key());
       if (!s.ok()) {
@@ -700,7 +704,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
       iter->Next();
     }
-    rindex->createCache();
   }
 }
 
