@@ -565,7 +565,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
-    trx->addCollectionAtRuntime(cid, "", AccessMode::Type::WRITE); 
+    trx->addCollectionAtRuntime(cid, "", AccessMode::Type::EXCLUSIVE); 
     int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc, errorMsg);
 
     if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
