@@ -44,9 +44,8 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 
 #include <rocksdb/db.h>
-#include <rocksdb/options.h>
-#include <rocksdb/slice.h>
 #include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/utilities/write_batch_with_index.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -263,15 +262,9 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
 }
 
 /// optimization for truncateNoTrx, never called in fillIndex
-int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatch* writeBatch, TRI_voc_rid_t,
-                                VPackSlice const& doc) {
-  VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
-  VPackSlice fromTo = doc.get(_directionAttr);
-  TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, StringRef(fromTo),
-                                              StringRef(primaryKey));
-  writeBatch->Delete(rocksdb::Slice(key.string()));
-  return TRI_ERROR_NO_ERROR;
+int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+                                VPackSlice const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 void RocksDBEdgeIndex::batchInsert(

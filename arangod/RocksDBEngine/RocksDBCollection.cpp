@@ -1354,7 +1354,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   Result r;
   bool hasMore = true;
   while (hasMore) {
-    hasMore = iter->next(cb, 5000);
+    hasMore = iter->next(cb, 250);
     if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED ||
         _logicalCollection->deleted()) {
       res = TRI_ERROR_INTERNAL;
@@ -1375,7 +1375,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
   // occured, this needs to happen since we are non transactional
   if (!r.ok()) {
     iter->reset();
-    rocksdb::WriteBatch removeBatch(32 * 1024 * 1024);
+    rocksdb::WriteBatchWithIndex removeBatch(db->DefaultColumnFamily()->GetComparator(),
+                                             32 * 1024 * 1024);
 
     res = TRI_ERROR_NO_ERROR;
     auto removeCb = [&](DocumentIdentifierToken token) {
@@ -1396,7 +1397,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
     }
     // TODO: if this fails, do we have any recourse?
     // Simon: Don't think so
-    db->Write(writeOpts, &removeBatch);
+    db->Write(writeOpts, removeBatch.GetWriteBatch());
   }
 
   return r;

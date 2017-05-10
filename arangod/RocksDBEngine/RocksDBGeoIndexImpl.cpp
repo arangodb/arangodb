@@ -29,6 +29,8 @@
 #include <iostream>
 
 #include <RocksDBEngine/RocksDBGeoIndexImpl.h>
+#include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/write_batch_with_index.h>
 
 /* Radius of the earth used for distances  */
 #define EARTHRADIAN 6371000.0
@@ -130,6 +132,8 @@ typedef struct {
   GeoIndexFixed fixed; /* fixed point data          */
   int nextFreePot;           /* pots allocated      */
   int nextFreeSlot;          /* slots allocated     */
+  rocksdb::Transaction *rocksTransaction;
+  rocksdb::WriteBatchWithIndex *rocksBatch;
   //GeoPot* ypots;       /* the pots themselves     */// gone
   //GeoCoordinate* gxc;  /* the slots themselves    */// gone
   //size_t _memoryUsed;  /* the amount of memory currently used */// gone
@@ -267,74 +271,90 @@ namespace arangodb { namespace rocksdbengine {
   
   
 /* CRUD interface */
-int SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
-{
-  //gc GeoCoordinate, element in point array of real geo index
-  //memcpy(gc,gix->gxc+slot,sizeof(GeoCoordinate));
   
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
-  std::string slotValue;
+void GeoIndex_setRocksTransaction(GeoIdx* gi,
+                                  rocksdb::Transaction* trx) {
+  GeoIx* gix = (GeoIx*)gi;
+  gix->rocksTransaction = trx;
+}
+
+void GeoIndex_setRocksBatch(GeoIdx* gi,
+                            rocksdb::WriteBatchWithIndex* wb) {
+  GeoIx* gix = (GeoIx*)gi;
+  gix->rocksBatch = wb;
+}
+
+void GeoIndex_clearRocks(GeoIdx* gi) {
+  GeoIx* gix = (GeoIx*)gi;
+  gix->rocksTransaction = nullptr;
+  gix->rocksBatch = nullptr;
+}
   
+inline void RocksRead(GeoIx * gix, RocksDBKey const& key, std::string *val) {
+  rocksdb::Status s;
   rocksdb::ReadOptions opts;
-  rocksdb::Status s = db->Get(opts, key.string(), &slotValue);
+  if (gix->rocksTransaction != nullptr) {
+    s = gix->rocksTransaction->Get(opts, key.string(), val);
+  } else {
+    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+    if (gix->rocksBatch != nullptr) {
+      s = gix->rocksBatch->GetFromBatchAndDB(db, opts, key.string(), val);
+    } else {
+      s = db->Get(opts, key.string(), val);
+    }
+  }
   if (!s.ok()) {
     arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
-  //VpackToCoord(val.slice(), gc);
-  memcpy(gc, slotValue.data(), slotValue.size());
-  
-  return 0;
 }
-void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
-{
-  //memcpy(gix->gxc+slot,gc,sizeof(GeoCoordinate));
   
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
-  
-  rocksdb::WriteOptions opts;
-  rocksdb::Status s = db->Put(opts, key.string(),
-                              rocksdb::Slice((char*)gc,
-                                             sizeof(GeoCoordinate)));
+inline void RocksWrite(GeoIx * gix,
+                       RocksDBKey const& key,
+                       rocksdb::Slice const& slice) {
+  rocksdb::Status s;
+  if (gix->rocksTransaction != nullptr) {
+    s = gix->rocksTransaction->Put(key.string(), slice);
+  } else {
+    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+    if (gix->rocksBatch != nullptr) {
+      gix->rocksBatch->Put(key.string(), slice);
+    } else {
+      rocksdb::WriteOptions opts;
+      s = db->Put(opts, key.string(), slice);
+    }
+  }
   if (!s.ok()) {
     arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 }
 
-int PotRead(GeoIx * gix, int pot, GeoPot * gp)
+void SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
 {
-  //memcpy(gp,gix->ypots+pot,sizeof(GeoPot));
-  
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  std::string slotValue;
+  RocksRead(gix, key, &slotValue);
+  memcpy(gc, slotValue.data(), slotValue.size());
+}
+void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
+{
+  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  RocksWrite(gix, key, rocksdb::Slice((char*)gc,
+                                      sizeof(GeoCoordinate)));
+}
+
+void PotRead(GeoIx * gix, int pot, GeoPot * gp)
+{
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
   std::string potValue;
-  
-  rocksdb::ReadOptions opts;
-  rocksdb::Status s = db->Get(opts, key.string(), &potValue);
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-  }
+  RocksRead(gix, key, &potValue);
   memcpy(gp, potValue.data(), potValue.size());
-  return 0;
 }
+  
 void PotWrite(GeoIx * gix, int pot, GeoPot * gp) {
-  //memcpy(gix->ypots+pot,gp,sizeof(GeoPot));
-  
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
-  
-  rocksdb::WriteOptions opts;
-  rocksdb::Status s = db->Put(opts, key.string(),
-                              rocksdb::Slice((char*)gp,
-                                             sizeof(GeoPot)));
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-  }
+  RocksWrite(gix, key, rocksdb::Slice((char*)gp, sizeof(GeoPot)));
 }
 
 /* =================================================== */
@@ -484,6 +504,9 @@ GeoIdx* GeoIndex_new(uint64_t objectId,
   if (gix == nullptr) {
     return (GeoIdx*)gix;
   }
+  // need to set these to null
+  gix->rocksTransaction = nullptr;
+  gix->rocksBatch = nullptr;
 
   /* set up the fixed points structure  */
 
