@@ -297,9 +297,13 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                        {{arangodb::basics::AttributeName(
                            StaticStrings::KeyString, false)}}),
                    true, false,
-                   basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
-  if (_objectId != 0 && !ServerState::instance()->isCoordinator()) {
-    _useCache = true;
+                   basics::VelocyPackHelper::stringUInt64(info, "objectId")
+                   ,!ServerState::instance()->isCoordinator() /*useCache*/
+                   ) {
+  TRI_ASSERT(_objectId != 0);
+  if (_objectId == 0 ) {
+    //disableCache
+    _useCache = false;
   }
 }
 

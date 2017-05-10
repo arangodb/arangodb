@@ -266,15 +266,21 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    arangodb::LogicalCollection* collection,
                                    VPackSlice const& info,
                                    std::string const& attr)
-    : RocksDBIndex(iid, collection,
-                   std::vector<std::vector<AttributeName>>(
-                       {{AttributeName(attr, false)}}),
-                   false, false,
-                   basics::VelocyPackHelper::stringUInt64(info, "objectId")),
-      _directionAttr(attr) {
+    : RocksDBIndex(iid
+                  ,collection
+                  ,std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}})
+                  ,false
+                  ,false
+                  ,basics::VelocyPackHelper::stringUInt64(info, "objectId")
+                  ,!ServerState::instance()->isCoordinator() /*useCache*/
+                  )
+    , _directionAttr(attr)
+{
   TRI_ASSERT(iid != 0);
-  if (_objectId != 0 && !ServerState::instance()->isCoordinator()) {
-    _useCache = true;
+  TRI_ASSERT(_objectId != 0);
+  if (_objectId == 0) {
+    //disable cache?
+    _useCache = false;
   }
 }
 
@@ -551,7 +557,9 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   }
   keys->close();
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "useCache: " << _useCache << useCache();
+  LOG_TOPIC(ERR, Logger::FIXME) << "_useCache: " << _useCache
+                                << " _cachePresent: " << _cachePresent
+                                << " useCache():" << useCache();
   return new RocksDBEdgeIndexIterator(
       _collection, trx, mmdr, this, keys, useCache(), _cache.get());
 }

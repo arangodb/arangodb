@@ -38,24 +38,35 @@ using namespace arangodb;
 RocksDBIndex::RocksDBIndex(
     TRI_idx_iid_t id, LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-    bool unique, bool sparse, uint64_t objectId)
+    bool unique, bool sparse, uint64_t objectId, bool useCache)
     : Index(id, collection, attributes, unique, sparse),
       _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(false) {}
+      _useCache(useCache) {
+  if (_useCache) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "creating cache";
+    createCache();
+  } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "not creating cache";
+  }
+
+}
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           VPackSlice const& info)
+                           VPackSlice const& info,bool useCache)
     : Index(id, collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(false) {
+      _useCache(useCache) {
   if (_objectId == 0) {
     _objectId = TRI_NewTickServer();
+  }
+  if (_useCache) {
+    createCache();
   }
 }
 
@@ -70,13 +81,8 @@ RocksDBIndex::~RocksDBIndex() {
   }
 }
 
-void RocksDBIndex::load() {
-  if (_useCache) {
-    createCache();
-  }
-}
-
 int RocksDBIndex::unload() {
+  LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
   if (useCache()) {
     disableCache();
     TRI_ASSERT(!_cachePresent);

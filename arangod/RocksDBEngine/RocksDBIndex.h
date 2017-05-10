@@ -46,10 +46,10 @@ class RocksDBIndex : public Index {
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
                    attributes,
-               bool unique, bool sparse, uint64_t objectId = 0);
+               bool unique, bool sparse, uint64_t objectId = 0, bool useCache = false);
 
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               arangodb::velocypack::Slice const&);
+               arangodb::velocypack::Slice const&, bool useCache = false);
 
  public:
   ~RocksDBIndex();
@@ -71,8 +71,6 @@ class RocksDBIndex : public Index {
     // nothing to do here
     return TRI_ERROR_NO_ERROR;
   }
-
-  void load();
 
   /// insert index elements into the specified write batch. Should be used
   /// as an optimization for the non transactional fillIndex method

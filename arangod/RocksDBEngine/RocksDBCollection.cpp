@@ -187,8 +187,6 @@ void RocksDBCollection::open(bool ignoreErrors) {
   _revisionId = counterValue.revisionId();
 
   for (std::shared_ptr<Index> it : getIndexes()) {
-    static_cast<RocksDBIndex*>(it.get())->load();
-    
     if (it->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
         it->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
       _hasGeoIndex = true;
