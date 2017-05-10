@@ -52,7 +52,6 @@ SchedulerFeature::SchedulerFeature(
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("Database");
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
@@ -260,10 +259,10 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler =
-      std::make_unique<Scheduler>(static_cast<uint64_t>(_nrMinimalThreads),
-                                  static_cast<uint64_t>(_nrServerThreads),
-                                  static_cast<uint64_t>(_nrMaximalThreads),
-                                  static_cast<uint64_t>(_queueSize));
+      std::make_unique<Scheduler>(_nrMinimalThreads,
+                                  _nrServerThreads,
+                                  _nrMaximalThreads,
+                                  _queueSize);
 
   SCHEDULER = _scheduler.get();
 }

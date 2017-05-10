@@ -611,7 +611,7 @@ int RocksDBVPackIndex::remove(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBVPackIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
+int RocksDBVPackIndex::removeRaw(rocksdb::WriteBatchWithIndex* writeBatch,
                                  TRI_voc_rid_t revisionId,
                                  VPackSlice const& doc) {
   std::vector<RocksDBKey> elements;

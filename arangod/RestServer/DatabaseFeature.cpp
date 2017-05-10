@@ -236,6 +236,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Authentication");
+  startsAfter("CacheManager");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("MMFilesLogfileManager");
@@ -243,6 +244,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("MMFilesEngine");
   startsAfter("MMFilesPersistentIndex");
   startsAfter("RocksDBEngine");
+  startsAfter("Scheduler");
 }
 
 DatabaseFeature::~DatabaseFeature() {

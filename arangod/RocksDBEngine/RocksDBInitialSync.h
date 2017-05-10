@@ -417,9 +417,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
           VPackSlice doc(mmdr.vpack());
           VPackSlice key = doc.get(StaticStrings::KeyString);
           if (key.compareString(lowKey.data(), lowKey.length()) < 0) {
-            trx.remove(collectionName, key, options);
+            trx.remove(collectionName, doc, options);
           } else if (key.compareString(highKey.data(), highKey.length()) > 0) {
-            trx.remove(collectionName, key, options);
+            trx.remove(collectionName, doc, options);
           }
         },
         UINT64_MAX);

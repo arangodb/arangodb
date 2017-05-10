@@ -121,29 +121,29 @@ class Scheduler {
   std::atomic<bool> _stopping;
 
   // maximal number of outstanding user requests
-  int64_t const _maxQueueSize;
+  uint64_t const _maxQueueSize;
 
   // minimum number of running SchedulerThreads
-  int64_t const _nrMinimum;
+  uint64_t const _nrMinimum;
 
   // desired number of running SchedulerThreads
-  int64_t const _nrDesired;
+  uint64_t const _nrDesired;
 
   // maximal number of outstanding user requests
-  int64_t const _nrMaximum;
+  uint64_t const _nrMaximum;
 
   // number of jobs currently been worked on
   // use signed values just in case we have an underflow
-  std::atomic<int64_t> _nrWorking;
+  std::atomic<uint64_t> _nrWorking;
 
   // number of jobs that are currently been queued, but not worked on
-  std::atomic<int64_t> _nrQueued;
+  std::atomic<uint64_t> _nrQueued;
 
   // number of jobs that entered a potentially blocking situation
-  std::atomic<int64_t> _nrBlocked;
+  std::atomic<uint64_t> _nrBlocked;
 
   // number of SchedulerThread that are running
-  std::atomic<int64_t> _nrRunning;
+  std::atomic<uint64_t> _nrRunning;
 
   std::unique_ptr<JobQueue> _jobQueue;
 

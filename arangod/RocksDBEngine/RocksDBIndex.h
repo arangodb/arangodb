@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include <rocksdb/status.h>
 
 namespace rocksdb {
 class WriteBatch;
@@ -40,7 +41,7 @@ class Cache;
 }
 class LogicalCollection;
 class RocksDBComparator;
-
+  
 class RocksDBIndex : public Index {
  protected:
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
@@ -81,7 +82,7 @@ class RocksDBIndex : public Index {
 
   /// remove index elements and put it in the specified write batch. Should be
   /// used as an optimization for the non transactional fillIndex method
-  virtual int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+  virtual int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) = 0;
 
   void createCache();

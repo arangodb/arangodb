@@ -72,7 +72,7 @@ void TRI_DeleteDocumentMMFilesFulltextIndex(TRI_fts_index_t* const,
 /// @brief insert a list of words to the index
 bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const,
                                          const TRI_voc_rid_t,
-                                         std::vector<std::string>&);
+                                         std::set<std::string>&);
 
 /// @brief find all documents that contain a word (exact match)
 #if 0

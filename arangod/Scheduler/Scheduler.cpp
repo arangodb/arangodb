@@ -221,7 +221,7 @@ bool Scheduler::start(ConditionVariable* cv) {
   TRI_ASSERT(_nrMinimum <= _nrDesired);
   TRI_ASSERT(_nrDesired <= _nrMaximum);
 
-  for (size_t i = 0; i < (size_t)_nrMinimum; ++i) {
+  for (uint64_t i = 0; i < _nrMinimum; ++i) {
     startNewThread();
   }
 

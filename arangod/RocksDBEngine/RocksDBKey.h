@@ -142,7 +142,10 @@ class RocksDBKey {
   /// May be called on any valid key (in our keyspace)
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBEntryType type(RocksDBKey const&);
-  static RocksDBEntryType type(rocksdb::Slice const&);
+  static inline RocksDBEntryType type(rocksdb::Slice const& slice) {
+    return type(slice.data(), slice.size());
+  }
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the object id
@@ -249,7 +252,12 @@ class RocksDBKey {
              arangodb::StringRef const& third);
 
  private:
-  static RocksDBEntryType type(char const* data, size_t size);
+  static inline RocksDBEntryType type(char const* data, size_t size) {
+    TRI_ASSERT(data != nullptr);
+    TRI_ASSERT(size >= sizeof(char));
+    return static_cast<RocksDBEntryType>(data[0]);
+  }
+
   static TRI_voc_tick_t databaseId(char const* data, size_t size);
   static TRI_voc_cid_t collectionId(char const* data, size_t size);
   static TRI_voc_cid_t objectId(char const* data, size_t size);

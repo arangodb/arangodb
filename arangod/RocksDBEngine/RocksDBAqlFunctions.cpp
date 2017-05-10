@@ -28,9 +28,9 @@
 #include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -164,10 +164,9 @@ static arangodb::RocksDBGeoIndex* getGeoIndex(
   trx->addCollectionAtRuntime(cid, collectionName);
   Result res = trx->state()->ensureCollections();
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
-                                   res.errorMessage());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
-  
+
   auto document = trx->documentCollection(cid);
   if (document == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
@@ -195,7 +194,8 @@ static arangodb::RocksDBGeoIndex* getGeoIndex(
 static AqlValue buildGeoResult(transaction::Methods* trx,
                                LogicalCollection* collection,
                                arangodb::aql::Query* query,
-                               GeoCoordinates* cors, TRI_voc_cid_t const& cid,
+                               rocksdbengine::GeoCoordinates* cors,
+                               TRI_voc_cid_t const& cid,
                                std::string const& attributeName) {
   if (cors == nullptr) {
     return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
@@ -328,7 +328,7 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
 
-  GeoCoordinates* cors =
+  rocksdbengine::GeoCoordinates* cors =
       index->nearQuery(trx, latitude.toDouble(trx), longitude.toDouble(trx),
                        static_cast<size_t>(limitValue));
 
@@ -382,9 +382,9 @@ AqlValue RocksDBAqlFunctions::Within(
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
 
-  GeoCoordinates* cors = index->withinQuery(trx, latitudeValue.toDouble(trx),
-                                            longitudeValue.toDouble(trx),
-                                            radiusValue.toDouble(trx));
+  rocksdbengine::GeoCoordinates* cors = index->withinQuery(
+      trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx),
+      radiusValue.toDouble(trx));
 
   return buildGeoResult(trx, index->collection(), query, cors, cid,
                         attributeName);

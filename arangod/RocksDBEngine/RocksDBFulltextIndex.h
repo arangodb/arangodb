@@ -115,7 +115,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   /// remove index elements and put it in the specified write batch. Should be
   /// used as an optimization for the non transactional fillIndex method
-  int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+  int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   //  TRI_fts_index_t* internals() { return _fulltextIndex; }
@@ -131,7 +131,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
                                 velocypack::Builder& builder);
 
  private:
-  std::vector<std::string> wordlist(arangodb::velocypack::Slice const&);
+  std::set<std::string> wordlist(arangodb::velocypack::Slice const&);
 
   /// @brief the indexed attribute (path)
   std::vector<std::string> _attr;

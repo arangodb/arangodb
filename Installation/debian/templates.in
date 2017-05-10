@@ -29,3 +29,13 @@ Template: @CPACK_PACKAGE_NAME@/password_mismatch
 Type: error
 Description: Password input error
  The two passwords you entered were not the same. Please try again.
+
+Template: @CPACK_PACKAGE_NAME@/storage_engine
+Type: select
+Choices: auto, mmfiles, rocksdb
+Default: auto
+Description: Database storage engine
+ Choose which storage engine you want to use.
+ Please note that you can't switch storage engines of existing installations,
+ auto will pick the pre-existing one.
+
