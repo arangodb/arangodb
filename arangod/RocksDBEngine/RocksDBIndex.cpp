@@ -59,7 +59,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
 }
 
 RocksDBIndex::~RocksDBIndex() {
-  if (_useCache && _cachePresent) {
+  if (useCache()) {
     try {
       TRI_ASSERT(_cache != nullptr);
       TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
@@ -76,7 +76,7 @@ void RocksDBIndex::load() {
 }
 
 int RocksDBIndex::unload() {
-  if (_useCache && _cachePresent) {
+  if (useCache()) {
     disableCache();
     TRI_ASSERT(!_cachePresent);
   }
@@ -96,16 +96,18 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 void RocksDBIndex::createCache() {
   if (!_useCache || _cachePresent) {
-    // we should not get here if we do not need the cache
+    // we leave this if we do not need the cache
     // or if cache already created
     return;
   }
 
+  TRI_ASSERT(_useCache);
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   _cache = CacheManagerFeature::MANAGER->createCache(
       cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
+  TRI_ASSERT(_useCache);
 }
 
 void RocksDBIndex::disableCache() {
@@ -120,6 +122,7 @@ void RocksDBIndex::disableCache() {
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
+  TRI_ASSERT(_useCache);
 }
 
 int RocksDBIndex::drop() {

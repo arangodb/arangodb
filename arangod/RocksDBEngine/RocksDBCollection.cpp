@@ -690,6 +690,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
     iter->Seek(indexBounds.start());
     rindex->disableCache();  // TODO: proper blacklisting of keys?
+    TRI_DEFER(rindex->createCache());
+
     while (iter->Valid()) {
       rocksdb::Status s = rtrx->Delete(iter->key());
       if (!s.ok()) {
@@ -699,7 +701,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
       iter->Next();
     }
-    rindex->createCache();
   }
 }
 
