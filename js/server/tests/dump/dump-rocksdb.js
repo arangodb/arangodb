@@ -185,7 +185,7 @@ function dumpTestSuite () {
       assertFalse(p.waitForSync);
       assertFalse(p.isVolatile);
 
-      assertEqual(8, c.getIndexes().length);
+      assertEqual(9, c.getIndexes().length);
       assertEqual("primary", c.getIndexes()[0].type);
 
       assertEqual("hash", c.getIndexes()[1].type);
