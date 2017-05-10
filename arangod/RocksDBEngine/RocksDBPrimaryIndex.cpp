@@ -248,7 +248,6 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     } else {
       off = _total - (off + 1);
       _iterator->SeekForPrev(_bounds.end());
-      LOG_TOPIC(ERR, Logger::FIXME) << "ANY. XXX: " << _iterator->Valid() << " FOR " << std::string(_bounds.end().data(), _bounds.end().size());
       while (_iterator->Valid() && off-- > 0) {
         _iterator->Prev();
       }
