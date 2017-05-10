@@ -1147,7 +1147,7 @@ TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t handleChunkSize,
 
 /// @brief free the fulltext index
 void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
-  index__t* idx = (index__t*)ftx;
+  index__t* idx = static_cast<index__t*>(ftx);
 
   // free root node (this will recursively free all other nodes)
   FreeNode(idx, idx->_root);
@@ -1170,7 +1170,7 @@ void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
 }
 
 void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
-  index__t* idx = (index__t*)ftx;
+  index__t* idx = static_cast<index__t*>(ftx);
 
   // free root node (this will recursively free all other nodes)
   FreeNode(idx, idx->_root);
@@ -1211,7 +1211,7 @@ void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
 /// @brief delete a document from the index
 void TRI_DeleteDocumentMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
                                             const TRI_voc_rid_t document) {
-  index__t* idx = (index__t*)ftx;
+  index__t* idx = static_cast<index__t*>(ftx);
 
   WRITE_LOCKER(guard, idx->_lock);
   TRI_DeleteDocumentHandleMMFilesFulltextIndex(idx->_handles, document);
@@ -1249,7 +1249,7 @@ bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
   // The default comparator (<) is exactly what we need here
   //std::sort(wordlist.begin(), wordlist.end());
 
-  idx = (index__t*)ftx;
+  idx = static_cast<index__t*>(ftx);
 
   WRITE_LOCKER(guard, idx->_lock);
 
@@ -1381,7 +1381,7 @@ TRI_fulltext_result_t* TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
 
   auto maxResults = query->_maxResults;
 
-  idx = (index__t*)ftx;
+  idx = static_cast<index__t*>(ftx);
 
   READ_LOCKER(guard, idx->_lock);
 
@@ -1463,8 +1463,8 @@ TRI_fulltext_result_t* TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
 
 /// @brief dump index tree
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpTreeFtsIndex(const TRI_fts_index_t* const ftx) {
-  index__t* idx = (index__t*)ftx;
+void TRI_DumpTreeFtsIndex(TRI_fts_index_t* ftx) {
+  index__t* idx = static_cast<index__t*>(ftx);
 
   TRI_DumpHandleMMFilesFulltextIndex(idx->_handles);
   DumpNode(idx->_root, 0);
@@ -1473,8 +1473,8 @@ void TRI_DumpTreeFtsIndex(const TRI_fts_index_t* const ftx) {
 
 /// @brief dump index statistics
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpStatsFtsIndex(const TRI_fts_index_t* const ftx) {
-  index__t* idx = (index__t*)ftx;
+void TRI_DumpStatsFtsIndex(TRI_fts_index_t* ftx) {
+  index__t* idx = static_cast<index__t*>(ftx);
   TRI_fulltext_stats_t stats;
 
   stats = TRI_StatsMMFilesFulltextIndex(idx);
@@ -1499,14 +1499,12 @@ void TRI_DumpStatsFtsIndex(const TRI_fts_index_t* const ftx) {
 #endif
 
 /// @brief return stats about the index
-TRI_fulltext_stats_t TRI_StatsMMFilesFulltextIndex(const TRI_fts_index_t* const ftx) {
-  index__t* idx;
-  TRI_fulltext_stats_t stats;
-
-  idx = (index__t*)ftx;
+TRI_fulltext_stats_t TRI_StatsMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
+  index__t* idx = static_cast<index__t*>(ftx);
 
   READ_LOCKER(guard, idx->_lock);
 
+  TRI_fulltext_stats_t stats;
   stats._memoryTotal = TRI_MemoryMMFilesFulltextIndex(idx);
 #if TRI_FULLTEXT_DEBUG
   stats._memoryOwn = idx->_memoryAllocated;
@@ -1538,8 +1536,9 @@ TRI_fulltext_stats_t TRI_StatsMMFilesFulltextIndex(const TRI_fts_index_t* const 
 }
 
 /// @brief return the total memory used by the index
-size_t TRI_MemoryMMFilesFulltextIndex(const TRI_fts_index_t* const ftx) {
-  index__t* idx = (index__t*)ftx;
+size_t TRI_MemoryMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
+  // no need to lock here, as we are called from under a lock already
+  index__t* idx = static_cast<index__t*>(ftx);
 
   if (idx->_handles != nullptr) {
     return idx->_memoryAllocated + TRI_MemoryHandleMMFilesFulltextIndex(idx->_handles);
@@ -1550,11 +1549,8 @@ size_t TRI_MemoryMMFilesFulltextIndex(const TRI_fts_index_t* const ftx) {
 
 /// @brief compact the fulltext index
 /// note: the caller must hold a lock on the index before called this
-bool TRI_CompactMMFilesFulltextIndex(TRI_fts_index_t* const ftx) {
-  index__t* idx;
-  TRI_fulltext_handles_t* clone;
-
-  idx = (index__t*)ftx;
+bool TRI_CompactMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
+  index__t* idx = static_cast<index__t*>(ftx);
 
   // but don't block if the index is busy
   // try to acquire the write lock to clean up
@@ -1572,7 +1568,7 @@ bool TRI_CompactMMFilesFulltextIndex(TRI_fts_index_t* const ftx) {
   // re-align the handle numbers consecutively, starting at 1.
   // this will also populate the _map property, which can be used to clean up
   // handles of existing nodes
-  clone = TRI_CompactHandleMMFilesFulltextIndex(idx->_handles);
+  TRI_fulltext_handles_t* clone = TRI_CompactHandleMMFilesFulltextIndex(idx->_handles);
   if (clone == nullptr) {
     return false;
   }
