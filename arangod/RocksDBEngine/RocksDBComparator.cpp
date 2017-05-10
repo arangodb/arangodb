@@ -138,10 +138,6 @@ int RocksDBComparator::compareIndexedValues(VPackSlice const& lhs,
   size_t const rLength = rhs.length();
   size_t const n = lLength < rLength ? rLength : lLength;
 
-  // LOG_TOPIC(ERR, Logger::FIXME) << "COMPARING INDEX VALUES: " << lhs.toJson()
-  // << "; " << rhs.toJson() << "; LLENGTH: " << lLength << ", RLENGTH: " <<
-  // rLength << ", N: " << n;
-
   for (size_t i = 0; i < n; ++i) {
     int res = arangodb::basics::VelocyPackHelper::compare(
         (i < lLength ? lhs[i] : VPackSlice::noneSlice()),

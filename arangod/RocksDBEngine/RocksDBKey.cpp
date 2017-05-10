@@ -117,10 +117,6 @@ RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
   return type(key._buffer.data(), key._buffer.size());
 }
 
-RocksDBEntryType RocksDBKey::type(rocksdb::Slice const& slice) {
-  return type(slice.data(), slice.size());
-}
-
 uint64_t RocksDBKey::counterObjectId(rocksdb::Slice const& s) {
   TRI_ASSERT(s.size() >= (sizeof(char) + sizeof(uint64_t)));
   return uint64FromPersistent(s.data() + sizeof(char));
@@ -350,12 +346,6 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
 }
 
 // ====================== Private Methods ==========================
-
-RocksDBEntryType RocksDBKey::type(char const* data, size_t size) {
-  TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size >= sizeof(char));
-  return static_cast<RocksDBEntryType>(data[0]);
-}
 
 TRI_voc_tick_t RocksDBKey::databaseId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);

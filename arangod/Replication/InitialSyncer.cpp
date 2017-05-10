@@ -735,7 +735,7 @@ int InitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col,
     if (res.ok()) {
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), col->cid(),
-          AccessMode::Type::WRITE);
+          AccessMode::Type::EXCLUSIVE);
 
       res = trx.begin();
 
@@ -937,7 +937,7 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(_vocbase), col->cid(),
-        AccessMode::Type::WRITE);
+        AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 
@@ -1095,7 +1095,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
           SingleCollectionTransaction trx(
               transaction::StandaloneContext::Create(_vocbase), col->cid(),
-              AccessMode::Type::WRITE);
+              AccessMode::Type::EXCLUSIVE);
 
           Result res = trx.begin();
 
@@ -1212,7 +1212,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           try {
             SingleCollectionTransaction trx(
                 transaction::StandaloneContext::Create(_vocbase), col->cid(),
-                AccessMode::Type::WRITE);
+                AccessMode::Type::EXCLUSIVE);
 
             res = trx.begin();
 
