@@ -68,13 +68,16 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   
   //the following 2 values are required for correct batch handling
   std::unique_ptr<rocksdb::Iterator> _iterator; //iterator position in rocksdb
-  std::size_t _cacheIndexPosition; //position in cache for multiple batches
+  VPackSlice _arraySlice;
+  VPackBuffer<uint8_t> _arrayBuffer;
+  velocypack::ArrayIterator _arrayIterator; //position in cache for multiple batches
 
   RocksDBKeyBounds _bounds;
   bool _doUpdateBounds;
   bool _useCache;
   cache::Cache* _cache;
   VPackBuilder _cacheValueBuilder;
+  std::size_t _cacheValueSize;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {
