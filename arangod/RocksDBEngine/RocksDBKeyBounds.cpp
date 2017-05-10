@@ -92,7 +92,7 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   uint64ToPersistent(b._startBuffer, norm);  // lower endian
   norm = norm | (0xFFFFFFFFULL << 32);
   uint64ToPersistent(b._endBuffer, norm);
-  
+
   b._start = rocksdb::Slice(b._startBuffer);
   b._end = rocksdb::Slice(b._endBuffer);
   return b;
@@ -199,7 +199,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
       _startBuffer.push_back(static_cast<char>(_type));
 
       _endBuffer.append(_startBuffer);
-      nextPrefix(_endBuffer);
+      _endBuffer[0]++; // TODO: better solution?
 
       break;
     }
@@ -250,7 +250,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::Document:
-    case RocksDBEntryType::GeoIndexValue: {
+    case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::View: {
       // Collections are stored as follows:
       // Key: 1 + 8-byte ArangoDB database ID + 8-byte ArangoDB collection ID
       //
@@ -272,8 +273,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
-    case RocksDBEntryType::FulltextIndexValue:
-    case RocksDBEntryType::View: {
+    case RocksDBEntryType::FulltextIndexValue: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _startBuffer.reserve(length);
       _startBuffer.push_back(static_cast<char>(_type));
@@ -281,7 +281,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
       _endBuffer.clear();
       _endBuffer.append(_startBuffer);
-      nextPrefix(_endBuffer);
+      _endBuffer.push_back(0xFFU);
 
       break;
     }
@@ -309,7 +309,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 
       _endBuffer.clear();
       _endBuffer.append(_startBuffer);
-      nextPrefix(_endBuffer);
+      _endBuffer.push_back(0xFFU);
+
       break;
     }
 
@@ -345,8 +346,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       uint64ToPersistent(_endBuffer, first);
       _endBuffer.append(reinterpret_cast<char const*>(third.begin()),
                         static_cast<size_t>(third.byteSize()));
-      _endBuffer.push_back(_stringSeparator);
-      nextPrefix(_endBuffer);
+      _endBuffer.push_back(_stringSeparator + 1); // compare greater than
+                                                  // actual key
       break;
     }
 
@@ -355,22 +356,4 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
   }
   _start = rocksdb::Slice(_startBuffer);
   _end = rocksdb::Slice(_endBuffer);
-}
-
-void RocksDBKeyBounds::nextPrefix(std::string& s) {
-  TRI_ASSERT(s.size() >= 1);
-
-  size_t i = s.size() - 1;
-  for (; (i > 0) && (s[i] == '\xff'); --i) {
-  }
-
-  if ((i == 0) && (s[i] == '\xff')) {
-    s.push_back('\x00');
-    return;
-  }
-
-  s[i] = static_cast<char>(static_cast<unsigned char>(s[i]) + 1);
-  for (i = i + 1; i < s.size(); i++) {
-    s[i] = '\x00';
-  }
 }

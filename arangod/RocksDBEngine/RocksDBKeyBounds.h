@@ -171,8 +171,6 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);
 
-  void nextPrefix(std::string& s);
-
  private:
   static const char _stringSeparator;
   RocksDBEntryType _type;
