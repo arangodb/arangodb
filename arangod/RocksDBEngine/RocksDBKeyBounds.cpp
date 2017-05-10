@@ -92,6 +92,9 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   uint64ToPersistent(b._startBuffer, norm);  // lower endian
   norm = norm | (0xFFFFFFFFULL << 32);
   uint64ToPersistent(b._endBuffer, norm);
+  
+  b._start = rocksdb::Slice(b._startBuffer);
+  b._end = rocksdb::Slice(b._endBuffer);
   return b;
 }
 
