@@ -100,9 +100,7 @@
   c.ensureSkiplist("a_ss1", "a_ss2", { sparse: true });
   c.ensureFulltextIndex("a_f");
 
-  if (db._engine().name !== "rocksdb") {
-    c.ensureGeoIndex("a_la", "a_lo");
-  }
+  c.ensureGeoIndex("a_la", "a_lo");
 
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated", { isVolatile: true });
