@@ -834,3 +834,7 @@ std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
   }
   return generateRawJwt(bodyBuilder);
 }
+
+std::shared_ptr<AuthContext> AuthInfo::getAuthContext(std::string const& username, std::string const& database) {
+  return std::shared_ptr<AuthContext>(new AuthContext());
+}

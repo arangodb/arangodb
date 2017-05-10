@@ -38,6 +38,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationHandler.h"
+#include "Utils/ExecContext.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -151,6 +152,7 @@ class AuthJwtResult: public AuthResult {
 
 
 class AuthenticationHandler;
+class AuthContext;
 
 class AuthInfo {
  public:
@@ -182,6 +184,8 @@ class AuthInfo {
   std::string jwtSecret();
   std::string generateJwt(VPackBuilder const&);
   std::string generateRawJwt(VPackBuilder const&);
+
+  std::shared_ptr<AuthContext> getAuthContext(std::string const& username, std::string const& database);
  
  private:
   void reload();

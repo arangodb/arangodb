@@ -20,9 +20,14 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_UTILS_EXECCONTEXT_H
+#define ARANGOD_UTILS_EXECCONTEXT_H 1
+
 #include "VocBase/AuthInfo.h"
 
 namespace arangodb {
+
+enum class AuthLevel;
 
 class AuthContext {
   public:
@@ -48,3 +53,5 @@ class ExecContext {
     std::shared_ptr<AuthContext> _auth;
 };
 }
+
+#endif
