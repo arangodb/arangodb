@@ -31,8 +31,8 @@
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDitch.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/LogicalCollection.h"
 #include "MMFiles/MMFilesLogfileManager.h"
@@ -51,7 +51,7 @@ void MMFilesCleanupThread::signal() {
 
 /// @brief cleanup event loop
 void MMFilesCleanupThread::run() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   uint64_t iterations = 0;
 
   std::vector<arangodb::LogicalCollection*> collections;
@@ -226,8 +226,9 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
           return;
         }
       }
-  
-      if (!collection->getPhysical()->isFullyCollected()) {
+      
+      MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(collection->getPhysical());
+      if (!mmColl->isFullyCollected()) {
         bool isDeleted = false;
 
         // if there is still some garbage collection to perform,

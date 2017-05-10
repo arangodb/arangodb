@@ -84,11 +84,6 @@ class PhysicalCollection {
   /// @brief opens an existing collection
   virtual void open(bool ignoreErrors) = 0;
 
-  /// @brief iterate all markers of a collection on load
-  virtual int iterateMarkersOnLoad(transaction::Methods* trx) = 0;
-
-  virtual bool isFullyCollected() const = 0;
-
   void drop();
 
   ////////////////////////////////////
@@ -143,11 +138,6 @@ class PhysicalCollection {
   virtual bool readDocument(transaction::Methods* trx,
                             DocumentIdentifierToken const& token,
                             ManagedDocumentResult& result) = 0;
-
-  virtual bool readDocumentConditional(transaction::Methods* trx,
-                                       DocumentIdentifierToken const& token,
-                                       TRI_voc_tick_t maxTick,
-                                       ManagedDocumentResult& result) = 0;
 
   virtual int insert(arangodb::transaction::Methods* trx,
                      arangodb::velocypack::Slice const newSlice,

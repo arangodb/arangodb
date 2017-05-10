@@ -366,11 +366,6 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // extract ttl
     // double expires =
     // VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
-
-    // TRI_voc_tick_t id;
-    // StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    // int res = engine->insertCompactionBlocker(_vocbase, expires, id);
-
     RocksDBReplicationContext* ctx = _manager->createContext();
     if (ctx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to create replication context");
@@ -1638,9 +1633,6 @@ void RocksDBRestReplicationHandler::handleCommandSync() {
   config._includeSystem = includeSystem;
   config._verbose = verbose;
   config._useCollectionId = useCollectionId;
-
-  // wait until all data in current logfile got synced
-  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
 
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
                        verbose);

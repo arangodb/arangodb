@@ -46,10 +46,10 @@ RocksDBIndex::RocksDBIndex(
       _cachePresent(false),
       _useCache(useCache) {
   if (_useCache) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "creating cache";
+    //LOG_TOPIC(ERR, Logger::FIXME) << "creating cache";
     createCache();
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME) << "not creating cache";
+    //LOG_TOPIC(ERR, Logger::FIXME) << "not creating cache";
   }
 
 }
@@ -87,8 +87,8 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 int RocksDBIndex::unload() {
-  LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
   if (useCache()) {
+    //LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
     disableCache();
     TRI_ASSERT(!_cachePresent);
   }

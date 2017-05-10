@@ -38,7 +38,7 @@ using namespace arangodb;
 
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in
 ///        list.
-static void ExtractWords(std::vector<std::string>& words,
+static void ExtractWords(std::set<std::string>& words,
                          VPackSlice const value,
                          size_t minWordLength,
                          int level) {
@@ -217,7 +217,7 @@ int MMFilesFulltextIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId
                           VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
-  std::vector<std::string> words = wordlist(doc);
+  std::set<std::string> words = wordlist(doc);
 
   if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
@@ -260,8 +260,8 @@ int MMFilesFulltextIndex::cleanup() {
 
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
-std::vector<std::string> MMFilesFulltextIndex::wordlist(VPackSlice const& doc) {
-  std::vector<std::string> words;
+std::set<std::string> MMFilesFulltextIndex::wordlist(VPackSlice const& doc) {
+  std::set<std::string> words;
   try {
     VPackSlice const value = doc.get(_attr);
 

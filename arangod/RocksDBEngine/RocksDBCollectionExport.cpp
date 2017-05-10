@@ -52,30 +52,7 @@ RocksDBCollectionExport::RocksDBCollectionExport(
 
 RocksDBCollectionExport::~RocksDBCollectionExport() {}
 
-void RocksDBCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
-
-  // none of this should matter on rocksdb
-  // try to acquire the exclusive lock on the compaction
-  /*
-   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-   engine->preventCompaction(_collection->vocbase(),
-                            [this](TRI_vocbase_t* vocbase) {
-                              // TODO: do something under compaction lock?
-                            });
-
-  {
-    static uint64_t const SleepTime = 10000;
-
-    uint64_t tries = 0;
-    uint64_t const maxTries = maxWaitTime / SleepTime;
-
-    while (++tries < maxTries) {
-      if (_collection->getPhysical()->isFullyCollected()) {
-        break;
-      }
-      usleep(SleepTime);
-    }
-  }*/
+void RocksDBCollectionExport::run(size_t limit) {
 
   {
     SingleCollectionTransaction trx(
@@ -110,10 +87,6 @@ void RocksDBCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
             _vpack.emplace_back(VPackSlice(mmdr.vpack()));
             --limit;
           }
-          /*if (_collection->readDocumentConditional(&trx, token, 0, mmdr)) {
-            _vpack.emplace_back(VPackSlice(mmdr.vpack()));
-            --limit;
-          }*/
           return true;
         });
 

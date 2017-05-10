@@ -172,11 +172,6 @@ class RocksDBEngine final : public StorageEngine {
   void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                    TRI_idx_iid_t id,
                    arangodb::velocypack::Slice const& data) override;
-  void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                 TRI_idx_iid_t id) override;
-  void dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                          arangodb::velocypack::Slice const& data,
-                          bool writeMarker, int&) override;
   void unloadCollection(TRI_vocbase_t* vocbase,
                         arangodb::LogicalCollection* collection) override;
   void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
@@ -192,49 +187,7 @@ class RocksDBEngine final : public StorageEngine {
                   arangodb::LogicalView const*, bool doSync) override;
   void signalCleanup(TRI_vocbase_t* vocbase) override;
 
-  // document operations
-  // -------------------
-  void iterateDocuments(
-      TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-      std::function<void(arangodb::velocypack::Slice const&)> const& cb)
-      override;
-  void addDocumentRevision(
-      TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-      arangodb::velocypack::Slice const& document) override;
-  void removeDocumentRevision(
-      TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-      arangodb::velocypack::Slice const& document) override;
-
-  /// @brief remove data of expired compaction blockers
-  bool cleanupCompactionBlockers(TRI_vocbase_t* vocbase) override;
-
-  /// @brief insert a compaction blocker
-  int insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
-                              TRI_voc_tick_t& id) override;
-
-  /// @brief touch an existing compaction blocker
-  int extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id,
-                              double ttl) override;
-
-  /// @brief remove an existing compaction blocker
-  int removeCompactionBlocker(TRI_vocbase_t* vocbase,
-                              TRI_voc_tick_t id) override;
-
-  /// @brief a callback function that is run while it is guaranteed that there
-  /// is no compaction ongoing
-  void preventCompaction(
-      TRI_vocbase_t* vocbase,
-      std::function<void(TRI_vocbase_t*)> const& callback) override;
-
-  /// @brief a callback function that is run there is no compaction ongoing
-  bool tryPreventCompaction(TRI_vocbase_t* vocbase,
-                            std::function<void(TRI_vocbase_t*)> const& callback,
-                            bool checkForActiveBlockers) override;
-
   int shutdownDatabase(TRI_vocbase_t* vocbase) override;
-
-  int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection,
-                     bool ignoreErrors) override;
 
   /// @brief Add engine-specific AQL functions.
   void addAqlFunctions() override;
@@ -281,7 +234,7 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const FeatureName;
   RocksDBCounterManager* counterManager() const;
   RocksDBReplicationManager* replicationManager() const;
-  bool syncWal();
+  arangodb::Result syncWal();
 
  private:
   /// single rocksdb database used in this storage engine

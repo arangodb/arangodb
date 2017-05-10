@@ -394,7 +394,7 @@ char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
 /// @brief Extract the words from a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::getWords(std::vector<std::string>& words,
+bool Utf8Helper::getWords(std::set<std::string>& words,
                           std::string const& text, size_t minimalLength,
                           size_t maximalLength, bool lowerCase) {
   UErrorCode status = U_ZERO_ERROR;
@@ -458,21 +458,6 @@ bool Utf8Helper::getWords(std::vector<std::string>& words,
     return false;
   }
 
-  // estimate an initial vector size. this is not accurate, but setting the
-  // initial size to some
-  // value in the correct order of magnitude will save a lot of vector
-  // reallocations later
-  size_t initialWordCount = textLength / (2 * (minimalLength + 1));
-  if (initialWordCount < 32) {
-    // alloc at least 32 pointers (= 256b)
-    initialWordCount = 32;
-  } else if (initialWordCount > 8192) {
-    // alloc at most 8192 pointers (= 64kb)
-    initialWordCount = 8192;
-  }
-  // Reserve initialWordCount additional words in the vector
-  words.reserve(words.size() + initialWordCount);
-
   BreakIterator* wordIterator =
       BreakIterator::createWordInstance(locale, status);
   TRI_ASSERT(wordIterator != nullptr);
@@ -496,7 +481,7 @@ bool Utf8Helper::getWords(std::vector<std::string>& words,
                                        chunkLength, &utf8WordLength);
       if (utf8Word != nullptr) {
         std::string word(utf8Word, utf8WordLength);
-        words.emplace_back(word);
+        words.emplace(word);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8Word);
       }
     }

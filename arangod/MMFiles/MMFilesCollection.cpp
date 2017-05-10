@@ -43,6 +43,7 @@
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -1676,7 +1677,7 @@ int MMFilesCollection::openWorker(bool ignoreErrors) {
 
   try {
     // check for journals and datafiles
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
     int res = engine->openCollection(vocbase, _logicalCollection, ignoreErrors);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2240,9 +2241,8 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   }
 
   auto cid = _logicalCollection->cid();
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   engine->dropIndex(vocbase, cid, iid);
-
   {
     bool const doSync =
         application_features::ApplicationServer::getFeature<DatabaseFeature>(

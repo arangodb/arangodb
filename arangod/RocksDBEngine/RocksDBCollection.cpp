@@ -194,18 +194,6 @@ void RocksDBCollection::open(bool ignoreErrors) {
   }
 }
 
-/// @brief iterate all markers of a collection on load
-int RocksDBCollection::iterateMarkersOnLoad(
-    arangodb::transaction::Methods* trx) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
-}
-
-bool RocksDBCollection::isFullyCollected() const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return false;
-}
-
 void RocksDBCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
@@ -835,15 +823,6 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
   TRI_voc_rid_t revisionId = tkn->revisionId();
   auto res = lookupRevisionVPack(revisionId, trx, result);
   return res.ok();
-}
-
-bool RocksDBCollection::readDocumentConditional(
-    transaction::Methods* trx, DocumentIdentifierToken const& token,
-    TRI_voc_tick_t maxTick, ManagedDocumentResult& result) {
-  // should not be called for RocksDB engine. TODO: move this out of general
-  // API!
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return false;
 }
 
 int RocksDBCollection::insert(arangodb::transaction::Methods* trx,

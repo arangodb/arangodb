@@ -61,7 +61,7 @@ class RocksDBCollectionExport {
   ~RocksDBCollectionExport();
 
  public:
-  void run(uint64_t, size_t);
+  void run(size_t);
 
  private:
   std::unique_ptr<arangodb::CollectionGuard> _guard;

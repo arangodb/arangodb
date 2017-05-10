@@ -527,8 +527,7 @@ std::string RocksDBEngine::collectionPath(TRI_vocbase_t const* vocbase,
 }
 
 void RocksDBEngine::waitForSync(TRI_voc_tick_t tick) {
-  // TODO: does anything need to be done here?
-  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
+  // intentionally empty, not useful for this type of engine
 }
 
 std::shared_ptr<arangodb::velocypack::Builder>
@@ -835,20 +834,6 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
                                 TRI_idx_iid_t indexId,
                                 arangodb::velocypack::Slice const& data) {}
 
-void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,
-                              TRI_voc_cid_t collectionId, TRI_idx_iid_t iid) {
-  // probably not required
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
-void RocksDBEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase,
-                                       TRI_voc_cid_t collectionId,
-                                       arangodb::velocypack::Slice const& data,
-                                       bool writeMarker, int&) {
-  // probably not required
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
 void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
                                      arangodb::LogicalCollection* collection) {
   // TODO: does anything else have to happen?
@@ -892,78 +877,8 @@ void RocksDBEngine::signalCleanup(TRI_vocbase_t*) {
   // nothing to do here
 }
 
-// document operations
-// -------------------
-void RocksDBEngine::iterateDocuments(
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    std::function<void(arangodb::velocypack::Slice const&)> const& cb) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
-void RocksDBEngine::addDocumentRevision(
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    arangodb::velocypack::Slice const& document) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
-void RocksDBEngine::removeDocumentRevision(
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    arangodb::velocypack::Slice const& document) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
-/// @brief remove data of expired compaction blockers
-bool RocksDBEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
-}
-
-/// @brief insert a compaction blocker
-int RocksDBEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
-                                           TRI_voc_tick_t& id) {
-  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief touch an existing compaction blocker
-int RocksDBEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase,
-                                           TRI_voc_tick_t id, double ttl) {
-  // THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief remove an existing compaction blocker
-int RocksDBEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
-                                           TRI_voc_tick_t id) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
-}
-
-/// @brief a callback function that is run while it is guaranteed that there
-/// is no compaction ongoing
-void RocksDBEngine::preventCompaction(
-    TRI_vocbase_t* vocbase,
-    std::function<void(TRI_vocbase_t*)> const& callback) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-}
-
-/// @brief a callback function that is run there is no compaction ongoing
-bool RocksDBEngine::tryPreventCompaction(
-    TRI_vocbase_t* vocbase, std::function<void(TRI_vocbase_t*)> const& callback,
-    bool checkForActiveBlockers) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return true;
-}
-
 int RocksDBEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
   return TRI_ERROR_NO_ERROR;
-}
-
-int RocksDBEngine::openCollection(TRI_vocbase_t* vocbase,
-                                  LogicalCollection* collection,
-                                  bool ignoreErrors) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
 }
 
 /// @brief Add engine-specific AQL functions.
@@ -1007,16 +922,16 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
   return it->second;
 }
 
-bool RocksDBEngine::syncWal() {
+arangodb::Result RocksDBEngine::syncWal() {
 #ifdef _WIN32
   // SyncWAL always reports "not implemented" on Windows
-  return true;
+  return arangodb::Result();
 #else
   rocksdb::Status status = _db->GetBaseDB()->SyncWAL();
   if (!status.ok()) {
-    return false;
+    return rocksutils::convertStatus(status);
   }
-  return true;
+  return arangodb::Result();
 #endif
 }
 

@@ -192,11 +192,10 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 int RocksDBFulltextIndex::insert(transaction::Methods* trx,
                                  TRI_voc_rid_t revisionId,
                                  VPackSlice const& doc, bool isRollback) {
-  std::vector<std::string> words = wordlist(doc);
+  std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
-
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
 
@@ -206,10 +205,8 @@ int RocksDBFulltextIndex::insert(transaction::Methods* trx,
   RocksDBValue value = RocksDBValue::IndexValue();
 
   int res = TRI_ERROR_NO_ERROR;
-  size_t const count = words.size();
-  size_t i = 0;
-  for (; i < count; ++i) {
-    std::string const& word = words[i];
+  // size_t const count = words.size();
+  for (std::string const& word : words) {
     RocksDBKey key =
         RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
 
@@ -220,21 +217,21 @@ int RocksDBFulltextIndex::insert(transaction::Methods* trx,
       break;
     }
   }
-  if (res != TRI_ERROR_NO_ERROR) {
+  /*if (res != TRI_ERROR_NO_ERROR) {
     for (size_t j = 0; j < i; ++j) {
       std::string const& word = words[j];
       RocksDBKey key =
           RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
       rtrx->Delete(key.string());
     }
-  }
+  }*/
   return res;
 }
 
 int RocksDBFulltextIndex::insertRaw(rocksdb::WriteBatchWithIndex* batch,
                                     TRI_voc_rid_t,
                                     arangodb::velocypack::Slice const& doc) {
-  std::vector<std::string> words = wordlist(doc);
+  std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -244,9 +241,7 @@ int RocksDBFulltextIndex::insertRaw(rocksdb::WriteBatchWithIndex* batch,
   StringRef docKey(doc.get(StaticStrings::KeyString));
   RocksDBValue value = RocksDBValue::IndexValue();
 
-  size_t const count = words.size();
-  for (size_t i = 0; i < count; ++i) {
-    std::string const& word = words[i];
+  for (std::string const& word : words) {
     RocksDBKey key =
         RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
     batch->Put(key.string(), value.string());
@@ -258,7 +253,7 @@ int RocksDBFulltextIndex::insertRaw(rocksdb::WriteBatchWithIndex* batch,
 int RocksDBFulltextIndex::remove(transaction::Methods* trx,
                                  TRI_voc_rid_t revisionId,
                                  VPackSlice const& doc, bool isRollback) {
-  std::vector<std::string> words = wordlist(doc);
+  std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
     // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";
@@ -272,9 +267,7 @@ int RocksDBFulltextIndex::remove(transaction::Methods* trx,
   // unique indexes have a different key structure
   StringRef docKey(doc.get(StaticStrings::KeyString));
   int res = TRI_ERROR_NO_ERROR;
-  size_t const count = words.size();
-  for (size_t i = 0; i < count; ++i) {
-    std::string const& word = words[i];
+  for (std::string const& word : words) {
     RocksDBKey key =
         RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
 
@@ -287,15 +280,14 @@ int RocksDBFulltextIndex::remove(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBFulltextIndex::removeRaw(rocksdb::WriteBatchWithIndex* batch, TRI_voc_rid_t,
+int RocksDBFulltextIndex::removeRaw(rocksdb::WriteBatchWithIndex* batch,
+                                    TRI_voc_rid_t,
                                     arangodb::velocypack::Slice const& doc) {
-  std::vector<std::string> words = wordlist(doc);
+  std::set<std::string> words = wordlist(doc);
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   StringRef docKey(doc.get(StaticStrings::KeyString));
-  size_t const count = words.size();
-  for (size_t i = 0; i < count; ++i) {
-    std::string const& word = words[i];
+  for (std::string const& word : words) {
     RocksDBKey key =
         RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
     batch->Delete(key.string());
@@ -315,9 +307,8 @@ int RocksDBFulltextIndex::cleanup() {
 
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in
 ///        list.
-static void ExtractWords(std::vector<std::string>& words,
-                         VPackSlice const value, size_t minWordLength,
-                         int level) {
+static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
+                         size_t minWordLength, int level) {
   if (value.isString()) {
     // extract the string value for the indexed attribute
     std::string text = value.copyString();
@@ -340,8 +331,8 @@ static void ExtractWords(std::vector<std::string>& words,
 
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
-std::vector<std::string> RocksDBFulltextIndex::wordlist(VPackSlice const& doc) {
-  std::vector<std::string> words;
+std::set<std::string> RocksDBFulltextIndex::wordlist(VPackSlice const& doc) {
+  std::set<std::string> words;
   try {
     VPackSlice const value = doc.get(_attr);
 
