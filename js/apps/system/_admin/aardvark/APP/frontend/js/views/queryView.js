@@ -2000,7 +2000,7 @@
                 checkQueryStatus(data.id);
               } else {
                 pushQueryResults(data);
-                self.renderQueryResult(self.tmpQueryResult, counter, queryID);
+                self.renderQueryResult(self.tmpQueryResult, counter, false, queryID);
                 self.tmpQueryResult = null;
               }
               // SCROLL TO RESULT BOX

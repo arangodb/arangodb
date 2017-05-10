@@ -26,7 +26,7 @@ fi
 
 if test "$DO_CONFIGURE" = "yes"; then
     STATE=1
-    LASTSTATE=8
+    LASTSTATE=5
     while [ "$STATE" != 0 -a "$STATE" -le "$LASTSTATE" ]; do
 
 	case "$STATE" in
@@ -44,17 +44,19 @@ if test "$DO_CONFIGURE" = "yes"; then
                 db_get @CPACK_PACKAGE_NAME@/password_again
                 if [ "${ROOT_PW}" = "${RET}" ]; then
                     ROOT_PW=""
-                    break
                 else
                     db_input critical @CPACK_PACKAGE_NAME@/password_mismatch
 	            STATE=$(($STATE - 1))
+                    db_set @CPACK_PACKAGE_NAME@/password_again ""
                 fi
-                db_set @CPACK_PACKAGE_NAME@/password_again ""
 		;;
 	    3)
                 db_input high @CPACK_PACKAGE_NAME@/upgrade || true
 		;;
-	    4)
+            4)
+                db_input high @CPACK_PACKAGE_NAME@/storage_engine || true
+                ;;
+	    5)
                 db_get @CPACK_PACKAGE_NAME@/upgrade
 
                 if [ "$RET" = "true" ]; then

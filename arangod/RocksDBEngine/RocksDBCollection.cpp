@@ -81,7 +81,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
-      _revisionId(0) {
+      _revisionId(0),
+      _hasGeoIndex(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
@@ -91,7 +92,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
       _numberDocuments(0),
-      _revisionId(0) {
+      _revisionId(0),
+      _hasGeoIndex(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
@@ -677,8 +679,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
         indexBounds = RocksDBKeyBounds::FulltextIndex(rindex->objectId());
         break;
-      // TODO add options for geoindex, fulltext etc
-      default:
+      case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
+      case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
+        indexBounds = RocksDBKeyBounds::GeoIndex(rindex->objectId());
+        break;
+      case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
 
@@ -688,6 +693,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
     iter->Seek(indexBounds.start());
     rindex->disableCache();  // TODO: proper blacklisting of keys?
+    TRI_DEFER(rindex->createCache());
+
     while (iter->Valid()) {
       rocksdb::Status s = rtrx->Delete(iter->key());
       if (!s.ok()) {
@@ -697,7 +704,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
       iter->Next();
     }
-    rindex->createCache();
   }
 }
 

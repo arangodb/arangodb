@@ -6,6 +6,10 @@ ARANGODB="/usr/sbin/arangod"
 # source debconf library
 . /usr/share/debconf/confmodule
 
+db_get @CPACK_PACKAGE_NAME@/storage_engine
+STORAGE_ENGINE=$RET
+sed -i /etc/arangodb3/arangod.conf -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;"
+
 if [ "$1" = "configure" -a -z "$2" ]; then
     db_get @CPACK_PACKAGE_NAME@/password
 

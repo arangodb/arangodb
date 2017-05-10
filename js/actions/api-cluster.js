@@ -1341,38 +1341,61 @@ actions.defineHttp({
       } catch (e) {
       }
 
-      followerOP = null;
-      try {
-        followerOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.toCheck, '_system',
-        '/_api/collection/' + shard.shard + '/count', '', {}, options);
-      } catch (e) {
-      }
+      // IMHO these try...catch things should at least log something but I don't want to
+      // introduce last minute log spam before the release (this was not logging either before restructuring it)
+      let followerOps = shard.toCheck.map(follower => {
+        try {
+        return ArangoClusterComm.asyncRequest('GET', 'server:' + follower, '_system', '/_api/collection/' + shard.shard + '/count', '', {}, options);
+        } catch (e) {
+          return null;
+        }
+      });
+
+
+      let [minFollowerCount, maxFollowerCount] = followerOps.reduce((result, followerOp) => {
+        if (!followerOp) {
+          return result;
+        }
+
+        let followerCount = 0;
+        try {
+          followerR = ArangoClusterComm.wait(followerOp);
+          if (followerR.status !== 'BACKEND_UNAVAILABLE') {
+            try {
+              followerBody = JSON.parse(followerR.body);
+              followerCount = followerBody.count;
+            } catch (e) {
+            }
+          }
+        } catch(e) {
+        }
+        if (result === null) {
+          return [followerCount, followerCount];
+        } else {
+          return [Math.min(followerCount, result[0]), Math.max(followerCount, result[1])];
+        }
+      }, null);
 
       let leaderCount = null;
-
       if (leaderOP) {
         leaderR = ArangoClusterComm.wait(leaderOP);
-        leaderBody = JSON.parse(leaderR.body);
-        leaderCount = leaderBody.count;
-      }
-
-      let followerCount = null;
-      if (followerOP) {
-        followerR = ArangoClusterComm.wait(followerOP);
-
-        if (followerR.status !== 'BACKEND_UNAVAILABLE') {
-          try {
-            followerBody = JSON.parse(followerR.body);
-            followerCount = followerBody.count;
-
-            result.results[shard.collection].Plan[shard.shard].progress = {
-              total: leaderCount,
-              current: followerCount
-            };
-          } catch (e) {
-          }
+        try {
+          leaderBody = JSON.parse(leaderR.body);
+          leaderCount = leaderBody.count;
+        } catch (e) {
         }
       }
+
+      let followerCount;
+      if (minFollowerCount < leaderCount) {
+        followerCount = minFollowerCount;
+      } else {
+        followerCount = maxFollowerCount;
+      }
+      result.results[shard.collection].Plan[shard.shard].progress = {
+        total: leaderCount,
+        current: followerCount,
+      };
     });
 
     actions.resultOk(req, res, actions.HTTP_OK, result);
