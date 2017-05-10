@@ -603,13 +603,17 @@
       }
     },
 
-    renderStatisticBox: function (name, value, title) {
+    renderStatisticBox: function (name, value, title, rowCount) {
       // box already rendered, just update value
       if ($('#node-info #nodeattribute-' + name).length) {
         $('#node-info #nodeattribute-' + name).html(value);
       } else {
         var elem = '';
-        elem += '<div class="pure-u-1-2 pure-u-md-1-4" style="background-color: #fff">';
+        if (rowCount === 6) {
+          elem += '<div class="pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-6" style="background-color: #fff">';
+        } else {
+          elem += '<div class="pure-u-1-2 pure-u-md-1-4" style="background-color: #fff">';
+        }
         elem += '<div class="valueWrapper">';
         if (title) {
           elem += '<div id="nodeattribute-' + name + '" class="value tippy" title="' + value + '">' + value + '</div>';
@@ -629,12 +633,13 @@
       if (frontendConfig.isCluster) {
         // Cluster node
         if (this.serverInfo.isDBServer) {
-          this.renderStatisticBox('Role', 'DBServer');
+          this.renderStatisticBox('Role', 'DBServer', undefined, 6);
         } else {
-          this.renderStatisticBox('Role', 'Coordinator');
+          this.renderStatisticBox('Role', 'Coordinator', undefined, 6);
         }
 
-        this.renderStatisticBox('Host', this.serverInfo.raw, this.serverInfo.raw);
+        this.renderStatisticBox('Host', this.serverInfo.raw, this.serverInfo.raw, 6);
+        /*
         if (this.serverInfo.endpoint) {
           this.renderStatisticBox('Protocol', this.serverInfo.endpoint.substr(0, this.serverInfo.endpoint.indexOf('/') - 1));
         } else {
@@ -642,6 +647,7 @@
         }
 
         this.renderStatisticBox('ID', this.serverInfo.target, this.serverInfo.target);
+        */
 
         // get node version + license
         $.ajax({
@@ -651,12 +657,12 @@
           contentType: 'application/json',
           processData: false,
           success: function (data) {
-            self.renderStatisticBox('Version', frontendConfig.version.version);
-            self.renderStatisticBox('License', frontendConfig.version.license);
+            self.renderStatisticBox('Version', frontendConfig.version.version, undefined, 6);
+            self.renderStatisticBox('Edition', frontendConfig.version.license, undefined, 6);
           },
           error: function (data) {
             self.renderStatisticBox('Version', 'Error');
-            self.renderStatisticBox('License', 'Error');
+            self.renderStatisticBox('Edition', 'Error');
           }
         });
 
@@ -668,10 +674,10 @@
           contentType: 'application/json',
           processData: false,
           success: function (data) {
-            self.renderStatisticBox('Engine', data.name);
+            self.renderStatisticBox('Engine', data.name, undefined, 6);
           },
           error: function (data) {
-            self.renderStatisticBox('Engine', 'Error');
+            self.renderStatisticBox('Engine', 'Error', undefined, 6);
           }
         });
 
@@ -683,17 +689,17 @@
           contentType: 'application/json',
           processData: false,
           success: function (data) {
-            self.renderStatisticBox('Uptime', moment.duration(data.server.uptime, 'seconds').humanize());
+            self.renderStatisticBox('Uptime', moment.duration(data.server.uptime, 'seconds').humanize(), undefined, 6);
           },
           error: function (data) {
-            self.renderStatisticBox('Uptime', 'Error');
+            self.renderStatisticBox('Uptime', 'Error', undefined, 6);
           }
         });
       } else {
         // Standalone
         // version + license
         this.renderStatisticBox('Version', frontendConfig.version.version);
-        this.renderStatisticBox('License', frontendConfig.version.license);
+        this.renderStatisticBox('Edition', frontendConfig.version.license);
 
         // engine status
         $.ajax({
