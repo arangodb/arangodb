@@ -383,9 +383,16 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   // add index information
   size_t sizeIndexes = memory();
   size_t numIndexes = 0;
+  bool seenEdgeIndex = false;
   for (auto const& idx : _indexes) {
+    // only count an edge index instance
+    if (idx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || !seenEdgeIndex) {
+      ++numIndexes;
+    }
+    if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      seenEdgeIndex = true;
+    }
     sizeIndexes += static_cast<size_t>(idx->memory());
-    ++numIndexes;
   }
 
   builder->add("indexes", VPackValue(VPackValueType::Object));

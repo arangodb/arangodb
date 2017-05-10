@@ -1220,8 +1220,16 @@ void RocksDBCollection::deferDropCollection(
 
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(
-    std::shared_ptr<arangodb::velocypack::Builder>&) {
-  // no specific figures yet
+    std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+  
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  rocksdb::Range r(bounds.start(), bounds.end());
+
+  uint64_t out = 0;
+  db->GetApproximateSizes(&r, 1, &out, true);
+
+  builder->add("documentsSize", VPackValue(out));
 }
 
 /// @brief creates the initial indexes for the collection
