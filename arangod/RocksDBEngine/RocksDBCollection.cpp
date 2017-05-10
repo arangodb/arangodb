@@ -679,8 +679,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
         indexBounds = RocksDBKeyBounds::FulltextIndex(rindex->objectId());
         break;
-      // TODO add options for geoindex, fulltext etc
-      default:
+      case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
+      case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
+        indexBounds = RocksDBKeyBounds::GeoIndex(rindex->objectId());
+        break;
+      case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
 
