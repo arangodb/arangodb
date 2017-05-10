@@ -77,7 +77,7 @@ class AuthEntry {
   AuthEntry(std::string&& username, std::string&& passwordMethod,
             std::string&& passwordSalt, std::string&& passwordHash,
             std::unordered_map<std::string, AuthLevel>&& databases, AuthLevel allDatabases,
-            bool active, bool mustChange, AuthSource source)
+            bool active, bool mustChange, AuthSource source, std::unordered_map<std::string, std::shared_ptr<AuthContext>>&& authContexts)
       : _username(std::move(username)),
         _passwordMethod(std::move(passwordMethod)),
         _passwordSalt(std::move(passwordSalt)),
@@ -87,6 +87,7 @@ class AuthEntry {
         _created(TRI_microtime()),
         _source(source),
         _databases(std::move(databases)),
+        _authContexts(std::move(authContexts)),
         _allDatabases(allDatabases) {}
   
   AuthEntry(AuthEntry const& other) = delete;

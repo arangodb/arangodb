@@ -128,10 +128,12 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
     }
   }
 
+  std::unordered_map<std::string, std::shared_ptr<AuthContext>> authContexts;
+
   // build authentication entry
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
                    saltSlice.copyString(), hashSlice.copyString(), std::move(databases),
-                   allDatabases, active, mustChange, source);
+                   allDatabases, active, mustChange, source, std::move(authContexts));
 }
 
 AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
