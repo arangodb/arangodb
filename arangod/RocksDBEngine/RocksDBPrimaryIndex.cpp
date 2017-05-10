@@ -116,7 +116,6 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index, bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
-      _cmp(index->_cmp),
       _reverse(reverse),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
   // acquire rocksdb transaction
@@ -126,6 +125,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   auto const& options = state->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
+  TRI_ASSERT(options.prefix_same_as_start);
 
   _iterator.reset(rtrx->GetIterator(options));
   if (reverse) {
@@ -138,7 +138,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
 bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  if (limit == 0 || !_iterator->Valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -157,7 +157,7 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
       _iterator->Next();
     }
 
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!_iterator->Valid()) {
       return false;
     }
   }
@@ -170,7 +170,7 @@ bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb,
                                           size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  if (limit == 0 || !_iterator->Valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -188,7 +188,7 @@ bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb,
     } else {
       _iterator->Next();
     }
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!_iterator->Valid()) {
       return false;
     }
   }
@@ -214,16 +214,6 @@ void RocksDBAllIndexIterator::reset() {
     _iterator->SeekForPrev(_bounds.end());
   } else {
     _iterator->Seek(_bounds.start());
-  }
-}
-
-bool RocksDBAllIndexIterator::outOfRange() const {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (_reverse) {
-    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
-  } else {
-    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
   }
 }
 
@@ -271,7 +261,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
 bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  if (limit == 0 || !_iterator->Valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -285,7 +275,7 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
     --limit;
     _returned++;
     _iterator->Next();
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!_iterator->Valid()) {
       if (_returned < _total) {
         _iterator->Seek(_bounds.start());
         continue;
@@ -297,11 +287,6 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
 }
 
 void RocksDBAnyIndexIterator::reset() { _iterator->Seek(_bounds.start()); }
-
-bool RocksDBAnyIndexIterator::outOfRange() const {
-  TRI_ASSERT(_trx->state()->isRunning());
-  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
-}
 
 // ================ PrimaryIndex ================
 
@@ -460,8 +445,8 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBPrimaryIndex::insertRaw(rocksdb::WriteBatchWithIndex*,
-                                   TRI_voc_rid_t, VPackSlice const&) {
+int RocksDBPrimaryIndex::insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+                                   VPackSlice const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -503,10 +488,10 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
 }
 
 /// optimization for truncateNoTrx, never called in fillIndex
-int RocksDBPrimaryIndex::removeRaw(rocksdb::WriteBatch* batch,
-                                   TRI_voc_rid_t, VPackSlice const& slice) {
+int RocksDBPrimaryIndex::removeRaw(rocksdb::WriteBatch* batch, TRI_voc_rid_t,
+                                   VPackSlice const& slice) {
   auto key = RocksDBKey::PrimaryIndexValue(
-                                           _objectId, StringRef(slice.get(StaticStrings::KeyString)));
+      _objectId, StringRef(slice.get(StaticStrings::KeyString)));
   batch->Delete(key.string());
   return TRI_ERROR_NO_ERROR;
 }

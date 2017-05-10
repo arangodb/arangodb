@@ -25,9 +25,12 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
+#include "RocksDBEngine/RocksDBGeoIndex.h"
+#include "RocksDBEngine/RocksDBToken.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -134,7 +137,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   }
   // do we need this in rocksdb?
   trx->pinData(cid);
-  
+
   transaction::BuilderLeaser builder(trx);
   FulltextQuery parsedQuery;
   Result res = fulltextIndex->parseQueryString(queryString, parsedQuery);
@@ -149,20 +152,242 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   return AqlValue(builder.get());
 }
 
+/// @brief Load geoindex for collection name
+static arangodb::RocksDBGeoIndex* getGeoIndex(
+    transaction::Methods* trx, TRI_voc_cid_t const& cid,
+    std::string const& collectionName) {
+  // NOTE:
+  // Due to trx lock the shared_index stays valid
+  // as long as trx stays valid.
+  // It is save to return the Raw pointer.
+  // It can only be used until trx is finished.
+  trx->addCollectionAtRuntime(cid, collectionName);
+  Result res = trx->state()->ensureCollections();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
+                                   res.errorMessage());
+  }
+  
+  auto document = trx->documentCollection(cid);
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
+  }
+
+  arangodb::RocksDBGeoIndex* index = nullptr;
+  for (auto const& idx : document->getIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      index = static_cast<arangodb::RocksDBGeoIndex*>(idx.get());
+      break;
+    }
+  }
+
+  if (index == nullptr) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
+                                  collectionName.c_str());
+  }
+
+  trx->pinData(cid);
+  return index;
+}
+
+static AqlValue buildGeoResult(transaction::Methods* trx,
+                               LogicalCollection* collection,
+                               arangodb::aql::Query* query,
+                               GeoCoordinates* cors, TRI_voc_cid_t const& cid,
+                               std::string const& attributeName) {
+  if (cors == nullptr) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  }
+
+  size_t const nCoords = cors->length;
+  if (nCoords == 0) {
+    GeoIndex_CoordinatesFree(cors);
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  }
+
+  struct geo_coordinate_distance_t {
+    geo_coordinate_distance_t(double distance, RocksDBToken token)
+        : _distance(distance), _token(token) {}
+    double _distance;
+    RocksDBToken _token;
+  };
+
+  std::vector<geo_coordinate_distance_t> distances;
+
+  try {
+    distances.reserve(nCoords);
+
+    for (size_t i = 0; i < nCoords; ++i) {
+      distances.emplace_back(geo_coordinate_distance_t(
+          cors->distances[i], RocksDBToken(cors->coordinates[i].data)));
+    }
+  } catch (...) {
+    GeoIndex_CoordinatesFree(cors);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  GeoIndex_CoordinatesFree(cors);
+
+  // sort result by distance
+  std::sort(distances.begin(), distances.end(),
+            [](geo_coordinate_distance_t const& left,
+               geo_coordinate_distance_t const& right) {
+              return left._distance < right._distance;
+            });
+
+  try {
+    ManagedDocumentResult mmdr;
+    transaction::BuilderLeaser builder(trx);
+    builder->openArray();
+    if (!attributeName.empty()) {
+      // We have to copy the entire document
+      for (auto& it : distances) {
+        VPackObjectBuilder docGuard(builder.get());
+        builder->add(attributeName, VPackValue(it._distance));
+        if (collection->readDocument(trx, it._token, mmdr)) {
+          VPackSlice doc(mmdr.vpack());
+          for (auto const& entry : VPackObjectIterator(doc)) {
+            std::string key = entry.key.copyString();
+            if (key != attributeName) {
+              builder->add(key, entry.value);
+            }
+          }
+        }
+      }
+
+    } else {
+      for (auto& it : distances) {
+        if (collection->readDocument(trx, it._token, mmdr)) {
+          mmdr.addToBuilder(*builder.get(), true);
+        }
+      }
+    }
+    builder->close();
+    return AqlValue(builder.get());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+}
+
 /// @brief function NEAR
 AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
                                    transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
-  // TODO: obi
-  THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING, "NEAR");
+  ValidateParameters(parameters, "NEAR", 3, 5);
+
+  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
+  if (!collectionValue.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  std::string const collectionName(collectionValue.slice().copyString());
+
+  AqlValue latitude = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValue longitude = ExtractFunctionParameterValue(trx, parameters, 2);
+
+  if (!latitude.isNumber() || !longitude.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  // extract limit
+  int64_t limitValue = 100;
+
+  if (parameters.size() > 3) {
+    AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
+
+    if (limit.isNumber()) {
+      limitValue = limit.toInt64(trx);
+    } else if (!limit.isNull(true)) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    }
+  }
+
+  std::string attributeName;
+  if (parameters.size() > 4) {
+    // have a distance attribute
+    AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
+
+    if (!distanceValue.isNull(true) && !distanceValue.isString()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    }
+
+    if (distanceValue.isString()) {
+      attributeName = distanceValue.slice().copyString();
+    }
+  }
+
+  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
+  arangodb::RocksDBGeoIndex* index = getGeoIndex(trx, cid, collectionName);
+
+  TRI_ASSERT(index != nullptr);
+  TRI_ASSERT(trx->isPinned(cid));
+
+  GeoCoordinates* cors =
+      index->nearQuery(trx, latitude.toDouble(trx), longitude.toDouble(trx),
+                       static_cast<size_t>(limitValue));
+
+  return buildGeoResult(trx, index->collection(), query, cors, cid,
+                        attributeName);
 }
 
 /// @brief function WITHIN
 AqlValue RocksDBAqlFunctions::Within(
     arangodb::aql::Query* query, transaction::Methods* trx,
     VPackFunctionParameters const& parameters) {
-  // TODO: obi
-  THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING, "Within");
+  ValidateParameters(parameters, "WITHIN", 4, 5);
+
+  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!collectionValue.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  }
+
+  std::string const collectionName(collectionValue.slice().copyString());
+
+  AqlValue latitudeValue = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValue longitudeValue = ExtractFunctionParameterValue(trx, parameters, 2);
+  AqlValue radiusValue = ExtractFunctionParameterValue(trx, parameters, 3);
+
+  if (!latitudeValue.isNumber() || !longitudeValue.isNumber() ||
+      !radiusValue.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  }
+
+  std::string attributeName;
+  if (parameters.size() > 4) {
+    // have a distance attribute
+    AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
+
+    if (!distanceValue.isNull(true) && !distanceValue.isString()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+    }
+
+    if (distanceValue.isString()) {
+      attributeName = distanceValue.slice().copyString();
+    }
+  }
+
+  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
+  arangodb::RocksDBGeoIndex* index = getGeoIndex(trx, cid, collectionName);
+
+  TRI_ASSERT(index != nullptr);
+  TRI_ASSERT(trx->isPinned(cid));
+
+  GeoCoordinates* cors = index->withinQuery(trx, latitudeValue.toDouble(trx),
+                                            longitudeValue.toDouble(trx),
+                                            radiusValue.toDouble(trx));
+
+  return buildGeoResult(trx, index->collection(), query, cors, cid,
+                        attributeName);
 }
 
 void RocksDBAqlFunctions::registerResources() {

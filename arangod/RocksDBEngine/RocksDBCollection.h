@@ -39,7 +39,7 @@ class Result;
 class RocksDBPrimaryIndex;
 class RocksDBVPackIndex;
 struct RocksDBToken;
-  
+
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
   friend class RocksDBVPackIndex;
@@ -48,7 +48,6 @@ class RocksDBCollection final : public PhysicalCollection {
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
-
  public:
   explicit RocksDBCollection(LogicalCollection*, VPackSlice const& info);
   explicit RocksDBCollection(LogicalCollection*,
@@ -121,7 +120,7 @@ class RocksDBCollection final : public PhysicalCollection {
   /// non transactional truncate, will continoiusly commit the deletes
   /// and no fully rollback on failure. Uses trx snapshots to isolate
   /// against newer PUTs
-  //void truncateNoTrx(transaction::Methods* trx);
+  // void truncateNoTrx(transaction::Methods* trx);
 
   DocumentIdentifierToken lookupKey(
       transaction::Methods* trx,
@@ -185,10 +184,12 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// recalculte counts for collection in case of failure
   uint64_t recalculateCounts();
-  
+
   /// trigger rocksdb compaction for documentDB and indexes
   void compact();
-  void estimateSize(velocypack::Builder &builder);
+  void estimateSize(velocypack::Builder& builder);
+
+  bool hasGeoIndex() { return _hasGeoIndex; }
 
  private:
   /// @brief return engine-specific figures
@@ -231,6 +232,8 @@ class RocksDBCollection final : public PhysicalCollection {
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
 
+  /// upgrade write locks to exclusive locks if this flag is set
+  bool _hasGeoIndex;
   basics::ReadWriteLock _exclusiveLock;
 };
 
@@ -246,6 +249,6 @@ inline RocksDBCollection* toRocksDBCollection(LogicalCollection* logical) {
   return toRocksDBCollection(phys);
 }
 
-}
+}  // namespace arangodb
 
 #endif

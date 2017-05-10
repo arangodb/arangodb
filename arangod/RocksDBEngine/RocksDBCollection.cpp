@@ -81,7 +81,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
-      _revisionId(0) {
+      _revisionId(0),
+      _hasGeoIndex(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
@@ -91,7 +92,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
       _numberDocuments(0),
-      _revisionId(0) {
+      _revisionId(0),
+      _hasGeoIndex(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
 }
@@ -183,11 +185,14 @@ void RocksDBCollection::open(bool ignoreErrors) {
       << " number of documents: " << counterValue.added();
   _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
-  //_numberDocuments = countKeyRange(db, readOptions,
-  // RocksDBKeyBounds::CollectionDocuments(_objectId));
 
-  for (auto it : getIndexes()) {
+  for (std::shared_ptr<Index> it : getIndexes()) {
     static_cast<RocksDBIndex*>(it.get())->load();
+    
+    if (it->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        it->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      _hasGeoIndex = true;
+    }
   }
 }
 
@@ -547,7 +552,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
       if (rv == TRI_ERROR_NO_ERROR) {
         // trigger compaction before deleting the object
         cindex->cleanup();
-        
+
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
 
@@ -674,13 +679,20 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
         indexBounds = RocksDBKeyBounds::FulltextIndex(rindex->objectId());
         break;
-        // TODO add options for geoindex, fulltext etc
+      // TODO add options for geoindex, fulltext etc
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
 
+    rocksdb::ReadOptions options = state->readOptions();
+    options.iterate_upper_bound = &(indexBounds.end());
+    iter.reset(rtrx->GetIterator(options));
+
     iter->Seek(indexBounds.start());
-    while (iter->Valid() && cmp->Compare(iter->key(), indexBounds.end()) < 0) {
+    rindex->disableCache();  // TODO: proper blacklisting of keys?
+    TRI_DEFER(rindex->createCache());
+
+    while (iter->Valid()) {
       rocksdb::Status s = rtrx->Delete(iter->key());
       if (!s.ok()) {
         auto converted = convertStatus(s);
@@ -695,10 +707,10 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 /*
 void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
   TRI_ASSERT(_objectId != 0);
-  
+
   rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
   TRI_voc_cid_t cid = _logicalCollection->cid();
-  
+
   rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
   rocksdb::WriteBatch batch(32 * 1024 * 1024);
   // delete documents
@@ -709,16 +721,16 @@ void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
   // isolate against newer writes
   rocksdb::ReadOptions readOptions;
   readOptions.snapshot = state->rocksTransaction()->GetSnapshot();
-  
+
   std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(readOptions));
   iter->Seek(documentBounds.start());
-  
+
   while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
     VPackSlice key =
     VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
     TRI_ASSERT(key.isString());
-    
+
     // add possible log statement
     state->prepareOperation(cid, revisionId, StringRef(key),
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
@@ -731,28 +743,28 @@ void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
     RocksDBOperationResult result =
     state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                         0, iter->key().size());
-    
+
     // transaction size limit reached -- fail
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
-    
+
     // force intermediate commit
     if (result.commitRequired()) {
       // force commit
     }
-    
+
     iter->Next();
   }
-  
+
   // delete index items
-  
+
   // TODO maybe we could also reuse Index::drop, if we ensure the
   // implementations
   // don't do anything beyond deleting their contents
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
-    
+
     RocksDBKeyBounds indexBounds = RocksDBKeyBounds::Empty();
     switch (rindex->type()) {
       case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
@@ -761,7 +773,7 @@ void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
       case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
         indexBounds = RocksDBKeyBounds::EdgeIndex(rindex->objectId());
         break;
-        
+
       case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
       case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
       case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
@@ -772,11 +784,11 @@ void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
         }
         break;
         // TODO add options for geoindex, fulltext etc
-        
+
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
-    
+
     iter->Seek(indexBounds.start());
     while (iter->Valid() && cmp->Compare(iter->key(), indexBounds.end()) < 0) {
       rocksdb::Status s = rtrx->Delete(iter->key());
@@ -784,7 +796,7 @@ void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
         auto converted = convertStatus(s);
         THROW_ARANGO_EXCEPTION(converted);
       }
-      
+
       iter->Next();
     }
   }
@@ -1263,8 +1275,11 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   }
 
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
-
   _indexes.emplace_back(idx);
+  if (idx->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
+      idx->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+    _hasGeoIndex = true;
+  }
 }
 
 void RocksDBCollection::addIndexCoordinator(
@@ -1337,8 +1352,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
   bool hasMore = true;
   while (hasMore) {
     hasMore = iter->next(cb, 5000);
-    if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED
-        || _logicalCollection->deleted()) {
+    if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED ||
+        _logicalCollection->deleted()) {
       res = TRI_ERROR_INTERNAL;
     }
     if (res != TRI_ERROR_NO_ERROR) {

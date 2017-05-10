@@ -104,6 +104,18 @@ class RocksDBKey {
                                      VPackSlice const& indexValues);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for the fulltext index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKey FulltextIndexValue(uint64_t indexId,
+                                       arangodb::StringRef const& word,
+                                       arangodb::StringRef const& primaryKey);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for a geoIndexValue
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKey GeoIndexValue(uint64_t indexId, int32_t offset, bool isSlot);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a view
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey View(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId);
@@ -122,13 +134,6 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for a replication applier config
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey ReplicationApplierConfig(TRI_voc_tick_t databaseId);
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified key for the fulltext index
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKey FulltextIndexValue(uint64_t indexId,
-                                       arangodb::StringRef const& word,
-                                       arangodb::StringRef const& primaryKey);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -170,8 +175,8 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the objectId from a key
   ///
-  /// May be called only on the the following key types: Document.
-  /// Other types will throw.
+  /// May be called only on the the following key types: Document, 
+  /// all kinds of index entries. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static uint64_t objectId(RocksDBKey const&);
   static uint64_t objectId(rocksdb::Slice const&);
@@ -219,6 +224,13 @@ class RocksDBKey {
   static VPackSlice indexedVPack(RocksDBKey const&);
   static VPackSlice indexedVPack(rocksdb::Slice const&);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the geo pot offset 
+  ///
+  /// May be called only on GeoIndexValues
+  //////////////////////////////////////////////////////////////////////////////
+  static std::pair<bool, int32_t> geoValues(rocksdb::Slice const& slice);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the full, constructed key
@@ -234,6 +246,8 @@ class RocksDBKey {
              arangodb::StringRef const& docKey, VPackSlice const& indexData);
   RocksDBKey(RocksDBEntryType type, uint64_t first,
              arangodb::StringRef const& second);
+  RocksDBKey(RocksDBEntryType type, uint64_t first, std::string const& second,
+             std::string const& third);
   RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second,
              arangodb::StringRef const& third);
 

@@ -42,6 +42,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/iterator.h>
+#include <rocksdb/options.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -92,7 +93,10 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   TRI_ASSERT(state != nullptr);
-  auto const& options = state->readOptions();
+  rocksdb::ReadOptions options = state->readOptions();
+  if (!reverse) {
+    options.iterate_upper_bound = &(_bounds.end());
+  }
 
   _iterator.reset(rtrx->GetIterator(options));
   if (reverse) {
@@ -115,18 +119,15 @@ void RocksDBVPackIndexIterator::reset() {
 
 bool RocksDBVPackIndexIterator::outOfRange() const {
   TRI_ASSERT(_trx->state()->isRunning());
+  TRI_ASSERT(_reverse);
 
-  if (_reverse) {
-    return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
-  } else {
-    return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
-  }
+  return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
 }
 
 bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  if (limit == 0 || !_iterator->Valid() || (_reverse && outOfRange())) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -148,7 +149,7 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
       _iterator->Next();
     }
 
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!_iterator->Valid() || (_reverse && outOfRange())) {
       return false;
     }
   }
@@ -183,7 +184,7 @@ RocksDBVPackIndex::~RocksDBVPackIndex() {}
 size_t RocksDBVPackIndex::memory() const {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueIndex(_objectId)
-  : RocksDBKeyBounds::IndexEntries(_objectId);
+                                    : RocksDBKeyBounds::IndexEntries(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
   db->GetApproximateSizes(&r, 1, &out, true);

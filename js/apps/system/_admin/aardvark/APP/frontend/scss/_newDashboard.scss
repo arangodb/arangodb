@@ -463,6 +463,18 @@
   margin-left: 2px;
   margin-right: 0;
 
+  .valueWrapper {
+    .value {
+      font-size: 18pt !important;
+      font-weight: 100;
+      overflow: hidden;
+      padding-left: 10px;
+      padding-right: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
   .fa-arrows-alt {
     display: none;
   }
