@@ -267,11 +267,11 @@ class MMFilesEngine final : public StorageEngine {
   // the WAL entry for index deletion will be written *after* the call
   // to "dropIndex" returns
   void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                 TRI_idx_iid_t id) override;
+                 TRI_idx_iid_t id);
 
   void dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                           arangodb::velocypack::Slice const& data,
-                          bool writeMarker, int&) override;
+                          bool writeMarker, int&);
 
   void unloadCollection(TRI_vocbase_t* vocbase,
                         arangodb::LogicalCollection* collection) override;
@@ -298,67 +298,39 @@ class MMFilesEngine final : public StorageEngine {
 
   void signalCleanup(TRI_vocbase_t* vocbase) override;
 
-  // document operations
-  // -------------------
-
-  // iterate all documents of the underlying collection
-  // this is called when a collection is openend, and all its documents need to
-  // be added to
-  // indexes etc.
-  void iterateDocuments(
-      TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-      std::function<void(arangodb::velocypack::Slice const&)> const& cb)
-      override;
-
-  // adds a document to the storage engine
-  // this will be called by the WAL collector when surviving documents are being
-  // moved
-  // into the storage engine's realm
-  void addDocumentRevision(
-      TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-      arangodb::velocypack::Slice const& document) override;
-
-  // removes a document from the storage engine
-  // this will be called by the WAL collector when non-surviving documents are
-  // being removed
-  // from the storage engine's realm
-  void removeDocumentRevision(
-      TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-      arangodb::velocypack::Slice const& document) override;
-
   /// @brief scans a collection and locates all files
   MMFilesEngineCollectionFiles scanCollectionDirectory(std::string const& path);
 
   /// @brief remove data of expired compaction blockers
-  bool cleanupCompactionBlockers(TRI_vocbase_t* vocbase) override;
+  bool cleanupCompactionBlockers(TRI_vocbase_t* vocbase);
 
   /// @brief insert a compaction blocker
   int insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
-                              TRI_voc_tick_t& id) override;
+                              TRI_voc_tick_t& id);
 
   /// @brief touch an existing compaction blocker
   int extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id,
-                              double ttl) override;
+                              double ttl);
 
   /// @brief remove an existing compaction blocker
   int removeCompactionBlocker(TRI_vocbase_t* vocbase,
-                              TRI_voc_tick_t id) override;
+                              TRI_voc_tick_t id);
 
   /// @brief a callback function that is run while it is guaranteed that there
   /// is no compaction ongoing
   void preventCompaction(
       TRI_vocbase_t* vocbase,
-      std::function<void(TRI_vocbase_t*)> const& callback) override;
+      std::function<void(TRI_vocbase_t*)> const& callback);
 
   /// @brief a callback function that is run there is no compaction ongoing
   bool tryPreventCompaction(TRI_vocbase_t* vocbase,
                             std::function<void(TRI_vocbase_t*)> const& callback,
-                            bool checkForActiveBlockers) override;
+                            bool checkForActiveBlockers);
 
   int shutdownDatabase(TRI_vocbase_t* vocbase) override;
 
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection,
-                     bool ignoreErrors) override;
+                     bool ignoreErrors);
 
   /// @brief Add engine-specific AQL functions.
   void addAqlFunctions() override;

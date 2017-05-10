@@ -187,25 +187,11 @@ void RocksDBCollection::open(bool ignoreErrors) {
   _revisionId = counterValue.revisionId();
 
   for (std::shared_ptr<Index> it : getIndexes()) {
-    static_cast<RocksDBIndex*>(it.get())->load();
-    
     if (it->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
         it->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
       _hasGeoIndex = true;
     }
   }
-}
-
-/// @brief iterate all markers of a collection on load
-int RocksDBCollection::iterateMarkersOnLoad(
-    arangodb::transaction::Methods* trx) {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return 0;
-}
-
-bool RocksDBCollection::isFullyCollected() const {
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return false;
 }
 
 void RocksDBCollection::prepareIndexes(
@@ -839,15 +825,6 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
   return res.ok();
 }
 
-bool RocksDBCollection::readDocumentConditional(
-    transaction::Methods* trx, DocumentIdentifierToken const& token,
-    TRI_voc_tick_t maxTick, ManagedDocumentResult& result) {
-  // should not be called for RocksDB engine. TODO: move this out of general
-  // API!
-  THROW_ARANGO_NOT_YET_IMPLEMENTED();
-  return false;
-}
-
 int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                               arangodb::velocypack::Slice const slice,
                               arangodb::ManagedDocumentResult& mdr,
@@ -1354,7 +1331,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   Result r;
   bool hasMore = true;
   while (hasMore) {
-    hasMore = iter->next(cb, 5000);
+    hasMore = iter->next(cb, 250);
     if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED ||
         _logicalCollection->deleted()) {
       res = TRI_ERROR_INTERNAL;
@@ -1375,7 +1352,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
   // occured, this needs to happen since we are non transactional
   if (!r.ok()) {
     iter->reset();
-    rocksdb::WriteBatch removeBatch(32 * 1024 * 1024);
+    rocksdb::WriteBatchWithIndex removeBatch(db->DefaultColumnFamily()->GetComparator(),
+                                             32 * 1024 * 1024);
 
     res = TRI_ERROR_NO_ERROR;
     auto removeCb = [&](DocumentIdentifierToken token) {
@@ -1396,7 +1374,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
     }
     // TODO: if this fails, do we have any recourse?
     // Simon: Don't think so
-    db->Write(writeOpts, &removeBatch);
+    db->Write(writeOpts, removeBatch.GetWriteBatch());
   }
 
   return r;

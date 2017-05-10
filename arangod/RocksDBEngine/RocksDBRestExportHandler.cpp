@@ -223,30 +223,13 @@ void RocksDBRestExportHandler::createCursor() {
   }
 
   VPackSlice options = optionsBuilder.slice();
-
-  uint64_t waitTime = 0;
-  bool flush = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      options, "flush", false);
-
-  if (flush) {
-    static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
-
-    double flushWait =
-        arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-            options, "flushWait", 10.0);
-
-    waitTime = static_cast<uint64_t>(
-        flushWait * 1000 *
-        1000);  // flushWait is specified in s, but we need ns
-  }
-
   size_t limit = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
       options, "limit", 0);
 
   // this may throw!
   auto collectionExport =
       std::make_unique<RocksDBCollectionExport>(_vocbase, name, _restrictions);
-  collectionExport->run(waitTime, limit);
+  collectionExport->run(limit);
 
   size_t batchSize =
       arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(

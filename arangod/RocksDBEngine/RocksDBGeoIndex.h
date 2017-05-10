@@ -34,15 +34,14 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace ::arangodb::rocksdbengine;
+namespace arangodb {
 
 // GeoCoordinate.data must be capable of storing revision ids
-static_assert(sizeof(GeoCoordinate::data) >= sizeof(TRI_voc_rid_t),
+static_assert(sizeof(arangodb::rocksdbengine::GeoCoordinate::data) >=
+                  sizeof(TRI_voc_rid_t),
               "invalid size of GeoCoordinate.data");
 
-namespace arangodb {
 class RocksDBGeoIndex;
-
 class RocksDBGeoIndexIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
@@ -62,14 +61,14 @@ class RocksDBGeoIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  size_t findLastIndex(GeoCoordinates* coords) const;
-  void replaceCursor(::GeoCursor* c);
+  size_t findLastIndex(arangodb::rocksdbengine::GeoCoordinates* coords) const;
+  void replaceCursor(arangodb::rocksdbengine::GeoCursor* c);
   void createCursor(double lat, double lon);
   void evaluateCondition();  // called in constructor
 
   RocksDBGeoIndex const* _index;
-  ::GeoCursor* _cursor;
-  ::GeoCoordinate _coor;
+  arangodb::rocksdbengine::GeoCursor* _cursor;
+  arangodb::rocksdbengine::GeoCoordinate _coor;
   arangodb::aql::AstNode const* _condition;
   double _lat;
   double _lon;
@@ -144,18 +143,20 @@ class RocksDBGeoIndex final : public RocksDBIndex {
                 arangodb::velocypack::Slice const&) override;
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
-  int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+  int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   int unload() override;
 
   /// @brief looks up all points within a given radius
-  GeoCoordinates* withinQuery(transaction::Methods*, double, double,
-                              double) const;
+  arangodb::rocksdbengine::GeoCoordinates* withinQuery(transaction::Methods*,
+                                                       double, double,
+                                                       double) const;
 
   /// @brief looks up the nearest points
-  GeoCoordinates* nearQuery(transaction::Methods*, double, double,
-                            size_t) const;
+  arangodb::rocksdbengine::GeoCoordinates* nearQuery(transaction::Methods*,
+                                                     double, double,
+                                                     size_t) const;
 
   bool isSame(std::vector<std::string> const& location, bool geoJson) const {
     return (!_location.empty() && _location == location && _geoJson == geoJson);
@@ -168,6 +169,11 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   }
 
  private:
+  /// internal insert function, set batch or trx before calling
+  int internalInsert(TRI_voc_rid_t, velocypack::Slice const&);
+  /// internal remove function, set batch or trx before calling
+  int internalRemove(TRI_voc_rid_t, velocypack::Slice const&);
+
   /// @brief attribute paths
   std::vector<std::string> _location;
   std::vector<std::string> _latitude;
@@ -181,15 +187,15 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   bool _geoJson;
 
   /// @brief the actual geo index
-  GeoIdx* _geoIndex;
+  arangodb::rocksdbengine::GeoIdx* _geoIndex;
 };
 }  // namespace arangodb
 
 namespace std {
 template <>
-class default_delete<GeoCoordinates> {
+class default_delete<arangodb::rocksdbengine::GeoCoordinates> {
  public:
-  void operator()(GeoCoordinates* result) {
+  void operator()(arangodb::rocksdbengine::GeoCoordinates* result) {
     if (result != nullptr) {
       GeoIndex_CoordinatesFree(result);
     }

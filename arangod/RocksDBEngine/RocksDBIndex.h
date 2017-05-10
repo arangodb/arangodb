@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include <rocksdb/status.h>
 
 namespace rocksdb {
 class WriteBatch;
@@ -40,19 +41,20 @@ class Cache;
 }
 class LogicalCollection;
 class RocksDBComparator;
-
+  
 class RocksDBIndex : public Index {
  protected:
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
                    attributes,
-               bool unique, bool sparse, uint64_t objectId = 0);
+               bool unique, bool sparse, uint64_t objectId = 0, bool useCache = false);
 
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               arangodb::velocypack::Slice const&);
+               arangodb::velocypack::Slice const&, bool useCache = false);
 
  public:
   ~RocksDBIndex();
+  void toVelocyPackFigures(VPackBuilder& builder) const override;
 
   uint64_t objectId() const { return _objectId; }
 
@@ -72,8 +74,6 @@ class RocksDBIndex : public Index {
     return TRI_ERROR_NO_ERROR;
   }
 
-  void load();
-
   /// insert index elements into the specified write batch. Should be used
   /// as an optimization for the non transactional fillIndex method
   virtual int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
@@ -81,7 +81,7 @@ class RocksDBIndex : public Index {
 
   /// remove index elements and put it in the specified write batch. Should be
   /// used as an optimization for the non transactional fillIndex method
-  virtual int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+  virtual int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) = 0;
 
   void createCache();
@@ -89,6 +89,10 @@ class RocksDBIndex : public Index {
 
  protected:
   inline bool useCache() const { return (_useCache && _cachePresent); }
+  void blackListKey(char const* data, std::size_t len);
+  void blackListKey(StringRef& ref){
+    blackListKey(ref.data(), ref.size());
+  };
 
  protected:
   uint64_t _objectId;

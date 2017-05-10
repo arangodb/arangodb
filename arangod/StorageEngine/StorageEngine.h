@@ -321,18 +321,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                            TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) = 0;
 
-  // asks the storage engine to drop the specified index and persist the deletion
-  // info. Note that physical deletion of the index must not be carried out by this call,
-  // as there may still be users of the index. It is recommended that this operation
-  // only sets a deletion flag for the index but let's an async task perform
-  // the actual deletion.
-  // the WAL entry for index deletion will be written *after* the call
-  // to "dropIndex" returns
-  virtual void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                         TRI_idx_iid_t id) = 0;
-
-  virtual void dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                                    arangodb::velocypack::Slice const& data, bool useMarker, int&) = 0;
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
@@ -347,52 +335,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual void signalCleanup(TRI_vocbase_t* vocbase) = 0;
 
-  // document operations
-  // -------------------
-
-  // iterate all documents of the underlying collection
-  // this is called when a collection is openend, and all its documents need to be added to
-  // indexes etc.
-  virtual void iterateDocuments(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                std::function<void(arangodb::velocypack::Slice const&)> const& cb) = 0;
-
-
-  // adds a document to the storage engine
-  // this will be called by the WAL collector when surviving documents are being moved
-  // into the storage engine's realm
-  virtual void addDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                   arangodb::velocypack::Slice const& document) = 0;
-
-  // removes a document from the storage engine
-  // this will be called by the WAL collector when non-surviving documents are being removed
-  // from the storage engine's realm
-  virtual void removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                      arangodb::velocypack::Slice const& document) = 0;
-
-  /// @brief remove data of expired compaction blockers
-  virtual bool cleanupCompactionBlockers(TRI_vocbase_t* vocbase) = 0;
-
-  /// @brief insert a compaction blocker
-  virtual int insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl, TRI_voc_tick_t& id) = 0;
-
-  /// @brief touch an existing compaction blocker
-  virtual int extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id, double ttl) = 0;
-
-  /// @brief remove an existing compaction blocker
-  virtual int removeCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id) = 0;
-
-  /// @brief a callback function that is run while it is guaranteed that there is no compaction ongoing
-  virtual void preventCompaction(TRI_vocbase_t* vocbase,
-                                 std::function<void(TRI_vocbase_t*)> const& callback) = 0;
-
-  /// @brief a callback function that is run there is no compaction ongoing
-  virtual bool tryPreventCompaction(TRI_vocbase_t* vocbase,
-                                    std::function<void(TRI_vocbase_t*)> const& callback,
-                                    bool checkForActiveBlockers) = 0;
-
   virtual int shutdownDatabase(TRI_vocbase_t* vocbase) = 0;
-
-  virtual int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) = 0;
 
   // AQL functions
   // -------------

@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBToken.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -50,24 +51,33 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
                            transaction::Methods* trx,
                            ManagedDocumentResult* mmdr,
                            arangodb::RocksDBEdgeIndex const* index,
-                           std::unique_ptr<VPackBuilder>& keys);
-
+                           std::unique_ptr<VPackBuilder>& keys,
+                           bool useCache, cache::Cache*);
   ~RocksDBEdgeIndexIterator();
-
   char const* typeName() const override { return "edge-index-iterator"; }
-
   bool next(TokenCallback const& cb, size_t limit) override;
-
   void reset() override;
 
  private:
-  bool updateBounds();
-
+  void updateBounds(StringRef fromTo);
+  bool lookupDocumentAndUseCb(
+      StringRef primaryKey, TokenCallback const&, size_t& limit, RocksDBToken&);
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _keysIterator;
   RocksDBEdgeIndex const* _index;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
+  
+  //the following 2 values are required for correct batch handling
+  std::unique_ptr<rocksdb::Iterator> _iterator; //iterator position in rocksdb
+  VPackSlice _arraySlice;
+  VPackBuffer<uint8_t> _arrayBuffer;
+  velocypack::ArrayIterator _arrayIterator; //position in cache for multiple batches
+
   RocksDBKeyBounds _bounds;
+  bool _doUpdateBounds;
+  bool _useCache;
+  cache::Cache* _cache;
+  VPackBuilder _cacheValueBuilder;
+  std::size_t _cacheValueSize;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {
@@ -100,19 +110,17 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
-  void toVelocyPackFigures(VPackBuilder&) const override;
-
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int insertRaw(rocksdb::WriteBatchWithIndex*,
-                TRI_voc_rid_t, VPackSlice const&) override;
+  int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+                VPackSlice const&) override;
 
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
-  
+
   /// optimization for truncateNoTrx, never called in fillIndex
-  int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+  int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   void batchInsert(
@@ -142,9 +150,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   ///        entries.
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
-  
   int cleanup() override;
-  
+
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,

@@ -24,6 +24,7 @@
 #include "RocksDBIndex.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CacheManagerFeature.h"
+#include "Cache/TransactionalCache.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -37,24 +38,35 @@ using namespace arangodb;
 RocksDBIndex::RocksDBIndex(
     TRI_idx_iid_t id, LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-    bool unique, bool sparse, uint64_t objectId)
+    bool unique, bool sparse, uint64_t objectId, bool useCache)
     : Index(id, collection, attributes, unique, sparse),
       _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(false) {}
+      _useCache(useCache) {
+  if (_useCache) {
+    //LOG_TOPIC(ERR, Logger::FIXME) << "creating cache";
+    createCache();
+  } else {
+    //LOG_TOPIC(ERR, Logger::FIXME) << "not creating cache";
+  }
+
+}
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           VPackSlice const& info)
+                           VPackSlice const& info,bool useCache)
     : Index(id, collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(false) {
+      _useCache(useCache) {
   if (_objectId == 0) {
     _objectId = TRI_NewTickServer();
+  }
+  if (_useCache) {
+    createCache();
   }
 }
 
@@ -69,14 +81,14 @@ RocksDBIndex::~RocksDBIndex() {
   }
 }
 
-void RocksDBIndex::load() {
-  if (_useCache) {
-    createCache();
-  }
+void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("cacheSize", VPackValue(useCache() ? _cache->size() : 0));
 }
 
 int RocksDBIndex::unload() {
   if (useCache()) {
+    //LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
     disableCache();
     TRI_ASSERT(!_cachePresent);
   }
@@ -141,3 +153,20 @@ int RocksDBIndex::drop() {
   return TRI_ERROR_NO_ERROR;
 }
 
+// blacklist given key from transactional cache
+void RocksDBIndex::blackListKey(char const* data, std::size_t len){
+  if (useCache()) {
+    TRI_ASSERT(_cache != nullptr);
+    bool blacklisted = false;
+    uint64_t attempts = 0;
+    while (!blacklisted) {
+      blacklisted = _cache->blacklist(data,len);
+      if (attempts++ % 10 == 0) {
+        if (_cache->isShutdown()) {
+          disableCache();
+          break;
+        }
+      }
+    }
+  }
+}

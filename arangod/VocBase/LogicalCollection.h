@@ -277,11 +277,6 @@ class LogicalCollection {
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result);
 
-  bool readDocumentConditional(transaction::Methods* trx,
-                               DocumentIdentifierToken const& token,
-                               TRI_voc_tick_t maxTick,
-                               ManagedDocumentResult& result);
-
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully
   ///        created and only on Sinlge/DBServer

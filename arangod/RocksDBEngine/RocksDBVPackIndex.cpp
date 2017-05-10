@@ -202,12 +202,6 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.close();
 }
 
-/// @brief return a VelocyPack representation of the index figures
-void RocksDBVPackIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add("memory", VPackValue(memory()));
-}
-
 /// @brief whether or not the index is implicitly unique
 /// this can be the case if the index is not declared as unique, but contains
 /// a
@@ -611,7 +605,7 @@ int RocksDBVPackIndex::remove(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBVPackIndex::removeRaw(rocksdb::WriteBatch* writeBatch,
+int RocksDBVPackIndex::removeRaw(rocksdb::WriteBatchWithIndex* writeBatch,
                                  TRI_voc_rid_t revisionId,
                                  VPackSlice const& doc) {
   std::vector<RocksDBKey> elements;

@@ -29,6 +29,7 @@ const functionsDocumentation = {
   'ldap': 'ldap tests'
 };
 const optionsDocumentation = [
+  '   - `skipLdap` : if set to true the LDAP tests are skipped',
   '   - `ldapUrl : testing authentication and authentication_paramaters will be skipped.'
 ];
 
@@ -234,6 +235,17 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   defaultFns.push('ldap');
   opts['ldapUrl'] = '127.0.0.1';
   opts['caCertFilePath'] = '~/ca_cert.pem';
+
+  // turn off ldap tests by default. only enable them in enterprise version
+  opts['skipLdap'] = true;
+
+  let version = {};
+  if (global.ARANGODB_CLIENT_VERSION) {
+    version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version['enterprise-version']) {
+      opts['skipLdap'] = false;
+    }
+  }
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

@@ -121,7 +121,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   size_t memory() const override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
-  void toVelocyPackFigures(VPackBuilder&) const override;
 
   bool allowExpansion() const override { return true; }
 
@@ -147,7 +146,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t,
+  int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   int drop() override;

@@ -1412,7 +1412,7 @@ OperationResult transaction::Methods::insertLocal(
     res = workForOneDocument(value);
   }
 
-  // wait for operation(s) to be synced to disk here
+  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
     EngineSelectorFeature::ENGINE->waitForSync(maxTick);
@@ -1723,7 +1723,7 @@ OperationResult transaction::Methods::modifyLocal(
     res = workForOneDocument(newValue, false);
   }
 
-  // wait for operation(s) to be synced to disk here
+  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
     EngineSelectorFeature::ENGINE->waitForSync(maxTick);
@@ -1968,7 +1968,7 @@ OperationResult transaction::Methods::removeLocal(
     res = workForOneDocument(value, false);
   }
 
-  // wait for operation(s) to be synced to disk here
+  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
     EngineSelectorFeature::ENGINE->waitForSync(maxTick);

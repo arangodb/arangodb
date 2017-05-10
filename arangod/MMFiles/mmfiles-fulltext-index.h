@@ -72,7 +72,7 @@ void TRI_DeleteDocumentMMFilesFulltextIndex(TRI_fts_index_t* const,
 /// @brief insert a list of words to the index
 bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const,
                                          const TRI_voc_rid_t,
-                                         std::vector<std::string>&);
+                                         std::set<std::string>&);
 
 /// @brief find all documents that contain a word (exact match)
 #if 0
@@ -95,21 +95,21 @@ struct TRI_fulltext_result_s* TRI_QueryMMFilesFulltextIndex(
 
 /// @brief dump index tree
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpTreeFtsIndex(const TRI_fts_index_t* const);
+void TRI_DumpTreeFtsIndex(TRI_fts_index_t*);
 #endif
 
 /// @brief dump index statistics
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpStatsFtsIndex(const TRI_fts_index_t* const);
+void TRI_DumpStatsFtsIndex(TRI_fts_index_t*);
 #endif
 
 /// @brief return stats about the index
-TRI_fulltext_stats_t TRI_StatsMMFilesFulltextIndex(const TRI_fts_index_t* const);
+TRI_fulltext_stats_t TRI_StatsMMFilesFulltextIndex(TRI_fts_index_t*);
 
 /// @brief return the total memory used by the index
-size_t TRI_MemoryMMFilesFulltextIndex(const TRI_fts_index_t* const);
+size_t TRI_MemoryMMFilesFulltextIndex(TRI_fts_index_t*);
 
 /// @brief compact the fulltext index
-bool TRI_CompactMMFilesFulltextIndex(TRI_fts_index_t* const);
+bool TRI_CompactMMFilesFulltextIndex(TRI_fts_index_t*);
 
 #endif

@@ -36,6 +36,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionKeys.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
@@ -542,7 +543,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
         VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     TRI_voc_tick_t id;
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
     int res = engine->insertCompactionBlocker(_vocbase, expires, id);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -575,7 +576,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
         VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     // now extend the blocker
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
     int res = engine->extendCompactionBlocker(_vocbase, id, expires);
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -591,7 +592,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     TRI_voc_tick_t id =
         static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
     int res = engine->removeCompactionBlocker(_vocbase, id);
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -2357,7 +2358,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   TRI_ASSERT(col != nullptr);
 
   // turn off the compaction for the collection
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   TRI_voc_tick_t id;
   int res = engine->insertCompactionBlocker(_vocbase, 1200.0, id);
 
