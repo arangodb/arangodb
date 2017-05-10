@@ -807,6 +807,41 @@ bool Node::getBool() const {
   return slice().getBool();
 }
 
+bool Node::isBool() const noexcept {
+  if (type() == NODE) {
+    return false;
+  }
+  return slice().isBool();
+}
+
+bool Node::isDouble() const noexcept {
+  if (type() == NODE) {
+    return false;
+  }
+  return slice().isDouble();
+}
+
+bool Node::isString() const noexcept {
+  if (type() == NODE) {
+    return false;
+  }
+  return slice().isString();
+}
+
+bool Node::isUInt() const noexcept {
+  if (type() == NODE) {
+    return false;
+  }
+  return slice().isUInt() || slice().isSmallInt();
+}
+
+bool Node::isInt() const noexcept {
+  if (type() == NODE) {
+    return false;
+  }
+  return slice().isInt() || slice().isSmallInt();
+}
+
 double Node::getDouble() const {
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to double");

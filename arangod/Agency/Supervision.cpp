@@ -102,12 +102,12 @@ void Supervision::upgradeZero(Builder& builder) {
       { VPackObjectBuilder o(&builder);
         builder.add(VPackValue(failedServersPrefix));
         { VPackObjectBuilder oo(&builder);
-          try {
+          if (fails.length() > 0) {
             for (auto const& fail : VPackArrayIterator(fails)) {
               builder.add(VPackValue(fail.copyString()));
               { VPackObjectBuilder ooo(&builder); }
             }
-          } catch (...) {}
+          }
         }
       }
     }
@@ -316,9 +316,9 @@ std::vector<check_t> Supervision::checkCoordinators() {
       _snapshot(currentServersRegisteredPrefix).children();
   
   std::string currentFoxxmaster;
-  try {
+  if (_snapshot.has(foxxmaster)) {
     currentFoxxmaster = _snapshot(foxxmaster).getString();
-  } catch (...) {}
+  }
 
   std::string goodServerId;
   bool foxxmasterOk = false;
@@ -461,10 +461,13 @@ bool Supervision::updateSnapshot() {
     return false;
   }
   
-  try {
+  if (_agent->readDB().has(_agencyPrefix)) {
     _snapshot = _agent->readDB().get(_agencyPrefix);
+  }
+  
+  if (_agent->transient().has(_agencyPrefix)) {
     _transient = _agent->transient().get(_agencyPrefix);
-  } catch (...) {}
+  } 
   
   return true;
   
@@ -555,24 +558,15 @@ void Supervision::run() {
 
 // Guarded by caller
 bool Supervision::isShuttingDown() {
-  try {
-    return _snapshot("/Shutdown").getBool();
-  } catch (...) {
-    return false;
-  }
+  return (_snapshot.has("Shutdown") && _snapshot("Shutdown").isBool()) ?
+    _snapshot("/Shutdown").getBool() : false;
 }
 
 // Guarded by caller
 std::string Supervision::serverHealth(std::string const& serverName) {
-  try {
-    std::string const serverStatus(healthPrefix + serverName + "/Status");
-    auto const status = _snapshot(serverStatus).getString();
-    return status;
-  } catch (...) {
-    LOG_TOPIC(WARN, Logger::SUPERVISION)
-      << "Couldn't read server health status for server " << serverName;
-    return "";
-  }
+  std::string const serverStatus(healthPrefix + serverName + "/Status");
+  return (_snapshot.has(serverStatus)) ?
+    _snapshot(serverStatus).getString() : std::string();
 }
 
 // Guarded by caller
@@ -658,9 +652,9 @@ void Supervision::enforceReplication() {
       auto const& col = *(col_.second);
       
       size_t replicationFactor;
-      try {
-        replicationFactor = col("replicationFactor").slice().getUInt();
-      } catch (std::exception const&) {
+      if (col.has("replicationFactor") && col("replicationFactor").isUInt()) {
+        replicationFactor = col("replicationFactor").getUInt();
+      } else {
         LOG_TOPIC(DEBUG, Logger::SUPERVISION)
           << "no replicationFactor entry in " << col.toJson();
         continue;
@@ -777,11 +771,13 @@ void Supervision::shrinkCluster() {
   auto availServers = Job::availableServers(_snapshot);
 
   size_t targetNumDBServers;
-  try {
-    targetNumDBServers = _snapshot("/Target/NumberOfDBServers").getUInt();
-  } catch (std::exception const& e) {
+  std::string const NDBServers ("/Target/NumberOfDBServers");
+  
+  if (_snapshot.has(NDBServers) && _snapshot(NDBServers).isUInt()) {
+    targetNumDBServers = _snapshot(NDBServers).getUInt();
+  } else {
     LOG_TOPIC(TRACE, Logger::SUPERVISION)
-        << "Targeted number of DB servers not set yet: " << e.what();
+      << "Targeted number of DB servers not set yet";
     return;
   }
 
@@ -790,7 +786,7 @@ void Supervision::shrinkCluster() {
     // Minimum 1 DB server must remain
     if (availServers.size() == 1) {
       LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-          << "Only one db server left for operation";
+        << "Only one db server left for operation";
       return;
     }
 
@@ -810,15 +806,17 @@ void Supervision::shrinkCluster() {
     auto const& databases = _snapshot(planColPrefix).children();
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
-        try {
-          uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
+        auto const& node = *collptr.second;
+        if (node.has("replicationFactor") &&
+            node("replicationFactor").isUInt()) {
+          auto replFact = node("replicationFactor").getUInt();
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } catch (std::exception const& e) {
+        } else {
           LOG_TOPIC(WARN, Logger::SUPERVISION)
             << "Cannot retrieve replication factor for collection "
-            << collptr.first << ": " << e.what();
+            << collptr.first;
           return;
         }
       }
@@ -835,7 +833,7 @@ void Supervision::shrinkCluster() {
           availServers.size() > targetNumDBServers) {
         // Sort servers by name
         std::sort(availServers.begin(), availServers.end());
-
+        
         // Schedule last server for cleanout
         CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
                        "supervision", availServers.back()).run();
