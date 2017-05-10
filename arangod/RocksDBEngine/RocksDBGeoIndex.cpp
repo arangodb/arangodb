@@ -23,6 +23,7 @@
 
 #include "RocksDBGeoIndex.h"
 
+#include <rocksdb/utilities/transaction_db.h>
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
@@ -31,10 +32,10 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBToken.h"
-#include "StorageEngine/TransactionState.h"
-#include <rocksdb/utilities/transaction_db.h>
+#include "RocksDBEngine/RocksDBTransactionState.h"
 
 using namespace arangodb;
+using namespace arangodb::rocksdbengine;
 
 RocksDBGeoIndexIterator::RocksDBGeoIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
@@ -267,37 +268,34 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
         TRI_ERROR_BAD_PARAMETER,
         "RocksDBGeoIndex can only be created with one or two fields.");
   }
-        
-        
+
   // cheap trick to get the last inserted pot and slot number
-  rocksdb::TransactionDB *db  = rocksutils::globalRocksDB();
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::ReadOptions opts;
   std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(opts));
 
   int numPots = 0;
   RocksDBKeyBounds b1 = RocksDBKeyBounds::GeoIndex(_objectId, false);
   iter->SeekForPrev(b1.end());
-  if (iter->Valid()
-      && _cmp->Compare(b1.start(), iter->key()) < 0
-      && _cmp->Compare(iter->key(), b1.end()) < 0) {
+  if (iter->Valid() && _cmp->Compare(b1.start(), iter->key()) < 0 &&
+      _cmp->Compare(iter->key(), b1.end()) < 0) {
     // found a key smaller than bounds end
     std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
     TRI_ASSERT(pair.first == false);
     numPots = pair.second;
   }
-        
+
   int numSlots = 0;
   RocksDBKeyBounds b2 = RocksDBKeyBounds::GeoIndex(_objectId, true);
   iter->SeekForPrev(b2.end());
-  if (iter->Valid()
-      && _cmp->Compare(b2.start(), iter->key()) < 0
-      && _cmp->Compare(iter->key(), b2.end()) < 0) {
+  if (iter->Valid() && _cmp->Compare(b2.start(), iter->key()) < 0 &&
+      _cmp->Compare(iter->key(), b2.end()) < 0) {
     // found a key smaller than bounds end
     std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
     TRI_ASSERT(pair.first);
     numSlots = pair.second;
   }
-
+        
   _geoIndex = GeoIndex_new(_objectId, numPots, numSlots);
   if (_geoIndex == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -408,8 +406,9 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int RocksDBGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
-                            VPackSlice const& doc, bool isRollback) {
+/// internal insert function, set batch or trx before calling
+int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
+                                    velocypack::Slice const& doc) {
   double latitude;
   double longitude;
 
@@ -459,7 +458,6 @@ int RocksDBGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
   gc.data = static_cast<uint64_t>(revisionId);
 
   int res = GeoIndex_insert(_geoIndex, &gc);
-
   if (res == -1) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "found duplicate entry in geo-index, should not happen";
@@ -469,22 +467,36 @@ int RocksDBGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
   } else if (res == -3) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "illegal geo-coordinates, ignoring entry";
-    return TRI_ERROR_NO_ERROR;
   } else if (res < 0) {
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
-
   return TRI_ERROR_NO_ERROR;
+}
+
+int RocksDBGeoIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
+                            VPackSlice const& doc, bool isRollback) {
+  // acquire rocksdb transaction
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+
+  GeoIndex_setRocksTransaction(_geoIndex, rtrx);
+  int res = this->internalInsert(revisionId, doc);
+  GeoIndex_clearRocks(_geoIndex);
+  return res;
 }
 
 int RocksDBGeoIndex::insertRaw(rocksdb::WriteBatchWithIndex* batch,
                                TRI_voc_rid_t revisionId,
                                arangodb::velocypack::Slice const& doc) {
-  return this->insert(nullptr, revisionId, doc, false);
+  GeoIndex_setRocksBatch(_geoIndex, batch);
+  int res = this->internalInsert(revisionId, doc);
+  GeoIndex_clearRocks(_geoIndex);
+  return res;
 }
 
-int RocksDBGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
-                            VPackSlice const& doc, bool isRollback) {
+/// internal remove function, set batch or trx before calling
+int RocksDBGeoIndex::internalRemove(TRI_voc_rid_t revisionId,
+                                    velocypack::Slice const& doc) {
   double latitude = 0.0;
   double longitude = 0.0;
   bool ok = true;
@@ -542,9 +554,25 @@ int RocksDBGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBGeoIndex::removeRaw(rocksdb::WriteBatch*, TRI_voc_rid_t revisionId,
+int RocksDBGeoIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
+                            VPackSlice const& doc, bool isRollback) {
+  // acquire rocksdb transaction
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  rocksdb::Transaction* rtrx = state->rocksTransaction();
+
+  GeoIndex_setRocksTransaction(_geoIndex, rtrx);
+  int res = this->internalRemove(revisionId, doc);
+  GeoIndex_clearRocks(_geoIndex);
+  return res;
+}
+
+int RocksDBGeoIndex::removeRaw(rocksdb::WriteBatchWithIndex* batch,
+                               TRI_voc_rid_t revisionId,
                                arangodb::velocypack::Slice const& doc) {
-  return this->remove(nullptr, revisionId, doc, false);
+  GeoIndex_setRocksBatch(_geoIndex, batch);
+  int res = this->internalRemove(revisionId, doc);
+  GeoIndex_clearRocks(_geoIndex);
+  return res;
 }
 
 int RocksDBGeoIndex::unload() {

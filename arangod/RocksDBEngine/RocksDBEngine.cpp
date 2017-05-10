@@ -232,7 +232,7 @@ void RocksDBEngine::start() {
   rocksdb::BlockBasedTableOptions table_options;
   if (opts->_blockCacheSize > 0) {
     auto cache =
-        rocksdb::NewLRUCache(opts->_blockCacheSize, opts->_blockCacheShardBits);
+        rocksdb::NewLRUCache(opts->_blockCacheSize, (int)opts->_blockCacheShardBits);
     table_options.block_cache = cache;
   } else {
     table_options.no_block_cache = true;

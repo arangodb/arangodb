@@ -287,7 +287,7 @@ int RocksDBFulltextIndex::remove(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBFulltextIndex::removeRaw(rocksdb::WriteBatch* batch, TRI_voc_rid_t,
+int RocksDBFulltextIndex::removeRaw(rocksdb::WriteBatchWithIndex* batch, TRI_voc_rid_t,
                                     arangodb::velocypack::Slice const& doc) {
   std::vector<std::string> words = wordlist(doc);
   // now we are going to construct the value to insert into rocksdb
