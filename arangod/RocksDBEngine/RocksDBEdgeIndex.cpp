@@ -100,6 +100,7 @@ StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const& it){
 }
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  //LOG_TOPIC(TRACE, Logger::ENGINES) << "rockdb edge index next";
   std::size_t cacheValueSizeLimit = limit;
   TRI_ASSERT(_trx->state()->isRunning());
 
@@ -119,6 +120,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     bool foundInCache = false;
 
     if (_useCache){
+      //LOG_TOPIC(TRACE, Logger::ENGINES) << "using cache";
       // find in cache
       foundInCache = false;
       // handle resume of next() in cached case
@@ -558,6 +560,9 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   }
   keys->close();
 
+  //LOG_TOPIC(TRACE, Logger::ENGINES) << "_useCache: " << _useCache
+  //                              << " _cachePresent: " << _cachePresent
+  //                              << " useCache():" << useCache();
   return new RocksDBEdgeIndexIterator(
       _collection, trx, mmdr, this, keys, useCache(), _cache.get());
 }
@@ -585,6 +590,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   }
   keys->close();
 
+  //LOG_TOPIC(TRACE, Logger::ENGINES) << "useCache: " << _useCache << useCache();
   return new RocksDBEdgeIndexIterator(
       _collection, trx, mmdr, this, keys, useCache(), _cache.get());
 }
