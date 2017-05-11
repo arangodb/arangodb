@@ -58,7 +58,7 @@ RocksDBIndex::RocksDBIndex(
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           VPackSlice const& info,bool useCache)
+                           VPackSlice const& info, bool useCache)
     : Index(id, collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
