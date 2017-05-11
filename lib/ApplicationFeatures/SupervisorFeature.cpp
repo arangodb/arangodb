@@ -104,6 +104,14 @@ static void StopHandler(int) {
 
 }
 
+static void HUPHandler(int) {
+  LOG_TOPIC(INFO, Logger::STARTUP) << "received SIGHUP for supervisor; commanding client [" << CLIENT_PID << "] to logrotate.";
+  int rc = kill(CLIENT_PID, SIGHUP);
+  if (rc < 0) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "commanding client [" << CLIENT_PID << "] to logrotate failed: [" << errno << "] " << strerror(errno);
+  }
+}
+
 SupervisorFeature::SupervisorFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Supervisor"), _supervisor(false), _clientPid(0) {
@@ -189,6 +197,7 @@ void SupervisorFeature::daemonize() {
     if (0 < _clientPid) {
       signal(SIGINT, StopHandler);
       signal(SIGTERM, StopHandler);
+      signal(SIGHUP, HUPHandler);
 
       LOG_TOPIC(INFO, Logger::STARTUP) << "supervisor has forked a child process with pid " << _clientPid;
 
