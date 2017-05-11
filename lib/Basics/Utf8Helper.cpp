@@ -394,7 +394,7 @@ char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
 /// @brief Extract the words from a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::getWords(std::set<std::string>& words,
+bool Utf8Helper::tokenize(std::set<std::string>& words,
                           std::string const& text, size_t minimalLength,
                           size_t maximalLength, bool lowerCase) {
   UErrorCode status = U_ZERO_ERROR;
