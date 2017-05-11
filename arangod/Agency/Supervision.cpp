@@ -52,6 +52,7 @@ Supervision::Supervision()
   _transient("Transient"),
   _frequency(1.),
   _gracePeriod(5.),
+  _okThreshold(1.5),
   _jobId(0),
   _jobIdMax(0),
   _selfShutdown(false),
@@ -147,7 +148,6 @@ void Supervision::upgradeAgency() {
 
 // Check all DB servers, guarded above doChecks
 std::vector<check_t> Supervision::checkDBServers() {
-
   std::vector<check_t> ret;
   auto const& machinesPlanned = _snapshot(planDBServersPrefix).children();
   auto const& serversRegistered =
@@ -161,10 +161,12 @@ std::vector<check_t> Supervision::checkDBServers() {
   }
   
   for (auto const& machine : machinesPlanned) {
-    std::string lastHeartbeatTime, lastHeartbeatAcked, lastHeartbeatStatus,
+    constexpr char never[] = "1970-01-01T00:00:00Z";
+    
+    std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
       lastStatus, heartbeatTime, heartbeatStatus, serverID(machine.first),
       shortName("Unknown");
-    bool good(false), reportPersistent(false),
+    bool reportPersistent(false),
       sync(_transient.has(syncPrefix + serverID));
     
     todelete.erase(
@@ -181,11 +183,9 @@ std::vector<check_t> Supervision::checkDBServers() {
       lastHeartbeatStatus =
         _transient(healthPrefix + serverID + "/LastHeartbeatStatus").toJson();
       lastStatus = _transient(healthPrefix + serverID + "/Status").toJson();
-      if (lastHeartbeatTime != heartbeatTime) {  // Update
-        good = true;
-      }
-    } 
-
+    } else {
+      heartbeatTime = std::string(never);
+    }
     auto report = std::make_shared<Builder>();
     
     { VPackArrayBuilder transaction(report.get());
@@ -218,52 +218,53 @@ std::vector<check_t> Supervision::checkDBServers() {
             reportPersistent = true;
           }
           
-          if (good) {
-            
-            if (lastStatus != Supervision::HEALTH_STATUS_GOOD) {
-              reportPersistent = true;
-            }
+          // we do have some kind of resolution problem here. we should switch to
+          // the time containing ms fragments as well
+          if (lastHeartbeatTime != heartbeatTime) {
+            lastHeartbeatAcked = timepointToString(std::chrono::system_clock::now());
             report->add(
               "LastHeartbeatAcked",
-              VPackValue(timepointToString(std::chrono::system_clock::now())));
-            report->add("Status", VPackValue(Supervision::HEALTH_STATUS_GOOD));
-            
-            std::string failedServerPath = failedServersPrefix + "/" + serverID;
-            if (_snapshot.exists(failedServerPath).size() == 3) {
-              Builder del;
-              { VPackArrayBuilder c(&del);
-                { VPackObjectBuilder cc(&del);
-                  del.add(VPackValue(failedServerPath));
-                  { VPackObjectBuilder ccc(&del);
-                    del.add("op", VPackValue("delete")); }}}
-              singleWriteTransaction(_agent, del);
-            }
-            
+              VPackValue(lastHeartbeatAcked));
+          }
+          std::string newStatus;
+          // don't trust in the beginning. compare in next round with the ack time we set now
+          if (lastHeartbeatAcked.empty()) {
+            newStatus = Supervision::HEALTH_STATUS_BAD;
           } else {
+            auto elapsed = std::chrono::duration<double>(std::chrono::system_clock::now() - stringToTimepoint(lastHeartbeatAcked));
+
+            // maybe we should add some extra safety here? currently a server can go
+            // from good to failed straight away. maybe enfore that we need at least 1 BAD tick?
+            if (elapsed.count() <= _okThreshold) {
+              newStatus = Supervision::HEALTH_STATUS_GOOD;
+            } else if (elapsed.count() <= _gracePeriod) {
+              newStatus = Supervision::HEALTH_STATUS_BAD;
+            } else {
+              newStatus = Supervision::HEALTH_STATUS_FAILED;
+            }
+          }
+
+          if (newStatus != lastStatus) {
+            reportPersistent = true;
+            report->add("Status", VPackValue(newStatus));
             
-            auto elapsed = std::chrono::duration<double>(
-              std::chrono::system_clock::now() -
-              stringToTimepoint(lastHeartbeatAcked));
-            
-            if (elapsed.count() > _gracePeriod) {
-              if (lastStatus == Supervision::HEALTH_STATUS_BAD) {
-                reportPersistent = true;
-                report->add(
-                  "Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
+            if (newStatus == Supervision::HEALTH_STATUS_GOOD) {
+              std::string failedServerPath = failedServersPrefix + "/" + serverID;
+              if (_snapshot.exists(failedServerPath).size() == 3) {
+                Builder del;
+                { VPackArrayBuilder c(&del);
+                  { VPackObjectBuilder cc(&del);
+                    del.add(VPackValue(failedServerPath));
+                    { VPackObjectBuilder ccc(&del);
+                      del.add("op", VPackValue("delete")); }}}
+                singleWriteTransaction(_agent, del);
+              }
+            } else if (newStatus == Supervision::HEALTH_STATUS_FAILED) {
                 envelope = std::make_shared<VPackBuilder>();
                 FailedServer(_snapshot, _agent, std::to_string(_jobId++),
                              "supervision", serverID).create(envelope);
-              }
-            } else {
-              if (lastStatus != Supervision::HEALTH_STATUS_BAD) {
-                reportPersistent = true;
-                report->add(
-                  "Status", VPackValue(Supervision::HEALTH_STATUS_BAD));
-              }
             }
-            
           }
-          
         } // Supervision/Health
         
         if (envelope != nullptr) { // Failed server operation
