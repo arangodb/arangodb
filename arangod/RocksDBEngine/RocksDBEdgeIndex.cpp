@@ -608,3 +608,11 @@ int RocksDBEdgeIndex::cleanup() {
   db->CompactRange(opts, &b, &e);
   return TRI_ERROR_NO_ERROR;
 }
+
+Result RocksDBEdgeIndex::postprocessRemove(transaction::Methods* trx,
+                                              rocksdb::Slice const& key,
+                                              rocksdb::Slice const& value) {
+  //blacklist keys during truncate
+  blackListKey(key.data(), key.size());
+  return {TRI_ERROR_NO_ERROR};
+}
