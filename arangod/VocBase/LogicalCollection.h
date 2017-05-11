@@ -178,7 +178,7 @@ class LogicalCollection {
       std::function<bool(DocumentIdentifierToken const&)> callback);
 
   // SECTION: Indexes
-  std::vector<std::shared_ptr<Index>> const& getIndexes() const;
+  std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, bool,
                        bool forPersistence = false) const;
