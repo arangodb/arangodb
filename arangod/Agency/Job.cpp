@@ -178,7 +178,7 @@ std::string Job::randomIdleGoodAvailableServer(
     if (as.size() == 1) {
       ret = as[0];
     } else {
-      uint16_t interval = as.size() - 1;
+      uint16_t interval = static_cast<uint16_t>(as.size() - 1);
       uint16_t random = RandomGenerator::interval(interval);
       ret = as.at(random);
     }
