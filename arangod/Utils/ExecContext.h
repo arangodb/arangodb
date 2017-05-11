@@ -31,12 +31,12 @@ enum class AuthLevel;
 
 class AuthContext {
   public:
-    AuthContext() {}
+    AuthContext(AuthLevel authLevel) : _databaseAccess(authLevel) {}
+    AuthLevel getDatabaseAuthLevel() { return _databaseAccess; }
 
   protected:
     AuthLevel _databaseAccess;
     std::map<std::string, AuthLevel> _collectionAccess;
-
 };
 
 class ExecContext {

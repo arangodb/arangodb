@@ -129,6 +129,9 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
   }
 
   std::unordered_map<std::string, std::shared_ptr<AuthContext>> authContexts;
+  for (auto const& database : databases) {
+    authContexts.emplace(database.first, std::make_shared<AuthContext>(database.second));
+  }
 
   // build authentication entry
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
@@ -144,6 +147,20 @@ AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
   }
 
   return it->second;
+}
+
+std::shared_ptr<AuthContext> AuthEntry::getAuthContext(std::string const& dbname) {
+  // std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
+
+  for (auto const& database : std::vector<std::string>({dbname, "*"})) {
+    auto const& it = _authContexts.find(database);
+
+    if (it == _authContexts.end()) {
+      continue;
+    }
+    return it->second;
+  }
+  return std::make_shared<AuthContext>(AuthLevel::NONE);
 }
 
 AuthInfo::AuthInfo()
@@ -838,5 +855,16 @@ std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
 }
 
 std::shared_ptr<AuthContext> AuthInfo::getAuthContext(std::string const& username, std::string const& database) {
-  return std::shared_ptr<AuthContext>(new AuthContext());
+  auto it = _authInfo.find(username);
+
+  if (it == _authInfo.end()) {
+    return std::make_shared<AuthContext>(AuthLevel::NONE);
+  }
+
+  // AuthEntry const& entry =
+  return it->second.getAuthContext(database);
+
+  //return entry.
+  // return std::shared_ptr<AuthContext>(new AuthContext());
+  // return std::make_shared<AuthContext>();
 }
