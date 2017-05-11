@@ -211,8 +211,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         }
       }
 
-      if (_cacheValueSize <= cacheValueSizeLimit){ // we end up here only when useCache is true
-                                                  // otherwise the _cacheValueSize will never be modified
+      if (_useCache && _cacheValueSize <= cacheValueSizeLimit){
         // insert cache values that are not too long
         _cacheValueBuilder.close();
         LOG_TOPIC(TRACE, Logger::ENGINES) << " adding value " << _cacheValueBuilder.slice().toJson();
@@ -224,7 +223,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         if (!cached) {
           delete entry;
         }
-      } 
+      }
 
       //prepare for next key
       _cacheValueBuilder.clear();
@@ -278,7 +277,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                   ,false // unique
                   ,false // sparse
                   ,basics::VelocyPackHelper::stringUInt64(info, "objectId")
-                  ,!ServerState::instance()->isCoordinator() // useCache
+                  ,false //!ServerState::instance()->isCoordinator() // useCache
                   )
     , _directionAttr(attr)
 {
