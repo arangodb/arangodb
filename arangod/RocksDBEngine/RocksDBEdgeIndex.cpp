@@ -125,16 +125,10 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
     if (_useCache){
       LOG_TOPIC(ERR, Logger::FIXME) << "using cache";
-      // find in cache
       foundInCache = false;
-      if(!_arrayBuffer.empty()){
-        LOG_TOPIC(ERR, Logger::FIXME) << "resuming old iterator for key " << fromTo << " in cache";
-        // handle resume of next() in cached case
-        // resume iteration after batch size limit was hit
-        // do not modify buffer or iterator
-        foundInCache = true;
-      } else {
-        LOG_TOPIC(ERR, Logger::FIXME) << "looking for cache key " << fromTo << " in cache";
+
+      if(_doUpdateBounds){
+        LOG_TOPIC(ERR, Logger::FIXME) << "looking for cache key ";
         // try to find cached value
         auto f = _cache->find(fromTo.data(),fromTo.size());
         foundInCache = f.found();
@@ -156,6 +150,10 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         } else {
           LOG_TOPIC(ERR, Logger::FIXME) << "not found in cache " << fromTo;
         }
+      } else {
+        LOG_TOPIC(ERR, Logger::FIXME) << "resuming old iterator for key " << fromTo << " in cache";
+        _doUpdateBounds = true;
+        foundInCache = true;
       }
 
       LOG_TOPIC(ERR, Logger::FIXME) << "iterators prepared - foundInCache" << foundInCache;
