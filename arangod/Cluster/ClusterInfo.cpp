@@ -1413,7 +1413,7 @@ int ClusterInfo::dropCollectionCoordinator(
 
       if (TRI_microtime() > endTime) {
         LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "Timeout in _drop collection"
+            << "Timeout in _drop collection (" << realTimeout << ")"
             << ": database: " << databaseName << ", collId:" << collectionID
             << "\ntransaction sent to agency: " << trans.toJson();
         AgencyCommResult ag = ac.getValues("");
@@ -2653,6 +2653,17 @@ void ClusterInfo::invalidatePlan() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate current coordinators
+//////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::invalidateCurrentCoordinators() {
+  {
+    WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
+    _coordinatorsProt.isValid = false;
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate current
 //////////////////////////////////////////////////////////////////////////////
 
@@ -2666,13 +2677,10 @@ void ClusterInfo::invalidateCurrent() {
     _DBServersProt.isValid = false;
   }
   {
-    WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
-    _coordinatorsProt.isValid = false;
-  }
-  {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
     _currentProt.isValid = false;
   }
+  invalidateCurrentCoordinators();
 }
 
 //////////////////////////////////////////////////////////////////////////////

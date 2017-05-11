@@ -63,17 +63,17 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
 
   switch (logLevel) {
     case rocksdb::InfoLogLevel::DEBUG_LEVEL:
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << StringRef(buffer, l);
+      LOG_TOPIC(DEBUG, arangodb::Logger::ROCKSDB) << StringRef(buffer, l);
       break;
     case rocksdb::InfoLogLevel::INFO_LEVEL:
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << StringRef(buffer, l);
+      LOG_TOPIC(INFO, arangodb::Logger::ROCKSDB) << StringRef(buffer, l);
       break;
     case rocksdb::InfoLogLevel::WARN_LEVEL:
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << StringRef(buffer, l);
+      LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB) << StringRef(buffer, l);
       break;
     case rocksdb::InfoLogLevel::ERROR_LEVEL:
     case rocksdb::InfoLogLevel::FATAL_LEVEL:
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << StringRef(buffer, l);
+      LOG_TOPIC(ERR, arangodb::Logger::ROCKSDB) << StringRef(buffer, l);
       break;
     default: { 
       // ignore other levels 

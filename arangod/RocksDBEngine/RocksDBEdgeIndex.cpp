@@ -130,7 +130,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         foundInCache = true;
       } else {
         // try to find cached value
-        auto f = _cache->find(fromTo.data(),fromTo.size());
+        auto f = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
         foundInCache = f.found();
         if (foundInCache) {
           VPackSlice cachedPrimaryKeys(f.value()->value());

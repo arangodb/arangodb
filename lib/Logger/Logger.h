@@ -145,6 +145,7 @@ class Logger {
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
+  static LogTopic ROCKSDB;
   static LogTopic SSL;
   static LogTopic STARTUP;
   static LogTopic SUPERVISION;
