@@ -488,17 +488,17 @@ actions.defineHttp({
 
     Health = Object.entries(Health).reduce((Health, [serverId,struct]) => {
       let canBeDeleted = false;
-      if (struct.Role == 'Coordinator') {
-        canBeDeleted = struct.Status == 'FAILED';
-      } else if (struct.Role == 'DBServer') {
-        if (struct.Status == 'FAILED') {
+      if (struct.Role === 'Coordinator') {
+        canBeDeleted = struct.Status === 'FAILED';
+      } else if (struct.Role === 'DBServer') {
+        if (struct.Status === 'FAILED') {
           let numUsed = reducePlanServers(function(numUsed, agencyKey, servers) {
             if (servers.indexOf(serverId) !== -1) {
               numUsed++;
             }
             return numUsed;
           }, 0);
-          if (numUsed == false) {
+          if (numUsed === 0) {
             numUsed = reduceCurrentServers(function(numUsed, agencyKey, servers) {
               if (servers.indexOf(serverId) !== -1) {
                 numUsed++;
@@ -506,9 +506,7 @@ actions.defineHttp({
               return numUsed;
             }, 0);
           }
-          if (numUsed == 0) {
-            canBeDeleted = true;
-          }
+          canBeDeleted = numUsed === 0;
         }
       }
       // the structure is all uppercase for whatever reason so make it uppercase as well
