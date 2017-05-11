@@ -345,7 +345,7 @@ bool RemoveFollower::start() {
       }
     }   // precondition done
   }  // array for transaction done
-  
+
   // Transact to agency
   write_ret_t res = singleWriteTransaction(_agent, trx);
 
@@ -356,8 +356,8 @@ bool RemoveFollower::start() {
       << _collection;
     return true;
   }
-
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Start precondition failed for " + _jobId;
+  
+  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Start precondition failed for RemoveFollower Job " + _jobId;
   return false;
 }
 
