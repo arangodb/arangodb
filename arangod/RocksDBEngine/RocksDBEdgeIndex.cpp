@@ -68,7 +68,8 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _doUpdateBounds(true),
       _useCache(useCache),
-      _cache(cache)
+      _cache(cache),
+      _cacheValueSize(0)
 {
   keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
@@ -193,14 +194,13 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         _doUpdateBounds = true;
       }
 
-      uint32_t cacheValueSize = 0;
       while (_iterator->Valid() && (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
         if(_useCache){
-          if (cacheValueSize <= cacheValueSizeLimit){
+          if (_cacheValueSize <= cacheValueSizeLimit){
             LOG_TOPIC(TRACE, Logger::ENGINES) << " adding primary " << edgeKey;
             _cacheValueBuilder.add(VPackValue(std::string(edgeKey.data(),edgeKey.size())));
-            ++cacheValueSize;
+            ++_cacheValueSize;
           }
         }
 
@@ -211,27 +211,24 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         }
       }
 
-      if (cacheValueSize > cacheValueSizeLimit){
-        //prevent insertion of incomplete chace value
-        _cacheValueBuilder.clear();
-        _cacheValueBuilder.openArray();
-      }
-
-      //only add entry if cache is available and entry did not hit size limit
-      if (_useCache) {
+      if (_cacheValueSize <= cacheValueSizeLimit){ // we end up here only when useCache is true
+                                                  // otherwise the _cacheValueSize will never be modified
+        // insert cache values that are not too long
         _cacheValueBuilder.close();
-        if(!_cacheValueBuilder.isEmpty() && _cacheValueBuilder.slice().length() > 0) {
-          LOG_TOPIC(TRACE, Logger::ENGINES) << " adding value " << _cacheValueBuilder.slice().toJson();
-          LOG_TOPIC(TRACE, Logger::ENGINES) << "";
-          auto entry = cache::CachedValue::construct(
-              fromTo.data(), static_cast<uint32_t>(fromTo.size()),
-              _cacheValueBuilder.slice().start(), static_cast<uint64_t>(_cacheValueBuilder.slice().byteSize()));
-          bool cached = _cache->insert(entry);
-          if (!cached) {
-            delete entry;
-          }
-        } // builder not empty
-      } // use cache
+        LOG_TOPIC(TRACE, Logger::ENGINES) << " adding value " << _cacheValueBuilder.slice().toJson();
+        LOG_TOPIC(TRACE, Logger::ENGINES) << "";
+        auto entry = cache::CachedValue::construct(
+            fromTo.data(), static_cast<uint32_t>(fromTo.size()),
+            _cacheValueBuilder.slice().start(), static_cast<uint64_t>(_cacheValueBuilder.slice().byteSize()));
+        bool cached = _cache->insert(entry);
+        if (!cached) {
+          delete entry;
+        }
+      } 
+
+      //prepare for next key
+      _cacheValueBuilder.clear();
+      _cacheValueSize = 0;
 
     } // not found in cache
 
