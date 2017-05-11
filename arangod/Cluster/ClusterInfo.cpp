@@ -213,6 +213,23 @@ ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo() {}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::cleanup() {
+  ClusterInfo* theInstance = instance();
+  if (theInstance == nullptr) {
+    return;
+  }
+
+  theInstance->_plannedCollections.clear();
+  theInstance->_shards.clear();
+  theInstance->_shardKeys.clear();
+  theInstance->_shardIds.clear();
+  theInstance->_currentCollections.clear();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the uniqid value. if it exceeds the upper bound, fetch a
