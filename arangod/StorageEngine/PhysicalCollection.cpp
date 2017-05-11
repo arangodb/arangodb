@@ -391,9 +391,9 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   // add index information
   size_t sizeIndexes = memory();
   size_t numIndexes = 0;
-  bool seenEdgeIndex = false;
   
   {
+    bool seenEdgeIndex = false;
     READ_LOCKER(guard, _indexesLock);
     for (auto const& idx : _indexes) {
       // only count an edge index instance

@@ -68,8 +68,8 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _doUpdateBounds(true),
       _useCache(useCache),
-      _cache(cache)
-{
+      _cache(cache),
+      _cacheValueSize(0) {
   keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
