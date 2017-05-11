@@ -26,11 +26,13 @@
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/build.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
@@ -763,6 +765,12 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   // Unregister counter
   _counterManager->removeCounter(coll->objectId());
+  
+  // remove from map
+  {
+    WRITE_LOCKER(guard, _collectionMapLock);
+    _collectionMap.erase(collection->cid());
+  }
 
   // delete documents
   RocksDBKeyBounds bounds =
@@ -909,16 +917,17 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
     return;
   }
 
+  WRITE_LOCKER(guard, _collectionMapLock);
   _collectionMap[objectId] = std::make_pair(did, cid);
 }
 
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
-    uint64_t objectId) {
+    uint64_t objectId) const {
+  READ_LOCKER(guard, _collectionMapLock);
   auto it = _collectionMap.find(objectId);
   if (it == _collectionMap.end()) {
     return {0, 0};
   }
-
   return it->second;
 }
 

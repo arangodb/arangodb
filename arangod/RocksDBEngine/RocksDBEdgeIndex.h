@@ -123,6 +123,9 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
+  Result postprocessRemove(transaction::Methods* trx,
+                           rocksdb::Slice const& key,
+                           rocksdb::Slice const& value) override;
   void batchInsert(
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,

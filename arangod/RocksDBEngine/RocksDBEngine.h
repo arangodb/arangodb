@@ -215,7 +215,7 @@ class RocksDBEngine final : public StorageEngine {
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
-  std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
+  std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t) const;
 
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
@@ -264,6 +264,7 @@ class RocksDBEngine final : public StorageEngine {
   bool _intermediateTransactionCommitEnabled;    // allow usage of intermediate
                                                  // commits
 
+  mutable basics::ReadWriteLock _collectionMapLock;
   std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
       _collectionMap;
 

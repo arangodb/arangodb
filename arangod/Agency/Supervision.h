@@ -183,6 +183,7 @@ class Supervision : public arangodb::Thread {
 
   double _frequency;
   double _gracePeriod;
+  double _okThreshold;
   uint64_t _jobId;
   uint64_t _jobIdMax;
 

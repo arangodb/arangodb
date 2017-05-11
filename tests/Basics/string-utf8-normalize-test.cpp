@@ -173,7 +173,7 @@ SECTION("tst_4") {
   std::string testString   = "Der Müller geht in die Post.";
   
   std::set<std::string> words;
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 3, UINT32_MAX, true);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, testString, 3, UINT32_MAX, true);
   CHECK(!words.empty());
   
   CHECK((5UL) == words.size());
@@ -184,7 +184,7 @@ SECTION("tst_4") {
   CHECK(words.find(std::string("post")) != words.end());
   
   words.clear();
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 4, UINT32_MAX, true);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, testString, 4, UINT32_MAX, true);
   CHECK(!words.empty());
   
   CHECK((3UL) == words.size());
@@ -195,7 +195,7 @@ SECTION("tst_4") {
   CHECK(words.find(std::string("die")) == words.end());
   
   words.clear();
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, "", 3, UINT32_MAX, true);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, "", 3, UINT32_MAX, true);
   CHECK(words.empty());
 }
 
@@ -203,7 +203,7 @@ SECTION("tst_5") {
   std::string testString   = "Der Müller geht in die Post.";
   
   std::set<std::string> words;
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 3, UINT32_MAX, false);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, testString, 3, UINT32_MAX, false);
   CHECK(!words.empty());
   
   CHECK((5UL) == words.size());
@@ -214,7 +214,7 @@ SECTION("tst_5") {
   CHECK(words.find(std::string("Post")) != words.end());
     
   words.clear();
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 4, UINT32_MAX, false);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, testString, 4, UINT32_MAX, false);
   CHECK(!words.empty());
   
   CHECK((3UL) == words.size());
@@ -225,7 +225,7 @@ SECTION("tst_5") {
   CHECK(words.find(std::string("die")) == words.end());
   
   words.clear();
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, "", 4, UINT32_MAX, false);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, "", 4, UINT32_MAX, false);
   CHECK(words.empty());
 }
 }

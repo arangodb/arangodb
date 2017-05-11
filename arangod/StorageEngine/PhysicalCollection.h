@@ -25,6 +25,7 @@
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -99,7 +100,7 @@ class PhysicalCollection {
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
-  std::vector<std::shared_ptr<Index>> const& getIndexes() const;
+  std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, bool,
                        bool forPersistence = false) const;
@@ -221,6 +222,7 @@ class PhysicalCollection {
  protected:
   LogicalCollection* _logicalCollection;
 
+  mutable basics::ReadWriteLock _indexesLock;
   std::vector<std::shared_ptr<Index>> _indexes;
 };
 

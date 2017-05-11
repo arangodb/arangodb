@@ -211,6 +211,10 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   int cleanup() override;
 
+ protected:
+  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
+                           rocksdb::Slice const& value) override;
+
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,

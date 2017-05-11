@@ -149,7 +149,7 @@ uint32_t TRI_UInt32String(char const* str) {
 #elif defined(TRI_HAVE__STRTOUL_R)
   result = _strtoul_r(&buffer, str, &endptr, 10);
 #else
-  result = strtoul(str, &endptr, 10);
+  result = (uint32_t) strtoul(str, &endptr, 10);
 #endif
 
   while (isspace(*endptr)) {

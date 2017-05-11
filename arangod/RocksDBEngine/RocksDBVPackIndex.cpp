@@ -1412,3 +1412,12 @@ int RocksDBVPackIndex::cleanup() {
   db->CompactRange(opts, &b, &e);
   return TRI_ERROR_NO_ERROR;
 }
+
+Result RocksDBVPackIndex::postprocessRemove(transaction::Methods* trx,
+                                            rocksdb::Slice const& key,
+                                            rocksdb::Slice const& value) {
+  if (!unique()) {
+    // TODO: update selectivity estimate
+  }
+  return {TRI_ERROR_NO_ERROR};
+}

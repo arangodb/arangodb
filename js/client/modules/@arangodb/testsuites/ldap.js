@@ -232,7 +232,7 @@ function ldap (options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['ldap'] = ldap;
-  defaultFns.push('ldap');
+  // defaultFns.push('ldap'); // turn off ldap tests by default
   opts['ldapUrl'] = '127.0.0.1';
   opts['caCertFilePath'] = '~/ca_cert.pem';
 

@@ -1413,7 +1413,7 @@ int ClusterInfo::dropCollectionCoordinator(
 
       if (TRI_microtime() > endTime) {
         LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "Timeout in _drop collection"
+            << "Timeout in _drop collection (" << realTimeout << ")"
             << ": database: " << databaseName << ", collId:" << collectionID
             << "\ntransaction sent to agency: " << trans.toJson();
         AgencyCommResult ag = ac.getValues("");
@@ -2144,12 +2144,11 @@ void ClusterInfo::loadServers() {
       result.slice()[0].get(
         std::vector<std::string>(
           {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
-    
+
     if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
       
-      size_t i = 0;
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
         
@@ -2158,15 +2157,17 @@ void ClusterInfo::loadServers() {
             arangodb::basics::VelocyPackHelper::getStringValue(
               slice, "endpoint", "");
           
-          velocypack::Slice aslice;
+          std::string serverId = res.key.copyString();
           try {
-            aslice = serversAliases.valueAt(i++);
+            velocypack::Slice serverSlice;
+            serverSlice = serversAliases.get(serverId);
+            
             std::string alias =
               arangodb::basics::VelocyPackHelper::getStringValue(
-                aslice, "ShortName", "");
-            newAliases.emplace(std::make_pair(alias, res.key.copyString()));
+                serverSlice, "ShortName", "");
+            newAliases.emplace(std::make_pair(alias, serverId));
           } catch (...) {}
-          newServers.emplace(std::make_pair(res.key.copyString(), server));
+          newServers.emplace(std::make_pair(serverId, server));
         }
       }
       
@@ -2652,6 +2653,17 @@ void ClusterInfo::invalidatePlan() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate current coordinators
+//////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::invalidateCurrentCoordinators() {
+  {
+    WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
+    _coordinatorsProt.isValid = false;
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate current
 //////////////////////////////////////////////////////////////////////////////
 
@@ -2665,13 +2677,10 @@ void ClusterInfo::invalidateCurrent() {
     _DBServersProt.isValid = false;
   }
   {
-    WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
-    _coordinatorsProt.isValid = false;
-  }
-  {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
     _currentProt.isValid = false;
   }
+  invalidateCurrentCoordinators();
 }
 
 //////////////////////////////////////////////////////////////////////////////
