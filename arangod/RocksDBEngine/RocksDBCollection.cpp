@@ -544,6 +544,9 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
+        // toVelocyPackIgnore will take a read lock and we don't need the
+        // lock anymore, we will always return 
+        guard.unlock();
 
         VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
             {"path", "statusString"}, true);
