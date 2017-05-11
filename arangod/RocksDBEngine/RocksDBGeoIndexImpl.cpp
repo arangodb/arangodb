@@ -1596,23 +1596,38 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
     gp2.RorPoints = gp.RorPoints;
     for (i = 0; i < gp.RorPoints; i++) gp2.points[i] = gp.points[i];
     /* move the first half of the points from pot2 to pot1 */
-    GeoString mings;
+    GeoString gsl[GeoIndexPOTSIZE],mid,mings;
+    for(j=0;j<GeoIndexPOTSIZE;j++) {
+      SlotRead(gix,gp2.points[j],&Xslot);
+      gsl[j] = GeoMkHilbert(&Xslot);
+    }
     for (i = 0; i < (GeoIndexPOTSIZE / 2); i++) {
-      mings = 0x1FFFFFFFFFFFFFll;
-      int js = 0;
-      for (j = 0; j < gp2.RorPoints; j++) {
-        GeoString gs;
-        SlotRead(gix,gp2.points[j],&Xslot);
-        gs = GeoMkHilbert(&Xslot);
-        if (gs < mings) {
-          mings = gs;
-          js = j;
+      int jj1=100;
+      mid=0x1FFFFFFFFFFFFFll;
+      for(j=0;j<GeoIndexPOTSIZE;j++)
+      {
+        
+        if(gsl[j]==0xfffffffffffffffful) continue;
+        if(gsl[j]<mid)
+        {
+          jj1=j;
+          mid=gsl[j];
         }
       }
-      gp1.points[gp1.RorPoints] = gp2.points[js];
-      gp2.points[js] = gp2.points[gp2.RorPoints - 1];
-      gp2.RorPoints--;
+      gsl[jj1]=0xfffffffffffffffful;
+    }
+    for (i = 0; i < GeoIndexPOTSIZE; i++) {
+      if(gsl[i]!=0xfffffffffffffffful) continue;
+      gp1.points[gp1.RorPoints] = gp2.points[i];
       gp1.RorPoints++;
+    }
+    j=0;
+    for (i = 0; i < GeoIndexPOTSIZE; i++) {
+      gp2.points[j] = gp2.points[i];
+      if(gsl[i]==0xfffffffffffffffful)
+        gp2.RorPoints--;
+      else
+        j++;
     }
     GeoPopulateMaxdist(gix, &gp2, gsa);
     mings = gsa[0];
@@ -1659,19 +1674,20 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
   gp.points[gp.RorPoints] = slot;
   gp.RorPoints++;
   PotWrite(gix,pot,&gp);
-  /* now propagate the maxdistances */    // XQXQ should reverse the loop i/j order
-  for (i = 0; i < GeoIndexFIXEDPOINTS; i++) {
-    j = gt.pathlength - 1;
-    while (j >= 0) {
-      PotRead(gix,gt.path[j],&gpa);
+  /* now propagate the maxdistances */
+  j=gt.pathlength-1;
+  while(j>=0) {
+    int changed=0;
+    PotRead(gix,gt.path[j],&gpa);
+    for (i = 0; i < GeoIndexFIXEDPOINTS; i++) {
       if (gd.fixdist[i] > gpa.maxdist[i]) {
         gpa.maxdist[i] = gd.fixdist[i];
-        PotWrite(gix,gt.path[j],&gpa);
-        }
-      else
-        break;
-      j--;
+        changed=1;
+      }
     }
+    if(changed==0)  break;
+    PotWrite(gix,gt.path[j],&gpa);
+    j--;
   }
   /* just need to balance the tree  */
   if (rebalance == 0) return 0;

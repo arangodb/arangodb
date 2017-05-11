@@ -49,10 +49,10 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   uint64_t createExecutionNumber();
   void addConductor(Conductor* const exec, uint64_t executionNumber);
-  Conductor* conductor(uint64_t executionNumber);
+  std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
 
   void addWorker(IWorker* const worker, uint64_t executionNumber);
-  IWorker* worker(uint64_t executionNumber);
+  std::shared_ptr<IWorker> worker(uint64_t executionNumber);
 
   void cleanupConductor(uint64_t executionNumber);
   void cleanupWorker(uint64_t executionNumber);
@@ -77,8 +77,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
  private:
   Mutex _mutex;
   std::unique_ptr<RecoveryManager> _recoveryManager;
-  std::unordered_map<uint64_t, Conductor*> _conductors;
-  std::unordered_map<uint64_t, IWorker*> _workers;
+  std::unordered_map<uint64_t, std::shared_ptr<Conductor>> _conductors;
+  std::unordered_map<uint64_t, std::shared_ptr<IWorker>> _workers;
 };
 }
 }

@@ -3728,7 +3728,7 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Metho
   uint64_t execNr = arg1.toInt64(trx);
   pregel::PregelFeature *feature = pregel::PregelFeature::instance();
   if (feature) {
-    pregel::IWorker *worker = feature->worker(execNr);
+    std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
     if (!worker) {
       RegisterWarning(query, "PREGEL_RESULT",
                       TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);

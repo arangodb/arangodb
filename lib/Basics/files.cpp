@@ -152,7 +152,7 @@ static void NormalizePath(char* path) {
 
 static ssize_t LookupElementVectorString(TRI_vector_string_t* vector,
                                          char const* element) {
-  int idx = -1;
+  ssize_t idx = -1;
 
   TRI_ReadLockReadWriteLock(&FileNamesLock);
 
