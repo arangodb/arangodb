@@ -127,12 +127,15 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       if(!_arrayBuffer.empty()){
         // resume iteration after batch size limit was hit
         // do not modify buffer or iterator
+        LOG_TOPIC(ERR, Logger::FIXME) << "resuming old iterator for key " << fromTo << " in cache";
         foundInCache = true;
       } else {
+        LOG_TOPIC(ERR, Logger::FIXME) << "looking for cache key " << fromTo << " in cache";
         // try to find cached value
         auto f = _cache->find(fromTo.data(),fromTo.size());
         foundInCache = f.found();
         if (foundInCache) {
+          LOG_TOPIC(ERR, Logger::FIXME) << "found in cache " << fromTo;
           VPackSlice cachedPrimaryKeys(f.value()->value());
           TRI_ASSERT(cachedPrimaryKeys.isArray());
 
@@ -147,7 +150,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
           // update iterator
           _arrayIterator = VPackArrayIterator(_arraySlice);
         } else {
-          //LOG_TOPIC(ERR, Logger::FIXME) << "not found in cache " << fromTo;
+          LOG_TOPIC(ERR, Logger::FIXME) << "not found in cache " << fromTo;
         }
       }
 
@@ -155,10 +158,11 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         //iterate over cached primary keys
         for(VPackSlice const& slice: _arrayIterator){
           StringRef edgeKey(slice);
-          //LOG_TOPIC(ERR, Logger::FIXME) << "using value form cache " << slice.toJson();
+          LOG_TOPIC(ERR, Logger::FIXME) << "using value from cache " << edgeKey;
           if(lookupDocumentAndUseCb(edgeKey, cb, limit, token)){
             return true; // more documents - function will be re-entered
           } else {
+            LOG_TOPIC(ERR, Logger::FIXME) << "survived lookup " << edgeKey;
             //iterate over keys
           }
         }
@@ -168,7 +172,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         continue; // do not use the code below that does a lookup in RocksDB
       }
     } else {
-      //LOG_TOPIC(ERR, Logger::FIXME) << "not using cache";
+      LOG_TOPIC(ERR, Logger::FIXME) << "not using cache";
     }
 
     if(!foundInCache) {
@@ -184,21 +188,19 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         updateBounds(fromTo);
         if(_useCache){
           _cacheValueBuilder.openArray();
-          _cacheValueSize = cacheValueSizeLimit;
         }
       } else {
         _doUpdateBounds = true;
       }
 
+      uint32_t cacheValueSize = 0;
       while (_iterator->Valid() && (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
         if(_useCache){
-          if (_cacheValueSize < cacheValueSizeLimit){
-            _cacheValueBuilder.add(VPackValuePair(edgeKey.data(),edgeKey.size()));
-            ++_cacheValueSize;
-          } else {
-            _cacheValueBuilder.clear();
-            _cacheValueBuilder.openArray();
+          if (cacheValueSize <= cacheValueSizeLimit){
+            LOG_TOPIC(ERR, Logger::FIXME) << "cache key " << fromTo << " adding primary " << edgeKey;
+            _cacheValueBuilder.add(VPackValue(std::string(edgeKey.data(),edgeKey.size())));
+            ++cacheValueSize;
           }
         }
 
@@ -209,10 +211,18 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         }
       }
 
+      if (cacheValueSize > cacheValueSizeLimit){
+        //prevent insertion of incomplete chace value
+        _cacheValueBuilder.clear();
+        _cacheValueBuilder.openArray();
+      }
+
       //only add entry if cache is available and entry did not hit size limit
       if (_useCache) {
         _cacheValueBuilder.close();
         if(!_cacheValueBuilder.isEmpty() && _cacheValueBuilder.slice().length() > 0) {
+          LOG_TOPIC(ERR, Logger::FIXME) << " adding value " << _cacheValueBuilder.slice().toJson();
+          LOG_TOPIC(ERR, Logger::FIXME) << "";
           auto entry = cache::CachedValue::construct(
               fromTo.data(), static_cast<uint32_t>(fromTo.size()),
               _cacheValueBuilder.slice().start(), static_cast<uint64_t>(_cacheValueBuilder.slice().byteSize()));
@@ -268,15 +278,18 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
     : RocksDBIndex(iid
                   ,collection
                   ,std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}})
-                  ,false
-                  ,false
+                  ,false // unique
+                  ,false // sparse
                   ,basics::VelocyPackHelper::stringUInt64(info, "objectId")
-                  ,false //!ServerState::instance()->isCoordinator() /*useCache*/
+                  ,!ServerState::instance()->isCoordinator() // useCache
                   )
     , _directionAttr(attr)
 {
   TRI_ASSERT(iid != 0);
   TRI_ASSERT(_objectId != 0);
+  // if we never hit the assertions we need to remove the
+  // following code
+  // FIXME
   if (_objectId == 0) {
     //disable cache?
     _useCache = false;

@@ -77,7 +77,6 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   bool _useCache;
   cache::Cache* _cache;
   VPackBuilder _cacheValueBuilder;
-  std::size_t _cacheValueSize;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {
