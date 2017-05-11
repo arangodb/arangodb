@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -81,6 +82,8 @@ int RestHandler::prepareEngine() {
 
   // set end immediately so we do not get netative statistics
   RequestStatistics::SET_REQUEST_END(_statistics);
+
+  ExecContext::CURRENT_EXECCONTEXT = _request->execContext();
 
   if (_canceled) {
     _engine.setState(RestEngine::State::DONE);
@@ -155,6 +158,8 @@ int RestHandler::finalizeEngine() {
     _engine.setState(RestEngine::State::FAILED);
     _storeResult(this);
   }
+
+  ExecContext::CURRENT_EXECCONTEXT = nullptr;
 
   return res;
 }

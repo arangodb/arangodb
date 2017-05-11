@@ -20,40 +20,8 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_EXECCONTEXT_H
-#define ARANGOD_UTILS_EXECCONTEXT_H 1
+#include "ExecContext.h"
 
-#include "VocBase/AuthInfo.h"
+using namespace arangodb;
 
-namespace arangodb {
-
-enum class AuthLevel;
-
-class AuthContext {
-  public:
-    AuthContext(AuthLevel authLevel) : _databaseAccess(authLevel) {}
-    AuthLevel getDatabaseAuthLevel() { return _databaseAccess; }
-
-  protected:
-    AuthLevel _databaseAccess;
-    std::map<std::string, AuthLevel> _collectionAccess;
-};
-
-class ExecContext {
-  public:
-    ExecContext(std::string const& user, std::string const& database,
-    std::shared_ptr<AuthContext> authContext)
-      : _user(user), _database(database) {
-        _auth = authContext;
-      }
-
-      static thread_local ExecContext* CURRENT_EXECCONTEXT;
-
-  protected:
-    std::string _user;
-    std::string _database;
-    std::shared_ptr<AuthContext> _auth;
-};
-}
-
-#endif
+thread_local ExecContext* ExecContext::CURRENT_EXECCONTEXT = nullptr;
