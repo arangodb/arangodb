@@ -257,8 +257,14 @@ v3.2.alpha1 (2017-02-05)
 
 * generated Foxx services now use swagger tags
 
+v3.1.20 (XXXX-XX-XX)
+--------------------
 
-v3.1.19 (XXXX-XX-XX)
+* forward SIG_HUP in supervisor process to the server process to fix logrotaion
+  You need to stop the remaining arangod server process manually for the upgrade to work.
+
+
+v3.1.19 (2017-04-28)
 --------------------
 
 * Fixed a StackOverflow issue in Traversal and ShortestPath. Occured if many (>1000) input
