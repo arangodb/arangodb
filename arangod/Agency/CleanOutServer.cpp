@@ -334,7 +334,7 @@ bool CleanOutServer::start() {
   }
 
   LOG_TOPIC(INFO, Logger::SUPERVISION)
-      << "Precondition failed for starting job " + _jobId;
+      << "Precondition failed for starting CleanOutServer job " + _jobId;
 
   return false;
 }

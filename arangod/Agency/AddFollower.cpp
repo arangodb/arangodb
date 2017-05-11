@@ -274,7 +274,7 @@ bool AddFollower::start() {
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Start precondition failed for " + _jobId;
+  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Start precondition failed for AddFollower " + _jobId;
   return false;
 }
 
