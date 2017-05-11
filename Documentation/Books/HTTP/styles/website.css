@@ -32,6 +32,10 @@ div.example_show_button {
   columns: 3;
 }
 
+.page-footer {
+  opacity: 0.5;
+}
+
 .gsib_a {
 padding: 0px !important;
 }
