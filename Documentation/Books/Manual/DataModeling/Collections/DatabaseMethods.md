@@ -140,12 +140,6 @@ to the [naming conventions](../NamingConventions/README.md).
   servers holding copies take over, usually without an error being
   reported.
 
-  When using the *Enterprise* version of ArangoDB the replicationFactor
-  may be set to "satellite" making the collection locally joinable
-  on every database server. This reduces the number of network hops
-  dramatically when using joins in AQL at the costs of reduced write
-  performance on these collections.
-
 `db._create(collection-name, properties, type)`
 
 Specifies the optional *type* of the collection, it can either be *document* 

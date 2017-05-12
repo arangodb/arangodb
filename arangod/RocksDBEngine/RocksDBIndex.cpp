@@ -86,7 +86,13 @@ RocksDBIndex::~RocksDBIndex() {
 
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
-  builder.add("cacheSize", VPackValue(useCache() ? _cache->size() : 0));
+  if(useCache()){
+    builder.add("cacheSize", VPackValue(_cache->size()));
+    builder.add("liftimeHitRate", VPackValue(_cache->hitRates().first));
+    builder.add("windowHitRate", VPackValue(_cache->hitRates().second));
+  } else {
+    builder.add("cacheSize", VPackValue(0));
+  }
 }
 
 int RocksDBIndex::unload() {
