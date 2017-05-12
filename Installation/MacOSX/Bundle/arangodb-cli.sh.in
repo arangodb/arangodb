@@ -1,15 +1,50 @@
 #!/bin/bash
-ROOTDIR="`(cd \`dirname $0\` && pwd)`"
+WD=$(dirname "$0")
+ROOTDIR=$(cd "$WD" && pwd)
 # create start script
 
-mkdir -p ${HOME}@INC_CPACK_ARANGO_DATA_DIR@
-mkdir -p ${HOME}@INC_CPACK_ARANGO_LOG_DIR@
-mkdir -p ${HOME}@INC_CPACK_ARANGODB_APPS_DIRECTORY@
+mkdir -p "${HOME}@INC_CPACK_ARANGO_DATA_DIR@"
+mkdir -p "${HOME}@INC_CPACK_ARANGO_LOG_DIR@"
+mkdir -p "${HOME}@INC_CPACK_ARANGODB_APPS_DIRECTORY@"
 
-SCRIPTS="`( cd ${ROOTDIR}@CMAKE_INSTALL_PREFIX@ && ls -1 {@CMAKE_INSTALL_BINDIR@,@CMAKE_INSTALL_SBINDIR@}/* )`"
+if test ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/SERVER" -a ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"; then
+    STORAGE_ENGINE=$(
+        /usr/bin/osascript <<-EOF
+set issueList to {"auto", "mmfiles", "rocksdb"}
+set selectedIssue to {choose from list issueList}
+return selectedIssue
+EOF
+                  )
+
+    if test "$STORAGE_ENGINE" == "false"; then
+        STORAGE_ENGINE=auto
+    fi
+
+    sed -i -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;" "${ROOTDIR}/@CMAKE_INSTALL_SYSCONFDIR_ARANGO@/arangod.conf"
+else
+    if "${ROOTDIR}/arangod" --database.check-version true; then
+        echo "database doesn't need an upgrade."
+    else
+        UPGRADE_DB=$(/usr/bin/osascript<<END
+tell application "System Events"
+activate
+set the answer to the button returned of (display dialog "Do you want to upgrade your ArangoDB Database directory?" buttons {"Yes", "No"})
+end tell
+END
+              )
+        if test "${UPGRADE_DB}" == "Yes"; then
+            "${ROOTDIR}/arangod" --database.auto-upgrade
+        else
+            echo "Can't continue with not updated database."
+            exit 1
+        fi
+    fi
+fi
+
+SCRIPTS=$( cd "${ROOTDIR}@CMAKE_INSTALL_PREFIX@" && ls -1 {"@CMAKE_INSTALL_BINDIR@","@CMAKE_INSTALL_SBINDIR@"}/* )
 
 for script in $SCRIPTS; do
-  base="`basename $script`"
+  base=$(basename "$script")
 
   (
     echo "#!/bin/bash"
@@ -18,10 +53,10 @@ for script in $SCRIPTS; do
     echo
 
     echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}/@CMAKE_INSTALL_SYSCONFDIR_ARANGO@/${base}.conf\" \$*"
-  ) > ${ROOTDIR}/$base.$$
+  ) > "${ROOTDIR}/$base.$$"
 
-  chmod 755 ${ROOTDIR}/$base.$$
-  mv ${ROOTDIR}/$base.$$ ${ROOTDIR}/$base
+  chmod 755 "${ROOTDIR}/$base.$$"
+  mv "${ROOTDIR}/$base.$$" "${ROOTDIR}/$base"
 done
 
 # start the server
@@ -29,23 +64,23 @@ done
 PIDFILE="${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@/arangod.pid"
 
 if [ -f "${PIDFILE}" ];  then
-result=`
+result=$(
 /usr/bin/osascript -s so <<-EOF
 tell application "System Events"
   activate
   display dialog "PID File ${PIDFILE} exists, server already running. Press OK to try to start the server anyhow."
 end tell
 EOF
-`
+)
 
-  if echo $result | fgrep -q "User canceled";  then
+  if echo "$result" | grep -Fq "User canceled";  then
     exit 0
   fi
 fi
 
 
 test -d "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@" || mkdir "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@"
-${ROOTDIR}/arangod --daemon --pid-file "${PIDFILE}"
+"${ROOTDIR}/arangod" --daemon --pid-file "${PIDFILE}"
 
 # create some information for the user
 
