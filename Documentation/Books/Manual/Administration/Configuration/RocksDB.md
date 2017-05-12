@@ -103,13 +103,15 @@ setting this equal to `max-background-compactions`. Default: 1.
 `--rocksdb.block-cache-size`
 
 This is the size of the block cache in bytes. Increasing this may improve
-performance. Default: 8MB.
+performance.  If there is less than 4GB of RAM on the system, the default value
+is 256MB. If there is more, the default is `(system RAM size - 2GB) * 0.3`.
 
 `--rocksdb.block-cache-shard-bits`
 
 The number of bits used to shard the block cache to allow concurrent operations.
 To keep individual shards at a reasonable size (i.e. at least 512KB), keep this
-value to at most `block-cache-shard-bits / 512KB`. Default: 4.
+value to at most `block-cache-shard-bits / 512KB`. Default: `block-cache-size /
+2^19`.
 
 `--rocksdb.recycle-log-file-num` (Hidden)
 

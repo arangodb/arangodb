@@ -24,6 +24,7 @@
 #include "RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/process-utils.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -59,8 +60,10 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _maxFlushes(rocksDBDefaults.max_background_flushes),
       _numThreadsHigh(rocksDBDefaults.max_background_flushes),
       _numThreadsLow(rocksDBDefaults.max_background_compactions),
-      _blockCacheSize(8 * 1024 * 1024),
-      _blockCacheShardBits(4),
+      _blockCacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
+        ? ((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3)
+        : (256 << 20)),
+      _blockCacheShardBits(0),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compactionReadaheadSize(rocksDBDefaults.compaction_readahead_size),
       _verifyChecksumsInCompaction(
@@ -70,11 +73,16 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _useDirectWrites(rocksDBDefaults.use_direct_writes),
       _useFSync(rocksDBDefaults.use_fsync),
       _skipCorrupted(false) {
-  
+  uint64_t testSize = _blockCacheSize >> 19;
+  while (testSize > 0) {
+    _blockCacheShardBits++;
+    testSize >>= 1;
+  }
+
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
-  
+
   // increase parallelism and re-fetch the number of threads
   rocksDBDefaults.IncreaseParallelism(std::thread::hardware_concurrency());
   _numThreadsHigh = rocksDBDefaults.max_background_flushes;
