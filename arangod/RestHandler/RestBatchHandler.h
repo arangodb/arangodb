@@ -66,7 +66,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
 
  private:
   RestStatus executeHttp();
-  RestStatus executeVpp();
+  RestStatus executeVst();
   // extract the boundary from the body of a multipart message
   bool getBoundaryBody(std::string*);
 

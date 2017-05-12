@@ -22,12 +22,12 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_VPP_REQUEST_H
-#define ARANGODB_REST_VPP_REQUEST_H 1
+#ifndef ARANGODB_REST_VST_REQUEST_H
+#define ARANGODB_REST_VST_REQUEST_H 1
 
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/VppMessage.h"
+#include "Rest/VstMessage.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -41,8 +41,8 @@ class RestBatchHandler;
 
 namespace rest {
 class GeneralCommTask;
-class VppCommTask;
-// class VppsCommTask;
+class VstCommTask;
+// class VstsCommTask;
 }
 
 namespace velocypack {
@@ -50,20 +50,20 @@ class Builder;
 struct Options;
 }
 
-using rest::VppInputMessage;
+using rest::VstInputMessage;
 
-class VppRequest final : public GeneralRequest {
-  friend class rest::VppCommTask;
-  // friend class rest::VppsCommTask;
+class VstRequest final : public GeneralRequest {
+  friend class rest::VstCommTask;
+  // friend class rest::VstsCommTask;
   friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
  private:
-  VppRequest(ConnectionInfo const& connectionInfo, VppInputMessage&& message,
+  VstRequest(ConnectionInfo const& connectionInfo, VstInputMessage&& message,
              uint64_t messageId);
 
  public:
-  ~VppRequest() {}
+  ~VstRequest() {}
 
  public:
   uint64_t messageId() const override { return _messageId; }
@@ -74,7 +74,7 @@ class VppRequest final : public GeneralRequest {
   }
 
   virtual arangodb::Endpoint::TransportType transportType() override {
-    return arangodb::Endpoint::TransportType::VPP;
+    return arangodb::Endpoint::TransportType::VST;
   };
 
   std::unordered_map<std::string, std::string> const& headers() const override;
@@ -94,7 +94,7 @@ class VppRequest final : public GeneralRequest {
   std::string const& value(std::string const& key, bool& found) const override;
 
  private:
-  VppInputMessage _message;
+  VstInputMessage _message;
   mutable std::unique_ptr<std::unordered_map<std::string, std::string>>
       _headers;
   // values are query parameters

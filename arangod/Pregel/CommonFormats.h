@@ -33,6 +33,15 @@
 
 namespace arangodb {
 namespace pregel {
+  
+// Speaker-listerner Label propagation
+struct SLPAValue {
+  // our own initialized id
+  uint64_t nodeId;
+  /// Memory  used to hold the labelId and the count
+  // used for memorizing communities
+  std::map<uint64_t, uint64_t> memory;
+};
 
 // Label propagation
 struct LPValue {

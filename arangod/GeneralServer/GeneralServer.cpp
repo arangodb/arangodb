@@ -86,18 +86,10 @@ void GeneralServer::stopListening() {
 bool GeneralServer::openEndpoint(Endpoint* endpoint) {
   ProtocolType protocolType;
 
-  if (endpoint->transport() == Endpoint::TransportType::HTTP) {
-    if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      protocolType = ProtocolType::HTTPS;
-    } else {
-      protocolType = ProtocolType::HTTP;
-    }
+  if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
+    protocolType = ProtocolType::HTTPS;
   } else {
-    if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      protocolType = ProtocolType::VPPS;
-    } else {
-      protocolType = ProtocolType::VPP;
-    }
+    protocolType = ProtocolType::HTTP;
   }
 
   std::unique_ptr<ListenTask> task(new GeneralListenTask(

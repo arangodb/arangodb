@@ -36,7 +36,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Meta/conversion.h"
-#include "Rest/VppResponse.h"
+#include "Rest/VstResponse.h"
 #include "Scheduler/Job.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Scheduler.h"

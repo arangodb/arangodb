@@ -20,12 +20,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <vector>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <string>
+#include <vector>
 #include "Pregel/Graph.h"
 
 #ifndef ARANGODB_PREGEL_AGG_DENSE_VECTOR_H
@@ -35,12 +35,12 @@ namespace arangodb {
 namespace pregel {
 
 struct VertexSumAggregator : public IAggregator {
-  typedef std::map<PregelShard, std::unordered_map<PregelKey, double>> VertexMap;
+  typedef std::map<PregelShard, std::unordered_map<PregelKey, double>>
+      VertexMap;
   typedef std::pair<PregelShard, std::unordered_map<PregelKey, double>> MyPair;
 
-  VertexSumAggregator(bool perm = false)
-  : _permanent(perm) {}
-  
+  VertexSumAggregator(bool perm = false) : _permanent(perm) {}
+
   // if you use this from a vertex I will end you
   void aggregate(void const* valuePtr) override {
     VertexMap const* map = (VertexMap const*)valuePtr;
@@ -50,9 +50,9 @@ struct VertexSumAggregator : public IAggregator {
       }
     }
   };
-  
+
   void parseAggregate(VPackSlice const& slice) override {
-    for (auto const& pair: VPackObjectIterator(slice)) {
+    for (auto const& pair : VPackObjectIterator(slice)) {
       PregelShard shard = std::stoi(pair.key.copyString());
       PregelKey key;
       VPackValueLength i = 0;
@@ -66,9 +66,9 @@ struct VertexSumAggregator : public IAggregator {
       }
     }
   }
-  
+
   void const* getAggregatedValue() const override { return &_entries; };
-  
+
   void setAggregatedValue(VPackSlice const& slice) override {
     for (auto const& pair : VPackObjectIterator(slice)) {
       PregelShard shard = std::stoi(pair.key.copyString());
@@ -84,11 +84,12 @@ struct VertexSumAggregator : public IAggregator {
       }
     }
   }
-  
-  void serialize(PregelKey const& key, VPackBuilder &builder) const override {
+
+  void serialize(PregelKey const& key, VPackBuilder& builder) const override {
     builder.add(key, VPackValue(VPackValueType::Object));
     for (auto const& pair1 : _entries) {
-      builder.add(std::to_string(pair1.first), VPackValue(VPackValueType::Array));
+      builder.add(std::to_string(pair1.first),
+                  VPackValue(VPackValueType::Array));
       for (auto const& pair2 : pair1.second) {
         builder.add(VPackValue(pair2.first));
         builder.add(VPackValue(pair2.second));
@@ -103,7 +104,7 @@ struct VertexSumAggregator : public IAggregator {
       _entries.clear();
     }
   }
-  
+
   double getAggregatedValue(PregelShard shard, PregelKey const& key) {
     auto const& it1 = _entries.find(shard);
     if (it1 != _entries.end()) {
@@ -114,19 +115,17 @@ struct VertexSumAggregator : public IAggregator {
     }
     return _default;
   }
-  
-  //void setValue(PregelShard shard, std::string const& key, double val) {
+
+  // void setValue(PregelShard shard, std::string const& key, double val) {
   //  _entries[shard][key] = val;
   //}
 
   void aggregate(PregelShard shard, PregelKey const& key, double val) {
     _entries[shard][key] += val;
   }
-  
-  void aggregateDefaultValue(double empty) {
-    _default += empty;
-  }
-  
+
+  void aggregateDefaultValue(double empty) { _default += empty; }
+
   void forEach(std::function<void(PregelID const& _id, double value)> func) {
     for (auto const& pair : _entries) {
       PregelShard shard = pair.first;
@@ -136,9 +135,9 @@ struct VertexSumAggregator : public IAggregator {
       }
     }
   }
-  
+
   bool isConverging() const override { return false; }
-  
+
  protected:
   VertexMap _entries;
   double _default = 0;

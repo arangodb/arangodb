@@ -134,7 +134,7 @@ std::vector<std::string> EndpointList::all(
       prefix = "http+";
       break;
 
-    case Endpoint::TransportType::VPP:
+    case Endpoint::TransportType::VST:
       prefix = "vst+";
       break;
   }
@@ -164,7 +164,7 @@ std::vector<std::string> EndpointList::all(
 //      prefix = "http+";
 //      break;
 //
-//    case Endpoint::TransportType::VPP:
+//    case Endpoint::TransportType::VST:
 //      prefix = "vpp+";
 //      break;
 //  }

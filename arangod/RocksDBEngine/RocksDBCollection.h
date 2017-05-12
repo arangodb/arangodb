@@ -206,7 +206,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult removeDocument(
       arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
-      arangodb::velocypack::Slice const& doc, bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, bool isUpdate, bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice key,

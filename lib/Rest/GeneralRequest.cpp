@@ -34,8 +34,10 @@ using namespace arangodb::basics;
 
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
-    case ProtocolVersion::VPP_1_0:
-      return "VPP/1.0";
+    case ProtocolVersion::VST_1_1:
+      return "VST/1.1";
+    case ProtocolVersion::VST_1_0:
+      return "VST/1.0";
     case ProtocolVersion::HTTP_1_1:
       return "HTTP/1.1";
     case ProtocolVersion::HTTP_1_0:

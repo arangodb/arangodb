@@ -734,9 +734,9 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesRestReplicationHandler::handleTrampolineCoordinator() {
-  bool useVpp = false;
-  if (_request->transportType() == Endpoint::TransportType::VPP) {
-    useVpp = true;
+  bool useVst = false;
+  if (_request->transportType() == Endpoint::TransportType::VST) {
+    useVst = true;
   }
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
@@ -781,7 +781,7 @@ void MMFilesRestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   std::unique_ptr<ClusterCommResult> res;
-  if (!useVpp) {
+  if (!useVst) {
     HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
     if (httpRequest == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -832,7 +832,7 @@ void MMFilesRestReplicationHandler::handleTrampolineCoordinator() {
   _response->setContentType(
       res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
 
-  if (!useVpp) {
+  if (!useVst) {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
     if (_response == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -856,9 +856,9 @@ void MMFilesRestReplicationHandler::handleTrampolineCoordinator() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
-  bool useVpp = false;
-  if (_request->transportType() == Endpoint::TransportType::VPP) {
-    useVpp = true;
+  bool useVst = false;
+  if (_request->transportType() == Endpoint::TransportType::VST) {
+    useVst = true;
   }
 
   // determine start and end tick
@@ -969,7 +969,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   // initialize the dump container
   MMFilesReplicationDumpContext dump(transactionContext,
                                      static_cast<size_t>(determineChunkSize()),
-                                     includeSystem, cid, useVpp);
+                                     includeSystem, cid, useVst);
 
   // and dump
   int res = MMFilesDumpLogReplication(&dump, transactionIds, firstRegularTick,
@@ -983,7 +983,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
 
   // generate the result
   size_t length = 0;
-  if (useVpp) {
+  if (useVst) {
     length = dump._slices.size();
   } else {
     length = TRI_LengthStringBuffer(dump._buffer);
@@ -1010,7 +1010,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                          dump._fromTickIncluded ? "true" : "false");
 
   if (length > 0) {
-    if (useVpp) {
+    if (useVst) {
       for (auto message : dump._slices) {
         _response->addPayload(std::move(message), &dump._vpackOptions, true);
       }

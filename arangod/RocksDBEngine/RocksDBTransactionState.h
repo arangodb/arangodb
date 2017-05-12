@@ -70,6 +70,13 @@ class RocksDBSavePoint {
   std::function<void()> const _rollbackCallback;
   bool _handled;
 };
+  
+/*class RocksDBKey;
+struct RocksDBBatch {
+  virtual arangodb::Result Get(RocksDBKey const&, std::string*) = 0;
+  virtual arangodb::Result Put(RocksDBKey const&, rocksdb::Slice const&) = 0;
+  virtual arangodb::Result Delete(RocksDBKey const&) = 0;
+};*/
 
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
@@ -146,6 +153,9 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// Last collection used for transaction
   TRI_voc_cid_t _lastUsedCollection;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  uint64_t _numLogdata = 0;
+#endif
 };
 }  // namespace arangodb
 
