@@ -1,0 +1,121 @@
+#!/bin/bash
+
+# The "tmuxifier"
+# Execute parallel processes in an arbitrary number of tmux panes
+# This script requires the path to an existing script to
+# execute in parallel. Optionally, the number of threads to
+# and the name of the tmux session can be input. If threads
+# and session name are not entered, threads are determined
+# automatically and session names is set to a default.
+
+# Usage: 
+#   tmuxp process [number of threads] [session name]
+#   process      : name of the shell script or process to execute
+#                  can be set to "" to only open tmux panes
+#   threads      : number of threads to execute [optional]
+#   session name : name of tmux session [optional]
+
+# You will also need to edit the execution command ($exec_cmd)
+# below which is what is run in each tmux pane. By default, it is:
+#   "time $process $ct $nthread"
+#   time     : the unix time command
+#   $process : name of the process to execute
+#   $ct      : the 0-indexed pane number, which I use as an 
+#              argument in the $process script for parallelization
+#   $nthread : the total number of threads, also used for as an
+#              argument in $process for parallelization
+
+# Michelle L. Gill, 2014-11-15
+
+argc=$#
+
+# Set the process name
+if [[ $argc == 2 ]]; then
+    process="$1"
+else
+    echo "Usage: $0 process <number of threads> <session name>"
+    exit 0
+fi
+
+exit 0
+
+# Set the number of threads, which corresponds to the number of panes
+if [[ $argc -ge 2 ]]; then
+    nthread=$2
+else
+    # Determine automatically on Mac or Linux
+    if [[ `uname` == 'Darwin' ]]; then
+        nthread=`sysctl hw.ncpu | awk '{print $2}'`
+    else
+        nthread=`nproc`
+    fi
+fi
+
+# Set the session name 
+if [[ $argc -ge 3 ]]; then
+    sess_name=$3
+else
+    sess_name=tmuxifier
+fi
+
+# Test if the session exists
+tmux has-session -t $sess_name 2> /dev/null
+exit=$?
+if [[ $exit -eq 0 ]]; then
+    echo "Session $sess_name exists. Kill it? [y/N]"
+    read kill_sess
+    if [[ ($kill_sess == "y") || ($kill_sess == "Y") ]]; then
+        tmux kill-session -t $sess_name
+    else
+        echo "Session not created because it already exists. Exiting."
+        exit 0
+    fi
+fi
+
+# Create the session
+tmux new-session -d -s $sess_name
+
+# Set the number of rows 
+nrow=0
+if [[ $nthread -eq 2 ]]; then
+    nrow=2
+elif [[ $nthread -gt 2 ]]; then
+    # Ceiling function to round up if odd
+    nrow=`echo "($nthread+1)/2" | bc`
+fi
+
+# Create the rows
+ct=$nrow
+while [[ $ct -gt 1 ]]; do
+    frac=`echo "scale=2;1/$ct" | bc`
+    percent=`echo "($frac * 100)/1" | bc`
+
+    tmux select-pane -t $sess_name.0
+    tmux split-window -v -p $percent
+    (( ct-- ))
+done
+
+# Create the columns
+if [[ $nthread -gt 2 ]]; then
+    # Floor function to round down if odd
+    ct=`echo "$nthread/2-1" | bc`
+    while [[ $ct -ge 0 ]]; do
+        tmux select-pane -t $sess_name.$ct
+        tmux split-window -h -p 50
+        (( ct-- ))
+    done
+fi
+
+# Start the processes
+if [[ $process != "" ]]; then
+    ct=0
+    while [[ $ct -lt $nthread ]]; do
+        exec_cmd="time $process $ct $nthread"
+        tmux send-keys -t $sess_name.$ct "$exec_cmd" Enter
+        (( ct++ ))
+    done
+fi
+
+tmux select-pane -t $sess_name.0
+
+tmux -2 attach-session -t $sess_name

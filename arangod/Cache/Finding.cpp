@@ -80,6 +80,12 @@ Finding::~Finding() {
   }
 }
 
+void Finding::release() {
+  if (_value != nullptr) {
+    _value->release();
+  }
+}
+
 void Finding::reset(CachedValue* v) {
   if (_value != nullptr) {
     _value->release();

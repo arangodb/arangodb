@@ -52,6 +52,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <cmath>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -144,13 +146,15 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         VPackSlice cachedPrimaryKeys(f.value()->value());
         TRI_ASSERT(cachedPrimaryKeys.isArray());
 
-        // update arraySlice (and copu Buffer if required)
-        if(cachedPrimaryKeys.length() <= limit){
+        // update arraySlice (and copy Buffer if required)
+        // the finding should be small otherwise we need to release it sooner
+        if(cachedPrimaryKeys.length() <= std::min(static_cast<size_t>(40),limit)){
           _arraySlice = cachedPrimaryKeys; // do not copy
         } else {
           // copy data if there are more documents than the batch size limit allows
           _arrayBuffer.append(cachedPrimaryKeys.start(),cachedPrimaryKeys.byteSize());
           _arraySlice = VPackSlice(_arrayBuffer.data());
+          f.release(); // release finding so the cache can be operated on
         }
 
         // update cache value iterator
