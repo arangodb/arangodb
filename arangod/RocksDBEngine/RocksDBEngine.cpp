@@ -220,7 +220,7 @@ void RocksDBEngine::start() {
 
   // intentionally set the RocksDB logger to warning because it will
   // log lots of things otherwise
-  _options.info_log_level = rocksdb::InfoLogLevel::WARN_LEVEL;
+  _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
   auto logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
   _options.info_log = logger;
   logger->disable();
