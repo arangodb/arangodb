@@ -265,7 +265,7 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
         break;
       }
     }
-    // Now _state is either 0 (in which case we have changed _theInstanceInit
+    // Now state is either 0 (in which case we have changed _theInstanceInit
     // to 1, or is 1, in which case somebody else has set it to 1 and is working
     // to initialize the singleton, or is 2, in which case somebody else has 
     // done all the work and we are done:
