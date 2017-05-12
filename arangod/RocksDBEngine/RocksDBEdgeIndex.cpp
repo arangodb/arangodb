@@ -123,9 +123,10 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       }
       _arrayIterator++;
     }
+
+    //reset cache iterator before handling next from/to
     _arrayBuffer.clear();
     _arrayIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
-    _keysIterator.next(); // handle next key
     return false;
   };
 
@@ -135,46 +136,44 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     bool foundInCache = false;
     //LOG_TOPIC(ERR, Logger::FIXME) << "fromTo" << fromTo;
 
-    if (_useCache){
-      if(_doUpdateArrayIterator){
-        // try to find cached value
-        auto f = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
-        foundInCache = f.found();
-        if (foundInCache) {
-          VPackSlice cachedPrimaryKeys(f.value()->value());
-          TRI_ASSERT(cachedPrimaryKeys.isArray());
+    if (_useCache && _doUpdateArrayIterator){
+      // try to find cached value
+      auto f = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
+      foundInCache = f.found();
+      if (foundInCache) {
+        VPackSlice cachedPrimaryKeys(f.value()->value());
+        TRI_ASSERT(cachedPrimaryKeys.isArray());
 
-          // update arraySlice (and Buffer is copy is required)
-          if(cachedPrimaryKeys.length() <= limit){
-            _arraySlice = cachedPrimaryKeys; // do not copy
-          } else {
-            // copy data if there are more documents than the batch size limit allows
-            _arrayBuffer.append(cachedPrimaryKeys.start(),cachedPrimaryKeys.byteSize());
-            _arraySlice = VPackSlice(_arrayBuffer.data());
-          }
-
-          // update iterator
-          _arrayIterator = VPackArrayIterator(_arraySlice);
-
-          // iterate until batch size limit is hit
-          bool continueWithNextBatch = iterateChachedValues();
-          if(continueWithNextBatch){
-            return true; // exit and continue with next batch
-          } else {
-            continue; // advance keys Iterator
-          }
+        // update arraySlice (and Buffer is copy is required)
+        if(cachedPrimaryKeys.length() <= limit){
+          _arraySlice = cachedPrimaryKeys; // do not copy
+        } else {
+          // copy data if there are more documents than the batch size limit allows
+          _arrayBuffer.append(cachedPrimaryKeys.start(),cachedPrimaryKeys.byteSize());
+          _arraySlice = VPackSlice(_arrayBuffer.data());
         }
-      } else {
-        // resuming old iterator
-        _doUpdateArrayIterator = true;
+
+        // update cache value iterator
+        _arrayIterator = VPackArrayIterator(_arraySlice);
+
+        // iterate until batch size limit is hit
         bool continueWithNextBatch = iterateChachedValues();
         if(continueWithNextBatch){
           return true; // exit and continue with next batch
         } else {
-          continue; // advance keys Iterator
+          continue; // advance keys (from/to) iterator
         }
       }
-    } 
+    } else if (_useCache && !_doUpdateArrayIterator){
+      // resuming old iterator
+      _doUpdateArrayIterator = true;
+      bool continueWithNextBatch = iterateChachedValues();
+      if(continueWithNextBatch){
+        return true; // exit and continue with next batch
+      } else {
+        continue; // advance keys (from/to) iterator
+      }
+    }
 
     if(!foundInCache) {
       // cache lookup failed for key value we need to look up
@@ -196,6 +195,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
       while (_iterator->Valid() && (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
+
+        // build cache value for from/to
         if(_useCache){
           if (_cacheValueSize <= cacheValueSizeLimit){
             _cacheValueBuilder.add(VPackValue(std::string(edgeKey.data(),edgeKey.size())));
@@ -203,19 +204,23 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
           }
         }
 
+        // lookup real document
         bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token, false);
         _iterator->Next();
+
+        //check batch size limit
         if(continueWithNextBatch){
           return true; // more documents - function will be re-entered
         }
       }
 
-      if (_useCache && _cacheValueSize <= cacheValueSizeLimit){
-        // insert cache values that are not too long
-        _cacheValueBuilder.close();
+      // insert cache values that are beyond the cacheValueSizeLimit
+      if (_useCache && _cacheValueSize <= cacheValueSizeLimit){ _cacheValueBuilder.close();
         auto entry = cache::CachedValue::construct(
             fromTo.data(), static_cast<uint32_t>(fromTo.size()),
-            _cacheValueBuilder.slice().start(), static_cast<uint64_t>(_cacheValueBuilder.slice().byteSize()));
+            _cacheValueBuilder.slice().start(),
+            static_cast<uint64_t>(_cacheValueBuilder.slice().byteSize())
+        );
         bool cached = _cache->insert(entry);
         if (!cached) {
           delete entry;
@@ -225,7 +230,6 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       //prepare for next key
       _cacheValueBuilder.clear();
       _cacheValueSize = 0;
-
     } // not found in cache
 
     _keysIterator.next(); // handle next key
