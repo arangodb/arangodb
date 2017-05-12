@@ -24,6 +24,7 @@
 #define ARANGODB_APPLICATION_FEATURES_V8PLATFORM_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Mutex.h"
 
 #include <libplatform/libplatform.h>
 #include <v8.h>
@@ -78,6 +79,8 @@ class V8PlatformFeature final
   std::unique_ptr<v8::Platform> _platform;
   std::unique_ptr<v8::ArrayBuffer::Allocator> _allocator;
   std::string _v8CombinedOptions;
+  
+  arangodb::Mutex _lock; // to protect vector _isolateData
   std::vector<std::unique_ptr<IsolateData>> _isolateData;
 };
 }
