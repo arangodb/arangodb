@@ -27,16 +27,20 @@
 
 using namespace arangodb;
 
-RocksDBLogger::RocksDBLogger(rocksdb::InfoLogLevel level) : rocksdb::Logger(level) {}
+RocksDBLogger::RocksDBLogger(rocksdb::InfoLogLevel level) : rocksdb::Logger(level), _enabled(true) {}
 RocksDBLogger::~RocksDBLogger() {}
   
 void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* format, va_list ap) {
   if (logLevel < GetInfoLogLevel()) {
     return;
   }
+  if (!_enabled) {
+    return;
+  }
   
   static constexpr size_t prefixSize = 9; // strlen("rocksdb: ");
-  char buffer[2048];
+  // truncate all log messages after this length
+  char buffer[4096];
   memcpy(&buffer[0], "rocksdb: \0", prefixSize); // add trailing \0 byte already for safety
 
   va_list backup;

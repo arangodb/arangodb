@@ -222,11 +222,12 @@ void RocksDBEngine::start() {
   _options.env->SetBackgroundThreads((int)opts->_numThreadsLow,
                                      rocksdb::Env::Priority::LOW);
 
-  _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
-  // intentionally do not start the logger (yet)
-  // as it will produce a lot of log spam
-  // _options.info_log =
-  // std::make_shared<RocksDBLogger>(_options.info_log_level);
+  // intentionally set the RocksDB logger to warning because it will
+  // log lots of things otherwise
+  _options.info_log_level = rocksdb::InfoLogLevel::WARN_LEVEL;
+  auto logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
+  _options.info_log = logger;
+  logger->disable();
 
   // _options.statistics = rocksdb::CreateDBStatistics();
   // _options.stats_dump_period_sec = 1;
@@ -267,6 +268,9 @@ void RocksDBEngine::start() {
         << "unable to initialize RocksDB engine: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
+  
+  // only enable logger after RocksDB start
+  logger->enable();
 
   TRI_ASSERT(_db != nullptr);
   _counterManager.reset(new RocksDBCounterManager(_db));
