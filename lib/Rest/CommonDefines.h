@@ -59,7 +59,7 @@ enum class ContentType {
   UNSET
 };
 
-enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
+enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VST_1_0, VST_1_1, UNKNOWN };
 
 enum class ConnectionType {
   C_NONE,

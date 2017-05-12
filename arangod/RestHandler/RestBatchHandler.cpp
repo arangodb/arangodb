@@ -50,8 +50,8 @@ RestStatus RestBatchHandler::execute() {
     case Endpoint::TransportType::HTTP: {
       return executeHttp();
     }
-    case Endpoint::TransportType::VPP: {
-      return executeVpp();
+    case Endpoint::TransportType::VST: {
+      return executeVst();
     }
   }
   // should never get here
@@ -59,7 +59,7 @@ RestStatus RestBatchHandler::execute() {
   return RestStatus::FAIL;
 }
 
-RestStatus RestBatchHandler::executeVpp() {
+RestStatus RestBatchHandler::executeVst() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_NO_ERROR,
                 "The RestBatchHandler is not supported for this protocol!");
   return RestStatus::DONE;

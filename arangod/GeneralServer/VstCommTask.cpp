@@ -21,7 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VppCommTask.h"
+#include "VstCommTask.h"
 
 #include <iostream>
 #include <limits>
@@ -37,7 +37,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "GeneralServer/VppNetwork.h"
+#include "GeneralServer/VstNetwork.h"
 #include "Logger/LoggerFeature.h"
 #include "Meta/conversion.h"
 #include "RestServer/ServerFeature.h"
@@ -79,14 +79,16 @@ inline std::size_t validateAndCount(char const* vpStart,
 }
 
 
-VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
+VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
-                         double timeout, bool skipInit)
-    : Task(loop, "VppCommTask"),
+                         double timeout, ProtocolVersion protocolVersion,
+                         bool skipInit)
+    : Task(loop, "VstCommTask"),
       GeneralCommTask(loop, server, std::move(socket), std::move(info), timeout,
                       skipInit),
       _authenticatedUser(),
-      _authentication(nullptr) {
+      _authentication(nullptr),
+      _protocolVersion(protocolVersion) {
   _authentication = application_features::ApplicationServer::getFeature<
       AuthenticationFeature>("Authentication");
   TRI_ASSERT(_authentication != nullptr);
@@ -95,9 +97,13 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
 
   // ATTENTION <- this is required so we do not lose information during a resize
   _readBuffer.reserve(_bufferLength);
+
+  _maxChunkSize = arangodb::application_features::ApplicationServer::getFeature<
+      ServerFeature>("Server")
+      ->vstMaxSize();
 }
 
-void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
+void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
   uint64_t const id = response_message._id;
 
@@ -114,36 +120,16 @@ void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
     }
   }
 
-#if 0
-  // don't print by default because at this place the toJson() may
-  // invoke the custom type handler, which is not present here
-
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                          << "created response:";
-  for (auto const& slice : slices) {
-    try {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
-    } catch (arangodb::velocypack::Exception const& e) {
-    }
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "--";
-  }
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "response -- end";
-#endif
-
-  static uint32_t const chunkSize =
-      arangodb::application_features::ApplicationServer::getFeature<
-          ServerFeature>("Server")
-          ->vppMaxSize();
-
   // set some sensible maxchunk size and compression
-  auto buffers = createChunkForNetwork(slices, id, chunkSize, false);
+  auto buffers = createChunkForNetwork(slices, id, _maxChunkSize,
+                                       _protocolVersion);
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
   if (stat != nullptr && arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE,
                                                      Logger::REQUESTS)) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
-        << VppRequest::translateVersion(_protocolVersion) << "\","
+        << VstRequest::translateVersion(_protocolVersion) << "\","
         << static_cast<int>(response->responseCode()) << ","
         << _connectionInfo.clientAddress << "\"," << stat->timingsCsv();
   }
@@ -173,23 +159,40 @@ void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << id << "\",\""
       << _connectionInfo.clientAddress << "\",\""
-      << VppRequest::translateVersion(_protocolVersion) << "\","
+      << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
 }
 
-VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
-  VppCommTask::ChunkHeader header;
+static uint32_t readLittleEndian32bit(char const* p) {
+  return (static_cast<uint32_t>(static_cast<uint8_t>(p[3])) << 24) |
+         (static_cast<uint32_t>(static_cast<uint8_t>(p[2])) << 16) |
+         (static_cast<uint32_t>(static_cast<uint8_t>(p[1])) << 8) |
+         (static_cast<uint32_t>(static_cast<uint8_t>(p[0])));
+}
+
+static uint64_t readLittleEndian64bit(char const* p) {
+  return (static_cast<uint64_t>(static_cast<uint8_t>(p[7])) << 56) |
+         (static_cast<uint64_t>(static_cast<uint8_t>(p[6])) << 48) |
+         (static_cast<uint64_t>(static_cast<uint8_t>(p[5])) << 40) |
+         (static_cast<uint64_t>(static_cast<uint8_t>(p[4])) << 32) |
+         (static_cast<uint64_t>(static_cast<uint8_t>(p[3])) << 24) |
+         (static_cast<uint64_t>(static_cast<uint8_t>(p[2])) << 16) |
+         (static_cast<uint64_t>(static_cast<uint8_t>(p[1])) << 8) |
+         (static_cast<uint64_t>(static_cast<uint8_t>(p[0])));
+}
+
+VstCommTask::ChunkHeader VstCommTask::readChunkHeader() {
+  VstCommTask::ChunkHeader header;
 
   auto cursor = _readBuffer.begin() + _processReadVariables._readBufferOffset;
 
-  std::memcpy(&header._chunkLength, cursor, sizeof(header._chunkLength));
+  header._chunkLength = readLittleEndian32bit(cursor);
   LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: "
                                           << header._chunkLength;
   cursor += sizeof(header._chunkLength);
 
-  uint32_t chunkX;
-  std::memcpy(&chunkX, cursor, sizeof(chunkX));
+  uint32_t chunkX = readLittleEndian32bit(cursor);
   cursor += sizeof(chunkX);
 
   header._isFirst = chunkX & 0x1;
@@ -197,17 +200,18 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   header._chunk = chunkX >> 1;
   LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunk: " << header._chunk;
 
-  std::memcpy(&header._messageID, cursor, sizeof(header._messageID));
+  header._messageID = readLittleEndian64bit(cursor);
   LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "message id: "
                                           << header._messageID;
   cursor += sizeof(header._messageID);
 
   // extract total len of message
-  if (header._isFirst && header._chunk > 1) {
-    std::memcpy(&header._messageLength, cursor, sizeof(header._messageLength));
+  if (_protocolVersion == ProtocolVersion::VST_1_1 ||
+      (header._isFirst && header._chunk > 1)) {
+    header._messageLength = readLittleEndian64bit(cursor);
     cursor += sizeof(header._messageLength);
   } else {
-    header._messageLength = 0;  // not needed
+    header._messageLength = 0;  // not needed for old protocol
   }
 
   header._headerLength = std::distance(
@@ -216,7 +220,7 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   return header;
 }
 
-bool VppCommTask::isChunkComplete(char* start) {
+bool VstCommTask::isChunkComplete(char* start) {
   std::size_t length = std::distance(start, _readBuffer.end());
   auto& prv = _processReadVariables;
 
@@ -235,23 +239,32 @@ bool VppCommTask::isChunkComplete(char* start) {
   return true;
 }
 
-void VppCommTask::handleAuthentication(VPackSlice const& header,
+void VstCommTask::handleAuthentication(VPackSlice const& header,
                                        uint64_t messageId) {
-  // std::string encryption = header.at(2).copyString();
-  std::string user = header.at(3).copyString();
-  std::string pass = header.at(4).copyString();
-
   bool authOk = false;
   if (!_authentication->isEnabled()) {
     authOk = true;
   } else {
-    auto auth = basics::StringUtils::encodeBase64(user + ":" + pass);
+    std::string auth;
+    AuthInfo::AuthType authType;
+    std::string user;
+
+    std::string encryption = header.at(2).copyString();
+    if (encryption != "jwt") {
+      user = header.at(3).copyString();
+      std::string pass = header.at(4).copyString();
+      auth = basics::StringUtils::encodeBase64(user + ":" + pass);
+      authType = AuthInfo::AuthType::BASIC;
+    } else {   // doing JWT
+      auth = header.at(3).copyString();
+      authType = AuthInfo::AuthType::JWT;
+    }
     AuthResult result = _authentication->authInfo()->checkAuthentication(
-        AuthInfo::AuthType::BASIC, auth);
+        authType, auth);
 
     authOk = result._authorized;
     if (authOk) {
-      _authenticatedUser = std::move(user);
+      _authenticatedUser = std::move(result._username);
     }
   }
 
@@ -269,7 +282,7 @@ void VppCommTask::handleAuthentication(VPackSlice const& header,
 }
 
 // reads data from the socket
-bool VppCommTask::processRead(double startTime) {
+bool VstCommTask::processRead(double startTime) {
   auto& prv = _processReadVariables;
 
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
@@ -282,7 +295,7 @@ bool VppCommTask::processRead(double startTime) {
   auto vpackBegin = chunkBegin + chunkHeader._headerLength;
   bool doExecute = false;
   bool read_maybe_only_part_of_buffer = false;
-  VppInputMessage message;  // filled in CASE 1 or CASE 2b
+  VstInputMessage message;  // filled in CASE 1 or CASE 2b
 
   if (chunkHeader._isFirst) {
     // create agent for new messages
@@ -292,15 +305,14 @@ bool VppCommTask::processRead(double startTime) {
 
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     // CASE 1: message is in one chunk
-    if (auto rv = getMessageFromSingleChunk(chunkHeader, message, doExecute,
-                                            vpackBegin, chunkEnd)) {
-      return *rv;  // the optional will only contain false or boost::none
-                   // so the execution will contine if a message is complete
+    if (!getMessageFromSingleChunk(chunkHeader, message, doExecute,
+                                   vpackBegin, chunkEnd)) {
+      return false;
     }
   } else {
-    if (auto rv = getMessageFromMultiChunks(chunkHeader, message, doExecute,
-                                            vpackBegin, chunkEnd)) {
-      return *rv;
+    if (!getMessageFromMultiChunks(chunkHeader, message, doExecute,
+                                   vpackBegin, chunkEnd)) {
+      return false;
     }
   }
 
@@ -334,7 +346,7 @@ bool VppCommTask::processRead(double startTime) {
     } catch (std::exception const& e) {
       handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "VppCommTask: "
+          << "VstCommTask: "
           << "VPack Validation failed: " << e.what();
       closeTask(rest::ResponseCode::BAD);
       return false;
@@ -344,8 +356,8 @@ bool VppCommTask::processRead(double startTime) {
     if (type == 1000) {
       handleAuthentication(header, chunkHeader._messageID);
     } else {
-      // the handler will take ownersip of this pointer
-      std::unique_ptr<VppRequest> request(new VppRequest(
+      // the handler will take ownership of this pointer
+      std::unique_ptr<VstRequest> request(new VstRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
       request->setUser(_authenticatedUser);
@@ -354,9 +366,13 @@ bool VppCommTask::processRead(double startTime) {
       AuthLevel level = AuthLevel::RW;
       if (_authentication->isEnabled()) {  // only check authorization if
                                            // authentication is enabled
-        std::string const& dbname = request->databaseName();
-        if (!(_authenticatedUser.empty() && dbname.empty())) {
-          level = _authentication->canUseDatabase(_authenticatedUser, dbname);
+        std::string const& path = request->requestPath();
+        if (!StringUtils::isPrefix(path, "/_open/") &&
+            !StringUtils::isPrefix(path, "/_api/user/")) {
+          std::string const& dbname = request->databaseName();
+          if (!(_authenticatedUser.empty() && dbname.empty())) {
+            level = _authentication->canUseDatabase(_authenticatedUser, dbname);
+          }
         }
       }
 
@@ -376,9 +392,8 @@ bool VppCommTask::processRead(double startTime) {
               chunkHeader._messageID);
         } else {
           request->setClientTaskId(_taskId);
-          _protocolVersion = request->protocolVersion();
 
-          std::unique_ptr<VppResponse> response(new VppResponse(
+          std::unique_ptr<VstResponse> response(new VstResponse(
               rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
           response->setContentTypeRequested(request->contentTypeResponse());
           executeRequest(std::move(request), std::move(response));
@@ -396,7 +411,7 @@ bool VppCommTask::processRead(double startTime) {
   return doExecute;
 }
 
-void VppCommTask::closeTask(rest::ResponseCode code) {
+void VstCommTask::closeTask(rest::ResponseCode code) {
   _processReadVariables._readBufferOffset = 0;
   _processReadVariables._currentChunkLength = 0;
   _readBuffer.clear();  // check is this changes the reserved size
@@ -413,7 +428,7 @@ void VppCommTask::closeTask(rest::ResponseCode code) {
   closeStream();
 }
 
-rest::ResponseCode VppCommTask::authenticateRequest(GeneralRequest* request) {
+rest::ResponseCode VstCommTask::authenticateRequest(GeneralRequest* request) {
   auto context = (request == nullptr) ? nullptr : request->requestContext();
 
   if (context == nullptr && request != nullptr) {
@@ -432,17 +447,17 @@ rest::ResponseCode VppCommTask::authenticateRequest(GeneralRequest* request) {
   return context->authenticate();
 }
 
-std::unique_ptr<GeneralResponse> VppCommTask::createResponse(
+std::unique_ptr<GeneralResponse> VstCommTask::createResponse(
     rest::ResponseCode responseCode, uint64_t messageId) {
   return std::unique_ptr<GeneralResponse>(
-      new VppResponse(responseCode, messageId));
+      new VstResponse(responseCode, messageId));
 }
 
-void VppCommTask::handleSimpleError(rest::ResponseCode responseCode,
+void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
                                     int errorNum,
                                     std::string const& errorMessage,
                                     uint64_t messageId) {
-  VppResponse response(responseCode, messageId);
+  VstResponse response(responseCode, messageId);
 
   VPackBuilder builder;
   builder.openObject();
@@ -460,12 +475,14 @@ void VppCommTask::handleSimpleError(rest::ResponseCode responseCode,
   }
 }
 
-boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
-    ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
+// Returns true if and only if there was no error, if false is returned,
+// the connection is closed
+bool VstCommTask::getMessageFromSingleChunk(
+    ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
     char const* vpackBegin, char const* chunkEnd) {
   // add agent for this new message
 
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                           << "chunk contains single message";
   std::size_t payloads = 0;
 
@@ -476,13 +493,13 @@ boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
                       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                       chunkHeader._messageID);
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "VppCommTask: "
+        << "VstCommTask: "
         << "VPack Validation failed: " << e.what();
     closeTask(rest::ResponseCode::BAD);
     return false;
   } catch (...) {
     handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                             << "VPack Validation failed";
     closeTask(rest::ResponseCode::BAD);
     return false;
@@ -493,11 +510,13 @@ boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
   message.set(chunkHeader._messageID, std::move(buffer), payloads);  // fixme
 
   doExecute = true;
-  return boost::none;
+  return true;
 }
 
-boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
-    ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
+// Returns true if and only if there was no error, if false is returned,
+// the connection is closed
+bool VstCommTask::getMessageFromMultiChunks(
+    ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
     char const* vpackBegin, char const* chunkEnd) {
   // CASE 2:  message is in multiple chunks
   auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
@@ -505,11 +524,11 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
   // CASE 2a: chunk starts new message
   if (chunkHeader._isFirst) {  // first chunk of multi chunk message
     // add agent for this new message
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                             << "chunk starts a new message";
     if (incompleteMessageItr != _incompleteMessages.end()) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "VppCommTask: "
+          << "VstCommTask: "
           << "Message should be first but is already in the Map of "
              "incomplete "
              "messages";
@@ -525,7 +544,7 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
     auto insertPair = _incompleteMessages.emplace(
         std::make_pair(chunkHeader._messageID, std::move(message)));
     if (!insertPair.second) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                               << "insert failed";
       closeTask(rest::ResponseCode::BAD);
       return false;
@@ -533,11 +552,11 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
 
     // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                             << "chunk continues a message";
     if (incompleteMessageItr == _incompleteMessages.end()) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "VppCommTask: "
+          << "VstCommTask: "
           << "found message without previous part";
       closeTask(rest::ResponseCode::BAD);
       return false;
@@ -550,7 +569,7 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
 
     // MESSAGE COMPLETE
     if (im._currentChunk == im._numberOfChunks - 1 /* zero based counting */) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                               << "chunk completes a message";
       std::size_t payloads = 0;
 
@@ -565,13 +584,13 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                           chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-            << "VppCommTask: "
+            << "VstCommTask: "
             << "VPack Validation failed: " << e.what();
         closeTask(rest::ResponseCode::BAD);
         return false;
       } catch (...) {
         handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                                 << "VPack Validation failed!";
         closeTask(rest::ResponseCode::BAD);
         return false;
@@ -584,8 +603,8 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
       doExecute = true;
     }
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "VppCommTask: "
+        << "VstCommTask: "
         << "chunk does not complete a message";
   }
-  return boost::none;
+  return true;
 }

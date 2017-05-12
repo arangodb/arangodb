@@ -168,6 +168,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       }
     } else if (_useCache && !_doUpdateArrayIterator){
       // resuming old iterator
+      foundInCache = true; // do not look up key again!
       _doUpdateArrayIterator = true;
       bool continueWithNextBatch = iterateChachedValues();
       if(continueWithNextBatch){

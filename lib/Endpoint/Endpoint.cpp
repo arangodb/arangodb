@@ -99,7 +99,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   }
 
   if (StringUtils::isPrefix(copy, "vst+")) {
-    protocol = TransportType::VPP;
+    protocol = TransportType::VST;
     prefix = "vst+";
     copy = copy.substr(4);
   }
@@ -141,9 +141,9 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     found = temp.find("]", 1);
     if (found != std::string::npos && found > 2 && found + 1 == temp.size()) {
       // hostname only (e.g. [address])
-      if (protocol == TransportType::VPP) {
+      if (protocol == TransportType::VST) {
         return prefix + copy + ":" +
-               StringUtils::itoa(EndpointIp::_defaultPortVpp);
+               StringUtils::itoa(EndpointIp::_defaultPortVst);
       } else {
         return prefix + copy + ":" +
                StringUtils::itoa(EndpointIp::_defaultPortHttp);
@@ -172,7 +172,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     return prefix + copy + ":" +
            StringUtils::itoa(EndpointIp::_defaultPortHttp);
   } else {
-    return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortVpp);
+    return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortVst);
   }
 }
 
@@ -221,9 +221,6 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   if (StringUtils::isPrefix(copy, "http+")) {
     protocol = TransportType::HTTP;
     copy = copy.substr(5);
-  } else if (StringUtils::isPrefix(copy, "vst+")) {
-    protocol = TransportType::VPP;
-    copy = copy.substr(4);
   } else {
     // invalid protocol
     return nullptr;
@@ -271,7 +268,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   copy = copy.substr(6);
   uint16_t defaultPort = (protocol == TransportType::HTTP)
                              ? EndpointIp::_defaultPortHttp
-                             : EndpointIp::_defaultPortVpp;
+                             : EndpointIp::_defaultPortVst;
 
   size_t found;
 
@@ -340,9 +337,9 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
       return "http+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
              StringUtils::itoa(EndpointIp::_defaultPortHttp);
 
-    case TransportType::VPP:
+    case TransportType::VST:
       return "vst+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
-             StringUtils::itoa(EndpointIp::_defaultPortVpp);
+             StringUtils::itoa(EndpointIp::_defaultPortVst);
 
     default: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -406,8 +403,8 @@ std::ostream& operator<<(std::ostream& stream,
     case arangodb::Endpoint::TransportType::HTTP:
       stream << "http";
       break;
-    case arangodb::Endpoint::TransportType::VPP:
-      stream << "vsp";
+    case arangodb::Endpoint::TransportType::VST:
+      stream << "vst";
       break;
   }
   return stream;

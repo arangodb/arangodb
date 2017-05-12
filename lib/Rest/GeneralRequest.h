@@ -91,7 +91,7 @@ class GeneralRequest {
 
  public:
   ProtocolVersion protocolVersion() const { return _version; }
-  char const* protocol() const { return _protocol; }  // http, https or vpp
+  char const* protocol() const { return _protocol; }  // http, https or vst
   void setProtocol(char const* protocol) { _protocol = protocol; }
 
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
@@ -192,7 +192,7 @@ class GeneralRequest {
 
  protected:
   ProtocolVersion _version;
-  char const* _protocol;  // http, https or vpp
+  char const* _protocol;  // http, https or vst
 
   // connection info
   ConnectionInfo _connectionInfo;

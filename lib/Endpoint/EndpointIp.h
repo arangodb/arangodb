@@ -38,7 +38,7 @@ class EndpointIp : public Endpoint {
 
  public:
   static uint16_t const _defaultPortHttp;
-  static uint16_t const _defaultPortVpp;
+  static uint16_t const _defaultPortVst;
   static char const* _defaultHost;
 
  private:

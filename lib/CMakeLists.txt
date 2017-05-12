@@ -193,8 +193,8 @@ add_library(${LIB_ARANGO} STATIC
   Random/UniformCharacter.cpp
   Rest/GeneralRequest.cpp
   Rest/GeneralResponse.cpp
-  Rest/VppRequest.cpp
-  Rest/VppResponse.cpp
+  Rest/VstRequest.cpp
+  Rest/VstResponse.cpp
   Rest/HttpRequest.cpp
   Rest/HttpResponse.cpp
   Rest/InitializeRest.cpp

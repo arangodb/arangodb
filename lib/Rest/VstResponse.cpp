@@ -22,7 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VppResponse.h"
+#include "VstResponse.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -35,20 +35,20 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/tri-strings.h"
 #include "Meta/conversion.h"
-#include "Rest/VppRequest.h"
+#include "Rest/VstRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
-bool VppResponse::HIDE_PRODUCT_HEADER = false;
+bool VstResponse::HIDE_PRODUCT_HEADER = false;
 
-VppResponse::VppResponse(ResponseCode code, uint64_t id)
+VstResponse::VstResponse(ResponseCode code, uint64_t id)
     : GeneralResponse(code), _header(nullptr), _messageId(id) {
   _contentType = ContentType::VPACK;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
 }
 
-void VppResponse::reset(ResponseCode code) {
+void VstResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
@@ -56,7 +56,7 @@ void VppResponse::reset(ResponseCode code) {
   _generateBody = false;  // payload has to be set
 }
 
-VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
+VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   // initalize builder with vpackbuffer. then we do not need to
   // steal the header and can avoid the shared pointer
   VPackBuilder builder;

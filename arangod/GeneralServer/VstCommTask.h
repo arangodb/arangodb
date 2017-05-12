@@ -21,17 +21,16 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_VPP_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_VPP_COMM_TASK_H 1
+#ifndef ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H
+#define ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H 1
 
 #include "GeneralServer/GeneralCommTask.h"
 
-#include <boost/optional.hpp>
 #include <stdexcept>
 
-#include "lib/Rest/VppMessage.h"
-#include "lib/Rest/VppRequest.h"
-#include "lib/Rest/VppResponse.h"
+#include "lib/Rest/VstMessage.h"
+#include "lib/Rest/VstRequest.h"
+#include "lib/Rest/VstResponse.h"
 
 namespace arangodb {
 
@@ -39,25 +38,26 @@ class AuthenticationFeature;
 
 namespace rest {
 
-class VppCommTask : public GeneralCommTask {
+class VstCommTask : public GeneralCommTask {
  public:
-  VppCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
-              ConnectionInfo&&, double timeout, bool skipSocketInit = false);
+  VstCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+              ConnectionInfo&&, double timeout, ProtocolVersion protocolVersion,
+              bool skipSocketInit = false);
 
-  // convert from GeneralResponse to vppResponse ad dispatch request to class
+  // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
   void addResponse(GeneralResponse* response, RequestStatistics* stat) override {
-    VppResponse* vppResponse = dynamic_cast<VppResponse*>(response);
+    VstResponse* vstResponse = dynamic_cast<VstResponse*>(response);
 
-    if (vppResponse == nullptr) {
+    if (vstResponse == nullptr) {
       throw std::logic_error("invalid response or response Type");
     }
 
-    addResponse(vppResponse, stat);
+    addResponse(vstResponse, stat);
   };
 
   arangodb::Endpoint::TransportType transportType() override {
-    return arangodb::Endpoint::TransportType::VPP;
+    return arangodb::Endpoint::TransportType::VST;
   };
 
  protected:
@@ -71,7 +71,7 @@ class VppCommTask : public GeneralCommTask {
   void handleAuthentication(VPackSlice const& header, uint64_t messageId);
 
   void handleSimpleError(rest::ResponseCode code, uint64_t id) override {
-    VppResponse response(code, id);
+    VstResponse response(code, id);
     addResponse(&response, nullptr);
   }
 
@@ -86,7 +86,7 @@ class VppCommTask : public GeneralCommTask {
   // request handling aborts prematurely
   void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
 
-  void addResponse(VppResponse*, RequestStatistics* stat);
+  void addResponse(VstResponse*, RequestStatistics* stat);
   rest::ResponseCode authenticateRequest(GeneralRequest* request);
 
  private:
@@ -133,16 +133,22 @@ class VppCommTask : public GeneralCommTask {
   ChunkHeader readChunkHeader();  // sub-function of processRead
   void replyToIncompleteMessages();
 
-  boost::optional<bool> getMessageFromSingleChunk(
-      ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
+  // Returns true if and only if there was no error, if false is returned,
+  // the connection is closed
+  bool getMessageFromSingleChunk(
+      ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
       char const* vpackBegin, char const* chunkEnd);
 
-  boost::optional<bool> getMessageFromMultiChunks(
-      ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
+  // Returns true if and only if there was no error, if false is returned,
+  // the connection is closed
+  bool getMessageFromMultiChunks(
+      ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
       char const* vpackBegin, char const* chunkEnd);
 
   std::string _authenticatedUser;
   AuthenticationFeature* _authentication;
+  ProtocolVersion _protocolVersion;
+  uint32_t _maxChunkSize;
 };
 }
 }

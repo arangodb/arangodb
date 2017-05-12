@@ -46,7 +46,7 @@ using namespace arangodb::basics;
 #endif
 
 uint16_t const EndpointIp::_defaultPortHttp = 8529;
-uint16_t const EndpointIp::_defaultPortVpp = 8530;
+uint16_t const EndpointIp::_defaultPortVst = 8530;
 char const* EndpointIp::_defaultHost = "127.0.0.1";
 
 static std::string buildSpecification(Endpoint::DomainType domainType,
@@ -60,7 +60,7 @@ static std::string buildSpecification(Endpoint::DomainType domainType,
     case Endpoint::TransportType::HTTP:
       specification = "http+";
       break;
-    case Endpoint::TransportType::VPP:
+    case Endpoint::TransportType::VST:
       specification = "vst+";
       break;
   }

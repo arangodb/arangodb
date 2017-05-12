@@ -1623,7 +1623,7 @@ static void Return_PrepareClusterCommResultForJS(
       r->Set(ErrorMessageKey,
              TRI_V8_ASCII_STRING("required backend was not available"));
     } else if (res.status == CL_COMM_RECEIVED) {  // Everything is OK
-      // FIXME HANDLE VPP
+      // FIXME HANDLE VST
       auto httpRequest = std::dynamic_pointer_cast<HttpRequest>(res.answer);
       if (httpRequest == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
