@@ -30,7 +30,8 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
   '   - `skipLdap` : if set to true the LDAP tests are skipped',
-  '   - `ldapUrl : testing authentication and authentication_paramaters will be skipped.'
+  '   - `ldapHost : Host/IP of the ldap server',
+  '   - `ldapPort : Port of the ldap server',
 ];
 
 const pu = require('@arangodb/process-utils');
@@ -48,7 +49,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // //////////////////////////////////////////////////////////////////////////////
 
 function ldap (options) {
-  print(`DAP FQDN is: ${options.ldapUrl} ${options.caCertFilePath}`);
+  print(`DAP FQDN is: ${options.ldapHost}:${options.ldapPort} ${options.caCertFilePath}`);
   const results = { failed: 0 };
   const tests = [
     {
@@ -57,8 +58,8 @@ function ldap (options) {
         'server.authentication': true,
         'server.authentication-system-only': false,
         'ldap.enabled': true,
-        'ldap.server': options.ldapUrl,
-        'ldap.port': 3890,
+        'ldap.server': options.ldapHost,
+        'ldap.port': options.ldapPort,
         'ldap.prefix': 'uid=',
         'ldap.suffix': ',dc=example,dc=com',
         'ldap.search-filter': 'objectClass=simpleSecurityObject',
@@ -79,8 +80,8 @@ function ldap (options) {
         'server.authentication': true,
         'server.authentication-system-only': false,
         'ldap.enabled': true,
-        'ldap.server': options.ldapUrl,
-        'ldap.port': 3890,
+        'ldap.server': options.ldapHost,
+        'ldap.port': options.ldapPort,
         'ldap.basedn': 'dc=example,dc=com',
         'ldap.search-filter': 'objectClass=simpleSecurityObject',
         'ldap.search-attribute': 'uid',
@@ -102,8 +103,8 @@ function ldap (options) {
         'server.authentication': true,
         'server.authentication-system-only': false,
         'ldap.enabled': true,
-        'ldap.server': options.ldapUrl,
-        'ldap.port': 3890,
+        'ldap.server': options.ldapHost,
+        'ldap.port': options.ldapPort,
         'ldap.basedn': 'dc=example,dc=com',
         'ldap.search-filter': 'objectClass=simpleSecurityObject',
         'ldap.search-attribute': 'uid',
@@ -125,7 +126,7 @@ function ldap (options) {
         'server.authentication': true,
         'server.authentication-system-only': false,
         'ldap.enabled': true,
-        'ldap.url': `ldap://${options.ldapUrl}:3890/dc=example,dc=com?uid?sub`,
+        'ldap.url': `ldap://${options.ldapHost}:${options.ldapPort}/dc=example,dc=com?uid?sub`,
         'ldap.search-filter': 'objectClass=simpleSecurityObject',
         'ldap.binddn': 'cn=admin,dc=example,dc=com',
         'ldap.bindpasswd': 'hallo',
@@ -145,7 +146,7 @@ function ldap (options) {
         'server.authentication': true,
         'server.authentication-system-only': false,
         'ldap.enabled': true,
-        'ldap.url': `ldap://${options.ldapUrl}:3890/dc=example,dc=com?uid?sub`,
+        'ldap.url': `ldap://${options.ldapHost}:${options.ldapPort}/dc=example,dc=com?uid?sub`,
         'ldap.search-filter': 'objectClass=simpleSecurityObject',
         'ldap.binddn': 'cn=admin,dc=example,dc=com',
         'ldap.bindpasswd': 'hallo',
@@ -233,7 +234,8 @@ function ldap (options) {
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['ldap'] = ldap;
   // defaultFns.push('ldap'); // turn off ldap tests by default
-  opts['ldapUrl'] = '127.0.0.1';
+  opts['ldapHost'] = '127.0.0.1';
+  opts['ldapPort'] = 3890;
   opts['caCertFilePath'] = '~/ca_cert.pem';
 
   // turn off ldap tests by default. only enable them in enterprise version

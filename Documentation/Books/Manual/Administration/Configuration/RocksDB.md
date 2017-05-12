@@ -13,7 +13,7 @@ underlying RocksDB instance, and we change very few of their default settings.
 
 The amount of data to build up in each in-memory buffer (backed by a log file)
 before closing the buffer and queueing it to be flushed into standard storage.
-Default: 64MB. Larger values may improve performance, especially for bulk
+Default: 64MiB. Larger values may improve performance, especially for bulk
 loads.
 
 `--rocksdb.max-write-buffer-number`
@@ -30,7 +30,7 @@ normal storage. Default: 1.
 `--rocksdb.delayed_write_rate` (Hidden)
 
 Limited write rate to DB (in bytes per second) if we are writing to the last
-in-memory buffer allowed and we allow more than 3 buffers. Default: 16MB/s.
+in-memory buffer allowed and we allow more than 3 buffers. Default: 16MiB/s.
 
 ### LSM tree structure
 
@@ -40,7 +40,8 @@ The number of levels for the database in the LSM tree. Default: 7.
 
 `--rocksdb.max-bytes-for-level-base` (Hidden)
 
-The maximum total data size in bytes in level-1 of the LSM tree. Default: 256MB.
+The maximum total data size in bytes in level-1 of the LSM tree. Default:
+256MiB.
 
 `--rocksdb.max-bytes-for-level-multiplier`
 
@@ -53,7 +54,7 @@ calculated as `max-bytes-for-level-base * (max-bytes-for-level-multiplier ^
 `--rocksdb.compaction-read-ahead-size` (Hidden)
 
 If non-zero, we perform bigger reads when doing compaction. If you're  running
-RocksDB on spinning disks, you should set this to at least 2MB. That way
+RocksDB on spinning disks, you should set this to at least 2MiB. That way
 RocksDB's compaction is doing sequential instead of random reads. Default: 0.
 
 `--rocksdb.use-direct-reads` (Hidden)
@@ -103,13 +104,15 @@ setting this equal to `max-background-compactions`. Default: 1.
 `--rocksdb.block-cache-size`
 
 This is the size of the block cache in bytes. Increasing this may improve
-performance. Default: 8MB.
+performance.  If there is less than 4GiB of RAM on the system, the default value
+is 256MiB. If there is more, the default is `(system RAM size - 2GiB) * 0.3`.
 
 `--rocksdb.block-cache-shard-bits`
 
 The number of bits used to shard the block cache to allow concurrent operations.
 To keep individual shards at a reasonable size (i.e. at least 512KB), keep this
-value to at most `block-cache-shard-bits / 512KB`. Default: 4.
+value to at most `block-cache-shard-bits / 512KB`. Default: `block-cache-size /
+2^19`.
 
 `--rocksdb.recycle-log-file-num` (Hidden)
 
@@ -150,7 +153,7 @@ Enable intermediate commits. Default: false.
 `--rocksdb.intermediate-transaction-count` (Hidden)
 
 If intermediate commits are enabled, one will be tried when a transaction has
-accumulated operations totalling this size (in bytes). Default: 32MB.
+accumulated operations totalling this size (in bytes). Default: 32MiB.
 
 `--rocksdb.wal-file-timeout` (Hidden)
 

@@ -401,7 +401,7 @@ describe ArangoDB do
 
       it "creates a cursor that will expire" do
         cmd = api
-        body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 1, \"ttl\" : 4 }"
+        body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 1, \"ttl\" : 10 }"
         doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd, :body => body)
         
         doc.code.should eq(201)
