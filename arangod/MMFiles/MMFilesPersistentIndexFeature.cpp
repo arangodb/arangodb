@@ -124,9 +124,6 @@ void MMFilesPersistentIndexFeature::start() {
   _options.base_background_compactions = static_cast<int>(opts->_baseBackgroundCompactions);
   _options.max_background_compactions = static_cast<int>(opts->_maxBackgroundCompactions);
 
-  _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
-  _options.keep_log_file_num = static_cast<size_t>(opts->_keepLogFileNum);
-  _options.log_file_time_to_roll = static_cast<size_t>(opts->_logFileTimeToRoll);
   _options.compaction_readahead_size = static_cast<size_t>(opts->_compactionReadaheadSize);
 
   if (_options.base_background_compactions > 1 || _options.max_background_compactions > 1) {

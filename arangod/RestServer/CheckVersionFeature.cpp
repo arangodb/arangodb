@@ -99,7 +99,6 @@ void CheckVersionFeature::start() {
   // and force shutdown
   server()->beginShutdown();
   
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "checking version on an empty database";
   usleep(1 * 1000 * 1000);  
   TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
 }
@@ -172,4 +171,6 @@ void CheckVersionFeature::checkVersion() {
   if (*_result == 1) {
     *_result = EXIT_SUCCESS;
   }
+          
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "final result of version check: " << *_result;
 }

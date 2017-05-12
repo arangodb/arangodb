@@ -144,7 +144,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         VPackSlice cachedPrimaryKeys(f.value()->value());
         TRI_ASSERT(cachedPrimaryKeys.isArray());
 
-        // update arraySlice (and Buffer is copy is required)
+        // update arraySlice (and copu Buffer if required)
         if(cachedPrimaryKeys.length() <= limit){
           _arraySlice = cachedPrimaryKeys; // do not copy
         } else {
