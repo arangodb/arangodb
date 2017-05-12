@@ -101,10 +101,12 @@ void Inception::gossip() {
           std::make_unique<std::unordered_map<std::string, std::string>>();
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
             << out->toJson() << " to peer " << clientid;
-        cc->asyncRequest(
-          clientid, 1, p, rest::RequestType::POST, path,
-          std::make_shared<std::string>(out->toJson()), hf,
-          std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
+        if (cc != nullptr) {
+          cc->asyncRequest(
+            clientid, 1, p, rest::RequestType::POST, path,
+            std::make_shared<std::string>(out->toJson()), hf,
+            std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
+        }
       }
     }
     
@@ -124,10 +126,12 @@ void Inception::gossip() {
           std::make_unique<std::unordered_map<std::string, std::string>>();
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
             << out->toJson() << " to pool member " << clientid;
-        cc->asyncRequest(
-          clientid, 1, pair.second, rest::RequestType::POST, path,
-          std::make_shared<std::string>(out->toJson()), hf,
-          std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
+        if (cc != nullptr) {
+          cc->asyncRequest(
+            clientid, 1, pair.second, rest::RequestType::POST, path,
+            std::make_shared<std::string>(out->toJson()), hf,
+            std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
+        }
       }
     }
 
@@ -213,17 +217,19 @@ bool Inception::restartingActiveAgent() {
     std::vector<std::string> informed;
     
     for (auto& p : gp) {
-      auto comres = cc->syncRequest(
-        clientId, 1, p, rest::RequestType::POST, path, greetstr,
-        std::unordered_map<std::string, std::string>(), 2.0);
-      if (comres->status == CL_COMM_SENT) {
-        auto const  theirConfigVP = comres->result->getBodyVelocyPack();
-        auto const& theirConfig   = theirConfigVP->slice();
-        auto const& tcc           = theirConfig.get("configuration");
-        auto const& theirId       = tcc.get("id").copyString();
-        
-        _agent->updatePeerEndpoint(theirId, p);
-        informed.push_back(p);
+      if (cc != nullptr) {
+        auto comres = cc->syncRequest(
+          clientId, 1, p, rest::RequestType::POST, path, greetstr,
+          std::unordered_map<std::string, std::string>(), 2.0);
+        if (comres->status == CL_COMM_SENT) {
+          auto const  theirConfigVP = comres->result->getBodyVelocyPack();
+          auto const& theirConfig   = theirConfigVP->slice();
+          auto const& tcc           = theirConfig.get("configuration");
+          auto const& theirId       = tcc.get("id").copyString();
+          
+          _agent->updatePeerEndpoint(theirId, p);
+          informed.push_back(p);
+        }
       }
     }
     
@@ -236,82 +242,84 @@ bool Inception::restartingActiveAgent() {
     for (auto& p : pool) {
       
       if (p.first != myConfig.id() && p.first != "") {
-        
-        auto comres = cc->syncRequest(
-          clientId, 1, p.second, rest::RequestType::POST, path, greetstr,
-          std::unordered_map<std::string, std::string>(), 2.0);
-        
-        if (comres->status == CL_COMM_SENT) {
-          try {
-            
-            auto const  theirConfigVP = comres->result->getBodyVelocyPack();
-            auto const& theirConfig   = theirConfigVP->slice();
-            auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
-            auto const& tcc           = theirConfig.get("configuration");
-            auto const& theirId       = tcc.get("id").copyString();            
-            
-            // Found RAFT with leader
-            if (!theirLeaderId.empty()) {
-              LOG_TOPIC(INFO, Logger::AGENCY) <<
-                "Found active RAFTing agency lead by " << theirLeaderId <<
-                ". Finishing startup sequence.";
-              
-              auto const theirLeaderEp =
-                tcc.get(
-                  std::vector<std::string>({"pool", theirLeaderId})).copyString();
 
-              // Contact leader to update endpoint
-              if (theirLeaderId != theirId) { 
-                comres = cc->syncRequest(
-                  clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
-                  greetstr, std::unordered_map<std::string, std::string>(), 2.0);
-                // Failed to contact leader move on until we do. This way at
-                // least we inform everybody individually of the news.
-                if (comres->status != CL_COMM_SENT) {
-                  continue;
+        if (cc != nullptr) {
+          auto comres = cc->syncRequest(
+            clientId, 1, p.second, rest::RequestType::POST, path, greetstr,
+            std::unordered_map<std::string, std::string>(), 2.0);
+        
+          if (comres->status == CL_COMM_SENT) {
+            try {
+            
+              auto const  theirConfigVP = comres->result->getBodyVelocyPack();
+              auto const& theirConfig   = theirConfigVP->slice();
+              auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
+              auto const& tcc           = theirConfig.get("configuration");
+              auto const& theirId       = tcc.get("id").copyString();            
+            
+              // Found RAFT with leader
+              if (!theirLeaderId.empty()) {
+                LOG_TOPIC(INFO, Logger::AGENCY) <<
+                  "Found active RAFTing agency lead by " << theirLeaderId <<
+                  ". Finishing startup sequence.";
+              
+                auto const theirLeaderEp =
+                  tcc.get(
+                    std::vector<std::string>({"pool", theirLeaderId})).copyString();
+
+                // Contact leader to update endpoint
+                if (theirLeaderId != theirId) { 
+                  comres = cc->syncRequest(
+                    clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
+                    greetstr, std::unordered_map<std::string, std::string>(), 2.0);
+                  // Failed to contact leader move on until we do. This way at
+                  // least we inform everybody individually of the news.
+                  if (comres->status != CL_COMM_SENT) {
+                    continue;
+                  }
+                }
+              
+                auto agency = std::make_shared<Builder>();
+                agency->openObject();
+                agency->add("term", theirConfig.get("term"));
+                agency->add("id", VPackValue(theirLeaderId));
+                agency->add("active",   tcc.get("active"));
+                agency->add("pool",     tcc.get("pool"));
+                agency->add("min ping", tcc.get("min ping"));
+                agency->add("max ping", tcc.get("max ping"));
+                agency->close();
+                _agent->notify(agency);
+                return true;
+              }
+            
+              auto const theirActive = tcc.get("active").toJson();
+              auto const myActive = myConfig.activeToBuilder()->toJson();
+              auto i = std::find(active.begin(),active.end(),p.first);
+            
+              if (i != active.end()) {
+                if (theirActive != myActive) {
+                  LOG_TOPIC(FATAL, Logger::AGENCY)
+                    << "Assumed active RAFT peer and I disagree on active membership:";
+                  LOG_TOPIC(FATAL, Logger::AGENCY)
+                    << "Their active list is " << theirActive;  
+                  LOG_TOPIC(FATAL, Logger::AGENCY)
+                    << "My active list is " << myActive;  
+                  FATAL_ERROR_EXIT();
+                  return false;
+                } else {
+                  *i = "";
                 }
               }
-              
-              auto agency = std::make_shared<Builder>();
-              agency->openObject();
-              agency->add("term", theirConfig.get("term"));
-              agency->add("id", VPackValue(theirLeaderId));
-              agency->add("active",   tcc.get("active"));
-              agency->add("pool",     tcc.get("pool"));
-              agency->add("min ping", tcc.get("min ping"));
-              agency->add("max ping", tcc.get("max ping"));
-              agency->close();
-              _agent->notify(agency);
-              return true;
+            
+            } catch (std::exception const& e) {
+              LOG_TOPIC(FATAL, Logger::AGENCY)
+                << "Assumed active RAFT peer has no active agency list: "
+                << e.what() << "Administrative intervention needed.";
+              FATAL_ERROR_EXIT();
+              return false;
             }
-            
-            auto const theirActive = tcc.get("active").toJson();
-            auto const myActive = myConfig.activeToBuilder()->toJson();
-            auto i = std::find(active.begin(),active.end(),p.first);
-            
-            if (i != active.end()) {
-              if (theirActive != myActive) {
-                LOG_TOPIC(FATAL, Logger::AGENCY)
-                  << "Assumed active RAFT peer and I disagree on active membership:";
-                LOG_TOPIC(FATAL, Logger::AGENCY)
-                  << "Their active list is " << theirActive;  
-                LOG_TOPIC(FATAL, Logger::AGENCY)
-                  << "My active list is " << myActive;  
-                FATAL_ERROR_EXIT();
-                return false;
-              } else {
-                *i = "";
-              }
-            }
-            
-          } catch (std::exception const& e) {
-            LOG_TOPIC(FATAL, Logger::AGENCY)
-              << "Assumed active RAFT peer has no active agency list: "
-              << e.what() << "Administrative intervention needed.";
-            FATAL_ERROR_EXIT();
-            return false;
-          }
-        } 
+          } 
+        }
       }
       
     }
