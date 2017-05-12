@@ -67,6 +67,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _arrayIterator(VPackSlice::emptyArraySlice()),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _doUpdateBounds(true),
+      _doUpdateArrayIterator(true),
       _useCache(useCache),
       _cache(cache),
       _cacheValueSize(0) {
@@ -108,9 +109,9 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     return false;
   }
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "\n\n################################## ";
-  LOG_TOPIC(ERR, Logger::FIXME) << "rockdb edge index next limit: " << limit;
-  std::size_t cacheValueSizeLimit = limit;
+  //LOG_TOPIC(ERR, Logger::FIXME) << "\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ ";
+  //LOG_TOPIC(ERR, Logger::FIXME) << "rockdb edge index next limit: " << limit;
+  std::size_t cacheValueSizeLimit = 1000;
 
 
   // acquire RocksDB collection
@@ -120,19 +121,17 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     TRI_ASSERT(limit > 0);
     StringRef fromTo = getFromToFromIterator(_keysIterator);
     bool foundInCache = false;
-    LOG_TOPIC(ERR, Logger::FIXME) << "fromTo" << fromTo;
+    //LOG_TOPIC(ERR, Logger::FIXME) << "fromTo" << fromTo;
 
     if (_useCache){
-      LOG_TOPIC(ERR, Logger::FIXME) << "using cache";
-      foundInCache = false;
-
-      if(_doUpdateBounds){
-        LOG_TOPIC(ERR, Logger::FIXME) << "looking for cache key ";
+      //LOG_TOPIC(ERR, Logger::FIXME) << "using cache";
+      if(_doUpdateArrayIterator){
+        //LOG_TOPIC(ERR, Logger::FIXME) << "looking for cache key ";
         // try to find cached value
         auto f = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
         foundInCache = f.found();
         if (foundInCache) {
-          LOG_TOPIC(ERR, Logger::FIXME) << "found in cache " << fromTo;
+          //LOG_TOPIC(ERR, Logger::FIXME) << "found in cache " << fromTo;
           VPackSlice cachedPrimaryKeys(f.value()->value());
           TRI_ASSERT(cachedPrimaryKeys.isArray());
 
@@ -147,28 +146,28 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
           // update iterator
           _arrayIterator = VPackArrayIterator(_arraySlice);
         } else {
-          LOG_TOPIC(ERR, Logger::FIXME) << "not found in cache " << fromTo;
+          //LOG_TOPIC(ERR, Logger::FIXME) << "not found in cache " << fromTo;
         }
       } else {
-        LOG_TOPIC(ERR, Logger::FIXME) << "resuming old iterator for key " << fromTo << " in cache";
-        _doUpdateBounds = true;
+        //LOG_TOPIC(ERR, Logger::FIXME) << "resuming old iterator for key " << fromTo << " in cache";
+        _doUpdateArrayIterator = true;
         foundInCache = true;
       }
 
-      LOG_TOPIC(ERR, Logger::FIXME) << "iterators prepared - foundInCache" << foundInCache;
+      //LOG_TOPIC(ERR, Logger::FIXME) << "iterators prepared - foundInCache" << foundInCache;
 
       if (foundInCache) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "value found in cache ";
+        //LOG_TOPIC(ERR, Logger::FIXME) << "value found in cache ";
         //iterate over cached primary keys
         for(VPackSlice const& slice: _arrayIterator){
           StringRef edgeKey(slice);
-          LOG_TOPIC(ERR, Logger::FIXME) << "using value from cache " << edgeKey;
-          if(lookupDocumentAndUseCb(edgeKey, cb, limit, token)){
-            LOG_TOPIC(ERR, Logger::FIXME) << "limit hit " << edgeKey;
+          //LOG_TOPIC(ERR, Logger::FIXME) << "using value from cache " << edgeKey;
+          if(lookupDocumentAndUseCb(edgeKey, cb, limit, token, true)){
+            //LOG_TOPIC(ERR, Logger::FIXME) << "limit hit " << edgeKey;
             _arrayIterator++;
             return true; // more documents - function will be re-entered
           } else {
-            LOG_TOPIC(ERR, Logger::FIXME) << "survived lookup " << edgeKey;
+            //LOG_TOPIC(ERR, Logger::FIXME) << "survived lookup " << edgeKey;
             //iterate over keys
           }
         }
@@ -178,7 +177,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         continue; // do not use the code below that does a lookup in RocksDB
       }
     } else {
-      LOG_TOPIC(ERR, Logger::FIXME) << "not using cache";
+      //LOG_TOPIC(ERR, Logger::FIXME) << "not using cache";
     }
 
     if(!foundInCache) {
@@ -203,24 +202,29 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
         if(_useCache){
           if (_cacheValueSize <= cacheValueSizeLimit){
-            LOG_TOPIC(ERR, Logger::FIXME) << " adding primary " << edgeKey;
+            //LOG_TOPIC(ERR, Logger::FIXME) << " adding primary " << edgeKey;
             _cacheValueBuilder.add(VPackValue(std::string(edgeKey.data(),edgeKey.size())));
             ++_cacheValueSize;
           }
         }
 
-        bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token);
+        bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token, false);
         _iterator->Next();
         if(continueWithNextBatch){
           return true; // more documents - function will be re-entered
         }
       }
 
+      //LOG_TOPIC(ERR, Logger::FIXME) << " usecahe " << _useCache 
+
+      //                              << "cacheValueSize"  << _cacheValueSize 
+      //                              << "cacheValueSizeLimit" << cacheValueSizeLimit;
       if (_useCache && _cacheValueSize <= cacheValueSizeLimit){
         // insert cache values that are not too long
         _cacheValueBuilder.close();
-        LOG_TOPIC(ERR, Logger::FIXME) << " adding value " << _cacheValueBuilder.slice().toJson();
-        LOG_TOPIC(ERR, Logger::FIXME) << "";
+        //LOG_TOPIC(ERR, Logger::FIXME) << " adding value " << _cacheValueBuilder.slice().toJson();
+        //LOG_TOPIC(ERR, Logger::FIXME) << " adding value of length" << _cacheValueBuilder.slice().length() << "for key: " << fromTo;
+        //LOG_TOPIC(ERR, Logger::FIXME) << "";
         auto entry = cache::CachedValue::construct(
             fromTo.data(), static_cast<uint32_t>(fromTo.size()),
             _cacheValueBuilder.slice().start(), static_cast<uint64_t>(_cacheValueBuilder.slice().byteSize()));
@@ -244,17 +248,21 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 // acquire the document token through the primary index
 bool RocksDBEdgeIndexIterator::lookupDocumentAndUseCb(
     StringRef primaryKey, TokenCallback const& cb,
-    size_t& limit, RocksDBToken& token){
+    size_t& limit, RocksDBToken& token, bool fromCache){
   //we pass the token in as ref to avoid allocations
   auto rocksColl = toRocksDBCollection(_collection);
-  LOG_TOPIC(ERR, Logger::FIXME) << "lookup with primary key " << primaryKey;
+  //LOG_TOPIC(ERR, Logger::FIXME) << "lookup with primary key " << primaryKey;
   Result res = rocksColl->lookupDocumentToken(_trx, primaryKey, token);
   if (res.ok()) {
     cb(token);
     --limit;
-    LOG_TOPIC(ERR, Logger::FIXME) << "limit " << limit;
+    //LOG_TOPIC(ERR, Logger::FIXME) << "limit " << limit;
     if (limit == 0) {
-      _doUpdateBounds=false; //limit hit continue with next batch
+      if(fromCache) {
+        _doUpdateArrayIterator=false; //limit hit continue with next batch
+      } else {
+        _doUpdateBounds=false; //limit hit continue with next batch
+      }
       return true;
     }
   }  // TODO do we need to handle failed lookups here?
@@ -264,6 +272,7 @@ bool RocksDBEdgeIndexIterator::lookupDocumentAndUseCb(
 void RocksDBEdgeIndexIterator::reset() {
   //rest offsets into iterators
   _doUpdateBounds = true;
+  _doUpdateArrayIterator = true;
   _cacheValueBuilder.clear();
   _arrayBuffer.clear();
   _arraySlice = VPackSlice::emptyArraySlice();
@@ -562,7 +571,7 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   }
   keys->close();
 
-  //LOG_TOPIC(ERR, Logger::FIXME) << "_useCache: " << _useCache
+  ////LOG_TOPIC(ERR, Logger::FIXME) << "_useCache: " << _useCache
   //                              << " _cachePresent: " << _cachePresent
   //                              << " useCache():" << useCache();
   return new RocksDBEdgeIndexIterator(
@@ -592,7 +601,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   }
   keys->close();
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "useCache: " << _useCache << useCache();
+  //LOG_TOPIC(ERR, Logger::FIXME) << "useCache: " << _useCache << useCache();
   return new RocksDBEdgeIndexIterator(
       _collection, trx, mmdr, this, keys, useCache(), _cache.get());
 }
