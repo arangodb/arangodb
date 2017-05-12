@@ -111,27 +111,9 @@ The number of bits used to shard the block cache to allow concurrent operations.
 To keep individual shards at a reasonable size (i.e. at least 512KB), keep this
 value to at most `block-cache-shard-bits / 512KB`. Default: 4.
 
-### Logging
-
-`--rocksdb.max-log-file-size` (Hidden)
-
-Specify the maximal size of the info log file. When the file size is reached, a
-new file will be created. If set to 0, everything will be written to one file.
-Default: 0.
-
-`--rocksdb.keep-log-file-num` (Hidden)
-
-The maximum number of info log files to be kept. Default: 1000.
-
 `--rocksdb.recycle-log-file-num` (Hidden)
 
 Number of log files to keep around for recycling. Default: 0.
-
-`--rocksdb.log-file-time-to-roll` (Hidden)
-
-Time for the info log file to roll (in seconds). If specified with non-zero
-value, log file will be rolled if it has been active longer than
-`log_file_time_to_roll`. Set to 0 to disable. Default: 0.
 
 ### Miscellaneous
 

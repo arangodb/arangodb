@@ -209,11 +209,7 @@ void RocksDBEngine::start() {
   _options.max_background_flushes = static_cast<int>(opts->_maxFlushes);
   _options.use_fsync = opts->_useFSync;
 
-  _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
-  _options.keep_log_file_num = static_cast<size_t>(opts->_keepLogFileNum);
   _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
-  _options.log_file_time_to_roll =
-      static_cast<size_t>(opts->_logFileTimeToRoll);
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
 

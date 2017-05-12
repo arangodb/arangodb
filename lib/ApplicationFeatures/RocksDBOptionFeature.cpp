@@ -61,10 +61,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _numThreadsLow(rocksDBDefaults.max_background_compactions),
       _blockCacheSize(8 * 1024 * 1024),
       _blockCacheShardBits(4),
-      _maxLogFileSize(rocksDBDefaults.max_log_file_size),
-      _keepLogFileNum(rocksDBDefaults.keep_log_file_num),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
-      _logFileTimeToRoll(rocksDBDefaults.log_file_time_to_roll),
       _compactionReadaheadSize(rocksDBDefaults.compaction_readahead_size),
       _verifyChecksumsInCompaction(
           rocksDBDefaults.verify_checksums_in_compaction),
@@ -193,24 +190,9 @@ void RocksDBOptionFeature::collectOptions(
                      "number of shard bits to use for block cache",
                      new UInt64Parameter(&_blockCacheShardBits));
 
-  options->addHiddenOption("--rocksdb.max-log-file-size",
-                           "specify the maximal size of the info log file",
-                           new UInt64Parameter(&_maxLogFileSize));
-
-  options->addHiddenOption("--rocksdb.keep-log-file-num",
-                           "maximal info log files to be kept",
-                           new UInt64Parameter(&_keepLogFileNum));
-
   options->addHiddenOption("--rocksdb.recycle-log-file-num",
                            "number of log files to keep around for recycling",
                            new UInt64Parameter(&_recycleLogFileNum));
-
-  options->addHiddenOption(
-      "--rocksdb.log-file-time-to-roll",
-      "time for the info log file to roll (in seconds). "
-      "If specified with non-zero value, log file will be rolled "
-      "if it has been active longer than `log_file_time_to_roll`",
-      new UInt64Parameter(&_logFileTimeToRoll));
 
   options->addHiddenOption(
       "--rocksdb.compaction-read-ahead-size",
