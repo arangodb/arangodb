@@ -61,7 +61,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
  private:
   void updateBounds(StringRef fromTo);
   bool lookupDocumentAndUseCb(
-      StringRef primaryKey, TokenCallback const&, size_t& limit, RocksDBToken&);
+      StringRef primaryKey, TokenCallback const&, size_t& limit, RocksDBToken&, bool fromCache);
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _keysIterator;
   RocksDBEdgeIndex const* _index;
@@ -74,6 +74,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
 
   RocksDBKeyBounds _bounds;
   bool _doUpdateBounds;
+  bool _doUpdateArrayIterator;
   bool _useCache;
   cache::Cache* _cache;
   VPackBuilder _cacheValueBuilder;
