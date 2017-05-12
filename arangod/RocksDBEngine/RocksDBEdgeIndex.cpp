@@ -160,8 +160,6 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         bool continueWithNextBatch = iterateChachedValues();
         if(continueWithNextBatch){
           return true; // exit and continue with next batch
-        } else {
-          continue; // advance keys (from/to) iterator
         }
       }
     } else if (_useCache && !_doUpdateArrayIterator){
@@ -170,8 +168,6 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       bool continueWithNextBatch = iterateChachedValues();
       if(continueWithNextBatch){
         return true; // exit and continue with next batch
-      } else {
-        continue; // advance keys (from/to) iterator
       }
     }
 
@@ -207,7 +203,6 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         // lookup real document
         bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token, false);
         _iterator->Next();
-
         //check batch size limit
         if(continueWithNextBatch){
           return true; // more documents - function will be re-entered
@@ -231,7 +226,6 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       _cacheValueBuilder.clear();
       _cacheValueSize = 0;
     } // not found in cache
-
     _keysIterator.next(); // handle next key
   }
   return false; // no more documents in this iterator
