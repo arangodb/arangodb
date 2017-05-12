@@ -47,7 +47,7 @@ using namespace arangodb::rest;
 ServerFeature::ServerFeature(application_features::ApplicationServer* server,
                              int* res)
     : ApplicationFeature(server, "Server"),
-      _vppMaxSize(1024 * 30),
+      _vstMaxSize(1024 * 30),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
@@ -87,7 +87,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--vst.maxsize",
                      "maximal size (in bytes) for a VelocyPack chunk",
-                     new UInt32Parameter(&_vppMaxSize));
+                     new UInt32Parameter(&_vstMaxSize));
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

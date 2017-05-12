@@ -45,7 +45,7 @@ struct MMFilesReplicationDumpContext {
   MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::StandaloneContext>
                              transactionContext,
                          size_t chunkSize, bool includeSystem,
-                         TRI_voc_cid_t restrictCollection, bool useVpp = false)
+                         TRI_voc_cid_t restrictCollection, bool useVst = false)
       : _transactionContext(transactionContext),
         _vocbase(transactionContext->vocbase()),
         _buffer(nullptr),
@@ -61,13 +61,13 @@ struct MMFilesReplicationDumpContext {
         _fromTickIncluded(false),
         _compat28(false),
         _slices(),
-        _useVpp(useVpp) {
+        _useVst(useVst) {
     if (_chunkSize == 0) {
       // default chunk size
       _chunkSize = 128 * 1024;
     }
 
-    if (!useVpp) {
+    if (!useVst) {
       _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, _chunkSize);
 
       if (_buffer == nullptr) {
@@ -98,7 +98,7 @@ struct MMFilesReplicationDumpContext {
   bool _fromTickIncluded;
   bool _compat28;
   std::vector<VPackBuffer<uint8_t>> _slices;
-  bool _useVpp;
+  bool _useVst;
 };
 
 /// @brief dump data from a single collection
@@ -115,6 +115,6 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext*,
 /// @brief determine the transactions that were open at a given point in time
 int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext*,
                                              TRI_voc_tick_t, TRI_voc_tick_t,
-                                             bool useVpp = false);
+                                             bool useVst = false);
 
 #endif

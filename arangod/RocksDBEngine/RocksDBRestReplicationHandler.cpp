@@ -479,9 +479,9 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleTrampolineCoordinator() {
-  bool useVpp = false;
-  if (_request->transportType() == Endpoint::TransportType::VPP) {
-    useVpp = true;
+  bool useVst = false;
+  if (_request->transportType() == Endpoint::TransportType::VST) {
+    useVst = true;
   }
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
@@ -526,7 +526,7 @@ void RocksDBRestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   std::unique_ptr<ClusterCommResult> res;
-  if (!useVpp) {
+  if (!useVst) {
     HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
     if (httpRequest == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -577,7 +577,7 @@ void RocksDBRestReplicationHandler::handleTrampolineCoordinator() {
   _response->setContentType(
       res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
 
-  if (!useVpp) {
+  if (!useVst) {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
     if (_response == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -601,9 +601,9 @@ void RocksDBRestReplicationHandler::handleTrampolineCoordinator() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
-  bool useVpp = false;
-  if (_request->transportType() == Endpoint::TransportType::VPP) {
-    useVpp = true;
+  bool useVst = false;
+  if (_request->transportType() == Endpoint::TransportType::VST) {
+    useVst = true;
   }
 
   // determine start and end tick
@@ -703,7 +703,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                          result.fromTickIncluded() ? "true" : "false");
 
   if (length > 0) {
-    if (useVpp) {
+    if (useVst) {
       for (auto message : arangodb::velocypack::ArrayIterator(data)) {
         _response->addPayload(VPackSlice(message),
                               transactionContext->getVPackOptions(), true);
@@ -747,9 +747,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
-  bool useVpp = false;
-  if (_request->transportType() == Endpoint::TransportType::VPP) {
-    useVpp = true;
+  bool useVst = false;
+  if (_request->transportType() == Endpoint::TransportType::VST) {
+    useVst = true;
   }
   //_response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
   // StringUtils::itoa(dump._lastFoundTick));
@@ -759,7 +759,7 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // dump._fromTickIncluded ? "true" : "false");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, "true");
   VPackSlice slice = VelocyPackHelper::EmptyArrayValue();
-  if (useVpp) {
+  if (useVst) {
     _response->addPayload(slice, &VPackOptions::Defaults, false);
   } else {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());

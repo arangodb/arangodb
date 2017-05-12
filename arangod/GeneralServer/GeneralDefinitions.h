@@ -3,7 +3,7 @@
 
 namespace arangodb {
 namespace rest {
-enum class ProtocolType { HTTP, HTTPS, VPP, VPPS };
+enum class ProtocolType { HTTP, HTTPS, VST, VSTS };
 }  // rest
 }  // arangodb
 #endif

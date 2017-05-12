@@ -27,7 +27,7 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/HttpCommTask.h"
-#include "GeneralServer/VppCommTask.h"
+#include "GeneralServer/VstCommTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -53,13 +53,6 @@ void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
   std::shared_ptr<GeneralCommTask> commTask;
 
   switch (_connectionType) {
-    case ProtocolType::VPPS:
-    case ProtocolType::VPP:
-      commTask =
-          std::make_shared<VppCommTask>(_loop, _server, std::move(socket),
-                                        std::move(info), _keepAliveTimeout);
-      break;
-
     case ProtocolType::HTTPS:
     case ProtocolType::HTTP:
       commTask =

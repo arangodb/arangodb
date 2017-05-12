@@ -40,7 +40,7 @@ namespace arangodb {
 
 class Endpoint {
  public:
-  enum class TransportType { HTTP, VPP };
+  enum class TransportType { HTTP, VST };
   enum class EndpointType { SERVER, CLIENT };
   enum class EncryptionType { NONE = 0, SSL };
   enum class DomainType { UNKNOWN = 0, UNIX, IPV4, IPV6, SRV };

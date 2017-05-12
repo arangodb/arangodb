@@ -21,8 +21,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VppRequest.h"
-#include "VppMessage.h"
+#include "VstRequest.h"
+#include "VstMessage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -59,8 +59,8 @@ std::string const& lookupStringInMap(
 }
 }
 
-VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
-                       VppInputMessage&& message, uint64_t messageId)
+VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
+                       VstInputMessage&& message, uint64_t messageId)
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
       _headers(nullptr),
@@ -72,13 +72,13 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
   _user = "root";
 }
 
-VPackSlice VppRequest::payload(VPackOptions const* options) {
+VPackSlice VstRequest::payload(VPackOptions const* options) {
   // message does not need to be validated here, as it was already
   // validated before
   return _message.payload();
 }
 
-std::unordered_map<std::string, std::string> const& VppRequest::headers()
+std::unordered_map<std::string, std::string> const& VstRequest::headers()
     const {
   if (!_headers) {
     using namespace std;
@@ -93,18 +93,18 @@ std::unordered_map<std::string, std::string> const& VppRequest::headers()
   return *_headers;
 }
 
-std::string const& VppRequest::header(std::string const& key,
+std::string const& VstRequest::header(std::string const& key,
                                       bool& found) const {
   headers();
   return lookupStringInMap(*_headers, key, found);
 }
 
-std::string const& VppRequest::header(std::string const& key) const {
+std::string const& VstRequest::header(std::string const& key) const {
   bool unused = true;
   return header(key, unused);
 }
 
-void VppRequest::parseHeaderInformation() {
+void VstRequest::parseHeaderInformation() {
   using namespace std;
   auto vHeader = _message.header();
   try {
@@ -128,7 +128,7 @@ void VppRequest::parseHeaderInformation() {
       }
     }
 
-    // fullUrl should not be necessary for Vpp
+    // fullUrl should not be necessary for Vst
     _fullUrl = _requestPath + "?";
     for (auto const& param : _values) {
       _fullUrl.append(param.first + "=" +
@@ -145,16 +145,16 @@ void VppRequest::parseHeaderInformation() {
 
   } catch (std::exception const& e) {
     throw std::runtime_error(
-        std::string("Error during Parsing of VppHeader: ") + e.what());
+        std::string("Error during Parsing of VstHeader: ") + e.what());
   }
 }
 
-std::string const& VppRequest::value(std::string const& key,
+std::string const& VstRequest::value(std::string const& key,
                                      bool& found) const {
   return lookupStringInMap(_values, key, found);
 }
 
-std::string const& VppRequest::value(std::string const& key) const {
+std::string const& VstRequest::value(std::string const& key) const {
   bool unused = true;
   return value(key, unused);
 }

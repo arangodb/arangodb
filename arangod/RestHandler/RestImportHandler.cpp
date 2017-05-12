@@ -104,7 +104,7 @@ RestStatus RestImportHandler::execute() {
           }
           break;
         } 
-        case Endpoint::TransportType::VPP: {
+        case Endpoint::TransportType::VST: {
           if (found &&
               (documentType == "documents" || documentType == "array" ||
                documentType == "list" || documentType == "auto")) {

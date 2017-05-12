@@ -217,7 +217,7 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
-  GeneralServer/VppCommTask.cpp
+  GeneralServer/VstCommTask.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp

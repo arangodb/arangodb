@@ -510,7 +510,7 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
                           LogicalCollection* collection,
                           TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                          bool withTicks, bool useVpp = false) {
+                          bool withTicks, bool useVst = false) {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping collection " << collection->cid() << ", tick range "
              << dataMin << " - " << dataMax;
 
@@ -521,14 +521,14 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
   bool bufferFull = false;
 
   auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId,
-                   &withTicks, &isEdgeCollection, &bufferFull, &useVpp,
+                   &withTicks, &isEdgeCollection, &bufferFull, &useVst,
                    &collection](
       TRI_voc_tick_t foundTick, MMFilesMarker const* marker) {
     // note the last tick we processed
     lastFoundTick = foundTick;
 
     int res;
-    if (useVpp) {
+    if (useVst) {
       res = SliceifyMarker(dump, databaseId, collectionId, marker, true,
                            withTicks, isEdgeCollection);
     } else {
@@ -541,7 +541,7 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    // TODO if vppcase find out slice lenght of _slices.back()
+    // TODO if vstcase find out slice lenght of _slices.back()
     if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) >
         dump->_chunkSize) {
       // abort the iteration
@@ -752,7 +752,7 @@ int MMFilesDumpLogReplication(
           }
         }
 
-        if (dump->_useVpp) {
+        if (dump->_useVst) {
           res = SliceifyMarker(dump, databaseId, collectionId, marker, false,
                                true, false);
         } else {
@@ -817,7 +817,7 @@ int MMFilesDumpLogReplication(
 int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* dump,
                                              TRI_voc_tick_t tickMin,
                                              TRI_voc_tick_t tickMax,
-                                             bool useVpp) {
+                                             bool useVst) {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "determining transactions, tick range " << tickMin << " - "
              << tickMax;
 
@@ -906,7 +906,7 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
 
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
-    if (useVpp) {
+    if (useVst) {
       if (transactions.empty()) {
         builder.add(VPackSlice::emptyArraySlice());
       } else {
