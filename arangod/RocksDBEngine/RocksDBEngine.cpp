@@ -209,11 +209,7 @@ void RocksDBEngine::start() {
   _options.max_background_flushes = static_cast<int>(opts->_maxFlushes);
   _options.use_fsync = opts->_useFSync;
 
-  _options.max_log_file_size = static_cast<size_t>(opts->_maxLogFileSize);
-  _options.keep_log_file_num = static_cast<size_t>(opts->_keepLogFileNum);
   _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
-  _options.log_file_time_to_roll =
-      static_cast<size_t>(opts->_logFileTimeToRoll);
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
 
@@ -222,11 +218,12 @@ void RocksDBEngine::start() {
   _options.env->SetBackgroundThreads((int)opts->_numThreadsLow,
                                      rocksdb::Env::Priority::LOW);
 
-  _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
-  // intentionally do not start the logger (yet)
-  // as it will produce a lot of log spam
-  // _options.info_log =
-  // std::make_shared<RocksDBLogger>(_options.info_log_level);
+  // intentionally set the RocksDB logger to warning because it will
+  // log lots of things otherwise
+  _options.info_log_level = rocksdb::InfoLogLevel::WARN_LEVEL;
+  auto logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
+  _options.info_log = logger;
+  logger->disable();
 
   // _options.statistics = rocksdb::CreateDBStatistics();
   // _options.stats_dump_period_sec = 1;
@@ -267,6 +264,9 @@ void RocksDBEngine::start() {
         << "unable to initialize RocksDB engine: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
+  
+  // only enable logger after RocksDB start
+  logger->enable();
 
   TRI_ASSERT(_db != nullptr);
   _counterManager.reset(new RocksDBCounterManager(_db));

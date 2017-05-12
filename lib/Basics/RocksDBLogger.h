@@ -34,6 +34,9 @@ class RocksDBLogger final : public rocksdb::Logger {
  public:
   explicit RocksDBLogger(rocksdb::InfoLogLevel level); 
   ~RocksDBLogger();
+
+  void disable() { _enabled = false; }
+  void enable() { _enabled = true; }
   
   // intentionally do not log header information here
   // as this does not seem to honor the loglevel correctly
@@ -44,6 +47,9 @@ class RocksDBLogger final : public rocksdb::Logger {
 
   // nothing to do here, as ArangoDB logger infrastructure takes care of flushing itself
   void Flush() override {}
+
+ private:
+  std::atomic<bool> _enabled;
 };
 
 }  // namespace arangodb

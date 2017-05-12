@@ -174,7 +174,9 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   isolate->AddGCPrologueCallback(gcPrologueCallback);
   isolate->AddGCEpilogueCallback(gcEpilogueCallback);
 
-  _isolateData.emplace_back(new IsolateData());
+  auto data = std::make_unique<IsolateData>();
+  
+  _isolateData.emplace_back(std::move(data));
   isolate->SetData(V8_INFO, _isolateData.back().get());
 
   return isolate;

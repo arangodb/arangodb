@@ -61,10 +61,7 @@ class RocksDBOptionFeature final
   uint64_t _numThreadsLow;
   uint64_t _blockCacheSize;
   uint64_t _blockCacheShardBits;
-  uint64_t _maxLogFileSize;
-  uint64_t _keepLogFileNum;
   uint64_t _recycleLogFileNum;
-  uint64_t _logFileTimeToRoll;
   uint64_t _compactionReadaheadSize;
   bool _verifyChecksumsInCompaction;
   bool _optimizeFiltersForHits;
