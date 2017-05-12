@@ -29,10 +29,10 @@ normal storage. Default: 1.
 
 `--rocksdb.delayed_write_rate` (Hidden)
 
-### LSM tree structure
-
 Limited write rate to DB (in bytes per second) if we are writing to the last
 in-memory buffer allowed and we allow more than 3 buffers. Default: 16MB/s.
+
+### LSM tree structure
 
 `--rocksdb.num-levels`
 
