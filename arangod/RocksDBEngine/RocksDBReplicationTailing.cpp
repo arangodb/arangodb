@@ -158,6 +158,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         break;
       }
       case RocksDBLogType::BeginTransaction: {
+        TRI_ASSERT(!_singleOp);
         _seenBeginTransaction = true;
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentTrxId = RocksDBLogValue::transactionId(blob);
@@ -185,7 +186,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         // intentional fall through
       }
       case RocksDBLogType::SinglePut: {
-        _singleOpTransaction = true;
+        TRI_ASSERT(!_seenBeginTransaction);
+        _singleOp = true;
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentCollectionId = RocksDBLogValue::collectionId(blob);
         _currentTrxId = 0;
@@ -234,7 +236,9 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         break;
       }
       case RocksDBEntryType::Document: {
-        TRI_ASSERT(_seenBeginTransaction || _singleOpTransaction);
+        TRI_ASSERT(_seenBeginTransaction && !_singleOp ||
+                   !_seenBeginTransaction && _singleOp);
+        // if real transaction, we need the trx id
         TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
 
@@ -244,7 +248,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         // auto containers = getContainerIds(key);
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
         _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-        if (_singleOpTransaction) {  // single op is defined to 0
+        if (_singleOp) {  // single op is defined to 0
           _builder.add("tid", VPackValue("0"));
         } else {
           _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
@@ -292,7 +296,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         // document removes, because of a drop is not transactional and
         // should not appear in the WAL
         if (!shouldHandleKey(key) ||
-            !(_seenBeginTransaction || _singleOpTransaction)) {
+            !(_seenBeginTransaction || _singleOp)) {
           return;
         }
 
@@ -308,7 +312,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
             VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
         _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-        if (_singleOpTransaction) {  // single op is defined to 0
+        if (_singleOp) {  // single op is defined to 0
           _builder.add("tid", VPackValue("0"));
         } else {
           _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
@@ -331,7 +335,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     _currentSequence = currentSequence;
     _lastLogType = RocksDBLogType::Invalid;
     _seenBeginTransaction = false;
-    _singleOpTransaction = false;
+    _singleOp = false;
     _currentDbId = 0;
     _currentTrxId = 0;
     _currentCollectionId = 0;
@@ -352,7 +356,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       _builder.close();
     }
     _seenBeginTransaction = false;
-    _singleOpTransaction = false;
+    _singleOp = false;
     return _currentSequence;
   }
 
@@ -421,7 +425,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   rocksdb::SequenceNumber _currentSequence;
   RocksDBLogType _lastLogType = RocksDBLogType::Invalid;
   bool _seenBeginTransaction = false;
-  bool _singleOpTransaction = false;
+  bool _singleOp = false;
   bool _startOfBatch = false;
   TRI_voc_tick_t _currentDbId = 0;
   TRI_voc_tick_t _currentTrxId = 0;

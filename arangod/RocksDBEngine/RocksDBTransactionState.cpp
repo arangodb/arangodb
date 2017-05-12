@@ -49,6 +49,7 @@
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
 
@@ -315,7 +316,12 @@ void RocksDBTransactionState::prepareOperation(
 
   bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   // single operations should never call this method twice
+  // singleOp => lastUsedColl == 0
   TRI_ASSERT(!singleOp || _lastUsedCollection == 0);
+  // singleOp => no keys
+  TRI_ASSERT(!singleOp ||
+             _rocksTransaction->GetNumPuts() == 0 &&
+             _rocksTransaction->GetNumDeletes() == 0);
   if (collectionId != _lastUsedCollection) {
     switch (operationType) {
       case TRI_VOC_DOCUMENT_OPERATION_INSERT:
