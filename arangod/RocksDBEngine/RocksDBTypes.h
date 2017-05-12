@@ -51,6 +51,8 @@ enum class RocksDBEntryType : char {
   GeoIndexValue = '<'
 };
 
+char const* rocksDBEntryTypeName(RocksDBEntryType);
+
 enum class RocksDBLogType : char {
   Invalid = 0,
   DatabaseCreate = '1',
@@ -70,6 +72,8 @@ enum class RocksDBLogType : char {
   SinglePut = '?',
   SingleRemove = '@'
 };
+
+char const* rocksDBLogTypeName(RocksDBLogType);
 
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }  // namespace arangodb

@@ -582,7 +582,7 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
-std::vector<std::shared_ptr<arangodb::Index>> const&
+std::vector<std::shared_ptr<arangodb::Index>>
 LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
 }

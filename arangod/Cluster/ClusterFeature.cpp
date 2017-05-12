@@ -58,6 +58,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Authentication");
+  startsAfter("CacheManager");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
   startsAfter("Database");
@@ -571,6 +572,8 @@ void ClusterFeature::unprepare() {
 
   AgencyCommManager::MANAGER->stop();
   ClusterComm::cleanup();
+
+  ClusterInfo::cleanup();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {

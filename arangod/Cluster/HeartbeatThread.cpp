@@ -412,6 +412,8 @@ void HeartbeatThread::runCoordinator() {
 
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
+  // invalidate coordinators every 2nd call
+  bool invalidateCoordinators = true;
 
   // last value of plan which we have noticed:
   uint64_t lastPlanVersionNoticed = 0;
@@ -556,6 +558,7 @@ void HeartbeatThread::runCoordinator() {
             lastCurrentVersionNoticed = currentVersion;
 
             ClusterInfo::instance()->invalidateCurrent();
+            invalidateCoordinators = false;
           }
         }
 
@@ -590,6 +593,13 @@ void HeartbeatThread::runCoordinator() {
               << "FailedServers is not an object. ignoring for now";
         }
       }
+
+      // the foxx stuff needs an updated list of coordinators
+      // and this is only updated when current version has changed
+      if (invalidateCoordinators) {
+        ClusterInfo::instance()->invalidateCurrentCoordinators();
+      }
+      invalidateCoordinators = !invalidateCoordinators;
 
       double remain = interval - (TRI_microtime() - start);
 

@@ -101,37 +101,13 @@ function ReplicationSuite() {
 
     internal.wait(1, false);
 
-    var includeSystem = true;
-    var restrictType = "";
-    var restrictCollections = [];
-    applierConfiguration = applierConfiguration || { };
-
-    if (typeof applierConfiguration === 'object') {
-      if (applierConfiguration.hasOwnProperty("includeSystem")) {
-        includeSystem = applierConfiguration.includeSystem;
-      }
-      if (applierConfiguration.hasOwnProperty("restrictType")) {
-        restrictType = applierConfiguration.restrictType;
-      }
-      if (applierConfiguration.hasOwnProperty("restrictCollections")) {
-        restrictCollections = applierConfiguration.restrictCollections;
-      }
-    }
-
-    var keepBarrier = false;
-    if (applierConfiguration.hasOwnProperty("keepBarrier")) {
-      keepBarrier = applierConfiguration.keepBarrier;
-    }
-
     var syncResult = replication.sync({
       endpoint: masterEndpoint,
       username: "root",
       password: "",
       verbose: true,
-      includeSystem: includeSystem,
-      restrictType: restrictType,
-      restrictCollections: restrictCollections,
-      keepBarrier: keepBarrier
+      includeSystem: false,
+      keepBarrier: false
     });
 
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -154,21 +130,20 @@ function ReplicationSuite() {
     connectToSlave();
 
     replication.applier.properties(applierConfiguration);
-    if (keepBarrier) {
-      replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
-    }
-    else {
-      replication.applier.start(syncResult.lastLogTick);
-    }
+    replication.applier.start(syncResult.lastLogTick);
 
-    var printed = false;
+    var printed = false, handled = false;
 
     while (true) {
-      var r = slaveFuncOngoing(state);
-      if (r === "wait") {
-        // special return code that tells us to hang on
-        internal.wait(0.5, false);
-        continue;
+      if (!handled) {
+        var r = slaveFuncOngoing(state);
+        if (r === "wait") {
+          // special return code that tells us to hang on
+          internal.wait(0.5, false);
+          continue;
+        }
+
+        handled = true;
       }
 
       var slaveState = replication.applier.state();
@@ -185,11 +160,11 @@ function ReplicationSuite() {
 
       if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
           compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
-        //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
-        console.log("slave has caught up. syncResult.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
+       //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
+        console.log("slave has caught up. state.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
         break;
       }
-
+        
       if (!printed) {
         console.log("waiting for slave to catch up");
         printed = true;
@@ -239,7 +214,7 @@ function ReplicationSuite() {
       db._drop(cn);
       db._drop(cn2);
     },
-
+    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection creation
     ////////////////////////////////////////////////////////////////////////////////
@@ -442,10 +417,14 @@ function ReplicationSuite() {
 
               for (var i = 0; i < 10; ++i) {
                 c.save({
-                  test1: i
+                  test1: i,
+                  type: "longTransactionBlocking",
+                  coll: "UnitTestsReplication"
                 });
                 c.save({
-                  test2: i
+                  test2: i,
+                  type: "longTransactionBlocking",
+                  coll: "UnitTestsReplication"
                 });
 
                 // intentionally delay the transaction
@@ -508,10 +487,14 @@ function ReplicationSuite() {
 
               for (var i = 0; i < 10; ++i) {
                 c.save({
-                  test1: i
+                  test1: i,
+                  type: "longTransactionAsync",
+                  coll: "UnitTestsReplication"
                 });
                 c.save({
-                  test2: i
+                  test2: i,
+                  type: "longTransactionAsync",
+                  coll: "UnitTestsReplication"
                 });
 
                 // intentionally delay the transaction
@@ -583,10 +566,14 @@ function ReplicationSuite() {
 
               for (var i = 0; i < 10; ++i) {
                 c.save({
-                  test1: i
+                  test1: i,
+                  type: "longTransactionAsyncWithSlaveRestarts",
+                  coll: "UnitTestsReplication"
                 });
                 c.save({
-                  test2: i
+                  test2: i,
+                  type: "longTransactionAsyncWithSlaveRestarts",
+                  coll: "UnitTestsReplication"
                 });
 
                 // intentionally delay the transaction
@@ -630,6 +617,8 @@ function ReplicationSuite() {
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
             connectToSlave();
+            replication.applier.start();
+            assertTrue(replication.applier.state().state.running);
             return true;
           }
         },

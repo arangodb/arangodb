@@ -69,8 +69,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _doUpdateBounds(true),
       _useCache(useCache),
       _cache(cache),
-      _cacheValueSize(0)
-{
+      _cacheValueSize(0) {
   keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
@@ -130,7 +129,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       if(_doUpdateBounds){
         LOG_TOPIC(ERR, Logger::FIXME) << "looking for cache key ";
         // try to find cached value
-        auto f = _cache->find(fromTo.data(),fromTo.size());
+        auto f = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
         foundInCache = f.found();
         if (foundInCache) {
           LOG_TOPIC(ERR, Logger::FIXME) << "found in cache " << fromTo;

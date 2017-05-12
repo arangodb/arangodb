@@ -24,7 +24,9 @@
 #include "PhysicalCollection.h"
 
 #include "Basics/StaticStrings.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/TransactionState.h"
@@ -52,7 +54,10 @@ void PhysicalCollection::figures(
 };
 
 void PhysicalCollection::drop() {
-  _indexes.clear();
+  {
+    WRITE_LOCKER(guard, _indexesLock);
+    _indexes.clear();
+  }
   try {
     // close collection. this will also invalidate the revisions cache
     close();
@@ -63,6 +68,7 @@ void PhysicalCollection::drop() {
 
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(
     TRI_idx_iid_t idxId) const {
+  READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {
       return idx;
@@ -361,13 +367,15 @@ int PhysicalCollection::checkRevision(transaction::Methods* trx,
 }
 
 /// @brief hands out a list of indexes
-std::vector<std::shared_ptr<arangodb::Index>> const&
+std::vector<std::shared_ptr<arangodb::Index>>
 PhysicalCollection::getIndexes() const {
+  READ_LOCKER(guard, _indexesLock);
   return _indexes;
 }
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
                                          bool forPersistence) const {
+  READ_LOCKER(guard, _indexesLock);
   result.openArray();
   for (auto const& idx : _indexes) {
     idx->toVelocyPack(result, withFigures, forPersistence);
@@ -383,9 +391,20 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   // add index information
   size_t sizeIndexes = memory();
   size_t numIndexes = 0;
-  for (auto const& idx : _indexes) {
-    sizeIndexes += static_cast<size_t>(idx->memory());
-    ++numIndexes;
+  
+  {
+    bool seenEdgeIndex = false;
+    READ_LOCKER(guard, _indexesLock);
+    for (auto const& idx : _indexes) {
+      // only count an edge index instance
+      if (idx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || !seenEdgeIndex) {
+        ++numIndexes;
+      }
+      if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        seenEdgeIndex = true;
+      }
+      sizeIndexes += static_cast<size_t>(idx->memory());
+    }
   }
 
   builder->add("indexes", VPackValue(VPackValueType::Object));

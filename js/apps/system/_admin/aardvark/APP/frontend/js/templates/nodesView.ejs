@@ -62,7 +62,7 @@
           <div class="pure-u-10-24 left">
             <%= node.ShortName %>
             <i class="fa fa-bar-chart"></i>
-            <% if(node.Status === 'FAILED') { %>
+            <% if(node.CanBeDeleted) { %>
             <i class="fa fa-trash-o"></i>
             <% } %>
           </div>
@@ -139,7 +139,12 @@
 
         <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
-          <div class="pure-u-10-24 left"><%= node.ShortName %></div>
+          <div class="pure-u-10-24 left">
+            <%= node.ShortName %>
+            <% if(node.CanBeDeleted) { %>
+            <i class="fa fa-trash-o"></i>
+            <% } %>
+          </div>
           <div class="pure-u-10-24 left"><%= node.Endpoint %></div>
 
           <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %>

@@ -14,6 +14,7 @@
       'click #nodesContent .coords-nodes .pure-table-row': 'navigateToNode',
       'click #nodesContent .dbs-nodes .pure-table-row': 'navigateToNode',
       'click #nodesContent .coords-nodes .pure-table-row .fa-trash-o': 'deleteNode',
+      'click #nodesContent .dbs-nodes .pure-table-row .fa-trash-o': 'deleteNode',
       'click #addCoord': 'addCoord',
       'click #removeCoord': 'removeCoord',
       'click #addDBs': 'addDBs',

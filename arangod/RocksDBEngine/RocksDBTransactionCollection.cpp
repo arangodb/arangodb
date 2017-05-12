@@ -234,14 +234,6 @@ void RocksDBTransactionCollection::release() {
   }
 }
 
-void RocksDBTransactionCollection::resetCounts() {
-  // _initialNumberDocuments; -- HAS TO BE UPDATED
-  _operationSize = 0;
-  _numInserts = 0;
-  _numUpdates = 0;
-  _numRemoves = 0;
-}
-
 /// @brief add an operation for a transaction collection
 void RocksDBTransactionCollection::addOperation(
     TRI_voc_document_operation_e operationType, uint64_t operationSize,

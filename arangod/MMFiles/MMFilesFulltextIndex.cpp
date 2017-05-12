@@ -47,7 +47,7 @@ static void ExtractWords(std::set<std::string>& words,
     std::string text = value.copyString();
 
     // parse the document text
-    arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(
+    arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(
         words, text, minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed

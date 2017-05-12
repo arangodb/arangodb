@@ -58,7 +58,7 @@ RocksDBIndex::RocksDBIndex(
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           VPackSlice const& info,bool useCache)
+                           VPackSlice const& info, bool useCache)
     : Index(id, collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
       _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
@@ -197,7 +197,7 @@ void RocksDBIndex::blackListKey(char const* data, std::size_t len){
     bool blacklisted = false;
     uint64_t attempts = 0;
     while (!blacklisted) {
-      blacklisted = _cache->blacklist(data,len);
+      blacklisted = _cache->blacklist(data, (uint32_t)len);
       if (attempts++ % 10 == 0) {
         if (_cache->isShutdown()) {
           disableCache();

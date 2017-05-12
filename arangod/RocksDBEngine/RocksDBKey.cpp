@@ -190,7 +190,7 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
   RocksDBEntryType type = static_cast<RocksDBEntryType>(*slice.data());
   TRI_ASSERT(type == RocksDBEntryType::GeoIndexValue);
   uint64_t val = uint64FromPersistent(slice.data() + sizeof(char) + sizeof(uint64_t));
-  bool isSlot = val & 0xFFU;// lowest byte is 0xFF if true
+  bool isSlot = (bool)(val & 0xFFU);// lowest byte is 0xFF if true
   return std::pair<bool, int32_t>(isSlot, (val >> 32));
 }
 

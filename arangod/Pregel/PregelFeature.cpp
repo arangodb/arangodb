@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PregelFeature.h"
+#include <atomic>
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterFeature.h"
@@ -38,7 +39,8 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 static PregelFeature* Instance = nullptr;
-static uint64_t _uniqueId = 0;
+static std::atomic<uint64_t> _uniqueId;
+
 uint64_t PregelFeature::createExecutionNumber() {
   if (ServerState::instance()->isRunningInCluster()) {
     return ClusterInfo::instance()->uniqid();
@@ -105,25 +107,24 @@ void PregelFeature::beginShutdown() {
   Instance = nullptr;
 }
 
-void PregelFeature::addConductor(Conductor* const exec,
-                                 uint64_t executionNumber) {
+void PregelFeature::addConductor(Conductor* const c, uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   //_executions.
-  _conductors[executionNumber] = exec;
+  _conductors.emplace(executionNumber, std::shared_ptr<Conductor>(c));
 }
 
-Conductor* PregelFeature::conductor(uint64_t executionNumber) {
+std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _conductors.find(executionNumber);
   return it != _conductors.end() ? it->second : nullptr;
 }
 
-void PregelFeature::addWorker(IWorker* const worker, uint64_t executionNumber) {
+void PregelFeature::addWorker(IWorker* const w, uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
-  _workers[executionNumber] = worker;
+  _workers.emplace(executionNumber, std::shared_ptr<IWorker>(w));
 }
 
-IWorker* PregelFeature::worker(uint64_t executionNumber) {
+std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _workers.find(executionNumber);
   return it != _workers.end() ? it->second : nullptr;
@@ -133,9 +134,7 @@ void PregelFeature::cleanupConductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto cit = _conductors.find(executionNumber);
   if (cit != _conductors.end()) {
-    std::unique_ptr<Conductor> cond(cit->second);
     _conductors.erase(executionNumber);
-    cond.reset();
   }
 }
 
@@ -148,24 +147,18 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
 
     auto wit = _workers.find(executionNumber);
     if (wit != _workers.end()) {
-      std::unique_ptr<IWorker> worker(wit->second);
       _workers.erase(executionNumber);
-      worker.reset();
     }
   });
 }
 
 void PregelFeature::cleanupAll() {
   MUTEX_LOCKER(guard, _mutex);
-  for (auto it : _conductors) {
-    delete (it.second);
-  }
   _conductors.clear();
   for (auto it : _workers) {
     it.second->cancelGlobalStep(VPackSlice());
-    usleep(1000 * 25);
-    delete (it.second);
   }
+  usleep(1000 * 100);  // 100ms to send out cancel calls
   _workers.clear();
 }
 
@@ -176,8 +169,8 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   if (!sExecutionNum.isInteger()) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number";
   }
-  uint64_t executionNumber = sExecutionNum.getUInt();
-  Conductor* co = Instance->conductor(executionNumber);
+  uint64_t exeNum = sExecutionNum.getUInt();
+  std::shared_ptr<Conductor> co = Instance->conductor(exeNum);
   if (!co) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "Conductor not found, invalid execution number");
@@ -201,14 +194,13 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "Worker not found, invalid execution number");
   }
-  uint64_t executionNumber = sExecutionNum.getUInt();
-  IWorker* w = PregelFeature::instance()->worker(executionNumber);
+  uint64_t exeNum = sExecutionNum.getUInt();
 
   // create a new worker instance if necessary
   if (path == Utils::startExecutionPath || path == Utils::startRecoveryPath) {
-    if (w == nullptr) {
-      w = AlgoRegistry::createWorker(vocbase, body);
-      Instance->addWorker(w, executionNumber);
+    std::shared_ptr<IWorker> w = Instance->worker(exeNum);
+    if (!w) {
+      Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
     } else if (path == Utils::startExecutionPath) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
@@ -218,10 +210,14 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
       w->startRecovery(body);
     }
   }
-  if (w == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
+  std::shared_ptr<IWorker> w = Instance->worker(exeNum);
+  if (!w) {
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Handling " << path << "worker "
+                                    << exeNum << " does not exist";
+    THROW_ARANGO_EXCEPTION_FORMAT(
         TRI_ERROR_INTERNAL,
-        "Worker with this execution number already exists.");
+        "Handling request %s, but worker %lld does not exists.", path.c_str(),
+        exeNum);
   }
 
   if (path == Utils::prepareGSSPath) {
@@ -233,9 +229,9 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
   } else if (path == Utils::cancelGSSPath) {
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [executionNumber] {
+    w->finalizeExecution(body, [exeNum] {
       if (Instance != nullptr) {
-        Instance->cleanupWorker(executionNumber);
+        Instance->cleanupWorker(exeNum);
       }
     });
   } else if (path == Utils::continueRecoveryPath) {

@@ -126,8 +126,6 @@ class RocksDBTransactionState final : public TransactionState {
 
   uint64_t sequenceNumber() const;
 
-  void reset();
-
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   rocksdb::WriteOptions _rocksWriteOptions;

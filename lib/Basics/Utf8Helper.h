@@ -136,7 +136,7 @@ class Utf8Helper {
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool getWords(std::set<std::string>& words, std::string const& text,
+  bool tokenize(std::set<std::string>& words, std::string const& text,
                 size_t minimalWordLength, size_t maximalWordLength,
                 bool lowerCase);
 

@@ -105,6 +105,48 @@ static rocksdb::Slice ReplicationApplierConfig(
     1);
 }
 
+char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
+  switch (type) {
+    case arangodb::RocksDBEntryType::Database: return "Database";
+    case arangodb::RocksDBEntryType::Collection: return "Collection";
+    case arangodb::RocksDBEntryType::CounterValue: return "CounterValue";
+    case arangodb::RocksDBEntryType::Document: return "Document";
+    case arangodb::RocksDBEntryType::PrimaryIndexValue: return "PrimaryIndexValue";
+    case arangodb::RocksDBEntryType::EdgeIndexValue: return "EdgeIndexValue";
+    case arangodb::RocksDBEntryType::IndexValue: return "IndexValue";
+    case arangodb::RocksDBEntryType::UniqueIndexValue: return "UniqueIndexValue";
+    case arangodb::RocksDBEntryType::View: return "View";
+    case arangodb::RocksDBEntryType::SettingsValue: return "SettingsValue";
+    case arangodb::RocksDBEntryType::ReplicationApplierConfig: return "ReplicationApplierConfig";
+    case arangodb::RocksDBEntryType::FulltextIndexValue: return "FulltextIndexValue";
+    case arangodb::RocksDBEntryType::GeoIndexValue: return "GeoIndexValue";
+  }
+  return "Invalid";
+}
+
+char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
+  switch (type) {
+    case arangodb::RocksDBLogType::DatabaseCreate: return "DatabaseCreate";
+    case arangodb::RocksDBLogType::DatabaseDrop: return "DatabaseDrop";
+    case arangodb::RocksDBLogType::CollectionCreate: return "CollectionCreate";
+    case arangodb::RocksDBLogType::CollectionDrop: return "CollectionDrop";
+    case arangodb::RocksDBLogType::CollectionRename: return "CollectionRename";
+    case arangodb::RocksDBLogType::CollectionChange: return "CollectionChange";
+    case arangodb::RocksDBLogType::IndexCreate: return "IndexCreate";
+    case arangodb::RocksDBLogType::IndexDrop: return "IndexDrop";
+    case arangodb::RocksDBLogType::ViewCreate: return "ViewCreate";
+    case arangodb::RocksDBLogType::ViewDrop: return "ViewDrop";
+    case arangodb::RocksDBLogType::ViewChange: return "ViewChange";
+    case arangodb::RocksDBLogType::BeginTransaction: return "BeginTransaction";
+    case arangodb::RocksDBLogType::DocumentOperationsPrologue: return "DocumentOperationsPrologue";
+    case arangodb::RocksDBLogType::DocumentRemove: return "DocumentRemove";
+    case arangodb::RocksDBLogType::SinglePut: return "SinglePut";
+    case arangodb::RocksDBLogType::SingleRemove: return "SingleRemove";
+    case arangodb::RocksDBLogType::Invalid: return "Invalid";
+  }
+  return "Invalid";
+}
+
 rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   switch (type) {
     case RocksDBEntryType::Database:
