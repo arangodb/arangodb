@@ -117,6 +117,28 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   // acquire RocksDB collection
   RocksDBToken token;
 
+  auto iterateChachedValues = [this,&cb,&limit,&token](){
+    //LOG_TOPIC(ERR, Logger::FIXME) << "value found in cache ";
+    //iterate over cached primary keys
+    while(_arrayIterator.valid()){
+      StringRef edgeKey(_arrayIterator.value());
+      //LOG_TOPIC(ERR, Logger::FIXME) << "using value from cache " << edgeKey;
+      if(lookupDocumentAndUseCb(edgeKey, cb, limit, token, true)){
+        //LOG_TOPIC(ERR, Logger::FIXME) << "limit hit " << edgeKey;
+        _arrayIterator++;
+        return true; // more documents - function will be re-entered
+      } else {
+        //LOG_TOPIC(ERR, Logger::FIXME) << "survived lookup " << edgeKey;
+        //iterate over keys
+      }
+      _arrayIterator++;
+    }
+    _arrayBuffer.clear();
+    _arrayIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
+    _keysIterator.next(); // handle next key
+    return false;
+  };
+
   while (_keysIterator.valid()) {
     TRI_ASSERT(limit > 0);
     StringRef fromTo = getFromToFromIterator(_keysIterator);
@@ -145,36 +167,25 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
           }
           // update iterator
           _arrayIterator = VPackArrayIterator(_arraySlice);
+
+          bool continueWithNextBatch = iterateChachedValues();
+          if(continueWithNextBatch){
+            return true;
+          } else {
+            continue;
+          }
         } else {
           //LOG_TOPIC(ERR, Logger::FIXME) << "not found in cache " << fromTo;
         }
       } else {
         //LOG_TOPIC(ERR, Logger::FIXME) << "resuming old iterator for key " << fromTo << " in cache";
         _doUpdateArrayIterator = true;
-        foundInCache = true;
-      }
-
-      //LOG_TOPIC(ERR, Logger::FIXME) << "iterators prepared - foundInCache" << foundInCache;
-
-      if (foundInCache) {
-        //LOG_TOPIC(ERR, Logger::FIXME) << "value found in cache ";
-        //iterate over cached primary keys
-        for(VPackSlice const& slice: _arrayIterator){
-          StringRef edgeKey(slice);
-          //LOG_TOPIC(ERR, Logger::FIXME) << "using value from cache " << edgeKey;
-          if(lookupDocumentAndUseCb(edgeKey, cb, limit, token, true)){
-            //LOG_TOPIC(ERR, Logger::FIXME) << "limit hit " << edgeKey;
-            _arrayIterator++;
-            return true; // more documents - function will be re-entered
-          } else {
-            //LOG_TOPIC(ERR, Logger::FIXME) << "survived lookup " << edgeKey;
-            //iterate over keys
-          }
+        bool continueWithNextBatch = iterateChachedValues();
+        if(continueWithNextBatch){
+          return true;
+        } else {
+          continue;
         }
-        _arrayIterator.reset();
-        _arrayBuffer.clear();
-        _keysIterator.next(); // handle next key
-        continue; // do not use the code below that does a lookup in RocksDB
       }
     } else {
       //LOG_TOPIC(ERR, Logger::FIXME) << "not using cache";
