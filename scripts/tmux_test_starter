@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# change into build dir
+
+die(){
+	echo "FATAL: ${1-this should not happen}"
+	exit 1
+}
+
+
+cores(){
+    # Determine automatically on Mac or Linux
+    if [[ $(uname) == 'Darwin' ]]; then
+        echo "$(sysctl hw.ncpu | awk '{print $2}')"
+    else
+        echo "$(nproc)"
+    fi
+}
+
+kill_old_session(){
+    local session_name="$1"
+    if tmux has-session -t $session_name 2> /dev/null; then
+        echo "Session $session_name exists. Kill it? [y/N]"
+        read kill_sess
+        echo "killsess '$kill_sess'"
+        if [[ ($kill_sess == "y") || ($kill_sess == "Y") ]]; then
+            tmux kill-session -t $session_name
+        else
+            die "Session not created because it already exists. Exiting."
+        fi
+    fi
+}
+
+spawn_panes(){
+    local session_name="$1"
+    local rows=$2
+	local cols=$3
+
+	# Create rows
+	local row=$rows
+    while (( row > 1 )); do
+        frac=$(echo "scale=2;1/$row" | bc)
+        percent=$(echo "($frac * 100)/1" | bc)
+        echo "frac $frac percent $percent"
+        tmux select-pane -t $session_name.0
+        tmux split-window -v -p $percent
+        ((row--))
+    done
+
+	# Create columns
+	if ((cols > 1)); then
+		local count=$((rows - 1))
+    	# Floor function to round down if odd
+    	while ((count >= 0)); do
+			echo "count $count"
+    	    tmux select-pane -t $session_name.$count
+    	    tmux split-window -h -p 50
+    	    (( count-- ))
+    	done
+	fi
+}
+
+execute_tasks(){
+    cd $1 || die
+    local tasks=$2
+    local count=0
+    while (( count < tasks )); do
+        local exec_cmd=
+        echo "task: $count"
+		case $count in
+			0)
+        		local exec_cmd=( './scripts/unittest' 'shell_server' )
+                # we can not use the former as tmux's escaping is broken
+        		local exec_cmd=( './scripts/unittest shell_server && exit 0' )
+			;;
+			*)
+        		local exec_cmd=("echo 'spawn task $count'")
+			;;
+		esac
+        tmux send-keys -t $session_name.$count "${exec_cmd[@]}" Enter
+        (( count++ ))
+    done
+}
+
+main(){
+    #cd ..  || die "can not change directory"
+    local session_name=integrationtest
+    local tasks=5
+    #kill_old_session "$session_name"
+    tmux kill-session -t $session_name
+    tmux new-session -d -s "$session_name" || die "unable to spawn session"
+    local rows=$(( (tasks+1) / 2 ))
+    local cols=$((((tasks>1)) * 2))
+    spawn_panes "$session_name" $rows $cols
+    tmux select-pane -t $session_name.0
+    echo "$(pwd)"
+    execute_tasks "$(pwd)" $tasks
+    tmux -2 attach-session -t $session_name
+}
+main "$@"
+exit 0
