@@ -22,6 +22,7 @@
 
 #include "ApplicationFeatures/V8PlatformFeature.h"
 
+#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -175,7 +176,8 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   isolate->AddGCEpilogueCallback(gcEpilogueCallback);
 
   auto data = std::make_unique<IsolateData>();
-  
+ 
+  MUTEX_LOCKER(guard, _lock); 
   _isolateData.emplace_back(std::move(data));
   isolate->SetData(V8_INFO, _isolateData.back().get());
 
