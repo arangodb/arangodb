@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_DMID_H
-#define ARANGODB_PREGEL_ALGOS_DMID_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_LABELPROP_H
+#define ARANGODB_PREGEL_ALGOS_LABELPROP_H 1
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -30,21 +30,27 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
-/// https://github.com/Rofti/DMID
-struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
+/// SLPA algorithm:
+/// Overlap is one of the characteristics of social
+/// networks, in which a person may belong to more than one social
+/// group. For this reason, discovering overlapping structure
+/// is  necessary  for  realistic  social  analysis.  In the SLPA algorithm
+/// nodes  exchange  labels  according  to  dynamic
+/// interaction  rules.  It has excellent performance in identifying both overlapping
+/// nodes and  overlapping  communities  with  different  degrees  of  diversity.
+struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
  public:
-  explicit DMID(VPackSlice userParams)
-      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>("DMID", userParams) {}
+  explicit SLPA(VPackSlice userParams)
+      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("SpeakerListenerLabelProp",
+                                                   userParams) {}
 
-  GraphFormat<DMIDValue, float>* inputFormat() const override;
-  MessageFormat<DMIDMessage>* messageFormat() const override;
+  GraphFormat<SLPAValue, int8_t>* inputFormat() const override;
+  MessageFormat<uint64_t>* messageFormat() const override {
+    return new NumberMessageFormat<uint64_t>();
+  }
 
-  VertexComputation<DMIDValue, float, DMIDMessage>* createComputation(
+  VertexComputation<SLPAValue, int8_t, uint64_t>* createComputation(
       WorkerConfig const*) const override;
-
-  MasterContext* masterContext(VPackSlice userParams) const override;
-
-  IAggregator* aggregator(std::string const& name) const override;
 };
 }
 }

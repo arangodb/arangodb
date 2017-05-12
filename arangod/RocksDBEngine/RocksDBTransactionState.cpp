@@ -448,3 +448,15 @@ void RocksDBTransactionState::reset() {
   // start new transaction
   beginTransaction(transaction::Hints());
 }
+
+class RocksDBBatchTrx : public RocksDBBatch {
+  arangodb::Result Get(RocksDBKey const&, std::string*) override {
+    
+  }
+  
+  arangodb::Result Put(RocksDBKey const&, rocksdb::Slice const&) override {
+    
+  }
+  arangodb::Result Delete(RocksDBKey const&) override ;
+};
+

@@ -38,9 +38,9 @@ struct DMIDMessageFormat : public MessageFormat<DMIDMessage> {
   DMIDMessageFormat() {}
   void unwrapValue(VPackSlice s, DMIDMessage& message) const override {
     VPackArrayIterator array(s);
-    message.senderId.shard = (PregelShard) ((*array).getUInt());
+    message.senderId.shard = (PregelShard)((*array).getUInt());
     message.senderId.key = (*(++array)).copyString();
-    message.leaderId.shard = (PregelShard) (*array).getUInt();
+    message.leaderId.shard = (PregelShard)(*array).getUInt();
     message.leaderId.key = (*(++array)).copyString();
     message.weight = (*(++array)).getNumber<float>();
   }

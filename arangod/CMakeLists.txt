@@ -233,19 +233,20 @@ SET(ARANGOD_SOURCES
   InternalRestHandler/InternalRestTraverserHandler.cpp
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
-  Pregel/Algos/SSSP.cpp
-  Pregel/Algos/ShortestPath.cpp
-  Pregel/Algos/PageRank.cpp
-  Pregel/Algos/RecoveringPageRank.cpp
-  Pregel/Algos/LineRank.cpp
-  Pregel/Algos/ConnectedComponents.cpp
-  Pregel/Algos/SCC.cpp
   Pregel/Algos/AsyncSCC.cpp
-  Pregel/Algos/HITS.cpp
-  Pregel/Algos/LabelPropagation.cpp
-  Pregel/Algos/DMID/DMID.cpp
+  Pregel/Algos/ConnectedComponents.cpp
   Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
   Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
+  Pregel/Algos/HITS.cpp
+  Pregel/Algos/LineRank.cpp
+  Pregel/Algos/PageRank.cpp
+  Pregel/Algos/RecoveringPageRank.cpp
+  Pregel/Algos/ShortestPath.cpp
+  Pregel/Algos/SSSP.cpp
+  Pregel/Algos/SCC.cpp
+  Pregel/Algos/SLPA.cpp
+  Pregel/Algos/LabelPropagation.cpp
+  Pregel/Algos/DMID/DMID.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp

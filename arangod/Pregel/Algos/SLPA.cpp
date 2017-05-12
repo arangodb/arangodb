@@ -37,8 +37,8 @@ using namespace arangodb::pregel::algos;
 
 static const uint64_t STABILISATION_ROUNDS = 20;
 
-struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
-  LPComputation() {}
+struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
+  SLPAComputation() {}
   
   uint64_t mostFrequent(MessageIterator<uint64_t> const& messages) {
     TRI_ASSERT(messages.size() > 0);
@@ -76,7 +76,7 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
   }
 
   void compute(MessageIterator<uint64_t> const& messages) override {
-    LPValue* value = mutableVertexData();
+    SLPAValue* value = mutableVertexData();
     if (globalSuperstep() == 0) {
       sendMessageToAllEdges(value->currentCommunity);
     } else {
