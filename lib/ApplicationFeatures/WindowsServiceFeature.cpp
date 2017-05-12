@@ -59,7 +59,7 @@ static std::string ServiceName = "ArangoDB";
 /// @brief Windows service name for the user.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string FriendlyServiceName = "ArangoDB - the multi-model database";
+static std::string FriendlyServiceName = "ArangoDB - the native multi-model NoSQL database";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief service status handler

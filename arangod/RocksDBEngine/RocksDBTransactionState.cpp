@@ -429,25 +429,6 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
       _rocksTransaction->GetSnapshot()->GetSequenceNumber());
 }
 
-void RocksDBTransactionState::reset() {
-  // only reset when already commited
-  TRI_ASSERT(_status == transaction::Status::COMMITTED);
-  // reset count
-  _transactionSize = 0;
-  _numInserts = 0;
-  _numUpdates = 0;
-  _numRemoves = 0;
-  unuseCollections(_nestingLevel);
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    (static_cast<RocksDBTransactionCollection*>(*it))->resetCounts();
-  }
-  _nestingLevel = 0;
-
-  updateStatus(transaction::Status::CREATED);
-
-  // start new transaction
-  beginTransaction(transaction::Hints());
-}
 
 class RocksDBBatchTrx : public RocksDBBatch {
   arangodb::Result Get(RocksDBKey const&, std::string*) override {
@@ -459,4 +440,3 @@ class RocksDBBatchTrx : public RocksDBBatch {
   }
   arangodb::Result Delete(RocksDBKey const&) override ;
 };
-

@@ -213,6 +213,23 @@ ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo() {}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::cleanup() {
+  ClusterInfo* theInstance = instance();
+  if (theInstance == nullptr) {
+    return;
+  }
+
+  theInstance->_plannedCollections.clear();
+  theInstance->_shards.clear();
+  theInstance->_shardKeys.clear();
+  theInstance->_shardIds.clear();
+  theInstance->_currentCollections.clear();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the uniqid value. if it exceeds the upper bound, fetch a
@@ -1413,7 +1430,7 @@ int ClusterInfo::dropCollectionCoordinator(
 
       if (TRI_microtime() > endTime) {
         LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "Timeout in _drop collection"
+            << "Timeout in _drop collection (" << realTimeout << ")"
             << ": database: " << databaseName << ", collId:" << collectionID
             << "\ntransaction sent to agency: " << trans.toJson();
         AgencyCommResult ag = ac.getValues("");
@@ -2653,6 +2670,17 @@ void ClusterInfo::invalidatePlan() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate current coordinators
+//////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::invalidateCurrentCoordinators() {
+  {
+    WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
+    _coordinatorsProt.isValid = false;
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate current
 //////////////////////////////////////////////////////////////////////////////
 
@@ -2666,13 +2694,10 @@ void ClusterInfo::invalidateCurrent() {
     _DBServersProt.isValid = false;
   }
   {
-    WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
-    _coordinatorsProt.isValid = false;
-  }
-  {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
     _currentProt.isValid = false;
   }
+  invalidateCurrentCoordinators();
 }
 
 //////////////////////////////////////////////////////////////////////////////

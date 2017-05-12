@@ -158,6 +158,8 @@
     * [General Options](Administration/Configuration/GeneralArangod.md)
     * [Write-Ahead Log Options](Administration/Configuration/Wal.md)
     * [Cluster Options](Administration/Configuration/Cluster.md)
+    * [RocksDB Engine Options](Administration/Configuration/RocksDB.md)
+    * [Hash Cache Options](Administration/Configuration/Cache.md)
     * [Asynchronous Tasks](Administration/Configuration/Asynchronous.md)
   * [Durability](Administration/Durability.md)
   * [Replication](Administration/Replication/README.md)

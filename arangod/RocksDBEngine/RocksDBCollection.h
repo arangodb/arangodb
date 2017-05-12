@@ -33,6 +33,9 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 namespace arangodb {
+namespace cache {
+  class Cache;
+}
 class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
@@ -217,6 +220,11 @@ class RocksDBCollection final : public PhysicalCollection {
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
                                        arangodb::ManagedDocumentResult&) const;
 
+  void createCache() const;
+  void disableCache() const;
+  inline bool useCache() const { return (_useCache && _cachePresent); }
+  void blackListKey(char const* data, std::size_t len) const;
+
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection
   std::atomic<uint64_t> _numberDocuments;
@@ -225,6 +233,12 @@ class RocksDBCollection final : public PhysicalCollection {
   /// upgrade write locks to exclusive locks if this flag is set
   bool _hasGeoIndex;
   basics::ReadWriteLock _exclusiveLock;
+
+  mutable std::shared_ptr<cache::Cache> _cache;
+  // we use this boolean for testing whether _cache is set.
+  // it's quicker than accessing the shared_ptr each time
+  mutable bool _cachePresent;
+  bool _useCache;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {

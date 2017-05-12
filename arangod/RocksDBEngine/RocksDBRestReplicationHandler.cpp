@@ -22,7 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBRestReplicationHandler.h"
+#include "RocksDBRestReplicationHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
@@ -657,7 +657,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
     cid = c->cid();
   }
-
+  
   std::shared_ptr<transaction::Context> transactionContext =
       transaction::StandaloneContext::Create(_vocbase);
 
@@ -667,15 +667,17 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                         cid, builder);
   builder.close();
   auto data = builder.slice();
+  
+  uint64_t const latest = latestSequenceNumber();
 
   if (result.fail()) {
-    generateError(rest::ResponseCode::SERVER_ERROR, result.errorNumber(),
+    generateError(GeneralResponse::responseCode(result.errorNumber()), result.errorNumber(),
                   result.errorMessage());
     return;
   }
 
   bool const checkMore =
-      (result.maxTick() > 0 && result.maxTick() < latestSequenceNumber());
+      (result.maxTick() > 0 && result.maxTick() < latest);
 
   // generate the result
   size_t length = data.length();
@@ -695,8 +697,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setHeaderNC(
       TRI_REPLICATION_HEADER_LASTINCLUDED,
       StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                         StringUtils::itoa(latestSequenceNumber()));
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, StringUtils::itoa(latest));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                          result.fromTickIncluded() ? "true" : "false");

@@ -77,6 +77,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _currentSequence(0) {}
 
   void LogData(rocksdb::Slice const& blob) override {
+    tick();
     RocksDBLogType type = RocksDBLogValue::type(blob);
     TRI_DEFER(_lastLogType = type);
     switch (type) {
@@ -197,6 +198,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   }
 
   void Put(rocksdb::Slice const& key, rocksdb::Slice const& value) override {
+    tick();
     if (!shouldHandleKey(key)) {
       return;
     }
@@ -262,6 +264,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   void SingleDelete(rocksdb::Slice const& key) override { handleDeletion(key); }
 
   void handleDeletion(rocksdb::Slice const& key) {
+    tick();
     if (!shouldHandleKey(key)) {
       return;
     }
@@ -334,9 +337,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     _currentCollectionId = 0;
     _oldCollectionName.clear();
     _removeDocumentKey.clear();
+    _startOfBatch = true;
   }
 
-  void endBatch() {
+  uint64_t endBatch() {
     if (_seenBeginTransaction) {
       _builder.openObject();
       _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -349,16 +353,22 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
     _seenBeginTransaction = false;
     _singleOpTransaction = false;
+    return _currentSequence;
   }
 
  private:
-  bool shouldHandleKey(rocksdb::Slice const& key) {
-    // if we are supposed to include system collections, we do not
-    // need to check if they are system collections
-    if (_onlyCollectionId == 0 && _includeSystem) {
-      return true;
+  // tick function that is called before each new WAL entry
+  void tick() {
+    if (_startOfBatch) {
+      // we are at the start of a batch. do NOT increase sequence number
+      _startOfBatch = false;
+    } else {
+      // we are inside a batch already. now increase sequence number
+      ++_currentSequence;
     }
+  }
 
+  bool shouldHandleKey(rocksdb::Slice const& key) const {
     TRI_voc_cid_t cid;
     switch (RocksDBKey::type(key)) {
       case RocksDBEntryType::Collection: {
@@ -372,6 +382,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
           return false;
         }
         cid = mapping.second;
+        break;
       }
       case RocksDBEntryType::View:  // should handle these eventually?
       default:
@@ -384,10 +395,13 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
     // allow document removes of dropped collections
     std::string const collectionName = _vocbase->collectionName(cid);
-    if (collectionName.size() == 0) {
+    if (collectionName.empty()) {
       return true;
     }
     if (!_includeSystem && collectionName[0] == '_') {
+      return false;
+    }
+    if (TRI_ExcludeCollectionReplication(collectionName.c_str(), _includeSystem)) {
       return false;
     }
 
@@ -408,6 +422,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   RocksDBLogType _lastLogType = RocksDBLogType::Invalid;
   bool _seenBeginTransaction = false;
   bool _singleOpTransaction = false;
+  bool _startOfBatch = false;
   TRI_voc_tick_t _currentDbId = 0;
   TRI_voc_tick_t _currentTrxId = 0;
   TRI_voc_cid_t _currentCollectionId = 0;
@@ -432,10 +447,10 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   rocksdb::Status s = static_cast<rocksdb::DB*>(globalRocksDB())
                           ->GetUpdatesSince(tickStart, &iterator);
   if (!s.ok()) {  // TODO do something?
-    auto converted = convertStatus(s);
+    auto converted = convertStatus(s, rocksutils::StatusHint::wal);
     return {converted.errorNumber(), lastTick};
   }
-
+      
   bool fromTickIncluded = false;
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
@@ -445,15 +460,29 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
     s = iterator->status();
     if (s.ok()) {
       rocksdb::BatchResult batch = iterator->GetBatch();
-      lastTick = batch.sequence;
-      if (lastTick == tickStart) {
+      if (!fromTickIncluded &&
+          batch.sequence >= tickStart && 
+          batch.sequence <= tickEnd) {
         fromTickIncluded = true;
       }
-      if (tickStart <= lastTick && lastTick <= tickEnd) {
-        handler->startNewBatch(batch.sequence);
-        s = batch.writeBatchPtr->Iterate(handler.get());
-        if (s.ok()) {
-          handler->endBatch();
+
+      if (batch.sequence <= tickStart) {
+        iterator->Next();
+        continue;
+      }
+      if (batch.sequence > tickEnd) {
+        break;
+      }
+
+      lastTick = batch.sequence;
+      handler->startNewBatch(batch.sequence);
+      s = batch.writeBatchPtr->Iterate(handler.get());
+      if (s.ok()) {
+        lastTick = handler->endBatch();
+        if (!fromTickIncluded &&
+            lastTick >= tickStart && 
+            lastTick <= tickEnd) {
+          fromTickIncluded = true;
         }
       }
     } else {

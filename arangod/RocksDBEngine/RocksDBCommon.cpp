@@ -58,6 +58,9 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
           return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND, status.ToString()};
         case StatusHint::view:
           return {TRI_ERROR_ARANGO_VIEW_NOT_FOUND, status.ToString()};
+        case StatusHint::wal:
+          // suppress this error if the WAL is queried for changes that are not available
+          return {TRI_ERROR_NO_ERROR};
         default:
           return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, status.ToString()};
       }
