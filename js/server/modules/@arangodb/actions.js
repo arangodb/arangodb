@@ -1917,7 +1917,7 @@ function easyPostCallback (opts) {
     }
 
     try {
-      var result = opts.callback(body);
+      var result = opts.callback(body, req);
       resultOk(req, res, exports.HTTP_OK, result);
     } catch (err) {
       resultException(req, res, err, undefined, false);
