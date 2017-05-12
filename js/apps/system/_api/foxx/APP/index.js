@@ -17,9 +17,8 @@ const schemas = require('./schemas');
 
 const router = createRouter();
 module.context.registerType('multipart/form-data', require('./multipart'));
-module.context.registerType('application/zip', {fromClient (body) {
-  return {source: body};
-}});
+module.context.registerType('application/zip', {fromClient: (body) => ({source: body})});
+module.context.registerType('application/javascript', require('./javascript'));
 module.context.use(router);
 
 const LDJSON = 'application/x-ldjson';
@@ -45,16 +44,7 @@ const serviceToJson = (service) => (
   }
 );
 
-function writeUploadToTempFile (buffer) {
-  const filename = fs.getTempFile('uploads', true);
-  fs.writeFileSync(filename, buffer);
-  return filename;
-}
-
 function prepareServiceRequestBody (req, res, next) {
-  if (req.body.source instanceof Buffer) {
-    req.body.source = writeUploadToTempFile(req.body.source);
-  }
   try {
     if (req.body.dependencies) {
       req.body.dependencies = JSON.parse(req.body.dependencies);
@@ -124,7 +114,7 @@ if (FoxxManager.isFoxxmaster()) {
     const service = FoxxManager.lookupService(mount);
     res.json(serviceToJson(service));
   })
-  .body(schemas.service, ['multipart/form-data', 'application/zip', 'application/json'], `Service to be installed.`)
+  .body(schemas.service, ['multipart/form-data', 'application/zip', 'application/javascript', 'application/json'], `Service to be installed.`)
   .queryParam('mount', schemas.mount, `Mount path the service should be installed at.`)
   .queryParam('development', schemas.flag.default(false), `Enable development mode.`)
   .queryParam('setup', schemas.flag.default(true), `Run the service's setup script.`)
@@ -180,7 +170,7 @@ if (FoxxManager.isFoxxmaster()) {
     const service = FoxxManager.lookupService(mount);
     res.json(serviceToJson(service));
   })
-  .body(schemas.service, ['multipart/form-data', 'application/zip', 'application/json'], `Service to be installed.`)
+  .body(schemas.service, ['multipart/form-data', 'application/zip', 'application/javascript', 'application/json'], `Service to be installed.`)
   .queryParam('teardown', schemas.flag.default(false), `Run the old service's teardown script.`)
   .queryParam('setup', schemas.flag.default(true), `Run the new service's setup script.`)
   .queryParam('legacy', schemas.flag.default(false), `Service should be installed in 2.8 legacy compatibility mode.`)
@@ -207,7 +197,7 @@ if (FoxxManager.isFoxxmaster()) {
     const service = FoxxManager.lookupService(mount);
     res.json(serviceToJson(service));
   })
-  .body(schemas.service, ['multipart/form-data', 'application/zip', 'application/json'], `Service to be installed.`)
+  .body(schemas.service, ['multipart/form-data', 'application/zip', 'application/javascript', 'application/json'], `Service to be installed.`)
   .queryParam('teardown', schemas.flag.default(true), `Run the old service's teardown script.`)
   .queryParam('setup', schemas.flag.default(true), `Run the new service's setup script.`)
   .queryParam('legacy', schemas.flag.default(false), `Service should be installed in 2.8 legacy compatibility mode.`)
