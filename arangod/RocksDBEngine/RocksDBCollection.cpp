@@ -174,8 +174,7 @@ int RocksDBCollection::close() {
 TRI_voc_rid_t RocksDBCollection::revision() const { return _revisionId; }
 
 TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
-  RocksDBTransactionState* state =
-      static_cast<RocksDBTransactionState*>(trx->state());
+  RocksDBTransactionState* state = toRocksTransactionState(trx);
 
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(
       state->findCollection(_logicalCollection->cid()));
@@ -187,8 +186,7 @@ TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
 uint64_t RocksDBCollection::numberDocuments() const { return _numberDocuments; }
 
 uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
-  RocksDBTransactionState* state =
-      static_cast<RocksDBTransactionState*>(trx->state());
+  RocksDBTransactionState* state = toRocksTransactionState(trx);
 
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(
       state->findCollection(_logicalCollection->cid()));
@@ -867,8 +865,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   TRI_voc_rid_t revisionId =
       transaction::helpers::extractRevFromDocument(newSlice);
 
-  RocksDBTransactionState* state =
-      static_cast<RocksDBTransactionState*>(trx->state());
+  RocksDBTransactionState* state = toRocksTransactionState(trx);
 
   RocksDBSavePoint guard(rocksTransaction(trx),
                          trx->isSingleOperationTransaction(),
@@ -963,8 +960,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
   mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                         TRI_RidToString(revisionId), options.mergeObjects,
                         options.keepNull, *builder.get());
-  RocksDBTransactionState* state =
-      static_cast<RocksDBTransactionState*>(trx->state());
+  RocksDBTransactionState* state = toRocksTransactionState(trx);
   if (state->isDBServer()) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
@@ -1066,8 +1062,7 @@ int RocksDBCollection::replace(
                       isEdgeCollection, TRI_RidToString(revisionId),
                       *builder.get());
 
-  RocksDBTransactionState* state =
-      static_cast<RocksDBTransactionState*>(trx->state());
+  RocksDBTransactionState* state = toRocksTransactionState(trx);
   if (state->isDBServer()) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
@@ -1167,9 +1162,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
     }
   }
 
-  RocksDBTransactionState* state =
-      static_cast<RocksDBTransactionState*>(trx->state());
-
+  RocksDBTransactionState* state = toRocksTransactionState(trx);
   RocksDBSavePoint guard(rocksTransaction(trx),
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
@@ -1177,7 +1170,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(key),
                           TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-  res = removeDocument(trx, oldRevisionId, oldDoc, options.waitForSync);
+  res = removeDocument(trx, oldRevisionId, oldDoc, false, options.waitForSync);
   if (res.ok()) {
     // report key size
     res = state->addOperation(_logicalCollection->cid(), revisionId,
@@ -1468,7 +1461,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
 
 RocksDBOperationResult RocksDBCollection::removeDocument(
     arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
-    VPackSlice const& doc, bool& waitForSync) const {
+    VPackSlice const& doc, bool isUpdate, bool& waitForSync) const {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
@@ -1478,16 +1471,18 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
-  rocksdb::Transaction* rtrx = rocksTransaction(trx);
-
-  rtrx->PutLogData(RocksDBLogValue::DocumentRemove(
-                       StringRef(doc.get(StaticStrings::KeyString)))
-                       .slice());
-  auto status = rtrx->Delete(key.string());
-  if (!status.ok()) {
-    auto converted = rocksutils::convertStatus(status);
-    return converted;
-  }
+  // prepare operation which adds log statements is called
+  // from the outside. We do not need to DELETE a document from the
+  // document store, if the doc is overwritten with PUT
+  // Simon: actually we do, because otherwise the counter recovery is broken
+  //if (!isUpdate) {
+    rocksdb::Transaction* rtrx = rocksTransaction(trx);
+    auto status = rtrx->Delete(key.string());
+    if (!status.ok()) {
+      auto converted = rocksutils::convertStatus(status);
+      return converted;
+    }
+  //}
 
   RocksDBOperationResult res;
   RocksDBOperationResult resInner;
@@ -1553,7 +1548,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   RocksDBOperationResult res =
-      removeDocument(trx, oldRevisionId, oldDoc, waitForSync);
+      removeDocument(trx, oldRevisionId, oldDoc, true, waitForSync);
   if (res.fail()) {
     return res;
   }

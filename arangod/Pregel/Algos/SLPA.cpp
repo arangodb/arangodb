@@ -36,8 +36,6 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
-static const uint64_t STABILISATION_ROUNDS = 20;
-
 struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   SLPAComputation() {}
   

@@ -171,8 +171,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       RocksDBLogValue header =
           RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
       _rocksTransaction->PutLogData(header.slice());
+      TRI_ASSERT(++_numLogdata);
     }
-
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -315,52 +315,54 @@ void RocksDBTransactionState::prepareOperation(
   TRI_ASSERT(!isReadOnlyTransaction());
 
   bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  // single operations should never call this method twice
-  // singleOp => lastUsedColl == 0
-  TRI_ASSERT(!singleOp || _lastUsedCollection == 0);
-  // singleOp => no keys
-  TRI_ASSERT(!singleOp ||
-             _rocksTransaction->GetNumPuts() == 0 &&
-             _rocksTransaction->GetNumDeletes() == 0);
   if (collectionId != _lastUsedCollection) {
-    switch (operationType) {
-      case TRI_VOC_DOCUMENT_OPERATION_INSERT:
-      case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
-        if (singleOp) {
-          RocksDBLogValue logValue =
-              RocksDBLogValue::SinglePut(_vocbase->id(), collectionId);
-          _rocksTransaction->PutLogData(logValue.slice());
-        } else {
-          RocksDBLogValue logValue =
-              RocksDBLogValue::DocumentOpsPrologue(collectionId);
-          _rocksTransaction->PutLogData(logValue.slice());
-        }
-        break;
+    // single operations should never call this method twice
+    // singleOp => lastUsedColl == 0
+    TRI_ASSERT(!singleOp || _lastUsedCollection == 0);
+    _lastUsedCollection = collectionId;
+
+    if (!singleOp) {
+      if (operationType != TRI_VOC_DOCUMENT_OPERATION_UNKNOWN) {
+        RocksDBLogValue logValue =
+        RocksDBLogValue::DocumentOpsPrologue(collectionId);
+        _rocksTransaction->PutLogData(logValue.slice());
+        TRI_ASSERT(++_numLogdata);
       }
-      case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
-        if (singleOp) {
+    } else {
+      // singleOp => no modifications yet
+      TRI_ASSERT(!singleOp ||
+                 _rocksTransaction->GetNumPuts() == 0 &&
+                 _rocksTransaction->GetNumDeletes() == 0);
+      TRI_ASSERT(_numLogdata == 0);
+      
+      switch (operationType) {
+        case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+        case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+        case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
+          RocksDBLogValue logValue =
+          RocksDBLogValue::SinglePut(_vocbase->id(), collectionId);
+          _rocksTransaction->PutLogData(logValue.slice());
+          TRI_ASSERT(++_numLogdata);
+          break;
+        }
+        case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
           TRI_ASSERT(!key.empty());
           RocksDBLogValue logValue =
-              RocksDBLogValue::SingleRemove(_vocbase->id(), collectionId, key);
+          RocksDBLogValue::SingleRemove(_vocbase->id(), collectionId, key);
           _rocksTransaction->PutLogData(logValue.slice());
-        } else {
-          RocksDBLogValue logValue =
-              RocksDBLogValue::DocumentOpsPrologue(collectionId);
-          _rocksTransaction->PutLogData(logValue.slice());
-        }
-      } break;
-      case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
-        break;
+          TRI_ASSERT(++_numLogdata);
+        } break;
+        case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+          break;
+      }
     }
-    _lastUsedCollection = collectionId;
   }
-
   // we need to log the remove log entry, if we don't have the single
   // optimization
   if (!singleOp && operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     RocksDBLogValue logValue = RocksDBLogValue::DocumentRemove(key);
     _rocksTransaction->PutLogData(logValue.slice());
+    TRI_ASSERT(++_numLogdata);
   }
 }
 
@@ -435,7 +437,7 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
       _rocksTransaction->GetSnapshot()->GetSequenceNumber());
 }
 
-
+/*
 class RocksDBBatchTrx : public RocksDBBatch {
   arangodb::Result Get(RocksDBKey const&, std::string*) override {
     
@@ -445,4 +447,4 @@ class RocksDBBatchTrx : public RocksDBBatch {
     
   }
   arangodb::Result Delete(RocksDBKey const&) override ;
-};
+};*/
