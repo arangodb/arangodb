@@ -8,7 +8,6 @@ main(){
     local tasks=task_all #FIXME add taks selection
     local panes=$($tasks)
     kill_old_session "$session_name"
-    tmux kill-session -t $session_name #kill session hard for testing
     tmux new-session -d -s "$session_name" || die "unable to spawn session"
     local rows=$(( (panes+1) / 2 ))
     local cols=$((((panes>1)) * 2))
