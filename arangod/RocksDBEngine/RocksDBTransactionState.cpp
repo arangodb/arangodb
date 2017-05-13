@@ -171,7 +171,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       RocksDBLogValue header =
           RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
       _rocksTransaction->PutLogData(header.slice());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(++_numLogdata);
+#endif
     }
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
@@ -326,14 +328,18 @@ void RocksDBTransactionState::prepareOperation(
         RocksDBLogValue logValue =
         RocksDBLogValue::DocumentOpsPrologue(collectionId);
         _rocksTransaction->PutLogData(logValue.slice());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         TRI_ASSERT(++_numLogdata);
+#endif
       }
     } else {
       // singleOp => no modifications yet
       TRI_ASSERT(!singleOp ||
                  _rocksTransaction->GetNumPuts() == 0 &&
                  _rocksTransaction->GetNumDeletes() == 0);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(_numLogdata == 0);
+#endif
       
       switch (operationType) {
         case TRI_VOC_DOCUMENT_OPERATION_INSERT:
@@ -342,7 +348,9 @@ void RocksDBTransactionState::prepareOperation(
           RocksDBLogValue logValue =
           RocksDBLogValue::SinglePut(_vocbase->id(), collectionId);
           _rocksTransaction->PutLogData(logValue.slice());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           TRI_ASSERT(++_numLogdata);
+#endif
           break;
         }
         case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
@@ -350,7 +358,9 @@ void RocksDBTransactionState::prepareOperation(
           RocksDBLogValue logValue =
           RocksDBLogValue::SingleRemove(_vocbase->id(), collectionId, key);
           _rocksTransaction->PutLogData(logValue.slice());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           TRI_ASSERT(++_numLogdata);
+#endif
         } break;
         case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
           break;
@@ -362,7 +372,9 @@ void RocksDBTransactionState::prepareOperation(
   if (!singleOp && operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     RocksDBLogValue logValue = RocksDBLogValue::DocumentRemove(key);
     _rocksTransaction->PutLogData(logValue.slice());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(++_numLogdata);
+#endif
   }
 }
 
