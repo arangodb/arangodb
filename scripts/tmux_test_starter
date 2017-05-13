@@ -1,22 +1,51 @@
 #!/bin/bash
+# Author Jan Christoph Uhde
 
-# change into build dir
-
-die(){
-	echo "FATAL: ${1-this should not happen}"
-	exit 1
+main(){
+    #cd ..  || die "can not change directory"
+    #TODO check that we are in source dir
+    local session_name=integrationtest
+    local tasks=task_all #FIXME add taks selection
+    local panes=$($tasks)
+    kill_old_session "$session_name"
+    tmux kill-session -t $session_name #kill session hard for testing
+    tmux new-session -d -s "$session_name" || die "unable to spawn session"
+    local rows=$(( (panes+1) / 2 ))
+    local cols=$((((panes>1)) * 2))
+    spawn_panes "$session_name" $rows $cols
+    tmux select-pane -t $session_name.0
+    execute_tasks "$(pwd)" $tasks
+    tmux -2 attach-session -t $session_name
 }
 
+# task definitions
 
-cores(){
-    # Determine automatically on Mac or Linux
-    if [[ $(uname) == 'Darwin' ]]; then
-        echo "$(sysctl hw.ncpu | awk '{print $2}')"
-    else
-        echo "$(nproc)"
+task_all(){
+    ## FIXME ask jan or max for good grouping for all
+    local count="$1"
+    local args_default=""
+    local args="$2"
+    if [[ -z $1 ]]; then
+        echo "4" #return number of required panes
+        return
     fi
+    case $1 in
+        0)
+            echo "./scripts/unittest shell_server $args_default $args && exit 0"
+        ;;
+        1)
+            echo "./scripts/unittest shell_server_aql $args_defaults $args && exit 0"
+        ;;
+        2)
+            echo "./scripts/unittest shell_server $args_default $args && exit 0"
+        ;;
+        *)
+            echo "spawn task $count"
+        ;;
+    esac
 }
 
+# tmux
 kill_old_session(){
     local session_name="$1"
     if tmux has-session -t $session_name 2> /dev/null; then
@@ -34,68 +63,56 @@ kill_old_session(){
 spawn_panes(){
     local session_name="$1"
     local rows=$2
-	local cols=$3
+    local cols=$3
 
-	# Create rows
-	local row=$rows
+    # Create rows
+    local row=$rows
     while (( row > 1 )); do
         frac=$(echo "scale=2;1/$row" | bc)
         percent=$(echo "($frac * 100)/1" | bc)
-        echo "frac $frac percent $percent"
-        tmux select-pane -t $session_name.0
+        tmux select-pane -t $session_name.0 || die "could not select pane 0 of session $session_name"
         tmux split-window -v -p $percent
         ((row--))
     done
 
-	# Create columns
-	if ((cols > 1)); then
-		local count=$((rows - 1))
-    	# Floor function to round down if odd
-    	while ((count >= 0)); do
-			echo "count $count"
-    	    tmux select-pane -t $session_name.$count
-    	    tmux split-window -h -p 50
-    	    (( count-- ))
-    	done
-	fi
+    # Create columns
+    if ((cols > 1)); then
+        local count=$((rows - 1))
+        while ((count >= 0)); do
+            tmux select-pane -t $session_name.$count || die "could not select pane $session_name.$count" 
+            tmux split-window -h -p 50
+            (( count-- ))
+        done
+    fi
 }
 
 execute_tasks(){
     cd $1 || die
     local tasks=$2
+    local args="$3"
     local count=0
-    while (( count < tasks )); do
-        local exec_cmd=
-        echo "task: $count"
-		case $count in
-			0)
-        		local exec_cmd=( './scripts/unittest' 'shell_server' )
-                # we can not use the former as tmux's escaping is broken
-        		local exec_cmd=( './scripts/unittest shell_server && exit 0' )
-			;;
-			*)
-        		local exec_cmd=("echo 'spawn task $count'")
-			;;
-		esac
+    while (( count < $($tasks) )); do
+        local exec_cmd="$($tasks $count "$args")"
         tmux send-keys -t $session_name.$count "${exec_cmd[@]}" Enter
         (( count++ ))
     done
 }
 
-main(){
-    #cd ..  || die "can not change directory"
-    local session_name=integrationtest
-    local tasks=5
-    #kill_old_session "$session_name"
-    tmux kill-session -t $session_name
-    tmux new-session -d -s "$session_name" || die "unable to spawn session"
-    local rows=$(( (tasks+1) / 2 ))
-    local cols=$((((tasks>1)) * 2))
-    spawn_panes "$session_name" $rows $cols
-    tmux select-pane -t $session_name.0
-    echo "$(pwd)"
-    execute_tasks "$(pwd)" $tasks
-    tmux -2 attach-session -t $session_name
+# helper
+die(){
+    echo "FATAL: ${1-this should not happen}"
+    exit 1
 }
+
+
+cores(){
+    # Determine automatically on Mac or Linux
+    if [[ $(uname) == 'Darwin' ]]; then
+        echo "$(sysctl hw.ncpu | awk '{print $2}')"
+    else
+        echo "$(nproc)"
+    fi
+}
+
 main "$@"
 exit 0
