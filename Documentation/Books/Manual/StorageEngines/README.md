@@ -6,7 +6,7 @@ on disk, holding copies in memory, providing indexes and caches to
 speed up queries.
 
 Upto version 3.1 ArangoDB only supported memory mapped files (MMFILES)
-as sole storage engine.  Beginning with 3.2 ArangoDB has supports
+as sole storage engine.  Beginning with 3.2 ArangoDB has support for
 pluggable storage engines. The second supported engine is RocksDB from
 Facebook.
 
