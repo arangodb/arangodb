@@ -16,7 +16,7 @@
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
   # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
-* [StorageEngines](StorageEngines/README.md)
+* [Storage Engines](StorageEngines/README.md)
 #
 * [Scalability](Scalability/README.md)
   * [Architecture](Scalability/Architecture.md)
