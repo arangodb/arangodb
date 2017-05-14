@@ -285,23 +285,9 @@ module.exports =
         paths = this.tree.buildSwaggerPaths();
       } catch (e) {
         if (this.isDevelopment) {
-          const frame = codeFrame(e, this.basePath);
-          if (frame) {
-            console.errorLines(frame);
-          }
+          e.codeFrame = codeFrame(e, this.basePath);
         }
-        let err = e;
-        while (err) {
-          if (err.stack) {
-            console.errorLines(
-              err === e
-              ? err.stack
-              : `via ${err.stack}`
-            );
-          }
-          err = err.cause;
-        }
-        console.warnLines(dd`
+        console.errorStack(e, dd`
           Failed to build API documentation for "${this.mount}"!
           This is likely a bug in your Foxx service.
           Check the route methods you are using to document your API.
@@ -350,7 +336,10 @@ module.exports =
               }
 
               if (logLevel) {
-                console[logLevel](`Service "${
+                if (this.isDevelopment) {
+                  e.codeFrame = codeFrame(e.cause || e, this.basePath);
+                }
+                console[`${logLevel}Stack`](e, `Service "${
                   this.mount
                 }" encountered error ${
                   e.statusCode || 500
@@ -359,24 +348,6 @@ module.exports =
                 } ${
                   req.absoluteUrl()
                 }`);
-
-                if (this.isDevelopment) {
-                  const frame = codeFrame(e.cause || e, this.basePath);
-                  if (frame) {
-                    console[`${logLevel}Lines`](frame);
-                  }
-                }
-                let err = e;
-                while (err) {
-                  if (err.stack) {
-                    console[`${logLevel}Lines`](
-                      err === e
-                      ? err.stack
-                      : `via ${err.stack}`
-                    );
-                  }
-                  err = err.cause;
-                }
               }
 
               const body = {

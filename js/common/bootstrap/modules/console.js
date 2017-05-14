@@ -419,5 +419,59 @@ global.DEFINE_MODULE('console', (function () {
     }
   };
 
+  exports.errorStack = function (e, msg) {
+    if (msg) {
+      exports.errorLines(msg);
+    }
+    if (e.codeFrame) {
+      exports.errorLines(e.codeFrame);
+    }
+    let err = e;
+    while (err) {
+      exports.errorLines(
+        !msg && err === e
+        ? err.stack
+        : `via ${err.stack}`
+      );
+      err = err.cause;
+    }
+  };
+
+  exports.warnStack = function (e, msg) {
+    if (msg) {
+      exports.warnLines(msg);
+    }
+    if (e.codeFrame) {
+      exports.warnLines(e.codeFrame);
+    }
+    let err = e;
+    while (err) {
+      exports.warnLines(
+        !msg && err === e
+        ? err.stack
+        : `via ${err.stack}`
+      );
+      err = err.cause;
+    }
+  };
+
+  exports.infoStack = function (e, msg) {
+    if (msg) {
+      exports.infoLines(msg);
+    }
+    if (e.codeFrame) {
+      exports.infoLines(e.codeFrame);
+    }
+    let err = e;
+    while (err) {
+      exports.infoLines(
+        !msg && err === e
+        ? err.stack
+        : `via ${err.stack}`
+      );
+      err = err.cause;
+    }
+  };
+
   return exports;
 }()));

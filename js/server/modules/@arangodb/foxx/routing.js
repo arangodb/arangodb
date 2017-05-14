@@ -264,23 +264,11 @@ exports.routeService = function (service, throwOnErrors) {
       try {
         service.main.exports = service.run(service.manifest.main);
       } catch (e) {
-        console.errorLines(`Service "${service.mount}" encountered an error while being mounted`);
-        const frame = codeFrame(e.cause || e, service.basePath);
-        if (frame) {
-          console.errorLines(frame);
-        }
-        let err = e;
-        while (err) {
-          if (err.stack) {
-            console.errorLines(
-              err === e
-              ? err.stack
-              : `via ${err.stack}`
-            );
-          }
-          err = err.cause;
-        }
-        error = e;
+        e.codeFrame = codeFrame(e.cause || e, service.basePath);
+        console.errorStack(
+          e,
+          `Service "${service.mount}" encountered an error while being mounted`
+        );
         if (throwOnErrors) {
           throw e;
         }

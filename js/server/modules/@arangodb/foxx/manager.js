@@ -56,18 +56,6 @@ const SYSTEM_SERVICE_MOUNTS = [
 
 const GLOBAL_SERVICE_MAP = new Map();
 
-function warn (e) {
-  let err = e;
-  while (err) {
-    console.warnLines(
-      err === e
-      ? err.stack
-      : `via ${err.stack}`
-    );
-    err = err.cause;
-  }
-}
-
 // Cluster helpers
 
 function getAllCoordinatorIds () {
@@ -225,15 +213,7 @@ function startup () {
           upsertSystemServices();
         }
       } catch (e) {
-        let err = e;
-        while (err) {
-          console.warnLines(
-            err === e
-            ? err.stack
-            : `via ${err.stack}`
-          );
-          err = err.cause;
-        }
+        console.warnStack(e);
       }
     }
   } finally {
@@ -312,15 +292,7 @@ function selfHeal () {
           healMyself();
         }
       } catch (e) {
-        let err = e;
-        while (err) {
-          console.warnLines(
-            err === e
-            ? err.stack
-            : `via ${err.stack}`
-          );
-          err = err.cause;
-        }
+        console.warnStack(e);
       }
     }
     return foxxmasterIsReady;
@@ -563,18 +535,7 @@ function initLocalServiceMap () {
       localServiceMap.set(service.mount, service);
     } catch (e) {
       if (fs.exists(FoxxService.basePath(serviceDefinition.mount))) {
-        console.error(`Failed to load service ${serviceDefinition.mount}`);
-        let err = e;
-        while (err) {
-          if (err.stack) {
-            console.errorLines(
-              err === e
-              ? err.stack
-              : `via ${err.stack}`
-            );
-          }
-          err = err.cause;
-        }
+        console.errorStack(e, `Failed to load service ${serviceDefinition.mount}`);
       } else {
         console.warn(`Could not find local service ${serviceDefinition.mount}`);
       }
@@ -785,7 +746,7 @@ function _uninstall (mount, options = {}) {
       if (!options.force) {
         throw e;
       }
-      warn(e);
+      console.warnStack(e);
     }
   }
   const collection = utils.getStorage();
@@ -803,7 +764,7 @@ function _uninstall (mount, options = {}) {
       if (!options.force) {
         throw e;
       }
-      warn(e);
+      console.warnStack(e);
     }
   }
   const bundlePath = FoxxService.bundlePath(mount);
@@ -814,7 +775,7 @@ function _uninstall (mount, options = {}) {
       if (!options.force) {
         throw e;
       }
-      warn(e);
+      console.warnStack(e);
     }
   }
   return service;
@@ -951,7 +912,7 @@ function uninstallLocal (mount) {
     try {
       fs.removeDirectoryRecursive(servicePath, true);
     } catch (e) {
-      warn(e);
+      console.warnStack(e);
     }
   }
   const bundlePath = FoxxService.bundlePath(mount);
@@ -959,7 +920,7 @@ function uninstallLocal (mount) {
     try {
       fs.remove(bundlePath);
     } catch (e) {
-      warn(e);
+      console.warnStack(e);
     }
   }
 }
