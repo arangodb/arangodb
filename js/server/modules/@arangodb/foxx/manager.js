@@ -35,7 +35,6 @@ const dd = require('dedent');
 const utils = require('@arangodb/foxx/manager-utils');
 const store = require('@arangodb/foxx/store');
 const FoxxService = require('@arangodb/foxx/service');
-const generator = require('@arangodb/foxx/generator');
 const ensureServiceExecuted = require('@arangodb/foxx/routing').routeService;
 const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
@@ -47,6 +46,7 @@ const request = require('@arangodb/request');
 const actions = require('@arangodb/actions');
 const shuffle = require('lodash/shuffle');
 const zip = require('lodash/zip');
+const isZipBuffer = require('@arangodb/util').isZipBuffer;
 
 const SYSTEM_SERVICE_MOUNTS = [
   '/_admin/aardvark', // Admin interface.
@@ -610,68 +610,64 @@ function _prepareService (serviceInfo, options = {}) {
   const tempServicePath = fs.getTempFile('services', false);
   const tempBundlePath = fs.getTempFile('bundles', false);
   try {
-    if (serviceInfo instanceof Buffer) {
-      const tempFile = fs.getTempFile('downloads', false);
+    if (isZipBuffer(serviceInfo)) {
+      // Buffer (zip)
+      const tempFile = fs.getTempFile('uploads', false);
       fs.writeFileSync(tempFile, serviceInfo);
       extractServiceBundle(tempFile, tempServicePath);
       fs.move(tempFile, tempBundlePath);
-    } else if (serviceInfo === 'EMPTY') {
-      const generated = generator.generate(options);
-      generator.write(tempServicePath, generated.files, generated.folders);
+    } else if (serviceInfo instanceof Buffer) {
+      // Buffer (js)
+      const manifest = JSON.stringify({main: 'index.js'}, null, 4);
+      fs.makeDirectoryRecursive(tempServicePath);
+      fs.writeFileSync(path.join(tempServicePath, 'index.js'), serviceInfo);
+      fs.writeFileSync(path.join(tempServicePath, 'manifest.json'), manifest);
       utils.zipDirectory(tempServicePath, tempBundlePath);
-    } else {
-      if (/^GIT:/i.test(serviceInfo)) {
-        const splitted = serviceInfo.split(':');
-        const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com';
-        serviceInfo = `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`;
-      } else if (/^uploads[/\\]tmp-/.test(serviceInfo)) {
-        serviceInfo = path.join(fs.getTempPath(), serviceInfo);
-      }
-      if (/^https?:/i.test(serviceInfo)) {
-        const tempFile = downloadServiceBundleFromRemote(serviceInfo);
-        extractServiceBundle(tempFile, tempServicePath);
-        fs.move(tempFile, tempBundlePath);
-      } else if (utils.pathRegex.test(serviceInfo)) {
-        if (fs.isDirectory(serviceInfo)) {
-          utils.zipDirectory(serviceInfo, tempBundlePath);
-          extractServiceBundle(tempBundlePath, tempServicePath);
-        } else if (!fs.exists(serviceInfo)) {
-          throw new ArangoError({
-            errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,
-            errorMessage: dd`
-              ${errors.ERROR_SERVICE_SOURCE_NOT_FOUND.message}
-              Path: ${serviceInfo}
-            `
-          });
-        } else {
-          extractServiceBundle(serviceInfo, tempServicePath);
-          fs.copyFile(serviceInfo, tempBundlePath);
-        }
+    } else if (/^https?:/i.test(serviceInfo)) {
+      // Remote path
+      const tempFile = downloadServiceBundleFromRemote(serviceInfo);
+      extractServiceBundle(tempFile, tempServicePath);
+      fs.move(tempFile, tempBundlePath);
+    } else if (fs.exists(serviceInfo)) {
+      // Local path
+      if (fs.isDirectory(serviceInfo)) {
+        utils.zipDirectory(serviceInfo, tempBundlePath);
+        extractServiceBundle(tempBundlePath, tempServicePath);
       } else {
-        if (options.refresh) {
-          try {
-            store.update();
-          } catch (e) {
-            warn(e);
-          }
-        }
-        const info = store.installationInfo(serviceInfo);
-        const storeBundle = downloadServiceBundleFromRemote(info.url);
-        try {
-          extractServiceBundle(storeBundle, tempServicePath);
-        } finally {
-          try {
-            fs.remove(storeBundle);
-          } catch (e) {
-            warn(Object.assign(
-              new Error(`Cannot remove temporary file "${storeBundle}"`),
-              {cause: e}
-            ));
-          }
-        }
-        patchManifestFile(tempServicePath, info.manifest);
-        utils.zipDirectory(tempServicePath, tempBundlePath);
+        extractServiceBundle(serviceInfo, tempServicePath);
+        fs.copyFile(serviceInfo, tempBundlePath);
       }
+    } else {
+      // Foxx Store
+      if (options.refresh) {
+        try {
+          store.update();
+        } catch (e) {
+          console.warnStack(e);
+        }
+      }
+      const info = store.installationInfo(serviceInfo);
+      if (!info) {
+        throw new ArangoError({
+          errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,
+          errorMessage: dd`
+            ${errors.ERROR_SERVICE_SOURCE_NOT_FOUND.message}
+            Location: ${serviceInfo}
+          `
+        });
+      }
+      const storeBundle = downloadServiceBundleFromRemote(info.url);
+      try {
+        extractServiceBundle(storeBundle, tempServicePath);
+      } finally {
+        try {
+          fs.remove(storeBundle);
+        } catch (e) {
+          console.warnStack(e, `Cannot remove temporary file "${storeBundle}"`);
+        }
+      }
+      patchManifestFile(tempServicePath, info.manifest);
+      utils.zipDirectory(tempServicePath, tempBundlePath);
     }
     if (options.legacy) {
       patchManifestFile(tempServicePath, {engines: {arangodb: '^2.8.0'}});

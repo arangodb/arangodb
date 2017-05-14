@@ -33,7 +33,8 @@ const marked = require('marked');
 const highlightAuto = require('highlightjs').highlightAuto;
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
-const fmUtils = require('@arangodb/foxx/manager-utils');
+const FoxxGenerator = require('./generator');
+const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
 const joinPath = require('path').join;
 const posix = require('path').posix;
@@ -82,17 +83,8 @@ if (FoxxManager.isFoxxmaster()) {
     const upgrade = req.queryParams.upgrade;
     const replace = req.queryParams.replace;
     next();
-    let appInfo, options;
-    if (
-      typeof req.body === 'object' &&
-      !(req.body instanceof Buffer)
-    ) {
-      appInfo = 'EMPTY';
-      options = req.body;
-    } else {
-      appInfo = req.body;
-      options = {};
-    }
+    const options = {};
+    const appInfo = req.body;
     options.legacy = req.queryParams.legacy;
     let service;
     try {
@@ -145,7 +137,8 @@ if (FoxxManager.isFoxxmaster()) {
   `);
 
   installer.put('/git', function (req) {
-    req.body = `git:${req.body.url}:${req.body.version}`;
+    const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com';
+    req.body = `${baseUrl}${req.body.url}/archive/${req.body.version || 'master'}.zip`;
   })
   .body(joi.object({
     url: joi.string().required(),
@@ -156,7 +149,23 @@ if (FoxxManager.isFoxxmaster()) {
     Install a Foxx with user/repository and version.
   `);
 
-  installer.put('/generate', () => {})
+  installer.put('/generate', (req, res) => {
+    const tempDir = fs.getTempFile('aardvark', false);
+    const generated = FoxxGenerator.generate(req.body);
+    FoxxGenerator.write(tempDir, generated.files, generated.folders);
+    const tempFile = fmu.zipDirectory(tempDir);
+    req.body = fs.readFileSync(tempFile);
+    try {
+      fs.removeDirectoryRecursive(tempDir, true);
+    } catch (e) {
+      console.warn(`Failed to remove temporary Foxx generator folder: ${tempDir}`);
+    }
+    try {
+      fs.remove(tempFile);
+    } catch (e) {
+      console.warn(`Failed to remove temporary Foxx generator bundle: ${tempFile}`);
+    }
+  })
   .body(joi.object().required(), 'A Foxx generator configuration.')
   .summary('Generate a new foxx')
   .description(dd`
@@ -164,8 +173,13 @@ if (FoxxManager.isFoxxmaster()) {
   `);
 
   installer.put('/zip', function (req) {
-    req.body = req.body.zipFile;
-    console.log(req._url.pathname);
+    const tempFile = joinPath(fs.getTempPath(), req.body.zipFile);
+    req.body = fs.readFileSync(tempFile);
+    try {
+      fs.remove(tempFile);
+    } catch (e) {
+      console.warn(`Failed to remove uploaded file: ${tempFile}`);
+    }
   })
   .body(joi.object({
     zipFile: joi.string().required()
@@ -176,12 +190,12 @@ if (FoxxManager.isFoxxmaster()) {
     This path has to be created via _api/upload.
   `);
 
-  installer.put('/bundle', function (req) {
+  installer.put('/raw', function (req) {
     req.body = req.rawBody;
   })
-  .summary('Install a Foxx from zip file')
+  .summary('Install a Foxx from a direct upload')
   .description(dd`
-    Install a Foxx from a given zip bundle.
+    Install a Foxx from raw request body.
   `);
 
   foxxRouter.delete('/', function (req, res) {
@@ -214,7 +228,7 @@ if (FoxxManager.isFoxxmaster()) {
         'content-length': zipData.length
       }),
       _url: {
-        pathname: posix.resolve(req._url.pathname, '../bundle'),
+        pathname: posix.resolve(req._url.pathname, '../raw'),
         search: req._url.search
       }
     }, res);
@@ -222,7 +236,7 @@ if (FoxxManager.isFoxxmaster()) {
   .body(joi.object({
     zipFile: joi.string().required()
   }).required(), 'A zip file path.');
-  installer.put('/bundle', FoxxManager.proxyToFoxxmaster);
+  installer.put('/raw', FoxxManager.proxyToFoxxmaster);
   foxxRouter.delete('/', FoxxManager.proxyToFoxxmaster);
 }
 
@@ -386,7 +400,7 @@ anonymousRouter.get('/download/zip', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
   const service = FoxxManager.lookupService(mount);
   const dir = fs.join(fs.makeAbsolute(service.root), service.path);
-  const zipPath = fmUtils.zipDirectory(dir);
+  const zipPath = fmu.zipDirectory(dir);
   const name = mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
   res.download(zipPath, `${name}_${service.manifest.version}.zip`);
 })

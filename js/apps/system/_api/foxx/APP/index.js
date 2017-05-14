@@ -18,7 +18,7 @@ const schemas = require('./schemas');
 const router = createRouter();
 module.context.registerType('multipart/form-data', require('./multipart'));
 module.context.registerType('application/zip', {fromClient: (body) => ({source: body})});
-module.context.registerType('application/javascript', require('./javascript'));
+module.context.registerType('application/javascript', {fromClient: (body) => ({source: body})});
 module.context.use(router);
 
 const LDJSON = 'application/x-ldjson';

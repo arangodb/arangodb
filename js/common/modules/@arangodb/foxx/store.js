@@ -412,14 +412,14 @@ var installationInfo = function (serviceInfo) {
   let version = infoSplit[1];
   let storeInfo = infoJson(name);
 
-  if (storeInfo === undefined) {
-    throw new Error('Service not found');
+  if (!storeInfo) {
+    return null;
   }
 
   let versions = storeInfo.versions;
   let versionInfo;
 
-  if (version === undefined) {
+  if (!version) {
     let maxVersion = extractMaxVersion(true, versions);
 
     if (!maxVersion) {

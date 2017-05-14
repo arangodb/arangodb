@@ -59,22 +59,39 @@ function proxyLocal (method, url, qs, body, headers = {}) {
 }
 
 function resolveAppInfo (appInfo) {
-  if (appInfo && typeof appInfo === 'string' && !/^(GIT|https?):/.test(appInfo)) {
-    const uploadPath = joinPath(fs.getTempPath(), appInfo);
-    if (fs.exists(uploadPath)) {
-      return fs.readFileSync(uploadPath);
-    } else if (fs.isDirectory(appInfo)) {
-      const tempFile = fmu.zipDirectory(appInfo);
-      const buffer = fs.readFileSync(tempFile);
-      try {
-        fs.remove(tempFile);
-      } catch (e) {
-        console.warn(`Failed to delete temp file: ${tempFile}`);
-      }
-      return buffer;
-    } else if (fs.exists(appInfo)) {
-      return fs.readFileSync(appInfo);
+  if (!appInfo || typeof appInfo !== 'string') {
+    return appInfo;
+  }
+  if (/^git:/i.test(appInfo)) {
+    const splitted = appInfo.split(':');
+    const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com';
+    return `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`;
+  }
+  if (/^https?:/i.test(appInfo)) {
+    return appInfo;
+  }
+  if (/^uploads[/\\]tmp-/.test(appInfo)) {
+    const tempFile = joinPath(fs.getTempPath(), appInfo);
+    const buffer = fs.readFileSync(tempFile);
+    try {
+      fs.remove(tempFile);
+    } catch (e) {
+      console.warnStack(e, `Failed to delete uploaded file: ${tempFile}`);
     }
+    return buffer;
+  }
+  if (fs.isDirectory(appInfo)) {
+    const tempFile = fmu.zipDirectory(appInfo);
+    const buffer = fs.readFileSync(tempFile);
+    try {
+      fs.remove(tempFile);
+    } catch (e) {
+      console.warnStack(e, `Failed to delete temp file: ${tempFile}`);
+    }
+    return buffer;
+  }
+  if (fs.exists(appInfo)) {
+    return fs.readFileSync(appInfo);
   }
   return appInfo;
 }

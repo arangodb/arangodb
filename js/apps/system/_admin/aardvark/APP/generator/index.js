@@ -25,21 +25,16 @@
 const _ = require('lodash');
 const dd = require('dedent');
 const fs = require('fs');
+const joinPath = require('path').join;
 const inflect = require('i')();
 const assert = require('assert');
-const internal = require('internal');
-const pluck = require('@arangodb/util').pluck;
 const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
 const errors = arangodb.errors;
 
 const template = (filename) => _.template(
-  fs.read(fs.join(
-    internal.startupPath,
-    'server',
-    'modules',
-    '@arangodb',
-    'foxx',
+  fs.readFileSync(joinPath(
+    __dirname,
     'templates',
     `${filename}.tmpl`
   ))
@@ -124,8 +119,8 @@ exports.generate = function (opts) {
   files.push({name: 'manifest.json', content: manifest});
 
   const main = TEMPLATES.main({routePaths: [].concat(
-      pluck(dcNames, 'routerFile'),
-      pluck(ecNames, 'routerFile')
+      dcNames.map(names => names.routerFile),
+      ecNames.map(names => names.routerFile)
   )});
   files.push({name: 'main.js', content: main});
 
@@ -149,13 +144,13 @@ exports.generate = function (opts) {
 
   folders.push('scripts');
   const setup = TEMPLATES.setup({
-    documentCollections: pluck(dcNames, 'collection'),
-    edgeCollections: pluck(ecNames, 'collection')
+    documentCollections: dcNames.map(names => names.collection),
+    edgeCollections: ecNames.map(names => names.collection)
   });
   files.push({name: fs.join('scripts', 'setup.js'), content: setup});
   const teardown = TEMPLATES.teardown({collections: [].concat(
-      pluck(dcNames, 'collection'),
-      pluck(ecNames, 'collection')
+      dcNames.map(names => names.collection),
+      ecNames.map(names => names.collection)
   )});
   files.push({name: fs.join('scripts', 'teardown.js'), content: teardown});
 

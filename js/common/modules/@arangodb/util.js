@@ -35,12 +35,6 @@ const internal = require('internal');
 const codeFrame = require('babel-code-frame');
 const stackParser = require('error-stack-parser');
 
-exports.pluck = function (objs, key) {
-  return _.map(objs, function (obj) {
-    return _.get(obj, key);
-  });
-};
-
 exports.union = function union () {
   const things = Array.prototype.slice.call(arguments);
   if (!things.slice(1).some(Boolean)) {
@@ -221,4 +215,8 @@ exports.jsonml2xml = function (jsonml, html = false, indentLevel = 0) {
     ? `>\n${xml}${exports.indentation(indentLevel, '\t')}</${tagname}>`
     : '/>'
   }`;
+};
+
+exports.isZipBuffer = function (buffer) {
+  return buffer instanceof Buffer && buffer.utf8Slice(0, 4) === 'PK\u0003\u0004';
 };
