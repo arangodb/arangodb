@@ -17,7 +17,7 @@ The MMFILES engine is optimized for the use-case where the data fits
 into the main memory. It allows for very fast concurrent
 reads. However, writes block reads and locking is on collection
 level. Indexes are always in memory and are rebuild on startup. This
-gives a better performance but imposed a longer startup time.
+gives better performance but imposes a longer startup time.
 
 The ROCKSDB engine is optimized for large data-sets and allows for a
 steady insert performance even if the data-set is much larger than the
