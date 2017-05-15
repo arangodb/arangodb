@@ -605,7 +605,9 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOpErase : function () {
+      
       writeAndCheck([[{"/version":{"op":"delete"}}]]);
+      
       writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
       writeAndCheck([[{"a":{"op":"erase","val":3}}]]);
@@ -629,6 +631,28 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"op":"erase","val":6}}],
                      [{"a":{"op":"erase","val":8}}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[]}]);
+      
+      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","pos":3}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","pos":0}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[1,2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","pos":0}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","pos":2}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","pos":4}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,6,7,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","pos":2}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,7,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","pos":2}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","pos":0}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[4,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","pos":1}}],
+                     [{"a":{"op":"erase","pos":0}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[]}]);      
     },
 
 ////////////////////////////////////////////////////////////////////////////////
