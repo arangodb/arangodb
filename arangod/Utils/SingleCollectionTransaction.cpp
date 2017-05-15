@@ -29,6 +29,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
+#include <iostream>
 
 using namespace arangodb;
 
@@ -101,6 +102,7 @@ std::string SingleCollectionTransaction::name() {
 
 /// @brief explicitly lock the underlying collection for read access
 Result SingleCollectionTransaction::lockRead() {
+  std::cout << "SingleCollectionTransaction::lockRead()\n";
   return lock(trxCollection(), AccessMode::Type::READ);
 }
 
@@ -111,6 +113,7 @@ Result SingleCollectionTransaction::unlockRead() {
 
 /// @brief explicitly lock the underlying collection for write access
 Result SingleCollectionTransaction::lockWrite() {
+  std::cout << "SingleCollectionTransaction::lockWrite()\n";
   return lock(trxCollection(), AccessMode::Type::WRITE);
 }
 
