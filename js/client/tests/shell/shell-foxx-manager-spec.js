@@ -11,15 +11,15 @@ const aql = arangodb.aql;
 const basePath = fs.makeAbsolute(fs.join(require('internal').startupPath, 'common', 'test-data', 'apps'));
 const expect = require('chai').expect;
 const download = require('internal').download;
-const path = require('path');
-const internal = require('internal');
 
 describe('Foxx Manager', function () {
   describe('(CRUD operation) ', function () {
     const setupTeardownApp = fs.join(basePath, 'minimal-working-setup-teardown');
+    const setupApp = fs.join(basePath, 'minimal-working-setup');
     const mount = '/testmount';
     const prefix = mount.substr(1).replace(/[-.:/]/, '_');
-    const setupCol = `${prefix}_setup_teardown`;
+    const setupTeardownCol = `${prefix}_setup_teardown`;
+    const setupCol = `${prefix}_setup`;
 
     describe('installed service', function () {
       beforeEach(function () {
@@ -28,7 +28,7 @@ describe('Foxx Manager', function () {
         } catch (e) {
         }
         try {
-          db._drop(setupCol);
+          db._drop(setupTeardownCol);
         } catch (e) {
         }
       });
@@ -39,7 +39,7 @@ describe('Foxx Manager', function () {
         } catch (e) {
         }
         try {
-          db._drop(setupCol);
+          db._drop(setupTeardownCol);
         } catch (e) {
         }
       });
@@ -70,12 +70,12 @@ describe('Foxx Manager', function () {
 
       it('should run the setup script', function () {
         FoxxManager.install(setupTeardownApp, mount);
-        expect(db._collection(setupCol)).to.be.an.instanceOf(ArangoCollection);
+        expect(db._collection(setupTeardownCol)).to.be.an.instanceOf(ArangoCollection);
       });
 
       it('with option {setup:false} should not run the setup script', function () {
         FoxxManager.install(setupTeardownApp, mount, {setup: false});
-        expect(db._collection(setupCol)).to.equal(null);
+        expect(db._collection(setupTeardownCol)).to.equal(null);
       });
 
       it('should be available', function () {
@@ -94,7 +94,7 @@ describe('Foxx Manager', function () {
         } catch (e) {
         }
         try {
-          db._drop(setupCol);
+          db._drop(setupTeardownCol);
         } catch (e) {
         }
       });
@@ -105,7 +105,7 @@ describe('Foxx Manager', function () {
         } catch (e) {
         }
         try {
-          db._drop(setupCol);
+          db._drop(setupTeardownCol);
         } catch (e) {
         }
       });
@@ -124,12 +124,65 @@ describe('Foxx Manager', function () {
       it('should run the teardown script', function () {
         FoxxManager.install(setupTeardownApp, mount);
         FoxxManager.uninstall(mount);
-        expect(db._collection(setupCol)).to.equal(null);
+        expect(db._collection(setupTeardownCol)).to.equal(null);
       });
 
       it('with option {teardown:false} should not run the teardown script', function () {
         FoxxManager.install(setupTeardownApp, mount);
         FoxxManager.uninstall(mount, {teardown: false});
+        expect(db._collection(setupTeardownCol)).to.be.an.instanceOf(ArangoCollection);
+      });
+    });
+
+    describe('replaced service', function () {
+      beforeEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: true});
+        } catch (e) {
+        }
+        try {
+          db._drop(setupTeardownCol);
+        } catch (e) {
+        }
+        try {
+          FoxxManager.install(setupTeardownApp, mount);
+        } catch (e) {
+        }
+      });
+
+      afterEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: true});
+        } catch (e) {
+        }
+        try {
+          db._drop(setupTeardownCol);
+        } catch (e) {
+        }
+      });
+
+      it('should update it checksum in _apps', function () {
+        const q = aql`
+          FOR service IN _apps
+          FILTER service.mount == ${mount}
+          RETURN service.checksum
+        `;
+        const oldChecksum = db._query(q).toArray()[0];
+        FoxxManager.replace(setupApp, mount);
+        const newChecksum = db._query(q).toArray()[0];
+        expect(newChecksum).to.not.be.equal(oldChecksum);
+      });
+
+      it('should run the old teardown and new setup script', function () {
+        expect(db._collection(setupTeardownCol)).to.be.an.instanceOf(ArangoCollection);
+        FoxxManager.replace(setupApp, mount);
+        expect(db._collection(setupTeardownCol)).to.equal(null);
+        expect(db._collection(setupCol)).to.be.an.instanceOf(ArangoCollection);
+      });
+
+      it('with option {teardown:false} should not run the teardown script', function () {
+        FoxxManager.replace(setupApp, mount, {teardown: false});
+        expect(db._collection(setupTeardownCol)).to.be.an.instanceOf(ArangoCollection);
         expect(db._collection(setupCol)).to.be.an.instanceOf(ArangoCollection);
       });
     });
