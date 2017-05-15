@@ -81,11 +81,6 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
   _iterator.reset(rtrx->GetIterator(state->readOptions()));
 }
 
-void RocksDBEdgeIndexIterator::updateBounds(StringRef fromTo) {
-    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
-    _iterator->Seek(_bounds.start());
-}
-
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
   if (_keys != nullptr) {
     // return the VPackBuilder to the transaction context
@@ -93,13 +88,19 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
   }
 }
 
+void RocksDBEdgeIndexIterator::updateBounds(StringRef fromTo) {
+  _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
+  _iterator->Seek(_bounds.start());
+}
+
+
 StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const& it){
-    VPackSlice fromTo = it.value();
-    if (fromTo.isObject()) {
-      fromTo = fromTo.get(StaticStrings::IndexEq);
-    }
-    TRI_ASSERT(fromTo.isString());
-    return StringRef(fromTo);
+  VPackSlice fromTo = it.value();
+  if (fromTo.isObject()) {
+    fromTo = fromTo.get(StaticStrings::IndexEq);
+  }
+  TRI_ASSERT(fromTo.isString());
+  return StringRef(fromTo);
 }
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
@@ -283,8 +284,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                   ,basics::VelocyPackHelper::stringUInt64(info, "objectId")
                   ,!ServerState::instance()->isCoordinator() // useCache
                   )
-    , _directionAttr(attr)
-{
+    , _directionAttr(attr) {
   TRI_ASSERT(iid != 0);
   TRI_ASSERT(_objectId != 0);
   // if we never hit the assertions we need to remove the

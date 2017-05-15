@@ -471,5 +471,5 @@ void RocksDBIndexFactory::fillSystemIndexes(
 
 std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
   return std::vector<std::string>{"primary", "edge", "hash", "skiplist",
-                                  "persistent", "fulltext"};
+                                  "persistent", "geo", "fulltext"};
 }

@@ -335,8 +335,8 @@ void RocksDBTransactionState::prepareOperation(
     } else {
       // singleOp => no modifications yet
       TRI_ASSERT(!singleOp ||
-                 _rocksTransaction->GetNumPuts() == 0 &&
-                 _rocksTransaction->GetNumDeletes() == 0);
+                 (_rocksTransaction->GetNumPuts() == 0 &&
+                  _rocksTransaction->GetNumDeletes() == 0));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(_numLogdata == 0);
 #endif
