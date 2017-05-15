@@ -437,9 +437,15 @@ instanceRouter.get('/bundle', (req, res) => {
 
 instanceRouter.get('/readme', (req, res) => {
   const service = req.service;
-  res.send(service.readme);
+  const readme = service.readme;
+  if (readme) {
+    res.send(service.readme);
+  } else {
+    res.status(204);
+  }
 })
 .response(200, ['text/plain'], `Raw README contents.`)
+.response(204, null)
 .summary(`Service README`)
 .description(dd`
   Fetches the service's README or README.md file's contents if any.
