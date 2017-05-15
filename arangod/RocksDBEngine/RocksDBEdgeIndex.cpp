@@ -82,8 +82,8 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
 }
 
 void RocksDBEdgeIndexIterator::updateBounds(StringRef fromTo) {
-    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
-    _iterator->Seek(_bounds.start());
+  _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
+  _iterator->Seek(_bounds.start());
 }
 
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
