@@ -120,11 +120,10 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     //LOG_TOPIC(ERR, Logger::FIXME) << "value found in cache ";
     while(_arrayIterator.valid()){
       StringRef edgeKey(_arrayIterator.value());
+      ++_arrayIterator;
       if(lookupDocumentAndUseCb(edgeKey, cb, limit, token, true)){
-        _arrayIterator++;
         return true; // more documents - function will be re-entered
       }
-      _arrayIterator++;
     }
 
     //reset cache iterator before handling next from/to
@@ -201,7 +200,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         // build cache value for from/to
         if(_useCache){
           if (_cacheValueSize <= cacheValueSizeLimit){
-            _cacheValueBuilder.add(VPackValue(std::string(edgeKey.data(),edgeKey.size())));
+            _cacheValueBuilder.add(VPackValuePair(edgeKey.data(),edgeKey.size(), VPackValueType::String));
             ++_cacheValueSize;
           }
         }
