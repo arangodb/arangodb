@@ -1626,7 +1626,6 @@ int ClusterInfo::ensureIndexCoordinator(
       for (auto const& index : VPackArrayIterator(planIndexes)) {
         auto idPlanSlice = index.get("id");
         if (idPlanSlice.isString() && idPlanSlice.copyString() == idString) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "HAS PLAN " << index;
           planValue.reset(new VPackBuilder());
           planValue->add(index);
           break; 
