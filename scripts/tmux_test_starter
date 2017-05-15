@@ -2,10 +2,13 @@
 # Author Jan Christoph Uhde
 
 main(){
-    #cd ..  || die "can not change directory"
-    #TODO check that we are in source dir
+    source_file=~/.tmux_starter_suites #may not contain spaces
+    if [[ -f $source_file ]]; then
+        . $source_file
+    fi
+
     local suite=${1:-all}
-    local tasks="task_$suite"
+    local tasks="suite_$suite"
     type -t function $tasks || die "suite $suite not defined"
     # ceck task
     local session_name="$($tasks 'name')"
@@ -22,7 +25,7 @@ main(){
 
 # task definitions
 
-task_all(){
+suite_all(){
     local count="$1"
     local args_default=""
     local args="$2"
@@ -65,7 +68,7 @@ task_all(){
     echo "./scripts/unittest $tests $args_default $args && exit 0"
 }
 
-task_all_rocksdb(){
+suite_all_rocksdb(){
     local count="$1"
     local args_default=""
     local args="$2"
@@ -77,7 +80,7 @@ task_all_rocksdb(){
             return
         ;;
         *)
-            task_all "$1" "--storageEngine rocksdb"
+            suite_all "$1" "--storageEngine rocksdb"
         ;;
     esac
 }
