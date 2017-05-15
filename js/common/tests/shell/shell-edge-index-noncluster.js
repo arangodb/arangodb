@@ -41,13 +41,13 @@ if (db._engine().name === "mmfiles") {
   mmfilesEngine = true;
 }
 
+var printed=false;
 function printNotImplemented(message){
   if(!printed){
     printed = true;
     print("test for " + message + " not implemented");
   }
 }
-printed=false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: buckets
@@ -270,9 +270,9 @@ function EdgeIndexSuite () {
       [20, 900, 1000, 1100, 2000].forEach( function(n){
         var toKeys = [];
         for (var i = 0; i < n; ++i) {
-            var to = "b" + n + "/"+i
+            var to = "b" + n + "/"+i;
             edge.insert({_from : "a/" + n, _to : to});
-            toKeys.push(to)
+            toKeys.push(to);
         }
 
         assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length, "compare 1");
@@ -282,7 +282,7 @@ function EdgeIndexSuite () {
 
         //assert equal values
         if(n <= 1001){
-            keys = rv.map(function(x){ return x._to });
+            var keys = rv.map(function(x){ return x._to; });
             keys.sort();
             toKeys.sort();
             keys.forEach(function(x,i){
