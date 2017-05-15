@@ -172,7 +172,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
           RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
       _rocksTransaction->PutLogData(header.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      TRI_ASSERT(++_numLogdata);
+      ++_numLogdata;
 #endif
     }
   } else {
@@ -329,7 +329,7 @@ void RocksDBTransactionState::prepareOperation(
         RocksDBLogValue::DocumentOpsPrologue(collectionId);
         _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        TRI_ASSERT(++_numLogdata);
+        ++_numLogdata;
 #endif
       }
     } else {
@@ -349,7 +349,7 @@ void RocksDBTransactionState::prepareOperation(
           RocksDBLogValue::SinglePut(_vocbase->id(), collectionId);
           _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          TRI_ASSERT(++_numLogdata);
+          ++_numLogdata;
 #endif
           break;
         }
@@ -359,7 +359,7 @@ void RocksDBTransactionState::prepareOperation(
           RocksDBLogValue::SingleRemove(_vocbase->id(), collectionId, key);
           _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          TRI_ASSERT(++_numLogdata);
+          ++_numLogdata;
 #endif
         } break;
         case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
@@ -373,7 +373,7 @@ void RocksDBTransactionState::prepareOperation(
     RocksDBLogValue logValue = RocksDBLogValue::DocumentRemove(key);
     _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(++_numLogdata);
+    ++_numLogdata;
 #endif
   }
 }

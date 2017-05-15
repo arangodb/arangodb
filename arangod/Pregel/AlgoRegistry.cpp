@@ -31,6 +31,7 @@
 #include "Pregel/Algos/PageRank.h"
 #include "Pregel/Algos/RecoveringPageRank.h"
 #include "Pregel/Algos/SCC.h"
+#include "Pregel/Algos/SLPA.h"
 #include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Utils.h"
@@ -62,6 +63,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
     return new algos::HITS(userParams);
   } else if (algorithm == "labelpropagation") {
     return new algos::LabelPropagation(userParams);
+  } else if (algorithm == "slpa") {
+    return new algos::SLPA(userParams);
   } else if (algorithm == "dmid") {
     return new algos::DMID(userParams);
   } else {
@@ -115,6 +118,8 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
     return createWorker(vocbase, new algos::HITS(userParams), body);
   } else if (algorithm == "labelpropagation") {
     return createWorker(vocbase, new algos::LabelPropagation(userParams), body);
+  } else if (algorithm == "slpa") {
+    return createWorker(vocbase, new algos::SLPA(userParams), body);
   } else if (algorithm == "dmid") {
     return createWorker(vocbase, new algos::DMID(userParams), body);
   } else {

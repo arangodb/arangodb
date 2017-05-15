@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SLPA.h"
+#include <atomic>
 #include <cmath>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -38,13 +39,13 @@ using namespace arangodb::pregel::algos;
 
 struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   SLPAComputation() {}
-  
+
   uint64_t mostFrequent(MessageIterator<uint64_t> const& messages) {
     TRI_ASSERT(messages.size() > 0);
     if (messages.size() == 1) {
       return **messages;
     }
-    
+
     // most frequent value
     size_t i = 0;
     std::vector<uint64_t> all(messages.size());
@@ -73,11 +74,12 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     }
     return maxValue;
   }
-  
+
   void compute(MessageIterator<uint64_t> const& messages) override {
     SLPAValue* val = mutableVertexData();
     if (globalSuperstep() == 0) {
       val->memory.emplace(val->nodeId, 1);
+      val->numCommunities = 1;
     } else if (messages.size() > 0) {
       // listen to our neighbours
       uint64_t newCommunity = mostFrequent(messages);
@@ -87,24 +89,23 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
       } else {
         it->second++;
       }
+      val->numCommunities++;
     }
-    
+
     // Normally the SLPA algo only lets one vertex by one speak sequentially,
     // which is not really well parallizable. Additionally I figure
     // since a speaker only speaks to neighbours and the speaker order is random
     // we can get away with letting nodes speak in turn
     bool speak = val->nodeId % 2 == globalSuperstep() % 2;
-    if (speak) {
-      // speak to our neighbours
-      float random = RandomGenerator::interval(UINT32_MAX);
-      float randomDoubleValue = random / (float)UINT32_MAX;
-      float cumulativeSum = 0;
+    if (speak) {  // speak to our neighbours
+
+      uint64_t random = RandomGenerator::interval(val->numCommunities);
+      uint64_t cumulativeSum = 0;
       // Randomly select a label with probability proportional to the
       // occurrence frequency of this label in its memory
-      uint64_t numCommunities = globalSuperstep();//val->memory.size();
       for (std::pair<uint64_t, uint64_t> const& e : val->memory) {
-        cumulativeSum = cumulativeSum + ((float)e.second)/ numCommunities;
-        if(cumulativeSum >= randomDoubleValue) {
+        cumulativeSum += e.second;
+        if (cumulativeSum >= random) {
           sendMessageToAllEdges(e.first);
         }
       }
@@ -113,16 +114,18 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   }
 };
 
-VertexComputation<SLPAValue, int8_t, uint64_t>*
-SLPA::createComputation(WorkerConfig const* config) const {
+VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(
+    WorkerConfig const* config) const {
   return new SLPAComputation();
 }
 
 struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
-  std::string _resultField;
-  uint64_t vertexIdRange = 0;
+  std::string resField;
+  std::atomic<uint64_t> vertexIdRange;
+  float threshold;  // TODO
 
-  explicit SLPAGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit SLPAGraphFormat(std::string const& result, float thr)
+      : resField(result), vertexIdRange(0), threshold(thr) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); };
   size_t estimatedEdgeSize() const override { return 0; };
@@ -131,7 +134,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
     // if we aren't running in a cluster it doesn't matter
     if (arangodb::ServerState::instance()->isRunningInCluster()) {
       arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
-      if (ci) {
+      if (ci) {  // get a counter range from the agency
         vertexIdRange = ci->uniqid(count);
       }
     }
@@ -140,7 +143,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   size_t copyVertexData(std::string const& documentId,
                         arangodb::velocypack::Slice document, SLPAValue* value,
                         size_t maxSize) override {
-    value->nodeId = vertexIdRange++;
+    value->nodeId = (uint32_t)vertexIdRange++;
     return sizeof(SLPAValue);
   }
 
@@ -149,9 +152,30 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
     return 0;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, const SLPAValue* ptr,
-                           size_t size) const override {
-    //b.add(_resultField, VPackValue(ptr->currentCommunity));
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                           const SLPAValue* ptr, size_t size) const override {
+    if (ptr->memory.empty()) {
+      return false;
+    } else {
+      std::vector<uint64_t> communities;
+      for (std::pair<uint64_t, uint64_t> pair : ptr->memory) {
+        if ((float)pair.second / ptr->numCommunities >= threshold) {
+          communities.push_back(pair.first);
+        }
+      }
+      
+      if (communities.empty()) {
+        b.add(resField, VPackSlice::nullSlice());
+      } else if (communities.size() == 1) {
+        b.add(resField, VPackValue(ptr->memory.begin()->second));
+      } else if (communities.size() > 1) {
+        b.add(resField, VPackValue(VPackValueType::Array));
+        for (uint64_t c : communities) {
+          b.add(VPackValue(c));
+        }
+        b.close();
+      }
+    }
     return true;
   }
 
@@ -162,5 +186,5 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
 };
 
 GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
-  return new SLPAGraphFormat(_resultField);
+  return new SLPAGraphFormat(_resultField, 0.15);
 }

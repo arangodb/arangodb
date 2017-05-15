@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_LABELPROP_H
-#define ARANGODB_PREGEL_ALGOS_LABELPROP_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_SLPA_H
+#define ARANGODB_PREGEL_ALGOS_SLPA_H 1
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -41,7 +41,7 @@ namespace algos {
 struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
  public:
   explicit SLPA(VPackSlice userParams)
-      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("SpeakerListenerLabelProp",
+      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("slpa",
                                                    userParams) {}
 
   GraphFormat<SLPAValue, int8_t>* inputFormat() const override;

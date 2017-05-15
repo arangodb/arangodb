@@ -37,7 +37,9 @@ namespace pregel {
 // Speaker-listerner Label propagation
 struct SLPAValue {
   // our own initialized id
-  uint64_t nodeId;
+  uint64_t nodeId = 0;
+  // number of received communities
+  uint64_t numCommunities = 0;
   /// Memory  used to hold the labelId and the count
   // used for memorizing communities
   std::map<uint64_t, uint64_t> memory;
@@ -46,7 +48,7 @@ struct SLPAValue {
 // Label propagation
 struct LPValue {
   /// The desired partition the vertex want to migrate to.
-  uint64_t currentCommunity;
+  uint64_t currentCommunity = 0;
   /// The actual partition.
   uint64_t lastCommunity = UINT64_MAX;
   /// Iterations since last migration.

@@ -1836,7 +1836,7 @@ void RocksDBCollection::blackListKey(char const* data, std::size_t len) const {
     bool blacklisted = false;
     uint64_t attempts = 0;
     while (!blacklisted) {
-      blacklisted = _cache->blacklist(data,len);
+      blacklisted = _cache->blacklist(data,(uint32_t)len);
       if (attempts++ % 10 == 0) {
         if (_cache->isShutdown()) {
           disableCache();

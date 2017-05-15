@@ -42,9 +42,6 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
   
   uint64_t mostFrequent(MessageIterator<uint64_t> const& messages) {
     TRI_ASSERT(messages.size() > 0);
-    if (messages.size() == 1) {
-      return std::min(**messages, mutableVertexData()->currentCommunity);
-    }
     
     // most frequent value
     size_t i = 0;
@@ -80,7 +77,12 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
     if (globalSuperstep() == 0) {
       sendMessageToAllEdges(value->currentCommunity);
     } else {
-      uint64_t newCommunity = mostFrequent(messages);
+      uint64_t newCommunity = mutableVertexData()->currentCommunity;
+      if (messages.size() == 1) {
+        newCommunity = std::min(**messages, newCommunity);
+      } if (messages.size() > 1) {
+        newCommunity = mostFrequent(messages);
+      }
 
       // increment the stabilization count if vertex wants to stay in the
       // same partition
@@ -108,9 +110,9 @@ LabelPropagation::createComputation(WorkerConfig const* config) const {
 
 struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   std::string _resultField;
-  uint64_t vertexIdRange = 0;
+  std::atomic<uint64_t> vertexIdRange;
 
-  explicit LPGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit LPGraphFormat(std::string const& result) : _resultField(result), vertexIdRange(0) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); };
   size_t estimatedEdgeSize() const override { return 0; };
@@ -140,6 +142,7 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const LPValue* ptr,
                            size_t size) const override {
     b.add(_resultField, VPackValue(ptr->currentCommunity));
+    b.add("stabilizationRounds", VPackValue(ptr->stabilizationRounds));
     return true;
   }
 
