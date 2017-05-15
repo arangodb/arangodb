@@ -963,7 +963,7 @@ function _scanFoxx (mount, options, activateDevelopment) {
   if (!options.__clusterDistribution) {
     db._executeTransaction({
       collections: {
-        write: utils.getStorage().name()
+        exclusive: utils.getStorage().name()
       },
       action() {
         try {
@@ -1134,7 +1134,7 @@ function _install (serviceInfo, mount, options, runSetup) {
       if (!options.__clusterDistribution) {
         db._executeTransaction({
           collections: {
-            write: collection.name()
+            exclusive: collection.name()
           },
           action () {
             var definition = collection.firstExample({mount: mount});
@@ -1244,7 +1244,7 @@ function _uninstall (mount, options) {
     try {
       db._executeTransaction({
         collections: {
-          write: collection.name()
+          exclusive: collection.name()
         },
         action() {
           var definition = collection.firstExample({mount: mount});

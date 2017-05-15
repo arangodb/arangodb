@@ -142,7 +142,7 @@ var updateFishbowlFromZip = function (filename) {
 
       db._executeTransaction({
         collections: {
-          write: fishbowl.name()
+          exclusive: fishbowl.name()
         },
         action: function (params) {
           var c = require('internal').db._collection(params.collection);

@@ -432,7 +432,7 @@ Users.prototype.add = function (identifier, password, active, data) {
 
   db._executeTransaction({
     collections: {
-      write: c.name()
+      exclusive: c.name()
     },
     action: function (params) {
       var c = db._collection(params.cn),
@@ -466,7 +466,7 @@ Users.prototype.updateData = function (identifier, data) {
 
   db._executeTransaction({
     collections: {
-      write: c.name()
+      exclusive: c.name()
     },
     action: function (params) {
       var c = db._collection(params.cn),
