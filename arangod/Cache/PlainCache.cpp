@@ -104,6 +104,7 @@ bool PlainCache::insert(CachedValue* value) {
         if (!eviction) {
           maybeMigrate = source->slotFilled();
         }
+        maybeMigrate |= reportInsert(eviction);
       } else {
         requestGrow();  // let function do the hard work
       }

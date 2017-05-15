@@ -273,6 +273,21 @@ void Cache::recordStat(Stat stat) {
   }
 }
 
+bool Cache::reportInsert(bool hadEviction) {
+  bool shouldMigrate = false;
+  if (hadEviction) {
+    _insertEvictions++;
+  }
+  if (((++_insertsTotal) & _evictionMask) == 0) {
+    if (_insertEvictions.load() > _evictionThreshold) {
+      shouldMigrate = true;
+    }
+    _insertEvictions = 0;
+  }
+
+  return shouldMigrate;
+}
+
 Metadata* Cache::metadata() { return &_metadata; }
 
 std::shared_ptr<Table> Cache::table() { return _table; }

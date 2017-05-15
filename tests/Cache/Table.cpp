@@ -190,12 +190,12 @@ TEST_CASE("cache::Table", "[cache]") {
     SECTION("test fill ratio methods") {
       for (uint64_t i = 0; i < large->size(); i++) {
         bool res = large->slotFilled();
-        if ((i + 1) <
-            static_cast<uint64_t>(0.125 * static_cast<double>(large->size()))) {
+        if (static_cast<double>(i + 1) <
+            0.05 * static_cast<double>(large->size())) {
           REQUIRE(large->idealSize() == large->logSize() - 1);
           REQUIRE(res == false);
-        } else if ((i + 1) > static_cast<uint64_t>(
-                                 0.75 * static_cast<double>(large->size()))) {
+        } else if (static_cast<double>(i + 1) >
+                                 0.33 * static_cast<double>(large->size())) {
           REQUIRE(large->idealSize() == large->logSize() + 1);
           REQUIRE(res == true);
         } else {
@@ -205,12 +205,12 @@ TEST_CASE("cache::Table", "[cache]") {
       }
       for (uint64_t i = large->size(); i > 0; i--) {
         bool res = large->slotEmptied();
-        if ((i - 1) <
-            static_cast<uint64_t>(0.125 * static_cast<double>(large->size()))) {
+        if (static_cast<double>(i - 1) <
+            0.05 * static_cast<double>(large->size())) {
           REQUIRE(large->idealSize() == large->logSize() - 1);
           REQUIRE(res == true);
-        } else if ((i - 1) > static_cast<uint64_t>(
-                                 0.75 * static_cast<double>(large->size()))) {
+        } else if (static_cast<double>(i - 1) >
+                                 0.33 * static_cast<double>(large->size())) {
           REQUIRE(large->idealSize() == large->logSize() + 1);
           REQUIRE(res == false);
         } else {
