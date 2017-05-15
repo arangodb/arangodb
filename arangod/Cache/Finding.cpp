@@ -26,6 +26,8 @@
 
 using namespace arangodb::cache;
 
+Finding::Finding() : _value(nullptr) {}
+
 Finding::Finding(CachedValue* v) : _value(v) {
   if (_value != nullptr) {
     _value->lease();
@@ -85,6 +87,14 @@ void Finding::release() {
     _value->release();
     // reset value so we do not unintentionally release multiple times
     _value = nullptr;
+  }
+}
+
+void Finding::set(CachedValue* v) {
+  TRI_ASSERT(_value == nullptr);
+  _value = v;
+  if (v != nullptr) {
+    _value->lease();
   }
 }
 
