@@ -38,11 +38,14 @@ exports.deps = joi.object().pattern(/.+/, joi.object({
   required: joi.boolean().default(true).description(`Whether the dependency is required`)
 }).required().description(`Dependency option`)).required();
 
-exports.service = joi.object({
-  source: joi.alternatives(
-    joi.string().description(`Local file path or URL of the service to be installed`),
-    joi.object().type(Buffer).description(`Zip bundle of the service to be installed`)
-  ).required().description(`Local file path, URL or zip bundle of the service to be installed`),
-  configuration: joi.string().optional().description(`Configuration to use for the service (JSON)`),
-  dependencies: joi.string().optional().description(`Dependency options to use for the service (JSON)`)
-}).required();
+exports.service = joi.alternatives(
+  joi.object().type(Buffer).description(`Zip bundle of the service to be installed`),
+  joi.object({
+    source: joi.alternatives(
+      joi.string().description(`Local file path or URL of the service to be installed`),
+      joi.object().type(Buffer).description(`Zip bundle of the service to be installed`)
+    ).required().description(`Local file path, URL or zip bundle of the service to be installed`),
+    configuration: joi.string().optional().description(`Configuration to use for the service (JSON)`),
+    dependencies: joi.string().optional().description(`Dependency options to use for the service (JSON)`)
+  })
+).required();
