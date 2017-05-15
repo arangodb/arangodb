@@ -254,8 +254,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         break;
       }
       case RocksDBEntryType::Document: {
-        TRI_ASSERT(_seenBeginTransaction && !_singleOp ||
-                   !_seenBeginTransaction && _singleOp);
+        TRI_ASSERT((_seenBeginTransaction && !_singleOp) ||
+                   (!_seenBeginTransaction && _singleOp));
         // if real transaction, we need the trx id
         TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
