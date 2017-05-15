@@ -367,7 +367,7 @@ scriptsRouter.get((req, res) => {
 scriptsRouter.post('/:name', (req, res) => {
   const service = req.service;
   const scriptName = req.pathParams.name;
-  res.json(FoxxManager.runScript(scriptName, service.mount, req.body) || null);
+  res.json(FoxxManager.runScript(scriptName, service.mount, [req.body]) || null);
 })
 .body(joi.any(), `Optional script arguments.`)
 .pathParam('name', joi.string().required(), `Name of the script to run`)
