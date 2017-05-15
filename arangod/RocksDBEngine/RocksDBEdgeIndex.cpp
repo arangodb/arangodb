@@ -81,17 +81,18 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
   _iterator.reset(rtrx->GetIterator(state->readOptions()));
 }
 
-void RocksDBEdgeIndexIterator::updateBounds(StringRef fromTo) {
-  _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
-  _iterator->Seek(_bounds.start());
-}
-
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
   if (_keys != nullptr) {
     // return the VPackBuilder to the transaction context
     _trx->transactionContextPtr()->returnBuilder(_keys.release());
   }
 }
+
+void RocksDBEdgeIndexIterator::updateBounds(StringRef fromTo) {
+  _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
+  _iterator->Seek(_bounds.start());
+}
+
 
 StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const& it){
   VPackSlice fromTo = it.value();
