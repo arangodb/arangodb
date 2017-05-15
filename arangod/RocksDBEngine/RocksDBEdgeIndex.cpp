@@ -116,13 +116,16 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   // acquire RocksDB collection
   RocksDBToken token;
-  auto iterateChachedValues = [this,&cb,&limit,&token](){
-    //LOG_TOPIC(ERR, Logger::FIXME) << "value found in cache ";
+  auto iterateCachedValues = [this,&cb,&limit,&token](){
     while(_arrayIterator.valid()){
-      StringRef edgeKey(_arrayIterator.value());
+      VPackSlice edgeKey(_arrayIterator.value());
+
+      cb(RocksDBToken(edgeKey.getUInt()));
+      --limit;
       ++_arrayIterator;
-      if(lookupDocumentAndUseCb(edgeKey, cb, limit, token, true)){
-        return true; // more documents - function will be re-entered
+      if (limit == 0) {
+        _doUpdateArrayIterator=false; //limit hit continue with next batch
+        return true;
       }
     }
 
@@ -136,7 +139,6 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     TRI_ASSERT(limit > 0);
     StringRef fromTo = getFromToFromIterator(_keysIterator);
     bool foundInCache = false;
-    //LOG_TOPIC(ERR, Logger::FIXME) << "fromTo" << fromTo;
 
     if (_useCache && _doUpdateArrayIterator){
       // try to find cached value
@@ -161,7 +163,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         _arrayIterator = VPackArrayIterator(_arraySlice);
 
         // iterate until batch size limit is hit
-        bool continueWithNextBatch = iterateChachedValues();
+        bool continueWithNextBatch = iterateCachedValues();
         if(continueWithNextBatch){
           return true; // exit and continue with next batch
         }
@@ -170,7 +172,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       // resuming old iterator
       foundInCache = true; // do not look up key again!
       _doUpdateArrayIterator = true;
-      bool continueWithNextBatch = iterateChachedValues();
+      bool continueWithNextBatch = iterateCachedValues();
       if(continueWithNextBatch){
         return true; // exit and continue with next batch
       }
@@ -196,17 +198,18 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
       while (_iterator->Valid() && (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
+        
+        // lookup real document
+        bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token, false);
 
         // build cache value for from/to
         if(_useCache){
           if (_cacheValueSize <= cacheValueSizeLimit){
-            _cacheValueBuilder.add(VPackValuePair(edgeKey.data(),edgeKey.size(), VPackValueType::String));
+            _cacheValueBuilder.add(VPackValue(token.revisionId()));
             ++_cacheValueSize;
           }
         }
 
-        // lookup real document
-        bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token, false);
         _iterator->Next();
         //check batch size limit
         if(continueWithNextBatch){
