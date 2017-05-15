@@ -110,9 +110,7 @@ def getRestBodyParam():
         if thisVerb['parameters'][nParam]['in'] == 'body':
             descOffset = thisVerb['parameters'][nParam]['x-description-offset']
             addText = ''
-            if 'additionalProperties' in thisVerb['parameters'][nParam]['schema']:
-                addText = "free style json body"
-            else:
+            if 'additionalProperties' not in thisVerb['parameters'][nParam]['schema']:
                 addText = unwrapPostJson(
                     getReference(thisVerb['parameters'][nParam]['schema'], route, verb),0)
     rc += addText
@@ -128,7 +126,7 @@ def getRestDescription():
         return ""
         
 def getRestReplyBodyParam(param):
-    rc = "\n**Reply Body**\n"
+    rc = "\n**Response Body**\n"
 
     try:
         rc += unwrapPostJson(getReference(thisVerb['responses'][param]['schema'], route, verb), 0)
@@ -251,7 +249,7 @@ RX = [
 RX2 = [
     # parameters - extract their type and whether mandatory or not.
     (re.compile(r"@RESTPARAM{(\s*[\w\-]*)\s*,\s*([\w\_\|-]*)\s*,\s*(required|optional)}"), r"* *\g<1>* (\g<3>):"),
-    (re.compile(r"@RESTALLBODYPARAM{(\s*[\w\-]*)\s*,\s*([\w\_\|-]*)\s*,\s*(required|optional)}"), r"\n**Post Body**\n\n *\g<1>* (\g<3>):"),
+    (re.compile(r"@RESTALLBODYPARAM{(\s*[\w\-]*)\s*,\s*([\w\_\|-]*)\s*,\s*(required|optional)}"), r"\n**Request Body** (\g<3>)\n\n"),
 
     (re.compile(r"@RESTRETURNCODE{(.*)}"), r"* *\g<1>*:")
 ]
@@ -292,6 +290,7 @@ def replaceCode(lines, blockName):
         except:
             print >> sys.stderr, ERR_COLOR + "failed to locate route in the swagger json: [" + verb + " " + route + "]" + " while analysing " + blockName + RESET
             print >> sys.stderr, WRN_COLOR + lines + RESET
+            print >> sys.stderr, "Did you forget to run utils/generateSwagger.sh?"
             raise
 
     for (oneRX, repl) in RX:
