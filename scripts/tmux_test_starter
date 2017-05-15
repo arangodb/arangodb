@@ -4,9 +4,9 @@
 main(){
     #cd ..  || die "can not change directory"
     #TODO check that we are in source dir
-    local session_name=integrationtest
     local tasks=task_all #FIXME add taks selection
-    local panes=$($tasks)
+    local session_name="$($tasks 'name')"
+    local panes=$($tasks 'num')
     kill_old_session "$session_name"
     tmux new-session -d -s "$session_name" || die "unable to spawn session"
     local rows=$(( (panes+1) / 2 ))
@@ -20,28 +20,46 @@ main(){
 # task definitions
 
 task_all(){
-    ## FIXME ask jan or max for good grouping for all
     local count="$1"
     local args_default=""
     local args="$2"
-    if [[ -z $1 ]]; then
-        echo "4" #return number of required panes
-        return
-    fi
+
+    local tests=""
     case $1 in
+        num)
+            echo "6"
+            return
+        ;;
+        name)
+            echo "test_all"
+            return
+        ;;
         0)
-            echo "./scripts/unittest shell_server $args_default $args && exit 0"
+            echo "./scripts/quickieTest.sh && exit 0"
+            return
         ;;
         1)
-            echo "./scripts/unittest shell_server_aql $args_defaults $args && exit 0"
+            tests="shell_server shell_client"
         ;;
         2)
-            echo "./scripts/unittest shell_server $args_default $args && exit 0"
+            tests="shell_server_aql"
+        ;;
+        2)
+            tests="http_server server_http"
+        ;;
+        3)
+            tests="dump importing export arangobench upgrade"
+        ;;
+        4)
+            tests="replication_sync replication_static replication_ongoing http_replication shell_replication"
+        ;;
+        5)
+            tests="agency cluster_sync"
         ;;
         *)
-            echo "spawn task $count"
-        ;;
     esac
+
+    echo "./scripts/unittest $tests $args_default $args && exit 0"
 }
 
 # tmux
@@ -87,11 +105,12 @@ spawn_panes(){
 
 execute_tasks(){
     cd $1 || die
-    local tasks=$2
+    local tasks="$2"
     local args="$3"
     local count=0
-    while (( count < $($tasks) )); do
+    while (( count < $($tasks 'num') )); do
         local exec_cmd="$($tasks $count "$args")"
+        echo "running: ${exec_cmd[@]}"
         tmux send-keys -t $session_name.$count "${exec_cmd[@]}" Enter
         (( count++ ))
     done
