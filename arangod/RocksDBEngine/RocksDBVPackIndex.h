@@ -29,6 +29,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -101,6 +102,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   friend class RocksDBVPackIndexIterator;
 
  public:
+  static uint64_t HashForKey(const rocksdb::Slice& key);
+
   RocksDBVPackIndex() = delete;
 
   RocksDBVPackIndex(TRI_idx_iid_t, LogicalCollection*,
@@ -110,13 +113,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(
-      arangodb::StringRef const* = nullptr) const override {
-    if (_unique) {
-      return 1.0;  // only valid if unique
-    }
-    return 0.2;  // TODO: fix this hard-coded estimate
-  }
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
@@ -179,6 +176,12 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   int cleanup() override;
 
+  void serializeEstimate(std::string& output) const override;
+
+  bool deserializeEstimate(arangodb::RocksDBCounterManager* mgr) override;
+
+  void recalculateEstimates() override;
+
 protected:
  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
                           rocksdb::Slice const& value) override;
@@ -209,21 +212,26 @@ protected:
 
   /// @brief helper function to insert a document into any index type
   int fillElement(velocypack::Builder& leased, TRI_voc_rid_t revisionId,
-                  VPackSlice const& doc, std::vector<RocksDBKey>& elements);
+                  VPackSlice const& doc, std::vector<RocksDBKey>& elements,
+                  std::vector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
+  /// @param hashes list of VPackSlice hashes for the estimator.
   void addIndexValue(velocypack::Builder& leased, VPackSlice const& document,
                      std::vector<RocksDBKey>& elements,
-                     std::vector<VPackSlice>& sliceStack);
+                     std::vector<VPackSlice>& sliceStack,
+                     std::vector<uint64_t>& hashes);
 
   /// @brief helper function to create a set of value combinations to insert
   /// into the rocksdb index.
   /// @param elements vector of resulting index entries
   /// @param sliceStack working list of values to insert into the index
+  /// @param hashes list of VPackSlice hashes for the estimator.
   void buildIndexValues(velocypack::Builder& leased, VPackSlice const document,
                         size_t level, std::vector<RocksDBKey>& elements,
-                        std::vector<VPackSlice>& sliceStack);
+                        std::vector<VPackSlice>& sliceStack,
+                        std::vector<uint64_t>& hashes);
 
  private:
   std::unique_ptr<FixedSizeAllocator> _allocator;
@@ -239,6 +247,12 @@ protected:
 
   /// @brief whether or not partial indexing is allowed
   bool _allowPartialIndex;
+
+  /// @brief A fixed size library to estimate the selectivity of the index.
+  /// On insertion of a document we have to insert it into the estimator,
+  /// On removal we have to remove it in the estimator as well.
+  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+
 };
 }  // namespace arangodb
 

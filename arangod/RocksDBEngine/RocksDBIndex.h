@@ -41,8 +41,16 @@ class Cache;
 }
 class LogicalCollection;
 class RocksDBComparator;
+class RocksDBCounterManager;
 
 class RocksDBIndex : public Index {
+
+ protected:
+   // This is the number of distinct elements the index estimator can reliably store
+   // This correlates directly with the memmory of the estimator:
+   // memmory == ESTIMATOR_SIZE * 6 bytes
+  static uint64_t const ESTIMATOR_SIZE;
+
  protected:
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
@@ -88,6 +96,12 @@ class RocksDBIndex : public Index {
 
   void createCache();
   void disableCache();
+
+  virtual void serializeEstimate(std::string& output) const;
+
+  virtual bool deserializeEstimate(RocksDBCounterManager* mgr);
+
+  virtual void recalculateEstimates();
 
  protected:
   // Will be called during truncate to allow the index to update selectivity

@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/voc-types.h"
 
@@ -78,8 +79,9 @@ class RocksDBCounterManager {
   /// the sequence number used
   void updateCounter(uint64_t objectId, CounterAdjustment const&);
 
-  //does not modify seq or revisionid
-  arangodb::Result setAbsoluteCounter(uint64_t objectId, uint64_t absouluteCount);
+  // does not modify seq or revisionid
+  arangodb::Result setAbsoluteCounter(uint64_t objectId,
+                                      uint64_t absouluteCount);
 
   /// Thread-Safe remove a counter
   void removeCounter(uint64_t objectId);
@@ -87,7 +89,22 @@ class RocksDBCounterManager {
   /// Thread-Safe force sync
   arangodb::Result sync(bool force);
 
-  void readSettings();
+  // Steal the index estimator that the recovery has built up to inject it into
+  // an index.
+  // NOTE: If this returns nullptr the recovery was not ably to find any
+  // estimator
+  // for this index.
+  std::unique_ptr<arangodb::RocksDBCuckooIndexEstimator<uint64_t>>
+  stealIndexEstimator(uint64_t indexObjectId);
+
+  // Free up all index estimators that were not read by any index.
+  // This is to save some memory.
+  // NOTE: After calling this the stored estimate of all not yet
+  // read index estimators will be dropped and no attempt
+  // to reread it will be done.
+  // So call it after ALL indexes for all databases
+  // have been created in memory.
+  void clearIndexEstimators();
 
  protected:
   struct CMValue {
@@ -105,12 +122,26 @@ class RocksDBCounterManager {
   };
 
   void readCounterValues();
+  void readSettings();
+  void readIndexEstimates();
+
   bool parseRocksWAL();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief counter values
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_map<uint64_t, CMValue> _counters;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Index Estimator contianer.
+  ///        Note the elements in this container will be moved into the
+  ///        index classes and are only temporarily stored here during recovery.
+  //////////////////////////////////////////////////////////////////////////////
+  std::unordered_map<
+      uint64_t,
+      std::pair<uint64_t,
+                std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>
+      _estimators;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief synced sequence numbers

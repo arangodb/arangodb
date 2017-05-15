@@ -1,0 +1,159 @@
+#!/bin/bash
+# Author Jan Christoph Uhde
+
+main(){
+    source_file=~/.tmux_starter_suites #may not contain spaces
+    if [[ -f $source_file ]]; then
+        . $source_file
+    fi
+
+    local suite=${1:-all}
+    local tasks="suite_$suite"
+    type -t function $tasks || die "suite $suite not defined"
+    # ceck task
+    local session_name="$($tasks 'name')"
+    local panes=$($tasks 'num')
+    kill_old_session "$session_name"
+    tmux new-session -d -s "$session_name" || die "unable to spawn session"
+    local rows=$(( (panes+1) / 2 ))
+    local cols=$((((panes>1)) * 2))
+    spawn_panes "$session_name" $rows $cols
+    tmux select-pane -t $session_name.0
+    execute_tasks "$(pwd)" $tasks
+    tmux -2 attach-session -t $session_name
+}
+
+# task definitions
+
+suite_all(){
+    local count="$1"
+    local args_default=""
+    local args="$2"
+
+    local tests=""
+    case $1 in
+        num)
+            echo "6"
+            return
+        ;;
+        name)
+            echo "test_all"
+            return
+        ;;
+        0)
+            echo "./scripts/quickieTest.sh $args && exit 0"
+            return
+        ;;
+        1)
+            tests="shell_server shell_client"
+        ;;
+        2)
+            tests="shell_server_aql"
+        ;;
+        2)
+            tests="http_server server_http"
+        ;;
+        3)
+            tests="dump importing export arangobench upgrade"
+        ;;
+        4)
+            tests="replication_sync replication_static replication_ongoing http_replication shell_replication"
+        ;;
+        5)
+            tests="agency cluster_sync"
+        ;;
+        *)
+    esac
+
+    echo "./scripts/unittest $tests $args_default $args && exit 0"
+}
+
+suite_all_rocksdb(){
+    local count="$1"
+    local args_default=""
+    local args="$2"
+
+    local tests=""
+    case $1 in
+        name)
+            echo "test_all_rocksdb"
+            return
+        ;;
+        *)
+            suite_all "$1" "--storageEngine rocksdb"
+        ;;
+    esac
+}
+
+# tmux
+kill_old_session(){
+    local session_name="$1"
+    if tmux has-session -t $session_name 2> /dev/null; then
+        echo "Session $session_name exists. Kill it? [y/N]"
+        read kill_sess
+        echo "killsess '$kill_sess'"
+        if [[ ($kill_sess == "y") || ($kill_sess == "Y") ]]; then
+            tmux kill-session -t $session_name
+        else
+            die "Session not created because it already exists. Exiting."
+        fi
+    fi
+}
+
+spawn_panes(){
+    local session_name="$1"
+    local rows=$2
+    local cols=$3
+
+    # Create rows
+    local row=$rows
+    while (( row > 1 )); do
+        frac=$(echo "scale=2;1/$row" | bc)
+        percent=$(echo "($frac * 100)/1" | bc)
+        tmux select-pane -t $session_name.0 || die "could not select pane 0 of session $session_name"
+        tmux split-window -v -p $percent
+        ((row--))
+    done
+
+    # Create columns
+    if ((cols > 1)); then
+        local count=$((rows - 1))
+        while ((count >= 0)); do
+            tmux select-pane -t $session_name.$count || die "could not select pane $session_name.$count" 
+            tmux split-window -h -p 50
+            (( count-- ))
+        done
+    fi
+}
+
+execute_tasks(){
+    cd $1 || die
+    local tasks="$2"
+    local args="$3"
+    local count=0
+    while (( count < $($tasks 'num') )); do
+        local exec_cmd="$($tasks $count "$args")"
+        echo "running: ${exec_cmd[@]}"
+        tmux send-keys -t $session_name.$count "${exec_cmd[@]}" Enter
+        (( count++ ))
+    done
+}
+
+# helper
+die(){
+    echo "FATAL: ${1-this should not happen}"
+    exit 1
+}
+
+
+cores(){
+    # Determine automatically on Mac or Linux
+    if [[ $(uname) == 'Darwin' ]]; then
+        echo "$(sysctl hw.ncpu | awk '{print $2}')"
+    else
+        echo "$(nproc)"
+    fi
+}
+
+main "$@"
+exit 0
