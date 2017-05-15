@@ -116,8 +116,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
         "Action",        "Affinity",
         "Agency",        "Authentication",
         "Cluster",       "Daemon",
-        "Dispatcher",    "FoxxQueues",
-        "GeneralServer", "LoggerBufferFeature",
+        "FoxxQueues",    "GeneralServer", 
+        "Greetings",     "LoggerBufferFeature",
         "Server",        "SslServer",
         "Statistics",    "Supervisor"};
 
