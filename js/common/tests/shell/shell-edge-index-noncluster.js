@@ -200,7 +200,7 @@ function EdgeIndexBucketsSuite () {
         ref = edge1.inEdges(from).length;
         assertEqual(ref, edge2.inEdges(from).length);
         assertEqual(ref, edge3.inEdges(from).length);
-         
+
         ref = edge1.outEdges(to).length;
         assertEqual(ref, edge2.outEdges(to).length);
         assertEqual(ref, edge3.outEdges(to).length);
@@ -259,14 +259,29 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexBatchsizeLimit : function () {
-      [900, 1000, 1100, 2000].forEach( function(n){
+      [20, 900, 1000, 1100, 2000].forEach( function(n){
+        var toKeys = [];
         for (var i = 0; i < n; ++i) {
-            edge.insert({_from : "a/" + n, _to : "b" + n + "/"+i});
+            var to = "b" + n + "/"+i
+            edge.insert({_from : "a/" + n, _to : to});
+            toKeys.push(to)
         }
 
-        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length);
-        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length);
-        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length);
+        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length, "compare 1");
+        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length, "compare 2");
+        var rv = edge.byExample({ _from : "a/" + n }).toArray();
+        assertEqual(n,rv.length, "compare 3");
+
+        //assert equal values
+        if(n <= 1001){
+            keys = rv.map(function(x){ return x._to });
+            keys.sort();
+            toKeys.sort();
+            keys.forEach(function(x,i){
+              assertEqual(x,toKeys[i]);
+            });
+        }
+
       });
     },
 
