@@ -35,6 +35,11 @@ var internal = require("internal");
 var wait = internal.wait;
 var ArangoCollection = arangodb.ArangoCollection;
 
+var mmfilesEngine = false;
+if (db._engine().name === "mmfiles") {
+  mmfilesEngine = true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: buckets
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,9 +65,20 @@ function EdgeIndexBucketsSuite () {
       db._drop(en1);
       db._drop(en2);
       db._drop(en3);
-      edge1 = db._createEdgeCollection(en1, { indexBuckets: 1 });
-      edge2 = db._createEdgeCollection(en2, { indexBuckets: 16 });
-      edge3 = db._createEdgeCollection(en3, { indexBuckets: 128 });
+
+      var options = {}
+      if (mmfilesEngine){
+        options = { indexBuckets: 1 };
+      }
+      edge1 = db._createEdgeCollection(en1, options);
+      if (mmfilesEngine){
+        options = { indexBuckets: 16 };
+      }
+      edge2 = db._createEdgeCollection(en2, options);
+      if (mmfilesEngine){
+        options = { indexBuckets: 128 };
+      }
+      edge3 = db._createEdgeCollection(en3, options);
 
       db._drop(vn);
       vertex = db._create(vn);
@@ -238,6 +254,24 @@ function EdgeIndexSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test batch size limit
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexBatchsizeLimit : function () {
+      var n = 1000;
+      [900, 1000, 1100, 2000].forEach( function(n){
+        for (var i = 0; i < n; ++i) {
+            edge.insert({_from : "a/" + n, _to : "b" + n + "/"+i})
+        }
+
+        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length);
+        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length);
+        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length);
+      });
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test index presence
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -257,7 +291,11 @@ function EdgeIndexSuite () {
     testIndexSelectivityEmpty : function () {
       var edgeIndex = edge.getIndexes()[1];
       assertTrue(edgeIndex.hasOwnProperty("selectivityEstimate"));
-      assertEqual(1, edgeIndex.selectivityEstimate);
+      if(mmfilesEngine){
+        assertEqual(1, edgeIndex.selectivityEstimate);
+      } else {
+        print("test for selectivityEstimate not implemented");
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,7 +306,11 @@ function EdgeIndexSuite () {
       edge.save(v1, v2, { });
       var edgeIndex = edge.getIndexes()[1];
       assertTrue(edgeIndex.hasOwnProperty("selectivityEstimate"));
-      assertEqual(1, edgeIndex.selectivityEstimate);
+      if(mmfilesEngine){
+        assertEqual(1, edgeIndex.selectivityEstimate);
+      } else {
+        print("test for selectivityEstimate not implemented");
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,7 +325,11 @@ function EdgeIndexSuite () {
         edgeIndex = edge.getIndexes()[1];
         expectedSelectivity = 1 / (i + 1);
         // allow for some floating-point deviations
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        if(mmfilesEngine){
+          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        } else {
+          print("test for selectivityEstimate not implemented");
+        }
       }
 
       var n = edge.count();
@@ -298,7 +344,11 @@ function EdgeIndexSuite () {
         c = 1000 - (i + 1);
         expectedSelectivity = (c === 0 ? 1 : 1 / c);
         // allow for some floating-point deviations
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        if(mmfilesEngine){
+          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        } else {
+          print("test for selectivityEstimate not implemented");
+        }
       } 
     },
 
@@ -323,7 +373,11 @@ function EdgeIndexSuite () {
         edge.save(vn + "/from" + i, vn + "/1", { });
         var edgeIndex = edge.getIndexes()[1];
         var expectedSelectivity = (1 + (1 / (i + 1))) * 0.5; 
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        if(mmfilesEngine){
+          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        } else {
+          print("test for selectivityEstimate not implemented");
+        }
       }
     },
 
@@ -336,11 +390,16 @@ function EdgeIndexSuite () {
         if (i > 0) {
           var edgeIndex = edge.getIndexes()[1];
           var expectedSelectivity = (1 + (Math.min(i, 20) / i)) * 0.5; 
-          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+          if(mmfilesEngine){
+            assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+          } else {
+            print("test for selectivityEstimate not implemented");
+          }
         }
         edge.save(vn + "/from" + (i % 20), vn + "/to" + i, { });
       }
     }
+
 
   };
 }
@@ -350,8 +409,7 @@ function EdgeIndexSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(EdgeIndexBucketsSuite);
 jsunity.run(EdgeIndexSuite);
+jsunity.run(EdgeIndexBucketsSuite);
 
 return jsunity.done();
-
