@@ -33,6 +33,7 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
 var wait = internal.wait;
+var print = internal.print;
 var ArangoCollection = arangodb.ArangoCollection;
 
 var mmfilesEngine = false;
@@ -66,7 +67,7 @@ function EdgeIndexBucketsSuite () {
       db._drop(en2);
       db._drop(en3);
 
-      var options = {}
+      var options = {};
       if (mmfilesEngine){
         options = { indexBuckets: 1 };
       }
@@ -258,10 +259,9 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexBatchsizeLimit : function () {
-      var n = 1000;
       [900, 1000, 1100, 2000].forEach( function(n){
         for (var i = 0; i < n; ++i) {
-            edge.insert({_from : "a/" + n, _to : "b" + n + "/"+i})
+            edge.insert({_from : "a/" + n, _to : "b" + n + "/"+i});
         }
 
         assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length);
