@@ -83,6 +83,8 @@ Finding::~Finding() {
 void Finding::release() {
   if (_value != nullptr) {
     _value->release();
+    // reset value so we do not unintentionally release multiple times
+    _value = nullptr;
   }
 }
 

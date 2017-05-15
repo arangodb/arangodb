@@ -41,7 +41,7 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class Finding {
  public:
-  Finding(CachedValue* v);
+  explicit Finding(CachedValue* v);
   Finding(Finding const& other);
   Finding(Finding&& other);
   Finding& operator=(Finding const& other);
