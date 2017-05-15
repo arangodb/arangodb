@@ -1654,6 +1654,7 @@ int ClusterInfo::ensureIndexCoordinator(
     AgencyCommResult eraseResult = _agency.sendTransactionWithFailover(trx, 0.0);
 
     if (eraseResult.successful()) {
+      loadPlan();
       return errorCode;
     }
     std::chrono::duration<size_t, std::milli> waitTime(10);
