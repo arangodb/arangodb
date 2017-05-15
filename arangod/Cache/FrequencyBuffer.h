@@ -64,7 +64,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
   //////////////////////////////////////////////////////////////////////////////
-  FrequencyBuffer(uint64_t capacity)
+  explicit FrequencyBuffer(uint64_t capacity)
       : _current(0),
         _capacity(0),
         _mask(0),
@@ -91,7 +91,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the memory usage in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t memoryUsage() {
+  uint64_t memoryUsage() const {
     return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>) +
             sizeof(std::vector<T>));
   }

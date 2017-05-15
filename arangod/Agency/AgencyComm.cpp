@@ -166,6 +166,8 @@ void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
       if (_opType.value == AgencyValueOperationType::OBSERVE ||
           _opType.value == AgencyValueOperationType::UNOBSERVE) {
         builder.add("url", _value);
+      } else if (_opType.value == AgencyValueOperationType::ERASE) {
+        builder.add("val", _value);
       } else {
         builder.add("new", _value);
       }

@@ -237,98 +237,102 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
 
     if (diff < 0) {
       return -1;
-    } else if (diff > 0) {
-      return 1;
+    } 
+    return 1;
+  }
+
+
+  switch (lType) {
+    case VPackValueType::Null: { 
+      return 0;
     }
-    TRI_ASSERT(false);
-    return 0;
-  }
 
-  if (lType == VPackValueType::Null) {
-    return 0;
-  }
+    case VPackValueType::Bool: { 
+      int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
 
-  if (lType == VPackValueType::Bool) {
-    int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
-
-    if (diff != 0) {
-      if (diff < 0) {
-        return -1;
+      if (diff != 0) {
+        if (diff < 0) {
+          return -1;
+        }
+        return 1;
       }
-      return 1;
-    }
-    return 0;
-  }
-
-  if (lType == VPackValueType::Int || lType == VPackValueType::Double) {
-    // TODO
-    double d = lhs->getDoubleValue() - rhs->getDoubleValue();
-    if (d < 0.0) {
-      return -1;
-    } else if (d > 0.0) {
-      return 1;
-    }
-    return 0;
-  }
-
-  if (lType == VPackValueType::String) {
-    if (compareUtf8) {
-      return TRI_compare_utf8(lhs->getStringValue(), lhs->getStringLength(),
-                              rhs->getStringValue(), rhs->getStringLength());
-    }
-    
-    size_t const minLength =
-        (std::min)(lhs->getStringLength(), rhs->getStringLength());
-
-    int res = memcmp(lhs->getStringValue(), rhs->getStringValue(), minLength);
-
-    if (res != 0) {
-      return res;
+      return 0;
     }
 
-    int diff = static_cast<int>(lhs->getStringLength()) -
-               static_cast<int>(rhs->getStringLength());
-
-    if (diff != 0) {
-      return diff < 0 ? -1 : 1;
+    case VPackValueType::Int: 
+    case VPackValueType::Double: { 
+      // TODO
+      double d = lhs->getDoubleValue() - rhs->getDoubleValue();
+      if (d != 0.0) {
+        if (d < 0.0) {
+          return -1;
+        }
+        return 1;
+      }
+      return 0;
     }
-    return 0;
-  }
 
-  if (lType == VPackValueType::Array) {
-    size_t const numLhs = lhs->numMembers();
-    size_t const numRhs = rhs->numMembers();
-    size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
+    case VPackValueType::String: { 
+      if (compareUtf8) {
+        return TRI_compare_utf8(lhs->getStringValue(), lhs->getStringLength(),
+                                rhs->getStringValue(), rhs->getStringLength());
+      }
+      
+      size_t const minLength =
+          (std::min)(lhs->getStringLength(), rhs->getStringLength());
 
-    for (size_t i = 0; i < n; ++i) {
-      int res = arangodb::aql::CompareAstNodes(lhs->getMember(i),
-                                               rhs->getMember(i), compareUtf8);
+      int res = memcmp(lhs->getStringValue(), rhs->getStringValue(), minLength);
 
       if (res != 0) {
         return res;
       }
+
+      int diff = static_cast<int>(lhs->getStringLength()) -
+                static_cast<int>(rhs->getStringLength());
+
+      if (diff != 0) {
+        return diff < 0 ? -1 : 1;
+      }
+      return 0;
     }
-    if (numLhs < numRhs) {
-      return -1;
-    } else if (numLhs > numRhs) {
-      return 1;
+
+    case VPackValueType::Array: { 
+      size_t const numLhs = lhs->numMembers();
+      size_t const numRhs = rhs->numMembers();
+      size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
+
+      for (size_t i = 0; i < n; ++i) {
+        int res = arangodb::aql::CompareAstNodes(lhs->getMember(i),
+                                                rhs->getMember(i), compareUtf8);
+
+        if (res != 0) {
+          return res;
+        }
+      }
+      if (numLhs < numRhs) {
+        return -1;
+      } else if (numLhs > numRhs) {
+        return 1;
+      }
+      return 0;
     }
-    return 0;
+
+    case VPackValueType::Object: { 
+      // this is a rather exceptional case, so we can
+      // afford the inefficiency to convert the node to VPack
+      // for comparison (this saves us from writing our own compare function
+      // for array AstNodes)
+      auto l = lhs->toVelocyPackValue();
+      auto r = rhs->toVelocyPackValue();
+
+      return basics::VelocyPackHelper::compare(l->slice(), r->slice(), compareUtf8);
+    }
+
+    default: {
+      // all things equal
+      return 0;
+    }
   }
-
-  if (lType == VPackValueType::Object) {
-    // this is a rather exceptional case, so we can
-    // afford the inefficiency to convert the node to VPack
-    // for comparison (this saves us from writing our own compare function
-    // for array AstNodes)
-    auto l = lhs->toVelocyPackValue();
-    auto r = rhs->toVelocyPackValue();
-
-    return basics::VelocyPackHelper::compare(l->slice(), r->slice(), compareUtf8);
-  }
-
-  // all things equal
-  return 0;
 }
 
 /// @brief returns whether or not the string is empty
