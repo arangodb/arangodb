@@ -77,7 +77,7 @@ void EngineSelectorFeature::prepare() {
         FATAL_ERROR_EXIT();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to read content of 'ENGINE' file '" << _engineFilePath << "': " << ex.what();
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to read content of 'ENGINE' file '" << _engineFilePath << "': " << ex.what() << ". please make sure the file/directory is readable for the arangod process and user";
       FATAL_ERROR_EXIT();
     }
   }
@@ -110,7 +110,7 @@ void EngineSelectorFeature::start() {
     try {
       basics::FileUtils::spit(_engineFilePath, _engine);
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to write 'ENGINE' file '" << _engineFilePath << "': " << ex.what();
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to write 'ENGINE' file '" << _engineFilePath << "': " << ex.what() << ". please make sure the file/directory is writable for the arangod process and user";
       FATAL_ERROR_EXIT();
     }
   }
