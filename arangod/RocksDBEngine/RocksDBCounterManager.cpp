@@ -280,7 +280,6 @@ Result RocksDBCounterManager::sync(bool force) {
         // or start fresh.
         continue;
       }
-      std::string estimateSerialisation;
       auto rocksCollection =
           static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(rocksCollection != nullptr);
@@ -420,7 +419,7 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
   uint64_t _maxTick = 0;
   uint64_t _maxHLC = 0;
 
-  WBReader(std::unordered_map<
+  explicit WBReader(std::unordered_map<
            uint64_t,
            std::pair<uint64_t,
                      std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
