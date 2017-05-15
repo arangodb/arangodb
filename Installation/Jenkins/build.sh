@@ -677,6 +677,7 @@ ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
 (cd ${SOURCE_DIR}; git rev-parse HEAD > last_compiled_version.sha)
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
+    ${PACKAGE_MAKE} clean_packages || exit 1
     ${PACKAGE_MAKE} packages || exit 1
 fi
 # and install
