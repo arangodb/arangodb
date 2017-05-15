@@ -179,8 +179,8 @@ class Table : public std::enable_shared_from_this<Table> {
   uint32_t idealSize() const;
 
  private:
-  static constexpr double idealLowerRatio = 0.125;
-  static constexpr double idealUpperRatio = 0.75;
+  static constexpr double idealLowerRatio = 0.05;
+  static constexpr double idealUpperRatio = 0.33;
 
   State _state;
 
