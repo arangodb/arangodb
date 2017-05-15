@@ -326,9 +326,7 @@ function SkipListCorrSuite() {
       }
     
       // should not have created an index
-      // TODO: FIXME 04052017: re-activate this check!! waiting for mop to add rollback code 
-      // in case an index cannot be created on a shard 
-      // assertEqual(coll.getIndexes().length, 1);
+      assertEqual(coll.getIndexes().length, 1);
     }
   };
 }
