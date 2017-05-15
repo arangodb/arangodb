@@ -539,6 +539,17 @@ class ClusterInfo {
   double getReloadServerListTimeout() const { return 60.0; }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief ensure an index in coordinator.
+  //////////////////////////////////////////////////////////////////////////////
+
+  int ensureIndexCoordinatorWithoutRollback(
+      std::string const& databaseName, std::string const& collectionID,
+      std::string const& idSlice, arangodb::velocypack::Slice const& slice, bool create,
+      bool (*compare)(arangodb::velocypack::Slice const&,
+                      arangodb::velocypack::Slice const&),
+      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication
   //////////////////////////////////////////////////////////////////////////////
 

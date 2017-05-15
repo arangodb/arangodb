@@ -74,6 +74,11 @@ bool State::isSet(State::Flag flag) const {
   return ((_state.load() & static_cast<uint32_t>(flag)) > 0);
 }
 
+bool State::isSet(State::Flag flag1, State::Flag flag2) const {
+  TRI_ASSERT(isLocked());
+  return ((_state.load() & (static_cast<uint32_t>(flag1) | static_cast<uint32_t>(flag2))) > 0);
+}
+
 void State::toggleFlag(State::Flag flag) {
   TRI_ASSERT(isLocked());
   _state ^= static_cast<uint32_t>(flag);

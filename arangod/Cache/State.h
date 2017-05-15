@@ -107,6 +107,7 @@ struct State {
   /// @brief Checks whether the given flag is set. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
   bool isSet(State::Flag flag) const;
+  bool isSet(State::Flag flag1, State::Flag flag2) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Toggles the given flag. Requires state to be locked.
