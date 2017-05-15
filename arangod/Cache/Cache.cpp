@@ -279,8 +279,7 @@ std::shared_ptr<Table> Cache::table() { return _table; }
 
 void Cache::beginShutdown() {
   _state.lock();
-  if (!_state.isSet(State::Flag::shutdown) &&
-      !_state.isSet(State::Flag::shuttingDown)) {
+  if (!_state.isSet(State::Flag::shutdown, State::Flag::shuttingDown)) {
     _state.toggleFlag(State::Flag::shuttingDown);
   }
   _state.unlock();

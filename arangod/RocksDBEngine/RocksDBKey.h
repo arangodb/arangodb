@@ -135,6 +135,12 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey ReplicationApplierConfig(TRI_voc_tick_t databaseId);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for index estimate values of
+  ///        a collection
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKey IndexEstimateValue(uint64_t objectId);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the type from a key
@@ -211,8 +217,8 @@ class RocksDBKey {
   ///
   /// May be called only on EdgeIndexValue keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static std::string vertexId(RocksDBKey const&);
-  static std::string vertexId(rocksdb::Slice const&);
+  static StringRef vertexId(RocksDBKey const&);
+  static StringRef vertexId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the indexed VelocyPack values from a key
@@ -264,7 +270,7 @@ class RocksDBKey {
   static TRI_voc_cid_t viewId(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(char const* data, size_t size);
   static StringRef primaryKey(char const* data, size_t size);
-  static std::string vertexId(char const* data, size_t size);
+  static StringRef vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
 
  private:

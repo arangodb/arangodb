@@ -464,24 +464,55 @@ bool Node::handle<PUSH>(VPackSlice const& slice) {
   return true;
 }
 
-/// Remove element from any place in array by value array
-template <>
-bool Node::handle<ERASE>(VPackSlice const& slice) {
-  if (!slice.hasKey("val")) {
+/// Remove element from any place in array by value or position
+template <> bool Node::handle<ERASE>(VPackSlice const& slice) {
+  bool haveVal = slice.hasKey("val");
+  bool havePos = slice.hasKey("pos");
+
+  if (!haveVal && !havePos) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Operator erase without value to be erased: " << slice.toJson();
+      << "Operator erase without value or position to be erased is illegal: "
+      << slice.toJson();
     return false;
+  } else if (haveVal && havePos) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Operator erase with value and position to be erased is illegal: "
+      << slice.toJson();
+    return false;
+  } else if (havePos &&
+             (!slice.get("pos").isUInt() && !slice.get("pos").isSmallInt())) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Operator erase with non-positive integer position is illegal: "
+      << slice.toJson();
   }
+  
   Builder tmp;
   { VPackArrayBuilder t(&tmp);
+    
     if (this->slice().isArray()) {
-      for (auto const& old : VPackArrayIterator(this->slice())) {
-        if (old != slice.get("val")) {
-          tmp.add(old);
+      if (haveVal) {
+        for (auto const& old : VPackArrayIterator(this->slice())) {
+          if (old != slice.get("val")) {
+            tmp.add(old);
+          }
+        }
+      } else {
+        size_t pos = slice.get("pos").getNumber<size_t>();
+        if (pos >= this->slice().length()) {
+          return false;
+        }
+        size_t n = 0;
+        for (const auto& old : VPackArrayIterator(this->slice())) {
+          if (n != pos) {
+            tmp.add(old);
+          }
+          ++n;
         }
       }
     }
+    
   }
+  
   *this = tmp.slice();
   return true;
 }

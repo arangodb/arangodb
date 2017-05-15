@@ -447,14 +447,14 @@ void Manager::reportAccess(std::shared_ptr<Cache> cache) {
 void Manager::reportHitStat(Stat stat) {
   switch (stat) {
     case Stat::findHit: {
-      _findHits++;
+      ++_findHits;
       if (_enableWindowedStats && _findStats.get() != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
       }
       break;
     }
     case Stat::findMiss: {
-      _findMisses++;
+      ++_findMisses;
       if (_enableWindowedStats && _findStats.get() != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
       }
@@ -466,14 +466,12 @@ void Manager::reportHitStat(Stat stat) {
 
 bool Manager::isOperational() const {
   TRI_ASSERT(_state.isLocked());
-  return (!_state.isSet(State::Flag::shutdown) &&
-          !_state.isSet(State::Flag::shuttingDown));
+  return !_state.isSet(State::Flag::shutdown, State::Flag::shuttingDown);
 }
 
 bool Manager::globalProcessRunning() const {
   TRI_ASSERT(_state.isLocked());
-  return (_state.isSet(State::Flag::rebalancing) ||
-          _state.isSet(State::Flag::resizing));
+  return _state.isSet(State::Flag::rebalancing, State::Flag::resizing);
 }
 
 boost::asio::io_service* Manager::ioService() { return _ioService; }

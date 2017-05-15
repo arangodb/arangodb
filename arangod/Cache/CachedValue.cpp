@@ -57,9 +57,13 @@ bool CachedValue::sameKey(void const* k, uint32_t kSize) const {
   return (0 == memcmp(key(), k, keySize));
 }
 
-void CachedValue::lease() { refCount++; }
+void CachedValue::lease() { ++refCount; }
 
-void CachedValue::release() { refCount--; }
+void CachedValue::release() { 
+  if (--refCount == UINT32_MAX) {
+    TRI_ASSERT(false);
+  }
+}
 
 bool CachedValue::isFreeable() { return (refCount.load() == 0); }
 

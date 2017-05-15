@@ -41,7 +41,8 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class Finding {
  public:
-  Finding(CachedValue* v);
+  Finding();
+  explicit Finding(CachedValue* v);
   Finding(Finding const& other);
   Finding(Finding&& other);
   Finding& operator=(Finding const& other);
@@ -52,6 +53,12 @@ class Finding {
   /// @brief Changes the underlying CachedValue pointer.
   //////////////////////////////////////////////////////////////////////////////
   void reset(CachedValue* v);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Sets the underlying CachedValue pointer. Assumes that the Finding
+  /// is currently empty
+  //////////////////////////////////////////////////////////////////////////////
+  void set(CachedValue* v);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Specifies whether the value was found. If not, value is nullptr.

@@ -39,6 +39,7 @@
 
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBToken.h"
@@ -116,15 +117,17 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   // acquire RocksDB collection
   RocksDBToken token;
-  auto iterateChachedValues = [this,&cb,&limit,&token](){
-    //LOG_TOPIC(ERR, Logger::FIXME) << "value found in cache ";
+  auto iterateCachedValues = [this,&cb,&limit,&token](){
     while(_arrayIterator.valid()){
-      StringRef edgeKey(_arrayIterator.value());
-      if(lookupDocumentAndUseCb(edgeKey, cb, limit, token, true)){
-        _arrayIterator++;
-        return true; // more documents - function will be re-entered
+      VPackSlice edgeKey(_arrayIterator.value());
+
+      cb(RocksDBToken(edgeKey.getUInt()));
+      --limit;
+      ++_arrayIterator;
+      if (limit == 0) {
+        _doUpdateArrayIterator=false; //limit hit continue with next batch
+        return true;
       }
-      _arrayIterator++;
     }
 
     //reset cache iterator before handling next from/to
@@ -137,7 +140,6 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     TRI_ASSERT(limit > 0);
     StringRef fromTo = getFromToFromIterator(_keysIterator);
     bool foundInCache = false;
-    //LOG_TOPIC(ERR, Logger::FIXME) << "fromTo" << fromTo;
 
     if (_useCache && _doUpdateArrayIterator){
       // try to find cached value
@@ -162,7 +164,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         _arrayIterator = VPackArrayIterator(_arraySlice);
 
         // iterate until batch size limit is hit
-        bool continueWithNextBatch = iterateChachedValues();
+        bool continueWithNextBatch = iterateCachedValues();
         if(continueWithNextBatch){
           return true; // exit and continue with next batch
         }
@@ -171,7 +173,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       // resuming old iterator
       foundInCache = true; // do not look up key again!
       _doUpdateArrayIterator = true;
-      bool continueWithNextBatch = iterateChachedValues();
+      bool continueWithNextBatch = iterateCachedValues();
       if(continueWithNextBatch){
         return true; // exit and continue with next batch
       }
@@ -197,17 +199,18 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
       while (_iterator->Valid() && (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
+        
+        // lookup real document
+        bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token, false);
 
         // build cache value for from/to
         if(_useCache){
           if (_cacheValueSize <= cacheValueSizeLimit){
-            _cacheValueBuilder.add(VPackValue(std::string(edgeKey.data(),edgeKey.size())));
+            _cacheValueBuilder.add(VPackValue(token.revisionId()));
             ++_cacheValueSize;
           }
         }
 
-        // lookup real document
-        bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token, false);
         _iterator->Next();
         //check batch size limit
         if(continueWithNextBatch){
@@ -272,19 +275,31 @@ void RocksDBEdgeIndexIterator::reset() {
 
 // ============================= Index ====================================
 
+uint64_t RocksDBEdgeIndex::HashForKey(const rocksdb::Slice& key) {
+  std::hash<StringRef> hasher;
+  // NOTE: This function needs to use the same hashing on the
+  // indexed VPack as the initial inserter does
+  StringRef tmp = RocksDBKey::vertexId(key);
+  return static_cast<uint64_t>(hasher(tmp));
+}
+
 RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    arangodb::LogicalCollection* collection,
                                    VPackSlice const& info,
                                    std::string const& attr)
-    : RocksDBIndex(iid
-                  ,collection
-                  ,std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}})
-                  ,false // unique
-                  ,false // sparse
-                  ,basics::VelocyPackHelper::stringUInt64(info, "objectId")
-                  ,!ServerState::instance()->isCoordinator() // useCache
-                  )
-    , _directionAttr(attr) {
+    : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
+                                        {{AttributeName(attr, false)}}),
+                   false, false,
+                   basics::VelocyPackHelper::stringUInt64(info, "objectId"),
+                   !ServerState::instance()->isCoordinator() /*useCache*/
+                   ),
+      _directionAttr(attr),
+      _estimator(nullptr) {
+  if (!ServerState::instance()->isCoordinator()) {
+    // We activate the estimator only on DBServers
+    _estimator = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(RocksDBIndex::ESTIMATOR_SIZE);
+    TRI_ASSERT(_estimator != nullptr);
+  }
   TRI_ASSERT(iid != 0);
   TRI_ASSERT(_objectId != 0);
   // if we never hit the assertions we need to remove the
@@ -306,25 +321,11 @@ double RocksDBEdgeIndex::selectivityEstimate(
     return 0.1;
   }
 
-  if (attribute != nullptr) {
-    // the index attribute is given here
-    // now check if we can restrict the selectivity estimation to the correct
-    // part of the index
-    if (attribute->compare(_directionAttr) == 0) {
-      // _from
-      return 0.2;  //_edgesFrom->selectivity();
-    } else {
-      return 0;
-    }
-    // other attribute. now return the average selectivity
+  if (attribute != nullptr && attribute->compare(_directionAttr)) {
+    return 0;
   }
-
-  // return average selectivity of the two index parts
-  // double estimate = (_edgesFrom->selectivity() + _edgesTo->selectivity()) *
-  // 0.5;
-  // TRI_ASSERT(estimate >= 0.0 &&
-  //           estimate <= 1.00001);  // floating-point tolerance
-  return 0.1;
+  TRI_ASSERT(_estimator != nullptr);
+  return _estimator->computeEstimate();
 }
 
 /// @brief return the memory usage for the index
@@ -354,7 +355,7 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-  auto fromToRef=StringRef(fromTo);
+  auto fromToRef = StringRef(fromTo);
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef,
                                               StringRef(primaryKey));
   //blacklist key in cache
@@ -367,6 +368,9 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   rocksdb::Status status =
       rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
   if (status.ok()) {
+    std::hash<StringRef> hasher;
+    uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
+    _estimator->insert(hash);
     return TRI_ERROR_NO_ERROR;
   } else {
     return rocksutils::convertStatus(status).errorNumber();
@@ -383,7 +387,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                              bool isRollback) {
   VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
-  auto fromToRef=StringRef(fromTo);
+  auto fromToRef = StringRef(fromTo);
   TRI_ASSERT(primaryKey.isString() && fromTo.isString());
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef,
                                               StringRef(primaryKey));
@@ -396,6 +400,9 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   rocksdb::Transaction* rtrx = state->rocksTransaction();
   rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
   if (status.ok()) {
+    std::hash<StringRef> hasher;
+    uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
+    _estimator->remove(hash);
     return TRI_ERROR_NO_ERROR;
   } else {
     return rocksutils::convertStatus(status).errorNumber();
@@ -618,10 +625,48 @@ int RocksDBEdgeIndex::cleanup() {
   return TRI_ERROR_NO_ERROR;
 }
 
+void RocksDBEdgeIndex::serializeEstimate(std::string& output) const {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->serialize(output);
+}
+
+bool RocksDBEdgeIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  // We simply drop the current estimator and steal the one from recovery
+  // We are than save for resizing issues in our _estimator format
+  // and will use the old size.
+
+  TRI_ASSERT(mgr != nullptr);
+  auto tmp =  mgr->stealIndexEstimator(_objectId);
+  if (tmp == nullptr) {
+    // We expected to receive a stored index estimate, however we got none.
+    // We use the freshly created estimator but have to recompute it.
+    return false;
+  }
+  _estimator.swap(tmp);
+  TRI_ASSERT(_estimator != nullptr);
+  return true;
+}
+
+
+void RocksDBEdgeIndex::recalculateEstimates() {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->clear();
+
+  auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
+  rocksutils::iterateBounds(bounds, [&](rocksdb::Iterator* it) {
+    uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
+    _estimator->insert(hash);
+  });
+}
+
 Result RocksDBEdgeIndex::postprocessRemove(transaction::Methods* trx,
                                               rocksdb::Slice const& key,
                                               rocksdb::Slice const& value) {
   //blacklist keys during truncate
   blackListKey(key.data(), key.size());
+
+  uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
+  _estimator->remove(hash);
   return {TRI_ERROR_NO_ERROR};
 }

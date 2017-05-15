@@ -53,6 +53,7 @@ add_executable(
   Cache/TransactionsWithBackingStore.cpp
   Geo/georeg.cpp
   Pregel/typedbuffer.cpp
+  RocksDBEngine/IndexEstimatorTest.cpp
   main.cpp
 )
 
