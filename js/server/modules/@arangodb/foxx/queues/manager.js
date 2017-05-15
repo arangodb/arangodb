@@ -163,7 +163,7 @@ exports.run = function () {
   var options = require('internal').options();
 
   // disable foxx queues
-  if (options['foxx.queues'] === false || options['database.init-database'] === true) {
+  if (options['foxx.queues'] === false) {
     return;
   }
 
