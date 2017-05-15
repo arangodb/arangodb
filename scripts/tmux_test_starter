@@ -4,7 +4,10 @@
 main(){
     #cd ..  || die "can not change directory"
     #TODO check that we are in source dir
-    local tasks=task_all #FIXME add taks selection
+    local suite=${1:-all}
+    local tasks="task_$suite"
+    type -t function $tasks || die "suite $suite not defined"
+    # ceck task
     local session_name="$($tasks 'name')"
     local panes=$($tasks 'num')
     kill_old_session "$session_name"
@@ -35,7 +38,7 @@ task_all(){
             return
         ;;
         0)
-            echo "./scripts/quickieTest.sh && exit 0"
+            echo "./scripts/quickieTest.sh $args && exit 0"
             return
         ;;
         1)
@@ -60,6 +63,23 @@ task_all(){
     esac
 
     echo "./scripts/unittest $tests $args_default $args && exit 0"
+}
+
+task_all_rocksdb(){
+    local count="$1"
+    local args_default=""
+    local args="$2"
+
+    local tests=""
+    case $1 in
+        name)
+            echo "test_all_rocksdb"
+            return
+        ;;
+        *)
+            task_all "$1" "--storageEngine rocksdb"
+        ;;
+    esac
 }
 
 # tmux
