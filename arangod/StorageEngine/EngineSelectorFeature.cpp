@@ -70,9 +70,14 @@ void EngineSelectorFeature::prepare() {
 
   // file if engine in file does not match command-line option
   if (basics::FileUtils::isRegularFile(_engineFilePath)) {
-    std::string content = basics::FileUtils::slurp(_engineFilePath);
-    if (content != _engine) {
-      LOG_TOPIC(FATAL, Logger::STARTUP) << "content of 'ENGINE' file '" << _engineFilePath << "' and command-line/configuration option value do not match: '" << content << "' != '" << _engine << "'. please validate the command-line/configuration option value of '--server.storage-engine' or use a different database directory if the change is intentional";
+    try {
+      std::string content = basics::FileUtils::slurp(_engineFilePath);
+      if (content != _engine) {
+        LOG_TOPIC(FATAL, Logger::STARTUP) << "content of 'ENGINE' file '" << _engineFilePath << "' and command-line/configuration option value do not match: '" << content << "' != '" << _engine << "'. please validate the command-line/configuration option value of '--server.storage-engine' or use a different database directory if the change is intentional";
+        FATAL_ERROR_EXIT();
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to read content of 'ENGINE' file '" << _engineFilePath << "': " << ex.what();
       FATAL_ERROR_EXIT();
     }
   }
