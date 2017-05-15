@@ -28,9 +28,8 @@
 #include <cstddef>
 #include <iostream>
 
-#include <RocksDBEngine/RocksDBGeoIndexImpl.h>
-#include <rocksdb/utilities/transaction.h>
-#include <rocksdb/utilities/write_batch_with_index.h>
+#include "RocksDBEngine/RocksDBGeoIndexImpl.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 
 /* Radius of the earth used for distances  */
 #define EARTHRADIAN 6371000.0
@@ -132,8 +131,7 @@ typedef struct {
   GeoIndexFixed fixed; /* fixed point data          */
   int nextFreePot;           /* pots allocated      */
   int nextFreeSlot;          /* slots allocated     */
-  rocksdb::Transaction *rocksTransaction;
-  rocksdb::WriteBatchWithIndex *rocksBatch;
+  RocksDBMethods *rocksMethods;
   //GeoPot* ypots;       /* the pots themselves     */// gone
   //GeoCoordinate* gxc;  /* the slots themselves    */// gone
   //size_t _memoryUsed;  /* the amount of memory currently used */// gone
@@ -271,40 +269,20 @@ namespace arangodb { namespace rocksdbengine {
   
   
 /* CRUD interface */
-  
-void GeoIndex_setRocksTransaction(GeoIdx* gi,
-                                  rocksdb::Transaction* trx) {
-  GeoIx* gix = (GeoIx*)gi;
-  gix->rocksTransaction = trx;
-}
 
-void GeoIndex_setRocksBatch(GeoIdx* gi,
-                            rocksdb::WriteBatchWithIndex* wb) {
+void GeoIndex_setRocksMethods(GeoIdx* gi, RocksDBMethods* trx) {
   GeoIx* gix = (GeoIx*)gi;
-  gix->rocksBatch = wb;
+  gix->rocksMethods = trx;
 }
 
 void GeoIndex_clearRocks(GeoIdx* gi) {
   GeoIx* gix = (GeoIx*)gi;
-  gix->rocksTransaction = nullptr;
-  gix->rocksBatch = nullptr;
+  gix->rocksMethods = nullptr;
 }
   
 inline void RocksRead(GeoIx * gix, RocksDBKey const& key, std::string *val) {
-  rocksdb::Status s;
-  rocksdb::ReadOptions opts;
-  if (gix->rocksTransaction != nullptr) {
-    s = gix->rocksTransaction->Get(opts, key.string(), val);
-  } else {
-    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-    if (gix->rocksBatch != nullptr) {
-      s = gix->rocksBatch->GetFromBatchAndDB(db, opts, key.string(), val);
-    } else {
-      s = db->Get(opts, key.string(), val);
-    }
-  }
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+  arangodb::Result r = gix->rocksMethods->Get(key, val);
+  if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 }
@@ -312,39 +290,15 @@ inline void RocksRead(GeoIx * gix, RocksDBKey const& key, std::string *val) {
 inline void RocksWrite(GeoIx * gix,
                        RocksDBKey const& key,
                        rocksdb::Slice const& slice) {
-  rocksdb::Status s;
-  if (gix->rocksTransaction != nullptr) {
-    s = gix->rocksTransaction->Put(key.string(), slice);
-  } else {
-    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-    if (gix->rocksBatch != nullptr) {
-      gix->rocksBatch->Put(key.string(), slice);
-    } else {
-      rocksdb::WriteOptions opts;
-      s = db->Put(opts, key.string(), slice);
-    }
-  }
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+  arangodb::Result r = gix->rocksMethods->Put(key, slice);
+  if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 }
   
 inline void RocksDelete(GeoIx* gix, RocksDBKey const& key) {
-  rocksdb::Status s;
-  if (gix->rocksTransaction != nullptr) {
-    s = gix->rocksTransaction->Delete(key.string());
-  } else {
-    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-    if (gix->rocksBatch != nullptr) {
-      gix->rocksBatch->Delete(key.string());
-    } else {
-      rocksdb::WriteOptions opts;
-      s = db->Delete(opts, key.string());
-    }
-  }
-  if (!s.ok()) {
-    arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+  arangodb::Result r = gix->rocksMethods->Delete(key);
+  if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 }
@@ -466,8 +420,7 @@ GeoIdx* GeoIndex_new(uint64_t objectId,
     return (GeoIdx*)gix;
   }
   // need to set these to null
-  gix->rocksTransaction = nullptr;
-  gix->rocksBatch = nullptr;
+  gix->rocksMethods = nullptr;
 
   /* set up the fixed points structure  */
 

@@ -476,10 +476,7 @@ int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
 int RocksDBGeoIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                             VPackSlice const& doc, bool isRollback) {
   // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-
-  GeoIndex_setRocksTransaction(_geoIndex, rtrx);
+  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
   int res = this->internalInsert(revisionId, doc);
   GeoIndex_clearRocks(_geoIndex);
   return res;
@@ -488,7 +485,7 @@ int RocksDBGeoIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
 int RocksDBGeoIndex::insertRaw(rocksdb::WriteBatchWithIndex* batch,
                                TRI_voc_rid_t revisionId,
                                arangodb::velocypack::Slice const& doc) {
-  GeoIndex_setRocksBatch(_geoIndex, batch);
+  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
   int res = this->internalInsert(revisionId, doc);
   GeoIndex_clearRocks(_geoIndex);
   return res;
@@ -556,11 +553,9 @@ int RocksDBGeoIndex::internalRemove(TRI_voc_rid_t revisionId,
 
 int RocksDBGeoIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                             VPackSlice const& doc, bool isRollback) {
-  // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-
-  GeoIndex_setRocksTransaction(_geoIndex, rtrx);
+  // acquire rocksdb methods
+  RocksDBMethods *methods = rocksutils::toRocksMethods(trx);
+  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
   int res = this->internalRemove(revisionId, doc);
   GeoIndex_clearRocks(_geoIndex);
   return res;
@@ -569,7 +564,7 @@ int RocksDBGeoIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
 int RocksDBGeoIndex::removeRaw(rocksdb::WriteBatchWithIndex* batch,
                                TRI_voc_rid_t revisionId,
                                arangodb::velocypack::Slice const& doc) {
-  GeoIndex_setRocksBatch(_geoIndex, batch);
+  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
   int res = this->internalRemove(revisionId, doc);
   GeoIndex_clearRocks(_geoIndex);
   return res;

@@ -49,30 +49,27 @@ namespace arangodb {
 
 class RocksDBOperationResult : public Result {
  public:
-  explicit RocksDBOperationResult() : Result(), _keySize(0), _commitRequired(false) {}
+  explicit RocksDBOperationResult() : Result(), _keySize(0) {}
 
   RocksDBOperationResult(Result const& other)
-      : _keySize(0), _commitRequired(false) {
+      : _keySize(0) {
     cloneData(other);
   }
 
-  RocksDBOperationResult(Result&& other) : _keySize(0), _commitRequired(false) {
+  RocksDBOperationResult(Result&& other) : _keySize(0) {
     cloneData(std::move(other));
   }
 
   uint64_t keySize() const { return _keySize; }
   void keySize(uint64_t s) { _keySize = s; }
 
-  bool commitRequired() const { return _commitRequired; }
-  void commitRequired(bool cr) { _commitRequired = cr; }
-
  protected:
   uint64_t _keySize;
-  bool _commitRequired;
 };
 
 class TransactionState;
 class RocksDBTransactionState;
+class RocksDBMethods;
 class RocksDBKeyBounds;
 class RocksDBEngine;
 namespace transaction {
@@ -93,6 +90,8 @@ std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
     VPackSlice const& inputSlice, bool checkBeforeCopy = true);
 
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
+RocksDBMethods* toRocksMethods(transaction::Methods* trx);
+  
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(

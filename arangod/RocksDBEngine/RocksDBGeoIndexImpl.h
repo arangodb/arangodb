@@ -30,12 +30,9 @@
 #include "Basics/Common.h"
 #include <cstdint>
 
-namespace rocksdb {
-  class Transaction;
-  class WriteBatchWithIndex;
-}
-
-namespace arangodb { namespace rocksdbengine {
+namespace arangodb {
+struct RocksDBMethods;
+namespace rocksdbengine {
 
 /* first the things that a user might want to change */
 
@@ -115,8 +112,7 @@ void GeoIndex_INDEXDUMP(GeoIdx* gi, FILE* f);
 int GeoIndex_INDEXVALID(GeoIdx* gi);
 #endif
   
-void GeoIndex_setRocksTransaction(GeoIdx* gi, rocksdb::Transaction*);
-void GeoIndex_setRocksBatch(GeoIdx* gi, rocksdb::WriteBatchWithIndex*);
+void GeoIndex_setRocksMethods(GeoIdx* gi, RocksDBMethods*);
 void GeoIndex_clearRocks(GeoIdx* gi);
 
 }}

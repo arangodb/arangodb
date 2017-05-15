@@ -54,32 +54,14 @@ namespace transaction {
 class Methods;
 }
 class TransactionCollection;
-
-class RocksDBSavePoint {
- public:
-  RocksDBSavePoint(rocksdb::Transaction* trx, bool handled, std::function<void()> const& rollbackCallback);
-  ~RocksDBSavePoint();
-
-  void commit();
-
- private:
-  void rollback();
-
- private:
-  rocksdb::Transaction* _trx;
-  std::function<void()> const _rollbackCallback;
-  bool _handled;
-};
+class RocksDBMethods;
   
-/*class RocksDBKey;
-struct RocksDBBatch {
-  virtual arangodb::Result Get(RocksDBKey const&, std::string*) = 0;
-  virtual arangodb::Result Put(RocksDBKey const&, rocksdb::Slice const&) = 0;
-  virtual arangodb::Result Delete(RocksDBKey const&) = 0;
-};*/
-
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
+  friend class RocksDBReadOnlyMethods;
+  friend class RocksDBTrxMethods;
+  //friend struct RocksDBIntermediateOps;
+  
  public:
   explicit RocksDBTransactionState(TRI_vocbase_t* vocbase,
                                    uint64_t maxOperationSize,
@@ -122,24 +104,29 @@ class RocksDBTransactionState final : public TransactionState {
       TRI_voc_document_operation_e operationType, uint64_t operationSize,
       uint64_t keySize);
 
-  rocksdb::Transaction* rocksTransaction() {
+  RocksDBMethods* rocksdbMethods();
+  /*rocksdb::Transaction* rocksTransaction() {
     TRI_ASSERT(_rocksTransaction != nullptr);
     return _rocksTransaction.get();
   }
-
   rocksdb::ReadOptions const& readOptions() const { return _rocksReadOptions; }
-  
-  rocksdb::WriteOptions const& writeOptions() const { return _rocksWriteOptions; }
+  rocksdb::WriteOptions const& writeOptions() const { return _rocksWriteOptions; }*/
 
   uint64_t sequenceNumber() const;
+  
+private:
+  
+  void createTransaction();
+  arangodb::Result internalCommit();
 
  private:
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
   rocksdb::WriteOptions _rocksWriteOptions;
   rocksdb::ReadOptions _rocksReadOptions;
   cache::Transaction* _cacheTx;
-  // current transaction size
-  uint64_t _transactionSize;
+
+  std::unique_ptr<RocksDBMethods> _rocksMethods;
+
   // a transaction may not become bigger than this value
   uint64_t _maxTransactionSize;
   // if a transaction gets bigger than  this value and intermediate transactions

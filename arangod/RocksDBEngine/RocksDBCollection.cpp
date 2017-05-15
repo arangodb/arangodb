@@ -42,6 +42,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -73,11 +74,6 @@ namespace {
 
 static std::string const Empty;
 
-static inline rocksdb::Transaction* rocksTransaction(
-    arangodb::transaction::Methods* trx) {
-  return static_cast<RocksDBTransactionState*>(trx->state())
-      ->rocksTransaction();
-}
 }  // namespace
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
@@ -625,13 +621,13 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   TRI_voc_cid_t cid = _logicalCollection->cid();
 
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  RocksDBMethods *mthd = state->rocksdbMethods();
+  //rocksdb::Transaction* rtrx = state->rocksTransaction();
 
   // delete documents
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
-  std::unique_ptr<rocksdb::Iterator> iter(
-      rtrx->GetIterator(state->readOptions()));
+  std::unique_ptr<rocksdb::Iterator> iter = mthd->NewIterator();
   iter->Seek(documentBounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
@@ -645,10 +641,9 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // add possible log statement
     state->prepareOperation(cid, revisionId, StringRef(key),
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    rocksdb::Status s = rtrx->Delete(iter->key());
-    if (!s.ok()) {
-      auto converted = convertStatus(s);
-      THROW_ARANGO_EXCEPTION(converted);
+    Result r = mthd->Delete(iter->key());
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION(r);
     }
     // report size of key
     RocksDBOperationResult result =
@@ -658,11 +653,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // transaction size limit reached -- fail
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
-    }
-
-    // force intermediate commit
-    if (result.commitRequired()) {
-      // force commit
     }
 
     iter->Next();
@@ -867,7 +857,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   RocksDBTransactionState* state = toRocksTransactionState(trx);
 
-  RocksDBSavePoint guard(rocksTransaction(trx),
+  RocksDBSavePoint guard(rocksutils::toRocksMethods(trx),
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
 

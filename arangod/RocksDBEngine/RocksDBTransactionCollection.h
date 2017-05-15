@@ -76,8 +76,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t numRemoves() const { return _numRemoves; }
 
   /// @brief add an operation for a transaction collection
-  void addOperation(TRI_voc_document_operation_e operationType, uint64_t operationSize, TRI_voc_rid_t revisionId) ;
-  void resetCounts();
+  void addOperation(TRI_voc_document_operation_e operationType, uint64_t operationSize, TRI_voc_rid_t revisionId);
+  void commitCounts();
  
  private:
   /// @brief request a lock for a collection

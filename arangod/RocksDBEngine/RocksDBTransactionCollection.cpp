@@ -258,6 +258,14 @@ void RocksDBTransactionCollection::addOperation(
   _operationSize += operationSize;
 }
 
+void RocksDBTransactionCollection::commitCounts() {
+  _initialNumberDocuments = _numInserts - _numRemoves;
+  _operationSize = 0;
+  _numInserts = 0;
+  _numUpdates = 0;
+  _numRemoves = 0;
+}
+
 /// @brief lock a collection
 int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
   if (!AccessMode::isWriteOrExclusive(type)) {
