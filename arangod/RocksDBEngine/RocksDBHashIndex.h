@@ -24,6 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_HASH_INDEX_H
 #define ARANGOD_ROCKSDB_ROCKSDB_HASH_INDEX_H 1
 
+#include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 
 namespace arangodb {
@@ -44,6 +45,7 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
   bool matchesDefinition(VPackSlice const& info) const override;
 
   bool isSorted() const override { return true; }
+
 };
 }
 

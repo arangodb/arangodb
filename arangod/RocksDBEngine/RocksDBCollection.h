@@ -32,6 +32,10 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 
+namespace rocksdb {
+class Transaction;
+}
+
 namespace arangodb {
 namespace cache {
   class Cache;
@@ -184,6 +188,11 @@ class RocksDBCollection final : public PhysicalCollection {
 
   bool hasGeoIndex() { return _hasGeoIndex; }
 
+  Result serializeIndexEstimates(rocksdb::Transaction*) const;
+  void deserializeIndexEstimates(arangodb::RocksDBCounterManager* mgr);
+
+  void recalculateIndexEstimates();
+
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(
@@ -220,15 +229,21 @@ class RocksDBCollection final : public PhysicalCollection {
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
                                        arangodb::ManagedDocumentResult&) const;
 
+  void recalculateIndexEstimates(std::vector<std::shared_ptr<Index>>& indexes);
+
   void createCache() const;
+
   void disableCache() const;
+
   inline bool useCache() const { return (_useCache && _cachePresent); }
+
   void blackListKey(char const* data, std::size_t len) const;
 
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
+  mutable std::atomic<bool> _needToPersistIndexEstimates;
 
   /// upgrade write locks to exclusive locks if this flag is set
   bool _hasGeoIndex;

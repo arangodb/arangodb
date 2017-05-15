@@ -89,6 +89,10 @@ uint64_t uint64FromPersistent(char const* p);
 void uint64ToPersistent(char* p, uint64_t value);
 void uint64ToPersistent(std::string& out, uint64_t value);
 
+uint16_t uint16FromPersistent(char const* p);
+void uint16ToPersistent(char* p, uint16_t value);
+void uint16ToPersistent(std::string& out, uint16_t value);
+
 std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
     VPackSlice const& inputSlice, bool checkBeforeCopy = true);
 

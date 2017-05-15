@@ -38,6 +38,12 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
+// This is the number of distinct elements the index estimator can reliably store
+// This correlates directly with the memmory of the estimator:
+// memmory == ESTIMATOR_SIZE * 6 bytes
+
+uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
+
 RocksDBIndex::RocksDBIndex(
     TRI_idx_iid_t id, LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
@@ -160,6 +166,22 @@ int RocksDBIndex::drop() {
     }
   }
   return TRI_ERROR_NO_ERROR;
+}
+
+void RocksDBIndex::serializeEstimate(std::string&) const {
+  // All indexes that do not have an estimator do not serialize anything.
+}
+
+bool RocksDBIndex::deserializeEstimate(RocksDBCounterManager*) {
+  // All indexes that do not have an estimator do not deserialize anything.
+  // So the estimate is always recreatable.
+  // We do not advance anything here.
+  return true;
+}
+
+void RocksDBIndex::recalculateEstimates() {
+  // Nothing to do.
+  return;
 }
 
 void RocksDBIndex::truncate(transaction::Methods* trx) {

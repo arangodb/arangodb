@@ -28,32 +28,39 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
-var internal = require('internal');
-var jsunity = require('jsunity');
+const db = require('@arangodb').db;
+const internal = require('internal');
+const jsunity = require('jsunity');
+
+const colName1 = 'UnitTestsRecovery1';
+const colName2 = 'UnitTestsRecovery2';
+const colName3 = 'UnitTestsRecovery3';
+const est1 = 1; // The index is de-facto unique so estimate 1
+const est2 = 1; // This index is unique. Estimate 1
+const est3 = 4 / 1000; // This index has 4 different values and stores 1000 documents
 
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  db._drop('UnitTestsRecovery1');
-  var c = db._create('UnitTestsRecovery1'), i;
+  db._drop(colName1);
+  var c = db._create(colName1), i;
   c.ensureHashIndex('value');
 
   for (i = 0; i < 1000; ++i) {
     c.save({ value: i });
   }
 
-  db._drop('UnitTestsRecovery2');
-  c = db._create('UnitTestsRecovery2');
+  db._drop(colName2);
+  c = db._create(colName2);
   c.ensureUniqueConstraint('a.value');
 
   for (i = 0; i < 1000; ++i) {
     c.save({ a: { value: i } });
   }
 
-  db._drop('UnitTestsRecovery3');
-  c = db._create('UnitTestsRecovery3');
+  db._drop(colName3);
+  c = db._create(colName3);
   c.ensureHashIndex('a', 'b');
 
   for (i = 0; i < 500; ++i) {
@@ -84,39 +91,82 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testIndexesHash: function () {
-      var c = db._collection('UnitTestsRecovery1'), idx, i;
-      idx = c.getIndexes()[1];
+    testSingleAttributeHashIndexInfo: function() {
+      let c = db._collection(colName1);
+      let idx = c.getIndexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value' ], idx.fields);
-      for (i = 0; i < 1000; ++i) {
+    },
+
+    testSingleAttributeHashIndexByExample: function() {
+      let c = db._collection(colName1);
+      for (let i = 0; i < 1000; ++i) {
         assertEqual(1, c.byExample({ value: i }).toArray().length);
       }
-      assertEqual(1, db._query("FOR doc IN UnitTestsRecovery1 FILTER doc.value == 0 RETURN doc").toArray().length);
+    },
 
-      c = db._collection('UnitTestsRecovery2');
-      idx = c.getIndexes()[1];
+    testSingleAttributeHashIndexAql: function() {
+      assertEqual(1, db._query(`FOR doc IN ${colName1} FILTER doc.value == 0 RETURN doc`).toArray().length);
+    },
+
+    testSingleAttributeHashIndexEstimate: function () {
+      let c = db._collection(colName1);
+      let idx = c.getIndexes()[1];
+      assertEqual(est1, idx.selectivityEstimate);
+    },
+
+    testNestedAttributeHashIndexInfo: function() {
+      let c = db._collection(colName2);
+      let idx = c.getIndexes()[1];
       assertTrue(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'a.value' ], idx.fields);
-      for (i = 0; i < 1000; ++i) {
+    },
+
+    testNestedAttributeHashIndexByExample: function() {
+      let c = db._collection(colName2);
+      for (let i = 0; i < 1000; ++i) {
         assertEqual(1, c.byExample({ 'a.value': i }).toArray().length);
       }
-      assertEqual(1, db._query("FOR doc IN UnitTestsRecovery2 FILTER doc.a.value == 0 RETURN doc").toArray().length);
+    },
 
-      c = db._collection('UnitTestsRecovery3');
-      idx = c.getIndexes()[1];
+    testNestedAttributeHashIndexAql: function() {
+      assertEqual(1, db._query(`FOR doc IN ${colName2} FILTER doc.a.value == 0 RETURN doc`).toArray().length);
+    },
+
+    testNestedAttributeHashIndexEstimate: function () {
+      let c = db._collection(colName2);
+      let idx = c.getIndexes()[1];
+      assertEqual(est2, idx.selectivityEstimate);
+    },
+ 
+    testManyAttributesHashIndexInfo: function() {
+      let c = db._collection(colName3);
+      let idx = c.getIndexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'a', 'b' ], idx.fields);
+    },
+
+    testManyAttributesHashIndexByExample: function() {
+      let c = db._collection(colName3);
       assertEqual(250, c.byExample({ a: 1, b: 1 }).toArray().length);
       assertEqual(250, c.byExample({ a: 1, b: 2 }).toArray().length);
       assertEqual(250, c.byExample({ a: 2, b: 1 }).toArray().length);
       assertEqual(250, c.byExample({ a: 2, b: 2 }).toArray().length);
-      assertEqual(250, db._query("FOR doc IN UnitTestsRecovery3 FILTER doc.a == 1 && doc.b == 1 RETURN doc").toArray().length);
-    }
+    },
 
+    testManyAttributesHashIndexAql: function() {
+      assertEqual(250, db._query(`FOR doc IN ${colName3} FILTER doc.a == 1 && doc.b == 1 RETURN doc`).toArray().length);
+    },
+
+    testManyAttributesHashIndexEstimate: function () {
+      let c = db._collection(colName3);
+      let idx = c.getIndexes()[1];
+      assertEqual(est3, idx.selectivityEstimate);
+    },
+ 
   };
 }
 
