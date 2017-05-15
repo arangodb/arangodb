@@ -33,7 +33,21 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
 var wait = internal.wait;
+var print = internal.print;
 var ArangoCollection = arangodb.ArangoCollection;
+
+var mmfilesEngine = false;
+if (db._engine().name === "mmfiles") {
+  mmfilesEngine = true;
+}
+
+var printed=false;
+function printNotImplemented(message){
+  if(!printed){
+    printed = true;
+    print("test for " + message + " not implemented");
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: buckets
@@ -60,9 +74,20 @@ function EdgeIndexBucketsSuite () {
       db._drop(en1);
       db._drop(en2);
       db._drop(en3);
-      edge1 = db._createEdgeCollection(en1, { indexBuckets: 1 });
-      edge2 = db._createEdgeCollection(en2, { indexBuckets: 16 });
-      edge3 = db._createEdgeCollection(en3, { indexBuckets: 128 });
+
+      var options = {};
+      if (mmfilesEngine){
+        options = { indexBuckets: 1 };
+      }
+      edge1 = db._createEdgeCollection(en1, options);
+      if (mmfilesEngine){
+        options = { indexBuckets: 16 };
+      }
+      edge2 = db._createEdgeCollection(en2, options);
+      if (mmfilesEngine){
+        options = { indexBuckets: 128 };
+      }
+      edge3 = db._createEdgeCollection(en3, options);
 
       db._drop(vn);
       vertex = db._create(vn);
@@ -93,7 +118,7 @@ function EdgeIndexBucketsSuite () {
           edge1.save(vn + "/v" + i, vn + "/v" + j, { });
           edge2.save(vn + "/v" + i, vn + "/v" + j, { });
           edge3.save(vn + "/v" + i, vn + "/v" + j, { });
-        } 
+        }
       }
 
       // unload collections
@@ -183,7 +208,7 @@ function EdgeIndexBucketsSuite () {
         ref = edge1.inEdges(from).length;
         assertEqual(ref, edge2.inEdges(from).length);
         assertEqual(ref, edge3.inEdges(from).length);
-         
+
         ref = edge1.outEdges(to).length;
         assertEqual(ref, edge2.outEdges(to).length);
         assertEqual(ref, edge3.outEdges(to).length);
@@ -238,6 +263,38 @@ function EdgeIndexSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test batch size limit
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexBatchsizeLimit : function () {
+      [20, 900, 1000, 1100, 2000].forEach( function(n){
+        var toKeys = [];
+        for (var i = 0; i < n; ++i) {
+            var to = "b" + n + "/"+i;
+            edge.insert({_from : "a/" + n, _to : to});
+            toKeys.push(to);
+        }
+
+        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length, "compare 1");
+        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length, "compare 2");
+        var rv = edge.byExample({ _from : "a/" + n }).toArray();
+        assertEqual(n,rv.length, "compare 3");
+
+        //assert equal values
+        if(n <= 1001){
+            var keys = rv.map(function(x){ return x._to; });
+            keys.sort();
+            toKeys.sort();
+            keys.forEach(function(x,i){
+              assertEqual(x,toKeys[i], "compare exact values");
+            });
+        }
+
+      });
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test index presence
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -255,9 +312,14 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSelectivityEmpty : function () {
+      printed = false;
       var edgeIndex = edge.getIndexes()[1];
       assertTrue(edgeIndex.hasOwnProperty("selectivityEstimate"));
-      assertEqual(1, edgeIndex.selectivityEstimate);
+      if(mmfilesEngine){
+        assertEqual(1, edgeIndex.selectivityEstimate);
+      } else {
+        printNotImplemented("selectivityEstimate");
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,10 +327,15 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSelectivityOneDoc : function () {
+      printed = false;
       edge.save(v1, v2, { });
       var edgeIndex = edge.getIndexes()[1];
       assertTrue(edgeIndex.hasOwnProperty("selectivityEstimate"));
-      assertEqual(1, edgeIndex.selectivityEstimate);
+      if(mmfilesEngine){
+        assertEqual(1, edgeIndex.selectivityEstimate);
+      } else {
+        printNotImplemented("selectivityEstimate");
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,6 +343,7 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSelectivityDuplicateDocs : function () {
+      printed = false;
       var i, c, edgeIndex, expectedSelectivity;
 
       for (i = 0; i < 1000; ++i) {
@@ -283,7 +351,11 @@ function EdgeIndexSuite () {
         edgeIndex = edge.getIndexes()[1];
         expectedSelectivity = 1 / (i + 1);
         // allow for some floating-point deviations
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        if(mmfilesEngine){
+          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        } else {
+          printNotImplemented("selectivityEstimate");
+        }
       }
 
       var n = edge.count();
@@ -298,7 +370,11 @@ function EdgeIndexSuite () {
         c = 1000 - (i + 1);
         expectedSelectivity = (c === 0 ? 1 : 1 / c);
         // allow for some floating-point deviations
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        if(mmfilesEngine){
+          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        } else {
+          printNotImplemented("selectivityEstimate");
+        }
       } 
     },
 
@@ -319,11 +395,16 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSelectivityUniqueDocsFrom : function () {
+      printed = false;
       for (var i = 0; i < 1000; ++i) {
         edge.save(vn + "/from" + i, vn + "/1", { });
         var edgeIndex = edge.getIndexes()[1];
-        var expectedSelectivity = (1 + (1 / (i + 1))) * 0.5; 
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        var expectedSelectivity = (1 + (1 / (i + 1))) * 0.5;
+        if(mmfilesEngine){
+          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+        } else {
+          printNotImplemented("selectivityEstimate");
+        }
       }
     },
 
@@ -332,15 +413,21 @@ function EdgeIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSelectivityRepeatingDocs : function () {
+      printed = false;
       for (var i = 0; i < 1000; ++i) {
         if (i > 0) {
           var edgeIndex = edge.getIndexes()[1];
-          var expectedSelectivity = (1 + (Math.min(i, 20) / i)) * 0.5; 
-          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+          var expectedSelectivity = (1 + (Math.min(i, 20) / i)) * 0.5;
+          if(mmfilesEngine){
+            assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
+          } else {
+            printNotImplemented("selectivityEstimate");
+          }
         }
         edge.save(vn + "/from" + (i % 20), vn + "/to" + i, { });
       }
     }
+
 
   };
 }
@@ -350,8 +437,7 @@ function EdgeIndexSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(EdgeIndexBucketsSuite);
 jsunity.run(EdgeIndexSuite);
+jsunity.run(EdgeIndexBucketsSuite);
 
 return jsunity.done();
-

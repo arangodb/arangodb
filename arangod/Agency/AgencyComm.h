@@ -84,7 +84,7 @@ enum class AgencyReadOperationType { READ };
 // --SECTION--                                          AgencyValueOperationType
 // -----------------------------------------------------------------------------
 
-enum class AgencyValueOperationType { SET, OBSERVE, UNOBSERVE, PUSH, PREPEND };
+enum class AgencyValueOperationType { ERASE, SET, OBSERVE, UNOBSERVE, PUSH, PREPEND };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         AgencySimpleOperationType
@@ -130,6 +130,8 @@ class AgencyOperationType {
             return "push";
           case AgencyValueOperationType::PREPEND:
             return "prepend";
+          case AgencyValueOperationType::ERASE:
+            return "erase";
           default:
             return "unknown_operation_type";
         }
