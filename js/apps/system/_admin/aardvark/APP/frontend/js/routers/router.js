@@ -635,15 +635,18 @@
         return;
       }
       if (this.documentsView) {
-        this.documentsView.removeView();
+        this.documentsView.unbindEvents();
       }
-      this.documentsView = new window.DocumentsView({
-        collection: new window.ArangoDocuments(),
-        documentStore: this.arangoDocumentStore,
-        collectionsStore: this.arangoCollectionsStore
-      });
+      if (!this.documentsView) {
+        this.documentsView = new window.DocumentsView({
+          collection: new window.ArangoDocuments(),
+          documentStore: this.arangoDocumentStore,
+          collectionsStore: this.arangoCollectionsStore
+        });
+      }
       this.documentsView.setCollectionId(colid, pageid);
       this.documentsView.render();
+      this.documentsView.delegateEvents();
     },
 
     document: function (colid, docid, initialized) {
