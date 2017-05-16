@@ -35,6 +35,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
@@ -91,15 +92,14 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
                                    index->objectId(), left, right)
                              : RocksDBKeyBounds::IndexRange(index->objectId(),
                                                             left, right)) {
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-  TRI_ASSERT(state != nullptr);
-  rocksdb::ReadOptions options = state->readOptions();
+                               
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  rocksdb::ReadOptions options = mthds->readOptions();
   if (!reverse) {
     options.iterate_upper_bound = &(_bounds.end());
   }
 
-  _iterator.reset(rtrx->GetIterator(options));
+  _iterator = mthds->NewIterator(options);
   if (reverse) {
     _iterator->SeekForPrev(_bounds.end());
   } else {
@@ -512,16 +512,13 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
     return res;
   }
 
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto options = state->readOptions();
-
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   StringRef docKey(doc.get(StaticStrings::KeyString));
   RocksDBValue value = _unique ? RocksDBValue::UniqueIndexValue(docKey)
                                : RocksDBValue::IndexValue();
 
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   size_t const count = elements.size();
 
   for (size_t i = 0; i < count; ++i) {
@@ -529,24 +526,23 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
     if (_unique) {
       RocksDBValue existing =
           RocksDBValue::Empty(RocksDBEntryType::UniqueIndexValue);
-      auto status = rtrx->Get(options, key.string(), existing.buffer());
-      if (!status.IsNotFound()) {
+      if (mthds->Exists(key)) {
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
       }
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      rocksdb::Status s = rtrx->Put(key.string(), value.string());
-      if (!s.ok()) {
-        auto status =
-            rocksutils::convertStatus(s, rocksutils::StatusHint::index);
-        res = status.errorNumber();
+      arangodb::Result r = mthds->Put(key, value.string());
+      if (!r.ok()) {
+        //auto status =
+        //    rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+        res = r.errorNumber();
       }
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = 0; j < i; ++j) {
-        rtrx->Delete(elements[j].string());
+        mthds->Delete(elements[j]);
       }
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
@@ -567,7 +563,7 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatchWithIndex* writeBatch,
+int RocksDBVPackIndex::insertRaw(RocksDBMethods* writeBatch,
                                  TRI_voc_rid_t revisionId,
                                  VPackSlice const& doc) {
   std::vector<RocksDBKey> elements;
@@ -589,19 +585,15 @@ int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatchWithIndex* writeBatch,
   RocksDBValue value = _unique ? RocksDBValue::UniqueIndexValue(docKey)
                                : RocksDBValue::IndexValue();
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   for (RocksDBKey const& key : elements) {
     if (_unique) {
       rocksdb::ReadOptions readOpts;
-      std::string v;
-      auto status =
-          writeBatch->GetFromBatchAndDB(db, readOpts, key.string(), &v);
-      if (!status.IsNotFound()) {
+      if (writeBatch->Exists(key)) {
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
       }
     }
     if (res == TRI_ERROR_NO_ERROR) {
-      writeBatch->Put(key.string(), value.string());
+      writeBatch->Put(key, value.string());
     }
   }
 
@@ -610,7 +602,6 @@ int RocksDBVPackIndex::insertRaw(rocksdb::WriteBatchWithIndex* writeBatch,
     TRI_ASSERT(!_unique);
     _estimator->insert(it);
   }
-
 
   return res;
 }
@@ -634,15 +625,13 @@ int RocksDBVPackIndex::remove(transaction::Methods* trx,
     return res;
   }
 
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
 
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
-    rocksdb::Status s = rtrx->Delete(elements[i].string());
-    if (!s.ok()) {
-      auto status = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
-      res = status.errorNumber();
+    arangodb::Result r = mthds->Delete(elements[i]);
+    if (!r.ok()) {
+      res = r.errorNumber();
     }
   }
 
@@ -655,7 +644,7 @@ int RocksDBVPackIndex::remove(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBVPackIndex::removeRaw(rocksdb::WriteBatchWithIndex* writeBatch,
+int RocksDBVPackIndex::removeRaw(RocksDBMethods* writeBatch,
                                  TRI_voc_rid_t revisionId,
                                  VPackSlice const& doc) {
   std::vector<RocksDBKey> elements;
@@ -675,7 +664,7 @@ int RocksDBVPackIndex::removeRaw(rocksdb::WriteBatchWithIndex* writeBatch,
 
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
-    writeBatch->Delete(elements[i].string());
+    writeBatch->Delete(elements[i]);
   }
 
   for (auto& it : hashes) {

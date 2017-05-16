@@ -65,7 +65,7 @@ struct SCCComputation
       case SCCPhase::TRANSPOSE: {
         vertexState->parents.clear();
         SenderMessage<uint64_t> message(pregelId(), 0);
-        sendMessageToAllEdges(message);
+        sendMessageToAllNeighbours(message);
         break;
       }
 
@@ -86,7 +86,7 @@ struct SCCComputation
           voteHalt();
         } else {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
-          sendMessageToAllEdges(message);
+          sendMessageToAllNeighbours(message);
         }
         break;
       }
@@ -103,7 +103,7 @@ struct SCCComputation
         }
         if (old != vertexState->color) {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
-          sendMessageToAllEdges(message);
+          sendMessageToAllNeighbours(message);
           aggregate(kFoundNewMax, true);
         }
         break;

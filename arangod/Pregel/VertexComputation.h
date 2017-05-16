@@ -115,8 +115,9 @@ class VertexComputation : public VertexContext<V, E, M> {
     _cache->appendMessage(pid.shard, pid.key, data);
   }
 
-  // TODO Multi-receiver messages
-  void sendMessageToAllEdges(M const& data) {
+  /// Send message along outgoing edges to all reachable neighbours
+  /// TODO Multi-receiver messages
+  void sendMessageToAllNeighbours(M const& data) {
     RangeIterator<Edge<E>> edges = this->getEdges();
     for (Edge<E> const* edge : edges) {
       _cache->appendMessage(edge->targetShard(), edge->toKey(), data);

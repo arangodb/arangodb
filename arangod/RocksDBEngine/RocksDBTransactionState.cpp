@@ -63,6 +63,8 @@ RocksDBTransactionState::RocksDBTransactionState(
     bool intermediateTransactionEnabled, uint64_t intermediateTransactionSize,
     uint64_t intermediateTransactionNumber)
     : TransactionState(vocbase),
+      _snapshot(nullptr),
+      _rocksWriteOptions(),
       _rocksReadOptions(),
       _cacheTx(nullptr),
       _maxTransactionSize(maxTransSize),
@@ -80,6 +82,11 @@ RocksDBTransactionState::~RocksDBTransactionState() {
     // note: endTransaction() will delete _cacheTrx!
     CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
     _cacheTx = nullptr;
+  }
+  if (_snapshot != nullptr) {
+    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    db->ReleaseSnapshot(_snapshot);
+    _snapshot = nullptr;
   }
 }
 
@@ -130,8 +137,14 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
     
     if (isReadOnlyTransaction()) {
-      _rocksMethods.reset(new RocksDBReadOnlyMethods());
+      rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+      _snapshot = db->GetSnapshot(); // we must call ReleaseSnapshot at some point
+      _rocksReadOptions.snapshot = _snapshot;
+      _rocksReadOptions.prefix_same_as_start = true;
+      _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
     } else {
+      // TODO somehow honor intermediate commit flags
+      
       createTransaction();
       _rocksMethods.reset(new RocksDBTrxMethods(this));
     }

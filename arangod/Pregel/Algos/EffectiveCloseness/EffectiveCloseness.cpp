@@ -58,7 +58,7 @@ struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
 
     uint32_t seenCountAfter = value->counter.getCount();
     if ((seenCountBefore != seenCountAfter) || (globalSuperstep() == 0)) {
-      sendMessageToAllEdges(value->counter);
+      sendMessageToAllNeighbours(value->counter);
     }
 
     // determine last iteration for which we set a value,

@@ -42,6 +42,7 @@
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -67,6 +68,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _keys(keys.get()),
       _keysIterator(_keys->slice()),
       _index(index),
+      _iterator(rocksutils::toRocksMethods(trx)->NewIterator()),
       _arrayIterator(VPackSlice::emptyArraySlice()),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _doUpdateBounds(true),
@@ -76,10 +78,6 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _cacheValueSize(0) {
   keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(_trx);
-  TRI_ASSERT(state != nullptr);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-  _iterator.reset(rtrx->GetIterator(state->readOptions()));
 }
 
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
@@ -362,22 +360,19 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   blackListKey(fromToRef);
 
   // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-
-  rocksdb::Status status =
-      rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
-  if (status.ok()) {
+  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
+  Result r = mthd->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
+  if (r.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     _estimator->insert(hash);
     return TRI_ERROR_NO_ERROR;
   } else {
-    return rocksutils::convertStatus(status).errorNumber();
+    return r.errorNumber();
   }
 }
 
-int RocksDBEdgeIndex::insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+int RocksDBEdgeIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
                                 VPackSlice const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -396,21 +391,20 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   blackListKey(fromToRef);
 
   // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-  rocksdb::Status status = rtrx->Delete(rocksdb::Slice(key.string()));
-  if (status.ok()) {
+  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
+  Result res = mthd->Delete(rocksdb::Slice(key.string()));
+  if (res.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     _estimator->remove(hash);
     return TRI_ERROR_NO_ERROR;
   } else {
-    return rocksutils::convertStatus(status).errorNumber();
+    return res.errorNumber();
   }
 }
 
 /// optimization for truncateNoTrx, never called in fillIndex
-int RocksDBEdgeIndex::removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+int RocksDBEdgeIndex::removeRaw(RocksDBMethods*, TRI_voc_rid_t,
                                 VPackSlice const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -419,10 +413,8 @@ void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
-  // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-
+  
+  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   for (std::pair<TRI_voc_rid_t, VPackSlice> const& doc : documents) {
     VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
     VPackSlice fromTo = doc.second.get(_directionAttr);
@@ -432,12 +424,9 @@ void RocksDBEdgeIndex::batchInsert(
                                                 StringRef(primaryKey));
 
     blackListKey(fromToRef);
-    rocksdb::Status status =
-        rtrx->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
-    if (!status.ok()) {
-      Result res =
-          rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-      queue->setStatus(res.errorNumber());
+    Result r = mthd->Put(rocksdb::Slice(key.string()), rocksdb::Slice());
+    if (!r.ok()) {
+      queue->setStatus(r.errorNumber());
       break;
     }
   }

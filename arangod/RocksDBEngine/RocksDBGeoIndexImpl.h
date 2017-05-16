@@ -31,7 +31,7 @@
 #include <cstdint>
 
 namespace arangodb {
-struct RocksDBMethods;
+class RocksDBMethods;
 namespace rocksdbengine {
 
 /* first the things that a user might want to change */

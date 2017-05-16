@@ -117,14 +117,14 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+  int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
                 VPackSlice const&) override;
 
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
   /// optimization for truncateNoTrx, never called in fillIndex
-  int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   Result postprocessRemove(transaction::Methods* trx,

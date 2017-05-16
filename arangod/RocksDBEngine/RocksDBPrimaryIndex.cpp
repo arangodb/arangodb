@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -117,17 +118,18 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index, bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
       _reverse(reverse),
-      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
+      _iterator(rocksutils::toRocksMethods(trx)->NewIterator()),
+      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId()))
+       {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   TRI_ASSERT(state != nullptr);
 
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto const& options = state->readOptions();
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto const& options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
 
-  _iterator.reset(rtrx->GetIterator(options));
   if (reverse) {
     _iterator->SeekForPrev(_bounds.end());
   } else {
@@ -224,6 +226,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
     : IndexIterator(collection, trx, mmdr, index),
       _cmp(index->_cmp),
+      _iterator(rocksutils::toRocksMethods(trx)->NewIterator()),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
       _total(0),
       _returned(0) {
@@ -231,11 +234,9 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   TRI_ASSERT(state != nullptr);
 
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto const& options = state->readOptions();
+  auto const& options = rocksutils::toRocksMethods(trx)->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
 
-  _iterator.reset(rtrx->GetIterator(options));
   _total = collection->numberDocuments(trx);
   uint64_t off = RandomGenerator::interval(_total - 1);
   // uint64_t goal = off;
@@ -364,13 +365,12 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   }
 
   // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto& options = state->readOptions();
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto& options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
 
-  auto status = rtrx->Get(options, key.string(), value.buffer());
-  if (!status.ok()) {
+  arangodb::Result r = mthds->Get(key, value.buffer());
+  if (!r.ok()) {
     return RocksDBToken();
   }
 
@@ -404,30 +404,18 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
   // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-  auto& options = state->readOptions();
-  TRI_ASSERT(options.snapshot != nullptr);
-
-  std::string empty;
-  auto existing = rtrx->Get(options, key.string(), &empty);
-  if (!existing.IsNotFound()) {
+  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
+  if (mthd->Exists(key)) {
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
-  auto status = rtrx->Put(key.string(), value.string());
-  if (!status.ok()) {
-    auto converted =
-        rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-    return converted.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  Result status = mthd->Put(key, value.string());
+  return status.errorNumber();
 }
 
-int RocksDBPrimaryIndex::insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+int RocksDBPrimaryIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
                                    VPackSlice const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -442,18 +430,14 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
-
-  auto status = rtrx->Delete(key.string());
-  auto converted =
-      rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-
-  return converted.errorNumber();
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  Result r = mthds->Delete(key);
+      //rocksutils::convertStatus(status, rocksutils::StatusHint::index);
+  return r.errorNumber();
 }
 
 /// optimization for truncateNoTrx, never called in fillIndex
-int RocksDBPrimaryIndex::removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+int RocksDBPrimaryIndex::removeRaw(RocksDBMethods*, TRI_voc_rid_t,
                                    VPackSlice const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

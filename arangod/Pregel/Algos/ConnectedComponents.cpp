@@ -42,7 +42,7 @@ struct MyComputation : public VertexComputation<int64_t, int64_t, int64_t> {
     }
 
     if (currentComponent != vertexData()) {
-      sendMessageToAllEdges(currentComponent);
+      sendMessageToAllNeighbours(currentComponent);
     }
     voteHalt();
   }

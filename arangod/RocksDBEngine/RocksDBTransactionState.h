@@ -58,9 +58,10 @@ class RocksDBMethods;
   
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
+  friend class RocksDBMethods;
   friend class RocksDBReadOnlyMethods;
   friend class RocksDBTrxMethods;
-  //friend struct RocksDBIntermediateOps;
+  friend class RocksDBBatchedMethods;
   
  public:
   explicit RocksDBTransactionState(TRI_vocbase_t* vocbase,
@@ -120,11 +121,17 @@ private:
   arangodb::Result internalCommit();
 
  private:
+  /// rocksdb transaction may be null
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
+  /// rocksdb snapshot, may be null
+  rocksdb::Snapshot const* _snapshot;
+  /// write options used
   rocksdb::WriteOptions _rocksWriteOptions;
+  /// read options which must be used to guarantee isolation
   rocksdb::ReadOptions _rocksReadOptions;
+  /// cache transaction to unblock blacklisted keys
   cache::Transaction* _cacheTx;
-
+  // wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
   // a transaction may not become bigger than this value
@@ -141,6 +148,7 @@ private:
   /// Last collection used for transaction
   TRI_voc_cid_t _lastUsedCollection;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// store the number of log entries in WAL 
   uint64_t _numLogdata = 0;
 #endif
 };

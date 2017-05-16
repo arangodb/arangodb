@@ -92,7 +92,7 @@ struct LRComputation : public VertexComputation<float, float, float> {
         }
       }
     }
-    sendMessageToAllEdges(*vertexValue);
+    sendMessageToAllNeighbours(*vertexValue);
   }
 };
 

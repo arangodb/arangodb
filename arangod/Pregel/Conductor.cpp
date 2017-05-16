@@ -595,11 +595,12 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 
     // only on single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
-      std::shared_ptr<IWorker> w = PregelFeature::instance()->worker(_executionNumber);
+      std::shared_ptr<IWorker> w =
+          PregelFeature::instance()->worker(_executionNumber);
       if (!w) {
-        PregelFeature::instance()->addWorker(AlgoRegistry::createWorker(_vocbaseGuard.vocbase(),
-                                                                        b.slice()),
-                                             _executionNumber);
+        PregelFeature::instance()->addWorker(
+            AlgoRegistry::createWorker(_vocbaseGuard.vocbase(), b.slice()),
+            _executionNumber);
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,

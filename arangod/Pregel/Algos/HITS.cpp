@@ -91,7 +91,7 @@ struct HITSComputation
       }
     }
     SenderMessage<double> hubData(this->pregelId(), hub);
-    sendMessageToAllEdges(hubData);
+    sendMessageToAllNeighbours(hubData);
   }
 };
 

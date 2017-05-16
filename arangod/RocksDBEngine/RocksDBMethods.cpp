@@ -63,11 +63,32 @@ void RocksDBSavePoint::rollback() {
   _rollbackCallback();
 }
 
+// =================== RocksDBMethods ===================
+
+rocksdb::ReadOptions const& RocksDBMethods::readOptions() {
+  return _state->_rocksReadOptions;
+}
+
+std::unique_ptr<rocksdb::Iterator> RocksDBMethods::NewIterator() {
+  return this->NewIterator(this->readOptions());
+}
+
 // =================== RocksDBReadOnlyMethods ====================
 
 RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state)
-    : _state(state) {
+    : RocksDBMethods(state) {
   _db = rocksutils::globalRocksDB();
+}
+
+bool RocksDBReadOnlyMethods::Exists(RocksDBKey const& key) {
+  std::string val;  // do not care about value
+  bool mayExists =
+      _db->KeyMayExist(_state->_rocksReadOptions, key.string(), &val, nullptr);
+  if (mayExists) {
+    rocksdb::Status s = _db->Get(_state->_rocksReadOptions, key.string(), &val);
+    return !s.IsNotFound();
+  }
+  return false;
 }
 
 arangodb::Result RocksDBReadOnlyMethods::Get(RocksDBKey const& key,
@@ -85,15 +106,22 @@ arangodb::Result RocksDBReadOnlyMethods::Delete(RocksDBKey const& key) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
-std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator() {
-  return std::unique_ptr<rocksdb::Iterator>(
-      _db->NewIterator(_state->_rocksReadOptions));
+std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
+    rocksdb::ReadOptions const& opts) {
+  return std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(opts));
 }
 
 // =================== RocksDBTrxMethods ====================
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
-    : _state(state) {}
+    : RocksDBMethods(state) {}
+
+bool RocksDBTrxMethods::Exists(RocksDBKey const& key) {
+  std::string val;
+  rocksdb::Status s = _state->_rocksTransaction->Get(_state->_rocksReadOptions,
+                                                     key.string(), &val);
+  return !s.IsNotFound();
+}
 
 arangodb::Result RocksDBTrxMethods::Get(RocksDBKey const& key,
                                         std::string* val) {
@@ -113,9 +141,10 @@ arangodb::Result RocksDBTrxMethods::Delete(RocksDBKey const& key) {
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
-std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator() {
+std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
+    rocksdb::ReadOptions const& opts) {
   return std::unique_ptr<rocksdb::Iterator>(
-      _state->_rocksTransaction->GetIterator(_state->_rocksReadOptions));
+      _state->_rocksTransaction->GetIterator(opts));
 }
 
 void RocksDBTrxMethods::SetSavePoint() {
@@ -125,4 +154,39 @@ void RocksDBTrxMethods::SetSavePoint() {
 arangodb::Result RocksDBTrxMethods::RollbackToSavePoint() {
   return rocksutils::convertStatus(
       _state->_rocksTransaction->RollbackToSavePoint());
+}
+
+// =================== RocksDBBatchedMethods ====================
+
+RocksDBBatchedMethods::RocksDBBatchedMethods(RocksDBTransactionState* state,
+                                             rocksdb::WriteBatchWithIndex* wb)
+    : RocksDBMethods(state), _wb(wb) {
+  _db = rocksutils::globalRocksDB();
+}
+
+bool RocksDBBatchedMethods::Exists(RocksDBKey const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+arangodb::Result RocksDBBatchedMethods::Get(RocksDBKey const& key,
+                                            std::string* val) {
+  rocksdb::Status s =
+      _wb->GetFromBatchAndDB(_db, _state->_rocksReadOptions, key.string(), val);
+  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
+}
+
+arangodb::Result RocksDBBatchedMethods::Put(RocksDBKey const& key,
+                                            rocksdb::Slice const& val) {
+  _wb->Put(key.string(), val);
+  return arangodb::Result();
+}
+
+arangodb::Result RocksDBBatchedMethods::Delete(RocksDBKey const& key) {
+  _wb->Delete(key.string());
+  return arangodb::Result();
+}
+
+std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
+    rocksdb::ReadOptions const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

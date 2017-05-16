@@ -30,6 +30,7 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -39,10 +40,10 @@ static const uint64_t STABILISATION_ROUNDS = 20;
 
 struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
   LPComputation() {}
-  
+
   uint64_t mostFrequent(MessageIterator<uint64_t> const& messages) {
     TRI_ASSERT(messages.size() > 0);
-    
+
     // most frequent value
     size_t i = 0;
     std::vector<uint64_t> all(messages.size());
@@ -75,12 +76,16 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
   void compute(MessageIterator<uint64_t> const& messages) override {
     LPValue* value = mutableVertexData();
     if (globalSuperstep() == 0) {
-      sendMessageToAllEdges(value->currentCommunity);
+      sendMessageToAllNeighbours(value->currentCommunity);
     } else {
       uint64_t newCommunity = mutableVertexData()->currentCommunity;
       if (messages.size() == 1) {
         newCommunity = std::min(**messages, newCommunity);
-      } if (messages.size() > 1) {
+        //newCommunity = RandomGenerator::interval(UINT32_MAX) % 2 == 0
+         //                  ? **messages
+          //                 : newCommunity;
+      }
+      if (messages.size() > 1) {
         newCommunity = mostFrequent(messages);
       }
 
@@ -96,7 +101,7 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
         value->lastCommunity = value->currentCommunity;
         value->currentCommunity = newCommunity;
         value->stabilizationRounds = 0;  // reset stabilization counter
-        sendMessageToAllEdges(value->currentCommunity);
+        sendMessageToAllNeighbours(value->currentCommunity);
       }
     }
     voteHalt();
@@ -112,7 +117,8 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   std::string _resultField;
   std::atomic<uint64_t> vertexIdRange;
 
-  explicit LPGraphFormat(std::string const& result) : _resultField(result), vertexIdRange(0) {}
+  explicit LPGraphFormat(std::string const& result)
+      : _resultField(result), vertexIdRange(0) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); };
   size_t estimatedEdgeSize() const override { return 0; };

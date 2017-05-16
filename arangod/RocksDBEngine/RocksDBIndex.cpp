@@ -29,7 +29,7 @@
 #include "Cache/Manager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -185,24 +185,22 @@ void RocksDBIndex::recalculateEstimates() {
 }
 
 void RocksDBIndex::truncate(transaction::Methods* trx) {
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  rocksdb::Transaction* rtrx = state->rocksTransaction();
+  RocksDBMethods *mthds = rocksutils::toRocksMethods(trx);
   RocksDBKeyBounds indexBounds = getBounds();
 
-  rocksdb::ReadOptions options = state->readOptions();
+  rocksdb::ReadOptions options = mthds->readOptions();
   options.iterate_upper_bound = &(indexBounds.end());
 
-  std::unique_ptr<rocksdb::Iterator> iter(rtrx->GetIterator(options));
+  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options);
   iter->Seek(indexBounds.start());
 
   while (iter->Valid()) {
-    rocksdb::Status s = rtrx->Delete(iter->key());
-    if (!s.ok()) {
-      auto converted = convertStatus(s);
-      THROW_ARANGO_EXCEPTION(converted);
+    Result r = mthds->Delete(iter->key());
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION(r);
     }
 
-    Result r = postprocessRemove(trx, iter->key(), iter->value());
+    r = postprocessRemove(trx, iter->key(), iter->value());
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }

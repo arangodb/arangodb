@@ -36,13 +36,13 @@ namespace algos {
 /// group. For this reason, discovering overlapping structure
 /// is  necessary  for  realistic  social  analysis.  In the SLPA algorithm
 /// nodes  exchange  labels  according  to  dynamic
-/// interaction  rules.  It has excellent performance in identifying both overlapping
-/// nodes and  overlapping  communities  with  different  degrees  of  diversity.
+/// interaction  rules.  It has excellent performance in identifying both
+/// overlapping
+/// nodes and  overlapping  communities  with  different  degrees  of diversity.
 struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
  public:
   explicit SLPA(VPackSlice userParams)
-      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("slpa",
-                                                   userParams) {}
+      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("slpa", userParams) {}
 
   GraphFormat<SLPAValue, int8_t>* inputFormat() const override;
   MessageFormat<uint64_t>* messageFormat() const override {

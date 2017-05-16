@@ -80,7 +80,14 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     if (globalSuperstep() == 0) {
       val->memory.emplace(val->nodeId, 1);
       val->numCommunities = 1;
-    } else if (messages.size() > 0) {
+    }
+
+    // Normally the SLPA algo only lets one vertex by one listen sequentially,
+    // which is not really well parallizable. Additionally I figure
+    // since a speaker only speaks to neighbours and the speaker order is random
+    // we can get away with letting nodes listen in turn
+    bool listen = val->nodeId % 2 == globalSuperstep() % 2;
+    if (messages.size() > 0 && listen) {
       // listen to our neighbours
       uint64_t newCommunity = mostFrequent(messages);
       auto it = val->memory.find(newCommunity);
@@ -92,25 +99,18 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
       val->numCommunities++;
     }
 
-    // Normally the SLPA algo only lets one vertex by one speak sequentially,
-    // which is not really well parallizable. Additionally I figure
-    // since a speaker only speaks to neighbours and the speaker order is random
-    // we can get away with letting nodes speak in turn
-    bool speak = val->nodeId % 2 == globalSuperstep() % 2;
-    if (speak) {  // speak to our neighbours
-
-      uint64_t random = RandomGenerator::interval(val->numCommunities);
-      uint64_t cumulativeSum = 0;
-      // Randomly select a label with probability proportional to the
-      // occurrence frequency of this label in its memory
-      for (std::pair<uint64_t, uint64_t> const& e : val->memory) {
-        cumulativeSum += e.second;
-        if (cumulativeSum >= random) {
-          sendMessageToAllEdges(e.first);
-        }
+    // speak to our neighbours
+    uint64_t random = RandomGenerator::interval(val->numCommunities);
+    uint64_t cumulativeSum = 0;
+    // Randomly select a label with probability proportional to the
+    // occurrence frequency of this label in its memory
+    for (std::pair<uint64_t, uint64_t> const& e : val->memory) {
+      cumulativeSum += e.second;
+      if (cumulativeSum >= random) {
+        sendMessageToAllNeighbours(e.first);
       }
-      sendMessageToAllEdges(val->nodeId);
     }
+    sendMessageToAllNeighbours(val->nodeId);
   }
 };
 
@@ -163,7 +163,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
           communities.push_back(pair.first);
         }
       }
-      
+
       if (communities.empty()) {
         b.add(resField, VPackSlice::nullSlice());
       } else if (communities.size() == 1) {

@@ -23,7 +23,6 @@
 
 #include "RocksDBGeoIndex.h"
 
-#include <rocksdb/utilities/transaction_db.h>
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
@@ -31,8 +30,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBToken.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksdbengine;
@@ -482,10 +481,10 @@ int RocksDBGeoIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
   return res;
 }
 
-int RocksDBGeoIndex::insertRaw(rocksdb::WriteBatchWithIndex* batch,
+int RocksDBGeoIndex::insertRaw(RocksDBMethods* batch,
                                TRI_voc_rid_t revisionId,
                                arangodb::velocypack::Slice const& doc) {
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
+  GeoIndex_setRocksMethods(_geoIndex, batch);
   int res = this->internalInsert(revisionId, doc);
   GeoIndex_clearRocks(_geoIndex);
   return res;
@@ -561,10 +560,10 @@ int RocksDBGeoIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
   return res;
 }
 
-int RocksDBGeoIndex::removeRaw(rocksdb::WriteBatchWithIndex* batch,
+int RocksDBGeoIndex::removeRaw(RocksDBMethods* batch,
                                TRI_voc_rid_t revisionId,
                                arangodb::velocypack::Slice const& doc) {
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
+  GeoIndex_setRocksMethods(_geoIndex, batch);
   int res = this->internalRemove(revisionId, doc);
   GeoIndex_clearRocks(_geoIndex);
   return res;

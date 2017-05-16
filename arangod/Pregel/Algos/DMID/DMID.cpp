@@ -424,7 +424,7 @@ struct DMIDComputation
              */
             if (pair.second == 0) {
               DMIDMessage message(pregelId(), pair.first);
-              sendMessageToAllEdges(message);
+              sendMessageToAllNeighbours(message);
             }
           }
         } else {

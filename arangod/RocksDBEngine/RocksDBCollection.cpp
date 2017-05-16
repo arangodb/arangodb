@@ -883,11 +883,6 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     }
 
     guard.commit();
-
-    // force intermediate commit
-    if (result.commitRequired()) {
-      // force commit
-    }
   }
 
   return res.errorNumber();
@@ -961,7 +956,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     }
   }
 
-  RocksDBSavePoint guard(rocksTransaction(trx),
+  RocksDBSavePoint guard(rocksutils::toRocksMethods(trx),
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
 
@@ -988,11 +983,6 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     // transaction size limit reached -- fail
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
-    }
-
-    // force intermediate commit
-    if (result.commitRequired()) {
-      // force commit
     }
 
     guard.commit();
@@ -1063,7 +1053,7 @@ int RocksDBCollection::replace(
     }
   }
 
-  RocksDBSavePoint guard(rocksTransaction(trx),
+  RocksDBSavePoint guard(rocksutils::toRocksMethods(trx),
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
 
@@ -1092,11 +1082,6 @@ int RocksDBCollection::replace(
     // transaction size limit reached -- fail
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
-    }
-
-    // force intermediate commit
-    if (result.commitRequired()) {
-      // force commit
     }
 
     guard.commit();
@@ -1153,7 +1138,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   }
 
   RocksDBTransactionState* state = toRocksTransactionState(trx);
-  RocksDBSavePoint guard(rocksTransaction(trx),
+  RocksDBSavePoint guard(rocksutils::toRocksMethods(trx),
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
 
@@ -1169,11 +1154,6 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
     // transaction size limit reached -- fail
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
-    }
-
-    // force intermediate commit
-    if (res.commitRequired()) {
-      // force commit
     }
 
     guard.commit();
@@ -1297,12 +1277,12 @@ arangodb::Result RocksDBCollection::fillIndexes(
   rocksdb::WriteBatchWithIndex batch(db->DefaultColumnFamily()->GetComparator(),
                                      32 * 1024 * 1024);
   rocksdb::ReadOptions readOptions;
-  rocksdb::WriteOptions writeOpts = state->writeOptions();
+  RocksDBBatchedMethods batched(state, &batch);
 
   int res = TRI_ERROR_NO_ERROR;
   auto cb = [&](DocumentIdentifierToken token) {
     if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmdr)) {
-      res = ridx->insertRaw(&batch, mmdr.lastRevisionId(),
+      res = ridx->insertRaw(&batched, mmdr.lastRevisionId(),
                             VPackSlice(mmdr.vpack()));
       if (res == TRI_ERROR_NO_ERROR) {
         numDocsWritten++;
@@ -1322,6 +1302,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
       r = Result(res);
       break;
     }
+    rocksdb::WriteOptions writeOpts;
     rocksdb::Status s = db->Write(writeOpts, batch.GetWriteBatch());
     if (!s.ok()) {
       r = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
@@ -1334,15 +1315,14 @@ arangodb::Result RocksDBCollection::fillIndexes(
   // occured, this needs to happen since we are non transactional
   if (!r.ok()) {
     iter->reset();
-    rocksdb::WriteBatchWithIndex removeBatch(
-        db->DefaultColumnFamily()->GetComparator(), 32 * 1024 * 1024);
+    batch.Clear();
 
     res = TRI_ERROR_NO_ERROR;
     auto removeCb = [&](DocumentIdentifierToken token) {
       if (res == TRI_ERROR_NO_ERROR && numDocsWritten > 0 &&
           this->readDocument(trx, token, mmdr)) {
         // we need to remove already inserted documents up to numDocsWritten
-        res = ridx->removeRaw(&removeBatch, mmdr.lastRevisionId(),
+        res = ridx->removeRaw(&batched, mmdr.lastRevisionId(),
                               VPackSlice(mmdr.vpack()));
         if (res == TRI_ERROR_NO_ERROR) {
           numDocsWritten--;
@@ -1356,7 +1336,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
     }
     // TODO: if this fails, do we have any recourse?
     // Simon: Don't think so
-    db->Write(writeOpts, removeBatch.GetWriteBatch());
+    rocksdb::WriteOptions writeOpts;
+    db->Write(writeOpts, batch.GetWriteBatch());
   }
   if (numDocsWritten > 0) {
     _needToPersistIndexEstimates = true;
@@ -1403,15 +1384,9 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
 
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
-  rocksdb::Transaction* rtrx = rocksTransaction(trx);
-
-  rocksdb::Status status = rtrx->Put(key.string(), value.string());
-
-  if (!status.ok()) {
-    Result converted =
-        rocksutils::convertStatus(status, rocksutils::StatusHint::document);
-    res = converted;
-
+  RocksDBMethods *mthd = rocksutils::toRocksMethods(trx);
+  res = mthd->Put(key, value.string());
+  if (!res.ok()) {
     // set keysize that is passed up to the crud operations
     res.keySize(key.string().size());
     return res;
@@ -1470,15 +1445,13 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   // document store, if the doc is overwritten with PUT
   // Simon: actually we do, because otherwise the counter recovery is broken
   //if (!isUpdate) {
-    rocksdb::Transaction* rtrx = rocksTransaction(trx);
-    auto status = rtrx->Delete(key.string());
-    if (!status.ok()) {
-      auto converted = rocksutils::convertStatus(status);
-      return converted;
+  RocksDBMethods *mthd = rocksutils::toRocksMethods(trx);
+    RocksDBOperationResult res = mthd->Delete(key);
+    if (!res.ok()) {
+      return res;
     }
   //}
 
-  RocksDBOperationResult res;
   RocksDBOperationResult resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -1586,12 +1559,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     }
   }
 
-  auto* state = toRocksTransactionState(trx);
-  rocksdb::Status status = state->rocksTransaction()->Get(state->readOptions(),
-                                                          key.string(), &value);
+  RocksDBMethods *mthd = rocksutils::toRocksMethods(trx);
+  Result res = mthd->Get(key, &value);
   TRI_ASSERT(value.data());
-  auto result = convertStatus(status);
-  if (result.ok()) {
+  if (res.ok()) {
     if (useCache()) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
@@ -1608,7 +1579,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   } else {
     mdr.reset();
   }
-  return result;
+  return res;
 }
 
 void RocksDBCollection::setRevision(TRI_voc_rid_t revisionId) {

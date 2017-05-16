@@ -67,7 +67,7 @@ struct ASCCComputation
 
         vertexState->parents.clear();
         SenderMessage<uint64_t> message(pregelId(), 0);
-        sendMessageToAllEdges(message);
+        sendMessageToAllNeighbours(message);
         break;
       }
 
@@ -91,7 +91,7 @@ struct ASCCComputation
           voteHalt();
         } else {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
-          sendMessageToAllEdges(message);
+          sendMessageToAllNeighbours(message);
         }
         break;
       }
@@ -106,7 +106,7 @@ struct ASCCComputation
         }
         if (old != vertexState->color) {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
-          sendMessageToAllEdges(message);
+          sendMessageToAllNeighbours(message);
           aggregate(kFoundNewMax, true);
         }
         break;

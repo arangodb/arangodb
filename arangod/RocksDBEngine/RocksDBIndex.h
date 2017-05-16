@@ -30,11 +30,6 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include <rocksdb/status.h>
 
-namespace rocksdb {
-class WriteBatch;
-class WriteBatchWithIndex;
-}  // namespace rocksdb
-
 namespace arangodb {
 namespace cache {
 class Cache;
@@ -42,6 +37,7 @@ class Cache;
 class LogicalCollection;
 class RocksDBComparator;
 class RocksDBCounterManager;
+class RocksDBMethods;
 
 class RocksDBIndex : public Index {
 
@@ -86,12 +82,12 @@ class RocksDBIndex : public Index {
 
   /// insert index elements into the specified write batch. Should be used
   /// as an optimization for the non transactional fillIndex method
-  virtual int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+  virtual int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) = 0;
 
   /// remove index elements and put it in the specified write batch. Should be
   /// used as an optimization for the non transactional fillIndex method
-  virtual int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+  virtual int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) = 0;
 
   void createCache();

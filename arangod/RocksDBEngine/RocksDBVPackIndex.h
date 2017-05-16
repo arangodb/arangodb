@@ -137,13 +137,13 @@ class RocksDBVPackIndex : public RocksDBIndex {
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+  int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   int drop() override;

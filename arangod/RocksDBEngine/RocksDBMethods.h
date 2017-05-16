@@ -30,6 +30,9 @@ class Transaction;
 class Slice;
 class Iterator;
 class TransactionDB;
+class WriteBatchWithIndex;
+class Comparator;
+struct ReadOptions;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -59,54 +62,85 @@ class RocksDBMethods {
  public:
   // RocksDBOperations(rocksdb::ReadOptions ro, rocksdb::WriteOptions wo) :
   // _readOptions(ro), _writeOptions(wo) {}
+  RocksDBMethods(RocksDBTransactionState* state) : _state(state) {}
   virtual ~RocksDBMethods() {}
+  
+  rocksdb::ReadOptions const& readOptions();
+
+  virtual bool Exists(RocksDBKey const&) = 0;
   virtual arangodb::Result Get(RocksDBKey const&, std::string*) = 0;
   virtual arangodb::Result Put(RocksDBKey const&, rocksdb::Slice const&) = 0;
   // virtual arangodb::Result Merge(RocksDBKey const&, rocksdb::Slice const&) =
   // 0;
   virtual arangodb::Result Delete(RocksDBKey const&) = 0;
-  virtual std::unique_ptr<rocksdb::Iterator> NewIterator() = 0;
+  std::unique_ptr<rocksdb::Iterator> NewIterator();
+  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&) = 0;
 
   virtual void SetSavePoint() = 0;
   virtual arangodb::Result RollbackToSavePoint() = 0;
+  
+protected:
+  RocksDBTransactionState* _state;
 };
 
+// only implements GET and NewIterator
 class RocksDBReadOnlyMethods : public RocksDBMethods {
  public:
   RocksDBReadOnlyMethods(RocksDBTransactionState* state);
 
+  bool Exists(RocksDBKey const&) override;
   arangodb::Result Get(RocksDBKey const& key, std::string* val) override;
 
   arangodb::Result Put(RocksDBKey const& key,
                        rocksdb::Slice const& val) override;
   arangodb::Result Delete(RocksDBKey const& key) override;
-  std::unique_ptr<rocksdb::Iterator> NewIterator() override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&) override;
+
 
   void SetSavePoint() override {}
   arangodb::Result RollbackToSavePoint() override { return arangodb::Result(); }
 
  private:
-  RocksDBTransactionState* _state;
   rocksdb::TransactionDB* _db;
 };
 
-/// transactional operations
+/// transactio wrapper, uses the current rocksdb transaction
 class RocksDBTrxMethods : public RocksDBMethods {
  public:
   RocksDBTrxMethods(RocksDBTransactionState* state);
 
+  bool Exists(RocksDBKey const&) override;
   arangodb::Result Get(RocksDBKey const& key, std::string* val) override;
 
   arangodb::Result Put(RocksDBKey const& key,
                        rocksdb::Slice const& val) override;
   arangodb::Result Delete(RocksDBKey const& key) override;
-  std::unique_ptr<rocksdb::Iterator> NewIterator() override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&) override;
 
   void SetSavePoint() override;
   arangodb::Result RollbackToSavePoint() override;
-
- private:
-  RocksDBTransactionState* _state;
+};
+  
+/// wraps a writebatch - non transactional
+class RocksDBBatchedMethods : public RocksDBMethods {
+public:
+  RocksDBBatchedMethods(RocksDBTransactionState*,
+                       rocksdb::WriteBatchWithIndex*);
+  
+  bool Exists(RocksDBKey const&) override;
+  arangodb::Result Get(RocksDBKey const& key, std::string* val) override;
+  
+  arangodb::Result Put(RocksDBKey const& key,
+                       rocksdb::Slice const& val) override;
+  arangodb::Result Delete(RocksDBKey const& key) override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&) override;
+  
+  void SetSavePoint() override {}
+  arangodb::Result RollbackToSavePoint() override {return arangodb::Result();}
+  
+private:
+  rocksdb::TransactionDB* _db;
+  rocksdb::WriteBatchWithIndex* _wb;
 };
 
 }  // namespace arangodb

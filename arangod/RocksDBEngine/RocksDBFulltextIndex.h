@@ -110,12 +110,12 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   /// insert index elements into the specified write batch. Should be used
   /// as an optimization for the non transactional fillIndex method
-  int insertRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+  int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   /// remove index elements and put it in the specified write batch. Should be
   /// used as an optimization for the non transactional fillIndex method
-  int removeRaw(rocksdb::WriteBatchWithIndex*, TRI_voc_rid_t,
+  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
   //  TRI_fts_index_t* internals() { return _fulltextIndex; }

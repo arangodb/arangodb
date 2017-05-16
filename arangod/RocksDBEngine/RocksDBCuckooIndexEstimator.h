@@ -573,7 +573,7 @@ class RocksDBCuckooIndexEstimator {
 
   void deriveSizesAndAlloc() {
     _sizeMask = _niceSize - 1;
-    _sizeShift = (64 - _logSize) / 2;
+    _sizeShift = (64 - static_cast<uint32_t>(_logSize)) / 2;
     _allocSize = _size * _slotSize * SlotsPerBucket +
                  64;  // give 64 bytes padding to enable 64-byte alignment
     _allocBase = new char[_allocSize];
