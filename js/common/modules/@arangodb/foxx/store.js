@@ -316,8 +316,7 @@ function availableJson (matchEngine) {
 
 var update = function () {
   var url = utils.buildGithubUrl(getFishbowlUrl());
-  var filename = fs.getTempFile('downloads', false);
-  var path = fs.getTempFile('zip', false);
+  var filename = fs.getTempFile('bundles', false);
 
   try {
     var result = download(url, '', {
@@ -333,16 +332,15 @@ var update = function () {
     updateFishbowlFromZip(filename);
 
     filename = undefined;
-  } catch (err) {
+  } catch (e) {
     if (filename !== undefined && fs.exists(filename)) {
       fs.remove(filename);
     }
 
-    try {
-      fs.removeDirectoryRecursive(path);
-    } catch (ignore) {}
-
-    throw err;
+    throw Object.assign(
+      new Error('Failed to update Foxx store'),
+      {cause: e}
+    );
   }
 };
 
@@ -375,8 +373,6 @@ var available = function (matchEngine) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var infoJson = function (name) {
-  utils.validateServiceName(name);
-
   var fishbowl = getFishbowlStorage();
 
   if (fishbowl.count() === 0) {
@@ -411,14 +407,14 @@ var installationInfo = function (serviceInfo) {
   let version = infoSplit[1];
   let storeInfo = infoJson(name);
 
-  if (storeInfo === undefined) {
-    throw new Error('Service not found');
+  if (!storeInfo) {
+    return null;
   }
 
   let versions = storeInfo.versions;
   let versionInfo;
 
-  if (version === undefined) {
+  if (!version) {
     let maxVersion = extractMaxVersion(true, versions);
 
     if (!maxVersion) {

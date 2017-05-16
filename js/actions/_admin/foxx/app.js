@@ -28,10 +28,73 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var actions = require('@arangodb/actions');
-var foxxManager = require('@arangodb/foxx/manager');
+const actions = require('@arangodb/actions');
+const FoxxManager = require('@arangodb/foxx/manager');
+const request = require('@arangodb/request');
+const db = require('@arangodb').db;
+const joinPath = require('path').join;
+const fs = require('fs');
+const fmu = require('@arangodb/foxx/manager-utils');
 
-var easyPostCallback = actions.easyPostCallback;
+const easyPostCallback = actions.easyPostCallback;
+
+function proxyLocal (method, url, qs, body, headers = {}) {
+  url = `/_db/${db._name()}${url}`;
+  if (body instanceof Buffer) {
+    if (body.utf8Slice(0, 4) === 'PK\u0003\u0004') {
+      headers['content-type'] = 'application/zip';
+    } else {
+      headers['content-type'] = 'application/javascript';
+    }
+  } else if (body && typeof body === 'object') {
+    headers['content-type'] = 'application/json';
+    body = JSON.stringify(body);
+  }
+  if (body) {
+    headers['content-length'] = body.length;
+  }
+  const res = request({method, url, qs, headers, body});
+  res.throw();
+  return res.body ? JSON.parse(res.body) : null;
+}
+
+function resolveAppInfo (appInfo) {
+  if (!appInfo || typeof appInfo !== 'string') {
+    return appInfo;
+  }
+  if (/^git:/i.test(appInfo)) {
+    const splitted = appInfo.split(':');
+    const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com';
+    return `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`;
+  }
+  if (/^https?:/i.test(appInfo)) {
+    return appInfo;
+  }
+  if (/^uploads[/\\]tmp-/.test(appInfo)) {
+    const tempFile = joinPath(fs.getTempPath(), appInfo);
+    const buffer = fs.readFileSync(tempFile);
+    try {
+      fs.remove(tempFile);
+    } catch (e) {
+      console.warnStack(e, `Failed to remove uploaded file: ${tempFile}`);
+    }
+    return buffer;
+  }
+  if (fs.isDirectory(appInfo)) {
+    const tempFile = fmu.zipDirectory(appInfo);
+    const buffer = fs.readFileSync(tempFile);
+    try {
+      fs.remove(tempFile);
+    } catch (e) {
+      console.warnStack(e, `Failed to remove temporary file: ${tempFile}`);
+    }
+    return buffer;
+  }
+  if (fs.exists(appInfo)) {
+    return fs.readFileSync(appInfo);
+  }
+  return appInfo;
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief sets up a Foxx service
@@ -43,10 +106,10 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var mount = body.mount;
+    callback: function (body, req) {
+      const mount = body.mount;
 
-      return foxxManager.setup(mount);
+      return FoxxManager.setup(mount);
     }
   })
 });
@@ -61,10 +124,10 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var mount = body.mount;
+    callback: function (body, req) {
+      const mount = body.mount;
 
-      return foxxManager.teardown(mount);
+      return FoxxManager.teardown(mount);
     }
   })
 });
@@ -79,11 +142,13 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var appInfo = body.appInfo;
-      var mount = body.mount;
-      var options = body.options;
-      return foxxManager.install(appInfo, mount, options).simpleJSON();
+    callback: function (body, req) {
+      const appInfo = resolveAppInfo(body.appInfo);
+      const mount = body.mount;
+      const options = body.options || {};
+      options.mount = mount;
+      proxyLocal('POST', '/_api/foxx', options, appInfo, req.headers);
+      return FoxxManager.lookupService(mount).simpleJSON();
     }
   })
 });
@@ -98,11 +163,12 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var mount = body.mount;
-      var options = body.options || {};
-
-      return foxxManager.uninstall(mount, options).simpleJSON();
+    callback: function (body, req) {
+      const mount = body.mount;
+      const options = body.options || {};
+      options.mount = mount;
+      proxyLocal('DELETE', '/_api/foxx/service', options, undefined, req.headers);
+      return {mount};
     }
   })
 });
@@ -117,12 +183,13 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var appInfo = body.appInfo;
-      var mount = body.mount;
-      var options = body.options;
-
-      return foxxManager.replace(appInfo, mount, options).simpleJSON();
+    callback: function (body, req) {
+      const appInfo = resolveAppInfo(body.appInfo);
+      const mount = body.mount;
+      const options = body.options || {};
+      options.mount = mount;
+      proxyLocal('PUT', '/_api/foxx/service', options, appInfo, req.headers);
+      return FoxxManager.lookupService(mount).simpleJSON();
     }
   })
 });
@@ -137,12 +204,13 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var appInfo = body.appInfo;
-      var mount = body.mount;
-      var options = body.options;
-
-      return foxxManager.upgrade(appInfo, mount, options).simpleJSON();
+    callback: function (body, req) {
+      const appInfo = resolveAppInfo(body.appInfo);
+      const mount = body.mount;
+      const options = body.options || {};
+      options.mount = mount;
+      proxyLocal('PATCH', '/_api/foxx/service', options, appInfo, req.headers);
+      return FoxxManager.lookupService(mount).simpleJSON();
     }
   })
 });
@@ -157,14 +225,14 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var mount = body.mount;
-      var options = body.options;
+    callback: function (body, req) {
+      const mount = body.mount;
+      let options = body.options;
       if (options && options.configuration) {
         options = options.configuration;
       }
-      foxxManager.setConfiguration(mount, {configuration: options || {}});
-      return foxxManager.lookupService(mount).simpleJSON();
+      proxyLocal('PUT', '/_api/foxx/configuration', {mount}, options, req.headers);
+      return FoxxManager.lookupService(mount).simpleJSON();
     }
   })
 });
@@ -179,10 +247,9 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var mount = body.mount;
-
-      return foxxManager.configuration(mount);
+    callback: function (body, req) {
+      const mount = body.mount;
+      return FoxxManager.configuration(mount);
     }
   })
 });
@@ -197,12 +264,14 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var mount = body.mount;
-      var options = body.options;
-
-      foxxManager.setDependencies(mount, {dependencies: options || {}});
-      return foxxManager.lookupService(mount).simpleJSON();
+    callback: function (body, req) {
+      const mount = body.mount;
+      let options = body.options;
+      if (options && options.dependencies) {
+        options = options.dependencies;
+      }
+      proxyLocal('PUT', '/_api/foxx/dependencies', {mount}, options, req.headers);
+      return FoxxManager.lookupService(mount).simpleJSON();
     }
   })
 });
@@ -217,10 +286,10 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var mount = body.mount;
+    callback: function (body, req) {
+      const mount = body.mount;
 
-      const deps = foxxManager.dependencies(mount);
+      const deps = FoxxManager.dependencies(mount);
       for (const key of Object.keys(deps)) {
         const dep = deps[key];
         deps[key] = {
@@ -246,13 +315,13 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var mount = body.mount;
-      var activate = body.activate;
+    callback: function (body, req) {
+      const mount = body.mount;
+      const activate = body.activate;
       if (activate) {
-        return foxxManager.development(mount).simpleJSON();
+        return FoxxManager.development(mount).simpleJSON();
       } else {
-        return foxxManager.production(mount).simpleJSON();
+        return FoxxManager.production(mount).simpleJSON();
       }
     }
   })
@@ -268,10 +337,10 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var mount = body.mount;
-      var options = body.options;
-      return foxxManager.runTests(mount, options);
+    callback: function (body, req) {
+      const mount = body.mount;
+      const options = body.options;
+      return FoxxManager.runTests(mount, options);
     }
   })
 });
@@ -286,11 +355,11 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
-      var name = body.name;
-      var mount = body.mount;
-      var options = body.options;
-      return foxxManager.runScript(name, mount, options);
+    callback: function (body, req) {
+      const name = body.name;
+      const mount = body.mount;
+      const options = body.options;
+      return FoxxManager.runScript(name, mount, options);
     }
   })
 });

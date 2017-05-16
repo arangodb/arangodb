@@ -401,25 +401,33 @@ global.DEFINE_MODULE('fs', (function () {
       try {
         return move(source, target);
       } catch (x) {
-        if (x.hasOwnProperty('errorNum') &&
-          (x.errorNum === 2 /* errors.ERROR_SYS_ERROR.code */)) {
-          try {
-            exports.copyRecursive(source, target);
-            // yes, this only works from the temporary dir
+        if (x.errorNum === 2 /* errors.ERROR_SYS_ERROR.code */) {
+          if (exports.isDirectory(source)) {
             try {
-              exports.removeDirectoryRecursive(source);
-            } catch (z) {
-              require('console').log(`failed to remove source directory: ${z.stack || z}`);
+              exports.copyRecursive(source, target);
+              // yes, this only works from the temporary dir // or maybe not? -ap
+              try {
+                exports.removeDirectoryRecursive(source, true);
+              } catch (z) {
+                require('console').log(`failed to remove source directory: ${z.stack || z}`);
+              }
+            } catch (y) {
+              try {
+                // try to cleanup the mess we created...
+                // if it doesn't work out... oh well...
+                exports.removeDirectoryRecursive(target, true);
+              } catch (v) {
+                require('console').log(`failed to clean up target directory: ${v.stack || v}`);
+              }
+              throw y;
             }
-          } catch (y) {
+          } else {
+            exports.copyFile(source, target);
             try {
-              // try to cleanup the mess we created...
-              // if it doesn't work out... oh well...
-              exports.removeDirectoryRecursive(target);
-            } catch (v) {
-              require('console').log(`failed to clean up target directory: ${v.stack || v}`);
+              exports.remove(source);
+            } catch (e) {
+              require('console').log(`failed to remove source directory: ${e.stack || e}`);
             }
-            throw y;
           }
         } else {
           throw x;
@@ -502,6 +510,15 @@ global.DEFINE_MODULE('fs', (function () {
   if (global.FS_FILESIZE) {
     exports.size = global.FS_FILESIZE;
     delete global.FS_FILESIZE;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief adler32
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.FS_ADLER32) {
+    exports.adler32 = global.FS_ADLER32;
+    delete global.FS_ADLER32;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

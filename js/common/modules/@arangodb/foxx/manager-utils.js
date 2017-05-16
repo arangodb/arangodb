@@ -29,7 +29,6 @@
 // / @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var joi = require('joi');
 var fs = require('fs');
 var _ = require('lodash');
 var arangodb = require('@arangodb');
@@ -54,7 +53,7 @@ function getReadableName (name) {
   .replace(/\s([a-z])/g, (m) => ` ${m[0].toUpperCase()}`);
 }
 
-var getStorage = function () {
+function getStorage () {
   var c = db._collection('_apps');
   if (c === null) {
     c = db._create('_apps', {isSystem: true, replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
@@ -62,13 +61,13 @@ var getStorage = function () {
     c.ensureIndex({ type: 'hash', fields: [ 'mount' ], unique: true });
   }
   return c;
-};
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief comparator for mount points
 // //////////////////////////////////////////////////////////////////////////////
 
-var compareMounts = function (l, r) {
+function compareMounts (l, r) {
   var left = l.mount.toLowerCase();
   var right = r.mount.toLowerCase();
 
@@ -76,7 +75,7 @@ var compareMounts = function (l, r) {
     return -1;
   }
   return 1;
-};
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief builds a github repository URL
@@ -95,100 +94,28 @@ function buildGithubUrl (repository, version) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief returns all running Foxx applications
-// //////////////////////////////////////////////////////////////////////////////
-
-function listJson (showPrefix, onlyDevelopment) {
-  var mounts = getStorage();
-  var cursor;
-  if (onlyDevelopment) {
-    cursor = mounts.byExample({isDevelopment: true});
-  } else {
-    cursor = mounts.all();
-  }
-  return cursor.toArray().map(function (doc) {
-    return {
-      mountId: doc._key,
-      mount: doc.mount,
-      name: doc.manifest.name,
-      description: doc.manifest.description,
-      author: doc.manifest.author,
-      system: doc.isSystem || false,
-      development: doc.isDevelopment || false,
-      contributors: doc.manifest.contributors || false,
-      license: doc.manifest.license,
-      version: doc.manifest.version,
-      path: fs.join(fs.makeAbsolute(doc.root || internal.appPath), doc.path),
-      config: getConfiguration(doc.manifest.configuration, doc.options.configuration),
-      deps: getDependencies(doc.manifest.dependencies, doc.options.dependencies),
-      scripts: getScripts(doc.manifest.scripts),
-      collectionPrefix: showPrefix ? doc.options.collectionPrefix : undefined
-    };
-  });
-}
-
-function getScripts (scripts) {
-  var names = {};
-  _.each(scripts, function (script, name) {
-    names[name] = getReadableName(name);
-  });
-  return names;
-}
-
-function getConfiguration (definitions, options) {
-  var cfg = {};
-  _.each(definitions, function (definition, name) {
-    cfg[name] = _.clone(definition);
-    cfg[name].title = getReadableName(name);
-    cfg[name].current = options[name];
-  });
-  return cfg;
-}
-
-function getDependencies (definitions, options) {
-  var deps = {};
-  _.each(definitions, function (definition, name) {
-    deps[name] = {
-      definition: definition,
-      title: getReadableName(name),
-      current: options[name]
-    };
-  });
-  return deps;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief prints all running Foxx applications
 // //////////////////////////////////////////////////////////////////////////////
 
 function list (onlyDevelopment) {
-  var apps = listJson(undefined, onlyDevelopment);
+  var services = getStorage().toArray().map((definition) => ({
+    mount: definition.mount,
+    development: definition.options.development
+  }));
 
   arangodb.printTable(
-    apps.sort(compareMounts),
-    [ 'mount', 'name', 'author', 'description', 'version', 'development' ],
+    services.sort(compareMounts),
+    [ 'mount', 'development' ],
     {
       prettyStrings: true,
-      totalString: '%s application(s) found',
-      emptyString: 'no applications found',
+      totalString: '%s service(s) found',
+      emptyString: 'no services found',
       rename: {
         'mount': 'Mount',
-        'name': 'Name',
-        'author': 'Author',
-        'description': 'Description',
-        'version': 'Version',
         'development': 'Development'
       }
     }
   );
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief returns all running Foxx applications in development mode
-// //////////////////////////////////////////////////////////////////////////////
-
-function listDevelopmentJson (showPrefix) {
-  return listJson(showPrefix, true);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -246,59 +173,31 @@ function validateMount (mount, internal) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief validate an app name and fail if it is invalid
+// / @brief get the app installed at this mount point
 // //////////////////////////////////////////////////////////////////////////////
 
-function validateServiceName (name) {
-  if (typeof name === 'string' && name.length > 0) {
-    return;
-  }
-
-  throw new ArangoError({
-    errorNum: errors.ERROR_SERVICE_INVALID_NAME.code,
-    errorMessage: errors.ERROR_SERVICE_INVALID_NAME.message
-  });
+function getServiceDefinition (mount) {
+  return getStorage().firstExample({mount});
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief get the app mounted at this mount point
-// //////////////////////////////////////////////////////////////////////////////
-
-function mountedService (mount) {
-  return getStorage().firstExample({mount: mount});
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Update the app mounted at this mountpoint with the new app
+// / @brief Update the app installed at this mountpoint with the new app
 // //////////////////////////////////////////////////////////////////////////////
 
 function updateService (mount, update) {
-  return getStorage().replaceByExample({mount: mount}, update);
+  return getStorage().replaceByExample({mount}, update);
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief define validators for parameter types
-// //////////////////////////////////////////////////////////////////////////////
-
-var parameterTypes = {
-  integer: joi.number().integer(),
-  boolean: joi.boolean(),
-  string: joi.string(),
-  number: joi.number(),
-  json: function (v) {return v && JSON.parse(v);}
-};
-parameterTypes.password = parameterTypes.string;
-parameterTypes.int = parameterTypes.integer;
-parameterTypes.bool = parameterTypes.boolean;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a zip archive of a foxx app. Returns the absolute path
 // //////////////////////////////////////////////////////////////////////////////
-var zipDirectory = function (directory) {
+function zipDirectory (directory, zipFilename) {
   if (!fs.isDirectory(directory)) {
     throw directory + ' is not a directory.';
   }
-  var tempFile = fs.getTempFile('zip', false);
+  if (!zipFilename) {
+    zipFilename = fs.getTempFile('bundles', false);
+  }
 
   var tree = fs.listTree(directory);
   var files = [];
@@ -315,25 +214,21 @@ var zipDirectory = function (directory) {
   if (files.length === 0) {
     throwFileNotFound("Directory '" + String(directory) + "' is empty");
   }
-  fs.zipFile(tempFile, directory, files);
-  return tempFile;
-};
+  fs.zipFile(zipFilename, directory, files);
+  return zipFilename;
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Exports
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.mountedService = mountedService;
+exports.getServiceDefinition = getServiceDefinition;
 exports.updateService = updateService;
 exports.getReadableName = getReadableName;
 exports.list = list;
-exports.listJson = listJson;
 exports.listDevelopment = listDevelopment;
-exports.listDevelopmentJson = listDevelopmentJson;
 exports.buildGithubUrl = buildGithubUrl;
-exports.validateServiceName = validateServiceName;
 exports.validateMount = validateMount;
-exports.parameterTypes = parameterTypes;
 exports.zipDirectory = zipDirectory;
 exports.getStorage = getStorage;
 exports.pathRegex = pathRegex;

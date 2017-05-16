@@ -652,7 +652,7 @@ def restbodyparam(cargo, r=Regexen()):
         # once this is solved we can skip this:
         operation['description'] += "\n**A json post document with these Properties is required:**\n"
         restBodyParam = {
-            'name': 'Json Post Body',
+            'name': 'Json Request Body',
             'x-description-offset': len(swagger['paths'][httpPath][method]['description']),
             'in': 'body',
             'required': True,
@@ -740,7 +740,7 @@ def restallbodyparam(cargo, r=Regexen()):
         raise Exception("May only have one 'ALLBODY'")
 
     restBodyParam = {
-            'name': 'Json Post Body',
+            'name': 'Json Request Body',
             'description': '',
             'in': 'body',
             'x-description-offset': len(swagger['paths'][httpPath][method]['description']),
@@ -881,7 +881,7 @@ def restreplybody(cargo, r=Regexen()):
         required = False
 
     if currentReturnCode == 0:
-        raise Exception("failed to add text to reply body: (have to specify the HTTP-code first) " + parameters(last))
+        raise Exception("failed to add text to response body: (have to specify the HTTP-code first) " + parameters(last))
 
     rcBlock = currentDocuBlock + '_rc_' +  currentReturnCode
     #if currentReturnCode:
@@ -1271,9 +1271,7 @@ for route in swagger['paths'].keys():
                 paramDesc = thisVerb['description'][:descOffset]
                 if len(paramDesc) > 0: 
                     postText += paramDesc
-                if 'additionalProperties' in thisVerb['parameters'][nParam]['schema']:
-                    addText = "\nfree style json body\n\n"
-                else:
+                if 'additionalProperties' not in thisVerb['parameters'][nParam]['schema']:
                     addText = "\n" + unwrapPostJson(getReference(thisVerb['parameters'][nParam]['schema'], route, verb),1) + "\n\n"
                 
                 postText += addText
@@ -1296,9 +1294,7 @@ for route in swagger['paths'].keys():
                     replyDescription = TrimThisParam(thisVerb['responses'][nRC]['description'], 0)
                     if (len(replyDescription) > 0): 
                         addText += '\n' + replyDescription + '\n'
-                    if 'additionalProperties' in thisVerb['responses'][nRC]['schema']:
-                        addText += "\n free style json body\n"
-                    else:
+                    if 'additionalProperties' not in thisVerb['responses'][nRC]['schema']:
                         addText += "\n" + unwrapPostJson(
                             getReference(thisVerb['responses'][nRC]['schema'], route, verb),0) + '\n'
                     #print addText

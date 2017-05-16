@@ -60,6 +60,14 @@ module.exports =
 
     set headers (headers) {
       this._raw.headers = headers;
+      if (!headers) {
+        return;
+      }
+      for (const name of Object.keys(headers)) {
+        if (name.toLowerCase() === 'content-type') {
+          this._raw.contentType = headers[name];
+        }
+      }
     }
 
     get statusCode () {
@@ -202,7 +210,7 @@ module.exports =
       if (!opts) {
         opts = {};
       }
-      this._raw.body = fs.readBuffer(filename);
+      this._raw.body = fs.readFileSync(filename);
       if (opts.lastModified || (
         opts.lastModified !== false && !this.headers['last-modified']
         )) {

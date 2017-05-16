@@ -10,6 +10,14 @@ devel
 
 * (Enterprise only) added authentication against an LDAP server
 
+* fixed issue #2083: Foxx services aren't distributed to all coordinators
+
+* fixed issue #2384: new coordinators don't pick up existing Foxx services
+
+* fixed issue #2408: Foxx service validation causes unintended side-effects
+
+* extended HTTP API with routes for managing Foxx services
+
 
 v3.2.alpha4 (2017-04-25)
 ------------------------

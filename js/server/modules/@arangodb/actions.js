@@ -43,7 +43,7 @@ var mimeTypes = require('mime-types');
 var console = require('console');
 
 var arangodb = require('@arangodb');
-var foxxManager = require('@arangodb/foxx/manager');
+var FoxxManager = require('@arangodb/foxx/manager');
 var shallowCopy = require('@arangodb/util').shallowCopy;
 
 const MIME_DEFAULT = 'text/plain; charset=utf-8';
@@ -131,15 +131,7 @@ function createCallbackFromActionCallbackString (callback, parentModule, route) 
   try {
     actionModule._compile(`module.exports = ${callback}`, route.name);
   } catch (e) {
-    let err = e;
-    while (err) {
-      console.errorLines(
-        err === e
-        ? err.stack
-        : `via ${err.stack}`
-      );
-      err = err.cause;
-    }
+    console.errorStack(e);
     return notImplementedFunction(route, util.format(
       "could not generate callback for '%s'",
       callback
@@ -987,21 +979,23 @@ function flattenRoutingTree (tree) {
 //
 
 function foxxRouting (req, res, options, next) {
+  // console.infoLines(require('util').inspect(req));
   var mount = options.mount;
 
   try {
-    var service = foxxManager.lookupService(mount);
+    var service = FoxxManager.lookupService(mount);
     var devel = service.isDevelopment;
 
-    if (devel || !options.hasOwnProperty('routing')) {
+    if (devel || !options.routing) {
       delete options.error;
 
       if (devel) {
-        foxxManager.rescanFoxx(mount); // TODO can move this to somewhere else?
-        service = foxxManager.lookupService(mount);
+        service = FoxxManager.reloadInstalledService(mount, true);
       }
 
-      options.routing = flattenRoutingTree(buildRoutingTree([foxxManager.routes(mount)]));
+      options.routing = flattenRoutingTree(buildRoutingTree([
+        FoxxManager.ensureRouted(mount).routes
+      ]));
     }
   } catch (err1) {
     options.error = {
@@ -1016,7 +1010,7 @@ function foxxRouting (req, res, options, next) {
     }
   }
 
-  if (options.hasOwnProperty('error')) {
+  if (options.error) {
     exports.resultError(req,
       res,
       options.error.code,
@@ -1065,15 +1059,15 @@ function buildRouting (dbname) {
   routing = null;
 
   // install the foxx routes
-  var foxxes = foxxManager.mountPoints();
+  var mountPoints = FoxxManager._mountPoints();
 
-  for (let i = 0; i < foxxes.length; i++) {
-    var foxx = foxxes[i];
+  for (let i = 0; i < mountPoints.length; i++) {
+    var mountPoint = mountPoints[i];
 
     routes.push({
-      name: "Foxx service mounted at '" + foxx + "'",
-      url: { match: foxx + '/*' },
-      action: { callback: foxxRouting, options: { mount: foxx } }
+      name: "Foxx service mounted at '" + mountPoint + "'",
+      url: { match: mountPoint + '/*' },
+      action: { callback: foxxRouting, options: { mount: mountPoint } }
     });
   }
 
@@ -1171,7 +1165,7 @@ function routeRequest (req, res, routes) {
   if (routes === undefined) {
     var dbname = arangodb.db._name();
 
-    if (undefined === RoutingList[dbname]) {
+    if (!RoutingList[dbname]) {
       buildRouting(dbname);
     }
 
@@ -1275,7 +1269,7 @@ function reloadRouting () {
 
   RoutingTree = {};
   RoutingList = {};
-  foxxManager._resetCache();
+  FoxxManager._resetCache();
 }
 
 //
@@ -1530,7 +1524,7 @@ function resultOk (req, res, httpReturnCode, result, headers) {
     result = {};
   }
 
-  // check the type of the result. 
+  // check the type of the result.
   if (typeof result !== 'string' &&
     typeof result !== 'number' &&
     typeof result !== 'boolean') {
@@ -1915,7 +1909,7 @@ function easyPostCallback (opts) {
     }
 
     try {
-      var result = opts.callback(body);
+      var result = opts.callback(body, req);
       resultOk(req, res, exports.HTTP_OK, result);
     } catch (err) {
       resultException(req, res, err, undefined, false);

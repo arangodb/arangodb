@@ -22,8 +22,8 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
+const BODYLESS_METHODS = ['DELETE', 'GET', 'HEAD', 'OPTIONS'];
 const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
-const actions = require('@arangodb/actions');
 
 module.exports =
   class Route extends SwaggerContext {
@@ -62,7 +62,7 @@ module.exports =
       }
       this.name = name;
       if (!methods.some(
-          (method) => actions.BODYFREE_METHODS.indexOf(method) === -1
+          (method) => BODYLESS_METHODS.indexOf(method) === -1
         )) {
         this.body(null);
       }

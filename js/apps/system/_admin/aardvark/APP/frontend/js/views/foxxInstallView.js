@@ -352,7 +352,7 @@
     });
     $('#upload-foxx-zip').uploadFile({
       url: arangoHelper.databaseUrl('/_api/upload?multipart=true'),
-      allowedTypes: 'zip',
+      allowedTypes: 'zip,js',
       multiple: false,
       onSuccess: installFoxxFromZip.bind(scope)
     });

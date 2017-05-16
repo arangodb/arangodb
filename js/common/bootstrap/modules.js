@@ -539,12 +539,13 @@
       Module._extensions[extension](this, filename);
     } catch (e) {
       if (e.errorNum !== internal.errors.ERROR_MODULE_FAILURE.code) {
-        const error = new internal.ArangoError({
-          errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
-          errorMessage: `${internal.errors.ERROR_MODULE_FAILURE.message}\nFile: ${filename}`
-        });
-        error.cause = e;
-        throw error;
+        throw Object.assign(
+          new internal.ArangoError({
+            errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
+            errorMessage: `${internal.errors.ERROR_MODULE_FAILURE.message}\nFile: ${filename}`
+          }),
+          {cause: e}
+        );
       }
       throw e;
     }

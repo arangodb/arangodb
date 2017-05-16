@@ -38,23 +38,23 @@
 
   return {
     startup: function () {
-      var dbName = db._name();
+      const dbName = db._name();
+      try {
+        db._useDatabase('_system');
+        let databases = db._databases();
 
-      db._useDatabase('_system');
-      var databases = db._databases();
-
-      for (var i = 0; i < databases.length; ++i) {
-        var name = databases[i];
-        try {
-          db._useDatabase(name);
-          internal.autoloadModules();
-        } catch (e) {
-          console.info('trying to autoload new database %s, ignored', name);
+        for (const name of databases) {
+          try {
+            db._useDatabase(name);
+            internal.autoloadModules();
+          } catch (e) {
+            console.info('trying to autoload new database %s, ignored', name);
+          }
         }
+      } finally {
+        // return to _system database so the caller does not need to know we changed the db
+        db._useDatabase(dbName);
       }
-
-      // return to _system database so the caller does not need to know we changed the db
-      db._useDatabase(dbName);
 
       return true;
     }

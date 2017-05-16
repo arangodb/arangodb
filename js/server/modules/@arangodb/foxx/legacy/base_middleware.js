@@ -230,7 +230,7 @@ function BaseMiddleware () {
     // //////////////////////////////////////////////////////////////////////////////
 
     trace = options.isDevelopment;
-    if (!trace && options.hasOwnProperty('options')) {
+    if (!trace && options.options) {
       trace = options.options.trace;
     }
 

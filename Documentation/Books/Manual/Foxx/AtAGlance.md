@@ -23,13 +23,13 @@ For information on how this affects interoperability with third-party JavaScript
 Development mode
 ----------------
 
-Development mode allows you to make changes to deployed services in-place directly on the database server's file system without downloading and re-uploading the service bundle.
+Development mode allows you to make changes to deployed services in-place directly on the database server's file system without downloading and re-uploading the service bundle. Additionally error messages will contain stacktraces.
 
-You can toggle development mode on and off in the service settings tab of the web interface. Once activated the service's file system path will be shown in the info tab.
+You can toggle development mode on and off in the service settings tab of the web interface or using the [HTTP API](../../HTTP/Foxx/Miscellaneous.md). Once activated the service's file system path will be shown in the info tab.
 
 <!-- TODO (Add link to relevant aardvark docs) -->
 
-Once enabled the service's source files and manifest will be re-evaluated every time a route of the service is accessed, effectively re-deploying the service on every request. As the name indicates this is intended to be used strictly during development and is most definitely a bad idea on production servers.
+Once enabled the service's source files and manifest will be re-evaluated, and the setup script (if present) re-executed, every time a route of the service is accessed, effectively re-deploying the service on every request. As the name indicates this is intended to be used strictly during development and is most definitely a bad idea on production servers. The additional information exposed during development mode may include file system paths and parts of the service's source code.
 
 Also note that if you are serving static files as part of your service, accessing these files from a browser may also trigger a re-deployment of the service. Finally, making HTTP requests to a service running in development mode from within the service (i.e. using the `@arangodb/request` module to access the service itself) is probably not a good idea either.
 
@@ -47,8 +47,10 @@ You can find the Foxx store in the web interface by using the *Add Service* butt
 Cluster-Foxx
 ------------
 
-When running ArangoDB in a cluster the Foxx services will run on each coordinator. Installing, upgrading and uninstalling services on any coordinator will automatically affect the other coordinators, making deployments as easy as in single-server mode. However, this means there are some limitations:
+When running ArangoDB in a cluster the Foxx services will run on each coordinator. Installing, upgrading and uninstalling services on any coordinator will automatically distribute the service to the other coordinators, making deployments as easy as in single-server mode. However, this means there are some limitations:
 
 You should avoid any kind of file system state beyond the deployed service bundle itself. Don't write data to the file system or encode any expectations of the file system state other than the files in the service folder that were installed as part of the service (e.g. file uploads or custom log files).
 
-Additionally, the development mode is not supported in cluster mode. The development mode is intended to allow modifying the service's code and seeing the effect of those changes in realtime. The service is automatically deployed to multiple coordinators, but with (temporarily) different copies of the service, the inconsistent state would lead to unpredictable behavior. It is recommended that you either re-deploy services when making changes to code running in a cluster or use development mode on a single-server installation.
+Additionally, the development mode will lead to an inconsistent state of the cluster until it is disabled. While a service is running in development mode you can make changes to the service on the filesystem of any coordinator and see them reflected in real time just like when running ArangoDB as a single server. However the changes made on one coordinator will not be reflected across other coordinators until the development mode is disabled. When disabling the development mode for a service, the coordinator will create a new bundle and distribute it across the service like a manual upgrade of the service.
+
+For these reasons it is strongly recommended not to use development mode in a cluster with multiple coordinators unless you are sure that no requests or changes will be made to other coordinators while you are modifying the service. Using development mode in a production cluster is extremely unsafe and highly discouraged.

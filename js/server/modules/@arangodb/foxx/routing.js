@@ -29,6 +29,8 @@ const fs = require('fs');
 const ansiHtml = require('ansi-html');
 const dd = require('@arangodb/util').dedent;
 const arangodb = require('@arangodb');
+const ArangoError = arangodb.ArangoError;
+const errors = arangodb.errors;
 const actions = require('@arangodb/actions');
 const routeLegacyService = require('@arangodb/foxx/legacy/routing').routeService;
 const codeFrame = require('@arangodb/util').codeFrame;
@@ -213,19 +215,27 @@ function createBrokenServiceRoute (service, err) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.routeService = function (service, throwOnErrors) {
-  if (service.needsConfiguration()) {
-    return {
-      exports: service.main.exports,
-      routes: createServiceNeedsConfigurationRoute(service),
-      docs: null
-    };
-  }
-
-  if (!service.isDevelopment && service.main.loaded) {
+  if (service.main.loaded && !service.isDevelopment) {
     return {
       exports: service.main.exports,
       routes: service.routes,
       docs: service.legacy ? null : service.docs
+    };
+  }
+
+  if (service.needsConfiguration()) {
+    return {
+      get exports () {
+        if (!throwOnErrors) {
+          return service.main.exports;
+        }
+        throw new ArangoError({
+          errorNum: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.code,
+          errorMessage: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.message
+        });
+      },
+      routes: createServiceNeedsConfigurationRoute(service),
+      docs: null
     };
   }
 
@@ -254,23 +264,11 @@ exports.routeService = function (service, throwOnErrors) {
       try {
         service.main.exports = service.run(service.manifest.main);
       } catch (e) {
-        console.errorLines(`Service "${service.mount}" encountered an error while being mounted`);
-        const frame = codeFrame(e.cause || e, service.basePath);
-        if (frame) {
-          console.errorLines(frame);
-        }
-        let err = e;
-        while (err) {
-          if (err.stack) {
-            console.errorLines(
-              err === e
-              ? err.stack
-              : `via ${err.stack}`
-            );
-          }
-          err = err.cause;
-        }
-        error = e;
+        e.codeFrame = codeFrame(e.cause || e, service.basePath);
+        console.errorStack(
+          e,
+          `Service "${service.mount}" encountered an error while being mounted`
+        );
         if (throwOnErrors) {
           throw e;
         }

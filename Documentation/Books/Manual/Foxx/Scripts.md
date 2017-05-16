@@ -70,6 +70,8 @@ The following scripts are currently recognized as lifecycle scripts by their nam
 
 The setup script will be executed without arguments during the installation of your Foxx service.
 
+The setup script may be executed more than once and should therefore be treated as reentrant. Running the same setup script again should not result in any errors or duplicate data.
+
 The setup script is typically used to create collections your service needs or insert seed data like initial administrative user accounts and so on.
 
 **Examples**
@@ -88,7 +90,7 @@ if (db._collection(textsCollectionName) === null) {
   collection.save({text: 'entry 2 from collection texts'});
   collection.save({text: 'entry 3 from collection texts'});
 } else {
-  console.log(`collection ${texts} already exists. Leaving it untouched.`);
+  console.debug(`collection ${texts} already exists. Leaving it untouched.`);
 }
 ```
 
