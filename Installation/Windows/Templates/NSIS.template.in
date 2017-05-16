@@ -876,7 +876,7 @@ noServiceToStop:
 
   System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
-    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database"
+    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database --server.rest-server false --server.statistics false --foxx.queues false"
     Goto done
   error:
     MessageBox MB_OK "Failed to initialize database password."
