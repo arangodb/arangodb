@@ -82,6 +82,7 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   if ((_trx.get() == nullptr) || (_trx->vocbase() != vocbase)) {
     releaseDumpingResources();
     _trx = createTransaction(vocbase);
+    TRI_ASSERT(_trx);
     _lastTick = toRocksTransactionState(_trx.get())->sequenceNumber();
   }
 }

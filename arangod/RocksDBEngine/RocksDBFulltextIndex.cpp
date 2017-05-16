@@ -210,7 +210,7 @@ int RocksDBFulltextIndex::insert(transaction::Methods* trx,
     RocksDBKey key =
         RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
 
-    Result r = mthd->Put(key, value.string());
+    Result r = mthd->Put(key, value.string(), rocksutils::index);
     if (!r.ok()) {
       res = r.errorNumber();
       break;

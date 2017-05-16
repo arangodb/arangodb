@@ -92,7 +92,6 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
                                    index->objectId(), left, right)
                              : RocksDBKeyBounds::IndexRange(index->objectId(),
                                                             left, right)) {
-                               
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   rocksdb::ReadOptions options = mthds->readOptions();
   if (!reverse) {
@@ -176,7 +175,8 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
   if (!_unique && !ServerState::instance()->isCoordinator()) {
     // We activate the estimator for all non unique-indexes.
     // And only on DBServers
-    _estimator = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(RocksDBIndex::ESTIMATOR_SIZE);
+    _estimator = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
+        RocksDBIndex::ESTIMATOR_SIZE);
     TRI_ASSERT(_estimator != nullptr);
   }
   TRI_ASSERT(!_fields.empty());
@@ -196,7 +196,8 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
 /// @brief destroy the index
 RocksDBVPackIndex::~RocksDBVPackIndex() {}
 
-double RocksDBVPackIndex::selectivityEstimate(arangodb::StringRef const*) const {
+double RocksDBVPackIndex::selectivityEstimate(
+    arangodb::StringRef const*) const {
   if (_unique) {
     return 1.0;  // only valid if unique
   }
@@ -436,7 +437,8 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
     if (it == seen.end()) {
       seen.insert(something);
       sliceStack.emplace_back(something);
-      buildIndexValues(leased, document, level + 1, elements, sliceStack, hashes);
+      buildIndexValues(leased, document, level + 1, elements, sliceStack,
+                       hashes);
       sliceStack.pop_back();
     }
   };
@@ -532,9 +534,9 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      arangodb::Result r = mthds->Put(key, value.string());
+      arangodb::Result r = mthds->Put(key, value.string(), rocksutils::index);
       if (!r.ok()) {
-        //auto status =
+        // auto status =
         //    rocksutils::convertStatus(s, rocksutils::StatusHint::index);
         res = r.errorNumber();
       }
@@ -593,7 +595,7 @@ int RocksDBVPackIndex::insertRaw(RocksDBMethods* writeBatch,
       }
     }
     if (res == TRI_ERROR_NO_ERROR) {
-      writeBatch->Put(key, value.string());
+      writeBatch->Put(key, value.string(), rocksutils::index);
     }
   }
 
@@ -1459,7 +1461,6 @@ int RocksDBVPackIndex::cleanup() {
   return TRI_ERROR_NO_ERROR;
 }
 
-
 void RocksDBVPackIndex::serializeEstimate(std::string& output) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!_unique) {
@@ -1478,7 +1479,7 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
   // and will use the old size.
 
   TRI_ASSERT(mgr != nullptr);
-  auto tmp =  mgr->stealIndexEstimator(_objectId);
+  auto tmp = mgr->stealIndexEstimator(_objectId);
   if (tmp == nullptr) {
     // We expected to receive a stored index estimate, however we got none.
     // We use the freshly created estimator but have to recompute it.

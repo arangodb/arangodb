@@ -46,7 +46,9 @@ class Hints {
     NO_COMPACTION_LOCK = 128,
     NO_USAGE_LOCK = 256,
     RECOVERY = 512,
-    NO_DLD = 1024 // disable deadlock detection
+    NO_DLD = 1024, // disable deadlock detection
+    INTERMEDIATE_COMMIT = 2048, // allow intermediate commits
+    READ_WRITES = 4096 // do not use snapshot
   };
 
   Hints() : _value(0) {}

@@ -136,16 +136,25 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _cacheTx =
         CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
     
+    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    _rocksReadOptions.prefix_same_as_start = true;// should always be true
+    
     if (isReadOnlyTransaction()) {
-      rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
       _snapshot = db->GetSnapshot(); // we must call ReleaseSnapshot at some point
       _rocksReadOptions.snapshot = _snapshot;
-      _rocksReadOptions.prefix_same_as_start = true;
+      TRI_ASSERT(_snapshot != nullptr);
       _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
     } else {
-      // TODO somehow honor intermediate commit flags
-      
       createTransaction();
+      bool intermediate = hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMIT);
+      bool readWrites = hasHint(transaction::Hints::Hint::READ_WRITES);
+      if (intermediate && !readWrites) {
+        _snapshot = db->GetSnapshot(); // we must call ReleaseSnapshot at some point
+        _rocksReadOptions.snapshot = _snapshot;
+        TRI_ASSERT(_snapshot != nullptr);
+      } else {
+        _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
+      }
       _rocksMethods.reset(new RocksDBTrxMethods(this));
     }
 
@@ -165,9 +174,6 @@ void RocksDBTransactionState::createTransaction() {
   _rocksTransaction.reset(db->BeginTransaction(
                                                _rocksWriteOptions, rocksdb::TransactionOptions()));
   _rocksTransaction->SetSnapshot();
-  _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
-  _rocksReadOptions.prefix_same_as_start = true;
-  
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
     RocksDBLogValue header =
     RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
@@ -442,12 +448,17 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
       (_intermediateTransactionNumber <= numOperations ||
        _intermediateTransactionSize <= newSize)) {
     //res.commitRequired(true);
-        
+      if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMIT)) {
         internalCommit();
-        
-    // TODO perform intermediate commit
-        
-  }
+        _numInserts = 0;
+        _numUpdates = 0;
+        _numRemoves = 0;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        _numLogdata = 0;
+#endif
+        createTransaction();
+      } // TODO what else?
+    }
 
   return res;
 }
@@ -458,6 +469,9 @@ RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
 }
 
 uint64_t RocksDBTransactionState::sequenceNumber() const {
-  return static_cast<uint64_t>(
-      _rocksTransaction->GetSnapshot()->GetSequenceNumber());
+  if (_snapshot != nullptr) {
+    return static_cast<uint64_t>(_snapshot->GetSequenceNumber());
+  } else {
+    return static_cast<uint64_t>(_rocksTransaction->GetSnapshot()->GetSequenceNumber());
+  }
 }

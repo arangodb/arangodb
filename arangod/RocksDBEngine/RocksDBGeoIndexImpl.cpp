@@ -290,9 +290,20 @@ inline void RocksRead(GeoIx * gix, RocksDBKey const& key, std::string *val) {
 inline void RocksWrite(GeoIx * gix,
                        RocksDBKey const& key,
                        rocksdb::Slice const& slice) {
-  arangodb::Result r = gix->rocksMethods->Put(key, slice);
-  if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  // only true when called from GeoIndex_new
+  if (gix->rocksMethods == nullptr) {
+    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+    rocksdb::WriteOptions wo;
+    rocksdb::Status s = db->Put(wo, key.string(), slice);
+    if (!s.ok()) {
+      arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
+      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
+  } else {
+    arangodb::Result r = gix->rocksMethods->Put(key, slice, rocksutils::index);
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
   }
 }
   

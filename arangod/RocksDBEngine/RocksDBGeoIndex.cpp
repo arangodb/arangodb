@@ -481,8 +481,7 @@ int RocksDBGeoIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
   return res;
 }
 
-int RocksDBGeoIndex::insertRaw(RocksDBMethods* batch,
-                               TRI_voc_rid_t revisionId,
+int RocksDBGeoIndex::insertRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,
                                arangodb::velocypack::Slice const& doc) {
   GeoIndex_setRocksMethods(_geoIndex, batch);
   int res = this->internalInsert(revisionId, doc);
@@ -553,15 +552,13 @@ int RocksDBGeoIndex::internalRemove(TRI_voc_rid_t revisionId,
 int RocksDBGeoIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                             VPackSlice const& doc, bool isRollback) {
   // acquire rocksdb methods
-  RocksDBMethods *methods = rocksutils::toRocksMethods(trx);
   GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
   int res = this->internalRemove(revisionId, doc);
   GeoIndex_clearRocks(_geoIndex);
   return res;
 }
 
-int RocksDBGeoIndex::removeRaw(RocksDBMethods* batch,
-                               TRI_voc_rid_t revisionId,
+int RocksDBGeoIndex::removeRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,
                                arangodb::velocypack::Slice const& doc) {
   GeoIndex_setRocksMethods(_geoIndex, batch);
   int res = this->internalRemove(revisionId, doc);
@@ -596,7 +593,10 @@ GeoCoordinates* RocksDBGeoIndex::withinQuery(transaction::Methods* trx,
   gc.latitude = lat;
   gc.longitude = lon;
 
-  return GeoIndex_PointsWithinRadius(_geoIndex, &gc, radius);
+  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
+  GeoCoordinates* coords = GeoIndex_PointsWithinRadius(_geoIndex, &gc, radius);
+  GeoIndex_clearRocks(_geoIndex);
+  return coords;
 }
 
 /// @brief looks up the nearest points
@@ -607,5 +607,9 @@ GeoCoordinates* RocksDBGeoIndex::nearQuery(transaction::Methods* trx,
   gc.latitude = lat;
   gc.longitude = lon;
 
-  return GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));
+  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
+  GeoCoordinates* coords =
+      GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));
+  GeoIndex_clearRocks(_geoIndex);
+  return coords;
 }

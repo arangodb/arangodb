@@ -411,7 +411,7 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
 
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
-  Result status = mthd->Put(key, value.string());
+  Result status = mthd->Put(key, value.string(), rocksutils::index);
   return status.errorNumber();
 }
 
