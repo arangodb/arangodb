@@ -32,7 +32,7 @@ enum class AuthLevel;
 class AuthContext {
   public:
     AuthContext(AuthLevel authLevel) : _databaseAccess(authLevel) {}
-    AuthLevel getDatabaseAuthLevel() { return _databaseAccess; }
+    AuthLevel databaseAuthLevel() { return _databaseAccess; }
 
   protected:
     AuthLevel _databaseAccess;
@@ -51,6 +51,7 @@ class ExecContext {
 
       std::string const& user() { return _user; }
       std::string const& database() { return _database; }
+      std::shared_ptr<AuthContext> authContext() { return _auth; }
 
   protected:
     std::string _user;

@@ -42,6 +42,8 @@
 #include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -198,6 +200,11 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
 
         auto authContext = _authentication->authInfo()->getAuthContext(_request->user(), _request->databaseName());
         auto *execContext = new ExecContext(_request->user(), _request->databaseName(), authContext);
+
+        if (execContext->authContext()->databaseAuthLevel() == AuthLevel::NONE) {
+          std::cout << "executionContext databaseAuthLevel is NONE\n";
+          return rest::ResponseCode::UNAUTHORIZED;
+        }
 
         _request->setExecContext(execContext);
 
