@@ -96,7 +96,10 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
   TRI_ASSERT(state != nullptr);
   rocksdb::ReadOptions options = state->readOptions();
   if (!reverse) {
-    options.iterate_upper_bound = &(_bounds.end());
+    // we need to have a pointer to a slice for the upper bound
+    // so we need to assign the slice to an instance variable here
+    _upperBound = _bounds.end();
+    options.iterate_upper_bound = &_upperBound;
   }
 
   _iterator.reset(rtrx->GetIterator(options));
