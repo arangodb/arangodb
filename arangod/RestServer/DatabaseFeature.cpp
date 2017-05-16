@@ -142,10 +142,6 @@ void DatabaseManagerThread::run() {
   
           TRI_ASSERT(!database->isSystem());
 
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "physically removing database directory '"
-                     << engine->databasePath(database) << "' of database '"
-                     << database->name() << "'";
-
           // remove apps directory for database
           auto appPath = dealer->appPath();
 
