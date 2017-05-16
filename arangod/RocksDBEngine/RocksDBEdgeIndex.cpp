@@ -201,9 +201,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
 
         // lookup real document
-        bool continueWithNextBatch =
-            lookupDocumentAndUseCb(edgeKey, cb, limit, token, false);
-
+        bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token);
         // build cache value for from/to
         if (_useCache) {
           if (_cacheValueSize <= cacheValueSizeLimit) {
@@ -242,23 +240,34 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 }
 
 // acquire the document token through the primary index
+<<<<<<< HEAD
 bool RocksDBEdgeIndexIterator::lookupDocumentAndUseCb(StringRef primaryKey,
                                                       TokenCallback const& cb,
                                                       size_t& limit,
                                                       RocksDBToken& token,
                                                       bool fromCache) {
   // we pass the token in as ref to avoid allocations
+=======
+bool RocksDBEdgeIndexIterator::lookupDocumentAndUseCb(
+    StringRef primaryKey, TokenCallback const& cb,
+    size_t& limit, RocksDBToken& token){
+  //we pass the token in as ref to avoid allocations
+>>>>>>> 35600c2ca25609a3b9392f556296d4ded81bf927
   auto rocksColl = toRocksDBCollection(_collection);
   Result res = rocksColl->lookupDocumentToken(_trx, primaryKey, token);
   if (res.ok()) {
     cb(token);
     --limit;
     if (limit == 0) {
+<<<<<<< HEAD
       if (fromCache) {
         _doUpdateArrayIterator = false;  // limit hit continue with next batch
       } else {
         _doUpdateBounds = false;  // limit hit continue with next batch
       }
+=======
+      _doUpdateBounds=false; //limit hit continue with next batch
+>>>>>>> 35600c2ca25609a3b9392f556296d4ded81bf927
       return true;
     }
   }              // TODO do we need to handle failed lookups here?

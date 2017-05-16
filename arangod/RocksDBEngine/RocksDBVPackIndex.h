@@ -96,6 +96,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _reverse;
   RocksDBKeyBounds _bounds;
+  rocksdb::Slice _upperBound; // used for iterate_upper_bound
 };
 
 class RocksDBVPackIndex : public RocksDBIndex {

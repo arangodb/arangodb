@@ -113,7 +113,7 @@ class RocksDBCuckooIndexEstimator {
         _nrTotal(0),
         _maxRounds(16) {
     // Inflate size so that we have some padding to avoid failure
-    size *= 2.0;
+    size *= 2;
     size = (size >= 1024) ? size : 1024;  // want 256 buckets minimum
 
     // First find the smallest power of two that is not smaller than size:
@@ -573,7 +573,7 @@ class RocksDBCuckooIndexEstimator {
 
   void deriveSizesAndAlloc() {
     _sizeMask = _niceSize - 1;
-    _sizeShift = (64 - static_cast<uint32_t>(_logSize)) / 2;
+    _sizeShift = static_cast<uint32_t>((64 - _logSize) / 2);
     _allocSize = _size * _slotSize * SlotsPerBucket +
                  64;  // give 64 bytes padding to enable 64-byte alignment
     _allocBase = new char[_allocSize];

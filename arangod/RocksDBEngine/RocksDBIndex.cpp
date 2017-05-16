@@ -189,7 +189,8 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   RocksDBKeyBounds indexBounds = getBounds();
 
   rocksdb::ReadOptions options = mthds->readOptions();
-  options.iterate_upper_bound = &(indexBounds.end());
+  rocksdb::Slice upperBound = indexBounds.end();
+  options.iterate_upper_bound = &upperBound;
 
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options);
   iter->Seek(indexBounds.start());

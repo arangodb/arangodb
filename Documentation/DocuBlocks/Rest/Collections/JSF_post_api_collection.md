@@ -105,6 +105,12 @@ to all "follower" replicas, before the write operation is reported successful.
 If a server fails, this is detected automatically and one of the servers holding 
 copies take over, usually without an error being reported.
 
+@RESTQUERYPARAMETERS 
+@RESTQUERYPARAM{waitForSyncReplication,integer,optional,int64}
+Default is *1* which means the server will only report success back to the client
+if all replicas have created the collection. Set to *0* if you want faster
+server responses and don't care about full replication.
+
 @RESTDESCRIPTION
 Creates a new collection with a given name. The request must contain an
 object with the following attributes.

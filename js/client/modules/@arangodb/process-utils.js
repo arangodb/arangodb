@@ -1007,7 +1007,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
       instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
     } catch (x) {
       print('failed to start procdump - is it installed?');
-      throw x;
+      //throw x;
     }
   }
   return instanceInfo;

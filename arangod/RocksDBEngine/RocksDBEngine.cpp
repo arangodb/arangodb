@@ -728,6 +728,9 @@ arangodb::Result RocksDBEngine::persistCollection(
 
 arangodb::Result RocksDBEngine::dropCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+  RocksDBCollection* coll = toRocksDBCollection(collection->getPhysical());
+  uint64_t const numberDocuments = coll->numberDocuments();
+
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   // If we get here the collection is save to drop.
@@ -767,8 +770,6 @@ arangodb::Result RocksDBEngine::dropCollection(
   // Now Collection is gone.
   // Cleanup data-mess
 
-  RocksDBCollection* coll = toRocksDBCollection(collection->getPhysical());
-
   // Unregister counter
   _counterManager->removeCounter(coll->objectId());
   
@@ -803,7 +804,14 @@ arangodb::Result RocksDBEngine::dropCollection(
       return TRI_ERROR_NO_ERROR;
     }
   }
-  coll->compact();
+
+  // run compaction for data only if collection contained a considerable
+  // amount of documents. otherwise don't run compaction, because it will
+  // slow things down a lot, especially during tests that create/drop LOTS
+  // of collections
+  if (numberDocuments >= 16384) {
+    coll->compact();
+  }
 
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.

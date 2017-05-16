@@ -271,6 +271,8 @@ Result RocksDBCounterManager::sync(bool force) {
         // or start fresh.
         continue;
       }
+      TRI_DEFER(vocbase->release());
+
       auto collection = vocbase->lookupCollection(dbColPair.second);
       if (collection == nullptr) {
         // Bad state, we have references to a collection that is not known
@@ -284,7 +286,6 @@ Result RocksDBCounterManager::sync(bool force) {
           static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(rocksCollection != nullptr);
       Result res = rocksCollection->serializeIndexEstimates(rtrx.get());
-      vocbase->release();
       if (!res.ok()) {
         return res;
       }

@@ -27,8 +27,9 @@ main(){
 
 suite_all(){
     local count="$1"
-    local args_default=""
-    local args="$2"
+    shift 1
+    local args="$@"
+    local args_default=( )
 
     local tests=""
     case $1 in
@@ -41,7 +42,7 @@ suite_all(){
             return
         ;;
         0)
-            echo "./scripts/quickieTest.sh $args && exit 0"
+            echo "./scripts/quickieTest.sh ${args[@]} && exit 0"
             return
         ;;
         1)
@@ -65,22 +66,21 @@ suite_all(){
         *)
     esac
 
-    echo "./scripts/unittest $tests $args_default $args && exit 0"
+    echo "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
 }
 
 suite_all_rocksdb(){
     local count="$1"
-    local args_default=""
-    local args="$2"
+    shift 1
+    local args="$@"
 
-    local tests=""
     case $1 in
         name)
             echo "test_all_rocksdb"
             return
         ;;
         *)
-            suite_all "$1" "--storageEngine rocksdb"
+            suite_all "$count" "--storageEngine rocksdb" "${args[@]}"
         ;;
     esac
 }
@@ -129,10 +129,10 @@ spawn_panes(){
 execute_tasks(){
     cd $1 || die
     local tasks="$2"
-    local args="$3"
+    local args="$@"
     local count=0
     while (( count < $($tasks 'num') )); do
-        local exec_cmd="$($tasks $count "$args")"
+        local exec_cmd="$($tasks $count "${args[@]}")"
         echo "running: ${exec_cmd[@]}"
         tmux send-keys -t $session_name.$count "${exec_cmd[@]}" Enter
         (( count++ ))
