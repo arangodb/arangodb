@@ -19,11 +19,6 @@ printf " # db servers: %s," "$NRDBSERVERS"
 printf " # coordinators: %s," "$NRCOORDINATORS"
 printf " transport: %s\n" "$TRANSPORT"
 
-echo $SRC_DIR
-if [ ! -d ${SRC_DIR}/arangod ] || [ ! -d ${SRC_DIR}/arangosh ] || [ ! -d ${SRC_DIR}/UnitTests ] ; then
-  echo Must be started in the main ArangoDB source directory.
-  exit 1
-fi
 
 if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
   echo "**ERROR: Number of agents must be odd! Bailing out."

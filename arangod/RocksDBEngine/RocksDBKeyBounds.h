@@ -142,6 +142,7 @@ class RocksDBKeyBounds {
 
  public:
   RocksDBKeyBounds& operator=(RocksDBKeyBounds const& other);
+  RocksDBKeyBounds(RocksDBKeyBounds const& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the left bound slice.

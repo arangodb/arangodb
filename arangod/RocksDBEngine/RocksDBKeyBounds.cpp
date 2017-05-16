@@ -162,6 +162,13 @@ RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
   return *this;
 }
 
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other) 
+    : _type(other._type),
+      _startBuffer(other._startBuffer),
+      _endBuffer(other._endBuffer),
+      _end(rocksdb::Slice(_endBuffer)),
+      _start(rocksdb::Slice(_startBuffer)) {}
+
 rocksdb::Slice const& RocksDBKeyBounds::start() const {
   TRI_ASSERT(_start.size() > 0);
   return _start;

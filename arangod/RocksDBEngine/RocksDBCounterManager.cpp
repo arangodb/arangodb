@@ -271,6 +271,8 @@ Result RocksDBCounterManager::sync(bool force) {
         // or start fresh.
         continue;
       }
+      TRI_DEFER(vocbase->release());
+
       auto collection = vocbase->lookupCollection(dbColPair.second);
       if (collection == nullptr) {
         // Bad state, we have references to a collection that is not known
