@@ -2,9 +2,9 @@
   "gitbook": "^3.2.2",
   "title": "ArangoDB VERSION_NUMBER Documentation",
   "author": "ArangoDB GmbH",
-  "description": "Official manual for ArangoDB - the multi-model NoSQL database",
+  "description": "Official manual for ArangoDB - the native multi-model NoSQL database",
   "language": "en",
-  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "sitemap-general", "ga", "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git"],
+  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "sitemap-general", "ga", "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git", "localized-footer"],
   "pdf": {
     "fontSize": 12,
     "toc": true,
@@ -28,6 +28,9 @@
     },
     "ga": {
       "token": "UA-81053435-2"
+    },
+    "localized-footer": {
+      "filename": "FOOTER.html"
     }
   }
 }

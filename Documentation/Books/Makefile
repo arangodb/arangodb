@@ -258,6 +258,7 @@ build-book:
 
 	cd ppbooks/$(NAME); if ! test -L SUMMARY.md; then ln -s ../../$(NAME)/SUMMARY.md . ; fi
 	cd ppbooks/$(NAME); if ! test -f HEADER.html ; then cp ../../$(NAME)/HEADER.html . ; fi
+	cd ppbooks/$(NAME); if ! test -f FOOTER.html ; then cp ../../$(NAME)/FOOTER.html . ; fi
 	@if test -z "${RELEASE_DIRECTORY}"; then \
 		if ! test -f ppbooks/$(NAME)/book.json ; then cp $(NAME)/book.json ppbooks/$(NAME) ; fi; \
 	else \
@@ -290,6 +291,7 @@ build-book:
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	rm -f ./books/$(NAME)/HEADER.html
+	rm -f ./books/$(NAME)/FOOTER.html
 	python ../Scripts/deprecated.py
 
 	make book-check-markdown-leftovers
