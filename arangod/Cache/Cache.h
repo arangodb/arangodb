@@ -140,6 +140,14 @@ class Cache : public std::enable_shared_from_this<Cache> {
   Table::BucketClearer _bucketClearer;
   size_t _slotsPerBucket;
 
+  // manage eviction rate
+  std::atomic<uint64_t> _insertsTotal;
+  std::atomic<uint64_t> _insertEvictions;
+  static constexpr uint64_t _evictionMask = 1023; // check every 1024 insertions
+  static constexpr uint64_t _evictionThreshold = 32;  // if more than 32
+                                                      // evictions in past 1024
+                                                      // inserts, migrate
+
   // keep track of number of open operations to allow clean shutdown
   std::atomic<uint32_t> _openOperations;
 
@@ -169,6 +177,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   uint32_t hashKey(void const* key, uint32_t keySize) const;
   void recordStat(Stat stat);
+
+  bool reportInsert(bool hadEviction);
 
   // management
   Metadata* metadata();

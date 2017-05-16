@@ -161,8 +161,6 @@ std::vector<check_t> Supervision::checkDBServers() {
   }
   
   for (auto const& machine : machinesPlanned) {
-    constexpr char never[] = "1970-01-01T00:00:00Z";
-    
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
       lastStatus, heartbeatTime, heartbeatStatus, serverID(machine.first),
       shortName("Unknown");
@@ -184,6 +182,7 @@ std::vector<check_t> Supervision::checkDBServers() {
         _transient(healthPrefix + serverID + "/LastHeartbeatStatus").toJson();
       lastStatus = _transient(healthPrefix + serverID + "/Status").toJson();
     } else {
+      constexpr char never[] = "1970-01-01T00:00:00Z";
       heartbeatTime = std::string(never);
     }
     auto report = std::make_shared<Builder>();

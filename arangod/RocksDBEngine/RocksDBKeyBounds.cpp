@@ -119,6 +119,10 @@ RocksDBKeyBounds RocksDBKeyBounds::CounterValues() {
   return RocksDBKeyBounds(RocksDBEntryType::CounterValue);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::IndexEstimateValues() {
+  return RocksDBKeyBounds(RocksDBEntryType::IndexEstimateValue);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
     uint64_t indexId, arangodb::StringRef const& word) {
   // I did not want to pass a bool to the constructor for this
@@ -157,6 +161,13 @@ RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
 
   return *this;
 }
+
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other) 
+    : _type(other._type),
+      _startBuffer(other._startBuffer),
+      _endBuffer(other._endBuffer),
+      _end(rocksdb::Slice(_endBuffer)),
+      _start(rocksdb::Slice(_startBuffer)) {}
 
 rocksdb::Slice const& RocksDBKeyBounds::start() const {
   TRI_ASSERT(_start.size() > 0);
@@ -203,7 +214,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
 
       break;
     }
-    case RocksDBEntryType::CounterValue: {
+    case RocksDBEntryType::CounterValue:
+    case RocksDBEntryType::IndexEstimateValue: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _startBuffer.reserve(length);
       _startBuffer.push_back(static_cast<char>(_type));
@@ -214,7 +226,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
       uint64ToPersistent(_endBuffer, UINT64_MAX);
       break;
     }
-
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }

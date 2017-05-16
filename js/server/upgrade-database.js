@@ -440,7 +440,7 @@
 
       system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
 
       task: function () {
         return createSystemCollection('_graphs', {
@@ -458,7 +458,7 @@
 
       system: DATABASE_SYSTEM,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
 
       task: function () {
         return createSystemCollection('_users', {
@@ -616,7 +616,7 @@
 
       system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
 
       task: function () {
         return createSystemCollection('_modules', {
@@ -634,7 +634,7 @@
 
       system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
 
       task: function () {
         // needs to be big enough for assets
@@ -702,7 +702,7 @@
 
       system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
 
       task: function () {
         return createSystemCollection('_aqlfunctions', {
@@ -720,7 +720,7 @@
 
       system: DATABASE_SYSTEM,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
 
       task: function () {
         return require('@arangodb/statistics').createStatisticsCollections();
@@ -734,7 +734,7 @@
 
       system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
 
       task: function () {
         const name = '_frontend';
@@ -755,7 +755,7 @@
 
       system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
 
       task: function () {
         return createSystemCollection('_queues', {
@@ -773,7 +773,7 @@
 
       system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
 
       task: function () {
         return createSystemCollection('_jobs', {

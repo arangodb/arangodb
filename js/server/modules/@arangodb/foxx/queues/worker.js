@@ -134,7 +134,6 @@ exports.work = function (job) {
   var callback;
   db._executeTransaction({
     collections: {
-      read: ['_jobs'],
       write: ['_jobs']
     },
     action: function () {

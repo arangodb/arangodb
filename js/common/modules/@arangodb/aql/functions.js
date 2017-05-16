@@ -226,7 +226,7 @@ var registerFunction = function (name, code, isDeterministic) {
 
   var result = db._executeTransaction({
     collections: {
-      write: getStorage().name()
+      exclusive: getStorage().name()
     },
     action: function (params) {
       var exists = false;

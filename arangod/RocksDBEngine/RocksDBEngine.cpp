@@ -290,6 +290,21 @@ void RocksDBEngine::stop() {
     return;
   }
   replicationManager()->dropAll();
+    
+  if (_backgroundThread) {
+    // stop the press
+    _backgroundThread->beginShutdown();
+    
+    if (_counterManager) {
+      _counterManager->sync(true);
+    }
+
+    // wait until background thread stops
+    while (_backgroundThread->isRunning()) {
+      usleep(10000);
+    }
+    _backgroundThread.reset();
+  }
 }
 
 void RocksDBEngine::unprepare() {
@@ -298,15 +313,6 @@ void RocksDBEngine::unprepare() {
   }
 
   if (_db) {
-    if (_backgroundThread && _backgroundThread->isRunning()) {
-      // stop the press
-      _backgroundThread->beginShutdown();
-      _backgroundThread.reset();
-    }
-    if (_counterManager) {
-      _counterManager->sync(true);
-    }
-
     // now prune all obsolete WAL files
     determinePrunableWalFiles(0);
     pruneWalFiles();
@@ -722,6 +728,9 @@ arangodb::Result RocksDBEngine::persistCollection(
 
 arangodb::Result RocksDBEngine::dropCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+  RocksDBCollection* coll = toRocksDBCollection(collection->getPhysical());
+  uint64_t const numberDocuments = coll->numberDocuments();
+
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
   // If we get here the collection is save to drop.
@@ -761,8 +770,6 @@ arangodb::Result RocksDBEngine::dropCollection(
   // Now Collection is gone.
   // Cleanup data-mess
 
-  RocksDBCollection* coll = toRocksDBCollection(collection->getPhysical());
-
   // Unregister counter
   _counterManager->removeCounter(coll->objectId());
   
@@ -797,7 +804,14 @@ arangodb::Result RocksDBEngine::dropCollection(
       return TRI_ERROR_NO_ERROR;
     }
   }
-  coll->compact();
+
+  // run compaction for data only if collection contained a considerable
+  // amount of documents. otherwise don't run compaction, because it will
+  // slow things down a lot, especially during tests that create/drop LOTS
+  // of collections
+  if (numberDocuments >= 16384) {
+    coll->compact();
+  }
 
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.
@@ -1206,7 +1220,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
-
+    
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
@@ -1222,6 +1236,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
           static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
 
+      physical->deserializeIndexEstimates(counterManager());
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
           << "added document collection '" << collection->name() << "'";
     }

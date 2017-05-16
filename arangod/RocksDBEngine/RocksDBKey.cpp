@@ -111,6 +111,9 @@ RocksDBKey RocksDBKey::ReplicationApplierConfig(TRI_voc_tick_t databaseId) {
   return RocksDBKey(RocksDBEntryType::ReplicationApplierConfig, databaseId);
 }
 
+RocksDBKey RocksDBKey::IndexEstimateValue(uint64_t collectionObjectId) {
+  return RocksDBKey(RocksDBEntryType::IndexEstimateValue, collectionObjectId);
+}
 // ========================= Member methods ===========================
 
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
@@ -168,12 +171,11 @@ arangodb::StringRef RocksDBKey::primaryKey(RocksDBKey const& key) {
 arangodb::StringRef RocksDBKey::primaryKey(rocksdb::Slice const& slice) {
   return primaryKey(slice.data(), slice.size());
 }
-
-std::string RocksDBKey::vertexId(RocksDBKey const& key) {
+StringRef RocksDBKey::vertexId(RocksDBKey const& key) {
   return vertexId(key._buffer.data(), key._buffer.size());
 }
 
-std::string RocksDBKey::vertexId(rocksdb::Slice const& slice) {
+StringRef RocksDBKey::vertexId(rocksdb::Slice const& slice) {
   return vertexId(slice.data(), slice.size());
 }
 
@@ -190,7 +192,7 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
   RocksDBEntryType type = static_cast<RocksDBEntryType>(*slice.data());
   TRI_ASSERT(type == RocksDBEntryType::GeoIndexValue);
   uint64_t val = uint64FromPersistent(slice.data() + sizeof(char) + sizeof(uint64_t));
-  bool isSlot = (bool)(val & 0xFFU);// lowest byte is 0xFF if true
+  bool isSlot = ((val & 0xFFULL) > 0);// lowest byte is 0xFF if true
   return std::pair<bool, int32_t>(isSlot, (val >> 32));
 }
 
@@ -214,6 +216,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first)
   switch (_type) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::CounterValue:
+    case RocksDBEntryType::IndexEstimateValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _buffer.reserve(length);
@@ -456,7 +459,7 @@ arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
   }
 }
 
-std::string RocksDBKey::vertexId(char const* data, size_t size) {
+StringRef RocksDBKey::vertexId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
@@ -466,7 +469,7 @@ std::string RocksDBKey::vertexId(char const* data, size_t size) {
       size_t keySize = static_cast<size_t>(data[size - 1]);
       size_t idSize = size - (sizeof(char) + sizeof(uint64_t) + sizeof(char) +
                               keySize + sizeof(uint8_t));
-      return std::string(data + sizeof(char) + sizeof(uint64_t), idSize);
+      return StringRef(data + sizeof(char) + sizeof(uint64_t), idSize);
     }
 
     default:

@@ -124,8 +124,7 @@ function deleteQueue (key) {
   var result = false;
   db._executeTransaction({
     collections: {
-      read: ['_queues'],
-      write: ['_queues']
+      exclusive: ['_queues']
     },
     action() {
       if (db._queues.exists(key)) {
@@ -189,8 +188,7 @@ Object.assign(Job.prototype, {
     var self = this;
     db._executeTransaction({
       collections: {
-        read: ['_jobs'],
-        write: ['_jobs']
+        exclusive: ['_jobs']
       },
       action() {
         var job = db._jobs.document(self.id);
@@ -309,7 +307,6 @@ Object.assign(Queue.prototype, {
   delete(id) {
     return db._executeTransaction({
       collections: {
-        read: ['_jobs'],
         write: ['_jobs']
       },
       action() {

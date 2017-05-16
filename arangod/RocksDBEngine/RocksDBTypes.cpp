@@ -103,6 +103,12 @@ static rocksdb::Slice ReplicationApplierConfig(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &replicationApplierConfig),
     1);
+
+static RocksDBEntryType indexEstimateValue = RocksDBEntryType::IndexEstimateValue;
+static rocksdb::Slice IndexEstimateValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &indexEstimateValue),
+    1);
 }
 
 char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
@@ -120,6 +126,7 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
     case arangodb::RocksDBEntryType::ReplicationApplierConfig: return "ReplicationApplierConfig";
     case arangodb::RocksDBEntryType::FulltextIndexValue: return "FulltextIndexValue";
     case arangodb::RocksDBEntryType::GeoIndexValue: return "GeoIndexValue";
+    case arangodb::RocksDBEntryType::IndexEstimateValue: return "IndexEstimateValue";
   }
   return "Invalid";
 }
@@ -175,6 +182,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return SettingsValue;
     case RocksDBEntryType::ReplicationApplierConfig:
       return ReplicationApplierConfig;
+    case RocksDBEntryType::IndexEstimateValue:
+      return IndexEstimateValue;
   }
 
   return Document;  // avoids warning - errorslice instead ?!

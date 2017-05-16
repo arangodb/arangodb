@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -85,6 +86,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   friend class RocksDBEdgeIndexIterator;
 
  public:
+  static uint64_t HashForKey(const rocksdb::Slice& key);
+
   RocksDBEdgeIndex() = delete;
 
   RocksDBEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
@@ -156,6 +159,13 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                             arangodb::velocypack::Builder&) const override;
   int cleanup() override;
 
+  void serializeEstimate(std::string& output) const override;
+
+  bool deserializeEstimate(arangodb::RocksDBCounterManager* mgr) override;
+
+  void recalculateEstimates() override;
+
+
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
@@ -171,6 +181,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                      arangodb::aql::AstNode const* valNode) const;
 
   std::string _directionAttr;
+
+  /// @brief A fixed size library to estimate the selectivity of the index.
+  /// On insertion of a document we have to insert it into the estimator,
+  /// On removal we have to remove it in the estimator as well.
+  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+
 };
 }  // namespace arangodb
 
