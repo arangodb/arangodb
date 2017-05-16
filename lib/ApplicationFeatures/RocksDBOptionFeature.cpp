@@ -61,7 +61,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _numThreadsHigh(rocksDBDefaults.max_background_flushes),
       _numThreadsLow(rocksDBDefaults.max_background_compactions),
       _blockCacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
-        ? ((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3)
+        ? static_cast<uint64_t>(((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3))
         : (256 << 20)),
       _blockCacheShardBits(0),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
