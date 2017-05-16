@@ -42,7 +42,7 @@ endif ()
 ## arangod
 ################################################################################
 
-if (MSVC)
+if (MSVC AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles
     NAME arangod
     FILE_DESCRIPTION ${ARANGODB_FRIENDLY_STRING}
