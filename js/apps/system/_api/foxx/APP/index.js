@@ -323,11 +323,27 @@ instanceRouter.post('/tests', (req, res) => {
 .queryParam('reporter', joi.only(...reporters).optional())
 .response(200, ['json', LDJSON, 'xml', 'text']);
 
+instanceRouter.post('/download', (req, res) => {
+  const service = req.service;
+  const filename = service.mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
+  res.attachment(`${filename}.zip`);
+  if (!service.isDevelopment && fs.isFile(service.bundlePath)) {
+    res.sendFile(service.bundlePath);
+  } else {
+    const tempFile = fs.getTempFile('bundles', false);
+    FoxxManager._createServiceBundle(service.mount, tempFile);
+    res.sendFile(tempFile);
+    try {
+      fs.remove(tempFile);
+    } catch (e) {
+      console.warnStack(e, `Failed to remove temporary Foxx download bundle: ${tempFile}`);
+    }
+  }
+})
+.response(200, ['application/zip']);
+
 instanceRouter.get('/bundle', (req, res) => {
   const service = req.service;
-  if (service.isDevelopment) {
-    FoxxManager._createServiceBundle(service.mount);
-  }
   if (!fs.isFile(service.bundlePath)) {
     if (!service.mount.startsWith('/_')) {
       res.throw(404, 'Bundle not available');

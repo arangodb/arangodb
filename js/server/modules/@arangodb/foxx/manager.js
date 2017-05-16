@@ -779,9 +779,8 @@ function _uninstall (mount, options = {}) {
 
 // Service bundle manipulation
 
-function createServiceBundle (mount) {
+function createServiceBundle (mount, bundlePath = FoxxService.bundlePath(mount)) {
   const servicePath = FoxxService.basePath(mount);
-  const bundlePath = FoxxService.bundlePath(mount);
   if (fs.exists(bundlePath)) {
     fs.remove(bundlePath);
   }
