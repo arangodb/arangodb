@@ -22,7 +22,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBKeyBounds.h"
 #include "Basics/Exceptions.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -80,21 +80,21 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId) {
 
 RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   RocksDBKeyBounds b;
-  size_t length = sizeof(char) + sizeof(uint64_t) * 2;
-  b._startBuffer.reserve(length);
-  b._startBuffer.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
-  uint64ToPersistent(b._startBuffer, indexId);
-
-  b._endBuffer.clear();
-  b._endBuffer.append(b._startBuffer);  // append common prefix
-
+  size_t length = 2 * (sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  auto& internals = b.internals();
+  internals.reserve(length);
+  internals.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
+  uint64ToPersistent(internals.buffer(), indexId);
   uint64_t norm = isSlot ? 0xFFU : 0;        // encode slot|pot in lowest bit
-  uint64ToPersistent(b._startBuffer, norm);  // lower endian
-  norm = norm | (0xFFFFFFFFULL << 32);
-  uint64ToPersistent(b._endBuffer, norm);
+  uint64ToPersistent(internals.buffer(), norm);       // lower endian
 
-  b._start = rocksdb::Slice(b._startBuffer);
-  b._end = rocksdb::Slice(b._endBuffer);
+  internals.separate();
+  
+  internals.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
+  uint64ToPersistent(internals.buffer(), indexId);
+  norm = norm | (0xFFFFFFFFULL << 32);
+  uint64ToPersistent(internals.buffer(), norm);
+  
   return b;
 }
 
@@ -126,23 +126,25 @@ RocksDBKeyBounds RocksDBKeyBounds::IndexEstimateValues() {
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
     uint64_t indexId, arangodb::StringRef const& word) {
   // I did not want to pass a bool to the constructor for this
-  RocksDBKeyBounds bounds;
-  size_t length = sizeof(char) + sizeof(uint64_t) + word.size();
-  bounds._startBuffer.reserve(length);
-  bounds._startBuffer.push_back(
-      static_cast<char>(RocksDBEntryType::FulltextIndexValue));
-  uint64ToPersistent(bounds._startBuffer, indexId);
-  bounds._startBuffer.append(word.data(), word.length());
+  RocksDBKeyBounds b;
+  size_t length = 2 * (sizeof(char) + sizeof(uint64_t) + word.size()) + 1;
 
-  bounds._endBuffer.clear();
-  bounds._endBuffer.append(bounds._startBuffer);
-  bounds._endBuffer.push_back(
+  auto& internals = b.internals();
+  internals.reserve(length);
+  internals.push_back(
+      static_cast<char>(RocksDBEntryType::FulltextIndexValue));
+  uint64ToPersistent(internals.buffer(), indexId);
+  internals.buffer().append(word.data(), word.length());
+  
+  internals.separate();
+  internals.push_back(
+      static_cast<char>(RocksDBEntryType::FulltextIndexValue));
+  uint64ToPersistent(internals.buffer(), indexId);
+  internals.buffer().append(word.data(), word.length());
+  internals.push_back(
       0xFFU);  // invalid UTF-8 character, higher than with memcmp
 
-  bounds._start = rocksdb::Slice(bounds._startBuffer);
-  bounds._end = rocksdb::Slice(bounds._endBuffer);
-
-  return bounds;
+  return b;
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(
@@ -152,43 +154,50 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(
 
 // ============================ Member Methods ==============================
 
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other) 
+    : _type(other._type),
+      _internals(other._internals) {}
+
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other) 
+    : _type(other._type),
+      _internals(std::move(other._internals)) {}
+
 RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
-  _type = other._type;
-  _startBuffer = other._startBuffer;
-  _endBuffer = other._endBuffer;
-  _start = rocksdb::Slice(_startBuffer);
-  _end = rocksdb::Slice(_endBuffer);
+  if (this != &other) {
+    _type = other._type;
+    _internals = other._internals;
+  }
 
   return *this;
 }
 
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other) 
-    : _type(other._type),
-      _startBuffer(other._startBuffer),
-      _endBuffer(other._endBuffer),
-      _end(rocksdb::Slice(_endBuffer)),
-      _start(rocksdb::Slice(_startBuffer)) {}
+RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds&& other) {
+  if (this != &other) {
+    _type = other._type;
+    _internals = std::move(other._internals);
+  }
 
-rocksdb::Slice const& RocksDBKeyBounds::start() const {
-  TRI_ASSERT(_start.size() > 0);
-  return _start;
+  return *this;
 }
 
-rocksdb::Slice const& RocksDBKeyBounds::end() const {
-  TRI_ASSERT(_end.size() > 0);
-  return _end;
+rocksdb::Slice RocksDBKeyBounds::start() const {
+  return _internals.start();
+}
+
+rocksdb::Slice RocksDBKeyBounds::end() const {
+  return _internals.end();
 }
 
 uint64_t RocksDBKeyBounds::objectId() const {
-  RocksDBEntryType type = static_cast<RocksDBEntryType>(_startBuffer[0]);
+  RocksDBEntryType type = static_cast<RocksDBEntryType>(_internals._buffer[0]);
   switch (type) {
     case RocksDBEntryType::Document:
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::UniqueIndexValue: {
-      TRI_ASSERT(_startBuffer.size() >= (sizeof(char) + sizeof(uint64_t)));
-      return uint64FromPersistent(_startBuffer.data() + sizeof(char));
+      TRI_ASSERT(_internals.buffer().size() >= (sizeof(char) + sizeof(uint64_t)));
+      return uint64FromPersistent(_internals.buffer().data() + sizeof(char));
     }
 
     default:
@@ -199,42 +208,37 @@ uint64_t RocksDBKeyBounds::objectId() const {
 // constructor for an empty bound. do not use for anything but to
 // default-construct a key bound!
 RocksDBKeyBounds::RocksDBKeyBounds()
-    : _type(RocksDBEntryType::Database), _startBuffer(), _endBuffer() {}
+    : _type(RocksDBEntryType::Database) {}
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
-    : _type(type), _startBuffer(), _endBuffer() {
+    : _type(type) {
   switch (_type) {
     case RocksDBEntryType::Database: {
-      size_t length = sizeof(char);
-      _startBuffer.reserve(length);
-      _startBuffer.push_back(static_cast<char>(_type));
+      _internals.reserve(2 * sizeof(char));
+      _internals.push_back(static_cast<char>(_type));
 
-      _endBuffer.append(_startBuffer);
-      _endBuffer[0]++; // TODO: better solution?
-
+      _internals.separate();
+      _internals.push_back(static_cast<char>(_type) + 1);
       break;
     }
     case RocksDBEntryType::CounterValue:
     case RocksDBEntryType::IndexEstimateValue: {
-      size_t length = sizeof(char) + sizeof(uint64_t);
-      _startBuffer.reserve(length);
-      _startBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_startBuffer, 0);
+      _internals.reserve(2 * (sizeof(char) + sizeof(uint64_t)));
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), 0);
 
-      _endBuffer.reserve(length);
-      _endBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_endBuffer, UINT64_MAX);
+      _internals.separate();
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       break;
     }
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-  _start = rocksdb::Slice(_startBuffer);
-  _end = rocksdb::Slice(_endBuffer);
 }
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
-    : _type(type), _startBuffer(), _endBuffer() {
+    : _type(type) {
   switch (_type) {
     case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::UniqueIndexValue: {
@@ -245,17 +249,17 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       VPackSlice min("\x02\x03\x1e");  // [minSlice]
       VPackSlice max("\x02\x03\x1f");  // [maxSlice]
 
-      size_t length = sizeof(char) + sizeof(uint64_t) + min.byteSize();
-      _startBuffer.reserve(length);
-      _startBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_startBuffer, first);
-      // append common prefix
-      _endBuffer.clear();
-      _endBuffer.append(_startBuffer);
+      size_t length = 2 * (sizeof(char) + sizeof(uint64_t)) + min.byteSize() + max.byteSize();
+      _internals.reserve(length);
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().append((char*)(min.begin()), min.byteSize());
 
-      // construct min max
-      _startBuffer.append((char*)(min.begin()), min.byteSize());
-      _endBuffer.append((char*)(max.begin()), max.byteSize());
+      _internals.separate();
+
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().append((char*)(max.begin()), max.byteSize());
       break;
     }
 
@@ -268,17 +272,17 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       //
       // Documents are stored as follows:
       // Key: 3 + 8-byte object ID of collection + 8-byte document revision ID
-      size_t length = sizeof(char) + sizeof(uint64_t) * 2;
-      _startBuffer.reserve(length);
-      _startBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_startBuffer, first);
-      // append common prefix
-      _endBuffer.clear();
-      _endBuffer.append(_startBuffer);
+      size_t length = 2 * (sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+      _internals.reserve(length);
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      uint64ToPersistent(_internals.buffer(), 0);
+      
+      _internals.separate();
 
-      // construct min max
-      uint64ToPersistent(_startBuffer, 0);
-      uint64ToPersistent(_endBuffer, UINT64_MAX);
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       break;
     }
 
@@ -286,78 +290,78 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::FulltextIndexValue: {
       size_t length = sizeof(char) + sizeof(uint64_t);
-      _startBuffer.reserve(length);
-      _startBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_startBuffer, first);
+      _internals.reserve(length);
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      
+      _internals.separate();
 
-      _endBuffer.clear();
-      _endBuffer.append(_startBuffer);
-      _endBuffer.push_back(0xFFU);
-
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.push_back(0xFFU);
       break;
     }
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-  _start = rocksdb::Slice(_startBuffer);
-  _end = rocksdb::Slice(_endBuffer);
 }
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    arangodb::StringRef const& second)
-    : _type(type), _startBuffer(), _endBuffer() {
+    : _type(type) {
   switch (_type) {
     case RocksDBEntryType::FulltextIndexValue:
     case RocksDBEntryType::EdgeIndexValue: {
-      size_t length =
-          sizeof(char) + sizeof(uint64_t) + second.size() + sizeof(char);
-      _startBuffer.reserve(length);
-      _startBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_startBuffer, first);
-      _startBuffer.append(second.data(), second.length());
-      _startBuffer.push_back(_stringSeparator);
+      size_t length = 2 * (sizeof(char) + sizeof(uint64_t) + second.size() + sizeof(char)) + 1;
+      _internals.reserve(length);
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().append(second.data(), second.length());
+      _internals.push_back(_stringSeparator);
 
-      _endBuffer.clear();
-      _endBuffer.append(_startBuffer);
-      _endBuffer.push_back(0xFFU);
-
+      _internals.separate();
+      
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().append(second.data(), second.length());
+      _internals.push_back(_stringSeparator);
+      _internals.push_back(0xFFU);
       break;
     }
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-  _start = rocksdb::Slice(_startBuffer);
-  _end = rocksdb::Slice(_endBuffer);
 }
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    VPackSlice const& second,
                                    VPackSlice const& third)
-    : _type(type), _startBuffer(), _endBuffer() {
+    : _type(type) {
   switch (_type) {
     case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::UniqueIndexValue: {
       size_t startLength = sizeof(char) + sizeof(uint64_t) +
                            static_cast<size_t>(second.byteSize()) +
                            sizeof(char);
-      _startBuffer.reserve(startLength);
-      _startBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_startBuffer, first);
-      _startBuffer.append(reinterpret_cast<char const*>(second.begin()),
-                          static_cast<size_t>(second.byteSize()));
-      _startBuffer.push_back(_stringSeparator);
-      TRI_ASSERT(_startBuffer.length() == startLength);
-
       size_t endLength = sizeof(char) + sizeof(uint64_t) +
                          static_cast<size_t>(third.byteSize()) + sizeof(char);
-      _endBuffer.reserve(endLength);
-      _endBuffer.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_endBuffer, first);
-      _endBuffer.append(reinterpret_cast<char const*>(third.begin()),
+
+      _internals.reserve(startLength + endLength);
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
+                          static_cast<size_t>(second.byteSize()));
+      _internals.push_back(_stringSeparator);
+
+      _internals.separate();
+
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().append(reinterpret_cast<char const*>(third.begin()),
                         static_cast<size_t>(third.byteSize()));
-      _endBuffer.push_back(_stringSeparator + 1); // compare greater than
+      _internals.push_back(_stringSeparator + 1); // compare greater than
                                                   // actual key
       break;
     }
@@ -365,6 +369,4 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-  _start = rocksdb::Slice(_startBuffer);
-  _end = rocksdb::Slice(_endBuffer);
 }

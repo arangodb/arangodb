@@ -25,12 +25,12 @@
 #ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H
 #define ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H 1
 
-#include <rocksdb/slice.h>
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
 
+#include <rocksdb/slice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -141,8 +141,10 @@ class RocksDBKeyBounds {
                                                 arangodb::StringRef const&);
 
  public:
-  RocksDBKeyBounds& operator=(RocksDBKeyBounds const& other);
   RocksDBKeyBounds(RocksDBKeyBounds const& other);
+  RocksDBKeyBounds(RocksDBKeyBounds&& other);
+  RocksDBKeyBounds& operator=(RocksDBKeyBounds const& other);
+  RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the left bound slice.
@@ -150,7 +152,7 @@ class RocksDBKeyBounds {
   /// Forward iterators may use it->Seek(bound.start()) and reverse iterators
   /// may check that the current key is greater than this value.
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::Slice const& start() const;
+  rocksdb::Slice start() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the right bound slice.
@@ -158,7 +160,7 @@ class RocksDBKeyBounds {
   /// Reverse iterators may use it->SeekForPrev(bound.end()) and forward
   /// iterators may check that the current key is less than this value.
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::Slice const& end() const;
+  rocksdb::Slice end() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the object ID for these bounds
@@ -178,12 +180,85 @@ class RocksDBKeyBounds {
                    VPackSlice const& second, VPackSlice const& third);
 
  private:
+  // private class that will hold both bounds in a single buffer (with only one allocation)
+  class BoundsBuffer {
+   friend class RocksDBKeyBounds;
+
+   public: 
+    BoundsBuffer() : _separatorPosition(0) {}
+    
+    BoundsBuffer(BoundsBuffer const& other) 
+        : _buffer(other._buffer), _separatorPosition(other._separatorPosition) {
+    }
+
+    BoundsBuffer(BoundsBuffer&& other) 
+        : _buffer(std::move(other._buffer)), _separatorPosition(other._separatorPosition) {
+      other._separatorPosition = 0;
+    }
+
+    BoundsBuffer& operator=(BoundsBuffer const& other) {
+      if (this != &other) {
+        _buffer = other._buffer;
+        _separatorPosition = other._separatorPosition;
+      }
+      return *this;
+    }
+
+    BoundsBuffer& operator=(BoundsBuffer&& other) {
+      if (this != &other) {
+        _buffer = std::move(other._buffer);
+        _separatorPosition = other._separatorPosition;
+        other._separatorPosition = 0;
+      }
+      return *this;
+    }
+
+    // reserve space for bounds
+    void reserve(size_t length) { 
+      TRI_ASSERT(_separatorPosition == 0);
+      TRI_ASSERT(_buffer.empty());
+      _buffer.reserve(length); 
+    }
+   
+    // mark the end of the start buffer
+    void separate() {
+      TRI_ASSERT(_separatorPosition == 0);
+      TRI_ASSERT(!_buffer.empty());
+      _separatorPosition = _buffer.size();
+    }
+
+    // append a character
+    void push_back(char c) {
+      _buffer.push_back(c);
+    }
+    
+    // return the internal buffer for modification or reading
+    std::string& buffer() { return _buffer; }
+    std::string const& buffer() const { return _buffer; }
+
+    // return a slice to the start buffer
+    rocksdb::Slice start() const {
+      TRI_ASSERT(_separatorPosition != 0);
+      return rocksdb::Slice(_buffer.data(), _separatorPosition);
+    }
+
+    // return a slice to the end buffer
+    rocksdb::Slice end() const {
+      TRI_ASSERT(_separatorPosition != 0);
+      return rocksdb::Slice(_buffer.data() + _separatorPosition, _buffer.size() - _separatorPosition);
+    }
+
+   private:
+    std::string _buffer;
+    size_t _separatorPosition;
+  };
+
+  BoundsBuffer& internals() { return _internals; }
+  BoundsBuffer const& internals() const { return _internals; }
+
   static const char _stringSeparator;
   RocksDBEntryType _type;
-  std::string _startBuffer;
-  std::string _endBuffer;
-  rocksdb::Slice _end;
-  rocksdb::Slice _start;
+  BoundsBuffer _internals;
 };
 
 }  // namespace arangodb
