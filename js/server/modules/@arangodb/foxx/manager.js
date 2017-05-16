@@ -813,7 +813,7 @@ function downloadServiceBundleFromCoordinator (coordId, mount, checksum) {
   const response = parallelClusterRequests([[
     coordId,
     'GET',
-    `/_api/foxx/bundle?${querystringify({mount})}`,
+    `/_api/foxx/_local/bundle?${querystringify({mount})}`,
     null,
     checksum ? {'if-match': `"${checksum}"`} : undefined
   ]])[0];

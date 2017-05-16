@@ -342,30 +342,6 @@ instanceRouter.post('/download', (req, res) => {
 })
 .response(200, ['application/zip']);
 
-instanceRouter.get('/bundle', (req, res) => {
-  const service = req.service;
-  if (!fs.isFile(service.bundlePath)) {
-    if (!service.mount.startsWith('/_')) {
-      res.throw(404, 'Bundle not available');
-    }
-    FoxxManager._createServiceBundle(service.mount);
-  }
-  const checksum = `"${FoxxService.checksum(service.mount)}"`;
-  if (req.get('if-none-match') === checksum) {
-    res.status(304);
-    return;
-  }
-  if (req.get('if-match') && req.get('if-match') !== checksum) {
-    res.throw(404, 'No matching bundle available');
-  }
-  res.set('etag', checksum);
-  const name = service.mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
-  res.download(service.bundlePath, `${name}.zip`);
-})
-.response(200, ['application/zip'])
-.header('if-match', joi.string().optional())
-.header('if-none-match', joi.string().optional());
-
 instanceRouter.get('/readme', (req, res) => {
   const service = req.service;
   const readme = service.readme;
@@ -408,6 +384,28 @@ localRouter.delete('/service', (req, res) => {
   FoxxManager._uninstallLocal(req.queryParams.mount);
   FoxxManager._reloadRouting();
 })
+.queryParam('mount', schemas.mount);
+
+localRouter.get('/bundle', (req, res) => {
+  const mount = req.queryParams.mount;
+  const bundlePath = FoxxService.bundlePath(mount);
+  if (!fs.isFile(bundlePath)) {
+    res.throw(404, 'Bundle not available');
+  }
+  const etag = `"${FoxxService.checksum(mount)}"`;
+  if (req.get('if-none-match') === etag) {
+    res.status(304);
+    return;
+  }
+  if (req.get('if-match') && req.get('if-match') !== etag) {
+    res.throw(404, 'No matching bundle available');
+  }
+  res.set('etag', etag);
+  res.download(bundlePath);
+})
+.response(200, ['application/zip'])
+.header('if-match', joi.string().optional())
+.header('if-none-match', joi.string().optional())
 .queryParam('mount', schemas.mount);
 
 localRouter.get('/status', (req, res) => {

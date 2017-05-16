@@ -57,7 +57,7 @@ describe('Foxx Manager', function () {
 
       it('should provide a bundle', function () {
         FoxxManager.install(setupTeardownApp, mount);
-        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}/_api/foxx/bundle?mount=${encodeURIComponent(mount)}`;
+        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}/_api/foxx/_local/bundle?mount=${encodeURIComponent(mount)}`;
         const res = download(url);
         expect(res.code).to.equal(200);
         const checksum = db._query(aql`
