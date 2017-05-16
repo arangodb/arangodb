@@ -1412,6 +1412,31 @@ void GeoAdjust(GeoIx* gix, int potx) /* the kids are alright */
   }
   PotWrite(gix,potx,&gpx);
 }
+  
+/* =================================================== */
+/*             New GeoAdjust = GeoDistLev              */
+/* During insertion and deletion, this routine is used */
+/* to populate the data correctly for the parent pot   */
+/* gpx from the child pots gpy, gpz.  It populates the */
+/* start, middle and end GeoStrings, the level, and    */
+/* the maximum distances to the fixed points.          */
+/* =================================================== */
+
+void GeoDistLev(GeoPot * gpx, GeoPot * gpy, GeoPot * gpz)
+{
+  int i;
+  gpx->start = gpy->start;
+  gpx->end = gpz->end;
+  gpx->middle = gpz->start;
+  gpx->level = gpy->level;
+  if ((gpz->level) > gpx->level) gpx->level = gpz->level;
+  gpx->level++;
+  for (i = 0; i < GeoIndexFIXEDPOINTS; i++) {
+    gpx->maxdist[i] = gpy->maxdist[i];
+    if (gpx->maxdist[i] < gpz->maxdist[i]) gpx->maxdist[i] = gpz->maxdist[i];
+  }
+}
+  
 /* =================================================== */
 /*             RotateLeft                              */
 /* The operation used during tree balancing to convert */
@@ -1425,22 +1450,24 @@ void GeoAdjust(GeoIx* gix, int potx) /* the kids are alright */
 /* =================================================== */
 void RotateLeft(GeoIx* gix, int pote) {
   int pota, potb, potc, potd;
-  GeoPot gpd;
-  GeoPot gpe;
+  GeoPot gpa,gpb,gpc,gpd,gpe;
   PotRead(gix,pote,&gpe);
   potd = gpe.RorPoints;
   PotRead(gix,potd,&gpd);
   pota = gpe.LorLeaf;
   potb = gpd.LorLeaf;
   potc = gpd.RorPoints;
+  PotRead(gix,pota,&gpa);
+  PotRead(gix,potb,&gpb);
+  PotRead(gix,potc,&gpc);
+  GeoDistLev(&gpd,&gpa,&gpb);
   gpd.LorLeaf = pota;
   gpd.RorPoints = potb;
-  PotWrite(gix,potd,&gpd);  // inefficiency - consider changing GeoAdjust
-  GeoAdjust(gix, potd);   // inefficiency - re-reading potd
+  PotWrite(gix,potd,&gpd);
+  GeoDistLev(&gpe,&gpd,&gpc);
   gpe.LorLeaf = potd;
   gpe.RorPoints = potc;
-  PotWrite(gix,pote,&gpe);  // same again
-  GeoAdjust(gix, pote);
+  PotWrite(gix,pote,&gpe);
 }
 /* =================================================== */
 /*                 RotateRight                         */
@@ -1452,22 +1479,24 @@ void RotateLeft(GeoIx* gix, int pote) {
 /* =================================================== */
 void RotateRight(GeoIx* gix, int pote) {
   int pota, potb, potc, potd;
-  GeoPot gpd;
-  GeoPot gpe;
+  GeoPot gpa,gpb,gpc,gpd,gpe;
   PotRead(gix,pote,&gpe);
   potd = gpe.LorLeaf;
   PotRead(gix,potd,&gpd);
   pota = gpd.LorLeaf;
   potb = gpd.RorPoints;
   potc = gpe.RorPoints;
+  PotRead(gix,pota,&gpa);
+  PotRead(gix,potb,&gpb);
+  PotRead(gix,potc,&gpc);
   gpd.LorLeaf = potb;
   gpd.RorPoints = potc;
-  PotWrite(gix,potd,&gpd);  // same inefficiency as RotateLeft
-  GeoAdjust(gix, potd);
+  GeoDistLev(&gpd,&gpb,&gpc);
+  PotWrite(gix,potd,&gpd);  // same inefficiency as RotateLeft;
   gpe.LorLeaf = pota;
   gpe.RorPoints = potd;
+  GeoDistLev(&gpe,&gpa,&gpd);
   PotWrite(gix,pote,&gpe);
-  GeoAdjust(gix, pote);
 }
 /* =================================================== */
 /*        GeoIndex_insert                              */
@@ -1603,10 +1632,10 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
     gp2.end = gp.end;
     gp.LorLeaf = pot1;
     gp.RorPoints = pot2;
+    GeoDistLev(&gp,&gp1,&gp2);
     PotWrite(gix,pot,&gp);
     PotWrite(gix,pot1,&gp1);
     PotWrite(gix,pot2,&gp2);
-    GeoAdjust(gix, pot);       // XQXQ this is doing needless reads and writes
     gt.pathlength++;
     if (gd.gs < mings) {
       gp = gp1;

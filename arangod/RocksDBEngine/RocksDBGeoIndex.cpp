@@ -204,6 +204,7 @@ bool RocksDBGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
 void RocksDBGeoIndexIterator::replaceCursor(::GeoCursor* c) {
   if (_cursor) {
+    GeoIndex_clearRocks(_index->_geoIndex);
     ::GeoIndex_CursorFree(_cursor);
   }
   _cursor = c;
@@ -212,6 +213,7 @@ void RocksDBGeoIndexIterator::replaceCursor(::GeoCursor* c) {
 
 void RocksDBGeoIndexIterator::createCursor(double lat, double lon) {
   _coor = GeoCoordinate{lat, lon, 0};
+  GeoIndex_setRocksMethods(_index->_geoIndex, rocksutils::toRocksMethods(_trx));
   replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
 }
 
