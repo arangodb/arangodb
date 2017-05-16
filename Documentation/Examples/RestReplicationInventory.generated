@@ -387,10 +387,10 @@ x-content-type-options: nosniff
   ], 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10571"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10573"</span>, 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10570"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10572"</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3804</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-04-28T10:55:35Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-05-16T08:25:26Z"</span> 
   }, 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"10575"</span> 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"10574"</span> 
 }
