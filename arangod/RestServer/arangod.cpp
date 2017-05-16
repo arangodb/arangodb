@@ -235,7 +235,7 @@ int main(int argc, char* argv[]) {
     ARGV = argv;
 
     SERVICE_TABLE_ENTRY ste[] = {
-      {TEXT(""), (LPSERVICE_<MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
+      {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
