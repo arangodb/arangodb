@@ -263,7 +263,7 @@ echo "the current password is $ARANGODB_DEFAULT_ROOT_PASSWORD"
 echo "(in case this a FRESH install, for UPGRADE the password"
 echo "will not be changed)"
 
-/usr/sbin/arango-init-database --uid arangodb --gid arangodb || true
+/usr/sbin/arango-init-database --uid arangodb --gid arangodb --server.rest-server false --server.statistics false --foxx.queues false" || true
 
 exit 0
 
