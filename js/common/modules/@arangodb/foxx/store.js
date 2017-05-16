@@ -316,8 +316,7 @@ function availableJson (matchEngine) {
 
 var update = function () {
   var url = utils.buildGithubUrl(getFishbowlUrl());
-  var filename = fs.getTempFile('downloads', false);
-  var path = fs.getTempFile('zip', false);
+  var filename = fs.getTempFile('bundles', false);
 
   try {
     var result = download(url, '', {
@@ -337,10 +336,6 @@ var update = function () {
     if (filename !== undefined && fs.exists(filename)) {
       fs.remove(filename);
     }
-
-    try {
-      fs.removeDirectoryRecursive(path);
-    } catch (ignore) {}
 
     throw Object.assign(
       new Error('Failed to update Foxx store'),

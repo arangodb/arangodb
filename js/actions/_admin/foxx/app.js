@@ -76,7 +76,7 @@ function resolveAppInfo (appInfo) {
     try {
       fs.remove(tempFile);
     } catch (e) {
-      console.warnStack(e, `Failed to delete uploaded file: ${tempFile}`);
+      console.warnStack(e, `Failed to remove uploaded file: ${tempFile}`);
     }
     return buffer;
   }
@@ -86,7 +86,7 @@ function resolveAppInfo (appInfo) {
     try {
       fs.remove(tempFile);
     } catch (e) {
-      console.warnStack(e, `Failed to delete temp file: ${tempFile}`);
+      console.warnStack(e, `Failed to remove temporary file: ${tempFile}`);
     }
     return buffer;
   }

@@ -196,7 +196,7 @@ function zipDirectory (directory, zipFilename) {
     throw directory + ' is not a directory.';
   }
   if (!zipFilename) {
-    zipFilename = fs.getTempFile('zip', false);
+    zipFilename = fs.getTempFile('bundles', false);
   }
 
   var tree = fs.listTree(directory);

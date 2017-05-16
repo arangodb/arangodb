@@ -210,7 +210,7 @@ module.exports =
       if (!opts) {
         opts = {};
       }
-      this._raw.body = fs.readBuffer(filename);
+      this._raw.body = fs.readFileSync(filename);
       if (opts.lastModified || (
         opts.lastModified !== false && !this.headers['last-modified']
         )) {

@@ -612,7 +612,7 @@ function _prepareService (serviceInfo, options = {}) {
   try {
     if (isZipBuffer(serviceInfo)) {
       // Buffer (zip)
-      const tempFile = fs.getTempFile('uploads', false);
+      const tempFile = fs.getTempFile('bundles', false);
       fs.writeFileSync(tempFile, serviceInfo);
       extractServiceBundle(tempFile, tempServicePath);
       fs.move(tempFile, tempBundlePath);
@@ -792,7 +792,7 @@ function downloadServiceBundleFromRemote (url) {
   try {
     const res = request.get(url, {encoding: null});
     res.throw();
-    const tempFile = fs.getTempFile('downloads', false);
+    const tempFile = fs.getTempFile('bundles', false);
     fs.writeFileSync(tempFile, res.body);
     return tempFile;
   } catch (e) {
@@ -820,13 +820,13 @@ function downloadServiceBundleFromCoordinator (coordId, mount, checksum) {
   if (response.headers['x-arango-response-code'].startsWith('404')) {
     return null;
   }
-  const filename = fs.getTempFile('foxx-manager', true);
+  const filename = fs.getTempFile('bundles', true);
   fs.writeFileSync(filename, response.rawBody);
   return filename;
 }
 
 function extractServiceBundle (archive, targetPath) {
-  const tempFolder = fs.getTempFile('zip', false);
+  const tempFolder = fs.getTempFile('services', false);
   fs.makeDirectory(tempFolder);
   fs.unzipFile(archive, tempFolder, false, true);
 
