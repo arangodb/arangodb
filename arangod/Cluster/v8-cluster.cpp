@@ -1440,7 +1440,7 @@ static void PrepareClusterCommRequest(
   path = "/_db/" + dbname + path;
 
   body.clear();
-  if (args.Length() > 4) {
+  if (!args[4]->IsUndefined()) {
     if (args[4]->IsObject() && V8Buffer::hasInstance(isolate, args[4])) {
       // supplied body is a Buffer object
       char const* data = V8Buffer::data(args[4].As<v8::Object>());

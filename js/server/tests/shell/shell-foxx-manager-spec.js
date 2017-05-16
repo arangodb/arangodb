@@ -32,13 +32,13 @@ describe('Foxx Manager', function () {
 
       json.dependencies = deps1;
       fs.writeFileSync(filename, JSON.stringify(json));
-      FoxxManager.scanFoxx(mount, {replace: true});
+      FoxxManager.loadServiceFromDisk(mount);
       service = FoxxManager.lookupService(mount);
       expect(service.manifest.dependencies).to.eql(deps1);
 
       json.dependencies = deps2;
       fs.writeFileSync(filename, JSON.stringify(json));
-      FoxxManager.scanFoxx(mount, {replace: true});
+      FoxxManager.loadServiceFromDisk(mount);
       service = FoxxManager.lookupService(mount);
       expect(service.manifest.dependencies).to.eql(deps2);
     });

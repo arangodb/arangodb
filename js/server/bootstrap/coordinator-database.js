@@ -32,7 +32,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  var internal = require('internal');
+  const internal = require('internal');
 
   // do not overwrite arguments set from the calling C++ code
   if (!global.UPGRADE_ARGS) {
@@ -45,19 +45,7 @@
   global.UPGRADE_ARGS.isRelaunch = false;
 
   // run the local upgrade-database script
-  var res = internal.loadStartup('server/bootstrap/local-database.js');
-
-  // Wait for synchronous replication to settle:
-  // We do not do this for performance reasons and because it should not
-  // be necessary. We leave the code here in case we need it again.
-  //var db = require('internal').db;
-  //var dbName = db._name();
-  //if (dbName !== '_system') {
-  //  // for _system we run this already at bootstrap
-  //  var colls = db._collections();
-  //  colls = colls.filter(c => c.name()[0] === '_');
-  //  require('@arangodb/cluster').waitForSyncRepl(dbName, colls);
-  //}
+  const res = internal.loadStartup('server/bootstrap/local-database.js');
 
   return res;
 }());

@@ -1,4 +1,3 @@
-/* global ArangoServerState, ArangoClusterInfo, ArangoClusterComm */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -29,216 +28,545 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const _ = require('lodash');
 const fs = require('fs');
-const joinPath = require('path').join;
-const joi = require('joi');
-const util = require('util');
-const semver = require('semver');
+const path = require('path');
+const querystringify = require('querystring').encode;
 const dd = require('dedent');
-const il = require('@arangodb/util').inline;
 const utils = require('@arangodb/foxx/manager-utils');
 const store = require('@arangodb/foxx/store');
 const FoxxService = require('@arangodb/foxx/service');
-const generator = require('@arangodb/foxx/generator');
-const routeAndExportService = require('@arangodb/foxx/routing').routeService;
-const formatUrl = require('url').format;
-const parseUrl = require('url').parse;
+const ensureServiceExecuted = require('@arangodb/foxx/routing').routeService;
 const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
-const db = arangodb.db;
-const checkParameter = arangodb.checkParameter;
 const errors = arangodb.errors;
-const cluster = require('@arangodb/cluster');
-const download = require('internal').download;
-const executeGlobalContextFunction = require('internal').executeGlobalContextFunction;
+const aql = arangodb.aql;
+const db = arangodb.db;
+const ArangoClusterControl = require('@arangodb/cluster');
+const request = require('@arangodb/request');
 const actions = require('@arangodb/actions');
-const plainServerVersion = require('@arangodb').plainServerVersion;
+const shuffle = require('lodash/shuffle');
+const zip = require('lodash/zip');
+const isZipBuffer = require('@arangodb/util').isZipBuffer;
 
-// Regular expressions for joi patterns
-const RE_EMPTY = /^$/;
-const RE_NOT_EMPTY = /./;
-
-const legacyManifestFields = [
-  'assets',
-  'controllers',
-  'exports',
-  'isSystem'
-];
-
-const manifestSchema = {
-  // FoxxStore metadata
-  name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).optional(),
-  version: joi.string().optional(),
-  keywords: joi.array().optional(),
-  license: joi.string().optional(),
-  repository: (
-  joi.object().optional()
-    .keys({
-      type: joi.string().required(),
-      url: joi.string().required()
-    })
-  ),
-
-  // Additional web interface metadata
-  author: joi.string().allow('').default(''),
-  contributors: joi.array().optional(),
-  description: joi.string().allow('').default(''),
-  thumbnail: joi.string().optional(),
-
-  // Compatibility
-  engines: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.string().required())
-  ),
-
-  // Index redirect
-  defaultDocument: joi.string().allow('').optional(),
-
-  // JS path
-  lib: joi.string().default('.'),
-
-  // Entrypoint
-  main: joi.string().optional(),
-
-  // Config
-  configuration: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, (
-      joi.object().required()
-        .keys({
-          default: joi.any().optional(),
-          type: (
-          joi.only(Object.keys(utils.parameterTypes))
-            .default('string')
-          ),
-          description: joi.string().optional(),
-          required: joi.boolean().default(true)
-        })
-      ))
-  ),
-
-  // Dependencies supported
-  dependencies: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.alternatives().try(
-      joi.string().required(),
-      joi.object().required()
-        .keys({
-          name: joi.string().default('*'),
-          version: joi.string().default('*'),
-          description: joi.string().optional(),
-          required: joi.boolean().default(true),
-          multiple: joi.boolean().default(false)
-        })
-    ))
-  ),
-
-  // Dependencies provided
-  provides: (
-  joi.alternatives().try(
-    joi.string().optional(),
-    joi.array().optional()
-      .items(joi.string().required()),
-    joi.object().optional()
-      .pattern(RE_EMPTY, joi.forbidden())
-      .pattern(RE_NOT_EMPTY, joi.string().required())
-  )
-  ),
-
-  // Bundled assets
-  files: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.alternatives().try(
-      joi.string().required(),
-      joi.object().required()
-        .keys({
-          path: joi.string().required(),
-          gzip: joi.boolean().optional(),
-          type: joi.string().optional()
-        })
-    ))
-  ),
-
-  // Scripts/queue jobs
-  scripts: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.string().required())
-    .default(Object, 'empty scripts object')
-  ),
-
-  // Foxx tests path
-  tests: (
-  joi.alternatives()
-    .try(
-      joi.string().required(),
-      (
-      joi.array().optional()
-        .items(joi.string().required())
-        .default(Array, 'empty test files array')
-      )
-  )
-  )
-};
-
-var serviceCache = {};
-var usedSystemMountPoints = [
+const SYSTEM_SERVICE_MOUNTS = [
   '/_admin/aardvark', // Admin interface.
   '/_api/foxx', // Foxx management API.
   '/_api/gharial' // General_Graph API.
 ];
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Searches through a tree of files and returns true for all service roots
-// //////////////////////////////////////////////////////////////////////////////
+const GLOBAL_SERVICE_MAP = new Map();
 
-function filterServiceRoots (folder) {
-  return /[\\\/]APP$/i.test(folder) && !/(APP[\\\/])(.*)APP$/i.test(folder);
+// Cluster helpers
+
+function getAllCoordinatorIds () {
+  if (!ArangoClusterControl.isCluster()) {
+    return [];
+  }
+  return global.ArangoClusterInfo.getCoordinators();
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Trigger reload routing
-// / Triggers reloading of routes in this as well as all other threads.
-// //////////////////////////////////////////////////////////////////////////////
+function getMyCoordinatorId () {
+  if (!ArangoClusterControl.isCluster()) {
+    return null;
+  }
+  return global.ArangoServerState.id();
+}
+
+function getFoxmasterCoordinatorId () {
+  if (!ArangoClusterControl.isCluster()) {
+    return null;
+  }
+  return global.ArangoServerState.getFoxxmaster();
+}
+
+function getPeerCoordinatorIds () {
+  const myId = getMyCoordinatorId();
+  return getAllCoordinatorIds().filter((id) => id !== myId);
+}
+
+function isFoxxmaster () {
+  if (!ArangoClusterControl.isCluster()) {
+    return true;
+  }
+  return global.ArangoServerState.isFoxxmaster();
+}
+
+function proxyToFoxxmaster (req, res) {
+  const coordId = getFoxmasterCoordinatorId();
+  const response = parallelClusterRequests([[
+    coordId,
+    req.method,
+    req._url.pathname + (req._url.search || ''),
+    req.rawBody,
+    req.headers
+  ]])[0];
+  res.statusCode = response.statusCode;
+  res.headers = response.headers;
+  res.body = response.rawBody;
+}
+
+function isClusterReadyForBusiness () {
+  const coordIds = getPeerCoordinatorIds();
+  return parallelClusterRequests(function * () {
+    for (const coordId of coordIds) {
+      yield [coordId, 'GET', '/_api/foxx/_local/status'];
+    }
+  }()).every(response => response.statusCode === 200);
+}
+
+function parallelClusterRequests (requests) {
+  let pending = 0;
+  let options;
+  const order = [];
+  for (const [coordId, method, url, body, headers] of requests) {
+    if (!options) {
+      options = {coordTransactionID: global.ArangoClusterComm.getId()};
+    }
+    options.clientTransactionID = global.ArangoClusterInfo.uniqid();
+    order.push(options.clientTransactionID);
+    let actualBody;
+    if (body) {
+      if (typeof body === 'string') {
+        actualBody = body;
+      } else if (body instanceof Buffer) {
+        if (body.length) {
+          actualBody = body;
+        }
+      } else {
+        actualBody = JSON.stringify(body);
+      }
+    }
+    global.ArangoClusterComm.asyncRequest(
+      method,
+      `server:${coordId}`,
+      db._name(),
+      url,
+      actualBody || undefined,
+      headers || {},
+      options
+    );
+    pending++;
+  }
+  if (!pending) {
+    return [];
+  }
+  delete options.clientTransactionID;
+  const results = ArangoClusterControl.wait(options, pending, true);
+  return results.sort(
+    (a, b) => order.indexOf(a.clientTransactionID) - order.indexOf(b.clientTransactionID)
+  );
+}
+
+function isFoxxmasterReady () {
+  if (!ArangoClusterControl.isCluster()) {
+    return true;
+  }
+  const coordId = getFoxmasterCoordinatorId();
+  const response = parallelClusterRequests([[
+    coordId,
+    'GET',
+    '/_api/foxx/_local/status'
+  ]])[0];
+  if (response.statusCode >= 400) {
+    return false;
+  }
+  return JSON.parse(response.body).ready;
+}
+
+function getChecksumsFromPeers (mounts) {
+  const coordinatorIds = getPeerCoordinatorIds();
+  const responses = parallelClusterRequests(function * () {
+    for (const coordId of coordinatorIds) {
+      yield [
+        coordId,
+        'GET',
+        `/_api/foxx/_local/checksums?${querystringify({mount: mounts})}`
+      ];
+    }
+  }());
+  const peerChecksums = new Map();
+  for (const [coordId, response] of zip(coordinatorIds, responses)) {
+    const body = JSON.parse(response.body);
+    const coordChecksums = new Map();
+    for (const mount of mounts) {
+      coordChecksums.set(mount, body[mount] || null);
+    }
+    peerChecksums.set(coordId, coordChecksums);
+  }
+  return peerChecksums;
+}
+
+// Startup and self-heal
+
+function startup () {
+  const db = require('internal').db;
+  const dbName = db._name();
+  try {
+    db._useDatabase('_system');
+    const writeToDatabase = isFoxxmaster();
+    const databases = db._databases();
+    for (const name of databases) {
+      try {
+        db._useDatabase(name);
+        rebuildAllServiceBundles(writeToDatabase);
+        if (writeToDatabase) {
+          upsertSystemServices();
+        }
+      } catch (e) {
+        console.warnStack(e);
+      }
+    }
+  } finally {
+    db._useDatabase(dbName);
+  }
+}
+
+function upsertSystemServices () {
+  const serviceDefinitions = new Map();
+  for (const mount of SYSTEM_SERVICE_MOUNTS) {
+    const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
+    const service = FoxxService.create(serviceDefinition);
+    serviceDefinitions.set(mount, service.toJSON());
+  }
+  db._query(aql`
+    FOR item IN ${Array.from(serviceDefinitions)}
+    UPSERT {mount: item[0]}
+    INSERT item[1]
+    REPLACE item[1]
+    IN ${utils.getStorage()}
+  `);
+}
+
+function rebuildAllServiceBundles (fixMissingChecksums) {
+  const servicesMissingChecksums = [];
+  const collection = utils.getStorage();
+  for (const serviceDefinition of collection.all()) {
+    const mount = serviceDefinition.mount;
+    if (mount.startsWith('/_')) {
+      continue;
+    }
+    const bundlePath = FoxxService.bundlePath(mount);
+    const basePath = FoxxService.basePath(mount);
+
+    const hasBundle = fs.exists(bundlePath);
+    const hasFolder = fs.exists(basePath);
+    if (!hasBundle && hasFolder) {
+      createServiceBundle(mount);
+    } else if (hasBundle && !hasFolder) {
+      extractServiceBundle(bundlePath, basePath);
+    } else if (!hasBundle && !hasFolder) {
+      continue;
+    }
+    if (fixMissingChecksums && !serviceDefinition.checksum) {
+      servicesMissingChecksums.push({
+        checksum: FoxxService.checksum(mount),
+        _key: serviceDefinition._key
+      });
+    }
+  }
+  if (!servicesMissingChecksums.length) {
+    return;
+  }
+  db._query(aql`
+    FOR service IN ${servicesMissingChecksums}
+    UPDATE service._key
+    WITH {checksum: service.checksum}
+    IN ${collection}
+  `);
+}
+
+function selfHeal () {
+  const db = require('internal').db;
+  const dbName = db._name();
+  try {
+    db._useDatabase('_system');
+    const databases = db._databases();
+    const weAreFoxxmaster = isFoxxmaster();
+    const foxxmasterIsReady = weAreFoxxmaster || isFoxxmasterReady();
+    for (const name of databases) {
+      try {
+        db._useDatabase(name);
+        if (weAreFoxxmaster) {
+          healMyselfAndCoords();
+        } else if (foxxmasterIsReady) {
+          healMyself();
+        }
+      } catch (e) {
+        console.warnStack(e);
+      }
+    }
+    return foxxmasterIsReady;
+  } finally {
+    db._useDatabase(dbName);
+  }
+}
+
+function healMyself () {
+  const servicesINeedToFix = new Map();
+
+  const collection = utils.getStorage();
+  for (const serviceDefinition of collection.all()) {
+    const mount = serviceDefinition.mount;
+    const checksum = serviceDefinition.checksum;
+    if (mount.startsWith('/_')) {
+      continue;
+    }
+    if (!checksum || checksum !== safeChecksum(mount)) {
+      servicesINeedToFix.set(mount, checksum);
+    }
+  }
+
+  const coordinatorIds = getPeerCoordinatorIds();
+  let clusterIsInconsistent = false;
+  for (const [mount, checksum] of servicesINeedToFix) {
+    const coordIdsToTry = shuffle(coordinatorIds);
+    let found = false;
+    for (const coordId of coordIdsToTry) {
+      const bundle = downloadServiceBundleFromCoordinator(coordId, mount, checksum);
+      if (bundle) {
+        replaceLocalServiceFromTempBundle(mount, bundle);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      clusterIsInconsistent = true;
+      break;
+    }
+  }
+
+  if (clusterIsInconsistent) {
+    const coordId = getFoxmasterCoordinatorId();
+    parallelClusterRequests([[
+      coordId,
+      'POST',
+      '/_api/foxx/_local/heal'
+    ]]);
+  }
+}
+
+function healMyselfAndCoords () {
+  const checksumsINeedToFixLocally = [];
+  const actualChecksums = new Map();
+  const coordsKnownToBeGoodSources = new Map();
+  const coordsKnownToBeBadSources = new Map();
+  const allKnownMounts = [];
+
+  const collection = utils.getStorage();
+  for (const serviceDefinition of collection.all()) {
+    const mount = serviceDefinition.mount;
+    const checksum = serviceDefinition.checksum;
+    if (mount.startsWith('/_')) {
+      continue;
+    }
+    allKnownMounts.push(mount);
+    actualChecksums.set(mount, checksum);
+    coordsKnownToBeGoodSources.set(mount, []);
+    coordsKnownToBeBadSources.set(mount, new Map());
+    if (!checksum || checksum !== safeChecksum(mount)) {
+      checksumsINeedToFixLocally.push(mount);
+    }
+  }
+
+  const serviceChecksumsByCoordinator = getChecksumsFromPeers(allKnownMounts);
+  for (const [coordId, serviceChecksums] of serviceChecksumsByCoordinator) {
+    for (const [mount, checksum] of serviceChecksums) {
+      if (!checksum) {
+        coordsKnownToBeBadSources.get(mount).set(coordId, null);
+      } else if (!actualChecksums.get(mount)) {
+        actualChecksums.set(mount, checksum);
+        coordsKnownToBeGoodSources.get(mount).push(coordId);
+      } else if (actualChecksums.get(mount) === checksum) {
+        coordsKnownToBeGoodSources.get(mount).push(coordId);
+      } else {
+        coordsKnownToBeBadSources.get(mount).set(coordId, checksum);
+      }
+    }
+  }
+
+  const myId = getMyCoordinatorId();
+  const serviceMountsToDeleteInCollection = [];
+  const serviceChecksumsToUpdateInCollection = new Map();
+  for (const mount of checksumsINeedToFixLocally) {
+    const possibleSources = coordsKnownToBeGoodSources.get(mount);
+    if (!possibleSources.length) {
+      const myChecksum = safeChecksum(mount);
+      if (myChecksum) {
+        serviceChecksumsToUpdateInCollection.set(mount, myChecksum);
+      } else {
+        let found = false;
+        for (const [coordId, coordChecksum] of coordsKnownToBeBadSources.get(mount)) {
+          if (!coordChecksum) {
+            continue;
+          }
+          const bundle = downloadServiceBundleFromCoordinator(coordId, mount, coordChecksum);
+          if (bundle) {
+            serviceChecksumsToUpdateInCollection.set(mount, coordChecksum);
+            possibleSources.push(coordId);
+            replaceLocalServiceFromTempBundle(mount, bundle);
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          serviceMountsToDeleteInCollection.push(mount);
+          coordsKnownToBeBadSources.delete(mount);
+        }
+      }
+    } else {
+      const checksum = actualChecksums.get(mount);
+      for (const coordId of possibleSources) {
+        const bundle = downloadServiceBundleFromCoordinator(coordId, mount, checksum);
+        if (bundle) {
+          replaceLocalServiceFromTempBundle(mount, bundle);
+          break;
+        }
+      }
+    }
+  }
+
+  for (const ids of coordsKnownToBeGoodSources.values()) {
+    ids.push(myId);
+  }
+
+  db._query(aql`
+    FOR service IN ${collection}
+    FILTER service.mount IN ${serviceMountsToDeleteInCollection}
+    REMOVE service
+    IN ${collection}
+  `);
+
+  db._query(aql`
+    FOR service IN ${collection}
+    FOR item IN ${Array.from(serviceChecksumsToUpdateInCollection)}
+    FILTER service.mount == item[0]
+    UPDATE service
+    WITH {checksum: item[1]}
+    IN ${collection}
+  `);
+
+  parallelClusterRequests(function * () {
+    for (const coordId of getPeerCoordinatorIds()) {
+      const servicesYouNeedToUpdate = {};
+      for (const [mount, badCoordinatorIds] of coordsKnownToBeBadSources) {
+        if (!badCoordinatorIds.has(coordId)) {
+          continue;
+        }
+        const goodCoordIds = coordsKnownToBeGoodSources.get(mount);
+        servicesYouNeedToUpdate[mount] = shuffle(goodCoordIds);
+      }
+      if (!Object.keys(servicesYouNeedToUpdate).length) {
+        continue;
+      }
+      yield [
+        coordId,
+        'POST',
+        '/_api/foxx/_local',
+        JSON.stringify(servicesYouNeedToUpdate),
+        {'content-type': 'application/json'}
+      ];
+    }
+  }());
+}
+
+// Change propagation
 
 function reloadRouting () {
-  executeGlobalContextFunction('reloadRouting');
+  require('internal').executeGlobalContextFunction('reloadRouting');
   actions.reloadRouting();
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Resets the service cache
-// //////////////////////////////////////////////////////////////////////////////
-
-function resetCache () {
-  _.each(serviceCache, (cache) => {
-    _.each(cache, (service) => {
-      service.main.loaded = false;
-    });
-  });
-  serviceCache = {};
+function propagateServiceDestroyed (service) {
+  parallelClusterRequests(function * () {
+    for (const coordId of getPeerCoordinatorIds()) {
+      yield [coordId, 'DELETE', `/_api/foxx/_local/service?${querystringify({
+        mount: service.mount
+      })}`];
+    }
+  }());
+  reloadRouting();
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief lookup service in cache
-// / Returns either the service or undefined if it is not cached.
-// //////////////////////////////////////////////////////////////////////////////
-
-function lookupService (mount) {
-  var dbname = arangodb.db._name();
-  if (!serviceCache.hasOwnProperty(dbname) || Object.keys(serviceCache[dbname]).length === 0) {
-    refillCaches(dbname);
-  }
-  if (!serviceCache[dbname].hasOwnProperty(mount)) {
-    refillCaches(dbname);
-    if (serviceCache[dbname].hasOwnProperty(mount)) {
-      return serviceCache[dbname][mount];
+function propagateServiceReplaced (service) {
+  const myId = getMyCoordinatorId();
+  const coordIds = getPeerCoordinatorIds();
+  const results = parallelClusterRequests(function * () {
+    for (const coordId of coordIds) {
+      yield [
+        coordId,
+        'POST',
+        '/_api/foxx/_local',
+        JSON.stringify({[service.mount]: [myId]}),
+        {'content-type': 'application/json'}
+      ];
     }
+  }());
+  for (const [coordId, result] of zip(coordIds, results)) {
+    if (result.statusCode >= 400) {
+      console.error(`Failed to propagate service ${service.mount} to coord ${coordId}`);
+    }
+  }
+  reloadRouting();
+}
+
+function propagateServiceReconfigured (service) {
+  parallelClusterRequests(function * () {
+    for (const coordId of getPeerCoordinatorIds()) {
+      yield [coordId, 'POST', `/_api/foxx/_local/service?${querystringify({
+        mount: service.mount
+      })}`];
+    }
+  }());
+  reloadRouting();
+}
+
+// GLOBAL_SERVICE_MAP manipulation
+
+function initLocalServiceMap () {
+  const localServiceMap = new Map();
+  for (const mount of SYSTEM_SERVICE_MOUNTS) {
+    const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
+    const service = FoxxService.create(serviceDefinition);
+    localServiceMap.set(service.mount, service);
+  }
+  for (const serviceDefinition of utils.getStorage().all()) {
+    try {
+      const service = FoxxService.create(serviceDefinition);
+      localServiceMap.set(service.mount, service);
+    } catch (e) {
+      if (fs.exists(FoxxService.basePath(serviceDefinition.mount))) {
+        console.errorStack(e, `Failed to load service ${serviceDefinition.mount}`);
+      } else {
+        console.warn(`Could not find local service ${serviceDefinition.mount}`);
+      }
+    }
+  }
+  GLOBAL_SERVICE_MAP.set(db._name(), localServiceMap);
+}
+
+function ensureFoxxInitialized () {
+  if (!GLOBAL_SERVICE_MAP.has(db._name())) {
+    initLocalServiceMap();
+  }
+}
+
+function ensureServiceLoaded (mount) {
+  const service = getServiceInstance(mount);
+  return ensureServiceExecuted(service, false);
+}
+
+function getServiceInstance (mount) {
+  ensureFoxxInitialized();
+  const localServiceMap = GLOBAL_SERVICE_MAP.get(db._name());
+  if (localServiceMap.has(mount)) {
+    return localServiceMap.get(mount);
+  }
+  return reloadInstalledService(mount);
+}
+
+function reloadInstalledService (mount, runSetup) {
+  const serviceDefinition = utils.getServiceDefinition(mount);
+  if (!serviceDefinition) {
     throw new ArangoError({
       errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
       errorMessage: dd`
@@ -247,583 +575,21 @@ function lookupService (mount) {
       `
     });
   }
-  return serviceCache[dbname][mount];
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief refills the routing cache
-// //////////////////////////////////////////////////////////////////////////////
-
-function refillCaches (dbname) {
-  var cache = {};
-  _.each(serviceCache[dbname], (service) => {
-    service.main.loaded = false;
-  });
-
-  var cursor = utils.getStorage().all();
-  var routes = [];
-
-  while (cursor.hasNext()) {
-    var config = cursor.next();
-    var service = new FoxxService(Object.assign({}, config));
-    var mount = service.mount;
-    cache[mount] = service;
-    routes.push(mount);
+  const service = FoxxService.create(serviceDefinition);
+  if (runSetup) {
+    service.executeScript('setup');
   }
-
-  serviceCache[dbname] = cache;
-  return routes;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief routes of a foxx
-// //////////////////////////////////////////////////////////////////////////////
-
-function routes (mount) {
-  var service = lookupService(mount);
-  return routeAndExportService(service, false).routes;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensure a foxx is routed
-// //////////////////////////////////////////////////////////////////////////////
-
-function ensureRouted (mount) {
-  var service = lookupService(mount);
-  return routeAndExportService(service, false);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Makes sure all system services are mounted.
-// //////////////////////////////////////////////////////////////////////////////
-
-function checkMountedSystemService (dbname) {
-  var i, mount;
-  // var collection = utils.getStorage()
-  for (i = 0; i < usedSystemMountPoints.length; ++i) {
-    mount = usedSystemMountPoints[i];
-    delete serviceCache[dbname][mount];
-    _scanFoxx(mount, {replace: true});
-    lookupService(mount).executeScript('setup');
-  }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief check a manifest for completeness
-// //////////////////////////////////////////////////////////////////////////////
-
-function checkManifest (filename, inputManifest, mount, isDevelopment) {
-  const serverVersion = plainServerVersion();
-  const errors = [];
-  const manifest = {};
-  let legacy = false;
-
-  Object.keys(manifestSchema).forEach(function (key) {
-    const schema = manifestSchema[key];
-    const value = inputManifest[key];
-    const result = joi.validate(value, schema);
-    if (result.error) {
-      const error = result.error.message.replace(/^"value"/, `Value`);
-      errors.push(il`
-        Service at "${mount}" specifies manifest field "${key}"
-        with invalid value "${util.format(value)}":
-        ${error}
-      `);
-    } else {
-      manifest[key] = result.value;
-    }
-  });
-
-  if (manifest.engines && manifest.engines.arangodb) {
-    if (semver.gtr('3.0.0', manifest.engines.arangodb)) {
-      legacy = true;
-      if (!isDevelopment) {
-        console.infoLines(il`
-          Service at "${mount}" expects version "${manifest.engines.arangodb}"
-          and will run in legacy compatibility mode.
-        `);
-      }
-    } else if (!semver.satisfies(serverVersion, manifest.engines.arangodb)) {
-      if (!isDevelopment) {
-        console.warnLines(il`
-          Service at "${mount}" expects version "${manifest.engines.arangodb}"
-          which is likely incompatible with installed version "${serverVersion}".
-        `);
-      }
-    }
-  }
-
-  for (const key of Object.keys(inputManifest)) {
-    if (manifestSchema[key]) {
-      continue;
-    }
-    manifest[key] = inputManifest[key];
-    if (key === 'engine' && !inputManifest.engines) {
-      console.warnLines(il`
-        Service at "${mount}" specifies unknown manifest field "engine".
-        Did you mean "engines"?
-      `);
-    } else if (!legacy || legacyManifestFields.indexOf(key) === -1) {
-      console.warnLines(il`
-        Service at "${mount}" specifies unknown manifest field "${key}".
-      `);
-    }
-  }
-
-  if (manifest.version && !semver.valid(manifest.version)) {
-    console.warnLines(il`
-      Service at "${mount}" specifies manifest field "version"
-      with invalid value "${manifest.version}".
-    `);
-  }
-
-  if (manifest.provides) {
-    if (typeof manifest.provides === 'string') {
-      manifest.provides = [manifest.provides];
-    }
-    if (Array.isArray(manifest.provides)) {
-      const provides = manifest.provides;
-      manifest.provides = {};
-      for (const provided of provides) {
-        const tokens = provided.split(':');
-        manifest.provides[tokens[0]] = tokens[1] || '*';
-      }
-    }
-    for (const name of Object.keys(manifest.provides)) {
-      const version = manifest.provides[name];
-      if (!semver.valid(version)) {
-        errors.push(il`
-          Service at "${mount}" specifies manifest field "provides"
-          with "${name}" set to invalid value "${version}".
-        `);
-      }
-    }
-  }
-
-  if (manifest.dependencies) {
-    for (const key of Object.keys(manifest.dependencies)) {
-      if (typeof manifest.dependencies[key] === 'string') {
-        const tokens = manifest.dependencies[key].split(':');
-        manifest.dependencies[key] = {
-          name: tokens[0] || '*',
-          version: tokens[1] || '*',
-          required: true
-        };
-      }
-      const version = manifest.dependencies[key].version;
-      if (!semver.validRange(version)) {
-        errors.push(il`
-          Service at "${mount}" specifies manifest field "dependencies"
-          with "${key}" set to invalid value "${version}".
-        `);
-      }
-    }
-  }
-
-  if (errors.length) {
-    for (const error of errors) {
-      console.errorLines(error);
-    }
-    throw new ArangoError({
-      errorNum: errors.ERROR_INVALID_SERVICE_MANIFEST.code,
-      errorMessage: dd`
-        ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
-        Manifest for service at "${mount}":
-        ${errors.join('\n')}
-      `
-    });
-  }
-
-  if (typeof manifest.tests === 'string') {
-    manifest.tests = [manifest.tests];
-  }
-
-  if (legacy) {
-    if (manifest.defaultDocument === undefined) {
-      manifest.defaultDocument = 'index.html';
-    }
-
-    if (typeof manifest.controllers === 'string') {
-      manifest.controllers = {'/': manifest.controllers};
-    }
-  } else if (manifest.lib) {
-    const base = manifest.lib;
-    delete manifest.lib;
-    if (manifest.main) {
-      manifest.main = joinPath(base, manifest.main);
-    }
-    if (manifest.tests) {
-      manifest.tests = manifest.tests.map((path) => joinPath(base, path));
-    }
-    for (const key of Object.keys(manifest.scripts)) {
-      manifest.scripts[key] = joinPath(base, manifest.scripts[key]);
-    }
-  }
-
-  return manifest;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief validates a manifest file and returns it.
-// / All errors are handled including file not found. Returns undefined if manifest is invalid
-// //////////////////////////////////////////////////////////////////////////////
-
-function validateManifestFile (filename, mount, isDevelopment) {
-  let mf;
-  if (!fs.exists(filename)) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code,
-      errorMessage: dd`
-        ${errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.message}
-        File: ${filename}
-      `
-    });
-  }
-  try {
-    mf = JSON.parse(fs.read(filename));
-  } catch (e) {
-    throw Object.assign(
-      new ArangoError({
-        errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
-        errorMessage: dd`
-          ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
-          File: ${filename}
-        `
-      }), {cause: e}
-    );
-  }
-  try {
-    mf = checkManifest(filename, mf, mount, isDevelopment);
-  } catch (e) {
-    throw Object.assign(
-      new ArangoError({
-        errorNum: errors.ERROR_INVALID_SERVICE_MANIFEST.code,
-        errorMessage: dd`
-          ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
-          File: ${filename}
-        `
-      }), {cause: e}
-    );
-  }
-  return mf;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Checks if the mountpoint is reserved for system services
-// //////////////////////////////////////////////////////////////////////////////
-
-function isSystemMount (mount) {
-  return (/^\/_/).test(mount);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief returns the root path for service. Knows about system services
-// //////////////////////////////////////////////////////////////////////////////
-
-function computeRootServicePath (mount) {
-  if (isSystemMount(mount)) {
-    return FoxxService._systemAppPath;
-  }
-  return FoxxService._appPath;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief transforms a mount point to a sub-path relative to root
-// //////////////////////////////////////////////////////////////////////////////
-
-function transformMountToPath (mount) {
-  var list = mount.split('/');
-  return joinPath(...list, 'APP');
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief transforms a sub-path to a mount point
-// //////////////////////////////////////////////////////////////////////////////
-
-function transformPathToMount (path) {
-  var list = path.split(fs.pathSeparator);
-  list.pop();
-  return '/' + list.join('/');
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief returns the service path for mount point
-// //////////////////////////////////////////////////////////////////////////////
-
-function computeServicePath (mount) {
-  var root = computeRootServicePath(mount);
-  var mountPath = transformMountToPath(mount);
-  return joinPath(root, mountPath);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief returns a valid service config for validation purposes
-// //////////////////////////////////////////////////////////////////////////////
-
-function fakeServiceConfig (path, mount) {
-  var file = joinPath(path, 'manifest.json');
-  return {
-    id: '__internal',
-    root: '',
-    path: path,
-    options: {},
-    mount: '/internal',
-    manifest: validateManifestFile(file, mount),
-    isSystem: false,
-    isDevelopment: false
-  };
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief returns the service path and manifest
-// //////////////////////////////////////////////////////////////////////////////
-
-function serviceConfig (mount, options, activateDevelopment) {
-  var root = computeRootServicePath(mount);
-  var path = transformMountToPath(mount);
-
-  var file = joinPath(root, path, 'manifest.json');
-  return {
-    id: mount,
-    path: path,
-    options: options || {},
-    mount: mount,
-    manifest: validateManifestFile(file, mount, activateDevelopment),
-    isSystem: isSystemMount(mount),
-    isDevelopment: activateDevelopment || false
-  };
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Creates a service with options and returns it
-// / All errors are handled including service not found. Returns undefined if service is invalid.
-// / If the service is valid it will be added into the local service cache.
-// //////////////////////////////////////////////////////////////////////////////
-
-function createService (mount, options, activateDevelopment) {
-  var dbname = arangodb.db._name();
-  var config = serviceConfig(mount, options, activateDevelopment);
-  var service = new FoxxService(config);
-  serviceCache[dbname][mount] = service;
+  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
   return service;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Distributes zip file to peer coordinators. Only used in cluster
-// //////////////////////////////////////////////////////////////////////////////
-
-function uploadToPeerCoordinators (serviceInfo, coordinators) {
-  let coordOptions = {
-    coordTransactionID: ArangoClusterComm.getId()
-  };
-  let req = fs.readBuffer(serviceInfo);
-  let httpOptions = {};
-  let mapping = {};
-  for (let i = 0; i < coordinators.length; ++i) {
-    let ctid = ArangoClusterInfo.uniqid();
-    mapping[ctid] = coordinators[i];
-    coordOptions.clientTransactionID = ctid;
-    ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
-      '/_api/upload', req, httpOptions, coordOptions);
-  }
-  delete coordOptions.clientTransactionID;
-  return {
-    results: cluster.wait(coordOptions, coordinators.length),
-  mapping};
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Generates a service with the given options into the targetPath
-// //////////////////////////////////////////////////////////////////////////////
-
-function installServiceFromGenerator (targetPath, options) {
-  var invalidOptions = [];
-  // Set default values:
-  options.documentCollections = options.documentCollections || [];
-  options.edgeCollections = options.edgeCollections || [];
-  if (typeof options.name !== 'string') {
-    invalidOptions.push('options.name has to be a string.');
-  }
-  if (typeof options.author !== 'string') {
-    invalidOptions.push('options.author has to be a string.');
-  }
-  if (typeof options.description !== 'string') {
-    invalidOptions.push('options.description has to be a string.');
-  }
-  if (typeof options.license !== 'string') {
-    invalidOptions.push('options.license has to be a string.');
-  }
-  if (!Array.isArray(options.documentCollections)) {
-    invalidOptions.push('options.documentCollections has to be an array.');
-  }
-  if (!Array.isArray(options.edgeCollections)) {
-    invalidOptions.push('options.edgeCollections has to be an array.');
-  }
-  if (invalidOptions.length > 0) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_INVALID_FOXX_OPTIONS.code,
-      errorMessage: dd`
-        ${errors.ERROR_INVALID_FOXX_OPTIONS.message}
-        Options: ${JSON.stringify(invalidOptions, undefined, 2)}
-      `
-    });
-  }
-  var cfg = generator.generate(options);
-  generator.write(targetPath, cfg.files, cfg.folders);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Extracts a service from zip and moves it to temporary path
-// /
-// / return path to service
-// //////////////////////////////////////////////////////////////////////////////
-
-function extractServiceToPath (archive, targetPath, noDelete) {
-  var tempFile = fs.getTempFile('zip', false);
-  fs.makeDirectory(tempFile);
-  fs.unzipFile(archive, tempFile, false, true);
-
-  // .............................................................................
-  // throw away source file
-  // .............................................................................
-  if (!noDelete) {
-    try {
-      fs.remove(archive);
-    } catch (err1) {
-      arangodb.printf(`Cannot remove temporary file "${archive}"\n`);
-    }
-  }
-
-  // .............................................................................
-  // locate the manifest file
-  // .............................................................................
-
-  var tree = fs.listTree(tempFile).sort(function (a, b) {
-    return a.length - b.length;
-  });
-  var found;
-  var mf = 'manifest.json';
-  var re = /[\/\\\\]manifest\.json$/; // Windows!
-  var tf;
-  var i;
-
-  for (i = 0; i < tree.length && found === undefined; ++i) {
-    tf = tree[i];
-
-    if (re.test(tf) || tf === mf) {
-      found = tf;
-    }
-  }
-
-  if (found === undefined) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code,
-      errorMessage: dd`
-        ${errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.message}
-        Source: ${tempFile}
-      `
-    });
-  }
-
-  var mp;
-
-  if (found === mf) {
-    mp = '.';
-  } else {
-    mp = found.substr(0, found.length - mf.length - 1);
-  }
-
-  fs.move(joinPath(tempFile, mp), targetPath);
-
-  // .............................................................................
-  // throw away temporary service folder
-  // .............................................................................
-  if (found !== mf) {
-    try {
-      fs.removeDirectoryRecursive(tempFile);
-    } catch (err1) {
-      let details = String(err1.stack || err1);
-      arangodb.printf(`Cannot remove temporary folder "${tempFile}"\n Stack: ${details}`);
-    }
-  }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief builds a github repository URL
-// //////////////////////////////////////////////////////////////////////////////
-
-function buildGithubUrl (serviceInfo) {
-  var splitted = serviceInfo.split(':');
-  var repository = splitted[1];
-  var version = splitted[2];
-  if (version === undefined) {
-    version = 'master';
-  }
-
-  var urlPrefix = require('process').env.FOXX_BASE_URL;
-  if (urlPrefix === undefined) {
-    urlPrefix = 'https://github.com/';
-  }
-  return urlPrefix + repository + '/archive/' + version + '.zip';
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Downloads a service from remote zip file and copies it to mount path
-// //////////////////////////////////////////////////////////////////////////////
-
-function installServiceFromRemote (url, targetPath) {
-  var tempFile = fs.getTempFile('downloads', false);
-  var auth;
-
-  var urlObj = parseUrl(url);
-  if (urlObj.auth) {
-    auth = urlObj.auth.split(':');
-    auth = {
-      username: decodeURIComponent(auth[0]),
-      password: decodeURIComponent(auth[1])
-    };
-    delete urlObj.auth;
-    url = formatUrl(urlObj);
-  }
-
-  try {
-    var result = download(url, '', {
-      method: 'get',
-      followRedirects: true,
-      timeout: 30,
-      auth: auth
-    }, tempFile);
-
-    if (result.code < 200 || result.code > 299) {
-      throw new ArangoError({
-        errorNum: errors.ERROR_SERVICE_SOURCE_ERROR.code,
-        errorMessage: dd`
-          ${errors.ERROR_SERVICE_SOURCE_ERROR.message}
-          URL: ${url}
-          Status: ${result.code}
-        `
-      });
-    }
-  } catch (e) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_SERVICE_SOURCE_ERROR.code,
-      errorMessage: dd`
-        ${errors.ERROR_SERVICE_SOURCE_ERROR.message}
-        URL: ${url}
-      `
-    }, {cause: e});
-  }
-  extractServiceToPath(tempFile, targetPath);
-}
+// Misc?
 
 function patchManifestFile (servicePath, patchData) {
-  if (!patchData || !Object.keys(patchData).length) {
-    return;
-  }
-  const filename = joinPath(servicePath, 'manifest.json');
+  const filename = path.join(servicePath, 'manifest.json');
   let manifest;
   try {
-    const rawManifest = fs.read(filename);
+    const rawManifest = fs.readFileSync(filename, 'utf-8');
     manifest = JSON.parse(rawManifest);
   } catch (e) {
     throw Object.assign(
@@ -837,269 +603,278 @@ function patchManifestFile (servicePath, patchData) {
     );
   }
   Object.assign(manifest, patchData);
-  fs.write(filename, JSON.stringify(manifest, null, 2));
+  fs.writeFileSync(filename, JSON.stringify(manifest, null, 2));
 }
 
-function isLocalFile (path) {
-  return utils.pathRegex.test(path) && !fs.isDirectory(path);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Copies a service from local, either zip file or folder, to mount path
-// //////////////////////////////////////////////////////////////////////////////
-
-function installServiceFromLocal (path, targetPath) {
-  if (!fs.exists(path)) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,
-      errorMessage: dd`
-        ${errors.ERROR_SERVICE_SOURCE_NOT_FOUND.message}
-        Path: ${path}
-      `
-    });
-  }
-  if (fs.isDirectory(path)) {
-    extractServiceToPath(utils.zipDirectory(path), targetPath);
-  } else {
-    extractServiceToPath(path, targetPath, true);
-  }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief run a Foxx service script
-// /
-// / Input:
-// / * scriptName: the script name
-// / * mount: the mount path starting with a "/"
-// /
-// / Output:
-// / -
-// //////////////////////////////////////////////////////////////////////////////
-
-function runScript (scriptName, mount, options) {
-  checkParameter(
-    'runScript(<scriptName>, <mount>, [<options>])',
-    [ [ 'Script name', 'string' ], [ 'Mount path', 'string' ] ],
-    [ scriptName, mount ]
-  );
-
-  var service = lookupService(mount);
-  if (service.isDevelopment && scriptName !== 'setup') {
-    service.executeScript('setup');
-  }
-  ensureRouted(mount);
-  return service.executeScript(scriptName, options) || null;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return the service's README.md
-// /
-// / Input:
-// / * mount: the mount path starting with a "/"
-// /
-// / Output:
-// / -
-// //////////////////////////////////////////////////////////////////////////////
-
-function readme (mount) {
-  checkParameter(
-    'readme(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]
-  );
-  let service = lookupService(mount);
-  let path, readmeText;
-
-  path = joinPath(service.root, service.path, 'README.md');
-  readmeText = fs.exists(path) && fs.read(path);
-  if (!readmeText) {
-    path = joinPath(service.root, service.path, 'README');
-    readmeText = fs.exists(path) && fs.read(path);
-  }
-  return readmeText || null;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief run a Foxx service's tests
-// //////////////////////////////////////////////////////////////////////////////
-
-function runTests (mount, options) {
-  checkParameter(
-    'runTests(<mount>, [<options>])',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]
-  );
-
-  var service = lookupService(mount);
-  if (service.isDevelopment) {
-    service.executeScript('setup');
-  }
-  ensureRouted(mount);
-  var reporter = options ? options.reporter : null;
-  return require('@arangodb/foxx/mocha').run(service, reporter);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Initializes the serviceCache and fills it initially for each db.
-// //////////////////////////////////////////////////////////////////////////////
-
-function initCache () {
-  var dbname = arangodb.db._name();
-  if (!serviceCache.hasOwnProperty(dbname)) {
-    initializeFoxx();
-  }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Internal scanFoxx function. Check scanFoxx.
-// / Does not check parameters and throws errors.
-// //////////////////////////////////////////////////////////////////////////////
-
-function _scanFoxx (mount, options, activateDevelopment) {
-  options = options || { };
-  var dbname = arangodb.db._name();
-  delete serviceCache[dbname][mount];
-  var service = createService(mount, options, activateDevelopment);
-  if (!options.__clusterDistribution) {
-    db._executeTransaction({
-      collections: {
-        exclusive: utils.getStorage().name()
-      },
-      action() {
-        try {
-          utils.getStorage().save(service.toJSON());
-        } catch (err) {
-          if (!options.replace || err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
-            throw err;
-          }
-          var old = utils.getStorage().firstExample({ mount: mount });
-          if (old === null) {
-            throw new ArangoError({
-              errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
-              errorMessage: dd`
-                ${errors.ERROR_SERVICE_NOT_FOUND.message}
-                Mount path: "${mount}".
-              `
-            });
-          }
-          var data = Object.assign({}, old);
-          data.manifest = service.toJSON().manifest;
-          utils.getStorage().replace(old, data);
-        }
-      }
-    });
-  }
-  return service;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Scans the sources of the given mountpoint and publishes the routes
-// /
-// / TODO: Long Documentation!
-// //////////////////////////////////////////////////////////////////////////////
-
-function scanFoxx (mount, options) {
-  checkParameter(
-    'scanFoxx(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-  initCache();
-  var service = _scanFoxx(mount, options);
-  reloadRouting();
-  return service;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Scans the sources of the given mountpoint and publishes the routes
-// /
-// / TODO: Long Documentation!
-// //////////////////////////////////////////////////////////////////////////////
-
-function rescanFoxx (mount) {
-  checkParameter(
-    'scanFoxx(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-
-  var old = lookupService(mount);
-  // var collection = utils.getStorage()
-  initCache();
-  _scanFoxx(
-    mount,
-    Object.assign({}, old.options, {replace: true}),
-    old.isDevelopment
-  );
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Build service in path
-// //////////////////////////////////////////////////////////////////////////////
-
-function _buildServiceInPath (serviceInfo, path, options) {
+function _prepareService (serviceInfo, options = {}) {
+  const tempServicePath = fs.getTempFile('services', false);
+  const tempBundlePath = fs.getTempFile('bundles', false);
   try {
-    if (serviceInfo === 'EMPTY') {
-      // Make Empty service
-      installServiceFromGenerator(path, options || {});
-    } else if (/^GIT:/i.test(serviceInfo)) {
-      installServiceFromRemote(buildGithubUrl(serviceInfo), path);
+    if (isZipBuffer(serviceInfo)) {
+      // Buffer (zip)
+      const tempFile = fs.getTempFile('bundles', false);
+      fs.writeFileSync(tempFile, serviceInfo);
+      extractServiceBundle(tempFile, tempServicePath);
+      fs.move(tempFile, tempBundlePath);
+    } else if (serviceInfo instanceof Buffer) {
+      // Buffer (js)
+      const manifest = JSON.stringify({main: 'index.js'}, null, 4);
+      fs.makeDirectoryRecursive(tempServicePath);
+      fs.writeFileSync(path.join(tempServicePath, 'index.js'), serviceInfo);
+      fs.writeFileSync(path.join(tempServicePath, 'manifest.json'), manifest);
+      utils.zipDirectory(tempServicePath, tempBundlePath);
     } else if (/^https?:/i.test(serviceInfo)) {
-      installServiceFromRemote(serviceInfo, path);
-    } else if (utils.pathRegex.test(serviceInfo)) {
-      installServiceFromLocal(serviceInfo, path);
+      // Remote path
+      const tempFile = downloadServiceBundleFromRemote(serviceInfo);
+      extractServiceBundle(tempFile, tempServicePath);
+      fs.move(tempFile, tempBundlePath);
+    } else if (fs.exists(serviceInfo)) {
+      // Local path
+      if (fs.isDirectory(serviceInfo)) {
+        utils.zipDirectory(serviceInfo, tempBundlePath);
+        extractServiceBundle(tempBundlePath, tempServicePath);
+      } else {
+        extractServiceBundle(serviceInfo, tempServicePath);
+        fs.copyFile(serviceInfo, tempBundlePath);
+      }
     } else {
-      if (!options || options.refresh !== false) {
+      // Foxx Store
+      if (options.refresh) {
         try {
           store.update();
         } catch (e) {
-          console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+          console.warnStack(e);
         }
       }
       const info = store.installationInfo(serviceInfo);
-      installServiceFromRemote(info.url, path);
-      patchManifestFile(path, info.manifest);
+      if (!info) {
+        throw new ArangoError({
+          errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,
+          errorMessage: dd`
+            ${errors.ERROR_SERVICE_SOURCE_NOT_FOUND.message}
+            Location: ${serviceInfo}
+          `
+        });
+      }
+      const storeBundle = downloadServiceBundleFromRemote(info.url);
+      try {
+        extractServiceBundle(storeBundle, tempServicePath);
+      } finally {
+        try {
+          fs.remove(storeBundle);
+        } catch (e) {
+          console.warnStack(e, `Cannot remove temporary file "${storeBundle}"`);
+        }
+      }
+      patchManifestFile(tempServicePath, info.manifest);
+      utils.zipDirectory(tempServicePath, tempBundlePath);
     }
     if (options.legacy) {
-      patchManifestFile(path, {engines: {arangodb: '^2.8.0'}});
+      patchManifestFile(tempServicePath, {engines: {arangodb: '^2.8.0'}});
+      if (fs.exists(tempBundlePath)) {
+        fs.remove(tempBundlePath);
+      }
+      utils.zipDirectory(tempServicePath, tempBundlePath);
     }
+    return {
+      tempServicePath,
+      tempBundlePath
+    };
   } catch (e) {
     try {
-      fs.removeDirectoryRecursive(path, true);
-    } catch (err) {
-      // noop
-    }
+      fs.removeDirectoryRecursive(tempServicePath, true);
+    } catch (e2) {}
     throw e;
   }
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Internal service validation function
-// / Does not check parameters and throws errors.
-// //////////////////////////////////////////////////////////////////////////////
+function _buildServiceInPath (mount, tempServicePath, tempBundlePath) {
+  const servicePath = FoxxService.basePath(mount);
+  if (fs.exists(servicePath)) {
+    fs.removeDirectoryRecursive(servicePath, true);
+  }
+  fs.makeDirectoryRecursive(path.dirname(servicePath));
+  fs.move(tempServicePath, servicePath);
+  const bundlePath = FoxxService.bundlePath(mount);
+  if (fs.exists(bundlePath)) {
+    fs.remove(bundlePath);
+  }
+  fs.makeDirectoryRecursive(path.dirname(bundlePath));
+  fs.move(tempBundlePath, bundlePath);
+}
 
-function _validateService (serviceInfo, mount) {
-  var tempPath = fs.getTempFile('apps', false);
+function _install (mount, options = {}) {
+  const collection = utils.getStorage();
+  const service = FoxxService.create({
+    mount,
+    options,
+    noisy: true
+  });
+  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
+  if (options.setup !== false) {
+    service.executeScript('setup');
+  }
+  service.updateChecksum();
+  const serviceDefinition = service.toJSON();
+  db._query(aql`
+    UPSERT {mount: ${mount}}
+    INSERT ${serviceDefinition}
+    REPLACE ${serviceDefinition}
+    IN ${collection}
+  `);
+  ensureServiceExecuted(service, true);
+  return service;
+}
+
+function _uninstall (mount, options = {}) {
+  let service;
   try {
-    _buildServiceInPath(serviceInfo, tempPath, {});
-    var tmp = new FoxxService(fakeServiceConfig(tempPath, mount));
-    if (!tmp.needsConfiguration()) {
-      routeAndExportService(tmp, true);
+    service = getServiceInstance(mount);
+  } catch (e) {
+    if (!options.force) {
+      throw e;
     }
-  } finally {
-    fs.removeDirectoryRecursive(tempPath, true);
+  }
+  if (service && options.teardown !== false) {
+    try {
+      service.executeScript('teardown');
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
+    }
+  }
+  const collection = utils.getStorage();
+  db._query(aql`
+    FOR service IN ${collection}
+    FILTER service.mount == ${mount}
+    REMOVE service IN ${collection}
+  `);
+  GLOBAL_SERVICE_MAP.get(db._name()).delete(mount);
+  const servicePath = FoxxService.basePath(mount);
+  if (fs.exists(servicePath)) {
+    try {
+      fs.removeDirectoryRecursive(servicePath, true);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
+    }
+  }
+  const bundlePath = FoxxService.bundlePath(mount);
+  if (fs.exists(bundlePath)) {
+    try {
+      fs.remove(bundlePath);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
+    }
+  }
+  return service;
+}
+
+// Service bundle manipulation
+
+function createServiceBundle (mount, bundlePath = FoxxService.bundlePath(mount)) {
+  const servicePath = FoxxService.basePath(mount);
+  if (fs.exists(bundlePath)) {
+    fs.remove(bundlePath);
+  }
+  fs.makeDirectoryRecursive(path.dirname(bundlePath));
+  utils.zipDirectory(servicePath, bundlePath);
+}
+
+function downloadServiceBundleFromRemote (url) {
+  try {
+    const res = request.get(url, {encoding: null});
+    res.throw();
+    const tempFile = fs.getTempFile('bundles', false);
+    fs.writeFileSync(tempFile, res.body);
+    return tempFile;
+  } catch (e) {
+    throw Object.assign(
+      new ArangoError({
+        errorNum: errors.ERROR_SERVICE_SOURCE_ERROR.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_SOURCE_ERROR.message}
+          URL: ${url}
+        `
+      }),
+      {cause: e}
+    );
   }
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Internal install function. Check install.
-// / Does not check parameters and throws errors.
-// //////////////////////////////////////////////////////////////////////////////
+function downloadServiceBundleFromCoordinator (coordId, mount, checksum) {
+  const response = parallelClusterRequests([[
+    coordId,
+    'GET',
+    `/_api/foxx/_local/bundle?${querystringify({mount})}`,
+    null,
+    checksum ? {'if-match': `"${checksum}"`} : undefined
+  ]])[0];
+  if (response.headers['x-arango-response-code'].startsWith('404')) {
+    return null;
+  }
+  const filename = fs.getTempFile('bundles', true);
+  fs.writeFileSync(filename, response.rawBody);
+  return filename;
+}
 
-function _install (serviceInfo, mount, options, runSetup) {
-  var targetPath = computeServicePath(mount, true);
-  var service;
-  var collection = utils.getStorage();
-  options = options || {};
+function extractServiceBundle (archive, targetPath) {
+  const tempFolder = fs.getTempFile('services', false);
+  fs.makeDirectory(tempFolder);
+  fs.unzipFile(archive, tempFolder, false, true);
+
+  let manifestPath;
+  // find the manifest with the shortest path
+  const filenames = fs.listTree(tempFolder).sort((a, b) => a.length - b.length);
+  for (const filename of filenames) {
+    if (filename === 'manifest.json' || filename.endsWith('/manifest.json')) {
+      manifestPath = filename;
+      break;
+    }
+  }
+
+  if (!manifestPath) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.message}
+        Source: ${tempFolder}
+      `
+    });
+  }
+
+  let basePath = path.dirname(path.resolve(tempFolder, manifestPath));
   if (fs.exists(targetPath)) {
+    fs.removeDirectoryRecursive(targetPath, true);
+  }
+  fs.move(basePath, targetPath);
+
+  if (manifestPath.endsWith('/manifest.json')) {
+    // service basePath is a subfolder of tempFolder
+    // so tempFolder still exists and needs to be removed
+    fs.removeDirectoryRecursive(tempFolder, true);
+  }
+}
+
+function replaceLocalServiceFromTempBundle (mount, tempBundlePath) {
+  const tempServicePath = fs.getTempFile('services', false);
+  extractServiceBundle(tempBundlePath, tempServicePath);
+  _buildServiceInPath(mount, tempServicePath, tempBundlePath);
+}
+
+// Exported functions for manipulating services
+
+function install (serviceInfo, mount, options = {}) {
+  utils.validateMount(mount);
+  ensureFoxxInitialized();
+  if (utils.getServiceDefinition(mount)) {
     throw new ArangoError({
       errorNum: errors.ERROR_SERVICE_MOUNTPOINT_CONFLICT.code,
       errorMessage: dd`
@@ -1108,595 +883,241 @@ function _install (serviceInfo, mount, options, runSetup) {
       `
     });
   }
-  fs.makeDirectoryRecursive(targetPath);
-  // Remove the empty APP folder.
-  // Ohterwise move will fail.
-  fs.removeDirectory(targetPath);
+  const tempPaths = _prepareService(serviceInfo, options);
+  _buildServiceInPath(mount, tempPaths.tempServicePath, tempPaths.tempBundlePath);
+  const service = _install(mount, options);
+  propagateServiceReplaced(service);
+  return service;
+}
 
-  initCache();
-  _buildServiceInPath(serviceInfo, targetPath, options);
-  try {
-    service = _scanFoxx(mount, options);
-    if (runSetup) {
-      lookupService(mount).executeScript('setup');
+function installLocal (mount, coordIds) {
+  for (const coordId of coordIds) {
+    const filename = downloadServiceBundleFromCoordinator(coordId, mount);
+    if (filename) {
+      replaceLocalServiceFromTempBundle(mount, filename);
+      return true;
     }
-    if (!service.needsConfiguration()) {
-      // Validate Routing & Exports
-      routeAndExportService(service, true);
-    }
-  } catch (e) {
+  }
+  return false;
+}
+
+function uninstallLocal (mount) {
+  const servicePath = FoxxService.basePath(mount);
+  if (fs.exists(servicePath)) {
     try {
-      fs.removeDirectoryRecursive(targetPath, true);
+      fs.removeDirectoryRecursive(servicePath, true);
     } catch (e) {
-      console.errorLines(e.stack);
+      console.warnStack(e);
     }
+  }
+  const bundlePath = FoxxService.bundlePath(mount);
+  if (fs.exists(bundlePath)) {
     try {
-      if (!options.__clusterDistribution) {
-        db._executeTransaction({
-          collections: {
-            exclusive: collection.name()
-          },
-          action () {
-            var definition = collection.firstExample({mount: mount});
-            if (definition !== null) {
-              collection.remove(definition._key);
-            }
-          }
-        });
-      }
+      fs.remove(bundlePath);
     } catch (e) {
-      console.errorLines(e.stack);
+      console.warnStack(e);
     }
-    throw e;
   }
+}
+
+function uninstall (mount, options = {}) {
+  ensureFoxxInitialized();
+  const service = _uninstall(mount, options);
+  propagateServiceDestroyed(service);
   return service;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Installs a new foxx service on the given mount point.
-// /
-// / TODO: Long Documentation!
-// //////////////////////////////////////////////////////////////////////////////
-
-function install (serviceInfo, mount, options) {
-  checkParameter(
-    'install(<serviceInfo>, <mount>, [<options>])',
-    [ [ 'Install information', 'string' ],
-      [ 'Mount path', 'string' ] ],
-    [ serviceInfo, mount ]);
-  if (/^uploads[\/\\]tmp-/.test(serviceInfo)) {
-    serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
-  }
+function replace (serviceInfo, mount, options = {}) {
   utils.validateMount(mount);
-  let hasToBeDistributed = isLocalFile(serviceInfo);
-  var service = _install(serviceInfo, mount, options, true);
-  options = options || {};
-  if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
-    let name = ArangoServerState.id();
-    let coordinators = ArangoClusterInfo.getCoordinators().filter(function (c) {
-      return c !== name;
-    });
-    if (hasToBeDistributed) {
-      let result = uploadToPeerCoordinators(serviceInfo, coordinators);
-      let mapping = result.mapping;
-      let res = result.results;
-      let intOpts = JSON.parse(JSON.stringify(options));
-      intOpts.__clusterDistribution = true;
-      let coordOptions = {
-        coordTransactionID: ArangoClusterComm.getId()
-      };
-      let httpOptions = {};
-      for (let i = 0; i < res.length; ++i) {
-        let b = JSON.parse(res[i].body);
-        /* jshint -W075:true */
-        let intReq = {appInfo: b.filename, mount, options: intOpts};
-        /* jshint -W075:false */
-        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
-          '/_admin/foxx/install', JSON.stringify(intReq), httpOptions, coordOptions);
-      }
-      cluster.wait(coordOptions, res.length);
-    } else {
-      /* jshint -W075:true */
-      let req = {appInfo: serviceInfo, mount, options};
-      /* jshint -W075:false */
-      let httpOptions = {};
-      let coordOptions = {
-        coordTransactionID: ArangoClusterComm.getId()
-      };
-      req.options.__clusterDistribution = true;
-      req = JSON.stringify(req);
-      for (let i = 0; i < coordinators.length; ++i) {
-        if (coordinators[i] !== ArangoServerState.id()) {
-          ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
-            '/_admin/foxx/install', req, httpOptions, coordOptions);
-        }
-      }
-      cluster.wait(coordOptions, coordinators.length - 1);
-    }
-  }
-  reloadRouting();
-  return service;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Internal install function. Check install.
-// / Does not check parameters and throws errors.
-// //////////////////////////////////////////////////////////////////////////////
-
-function _uninstall (mount, options) {
-  var dbname = arangodb.db._name();
-  if (!serviceCache.hasOwnProperty(dbname)) {
-    initializeFoxx(options);
-  }
-  var service;
-  options = options || {};
-  try {
-    service = lookupService(mount);
-  } catch (e) {
-    if (!options.force) {
-      throw e;
-    }
-  }
-  var collection = utils.getStorage();
-  var targetPath = computeServicePath(mount, true);
-  delete serviceCache[dbname][mount];
-  if (!options.__clusterDistribution) {
-    try {
-      db._executeTransaction({
-        collections: {
-          exclusive: collection.name()
-        },
-        action() {
-          var definition = collection.firstExample({mount: mount});
-          collection.remove(definition._key);
-        }
-      });
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-    }
-  }
-  if (options.teardown !== false && options.teardown !== 'false') {
-    try {
-      service.executeScript('teardown');
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-    }
-  }
-  try {
-    fs.removeDirectoryRecursive(targetPath, true);
-  } catch (e) {
-    if (!options.force) {
-      throw e;
-    }
-  }
-  if (options.force && service === undefined) {
-    return {
-      simpleJSON() {
-        return {
-          name: 'force uninstalled',
-          version: 'unknown',
-          mount: mount
-        };
-      }
-    };
-  }
-  return service;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Uninstalls the foxx service on the given mount point.
-// /
-// / TODO: Long Documentation!
-// //////////////////////////////////////////////////////////////////////////////
-
-function uninstall (mount, options) {
-  checkParameter(
-    'uninstall(<mount>, [<options>])',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-  utils.validateMount(mount);
-  options = options || {};
-  if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
-    let coordinators = ArangoClusterInfo.getCoordinators();
-    /* jshint -W075:true */
-    let req = {mount, options: JSON.parse(JSON.stringify(options))};
-    /* jshint -W075:false */
-    let httpOptions = {};
-    let coordOptions = {
-      coordTransactionID: ArangoClusterComm.getId()
-    };
-    req.options.__clusterDistribution = true;
-    req.options.force = true;
-    req = JSON.stringify(req);
-    for (let i = 0; i < coordinators.length; ++i) {
-      if (coordinators[i] !== ArangoServerState.id()) {
-        ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
-          '/_admin/foxx/uninstall', req, httpOptions, coordOptions);
-      }
-    }
-    cluster.wait(coordOptions, coordinators.length - 1);
-    require('internal').wait(1.0);
-  }
-  var service = _uninstall(mount, options);
-  reloadRouting();
-  return service;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Replaces a foxx service on the given mount point by an other one.
-// /
-// / TODO: Long Documentation!
-// //////////////////////////////////////////////////////////////////////////////
-
-function replace (serviceInfo, mount, options) {
-  checkParameter(
-    'replace(<serviceInfo>, <mount>, [<options>])',
-    [ [ 'Install information', 'string' ],
-      [ 'Mount path', 'string' ] ],
-    [ serviceInfo, mount ]);
-  if (/^uploads[\/\\]tmp-/.test(serviceInfo)) {
-    serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
-  }
-  utils.validateMount(mount);
-  _validateService(serviceInfo, mount);
-  options = options || {};
-  let hasToBeDistributed = isLocalFile(serviceInfo);
-  if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
-    let name = ArangoServerState.id();
-    let coordinators = ArangoClusterInfo.getCoordinators().filter(function (c) {
-      return c !== name;
-    });
-    if (hasToBeDistributed) {
-      let result = uploadToPeerCoordinators(serviceInfo, coordinators);
-      let mapping = result.mapping;
-      let res = result.results;
-      let intOpts = JSON.parse(JSON.stringify(options));
-      intOpts.__clusterDistribution = true;
-      let coordOptions = {
-        coordTransactionID: ArangoClusterComm.getId()
-      };
-      let httpOptions = {};
-      for (let i = 0; i < res.length; ++i) {
-        let b = JSON.parse(res[i].body);
-        /* jshint -W075:true */
-        let intReq = {appInfo: b.filename, mount, options: intOpts};
-        /* jshint -W075:false */
-        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
-          '/_admin/foxx/replace', JSON.stringify(intReq), httpOptions, coordOptions);
-      }
-      cluster.wait(coordOptions, res.length);
-    } else {
-      let intOpts = JSON.parse(JSON.stringify(options));
-      /* jshint -W075:true */
-      let req = {appInfo: serviceInfo, mount, options: intOpts};
-      /* jshint -W075:false */
-      let httpOptions = {};
-      let coordOptions = {
-        coordTransactionID: ArangoClusterComm.getId()
-      };
-      req.options.__clusterDistribution = true;
-      req.options.force = true;
-      req = JSON.stringify(req);
-      for (let i = 0; i < coordinators.length; ++i) {
-        ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
-          '/_admin/foxx/replace', req, httpOptions, coordOptions);
-      }
-      cluster.wait(coordOptions, coordinators.length);
-    }
-  }
-  _uninstall(mount, {teardown: true,
-    __clusterDistribution: options.__clusterDistribution || false,
-    force: !options.__clusterDistribution
+  ensureFoxxInitialized();
+  const tempPaths = _prepareService(serviceInfo, options);
+  FoxxService.validatedManifest({
+    mount,
+    basePath: tempPaths.tempServicePath,
+    noisy: true
   });
-  var service = _install(serviceInfo, mount, options, true);
-  reloadRouting();
+  _uninstall(mount, Object.assign({teardown: true}, options, {force: true}));
+  _buildServiceInPath(mount, tempPaths.tempServicePath, tempPaths.tempBundlePath);
+  const service = _install(mount, Object.assign({}, options, {force: true}));
+  propagateServiceReplaced(service);
   return service;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Upgrade a foxx service on the given mount point by a new one.
-// /
-// / TODO: Long Documentation!
-// //////////////////////////////////////////////////////////////////////////////
-
-function upgrade (serviceInfo, mount, options) {
-  checkParameter(
-    'upgrade(<serviceInfo>, <mount>, [<options>])',
-    [ [ 'Install information', 'string' ],
-      [ 'Mount path', 'string' ] ],
-    [ serviceInfo, mount ]);
-  if (/^uploads[\/\\]tmp-/.test(serviceInfo)) {
-    serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
-  }
-  utils.validateMount(mount);
-  _validateService(serviceInfo, mount);
-  options = options || {};
-  let hasToBeDistributed = isLocalFile(serviceInfo);
-  if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
-    let name = ArangoServerState.id();
-    let coordinators = ArangoClusterInfo.getCoordinators().filter(function (c) {
-      return c !== name;
-    });
-    if (hasToBeDistributed) {
-      let result = uploadToPeerCoordinators(serviceInfo, coordinators);
-      let mapping = result.mapping;
-      let res = result.results;
-      let intOpts = JSON.parse(JSON.stringify(options));
-      intOpts.__clusterDistribution = true;
-      let coordOptions = {
-        coordTransactionID: ArangoClusterComm.getId()
-      };
-      let httpOptions = {};
-      for (let i = 0; i < res.length; ++i) {
-        let b = JSON.parse(res[i].body);
-        /* jshint -W075:true */
-        let intReq = {appInfo: b.filename, mount, options: intOpts};
-        /* jshint -W075:false */
-        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
-          '/_admin/foxx/upgrade', JSON.stringify(intReq), httpOptions, coordOptions);
-      }
-      cluster.wait(coordOptions, res.length);
-    } else {
-      let intOpts = JSON.parse(JSON.stringify(options));
-      /* jshint -W075:true */
-      let req = {appInfo: serviceInfo, mount, options: intOpts};
-      /* jshint -W075:false */
-      let httpOptions = {};
-      let coordOptions = {
-        coordTransactionID: ArangoClusterComm.getId()
-      };
-      req.options.__clusterDistribution = true;
-      req.options.force = true;
-      req = JSON.stringify(req);
-      for (let i = 0; i < coordinators.length; ++i) {
-        ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
-          '/_admin/foxx/upgrade', req, httpOptions, coordOptions);
-      }
-      cluster.wait(coordOptions, coordinators.length);
-    }
-  }
-  var oldService = lookupService(mount);
-  var oldConf = oldService.getConfiguration(true);
-  options.configuration = options.configuration || {};
-  Object.keys(oldConf).forEach(function (key) {
-    if (!options.configuration.hasOwnProperty(key)) {
-      options.configuration[key] = oldConf[key];
-    }
+function upgrade (serviceInfo, mount, options = {}) {
+  ensureFoxxInitialized();
+  const oldService = getServiceInstance(mount);
+  const serviceOptions = oldService.toJSON().options;
+  Object.assign(serviceOptions.configuration, options.configuration);
+  Object.assign(serviceOptions.dependencies, options.dependencies);
+  serviceOptions.development = options.development;
+  const tempPaths = _prepareService(serviceInfo, options);
+  FoxxService.validatedManifest({
+    mount,
+    basePath: tempPaths.tempServicePath,
+    noisy: true
   });
-  var oldDeps = oldService.options.dependencies || {};
-  options.dependencies = options.dependencies || {};
-  Object.keys(oldDeps).forEach(function (key) {
-    if (!options.dependencies.hasOwnProperty(key)) {
-      options.dependencies[key] = oldDeps[key];
-    }
-  });
-  _uninstall(mount, {teardown: false,
-    __clusterDistribution: options.__clusterDistribution || false,
-    force: !options.__clusterDistribution
-  });
-  var service = _install(serviceInfo, mount, options, true);
-  reloadRouting();
+  _uninstall(mount, Object.assign({teardown: false}, options, {force: true}));
+  _buildServiceInPath(mount, tempPaths.tempServicePath, tempPaths.tempBundlePath);
+  const service = _install(mount, Object.assign({}, options, serviceOptions, {force: true}));
+  propagateServiceReplaced(service);
   return service;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief initializes the Foxx services
-// //////////////////////////////////////////////////////////////////////////////
-
-function initializeFoxx (options) {
-  var dbname = arangodb.db._name();
-  var mounts = syncWithFolder(options);
-  refillCaches(dbname);
-  checkMountedSystemService(dbname);
-  for (const mount of mounts) {
-    lookupService(mount).executeScript('setup');
+function runScript (scriptName, mount, options) {
+  let service = getServiceInstance(mount);
+  if (service.isDevelopment) {
+    const runSetup = scriptName !== 'setup';
+    service = reloadInstalledService(mount, runSetup);
   }
+  ensureServiceLoaded(mount);
+  const result = service.executeScript(scriptName, options);
+  return result === undefined ? null : result;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief compute all service routes
-// //////////////////////////////////////////////////////////////////////////////
-
-function mountPoints () {
-  var dbname = arangodb.db._name();
-  return refillCaches(dbname);
+function runTests (mount, options = {}) {
+  let service = getServiceInstance(mount);
+  if (service.isDevelopment) {
+    service = reloadInstalledService(mount, true);
+  }
+  ensureServiceLoaded(mount);
+  return require('@arangodb/foxx/mocha').run(service, options.reporter);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief toggles development mode of service and reloads routing
-// //////////////////////////////////////////////////////////////////////////////
-
-function _toggleDevelopment (mount, activate) {
-  var service = lookupService(mount);
-  service.development(activate);
+function enableDevelopmentMode (mount) {
+  const service = getServiceInstance(mount);
+  service.development(true);
   utils.updateService(mount, service.toJSON());
-  if (!activate) {
-    // Make sure setup changes from devmode are respected
-    service.executeScript('setup');
-  }
-  reloadRouting();
+  propagateServiceReconfigured(service);
   return service;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief activate development mode
-// //////////////////////////////////////////////////////////////////////////////
-
-function setDevelopment (mount) {
-  checkParameter(
-    'development(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-  var service = _toggleDevelopment(mount, true);
-  return service;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief activate production mode
-// //////////////////////////////////////////////////////////////////////////////
-
-function setProduction (mount) {
-  checkParameter(
-    'production(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-  var service = _toggleDevelopment(mount, false);
-  return service;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Configure the service at the mountpoint
-// //////////////////////////////////////////////////////////////////////////////
-
-function setConfiguration (mount, options) {
-  checkParameter(
-    'setConfiguration(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-  utils.validateMount(mount, true);
-  var service = lookupService(mount);
-  var warnings = service.applyConfiguration(options.configuration, options.replace);
+function disableDevelopmentMode (mount) {
+  const service = getServiceInstance(mount);
+  service.development(false);
+  createServiceBundle(mount);
+  service.updateChecksum();
   utils.updateService(mount, service.toJSON());
-  reloadRouting();
+  // Make sure setup changes from devmode are respected
+  service.executeScript('setup');
+  propagateServiceReplaced(service);
+  return service;
+}
+
+function setConfiguration (mount, options = {}) {
+  const service = getServiceInstance(mount);
+  const warnings = service.applyConfiguration(options.configuration, options.replace);
+  utils.updateService(mount, service.toJSON());
+  propagateServiceReconfigured(service);
   return warnings;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Set up dependencies of the service at the mountpoint
-// //////////////////////////////////////////////////////////////////////////////
-
-function setDependencies (mount, options) {
-  checkParameter(
-    'setDependencies(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-  utils.validateMount(mount, true);
-  var service = lookupService(mount);
-  var warnings = service.applyDependencies(options.dependencies, options.replace);
+function setDependencies (mount, options = {}) {
+  const service = getServiceInstance(mount);
+  const warnings = service.applyDependencies(options.dependencies, options.replace);
   utils.updateService(mount, service.toJSON());
-  reloadRouting();
+  propagateServiceReconfigured(service);
   return warnings;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Get the configuration for the service at the given mountpoint
-// //////////////////////////////////////////////////////////////////////////////
-
-function configuration (mount, options) {
-  checkParameter(
-    'configuration(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-  utils.validateMount(mount, true);
-  var service = lookupService(mount);
-  return service.getConfiguration(options && options.simple);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Get the dependencies for the service at the given mountpoint
-// //////////////////////////////////////////////////////////////////////////////
-
-function dependencies (mount, options) {
-  checkParameter(
-    'dependencies(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-  utils.validateMount(mount, true);
-  var service = lookupService(mount);
-  return service.getDependencies(options && options.simple);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Require the exports defined on the mount point
-// //////////////////////////////////////////////////////////////////////////////
+// Misc exported functions
 
 function requireService (mount) {
-  checkParameter(
-    'requireService(<mount>)',
-    [ [ 'Mount path', 'string' ] ],
-    [ mount ]);
-  mount = '/' + mount.replace(/(^\/+|\/+$)/, '');
-  utils.validateMount(mount, true);
-  var service = lookupService(mount);
-  if (service.needsConfiguration()) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.code,
-      errorMessage: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.message
+  mount = '/' + mount.replace(/^\/+|\/+$/g, '');
+  const service = getServiceInstance(mount);
+  return ensureServiceExecuted(service, true).exports;
+}
+
+function getMountPoints () {
+  ensureFoxxInitialized();
+  return Array.from(GLOBAL_SERVICE_MAP.get(db._name()).keys());
+}
+
+function installedServices () {
+  ensureFoxxInitialized();
+  return Array.from(GLOBAL_SERVICE_MAP.get(db._name()).values());
+}
+
+function listJson () {
+  ensureFoxxInitialized();
+  const json = [];
+  for (const service of GLOBAL_SERVICE_MAP.get(db._name()).values()) {
+    json.push({
+      mount: service.mount,
+      name: service.manifest.name,
+      description: service.manifest.description,
+      author: service.manifest.author,
+      system: service.isSystem,
+      development: service.isDevelopment,
+      contributors: service.manifest.contributors || false,
+      license: service.manifest.license,
+      version: service.manifest.version,
+      path: service.basePath,
+      config: service.getConfiguration(),
+      deps: service.getDependencies(),
+      scripts: service.getScripts()
     });
   }
-  return routeAndExportService(service, true).exports;
+  return json;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Syncs the services in ArangoDB with the services stored on disc
-// //////////////////////////////////////////////////////////////////////////////
-
-function syncWithFolder (options) {
-  var dbname = arangodb.db._name();
-  options = options || {};
-  options.replace = true;
-  serviceCache = serviceCache || {};
-  serviceCache[dbname] = {};
-  var folders = fs.listTree(FoxxService._appPath).filter(filterServiceRoots);
-  //  var collection = utils.getStorage()
-  return folders.map(function (folder) {
-    var mount = transformPathToMount(folder);
-    _scanFoxx(mount, options);
-    return mount;
-  });
+function safeChecksum (mount) {
+  try {
+    return FoxxService.checksum(mount);
+  } catch (e) {
+    return null;
+  }
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Exports
-// //////////////////////////////////////////////////////////////////////////////
+// Exports
 
-exports.syncWithFolder = syncWithFolder;
+exports._installLocal = installLocal;
+exports._uninstallLocal = uninstallLocal;
 exports.install = install;
-exports.readme = readme;
-exports.runTests = runTests;
-exports.runScript = runScript;
-exports.setup = _.partial(runScript, 'setup');
-exports.teardown = _.partial(runScript, 'teardown');
 exports.uninstall = uninstall;
 exports.replace = replace;
 exports.upgrade = upgrade;
-exports.development = setDevelopment;
-exports.production = setProduction;
+exports.runTests = runTests;
+exports.runScript = runScript;
+exports.development = enableDevelopmentMode;
+exports.production = disableDevelopmentMode;
 exports.setConfiguration = setConfiguration;
 exports.setDependencies = setDependencies;
-exports.configuration = configuration;
-exports.dependencies = dependencies;
 exports.requireService = requireService;
-exports._resetCache = resetCache;
+exports.lookupService = getServiceInstance;
+exports.installedServices = installedServices;
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Serverside only API
-// //////////////////////////////////////////////////////////////////////////////
+// -------------------------------------------------
+// Exported internals
+// -------------------------------------------------
 
-exports.scanFoxx = scanFoxx;
-exports.mountPoints = mountPoints;
-exports.routes = routes;
-exports.ensureRouted = ensureRouted;
-exports.rescanFoxx = rescanFoxx;
-exports.lookupService = lookupService;
+exports.isFoxxmaster = isFoxxmaster;
+exports.proxyToFoxxmaster = proxyToFoxxmaster;
+exports._reloadRouting = reloadRouting;
+exports.reloadInstalledService = reloadInstalledService;
+exports.ensureRouted = ensureServiceLoaded;
+exports.initializeFoxx = initLocalServiceMap;
+exports.ensureFoxxInitialized = ensureFoxxInitialized;
+exports.heal = healMyselfAndCoords;
+exports._startup = startup;
+exports._selfHeal = selfHeal;
+exports._createServiceBundle = createServiceBundle;
+exports._resetCache = () => GLOBAL_SERVICE_MAP.clear();
+exports._mountPoints = getMountPoints;
+exports._isClusterReady = isClusterReadyForBusiness;
+exports.listJson = listJson;
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Exports from foxx utils module.
-// //////////////////////////////////////////////////////////////////////////////
+// -------------------------------------------------
+// Exports from foxx utils module
+// -------------------------------------------------
 
-exports.mountedService = utils.mountedService;
+exports.getServiceDefinition = utils.getServiceDefinition;
 exports.list = utils.list;
-exports.listJson = utils.listJson;
 exports.listDevelopment = utils.listDevelopment;
 exports.listDevelopmentJson = utils.listDevelopmentJson;
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Exports from foxx store module.
-// //////////////////////////////////////////////////////////////////////////////
+// -------------------------------------------------
+// Exports from foxx store module
+// -------------------------------------------------
 
 exports.available = store.available;
 exports.availableJson = store.availableJson;
@@ -1705,5 +1126,3 @@ exports.search = store.search;
 exports.searchJson = store.searchJson;
 exports.update = store.update;
 exports.info = store.info;
-
-exports.initializeFoxx = initializeFoxx;

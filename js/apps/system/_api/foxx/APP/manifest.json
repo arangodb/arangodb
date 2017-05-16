@@ -2,11 +2,11 @@
   "name": "foxx-manager",
   "description": "Foxx management service.",
   "author": "ArangoDB GmbH",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "license": "Apache-2.0",
 
   "engines": {
-    "arangodb": "^3.1.0"
+    "arangodb": "^3.2.0-0 || ^3.2.0"
   },
 
   "repository": {

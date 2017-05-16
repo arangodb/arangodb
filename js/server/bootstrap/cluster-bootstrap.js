@@ -32,16 +32,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  var internal = require('internal');
-  var console = require('console');
+  const internal = require('internal');
   global.UPGRADE_ARGS = {
     isCluster: true,
     isCoordinator: true,
     isRelaunch: false,
     upgrade: false
   };
-  
-  var result = internal.loadStartup('server/upgrade-database.js');
+  let result = internal.loadStartup('server/upgrade-database.js');
   
   if (result) {
     delete global.UPGRADE_TYPE;
@@ -54,8 +52,8 @@
   if (!result) {
     console.error('upgrade-database.js for cluster script failed!');
   }
-  internal.loadStartup('server/bootstrap/foxxes.js').foxxes();
+
   global.ArangoAgency.set('Current/Foxxmaster', global.ArangoServerState.id());
-  
+
   return true;
 }());

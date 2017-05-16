@@ -1644,6 +1644,41 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+
+static void JS_Adler32(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("adler32(<filename>, <useSigned>)");
+  }
+
+  bool useSigned = false;  // default is unsigned
+  if (args.Length() > 1) {
+    useSigned = TRI_ObjectToBoolean(args[1]);
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
+  }
+
+  uint32_t chksum = TRI_Adler32(*name);
+
+  v8::Handle<v8::Value> result;
+
+  if (useSigned) {
+    result = v8::Number::New(isolate, static_cast<int32_t>(chksum));
+  } else {
+    result = v8::Number::New(isolate, chksum);
+  }
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file and executes it
 ///
@@ -4562,6 +4597,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING("FS_UNZIP_FILE"), JS_UnzipFile);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("FS_ZIP_FILE"), JS_ZipFile);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING("FS_ADLER32"), JS_Adler32);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_APPEND"), JS_Append);

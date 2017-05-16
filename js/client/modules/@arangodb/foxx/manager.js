@@ -732,9 +732,7 @@ exports.help = help;
 // / @brief Exports from foxx utils module.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.mountedService = utils.mountedService;
 exports.list = utils.list;
-exports.listJson = utils.listJson;
 exports.listDevelopment = utils.listDevelopment;
 exports.listDevelopmentJson = utils.listDevelopmentJson;
 

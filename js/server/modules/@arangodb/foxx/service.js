@@ -35,7 +35,7 @@ const ArangoError = require('@arangodb').ArangoError;
 const errors = require('@arangodb').errors;
 const defaultTypes = require('@arangodb/foxx/types');
 const FoxxContext = require('@arangodb/foxx/context');
-const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
+const Manifest = require('@arangodb/foxx/manifest');
 const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
 const Router = require('@arangodb/foxx/router/router');
 const Tree = require('@arangodb/foxx/router/tree');
@@ -63,47 +63,83 @@ const LEGACY_ALIASES = [
 
 module.exports =
   class FoxxService {
-    constructor (data) {
-      assert(data, 'no arguments');
-      assert(data.mount, 'mount path required');
-      assert(data.path, `local path required for app "${data.mount}"`);
-      assert(data.manifest, `called without manifest for app "${data.mount}"`);
+    static validatedManifest (definition) {
+      assert(definition, 'must provide a service definition');
+      assert(definition.mount, 'mount path required');
+      const basePath = definition.basePath || FoxxService.basePath(definition.mount);
+      const manifestPath = path.resolve(basePath, 'manifest.json');
+      const manifest = Manifest.validate(
+        manifestPath,
+        definition.mount,
+        definition.noisy
+      );
+      FoxxService.validateServiceFiles(definition.mount, manifest);
+      return manifest;
+    }
 
-      // mount paths always start with a slash
-      this.mount = data.mount;
-      this.path = data.path;
-      this.basePath = path.resolve(this.root, this.path);
-      this.isDevelopment = Boolean(data.isDevelopment);
-
-      this.manifest = data.manifest;
-      if (!this.manifest.dependencies) {
-        this.manifest.dependencies = {};
+    static validateServiceFiles (mount, manifest) {
+      const servicePath = FoxxService.basePath(mount);
+      if (manifest.main) {
+        internal.parseFile(path.resolve(servicePath, manifest.main));
       }
+      for (const name of Object.keys(manifest.scripts)) {
+        const scriptFilename = manifest.scripts[name];
+        internal.parseFile(path.resolve(servicePath, scriptFilename));
+      }
+      if (manifest.controllers) {
+        for (const name of Object.keys(manifest.controllers)) {
+          const controllerFilename = manifest.controllers[name];
+          internal.parseFile(path.resolve(servicePath, controllerFilename));
+        }
+      }
+      if (manifest.exports) {
+        if (typeof manifest.exports === 'string') {
+          internal.parseFile(path.resolve(servicePath, manifest.exports));
+        } else {
+          for (const name of Object.keys(manifest.exports)) {
+            const exportFilename = manifest.exports[name];
+            internal.parseFile(path.resolve(servicePath, exportFilename));
+          }
+        }
+      }
+    }
+
+    static create (definition) {
+      const manifest = FoxxService.validatedManifest(definition);
+      return new FoxxService(definition, manifest);
+    }
+
+    constructor (definition, manifest) {
+      this.mount = definition.mount;
+      this.checksum = definition.checksum;
+      this.basePath = definition.basePath || FoxxService.basePath(this.mount);
+      this.manifest = manifest;
+
+      const options = definition.options || {};
+      this.isDevelopment = Boolean(options.development);
+      this._configuration = options.configuration || {};
+      this._dependencies = options.dependencies || {};
+
       if (!this.manifest.configuration) {
         this.manifest.configuration = {};
       }
-
-      this.options = data.options;
-      if (!this.options.configuration) {
-        this.options.configuration = {};
-      }
-      if (!this.options.dependencies) {
-        this.options.dependencies = {};
+      if (!this.manifest.dependencies) {
+        this.manifest.dependencies = {};
       }
 
       this.configuration = createConfiguration(this.manifest.configuration);
-      this.dependencies = createDependencies(this.manifest.dependencies, this.options.dependencies);
+      this.dependencies = createDependencies(this.manifest.dependencies, this._dependencies);
 
-      const warnings = this.applyConfiguration(this.options.configuration, false);
+      const warnings = this.applyConfiguration(this._configuration, false);
       if (warnings) {
-        console.warnLines(`Stored configuration for service "${data.mount}" has errors:\n  ${
+        console.warnLines(`Stored configuration for service "${definition.mount}" has errors:\n  ${
           Object.keys(warnings).map((key) => warnings[key]).join('\n  ')
         }\nValues for unknown options will be discarded if you save the configuration in production mode using the web interface.`);
       }
 
       this.thumbnail = null;
       if (this.manifest.thumbnail) {
-        const thumb = path.resolve(this.root, this.path, this.manifest.thumbnail);
+        const thumb = path.resolve(this.basePath, this.manifest.thumbnail);
         if (fs.exists(thumb)) {
           this.thumbnail = thumb;
         }
@@ -141,7 +177,7 @@ module.exports =
         const rawValue = config[name];
 
         if (rawValue === undefined || rawValue === null || rawValue === '') {
-          this.options.configuration[name] = undefined;
+          this._configuration[name] = undefined;
           this.configuration[name] = def.default;
           if (def.required !== false) {
             warnings[name] = 'is required';
@@ -149,7 +185,7 @@ module.exports =
           continue;
         }
 
-        const validate = parameterTypes[def.type];
+        const validate = Manifest.configTypes[def.type];
         let parsedValue = rawValue;
         let warning;
 
@@ -171,7 +207,7 @@ module.exports =
         if (warning) {
           warnings[name] = warning;
         } else {
-          this.options.configuration[name] = rawValue;
+          this._configuration[name] = rawValue;
           this.configuration[name] = parsedValue;
         }
       }
@@ -199,7 +235,7 @@ module.exports =
         const value = deps[name];
 
         if (def.multiple) {
-          this.options.dependencies[name] = deps;
+          this._dependencies[name] = deps;
           const values = Array.isArray(value) ? value : (
             (value === undefined || value === null || value === '')
             ? []
@@ -218,11 +254,11 @@ module.exports =
             if (typeof value !== 'string') {
               warnings[name] = `at ${i} must be a string`;
             } else {
-              this.options.dependencies[name].push(value);
+              this._dependencies[name].push(value);
             }
           }
         } else {
-          this.options.dependencies[name] = undefined;
+          this._dependencies[name] = undefined;
 
           if (value === undefined || value === null || value === '') {
             if (def.required !== false) {
@@ -234,7 +270,7 @@ module.exports =
           if (typeof value !== 'string') {
             warnings[name] = 'must be a string';
           } else {
-            this.options.dependencies[name] = value;
+            this._dependencies[name] = value;
           }
         }
       }
@@ -249,23 +285,9 @@ module.exports =
         paths = this.tree.buildSwaggerPaths();
       } catch (e) {
         if (this.isDevelopment) {
-          const frame = codeFrame(e, this.basePath);
-          if (frame) {
-            console.errorLines(frame);
-          }
+          e.codeFrame = codeFrame(e, this.basePath);
         }
-        let err = e;
-        while (err) {
-          if (err.stack) {
-            console.errorLines(
-              err === e
-              ? err.stack
-              : `via ${err.stack}`
-            );
-          }
-          err = err.cause;
-        }
-        console.warnLines(dd`
+        console.errorStack(e, dd`
           Failed to build API documentation for "${this.mount}"!
           This is likely a bug in your Foxx service.
           Check the route methods you are using to document your API.
@@ -314,7 +336,10 @@ module.exports =
               }
 
               if (logLevel) {
-                console[logLevel](`Service "${
+                if (this.isDevelopment) {
+                  e.codeFrame = codeFrame(e.cause || e, this.basePath);
+                }
+                console[`${logLevel}Stack`](e, `Service "${
                   this.mount
                 }" encountered error ${
                   e.statusCode || 500
@@ -323,24 +348,6 @@ module.exports =
                 } ${
                   req.absoluteUrl()
                 }`);
-
-                if (this.isDevelopment) {
-                  const frame = codeFrame(e.cause || e, this.basePath);
-                  if (frame) {
-                    console[`${logLevel}Lines`](frame);
-                  }
-                }
-                let err = e;
-                while (err) {
-                  if (err.stack) {
-                    console[`${logLevel}Lines`](
-                      err === e
-                      ? err.stack
-                      : `via ${err.stack}`
-                    );
-                  }
-                  err = err.cause;
-                }
               }
 
               const body = {
@@ -398,34 +405,16 @@ module.exports =
     }
 
     toJSON () {
-      const result = {
-        name: this.manifest.name,
-        version: this.manifest.version,
-        manifest: this.manifest,
-        path: this.path,
-        options: this.options,
+      return {
+        id: this.mount,
         mount: this.mount,
-        root: this.root,
-        isSystem: this.isSystem,
-        isDevelopment: this.isDevelopment
+        options: {
+          development: this.isDevelopment,
+          configuration: this._configuration,
+          dependencies: this._dependencies
+        },
+        checksum: this.checksum
       };
-      if (this.error) {
-        result.error = this.error;
-      }
-      if (this.manifest.author) {
-        result.author = this.manifest.author;
-      }
-      if (this.manifest.description) {
-        result.description = this.manifest.description;
-      }
-      if (this.thumbnail) {
-        try {
-          result.thumbnail = fs.read64(this.thumbnail);
-        } catch (e) {
-          // noop
-        }
-      }
-      return result;
     }
 
     simpleJSON () {
@@ -443,7 +432,7 @@ module.exports =
     getConfiguration (simple) {
       const config = {};
       const definitions = this.manifest.configuration;
-      const options = this.options.configuration;
+      const options = this._configuration;
       for (const name of Object.keys(definitions)) {
         const dfn = definitions[name];
         const value = options[name] === undefined ? dfn.default : options[name];
@@ -458,7 +447,7 @@ module.exports =
     getDependencies (simple) {
       const deps = {};
       const definitions = this.manifest.dependencies;
-      const options = this.options.dependencies;
+      const options = this._dependencies;
       for (const name of Object.keys(definitions)) {
         const dfn = definitions[name];
         const value = options[name];
@@ -538,7 +527,7 @@ module.exports =
     _reset () {
       this.requireCache = {};
       const lib = this.manifest.lib || '.';
-      const moduleRoot = path.resolve(this.root, this.path, lib);
+      const moduleRoot = path.resolve(this.basePath, lib);
       this.main = new Module(`foxx:${this.mount}`);
       this.main.filename = path.resolve(moduleRoot, '.foxx');
       this.main[$_MODULE_ROOT] = moduleRoot;
@@ -568,6 +557,22 @@ module.exports =
       }
     }
 
+    updateChecksum () {
+      this.checksum = FoxxService.checksum(this.mount);
+    }
+
+    get readme () {
+      let path = this.main.context.fileName('README.md');
+      if (fs.exists(path)) {
+        return fs.read(path);
+      }
+      path = this.main.context.fileName('README');
+      if (fs.exists(path)) {
+        return fs.read(path);
+      }
+      return null;
+    }
+
     get exports () {
       return this.main.exports;
     }
@@ -577,14 +582,56 @@ module.exports =
     }
 
     get root () {
-      if (this.isSystem) {
+      return FoxxService.rootPath(this.mount);
+    }
+
+    get path () {
+      return path.join(...this.mount.split('/').slice(1), 'APP');
+    }
+
+    get bundlePath () {
+      return FoxxService.bundlePath(this.mount);
+    }
+
+    get collectionPrefix () {
+      return this.mount.substr(1).replace(/[-.:/]/g, '_') + '_';
+    }
+
+    static checksum (mount) {
+      const bundlePath = FoxxService.bundlePath(mount);
+      if (!fs.isFile(bundlePath)) {
+        throw new ArangoError({
+          errorNum: errors.ERROR_FILE_NOT_FOUND.code,
+          errorMessage: dd`
+            ${errors.ERROR_FILE_NOT_FOUND.message}
+            File: ${bundlePath}
+          `
+        });
+      }
+      return fs.adler32(bundlePath).toString(16);
+    }
+
+    static rootPath (mount) {
+      if (mount.charAt(1) === '_') {
         return FoxxService._systemAppPath;
       }
       return FoxxService._appPath;
     }
 
-    get collectionPrefix () {
-      return this.mount.substr(1).replace(/[-.:/]/g, '_') + '_';
+    static basePath (mount) {
+      return path.resolve(
+        FoxxService.rootPath(mount),
+        ...mount.split('/'),
+        'APP'
+      );
+    }
+
+    static bundlePath (mount) {
+      if (mount.charAt(0) !== '/') {
+        mount = '/' + mount;
+      }
+      const bundleName = mount.substr(1).replace(/[-.:/]/g, '_');
+      return path.join(FoxxService.rootPath(mount), bundleName + '.zip');
     }
 
     static get _startupPath () {

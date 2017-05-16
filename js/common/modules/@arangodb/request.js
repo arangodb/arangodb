@@ -130,7 +130,7 @@ function request (req) {
 
   const headers = {};
 
-  if (contentType) {
+  if (contentType && !headers['content-type']) {
     headers['content-type'] = contentType;
   }
 
