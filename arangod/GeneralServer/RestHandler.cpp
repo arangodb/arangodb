@@ -32,6 +32,8 @@
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -84,6 +86,12 @@ int RestHandler::prepareEngine() {
   RequestStatistics::SET_REQUEST_END(_statistics);
 
   ExecContext::CURRENT_EXECCONTEXT = _request->execContext();
+
+  std::cout << "set CURRENT_EXECCONTEXT\n";
+
+  if (ExecContext::CURRENT_EXECCONTEXT == nullptr) {
+    std::cout << "ExecContext::CURRENT_EXECCONTEXT is nullptr :S \n";
+  }
 
   if (_canceled) {
     _engine.setState(RestEngine::State::DONE);

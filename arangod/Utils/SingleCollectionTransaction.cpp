@@ -25,6 +25,7 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationResult.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
@@ -102,7 +103,13 @@ std::string SingleCollectionTransaction::name() {
 
 /// @brief explicitly lock the underlying collection for read access
 Result SingleCollectionTransaction::lockRead() {
-  std::cout << "SingleCollectionTransaction::lockRead()\n";
+  std::cout << "SingleCollectionTransaction::lockRead() " << documentCollection()->dbName() << "\n";
+
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr)
+    std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
+  else
+    std::cout << "is nullptr\n";
+
   return lock(trxCollection(), AccessMode::Type::READ);
 }
 

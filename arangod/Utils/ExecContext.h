@@ -49,6 +49,9 @@ class ExecContext {
 
       static thread_local ExecContext* CURRENT_EXECCONTEXT;
 
+      std::string const& user() { return _user; }
+      std::string const& database() { return _database; }
+
   protected:
     std::string _user;
     std::string _database;
