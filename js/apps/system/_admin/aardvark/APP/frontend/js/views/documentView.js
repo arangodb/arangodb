@@ -35,6 +35,14 @@
       'click #addDocument': 'addDocument'
     },
 
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     checkSearchBox: function (e) {
       if ($(e.currentTarget).val() === '') {
         this.editor.expandAll();
@@ -208,7 +216,9 @@
         iconlib: 'fontawesome4'
       };
       this.editor = new JSONEditor(container, options);
-      this.editor.setMode(this.defaultMode);
+      if (this.defaultMode) {
+        this.editor.setMode(this.defaultMode);
+      }
 
       return this;
     },

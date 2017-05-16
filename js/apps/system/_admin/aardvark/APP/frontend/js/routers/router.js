@@ -666,12 +666,18 @@
         this.waitForInit(this.document.bind(this), colid, docid);
         return;
       }
-      if (!this.documentView) {
-        this.documentView = new window.DocumentView({
-          collection: this.arangoDocumentStore
-        });
+      var mode;
+      if (this.documentView) {
+        if (this.documentView.defaultMode) {
+          mode = this.documentView.defaultMode;
+        }
+        this.documentView.remove();
       }
+      this.documentView = new window.DocumentView({
+        collection: this.arangoDocumentStore
+      });
       this.documentView.colid = colid;
+      this.documentView.defaultMode = mode;
 
       var doc = window.location.hash.split('/')[2];
       var test = (doc.split('%').length - 1) % 3;
