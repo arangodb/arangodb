@@ -32,7 +32,7 @@ var runInDatabase = function () {
   db._executeTransaction({
     collections: {
       read: ['_queues', '_jobs'],
-      write: ['_jobs']
+      exclusive: ['_jobs']
     },
     action: function () {
       db._queues.all().toArray()

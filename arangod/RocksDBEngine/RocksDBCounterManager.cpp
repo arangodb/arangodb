@@ -284,6 +284,7 @@ Result RocksDBCounterManager::sync(bool force) {
           static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(rocksCollection != nullptr);
       Result res = rocksCollection->serializeIndexEstimates(rtrx.get());
+      vocbase->release();
       if (!res.ok()) {
         return res;
       }
