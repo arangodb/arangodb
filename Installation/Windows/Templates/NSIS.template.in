@@ -53,6 +53,8 @@
   Var PASSWORD                  ; x string
   Var PASSWORD_AGAIN            ; x string / only for comparison
 
+  Var PURGE_DB                  ; x bool ; delete DB on uninstall
+
 ; Variables for definition of instdir
 ; posible values: SingleUser | AllUsers | Service
   VAR TRI_INSTALL_TYPE          ; x 
@@ -789,6 +791,8 @@ Section "-Core installation"
      SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
      Call WaitForServiceDown
      SimpleSC::RemoveService  '${TRI_SVC_NAME}'
+     Pop $0
+     
 noServiceToStop:
   @CPACK_NSIS_FULL_INSTALL@
 
@@ -1146,6 +1150,10 @@ Function un.onInit
 ; determine admin versus local install
 ; arango may be installed on diferent places
 ; determine if the arango was installed for a local user
+  ${GetParameters} $R0        
+  ${GetOptions} $R0 "/PURGE_DB="    $PURGE_DB
+  IfErrors 0 +2
+  StrCpy $PURGE_DB "0"
 
   Pop $0
 ; temporary variable used as flag for decide the change to administration rights
@@ -1266,21 +1274,31 @@ Section "Uninstall"
   ; to our $INSTDIR uninstall the service - else its another installation and we jump to Done instead.
   ; MessageBox MB_OK ' current service: $1 ---- "$INSTDIR\${SBIN_DIR}\arangod.exe"'
   StrCmp $1 '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' Done
-  DetailPrint 'Shutting down Service'
+  DetailPrint 'Shutting down Service ${TRI_SVC_NAME}'
   SimpleSC::StopService  '${TRI_SVC_NAME}' 0 30
   Call un.WaitForServiceDown
+  DetailPrint 'Removing ArangoDB Service'
   SimpleSC::RemoveService  '${TRI_SVC_NAME}'
   Pop $0 ; returns an errorcode (<>0) otherwise success (0)
   IntCmp $0 0 Done +1 +1
   Push $0
   SimpleSC::GetErrorMessage
   Pop $0
+  DetailPrint 'Stopping ArangoDB fails - Reason: $0'
   MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
 
   Done:
   nothing:
   DetailPrint 'Removing files'
 
+  Delete "$INSTDIR\etc\arangodb3\arangod.conf.old"
+
+  StrCmp $PURGE_DB "0" dontDeleteDatabases
+  RMDir /r "$INSTDIR\var\lib\arangodb3"
+  RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
+  RMDir    "$INSTDIR\var\lib"
+  RMDir /r "$INSTDIR\var\log\arangodb3"
+  dontDeleteDatabases:
   ;Remove files we installed.
   ;Keep the list of directories here in sync with the File commands above.
 @CPACK_NSIS_DELETE_FILES@
