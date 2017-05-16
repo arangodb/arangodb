@@ -222,6 +222,19 @@ JavaScript
   for debugging. This change is mostly useful when using the ArangoShell (arangosh).
 
 
+Foxx
+----
+
+* There is now an [official HTTP API for managing services](../../HTTP/Foxx/README.md),
+  allowing services to be installed, modified, uninstalled and reconfigured without
+  the administrative web interface.
+
+* It is now possible to upload a single JavaScript file instead of a zip archive
+  if your service requires no configuration, additional files or setup.
+  A minimal manifest will be generated automatically upon installation and the
+  uploaded file will be used as the service's main entry point.
+
+
 Pregel
 ------
 
