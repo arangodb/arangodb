@@ -24,7 +24,6 @@
 #define ARANGODB_PREGEL_ALGORITHM_H 1
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <cstdint>
 #include <functional>
 
@@ -64,7 +63,8 @@ struct IAlgorithm {
     return nullptr;
   }
 
-  virtual MasterContext* masterContext(VPackSlice userParams) const {
+  virtual MasterContext* masterContext(
+      arangodb::velocypack::Slice userParams) const {
     return nullptr;
   }
 
@@ -85,7 +85,7 @@ struct IAlgorithm {
 template <typename V, typename E, typename M>
 struct Algorithm : IAlgorithm {
  public:
-  virtual WorkerContext* workerContext(VPackSlice userParams) const {
+  virtual WorkerContext* workerContext(velocypack::Slice userParams) const {
     return new WorkerContext();
   }
   virtual GraphFormat<V, E>* inputFormat() const = 0;
@@ -124,7 +124,7 @@ class SimpleAlgorithm : public Algorithm<V, E, M> {
 
   SimpleAlgorithm(std::string const& name, VPackSlice userParams)
       : Algorithm<V, E, M>(name) {
-    VPackSlice field = userParams.get("sourceField");
+    arangodb::velocypack::Slice field = userParams.get("sourceField");
     _sourceField = field.isString() ? field.copyString() : "value";
     field = userParams.get("resultField");
     _resultField = field.isString() ? field.copyString() : "result";

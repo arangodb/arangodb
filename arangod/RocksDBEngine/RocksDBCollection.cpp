@@ -28,9 +28,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cache/CacheManagerFeature.h"
-#include "Cache/TransactionalCache.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
+#include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/CollectionLockState.h"
 #include "Indexes/Index.h"
@@ -215,6 +215,7 @@ void RocksDBCollection::open(bool ignoreErrors) {
 
 void RocksDBCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
+  WRITE_LOCKER(guard, _indexesLock);
   TRI_ASSERT(indexesSlice.isArray());
   if (indexesSlice.length() == 0) {
     createInitialIndexes();
@@ -339,7 +340,6 @@ void RocksDBCollection::prepareIndexes(
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  READ_LOCKER(guard, _indexesLock);
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
        (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
@@ -354,9 +354,9 @@ void RocksDBCollection::prepareIndexes(
 #endif
 }
 
-/// @brief Find index by definition
-std::shared_ptr<Index> RocksDBCollection::lookupIndex(
-    velocypack::Slice const& info) const {
+static std::shared_ptr<Index> findIndex(
+    velocypack::Slice const& info,
+    std::vector<std::shared_ptr<Index>> const& indexes) {
   TRI_ASSERT(info.isObject());
 
   // extract type
@@ -370,7 +370,7 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
   std::string tmp = value.copyString();
   arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
 
-  for (auto const& idx : _indexes) {
+  for (auto const& idx : indexes) {
     if (idx->type() == type) {
       // Only check relevant indexes
       if (idx->matchesDefinition(info)) {
@@ -382,14 +382,28 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
   return nullptr;
 }
 
+/// @brief Find index by definition
+std::shared_ptr<Index> RocksDBCollection::lookupIndex(
+    velocypack::Slice const& info) const {
+  READ_LOCKER(guard, _indexesLock);
+  return findIndex(info, _indexes);
+}
+
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
-  auto idx = lookupIndex(info);
-  if (idx != nullptr) {
-    created = false;
-    // We already have this index.
-    return idx;
+  // prevent concurrent dropping
+  bool isLocked = trx->isLocked(_logicalCollection, AccessMode::Type::EXCLUSIVE);
+  CONDITIONAL_WRITE_LOCKER(guard, _exclusiveLock, !isLocked);
+  std::shared_ptr<Index> idx;
+  {
+    WRITE_LOCKER(guard, _indexesLock);
+    idx = findIndex(info, _indexes);
+    if (idx) {
+      created = false;
+      // We already have this index.
+      return idx;
+    }
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -421,33 +435,33 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       _logicalCollection->vocbase());
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
-
-  addIndex(idx);
   {
-    VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
-        {"path", "statusString"}, true, /*forPersistence*/ true);
+    WRITE_LOCKER(guard, _indexesLock);
+    addIndex(idx);
+  }
+  VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
+      {"path", "statusString"}, true, /*forPersistence*/ true);
 
-    VPackBuilder indexInfo;
-    idx->toVelocyPack(indexInfo, false, true);
-    int res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
-        _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
-        builder.slice(), RocksDBLogValue::IndexCreate(
-                             _logicalCollection->vocbase()->id(),
-                             _logicalCollection->cid(), indexInfo.slice()));
-    if (res != TRI_ERROR_NO_ERROR) {
-      // We could not persist the index creation. Better abort
-      // Remove the Index in the local list again.
-      size_t i = 0;
-      WRITE_LOCKER(guard, _indexesLock);
-      for (auto index : _indexes) {
-        if (index == idx) {
-          _indexes.erase(_indexes.begin() + i);
-          break;
-        }
-        ++i;
+  VPackBuilder indexInfo;
+  idx->toVelocyPack(indexInfo, false, true);
+  res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
+      _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
+      builder.slice(), RocksDBLogValue::IndexCreate(
+                           _logicalCollection->vocbase()->id(),
+                           _logicalCollection->cid(), indexInfo.slice()));
+  if (res != TRI_ERROR_NO_ERROR) {
+    // We could not persist the index creation. Better abort
+    // Remove the Index in the local list again.
+    size_t i = 0;
+    WRITE_LOCKER(guard, _indexesLock);
+    for (auto index : _indexes) {
+      if (index == idx) {
+        _indexes.erase(_indexes.begin() + i);
+        break;
       }
-      THROW_ARANGO_EXCEPTION(res);
+      ++i;
     }
+    THROW_ARANGO_EXCEPTION(res);
   }
   created = true;
   return idx;
@@ -540,6 +554,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
 
 /// @brief Drop an index with the given iid.
 bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
+  // usually always called when _exclusiveLock is held
   if (iid == 0) {
     // invalid index id or primary index
     return true;
@@ -618,8 +633,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   TRI_voc_cid_t cid = _logicalCollection->cid();
 
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  RocksDBMethods *mthd = state->rocksdbMethods();
-  //rocksdb::Transaction* rtrx = state->rocksTransaction();
+  RocksDBMethods* mthd = state->rocksdbMethods();
+  // rocksdb::Transaction* rtrx = state->rocksTransaction();
 
   // delete documents
   RocksDBKeyBounds documentBounds =
@@ -1168,7 +1183,6 @@ void RocksDBCollection::deferDropCollection(
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(
     std::shared_ptr<arangodb::velocypack::Builder>& builder) {
-  
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
@@ -1181,11 +1195,9 @@ void RocksDBCollection::figuresSpecific(
 
 /// @brief creates the initial indexes for the collection
 void RocksDBCollection::createInitialIndexes() {
-  {  // addIndex holds an internal write lock
-    READ_LOCKER(guard, _indexesLock);
-    if (!_indexes.empty()) {
-      return;
-    }
+  // LOCKED from the outside
+  if (!_indexes.empty()) {
+    return;
   }
 
   std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
@@ -1200,7 +1212,7 @@ void RocksDBCollection::createInitialIndexes() {
 }
 
 void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
-  WRITE_LOCKER(guard, _indexesLock);
+  // LOCKED from the outside
   // primary index must be added at position 0
   TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
              _indexes.empty());
@@ -1223,8 +1235,7 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
 
 void RocksDBCollection::addIndexCoordinator(
     std::shared_ptr<arangodb::Index> idx) {
-  WRITE_LOCKER(guard, _indexesLock);
-
+  // LOCKED from the outside
   auto const id = idx->id();
   for (auto const& it : _indexes) {
     if (it->id() == id) {
@@ -1237,6 +1248,7 @@ void RocksDBCollection::addIndexCoordinator(
 
 int RocksDBCollection::saveIndex(transaction::Methods* trx,
                                  std::shared_ptr<arangodb::Index> idx) {
+  // LOCKED from the outside
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   // we cannot persist primary or edge indexes
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
@@ -1262,12 +1274,20 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
 /// from this collection
 arangodb::Result RocksDBCollection::fillIndexes(
     transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
-  ManagedDocumentResult mmdr;
+  // LOCKED from the outside, can't use lookupIndex
+  RocksDBPrimaryIndex* primIndex = nullptr;
+  for (std::shared_ptr<Index> idx : _indexes) {
+    if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      primIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
+      break;
+    }
+  }
+  TRI_ASSERT(primIndex);
 
+  ManagedDocumentResult mmdr;
   RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  std::unique_ptr<IndexIterator> iter(
-      primaryIndex()->allIterator(trx, &mmdr, false));
+  std::unique_ptr<IndexIterator> it(primIndex->allIterator(trx, &mmdr, false));
   rocksdb::TransactionDB* db = globalRocksDB();
 
   uint64_t numDocsWritten = 0;
@@ -1291,7 +1311,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   Result r;
   bool hasMore = true;
   while (hasMore) {
-    hasMore = iter->next(cb, 250);
+    hasMore = it->next(cb, 250);
     if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED ||
         _logicalCollection->deleted()) {
       res = TRI_ERROR_INTERNAL;
@@ -1312,7 +1332,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   // we will need to remove index elements created before an error
   // occured, this needs to happen since we are non transactional
   if (!r.ok()) {
-    iter->reset();
+    it->reset();
     batch.Clear();
 
     res = TRI_ERROR_NO_ERROR;
@@ -1330,7 +1350,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
 
     hasMore = true;
     while (hasMore && numDocsWritten > 0) {
-      hasMore = iter->next(removeCb, 5000);
+      hasMore = it->next(removeCb, 5000);
     }
     // TODO: if this fails, do we have any recourse?
     // Simon: Don't think so
@@ -1382,7 +1402,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
 
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
-  RocksDBMethods *mthd = rocksutils::toRocksMethods(trx);
+  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   res = mthd->Put(key, value.string());
   if (!res.ok()) {
     // set keysize that is passed up to the crud operations
@@ -1442,12 +1462,12 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   // from the outside. We do not need to DELETE a document from the
   // document store, if the doc is overwritten with PUT
   // Simon: actually we do, because otherwise the counter recovery is broken
-  //if (!isUpdate) {
-  RocksDBMethods *mthd = rocksutils::toRocksMethods(trx);
-    RocksDBOperationResult res = mthd->Delete(key);
-    if (!res.ok()) {
-      return res;
-    }
+  // if (!isUpdate) {
+  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
+  RocksDBOperationResult res = mthd->Delete(key);
+  if (!res.ok()) {
+    return res;
+  }
   //}
 
   RocksDBOperationResult resInner;
@@ -1557,7 +1577,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     }
   }
 
-  RocksDBMethods *mthd = rocksutils::toRocksMethods(trx);
+  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   Result res = mthd->Get(key, &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
@@ -1775,11 +1795,11 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
     TRI_ASSERT(cindex != nullptr);
-    rocksutils::uint64ToPersistent(output, static_cast<uint64_t>(tdb->GetLatestSequenceNumber()));
+    rocksutils::uint64ToPersistent(
+        output, static_cast<uint64_t>(tdb->GetLatestSequenceNumber()));
     cindex->serializeEstimate(output);
     if (output.size() > sizeof(uint64_t)) {
-      RocksDBKey key =
-          RocksDBKey::IndexEstimateValue(cindex->objectId());
+      RocksDBKey key = RocksDBKey::IndexEstimateValue(cindex->objectId());
       rocksdb::Slice value(output);
       rocksdb::Status s = rtrx->Put(key.string(), value);
 
@@ -1811,7 +1831,8 @@ void RocksDBCollection::recalculateIndexEstimates() {
   recalculateIndexEstimates(idxs);
 }
 
-void RocksDBCollection::recalculateIndexEstimates(std::vector<std::shared_ptr<Index>>& indexes) {
+void RocksDBCollection::recalculateIndexEstimates(
+    std::vector<std::shared_ptr<Index>>& indexes) {
   // start transaction to get a collection lock
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(
