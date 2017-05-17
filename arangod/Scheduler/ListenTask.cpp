@@ -60,7 +60,7 @@ bool ListenTask::start() {
   } catch (std::exception const& err) {
     LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
               << "' with error: " << err.what();
-    return true;
+    return false;
   }
 
   _handler = [this](boost::system::error_code const& ec) {

@@ -23,6 +23,7 @@
 #ifndef ARANGODB_PREGEL_ALGOS_SLPA_H
 #define ARANGODB_PREGEL_ALGOS_SLPA_H 1
 
+#include <cmath>
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
 
@@ -40,9 +41,21 @@ namespace algos {
 /// overlapping
 /// nodes and  overlapping  communities  with  different  degrees  of diversity.
 struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
+  unsigned _maxCommunities = 1;
+  double _threshold = 0.15;
+
  public:
   explicit SLPA(VPackSlice userParams)
-      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("slpa", userParams) {}
+      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("slpa", userParams) {
+    arangodb::velocypack::Slice field = userParams.get("threshold");
+    if (field.isNumber()) {
+      _threshold = std::min(1.0, std::max(field.getDouble(), 0.0));
+    }
+    field = userParams.get("maxCommunities");
+    if (field.isInteger()) {
+      _threshold = (unsigned)std::min((uint64_t)32, std::max(field.getUInt(), (uint64_t)0));
+    }
+  }
 
   GraphFormat<SLPAValue, int8_t>* inputFormat() const override;
   MessageFormat<uint64_t>* messageFormat() const override {

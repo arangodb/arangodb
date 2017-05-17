@@ -151,7 +151,6 @@ start() {
         --log.level cluster=$LOG_LEVEL_CLUSTER \
         --log.level communication=$LOG_LEVEL_CLUSTER \
         --log.level heartbeat=$LOG_LEVEL_CLUSTER \
-        --log.level requests=$LOG_LEVE_CLUSTER \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \

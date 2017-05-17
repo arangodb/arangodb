@@ -20,9 +20,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "EngineSelectorFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "EngineSelectorFeature.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -54,13 +54,6 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                      new DiscreteValuesParameter<StringParameter>(&_engine, availableEngineNames()));
 }
 
-void EngineSelectorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  // engine from command line
-  if (_engine == "auto") {
-    _engine = MMFilesEngine::EngineName;
-  }
-}
-
 void EngineSelectorFeature::prepare() {
   // read engine from file in database_directory ENGINE (mmfiles/rocksdb)
   auto databasePathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
@@ -72,15 +65,22 @@ void EngineSelectorFeature::prepare() {
   if (basics::FileUtils::isRegularFile(_engineFilePath)) {
     try {
       std::string content = basics::FileUtils::slurp(_engineFilePath);
-      if (content != _engine) {
+      if (content != _engine && _engine != "auto") {
         LOG_TOPIC(FATAL, Logger::STARTUP) << "content of 'ENGINE' file '" << _engineFilePath << "' and command-line/configuration option value do not match: '" << content << "' != '" << _engine << "'. please validate the command-line/configuration option value of '--server.storage-engine' or use a different database directory if the change is intentional";
         FATAL_ERROR_EXIT();
       }
+      _engine = content;
     } catch (std::exception const& ex) {
       LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to read content of 'ENGINE' file '" << _engineFilePath << "': " << ex.what() << ". please make sure the file/directory is readable for the arangod process and user";
       FATAL_ERROR_EXIT();
     }
+  } else {
+    if (_engine == "auto") {
+      _engine = MMFilesEngine::EngineName;
+    }
   }
+
+  TRI_ASSERT(_engine != "auto");
 
   // deactivate all engines but the selected one
   for (auto const& engine : availableEngines()) {

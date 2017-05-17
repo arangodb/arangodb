@@ -21,13 +21,6 @@ module.context.use(router);
 
 const LDJSON = 'application/x-ldjson';
 
-const legacyErrors = new Map([
-  [errors.ERROR_SERVICE_INVALID_NAME.code, errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code],
-  [errors.ERROR_SERVICE_INVALID_MOUNT.code, errors.ERROR_INVALID_MOUNTPOINT.code],
-  [errors.ERROR_SERVICE_DOWNLOAD_FAILED.code, errors.ERROR_SERVICE_SOURCE_ERROR.code],
-  [errors.ERROR_SERVICE_UPLOAD_FAILED.code, errors.ERROR_SERVICE_SOURCE_ERROR.code]
-]);
-
 const serviceToJson = (service) => (
   {
     mount: service.mount,
@@ -70,9 +63,8 @@ router.use((req, res, next) => {
     next();
   } catch (e) {
     if (e.isArangoError) {
-      const errorNum = legacyErrors.get(e.errorNum) || e.errorNum;
-      const status = actions.arangoErrorToHttpCode(errorNum);
-      res.throw(status, e.errorMessage, {errorNum, cause: e});
+      const status = actions.arangoErrorToHttpCode(e.errorNum);
+      res.throw(status, e.errorMessage, {errorNum: e.errorNum, cause: e});
     }
     throw e;
   }

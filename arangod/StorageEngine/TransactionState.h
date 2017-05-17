@@ -138,6 +138,8 @@ class TransactionState {
   virtual bool hasFailedOperations() const = 0;
   
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
+  
+  void setType(AccessMode::Type type);
 
  protected:
   /// @brief find a collection in the transaction's list of collections

@@ -61,6 +61,36 @@ const LEGACY_ALIASES = [
   ['@arangodb/foxx', '@arangodb/foxx/legacy']
 ];
 
+function parseFile (servicePath, filename) {
+  const filepath = path.resolve(servicePath, filename);
+  if (!fs.isFile(filepath)) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_MODULE_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_MODULE_NOT_FOUND.message}
+        File: ${filepath}
+      `
+    });
+  }
+  try {
+    internal.parseFile(filepath);
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      throw Object.assign(
+        new ArangoError({
+          errorNum: errors.ERROR_MODULE_SYNTAX_ERROR.code,
+          errorMessage: dd`
+            ${errors.ERROR_MODULE_SYNTAX_ERROR.message}
+            File: ${filepath}
+          `
+        }),
+        {cause: e}
+      );
+    }
+    throw e;
+  }
+}
+
 module.exports =
   class FoxxService {
     static validatedManifest (definition) {
@@ -80,25 +110,25 @@ module.exports =
     static validateServiceFiles (mount, manifest) {
       const servicePath = FoxxService.basePath(mount);
       if (manifest.main) {
-        internal.parseFile(path.resolve(servicePath, manifest.main));
+        parseFile(servicePath, manifest.main);
       }
       for (const name of Object.keys(manifest.scripts)) {
         const scriptFilename = manifest.scripts[name];
-        internal.parseFile(path.resolve(servicePath, scriptFilename));
+        parseFile(servicePath, scriptFilename);
       }
       if (manifest.controllers) {
         for (const name of Object.keys(manifest.controllers)) {
           const controllerFilename = manifest.controllers[name];
-          internal.parseFile(path.resolve(servicePath, controllerFilename));
+          parseFile(servicePath, controllerFilename);
         }
       }
       if (manifest.exports) {
         if (typeof manifest.exports === 'string') {
-          internal.parseFile(path.resolve(servicePath, manifest.exports));
+          parseFile(servicePath, manifest.exports);
         } else {
           for (const name of Object.keys(manifest.exports)) {
             const exportFilename = manifest.exports[name];
-            internal.parseFile(path.resolve(servicePath, exportFilename));
+            parseFile(servicePath, exportFilename);
           }
         }
       }
