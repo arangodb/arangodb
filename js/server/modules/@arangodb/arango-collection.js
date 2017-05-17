@@ -570,6 +570,28 @@ ArangoCollection.prototype.getIndexes = function (withFigures) {
           fromIdx.selectivityEstimate /= 2;
       }
 
+      if (fromIdx.hasOwnProperty('figures') &&
+          toIdx.hasOwnProperty('figures')) {
+        // merge Figures
+        if (fromIdx.figures.hasOwnProperty('memory') &&
+            toIdx.figures.hasOwnProperty('memory')) {
+          fromIdx.figures.memory += toIdx.figures.memory;
+        }
+
+        if (fromIdx.figures.hasOwnProperty('cacheLiftimeHitRate') &&
+            toIdx.figures.hasOwnProperty('cacheLiftimeHitRate')) {
+          fromIdx.figures.cacheLiftimeHitRate += toIdx.figures.cacheLiftimeHitRate;
+          fromIdx.figures.cacheLiftimeHitRate /= 2;
+        }
+
+        if (fromIdx.figures.hasOwnProperty('cacheWindowHitRate') &&
+            toIdx.figures.hasOwnProperty('cacheWindowHitRate')) {
+          fromIdx.figures.cacheWindowHitRate += toIdx.figures.cacheWindowHitRate;
+          fromIdx.figures.cacheWindowHitRate /= 2;
+        }
+
+      }
+
       // Splice out _to Index
       indexes.splice(toI, 1);
     }

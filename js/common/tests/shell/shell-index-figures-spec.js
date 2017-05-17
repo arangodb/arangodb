@@ -53,11 +53,13 @@ function verifyMemory(index){
 }
 
 function verifyCache(index){
-  expect(index.figures.cacheInUse).to.be.true;
-  expect(index.figures).to.be.ok;
-  expect(index.figures.cacheSize).to.be.a('number');
-  expect(index.figures.cacheLifeTimeHitRate).to.be.a('number');
-  expect(index.figures.cacheWindowedHitRate).to.be.a('number');
+  if (index.type !== 'primary') {
+    expect(index.figures.cacheInUse).to.be.true;
+    expect(index.figures).to.be.ok;
+    expect(index.figures.cacheSize).to.be.a('number');
+    expect(index.figures.cacheLifeTimeHitRate).to.be.a('number');
+    expect(index.figures.cacheWindowedHitRate).to.be.a('number');
+  }
 }
 
 

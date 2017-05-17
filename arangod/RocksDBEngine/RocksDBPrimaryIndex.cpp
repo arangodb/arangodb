@@ -299,7 +299,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   !ServerState::instance()->isCoordinator() /*useCache*/) {
+                   false) {
+                   // !ServerState::instance()->isCoordinator() /*useCache*/) {
   TRI_ASSERT(_objectId != 0);
 }
 

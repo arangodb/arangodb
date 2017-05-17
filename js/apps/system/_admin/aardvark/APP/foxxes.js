@@ -49,7 +49,7 @@ module.exports = anonymousRouter;
 
 router.use((req, res, next) => {
   if (internal.authenticationEnabled()) {
-    if (!req.arangoUser) {
+    if (!req.authorized) {
       res.throw('unauthorized');
     }
   }
@@ -411,7 +411,7 @@ anonymousRouter.get('/download/zip', function (req, res) {
 `);
 
 anonymousRouter.use('/docs/standalone', module.context.createDocumentationRouter((req, res) => {
-  if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
+  if (req.suffix === 'swagger.json' && !req.authorized && internal.authenticationEnabled()) {
     res.throw('unauthorized');
   }
   return {
@@ -420,7 +420,7 @@ anonymousRouter.use('/docs/standalone', module.context.createDocumentationRouter
 }));
 
 anonymousRouter.use('/docs', module.context.createDocumentationRouter((req, res) => {
-  if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
+  if (req.suffix === 'swagger.json' && !req.authorized && internal.authenticationEnabled()) {
     res.throw('unauthorized');
   }
   return {
