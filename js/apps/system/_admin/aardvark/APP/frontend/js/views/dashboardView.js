@@ -846,7 +846,15 @@
       }
 
       var currentP = fmtNumber(self.history[self.server].residentSizePercent * 100, 2);
-      var data = [prettyBytes(self.history[self.server].physicalMemory)];
+      var data;
+
+      if (self.history[self.server].physicalMemory) {
+        this.removeEmptyDataLabels();
+        data = [prettyBytes(self.history[self.server].physicalMemory)];
+      } else {
+        this.addEmptyDataLabels();
+        return;
+      }
 
       if (self.history[self.server].residentSizeChart === undefined) {
         this.addEmptyDataLabels();
@@ -966,7 +974,8 @@
 
         if (self.history[self.server].residentSizeChart === undefined) {
           self.addEmptyDataLabels();
-          return;
+          // initialize with 0 values then
+          // return;
         } else {
           self.removeEmptyDataLabels();
         }
@@ -1041,9 +1050,15 @@
               return fmtNumber(((d * 100 * 100) / 100), 0) + '%';
             });
 
-            d3.select(selector)
-            .datum(self.history[self.server][k])
-            .call(self.distributionCharts[k]);
+            if (self.history[self.server][k]) {
+              d3.select(selector)
+              .datum(self.history[self.server][k])
+              .call(self.distributionCharts[k]);
+            } else {
+              d3.select(selector)
+              .datum([])
+              .call(self.distributionCharts[k]);
+            }
 
             nv.utils.windowResize(self.distributionCharts[k].update);
 
@@ -1065,9 +1080,15 @@
               self.distributionCharts[k].height(dimensions.height);
 
               // update data
-              d3.select(selector)
-              .datum(self.history[self.server][k])
-              .call(self.distributionCharts[k]);
+              if (self.history[self.server][k]) {
+                d3.select(selector)
+                .datum(self.history[self.server][k])
+                .call(self.distributionCharts[k]);
+              } else {
+                d3.select(selector)
+                .datum([])
+                .call(self.distributionCharts[k]);
+              }
 
               // trigger resize
               nv.utils.windowResize(self.distributionCharts[k].update);
