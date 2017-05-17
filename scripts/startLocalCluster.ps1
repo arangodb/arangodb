@@ -110,7 +110,6 @@ while ($ports -gt 0) {
             $req=Invoke-WebRequest @InvokeWebRequestArgs
             Write-Host "$port became ready!"
         } catch {
-            $_.Exception.Message
             $newPorts += $port;
         }
     }
