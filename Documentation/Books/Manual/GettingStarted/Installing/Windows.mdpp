@@ -36,7 +36,7 @@ as administrator (search for *cmd* and right click *run as
 administrator*).
 
     cmd> arangod --install-service
-    INFO: adding service 'ArangoDB - the multi-model database' (internal 'ArangoDB')
+    INFO: adding service 'ArangoDB - the native multi-model NoSQL database' (internal 'ArangoDB')
     INFO: added service with command line '"C:\Program Files (x86)\ArangoDB 3.x.x\bin\arangod.exe" --start-service'
 
 Open the service manager and start ArangoDB. In order to enable logging

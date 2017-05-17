@@ -649,15 +649,18 @@
         return;
       }
       if (this.documentsView) {
-        this.documentsView.removeView();
+        this.documentsView.unbindEvents();
       }
-      this.documentsView = new window.DocumentsView({
-        collection: new window.ArangoDocuments(),
-        documentStore: this.arangoDocumentStore,
-        collectionsStore: this.arangoCollectionsStore
-      });
+      if (!this.documentsView) {
+        this.documentsView = new window.DocumentsView({
+          collection: new window.ArangoDocuments(),
+          documentStore: this.arangoDocumentStore,
+          collectionsStore: this.arangoCollectionsStore
+        });
+      }
       this.documentsView.setCollectionId(colid, pageid);
       this.documentsView.render();
+      this.documentsView.delegateEvents();
     },
 
     document: function (colid, docid, initialized) {
@@ -666,12 +669,18 @@
         this.waitForInit(this.document.bind(this), colid, docid);
         return;
       }
-      if (!this.documentView) {
-        this.documentView = new window.DocumentView({
-          collection: this.arangoDocumentStore
-        });
+      var mode;
+      if (this.documentView) {
+        if (this.documentView.defaultMode) {
+          mode = this.documentView.defaultMode;
+        }
+        this.documentView.remove();
       }
+      this.documentView = new window.DocumentView({
+        collection: this.arangoDocumentStore
+      });
       this.documentView.colid = colid;
+      this.documentView.defaultMode = mode;
 
       var doc = window.location.hash.split('/')[2];
       var test = (doc.split('%').length - 1) % 3;
