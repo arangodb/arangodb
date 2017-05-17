@@ -37,6 +37,10 @@ struct AccessMode {
     EXCLUSIVE = 4
   };
   
+  static inline bool isRead(Type type) {
+    return (type == Type::READ);
+  }
+  
   static inline bool isWrite(Type type) {
     return (type == Type::WRITE);
   }
