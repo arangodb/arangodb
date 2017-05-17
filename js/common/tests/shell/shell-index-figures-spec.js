@@ -113,7 +113,7 @@ describe('Index figures', function () {
   describe('hash index', function () {
     var col;
     before('create collection',function(){
-      col = db._createDocumentCollection("UnitTestDoggy");
+      col = db._createDocumentCollection("UnitTestDoggyHash");
       col.ensureIndex({type: "hash", fields: ["name"]});
       for(var i = 0; i < 100; i++){
         col.insert({"name":"Harry"+i});
@@ -150,7 +150,7 @@ describe('Index figures', function () {
   describe('skiplist index', function () {
     var col;
     before('create collection',function(){
-      col = db._createDocumentCollection("UnitTestDoggy");
+      col = db._createDocumentCollection("UnitTestDoggySkip");
       col.ensureIndex({type: "skiplist", fields: ["name"]});
       for(var i = 0; i < 100; i++){
         col.insert({"name":"Harry"+i});
@@ -187,7 +187,7 @@ describe('Index figures', function () {
   describe('fulltext index', function () {
     var col;
     before('create collection',function(){
-      col = db._createDocumentCollection("UnitTestDoggy");
+      col = db._createDocumentCollection("UnitTestDoggyFull");
       col.ensureIndex({type: "fulltext", fields: ["name"], minLength : 3});
       for(var i = 0; i < 100; i++){
         col.insert({"name":"Harry"+i});
