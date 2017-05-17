@@ -14,10 +14,20 @@ SE_BASE=$(( $PORT_OFFSET + 8729 ))
 LOCALHOST="[::1]"
 ANY="[::]"
 
+if [ "$TRANSPORT" == "ssl" ]; then
+  CURL="curl -skfX"
+  PROT=https
+else
+  CURL="curl -sfX"
+  PROT=http  
+fi
+
+
+
 shutdown() {
   PORT=$1
   echo -n "$PORT "
-  curl -X DELETE http://$LOCALHOST:$PORT/_admin/shutdown >/dev/null 2>/dev/null
+  $CURL DELETE $PROT://$LOCALHOST:$PORT/_admin/shutdown >/dev/null 2>/dev/null
 }
 
 if [ "$SECONDARIES" == "1" ]; then
@@ -44,7 +54,7 @@ done
 testServerDown() {
   PORT=$1
   while true ; do
-    curl -s -f -X GET "http://$LOCALHOST:$PORT/_api/version" > /dev/null 2>&1
+    $CURL GET $PROT://$LOCALHOST:$PORT/_api/version >/dev/null 2>/dev/null
     if [ "$?" != "0" ] ; then
       pid=$(ps -eaf|grep data$PORT|grep -v grep|awk '{print $2}')
       if [ -z $pid ]; then
