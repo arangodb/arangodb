@@ -528,24 +528,51 @@ ArangoCollection.prototype.getIndexes = function (withFigures) {
   var indexes = this.getIndexesPrivate(withFigures);
   if (this.type() === 3) {
     // edge collections
-    var result = [];
-    for (var i = 0; i < indexes.length; i++) {
-      if (indexes[i].type === "edge") {
-        if (indexes[i].fields.length === 1
-            && indexes[i].fields[0] === "_from") {
-          // we got two edge indexes. now pretend we only have one, and
-          // make it claim it is created on _from and _to
-          indexes[i].fields.push("_to");
-          result.push(indexes[i]);
-        } else if (indexes[i].fields.length === 2) {
-          // we have an edge index with two attributes
-          result.push(indexes[i]);
+    let fromI = -1;
+    let toI = -1;
+    for (let i = 0; i < indexes.length; i++) {
+      if (indexes[i].type === 'edge') {
+        if (indexes[i].fields.length === 2) {
+          // We have an edgeIndex representation on [_from, _to]
+          // Nothing to do
+          break;
+        } else {
+          if (indexes[i].fields[0] === '_from') {
+            fromI = i;
+            if (toI !== -1) {
+              break;
+            }
+            continue;
+          }
+
+          if (indexes[i].fields[0] === '_to') {
+            toI = i;
+            if (fromI !== -1) {
+              break;
+            }
+            continue;
+          }
         }
-      } else {
-        result.push(indexes[i]);
       }
     }
-    return result;
+    if (fromI !== -1 && toI !== -1) {
+      // We got two edge indexes.
+      // Merge them to pretend we only have one...
+      let fromIdx = indexes[fromI];
+      let toIdx = indexes[toI];
+      // Adjust fields
+      fromIdx.fields.push('_to');
+
+      // Adjust estimate
+      if (fromIdx.hasOwnProperty('selectivityEstimate') &&
+          toIdx.hasOwnProperty('selectivityEstimate')) {
+          fromIdx.selectivityEstimate += toIdx.selectivityEstimate;
+          fromIdx.selectivityEstimate /= 2;
+      }
+
+      // Splice out _to Index
+      indexes.splice(toI, 1);
+    }
   }
   return indexes;
 };
