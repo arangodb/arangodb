@@ -202,8 +202,8 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
       // note that these methods may throw in case of an error
       if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
         return basicAuthentication(auth);
-      } 
-      if (resCode != rest::ResponseCode::OK && TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
+      }
+      if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
         return jwtAuthentication(std::string(auth));
       }
       // fallthrough intentional
