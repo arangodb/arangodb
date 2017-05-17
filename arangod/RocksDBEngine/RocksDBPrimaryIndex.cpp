@@ -341,12 +341,6 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.close();
 }
 
-/// @brief return a VelocyPack representation of the index figures
-void RocksDBPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  Index::toVelocyPackFigures(builder);
-  // TODO: implement
-}
-
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                             arangodb::StringRef keyRef) const {
   auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef);
