@@ -70,7 +70,7 @@ function parseFile (servicePath, filename) {
         ${errors.ERROR_MODULE_NOT_FOUND.message}
         File: ${filepath}
       `
-    })
+    });
   }
   try {
     internal.parseFile(filepath);
@@ -85,7 +85,7 @@ function parseFile (servicePath, filename) {
           `
         }),
         {cause: e}
-      )
+      );
     }
     throw e;
   }
