@@ -51,6 +51,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
 
       AddressKey(),
       AllowUseDatabaseKey(),
+      AuthorizedKey(),
       BodyFromFileKey(),
       BodyKey(),
       ClientKey(),
@@ -139,6 +140,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
 
   AddressKey.Reset(isolate, TRI_V8_ASCII_STRING("address"));
   AllowUseDatabaseKey.Reset(isolate, TRI_V8_ASCII_STRING("allowUseDatabase"));
+  AuthorizedKey.Reset(isolate, TRI_V8_ASCII_STRING("authorized"));
   BodyFromFileKey.Reset(isolate, TRI_V8_ASCII_STRING("bodyFromFile"));
   BodyKey.Reset(isolate, TRI_V8_ASCII_STRING("body"));
   ClientKey.Reset(isolate, TRI_V8_ASCII_STRING("client"));

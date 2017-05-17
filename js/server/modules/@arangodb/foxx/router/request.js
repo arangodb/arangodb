@@ -184,6 +184,9 @@ module.exports =
     }
 
     // idiosyncratic
+    get authorized () {
+      return this._raw.authorized;
+    }
 
     get arangoUser () {
       return this._raw.user;

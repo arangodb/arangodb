@@ -216,6 +216,7 @@ rest::ResponseCode VocbaseContext::basicAuthentication(char const* auth) {
   AuthResult result = _authentication->authInfo()->checkAuthentication(
       AuthInfo::AuthType::BASIC, auth);
 
+  _request->setAuthorized(result._authorized);
   if (!result._authorized) {
     events::CredentialsBad(_request, rest::AuthenticationMethod::BASIC);
     return rest::ResponseCode::UNAUTHORIZED;
@@ -246,12 +247,13 @@ rest::ResponseCode VocbaseContext::basicAuthentication(char const* auth) {
 rest::ResponseCode VocbaseContext::jwtAuthentication(std::string const& auth) {
   AuthResult result = _authentication->authInfo()->checkAuthentication(
       AuthInfo::AuthType::JWT, auth);
-
+  
+  _request->setAuthorized(result._authorized);
   if (!result._authorized) {
     events::CredentialsBad(_request, rest::AuthenticationMethod::JWT);
     return rest::ResponseCode::UNAUTHORIZED;
   }
-
+  
   _request->setUser(std::move(result._username));
   events::Authenticated(_request, rest::AuthenticationMethod::JWT);
 
