@@ -412,6 +412,9 @@ typedef struct TRI_v8_global_s {
   /// @brief "allowUseDatabase" key name
   v8::Persistent<v8::String> AllowUseDatabaseKey;
 
+  /// @brief "authorized" key name
+  v8::Persistent<v8::String> AuthorizedKey;
+
   /// @brief "bodyFromFile" key name
   v8::Persistent<v8::String> BodyFromFileKey;
 

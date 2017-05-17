@@ -18,6 +18,9 @@ devel
 
 * extended HTTP API with routes for managing Foxx services
 
+* added distinction between hasUser and authorized within Foxx
+  (cluster internal requests are authorized requests but don't have a user)
+
 
 v3.2.alpha4 (2017-04-25)
 ------------------------

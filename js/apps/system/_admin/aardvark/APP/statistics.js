@@ -398,7 +398,7 @@ function computeStatisticsLong (attrs, clusterId) {
 
 router.use((req, res, next) => {
   if (internal.authenticationEnabled()) {
-    if (!req.arangoUser) {
+    if (!req.authorized) {
       throw new httperr.Unauthorized();
     }
   }

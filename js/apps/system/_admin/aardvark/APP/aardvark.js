@@ -76,7 +76,7 @@ router.use(authRouter);
 
 authRouter.use((req, res, next) => {
   if (internal.authenticationEnabled()) {
-    if (!req.arangoUser) {
+    if (!req.authorized) {
       res.throw('unauthorized');
     }
   }
