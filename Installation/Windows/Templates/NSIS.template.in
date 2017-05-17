@@ -51,6 +51,8 @@
   Var PASSWORD                  ; x string
   Var PASSWORD_AGAIN            ; x string / only for comparison
 
+  Var PURGE_DB                  ; x bool ; delete DB on uninstall
+
 ; Variables for definition of instdir
 ; posible values: SingleUser | AllUsers | Service
   VAR TRI_INSTALL_TYPE          ; x 
@@ -566,6 +568,7 @@ FunctionEnd
 ;--------------------------------
 
 Function WaitForServiceUp
+  DetailPrint "starting ArangoDB Service..."
   Push 0
   Pop $retryCount
   try_again:
@@ -579,7 +582,7 @@ Function WaitForServiceUp
     ${EndIf}
     Sleep 1000
     ${If} $retryCount == 40
-      MessageBox MB_OK "Service waiting retry count reached"
+      MessageBox MB_OK "Waited 40 seconds for ArangoDB to come up; Please look at the Windows Eventlog for eventual errors!"
       Return
     ${EndIf}
     IntOp $retryCount $retryCount + 1
@@ -589,6 +592,7 @@ FunctionEnd
 ;--------------------------------
 
 Function WaitForServiceDown
+  DetailPrint "stopping ArangoDB Service..."
   Push 0
   Pop $retryCount
   try_again:
@@ -602,7 +606,7 @@ Function WaitForServiceDown
     ${EndIf}
     Sleep 1000
     ${If} $retryCount == 40
-      MessageBox MB_OK "Service shutdown waiting retry count reached; you may need to remove files by hand"
+      MessageBox MB_OK "Waited 40 seconds for the ArangoDB Service to shutdown; you may need to remove files by hand"
       Return
     ${EndIf}
     IntOp $retryCount $retryCount + 1
@@ -610,6 +614,7 @@ Function WaitForServiceDown
 FunctionEnd
 
 Function un.WaitForServiceDown
+  DetailPrint "stopping ArangoDB Service..."
   Push 0
   Pop $retryCount
   try_again:
@@ -623,7 +628,7 @@ Function un.WaitForServiceDown
     ${EndIf}
     Sleep 1000
     ${If} $retryCount == 40
-      MessageBox MB_OK "Service shutdown waiting retry count reached; you may need to remove files by hand"
+      MessageBox MB_OK "Waited 40 seconds for the ArangoDB Service to shutdown; you may need to remove files by hand"
       Return
     ${EndIf}
     IntOp $retryCount $retryCount + 1
@@ -779,6 +784,14 @@ Section "-Core installation"
   ; this variable was defined by eld and included in NSIS.template.in
   ; we probably need this for the install/uninstall software list.
   SetRegView ${BITS}
+
+   StrCmp $TRI_INSTALL_TYPE  'Service' 0 noServiceToStop
+     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
+     Call WaitForServiceDown
+     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
+     Pop $0
+     
+noServiceToStop:
   @CPACK_NSIS_FULL_INSTALL@
 
   ;Store installation folder
@@ -863,16 +876,13 @@ Section "-Core installation"
 
   System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
-    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database"
+    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database --server.rest-server false --server.statistics false --foxx.queues false"
     Goto done
   error:
     MessageBox MB_OK "Failed to initialize database password."
   done:
 @CPACK_NSIS_EXTRA_INSTALL_COMMANDS@
    StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
-     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
-     Call WaitForServiceDown
-     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
      SimpleSC::InstallService '${TRI_SVC_NAME}' '${TRI_SVC_NAME}'  '16'  '2'  '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' '' ''
      SimpleSC::SetServiceDescription '${TRI_SVC_NAME}' '${TRI_FRIENDLY_SVC_NAME}'
      SimpleSC::StartService '${TRI_SVC_NAME}' '' 30
@@ -1135,6 +1145,10 @@ Function un.onInit
 ; determine admin versus local install
 ; arango may be installed on diferent places
 ; determine if the arango was installed for a local user
+  ${GetParameters} $R0        
+  ${GetOptions} $R0 "/PURGE_DB="    $PURGE_DB
+  IfErrors 0 +2
+  StrCpy $PURGE_DB "0"
 
   Pop $0
 ; temporary variable used as flag for decide the change to administration rights
@@ -1251,24 +1265,35 @@ Section "Uninstall"
   SimpleSC::GetServiceBinaryPath '${TRI_SVC_NAME}'
   Pop $0 ; returns an errorcode (<>0) otherwise success (0)
   Pop $1 ; returns the binary path of the service
-  ; $1 should contain '"$INSTDIR/${SBIN_DIR}/arangod.exe" --start-service' - if $INSTDIR is equal
+  ; $1 should contain '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' - if $INSTDIR is equal
   ; to our $INSTDIR uninstall the service - else its another installation and we jump to Done instead.
-  StrCmp $1 '"$INSTDIR/${SBIN_DIR}/arangod.exe" --start-service' '' Done
-  DetailPrint 'Shutting down Service'
+  ; MessageBox MB_OK ' current service: $1 ---- "$INSTDIR\${SBIN_DIR}\arangod.exe"'
+  StrCmp $1 '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' Done
+  DetailPrint 'Shutting down Service ${TRI_SVC_NAME}'
   SimpleSC::StopService  '${TRI_SVC_NAME}' 0 30
   Call un.WaitForServiceDown
+  DetailPrint 'Removing ArangoDB Service'
   SimpleSC::RemoveService  '${TRI_SVC_NAME}'
   Pop $0 ; returns an errorcode (<>0) otherwise success (0)
   IntCmp $0 0 Done +1 +1
   Push $0
   SimpleSC::GetErrorMessage
   Pop $0
+  DetailPrint 'Stopping ArangoDB fails - Reason: $0'
   MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
 
   Done:
   nothing:
   DetailPrint 'Removing files'
 
+  Delete "$INSTDIR\etc\arangodb3\arangod.conf.old"
+
+  StrCmp $PURGE_DB "0" dontDeleteDatabases
+  RMDir /r "$INSTDIR\var\lib\arangodb3"
+  RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
+  RMDir    "$INSTDIR\var\lib"
+  RMDir /r "$INSTDIR\var\log\arangodb3"
+  dontDeleteDatabases:
   ;Remove files we installed.
   ;Keep the list of directories here in sync with the File commands above.
 @CPACK_NSIS_DELETE_FILES@
@@ -1368,37 +1393,38 @@ var CMDINSTDIR
 Function .onInit
   ${GetParameters} $R0
   ClearErrors
-  ${GetOptions} $R0 "/PASSWORD="    $PASSWORD
+  ${GetOptions} $R0 "/PASSWORD="       $PASSWORD
   IfErrors 0 +2
-  StrCpy $PASSWORD ""
-        
+  ReadEnvStr $PASSWORD PASSWORD
+  
+  # we only want to manipulate INSTDIR here if /INSTDIR is realy set!
   ${GetParameters} $R0        
   ClearErrors
-  ${GetOptions} $R0 "/INSTDIR="     $CMDINSTDIR
+  ${GetOptions} $R0 "/INSTDIR="        $CMDINSTDIR
   IfErrors +2 0
   StrCpy $INSTDIR "$CMDINSTDIR"
 
   ${GetParameters} $R0        
-  ${GetOptions} $R0 "/DESKTOPICON=" $INSTALL_DESKTOP
+  ${GetOptions} $R0 "/DESKTOPICON="    $INSTALL_DESKTOP
   IfErrors 0 +2
   StrCpy $INSTALL_DESKTOP "1"
         
   ${GetParameters} $R0
   ClearErrors
-  ${GetOptions} $R0 "/NOPATH="       $DO_NOT_ADD_TO_PATH
+  ${GetOptions} $R0 "/NOPATH="         $DO_NOT_ADD_TO_PATH
   IfErrors 0 +2
   StrCpy $DO_NOT_ADD_TO_PATH "0"
 
   ${GetParameters} $R0
   ClearErrors
-  ${GetOptions} $R0 "/ALLPATH="      $ADD_TO_PATH_ALL_USERS
+  ${GetOptions} $R0 "/ALLPATH="        $ADD_TO_PATH_ALL_USERS
   IfErrors 0 +2
   StrCpy $ADD_TO_PATH_ALL_USERS "0"
-        
+
   ${GetParameters} $R0
   ClearErrors
-  ${GetOptions} $R0 "/CURPATH="      $ADD_TO_PATH_CURRENT_USER
-  IfErrors 0 +3
+  ${GetOptions} $R0 "/CURPATH="        $ADD_TO_PATH_CURRENT_USER
+  IfErrors 0 +2
   StrCpy $ADD_TO_PATH_CURRENT_USER "0"
 
   IfSilent 0 dontValidatePathOption
