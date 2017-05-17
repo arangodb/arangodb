@@ -199,15 +199,13 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Authorization header: " << authStr;
 
     try {
-      rest::ResponseCode resCode = rest::ResponseCode::UNAUTHORIZED;
       // note that these methods may throw in case of an error
       if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
-        resCode = basicAuthentication(auth);
+        return basicAuthentication(auth);
       } 
       if (resCode != rest::ResponseCode::OK && TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
-        resCode = jwtAuthentication(std::string(auth));
+        return jwtAuthentication(std::string(auth));
       }
-
       // fallthrough intentional
     } catch (arangodb::basics::Exception const& ex) {
       // translate error
