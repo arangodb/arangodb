@@ -40,8 +40,6 @@
 #include "GeneralServer/AuthenticationHandler.h"
 #include "Utils/ExecContext.h"
 
-#include <iostream>
-
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -91,15 +89,7 @@ class AuthEntry {
         _source(source),
         _databases(std::move(databases)),
         _authContexts(std::move(authContexts)),
-        _allDatabases(allDatabases) {
-
-          std::cout << "created _authContexts for " << _username << ":\n";
-
-          for(auto const& it : _authContexts) {
-            std::cout << "Database: " << it.first << std::endl;
-          }
-
-        }
+        _allDatabases(allDatabases) {}
   
   AuthEntry(AuthEntry const& other) = delete;
 
@@ -113,6 +103,7 @@ class AuthEntry {
         _created(other._created),
         _source(other._source),
         _databases(std::move(other._databases)),
+        _authContexts(std::move(other._authContexts)),
         _allDatabases(other._allDatabases) {}
 
  public:

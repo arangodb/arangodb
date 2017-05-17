@@ -154,6 +154,7 @@ rest::ResponseCode VocbaseContext::authenticate() {
             _authentication->canUseDatabase(username, dbname);
 
         if (level != AuthLevel::RW) {
+          std::cout << "events::NotAuthorized\n";
           events::NotAuthorized(_request);
           result = rest::ResponseCode::UNAUTHORIZED;
         }
@@ -201,12 +202,9 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
         auto authContext = _authentication->authInfo()->getAuthContext(_request->user(), _request->databaseName());
         auto *execContext = new ExecContext(_request->user(), _request->databaseName(), authContext);
 
-        if (execContext->authContext()->databaseAuthLevel() == AuthLevel::NONE) {
-          std::cout << "executionContext databaseAuthLevel is NONE\n";
-          return rest::ResponseCode::UNAUTHORIZED;
-        }
-
         _request->setExecContext(execContext);
+
+        std::cout << "setExecContext()\n";
 
         return resCode;
       }

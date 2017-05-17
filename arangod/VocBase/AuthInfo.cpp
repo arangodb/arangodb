@@ -132,11 +132,13 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
   std::unordered_map<std::string, std::shared_ptr<AuthContext>> authContexts;
   for (auto const& database : databases) {
     authContexts.emplace(database.first, std::make_shared<AuthContext>(database.second));
-
-    std::cout << "authcontext with: " << database.first << " " << (database.second == AuthLevel::RW) << std::endl;
   }
 
   authContexts.emplace("*", std::make_shared<AuthContext>(allDatabases));
+
+  for (auto const& ctx : authContexts) {
+    std::cout << ctx.first << " " << (ctx.second->databaseAuthLevel() == AuthLevel::RO) << std::endl;
+  }
 
 
   // build authentication entry
@@ -158,15 +160,7 @@ AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
 std::shared_ptr<AuthContext> AuthEntry::getAuthContext(std::string const& dbname) {
   // std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
 
-  std::cout << "\n_authContexts for " << _username << ":\n";
-
-  for(auto const& it : _authContexts) {
-    std::cout << it.first << std::endl;
-  }
-  std::cout << std::endl;
-
   for (auto const& database : std::vector<std::string>({dbname, "*"})) {
-    std::cout << "check for " << database << std::endl;
     auto const& it = _authContexts.find(database);
 
     if (it == _authContexts.end()) {
@@ -174,7 +168,7 @@ std::shared_ptr<AuthContext> AuthEntry::getAuthContext(std::string const& dbname
     }
     return it->second;
   }
-  std::cout << "return AuthLevel::NONE\n";
+
   return std::make_shared<AuthContext>(AuthLevel::NONE);
 }
 

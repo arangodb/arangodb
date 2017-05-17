@@ -87,10 +87,10 @@ int RestHandler::prepareEngine() {
 
   ExecContext::CURRENT_EXECCONTEXT = _request->execContext();
 
-  std::cout << "set CURRENT_EXECCONTEXT\n";
-
   if (ExecContext::CURRENT_EXECCONTEXT == nullptr) {
     std::cout << "ExecContext::CURRENT_EXECCONTEXT is nullptr :S \n";
+  } else {
+    std::cout << "CURRENT_EXECCONTEXT != nullptr\n";
   }
 
   if (_canceled) {
