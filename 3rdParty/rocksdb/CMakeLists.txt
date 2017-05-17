@@ -35,8 +35,8 @@ else ()
   set(SNAPPY_LIBRARIES ${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/libsnappystatic.a)
 endif ()
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/v5.1.4)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/v5.4.0)
 
 # result
 
-list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb/v5.1.4")
+list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb/v5.4.0")

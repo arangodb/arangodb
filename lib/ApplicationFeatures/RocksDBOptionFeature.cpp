@@ -74,11 +74,10 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
-      _verifyChecksumsInCompaction(
-          rocksDBDefaults.verify_checksums_in_compaction),
+      //_verifyChecksumsInCompaction( rocksDBDefaults.verify_checksums_in_compaction),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
       _useDirectReads(rocksDBDefaults.use_direct_reads),
-      _useDirectWrites(rocksDBDefaults.use_direct_writes),
+      //_useDirectWrites(rocksDBDefaults.use_direct_writes),
       _useFSync(rocksDBDefaults.use_fsync),
       _skipCorrupted(false),
       _dynamicLevelBytes(true) {
@@ -152,11 +151,11 @@ void RocksDBOptionFeature::collectOptions(
                      "(max-bytes-for-level-multiplier ^ (L-1))",
                      new DoubleParameter(&_maxBytesForLevelMultiplier));
 
-  options->addHiddenOption(
-      "--rocksdb.verify-checksums-in-compaction",
-      "if true, compaction will verify checksum on every read that happens "
-      "as part of compaction",
-      new BooleanParameter(&_verifyChecksumsInCompaction));
+  //options->addHiddenOption(
+  //    "--rocksdb.verify-checksums-in-compaction",
+  //    "if true, compaction will verify checksum on every read that happens "
+  //    "as part of compaction",
+  //    new BooleanParameter(&_verifyChecksumsInCompaction));
 
   options->addHiddenOption(
       "--rocksdb.optimize-filters-for-hits",
@@ -172,9 +171,9 @@ void RocksDBOptionFeature::collectOptions(
                            "use O_DIRECT for reading files",
                            new BooleanParameter(&_useDirectReads));
 
-  options->addHiddenOption("--rocksdb.use-direct-writes",
-                           "use O_DIRECT for writing files",
-                           new BooleanParameter(&_useDirectWrites));
+  //options->addHiddenOption("--rocksdb.use-direct-writes",
+  //                         "use O_DIRECT for writing files",
+  //                         new BooleanParameter(&_useDirectWrites));
 #endif
 
   options->addHiddenOption("--rocksdb.use-fsync",
@@ -326,9 +325,9 @@ void RocksDBOptionFeature::start() {
                                   << " block_cache_size: " << _blockCacheSize
                                   << " block_cache_shard_bits: " << _blockCacheShardBits
                                   << " compaction_read_ahead_size: " << _compactionReadaheadSize
-                                  << " verify_checksums_in_compaction: " << std::boolalpha << _verifyChecksumsInCompaction
+                                  //<< " verify_checksums_in_compaction: " << std::boolalpha << _verifyChecksumsInCompaction
                                   << " optimize_filters_for_hits: " << std::boolalpha << _optimizeFiltersForHits
                                   << " use_direct_reads: " << std::boolalpha << _useDirectReads
-                                  << " use_direct_writes: " << std::boolalpha << _useDirectWrites
+                                  //<< " use_direct_writes: " << std::boolalpha << _useDirectWrites
                                   << " use_fsync: " << std::boolalpha << _useFSync;
 }
