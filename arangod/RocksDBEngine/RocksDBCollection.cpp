@@ -82,6 +82,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
       _revisionId(0),
+      _needToPersistIndexEstimates(false),
       _hasGeoIndex(false),
       _cache(nullptr),
       _cachePresent(false),
@@ -99,6 +100,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
       _numberDocuments(0),
       _revisionId(0),
+      _needToPersistIndexEstimates(false),
       _hasGeoIndex(false),
       _cache(nullptr),
       _cachePresent(false),
@@ -1168,7 +1170,7 @@ void RocksDBCollection::deferDropCollection(
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(
     std::shared_ptr<arangodb::velocypack::Builder>& builder) {
-  
+
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
