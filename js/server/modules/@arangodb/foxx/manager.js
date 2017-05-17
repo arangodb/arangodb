@@ -791,6 +791,9 @@ function createServiceBundle (mount, bundlePath = FoxxService.bundlePath(mount))
 function downloadServiceBundleFromRemote (url) {
   try {
     const res = request.get(url, {encoding: null});
+    if (res.json && res.json.errorNum) {
+      throw new ArangoError(res.json);
+    }
     res.throw();
     const tempFile = fs.getTempFile('bundles', false);
     fs.writeFileSync(tempFile, res.body);

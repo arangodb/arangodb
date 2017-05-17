@@ -671,6 +671,8 @@
 ///   The service does not have a script with this name.
 /// - 3100: @LIT{cannot locate module}
 ///   The module path could not be resolved.
+/// - 3101: @LIT{syntax error in module}
+///   The module could not be parsed because of a syntax error.
 /// - 3103: @LIT{failed to invoke module}
 ///   Failed to invoke the module in its context.
 /// - 4000: @LIT{collection is not smart}
@@ -3582,6 +3584,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_MODULE_NOT_FOUND                                        (3100)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3101: ERROR_MODULE_SYNTAX_ERROR
+///
+/// syntax error in module
+///
+/// The module could not be parsed because of a syntax error.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_SYNTAX_ERROR                                     (3101)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3103: ERROR_MODULE_FAILURE
