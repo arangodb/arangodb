@@ -29,7 +29,6 @@
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
-
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 
@@ -74,7 +73,7 @@ class RocksDBCuckooIndexEstimator {
     uint16_t* _data;
 
    public:
-    Slot(uint16_t* data) : _data(data) {}
+    explicit Slot(uint16_t* data) : _data(data) {}
 
     ~Slot() {
       // Not responsible for anything
@@ -82,7 +81,7 @@ class RocksDBCuckooIndexEstimator {
 
     bool operator==(const Slot& other) { return _data == other._data; }
 
-    uint16_t* fingerprint() { return _data; }
+    uint16_t* fingerprint() const { return _data; }
 
     uint16_t* counter() { return _data + 1; }
 
@@ -91,9 +90,9 @@ class RocksDBCuckooIndexEstimator {
       *counter() = 0;
     }
 
-    bool isEqual(uint16_t fp) { return ((*fingerprint()) == fp); }
+    bool isEqual(uint16_t fp) const { return ((*fingerprint()) == fp); }
 
-    bool isEmpty() { return (*fingerprint()) == 0; }
+    bool isEmpty() const { return (*fingerprint()) == 0; }
   };
 
   enum SerializeFormat : char {
@@ -108,6 +107,8 @@ class RocksDBCuckooIndexEstimator {
   RocksDBCuckooIndexEstimator(uint64_t size)
       : _randState(0x2636283625154737ULL),
         _slotSize(2 * sizeof(uint16_t)),  // Sort out offsets and alignments
+        _base(nullptr),
+        _allocBase(nullptr),
         _nrUsed(0),
         _nrCuckood(0),
         _nrTotal(0),
@@ -125,6 +126,8 @@ class RocksDBCuckooIndexEstimator {
   RocksDBCuckooIndexEstimator(arangodb::StringRef const serialized)
       : _randState(0x2636283625154737ULL),
         _slotSize(2 * sizeof(uint16_t)),  // Sort out offsets and alignments
+        _base(nullptr),
+        _allocBase(nullptr),
         _nrUsed(0),
         _nrCuckood(0),
         _nrTotal(0),
@@ -237,7 +240,7 @@ class RocksDBCuckooIndexEstimator {
     return found;
   }
 
-  bool insert(Key& k) {
+  bool insert(Key const& k) {
     // insert the key k
     //
     // The inserted key will have its fingerprint input entered in the table. If
@@ -271,8 +274,8 @@ class RocksDBCuckooIndexEstimator {
           (*slot.counter())++;
         }
       }
+      _nrTotal++;
     }
-    _nrTotal++;
     return true;
   }
 
@@ -290,9 +293,9 @@ class RocksDBCuckooIndexEstimator {
     uint64_t pos2 = hashToPos(hash2);
 
     bool found = false;
-    _nrTotal--;
     {
       WRITE_LOCKER(guard, _bucketLock);
+      _nrTotal--;
       Slot slot = findSlotNoCuckoo(pos1, pos2, fingerprint, found);
       if (found) {
         if (*slot.counter() <= 1) {
@@ -305,27 +308,30 @@ class RocksDBCuckooIndexEstimator {
         }
         return true;
       }
-    }
-    // If we get here we assume that the element was once inserted, but removed
-    // by cuckoo
-    // Reduce nrCuckood;
-    if (_nrCuckood > 0) {
-      --_nrCuckood;
+      // If we get here we assume that the element was once inserted, but removed
+      // by cuckoo
+      // Reduce nrCuckood;
+      if (_nrCuckood > 0) {
+        --_nrCuckood;
+      }
     }
     return false;
   }
-
+  
   uint64_t capacity() const { return _size * SlotsPerBucket; }
 
+  // not thread safe. called only during tests 
   uint64_t nrUsed() const { return _nrUsed; }
 
+  // not thread safe. called only during tests 
   uint64_t nrCuckood() const { return _nrCuckood; }
+
+ private:  // methods
 
   uint64_t memoryUsage() const {
     return sizeof(RocksDBCuckooIndexEstimator) + _allocSize;
   }
 
- private:  // methods
   Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp,
                         bool& found) const {
     found = false;

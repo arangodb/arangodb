@@ -42,7 +42,16 @@ class RocksDBKey {
   RocksDBKey() = delete;
   RocksDBKey(rocksdb::Slice slice)
       : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
-        _buffer(slice.data(), slice.size()){};
+        _buffer(slice.data(), slice.size()) {}
+
+  RocksDBKey(RocksDBKey const& other) 
+      : _type(other._type), _buffer(other._buffer) {}
+  
+  RocksDBKey(RocksDBKey&& other) 
+      : _type(other._type), _buffer(std::move(other._buffer)) {}
+  
+  RocksDBKey& operator=(RocksDBKey const& other) = delete; 
+  RocksDBKey& operator=(RocksDBKey&& other) = delete; 
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified database key

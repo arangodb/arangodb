@@ -107,12 +107,6 @@ class RocksDBTransactionState final : public TransactionState {
       uint64_t keySize);
 
   RocksDBMethods* rocksdbMethods();
-  /*rocksdb::Transaction* rocksTransaction() {
-    TRI_ASSERT(_rocksTransaction != nullptr);
-    return _rocksTransaction.get();
-  }
-  rocksdb::ReadOptions const& readOptions() const { return _rocksReadOptions; }
-  rocksdb::WriteOptions const& writeOptions() const { return _rocksWriteOptions; }*/
 
   uint64_t sequenceNumber() const;
   

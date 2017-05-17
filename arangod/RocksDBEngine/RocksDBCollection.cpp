@@ -641,10 +641,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // delete documents
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
+  auto const end = documentBounds.end();
+  
   std::unique_ptr<rocksdb::Iterator> iter = mthd->NewIterator();
   iter->Seek(documentBounds.start());
 
-  while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
+  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
     VPackSlice key =
         VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
@@ -810,7 +812,18 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
   // TODO: why do we have read(), readDocument() and lookupKey()?
   auto tkn = static_cast<RocksDBToken const*>(&token);
   TRI_voc_rid_t revisionId = tkn->revisionId();
-  auto res = lookupRevisionVPack(revisionId, trx, result);
+  auto res = lookupRevisionVPack(revisionId, trx, result, true);
+  return res.ok();
+}
+
+// read using a token, bypassing the cache
+bool RocksDBCollection::readDocumentNoCache(transaction::Methods* trx,
+                                            DocumentIdentifierToken const& token,
+                                            ManagedDocumentResult& result) {
+  // TODO: why do we have read(), readDocument() and lookupKey()?
+  auto tkn = static_cast<RocksDBToken const*>(&token);
+  TRI_voc_rid_t revisionId = tkn->revisionId();
+  auto res = lookupRevisionVPack(revisionId, trx, result, false);
   return res.ok();
 }
 
@@ -881,7 +894,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   res = insertDocument(trx, revisionId, newSlice, options.waitForSync);
   if (res.ok()) {
-    Result lookupResult = lookupRevisionVPack(revisionId, trx, mdr);
+    Result lookupResult = lookupRevisionVPack(revisionId, trx, mdr, false);
 
     if (lookupResult.fail()) {
       return lookupResult.errorNumber();
@@ -913,11 +926,10 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
                               TRI_voc_rid_t const& revisionId,
                               arangodb::velocypack::Slice const key) {
   resultMarkerTick = 0;
-  RocksDBOperationResult res;
 
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
-  res = lookupDocument(trx, key, previous);
+  RocksDBOperationResult res = lookupDocument(trx, key, previous);
 
   if (res.fail()) {
     return res.errorNumber();
@@ -970,6 +982,8 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
       return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
     }
   }
+    
+  VPackSlice const newDoc(builder->slice());
 
   RocksDBSavePoint guard(rocksutils::toRocksMethods(trx),
                          trx->isSingleOperationTransaction(),
@@ -978,20 +992,15 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  VPackSlice const newDoc(builder->slice());
   res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
                        options.waitForSync);
 
   if (res.ok()) {
-    RocksDBOperationResult result = lookupRevisionVPack(revisionId, trx, mdr);
-    if (result.fail()) {
-      return result.errorNumber();
-    }
-
+    mdr.setManaged(newDoc.begin(), revisionId);
     TRI_ASSERT(!mdr.empty());
 
     // report document and key size
-    result = state->addOperation(_logicalCollection->cid(), revisionId,
+    RocksDBOperationResult result = state->addOperation(_logicalCollection->cid(), revisionId,
                                  TRI_VOC_DOCUMENT_OPERATION_UPDATE,
                                  newDoc.byteSize(), res.keySize());
 
@@ -1015,7 +1024,6 @@ int RocksDBCollection::replace(
     arangodb::velocypack::Slice const toSlice) {
   resultMarkerTick = 0;
 
-  Result res;
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
@@ -1026,7 +1034,7 @@ int RocksDBCollection::replace(
   }
 
   // get the previous revision
-  res.reset(lookupDocument(trx, key, previous).errorNumber());
+  Result res = lookupDocument(trx, key, previous).errorNumber();
 
   if (res.fail()) {
     return res.errorNumber();
@@ -1075,23 +1083,20 @@ int RocksDBCollection::replace(
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+                     
+  VPackSlice const newDoc(builder->slice());
 
   RocksDBOperationResult opResult =
       updateDocument(trx, oldRevisionId, oldDoc, revisionId,
-                     VPackSlice(builder->slice()), options.waitForSync);
+                     newDoc, options.waitForSync);
   if (opResult.ok()) {
-    RocksDBOperationResult result = lookupRevisionVPack(revisionId, trx, mdr);
-
-    if (!result.ok()) {
-      return result.errorNumber();
-    }
-
+    mdr.setManaged(newDoc.begin(), revisionId);
     TRI_ASSERT(!mdr.empty());
 
     // report document and key size
-    result = state->addOperation(_logicalCollection->cid(), revisionId,
+    RocksDBOperationResult result = state->addOperation(_logicalCollection->cid(), revisionId,
                                  TRI_VOC_DOCUMENT_OPERATION_REPLACE,
-                                 VPackSlice(builder->slice()).byteSize(),
+                                 newDoc.byteSize(),
                                  opResult.keySize());
 
     // transaction size limit reached -- fail
@@ -1296,12 +1301,11 @@ arangodb::Result RocksDBCollection::fillIndexes(
   // write batch will be reset each 5000 documents
   rocksdb::WriteBatchWithIndex batch(db->DefaultColumnFamily()->GetComparator(),
                                      32 * 1024 * 1024);
-  rocksdb::ReadOptions readOptions;
   RocksDBBatchedMethods batched(state, &batch);
 
   int res = TRI_ERROR_NO_ERROR;
   auto cb = [&](DocumentIdentifierToken token) {
-    if (res == TRI_ERROR_NO_ERROR && this->readDocument(trx, token, mmdr)) {
+    if (res == TRI_ERROR_NO_ERROR && this->readDocumentNoCache(trx, token, mmdr)) {
       res = ridx->insertRaw(&batched, mmdr.lastRevisionId(),
                             VPackSlice(mmdr.vpack()));
       if (res == TRI_ERROR_NO_ERROR) {
@@ -1310,6 +1314,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
     }
   };
 
+  rocksdb::WriteOptions writeOpts;
   Result r;
   bool hasMore = true;
   while (hasMore) {
@@ -1322,7 +1327,6 @@ arangodb::Result RocksDBCollection::fillIndexes(
       r = Result(res);
       break;
     }
-    rocksdb::WriteOptions writeOpts;
     rocksdb::Status s = db->Write(writeOpts, batch.GetWriteBatch());
     if (!s.ok()) {
       r = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
@@ -1518,7 +1522,7 @@ RocksDBOperationResult RocksDBCollection::lookupDocument(
   TRI_voc_rid_t revisionId = token.revisionId();
 
   if (revisionId > 0) {
-    res = lookupRevisionVPack(revisionId, trx, mdr);
+    res = lookupRevisionVPack(revisionId, trx, mdr, true);
   } else {
     res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
@@ -1559,14 +1563,15 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
 
 arangodb::Result RocksDBCollection::lookupRevisionVPack(
     TRI_voc_rid_t revisionId, transaction::Methods* trx,
-    arangodb::ManagedDocumentResult& mdr) const {
+    arangodb::ManagedDocumentResult& mdr,
+    bool withCache) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
   std::string value;
 
-  if (useCache()) {
+  if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
     auto f = _cache->find(key.string().data(),
@@ -1583,7 +1588,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   Result res = mthd->Get(key, &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
-    if (useCache()) {
+    if (withCache && useCache()) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
@@ -1726,11 +1731,14 @@ uint64_t RocksDBCollection::recalculateCounts() {
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+      
+  rocksdb::ReadOptions readOptions;
+  readOptions.fill_cache = false;
 
   // count documents
   auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   _numberDocuments = rocksutils::countKeyRange(
-      globalRocksDB(), rocksdb::ReadOptions(), documentBounds);
+      globalRocksDB(), readOptions, documentBounds);
 
   // update counter manager value
   res = globalRocksEngine()->counterManager()->setAbsoluteCounter(

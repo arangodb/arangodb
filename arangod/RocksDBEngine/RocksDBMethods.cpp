@@ -112,47 +112,6 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
   return std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(opts));
 }
 
-// =================== RocksDBGlobalMethods ====================
-/*
-RocksDBGlobalMethods::RocksDBGlobalMethods(RocksDBTransactionState* state)
-: RocksDBMethods(state) {
-  _db = rocksutils::globalRocksDB();
-}
-
-
-bool RocksDBGlobalMethods::Exists(RocksDBKey const& key) {
-  std::string val;  // do not care about value
-  bool mayExists =
-  _db->KeyMayExist(_state->_rocksReadOptions, key.string(), &val, nullptr);
-  if (mayExists) {
-    rocksdb::Status s = _db->Get(_state->_rocksReadOptions, key.string(), &val);
-    return !s.IsNotFound();  }
-  return false;
-}
-
-arangodb::Result RocksDBGlobalMethods::Get(RocksDBKey const& key,
-                                             std::string* val) {
-  rocksdb::Status s = _db->Get(_state->_rocksReadOptions, key.string(), val);
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
-}
-
-arangodb::Result RocksDBGlobalMethods::Put(RocksDBKey const& key,
-                                             rocksdb::Slice const& val,
-                                             rocksutils::StatusHint h) {
-  rocksdb::Status s = _db->Put(_state->_rocksWriteOptions, key.string(), val);
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, h);
-}
-
-arangodb::Result RocksDBGlobalMethods::Delete(RocksDBKey const& key) {
-  rocksdb::Status s = _db->Delete(_state->_rocksWriteOptions, key.string());
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);}
-
-std::unique_ptr<rocksdb::Iterator> RocksDBGlobalMethods::NewIterator(
-                                                                     rocksdb::ReadOptions
-const& opts) {
-  return std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(opts));
-}*/
-
 // =================== RocksDBTrxMethods ====================
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
