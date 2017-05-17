@@ -61,7 +61,7 @@ done
 # Currently the agency does not wait for all servers to shutdown
 # This causes a race condisiton where all servers wait to tell the agency
 # they are shutting down
-sleep 10
+sleep 2
 
 echo Shutting down agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
