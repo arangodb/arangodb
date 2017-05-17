@@ -96,7 +96,7 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-controller-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
-        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
         if (require('@arangodb').isServer) {
           expect(err).to.have.property('cause').that.is.an.instanceof(SyntaxError);
         } else {
@@ -173,7 +173,7 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-exports-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
-        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
         if (require('@arangodb').isServer) {
           expect(err).to.have.property('cause')
             .that.is.an.instanceof(SyntaxError);
@@ -204,7 +204,7 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-setup-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
-        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
         if (require('@arangodb').isServer) {
           expect(err).to.have.property('cause')
             .that.is.an.instanceof(SyntaxError);
