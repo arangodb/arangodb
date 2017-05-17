@@ -22,7 +22,7 @@ describe('Foxx service path handling', () => {
     try {
       fm.uninstall(mount, {force: true});
     } catch (e) {}
-    fm.install(basePath, mount);
+    fm.install(fs.join(basePath, 'paths'), mount);
   });
 
   afterEach(function () {
