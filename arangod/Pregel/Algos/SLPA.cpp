@@ -122,10 +122,14 @@ VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(
 struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   std::string resField;
   std::atomic<uint64_t> vertexIdRange;
-  float threshold;  // TODO
+  double threshold;
+  unsigned maxCommunities;
 
-  explicit SLPAGraphFormat(std::string const& result, float thr)
-      : resField(result), vertexIdRange(0), threshold(thr) {}
+  explicit SLPAGraphFormat(std::string const& result, double thr, unsigned mc)
+      : resField(result),
+        vertexIdRange(0),
+        threshold(thr),
+        maxCommunities(mc) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); };
   size_t estimatedEdgeSize() const override { return 0; };
@@ -159,19 +163,24 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
     } else {
       std::vector<uint64_t> communities;
       for (std::pair<uint64_t, uint64_t> pair : ptr->memory) {
-        if ((float)pair.second / ptr->numCommunities >= threshold) {
+        if ((double)pair.second / ptr->numCommunities >= threshold) {
           communities.push_back(pair.first);
         }
       }
+      std::sort(communities.begin(), communities.end(),
+                [ptr](uint64_t a, uint64_t b) {
+                  return ptr->memory.at(a) > ptr->memory.at(b);
+                });
 
       if (communities.empty()) {
         b.add(resField, VPackSlice::nullSlice());
-      } else if (communities.size() == 1) {
-        b.add(resField, VPackValue(ptr->memory.begin()->second));
+      } else if (communities.size() == 1 || maxCommunities == 1) {
+        b.add(resField, VPackValue(communities[0]));
       } else if (communities.size() > 1) {
         b.add(resField, VPackValue(VPackValueType::Array));
-        for (uint64_t c : communities) {
-          b.add(VPackValue(c));
+        for (unsigned c = 0; c < communities.size() && c < maxCommunities;
+             c++) {
+          b.add(VPackValue(communities[c]));
         }
         b.close();
       }
@@ -186,5 +195,5 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
 };
 
 GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
-  return new SLPAGraphFormat(_resultField, 0.15);
+  return new SLPAGraphFormat(_resultField, _threshold, _maxCommunities);
 }

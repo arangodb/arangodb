@@ -215,6 +215,7 @@ void RocksDBCollection::open(bool ignoreErrors) {
 
 void RocksDBCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
+  WRITE_LOCKER(guard, _indexesLock);
   TRI_ASSERT(indexesSlice.isArray());
   if (indexesSlice.length() == 0) {
     createInitialIndexes();
@@ -339,7 +340,6 @@ void RocksDBCollection::prepareIndexes(
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  READ_LOCKER(guard, _indexesLock);
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
        (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
@@ -354,23 +354,22 @@ void RocksDBCollection::prepareIndexes(
 #endif
 }
 
-/// @brief Find index by definition
-std::shared_ptr<Index> RocksDBCollection::lookupIndex(
-    velocypack::Slice const& info) const {
+static std::shared_ptr<Index> findIndex(velocypack::Slice const& info,
+                                        std::vector<std::shared_ptr<Index>> const& indexes) {
   TRI_ASSERT(info.isObject());
-
+  
   // extract type
   VPackSlice value = info.get("type");
-
+  
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
+  
   std::string tmp = value.copyString();
   arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
-
-  for (auto const& idx : _indexes) {
+  
+  for (auto const& idx : indexes) {
     if (idx->type() == type) {
       // Only check relevant indexes
       if (idx->matchesDefinition(info)) {
@@ -382,11 +381,19 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
   return nullptr;
 }
 
+/// @brief Find index by definition
+std::shared_ptr<Index> RocksDBCollection::lookupIndex(
+    velocypack::Slice const& info) const {
+  READ_LOCKER(guard, _indexesLock);
+  return findIndex(info, _indexes);
+}
+
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
-  auto idx = lookupIndex(info);
-  if (idx != nullptr) {
+  WRITE_LOCKER(guard, _indexesLock);
+  std::shared_ptr<Index> idx = findIndex(info, _indexes);
+  if (idx) {
     created = false;
     // We already have this index.
     return idx;
@@ -1181,11 +1188,9 @@ void RocksDBCollection::figuresSpecific(
 
 /// @brief creates the initial indexes for the collection
 void RocksDBCollection::createInitialIndexes() {
-  {  // addIndex holds an internal write lock
-    READ_LOCKER(guard, _indexesLock);
-    if (!_indexes.empty()) {
-      return;
-    }
+  // LOCKED from the outside
+  if (!_indexes.empty()) {
+    return;
   }
 
   std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
@@ -1200,7 +1205,7 @@ void RocksDBCollection::createInitialIndexes() {
 }
 
 void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
-  WRITE_LOCKER(guard, _indexesLock);
+  // LOCKED from the outside
   // primary index must be added at position 0
   TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
              _indexes.empty());
@@ -1223,8 +1228,7 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
 
 void RocksDBCollection::addIndexCoordinator(
     std::shared_ptr<arangodb::Index> idx) {
-  WRITE_LOCKER(guard, _indexesLock);
-
+  // LOCKED from the outside
   auto const id = idx->id();
   for (auto const& it : _indexes) {
     if (it->id() == id) {
