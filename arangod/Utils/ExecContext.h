@@ -33,6 +33,7 @@ class AuthContext {
   public:
     AuthContext(AuthLevel authLevel) : _databaseAccess(authLevel) {}
     AuthLevel databaseAuthLevel() { return _databaseAccess; }
+    AuthLevel collectionAuthLevel(std::string const& collectionName);
 
   protected:
     AuthLevel _databaseAccess;

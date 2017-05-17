@@ -136,9 +136,11 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
 
   authContexts.emplace("*", std::make_shared<AuthContext>(allDatabases));
 
+  std::cout << std::endl << userSlice.copyString() << std::endl;
   for (auto const& ctx : authContexts) {
     std::cout << ctx.first << " " << (ctx.second->databaseAuthLevel() == AuthLevel::RO) << std::endl;
   }
+  std::cout << std::endl;
 
 
   // build authentication entry

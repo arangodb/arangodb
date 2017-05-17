@@ -103,17 +103,19 @@ std::string SingleCollectionTransaction::name() {
 
 /// @brief explicitly lock the underlying collection for read access
 Result SingleCollectionTransaction::lockRead() {
-  std::cout << "SingleCollectionTransaction::lockRead() database: " << documentCollection()->dbName() << "\n";
+  std::cout << "SingleCollectionTransaction::lockRead() database: " << documentCollection()->dbName() << ", collection: " << name() << "\n";
 
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    if (ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel() != AuthLevel::RW) {
+    if (ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel() == AuthLevel::NONE) {
       std::cout << "auth level not ok\n";
+      return Result(TRI_ERROR_HTTP_UNAUTHORIZED);
     }
 
+    if (ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(name()) == AuthLevel::NONE) {
+      std::cout << "collection AuthLevel::NONE\n";
+    }
 
-
-
-    // std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
+    std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
   } else
     std::cout << "is nullptr\n";
 

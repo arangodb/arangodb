@@ -86,6 +86,17 @@ rest::ResponseCode VocbaseContext::authenticate() {
   bool forceOpen = false;
   rest::ResponseCode result = authenticateRequest();
 
+  if (result == rest::ResponseCode::OK) {
+    auto authContext = _authentication->authInfo()->getAuthContext(
+        _request->user(), _request->databaseName());
+    auto* execContext = new ExecContext(_request->user(),
+                                        _request->databaseName(), authContext);
+
+    _request->setExecContext(execContext);
+
+    std::cout << "setExecContext()\n";
+  }
+
   if (result == rest::ResponseCode::UNAUTHORIZED ||
       result == rest::ResponseCode::FORBIDDEN) {
 
@@ -154,7 +165,7 @@ rest::ResponseCode VocbaseContext::authenticate() {
             _authentication->canUseDatabase(username, dbname);
 
         if (level != AuthLevel::RW) {
-          std::cout << "events::NotAuthorized\n";
+          std::cout << "events::NotAuthorized AuthLevel::NONE\n";
           events::NotAuthorized(_request);
           result = rest::ResponseCode::UNAUTHORIZED;
         }
@@ -197,17 +208,6 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
         resCode = jwtAuthentication(std::string(auth));
       }
 
-      if (resCode == rest::ResponseCode::OK) {
-
-        auto authContext = _authentication->authInfo()->getAuthContext(_request->user(), _request->databaseName());
-        auto *execContext = new ExecContext(_request->user(), _request->databaseName(), authContext);
-
-        _request->setExecContext(execContext);
-
-        std::cout << "setExecContext()\n";
-
-        return resCode;
-      }
       // fallthrough intentional
     } catch (arangodb::basics::Exception const& ex) {
       // translate error
