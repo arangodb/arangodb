@@ -86,7 +86,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _hasGeoIndex(false),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(true) {
+      _useCache(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_useCache) {
@@ -104,7 +104,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _hasGeoIndex(false),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(true) {
+      _useCache(false) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_useCache) {
