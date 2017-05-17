@@ -29,6 +29,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -36,9 +37,13 @@ namespace arangodb {
 class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
-  ReplicationTransaction(TRI_vocbase_t* vocbase)
+  explicit ReplicationTransaction(TRI_vocbase_t* vocbase)
       : transaction::Methods(transaction::StandaloneContext::Create(vocbase)),
-        _guard(vocbase) {}
+        _guard(vocbase) {
+
+    TRI_ASSERT(_state != nullptr);
+    _state->setType(AccessMode::Type::EXCLUSIVE);
+  }
 
  public:
 
@@ -51,7 +56,7 @@ class ReplicationTransaction : public transaction::Methods {
     TransactionCollection* trxCollection = _state->collection(cid, AccessMode::Type::WRITE);
 
     if (trxCollection == nullptr) {
-      int res = _state->addCollection(cid, AccessMode::Type::WRITE, 0, true);
+      int res = _state->addCollection(cid, AccessMode::Type::EXCLUSIVE, 0, true);
       result.reset(res);
 
       if (result.ok()) {
@@ -62,7 +67,7 @@ class ReplicationTransaction : public transaction::Methods {
         return nullptr;
       }
 
-      trxCollection = _state->collection(cid, AccessMode::Type::WRITE);
+      trxCollection = _state->collection(cid, AccessMode::Type::EXCLUSIVE);
     }
 
     return trxCollection;

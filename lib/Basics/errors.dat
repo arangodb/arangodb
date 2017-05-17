@@ -399,6 +399,7 @@ ERROR_SERVICE_UNKNOWN_SCRIPT,3016,"unknown script","The service does not have a 
 ################################################################################
 
 ERROR_MODULE_NOT_FOUND,3100,"cannot locate module","The module path could not be resolved."
+ERROR_MODULE_SYNTAX_ERROR,3101,"syntax error in module","The module could not be parsed because of a syntax error."
 ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module in its context."
 
 ################################################################################

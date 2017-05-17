@@ -31,6 +31,8 @@ CMake flags
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
  * *-DUSE_CATCH_TESTS=On (default is On so this is set unless you explicitly disable it)
 
+If you have made changes to errors.dat, remember to use the -DUSE_MAINTAINER_MODE flag.
+
 CFLAGS
 ------
 Add backtraces to cluster requests so you can easily track their origin:
