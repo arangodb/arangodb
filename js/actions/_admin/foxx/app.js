@@ -32,6 +32,7 @@ const actions = require('@arangodb/actions');
 const FoxxManager = require('@arangodb/foxx/manager');
 const request = require('@arangodb/request');
 const db = require('@arangodb').db;
+const ArangoError = require('@arangodb').ArangoError;
 const joinPath = require('path').join;
 const fs = require('fs');
 const fmu = require('@arangodb/foxx/manager-utils');
@@ -54,6 +55,9 @@ function proxyLocal (method, url, qs, body, headers = {}) {
     headers['content-length'] = body.length;
   }
   const res = request({method, url, qs, headers, body});
+  if (res.json && res.json.errorNum) {
+    throw new ArangoError(res.json);
+  }
   res.throw();
   return res.body ? JSON.parse(res.body) : null;
 }

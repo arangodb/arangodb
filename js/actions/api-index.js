@@ -46,7 +46,8 @@ function get_api_indexes (req, res) {
     return;
   }
 
-  var list = [], ids = {}, indexes = collection.getIndexes(), i;
+  var withStats = (req.parameters.withStats === "true" || false);
+  var list = [], ids = {}, indexes = collection.getIndexes(withStats), i;
 
   for (i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];

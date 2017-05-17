@@ -161,7 +161,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   size_t memory() const override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
-  void toVelocyPackFigures(VPackBuilder&) const override;
 
   RocksDBToken lookupKey(transaction::Methods* trx,
                          arangodb::StringRef key) const;

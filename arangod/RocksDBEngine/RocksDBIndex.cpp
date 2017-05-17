@@ -92,10 +92,16 @@ RocksDBIndex::~RocksDBIndex() {
 
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
+  Index::toVelocyPackFigures(builder);
+  builder.add("cacheInUse", VPackValue(useCache()));
   if(useCache()){
     builder.add("cacheSize", VPackValue(_cache->size()));
-    builder.add("liftimeHitRate", VPackValue(_cache->hitRates().first));
-    builder.add("windowHitRate", VPackValue(_cache->hitRates().second));
+    double rate =_cache->hitRates().first;
+    rate = std::isnan(rate) ? 0.0 : rate;
+    builder.add("cacheLiftimeHitRate", VPackValue(rate));
+    rate =_cache->hitRates().second;
+    rate = std::isnan(rate) ? 0.0 : rate;
+    builder.add("cacheWindowHitRate", VPackValue(rate));
   } else {
     builder.add("cacheSize", VPackValue(0));
   }

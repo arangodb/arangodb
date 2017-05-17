@@ -286,6 +286,7 @@
     "ERROR_SERVICE_SOURCE_ERROR"   : { "code" : 3015, "message" : "error resolving source" },
     "ERROR_SERVICE_UNKNOWN_SCRIPT" : { "code" : 3016, "message" : "unknown script" },
     "ERROR_MODULE_NOT_FOUND"       : { "code" : 3100, "message" : "cannot locate module" },
+    "ERROR_MODULE_SYNTAX_ERROR"    : { "code" : 3101, "message" : "syntax error in module" },
     "ERROR_MODULE_FAILURE"         : { "code" : 3103, "message" : "failed to invoke module" },
     "ERROR_NO_SMART_COLLECTION"    : { "code" : 4000, "message" : "collection is not smart" },
     "ERROR_NO_SMART_GRAPH_ATTRIBUTE" : { "code" : 4001, "message" : "smart graph attribute not given" },
