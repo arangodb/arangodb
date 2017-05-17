@@ -8,8 +8,8 @@ param(
 )
 
 $ports=@()
-Remove-Item -Recurse -Force cluster
-New-Item -Path cluster -Force -ItemType Directory
+Remove-Item -Recurse -Force cluster | Out-Null
+New-Item -Path cluster -Force -ItemType Directory | Out-Null
 
 $processes = @()
 for ($i=0;$i -lt $AgentCount;$i++) {
@@ -21,6 +21,7 @@ for ($i=0;$i -lt $AgentCount;$i++) {
         -RedirectStandardOutput "cluster\$port.out" `
         -FilePath .\build\bin\arangod.exe `
         -ArgumentList @(
+            "-c", "none",
             "--agency.activate=true",
             "--agency.size=$AgentCount",
             "--agency.my-address=tcp://[::1]:$port",
@@ -58,24 +59,26 @@ foreach ($it in $map.GetEnumerator()) {
         $port = $struct.startport + $i
         $ports+=$port
         Write-Host "Starting $role on $port"
+        $arguments = @(
+            "-c", "none",
+            "--cluster.agency-endpoint=tcp://[::1]:$AgentStartPort",
+            "--cluster.my-role=$role",
+            "--cluster.my-address=tcp://[::1]:$port",
+            "--database.directory=cluster\data$port",
+            "--javascript.app-path=.\js\apps",
+            "--javascript.startup-directory=.\js",
+            "--javascript.module-directory=.\enterprise\js",
+            "--javascript.v8-contexts=1",
+            "--server.endpoint=tcp://[::1]:$port",
+            "--server.authentication=false",
+            "--log.file=cluster\$port.log",
+            "--log.force-direct=true"
+        )
         $processes += Start-Process `
             -RedirectStandardError "cluster\$port.err" `
             -RedirectStandardOutput "cluster\$port.out" `
             -FilePath .\build\bin\arangod.exe `
-            -ArgumentList @(
-                "--agency.endpoint=tcp://[::1]:$AgentStartPort",
-                "--cluster.my-role=$role",
-                "--cluster.my-address=tcp://[::1]:$port"
-                "--database.directory=cluster\data$port",
-                "--javascript.app-path=.\js\apps",
-                "--javascript.startup-directory=.\js",
-                "--javascript.module-directory=.\enterprise\js",
-                "--javascript.v8-contexts=1",
-                "--server.endpoint=tcp://[::1]:$port",
-                "--server.authentication=false",
-                "--log.file=cluster\$port.log",
-                "--log.force-direct=true"
-            )`
+            -ArgumentList $arguments `
             -NoNewWindow `
             -PassThru
     }
@@ -93,10 +96,14 @@ while ($ports -gt 0) {
     }
     $ports=$newPorts
     if ($ports -gt 0) {
+        Write-Host -NoNewline "."
         Start-Sleep -Seconds 1
     }
 }
 
+Write-Host ""
 Write-Host "ArangoDB Cluster is ready!"
 Write-Host "Connect using an arangosh:"
+Write-Host ""
 Write-Host "    .\build\bin\arangosh --server.endpoint=tcp://[::1]:$CoordinatorStartPort"
+Write-Host ""
