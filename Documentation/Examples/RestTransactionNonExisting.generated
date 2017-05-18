@@ -9,18 +9,18 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"exception"</span> : <span class="hljs-string">"ArangoError 1203: collection not found"</span>, 
+  <span class="hljs-string">"exception"</span> : <span class="hljs-string">"ArangoError 1203: collection not found: products"</span>, 
   <span class="hljs-string">"stacktrace"</span> : [ 
-    <span class="hljs-string">"ArangoError: collection not found"</span>, 
-    <span class="hljs-string">"    at Error (native)"</span>, 
+    <span class="hljs-string">"ArangoError: collection not found: products"</span>, 
     <span class="hljs-string">"    at post_api_transaction (/local/home/willi/src/devel/js/actions/api-transaction.js:48:16)"</span>, 
-    <span class="hljs-string">"    at Function.actions.defineHttp.callback (/local/home/willi/src/devel/js/actions/api-transaction.js:64:11)"</span> 
+    <span class="hljs-string">"    at Function.callback (/local/home/willi/src/devel/js/actions/api-transaction.js:64:11)"</span> 
   ], 
-  <span class="hljs-string">"message"</span> : <span class="hljs-string">"collection not found"</span>, 
+  <span class="hljs-string">"message"</span> : <span class="hljs-string">"collection not found: products"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1203</span>, 
-  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"collection not found"</span> 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"collection not found: products"</span> 
 }

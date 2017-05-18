@@ -1,12 +1,13 @@
-shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/9730
+shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/9853
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_UWx9DGW---"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">9730</span>
+etag: <span class="hljs-string">"_V_qD4Ky---"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">9853</span>
+x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9730"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9730"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UWx9DGW---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9853"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9853"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qD4Ky---"</span> 
 }
