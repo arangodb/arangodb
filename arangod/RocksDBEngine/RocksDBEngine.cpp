@@ -174,7 +174,7 @@ void RocksDBEngine::start() {
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
-  // transactionOptions.num_stripes = TRI_numberProcessors();
+  transactionOptions.num_stripes = TRI_numberProcessors();
 
   // options imported set by RocksDBOptionFeature
   auto const* opts =
@@ -252,7 +252,7 @@ void RocksDBEngine::start() {
   double counter_sync_seconds = 2.5;
 
   _options.prefix_extractor.reset(new RocksDBPrefixExtractor());
-  _options.memtable_prefix_bloom_size_ratio = 0.1;  // TODO: pick better value?
+  _options.memtable_prefix_bloom_size_ratio = 0.2;  // TODO: pick better value?
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
