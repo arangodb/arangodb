@@ -132,11 +132,11 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
   std::unordered_map<std::string, std::shared_ptr<AuthContext>> authContexts;
   for (auto const& database : databases) {
     authContexts.emplace(database.first, std::make_shared<AuthContext>(database.second,
-      std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::RO}}) ));
+      std::unordered_map<std::string, AuthLevel>({{"*", database.second}}) ));
   }
 
   authContexts.emplace("*", std::make_shared<AuthContext>(allDatabases,
-    std::unordered_map<std::string, AuthLevel>({{"*",AuthLevel::RO}})) );
+    std::unordered_map<std::string, AuthLevel>({{"*",allDatabases}})) );
 
   std::cout << std::endl << userSlice.copyString() << std::endl;
   for (auto const& ctx : authContexts) {

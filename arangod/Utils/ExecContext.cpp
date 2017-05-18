@@ -27,10 +27,13 @@ using namespace arangodb;
 thread_local ExecContext* ExecContext::CURRENT_EXECCONTEXT = nullptr;
 
 AuthLevel AuthContext::collectionAuthLevel(std::string const& collectionName) {
-  auto const& it = _collectionAccess.find(collectionName);
+  for(const auto& collection : std::vector<std::string>({collectionName, "*"})) {
+    auto const& it = _collectionAccess.find(collection);
 
-  if (it == _collectionAccess.end()) {
-    return AuthLevel::NONE;
+    if (it == _collectionAccess.end()) {
+      continue;
+    }
+    return it->second;
   }
-  return it->second;
+  return AuthLevel::NONE;
 }
