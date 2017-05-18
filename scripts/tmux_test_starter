@@ -9,17 +9,19 @@ main(){
 
     local suite=${1:-all}
     local tasks="suite_$suite"
-    type -t function $tasks || die "suite $suite not defined"
-    # ceck task
+    type -t function $tasks &>/dev/null|| die "suite $suite not defined"
+    echo "using function name: $tasks"
     local session_name="$($tasks 'name')"
+    echo "using session name: $session_name"
     local panes=$($tasks 'num')
+    echo "using $panes panes"
     kill_old_session "$session_name"
     tmux new-session -d -s "$session_name" || die "unable to spawn session"
     local rows=$(( (panes+1) / 2 ))
     local cols=$((((panes>1)) * 2))
     spawn_panes "$session_name" $rows $cols
     tmux select-pane -t $session_name.0
-    execute_tasks "$(pwd)" $tasks
+    execute_tasks "$(pwd)" "$tasks"
     tmux -2 attach-session -t $session_name
 }
 
@@ -32,7 +34,7 @@ suite_all(){
     local args_default=( )
 
     local tests=""
-    case $1 in
+    case $count in
         num)
             echo "6"
             return
@@ -74,7 +76,7 @@ suite_all_rocksdb(){
     shift 1
     local args="$@"
 
-    case $1 in
+    case $count in
         name)
             echo "test_all_rocksdb"
             return
@@ -129,6 +131,7 @@ spawn_panes(){
 execute_tasks(){
     cd $1 || die
     local tasks="$2"
+    shift 2
     local args="$@"
     local count=0
     while (( count < $($tasks 'num') )); do

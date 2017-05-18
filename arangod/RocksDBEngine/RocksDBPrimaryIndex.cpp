@@ -299,7 +299,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false,
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   !ServerState::instance()->isCoordinator() /*useCache*/) {
+                   false) {
+                   // !ServerState::instance()->isCoordinator() /*useCache*/) {
   TRI_ASSERT(_objectId != 0);
 }
 
@@ -339,12 +340,6 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.add("unique", VPackValue(true));
   builder.add("sparse", VPackValue(false));
   builder.close();
-}
-
-/// @brief return a VelocyPack representation of the index figures
-void RocksDBPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  Index::toVelocyPackFigures(builder);
-  // TODO: implement
 }
 
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,

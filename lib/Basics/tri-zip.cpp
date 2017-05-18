@@ -384,7 +384,7 @@ uint32_t TRI_Adler32(char const* filename) {
   TRI_FSTAT(fd, &statbuf);
 
   TRI_write_t nRead;
-  TRI_read_t chunkRemain = statbuf.st_size;
+  TRI_read_t chunkRemain = static_cast<TRI_read_t>(statbuf.st_size);
   char* buf =
       static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 131072, false));
 

@@ -62,6 +62,8 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
       _table(table),
       _bucketClearer(bucketClearer(&_metadata)),
       _slotsPerBucket(slotsPerBucket),
+      _insertsTotal(0),
+      _insertEvictions(0),
       _openOperations(0),
       _migrateRequestTime(std::chrono::steady_clock::now()),
       _resizeRequestTime(std::chrono::steady_clock::now()) {

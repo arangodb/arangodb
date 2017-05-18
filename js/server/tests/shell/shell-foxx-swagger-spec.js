@@ -263,17 +263,19 @@ function createService () {
   return new Service({
     path: '/tmp/$dummy$',
     mount: '/__dummy__',
-    manifest: {
-      name: 'DUMMY APP',
-      version: '1.0.0',
-      license: 'The Unlicense',
-      description: 'Dummy app for Foxx.',
-      main: '$dummy$',
-      engines: {
-        arangodb: '^3.0.0'
-      }
-    },
-    options: {}
+    options: {
+      configuration: {},
+      dependencies: {}
+    }
+  }, {
+    name: 'DUMMY APP',
+    version: '1.0.0',
+    license: 'The Unlicense',
+    description: 'Dummy app for Foxx.',
+    main: '$dummy$',
+    engines: {
+      arangodb: '^3.0.0'
+    }
   });
 }
 

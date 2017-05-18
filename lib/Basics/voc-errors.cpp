@@ -282,6 +282,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_SERVICE_SOURCE_ERROR, "error resolving source");
   REG_ERROR(ERROR_SERVICE_UNKNOWN_SCRIPT, "unknown script");
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
+  REG_ERROR(ERROR_MODULE_SYNTAX_ERROR, "syntax error in module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");
   REG_ERROR(ERROR_NO_SMART_COLLECTION, "collection is not smart");
   REG_ERROR(ERROR_NO_SMART_GRAPH_ATTRIBUTE, "smart graph attribute not given");
