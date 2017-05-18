@@ -180,7 +180,7 @@ retry:
 
   if (res != TRI_ERROR_NO_ERROR) {
     // stop ourselves
-    _applier->stop(false);
+    _applier->stop(false, false);
 
     return _applier->setError(res, errorMsg.c_str());
   }
@@ -193,7 +193,7 @@ retry:
     _applier->setError(res, errorMsg.c_str());
 
     // stop ourselves
-    _applier->stop(false);
+    _applier->stop(false, false);
 
     if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT ||
         res == TRI_ERROR_REPLICATION_NO_START_TICK) {

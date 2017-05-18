@@ -3244,7 +3244,7 @@ void MMFilesRestReplicationHandler::handleCommandApplierStart() {
 void MMFilesRestReplicationHandler::handleCommandApplierStop() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  int res = _vocbase->replicationApplier()->stop(true);
+  int res = _vocbase->replicationApplier()->stop(true, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
