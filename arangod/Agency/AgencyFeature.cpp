@@ -270,6 +270,17 @@ void AgencyFeature::stop() {
     return;
   }
 
+  if (_agent->inception() != nullptr) {
+    int counter = 0;
+    while (_agent->inception()->isRunning()) {
+      usleep(100000);
+      // emit warning after 5 seconds
+      if (++counter == 10 * 5) {
+        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for inception thread to finish";
+      }
+    }
+  }  
+
   if (_agent != nullptr) {
     int counter = 0;
     while (_agent->isRunning()) {

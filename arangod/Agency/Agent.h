@@ -237,6 +237,9 @@ class Agent : public arangodb::Thread,
   void beginPrepareLeadership() { _preparing = true; }
   void endPrepareLeadership()  { _preparing = false; }
 
+  // #brief access Inception thread
+  Inception const* inception() const;
+
   /// @brief State reads persisted state and prepares the agent
   friend class State;
   friend class Compactor;
