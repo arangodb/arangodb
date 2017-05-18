@@ -104,12 +104,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 
 ################################################################################
-## LIBCUCKOO
-################################################################################
-
-#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libcuckoo/)
-
-################################################################################
 ## LINK_DIRECTORIES
 ################################################################################
 
