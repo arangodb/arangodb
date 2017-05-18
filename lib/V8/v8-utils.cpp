@@ -1665,7 +1665,12 @@ static void JS_Adler32(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
 
-  uint32_t chksum = TRI_Adler32(*name);
+  uint32_t chksum = 0;
+  int res = TRI_Adler32(*name, chksum);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
   v8::Handle<v8::Value> result;
 

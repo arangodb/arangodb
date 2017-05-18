@@ -520,7 +520,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   addIndex(newIdx);
   {
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
-        {"path", "statusString"}, true, /*forPersistence*/ false);
+        {"path", "statusString"}, true, /*forPersistence*/ true);
     VPackBuilder indexInfo;
     newIdx->toVelocyPack(indexInfo, false, true);
 
@@ -582,7 +582,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
         guard.unlock();
 
         VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
-            {"path", "statusString"}, true);
+            {"path", "statusString"}, true, true);
         StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
         int res =
@@ -1439,9 +1439,6 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
     if (_logicalCollection->waitForSync()) {
       waitForSync = true;  // output parameter (by ref)
     }
-
-    // LOG_TOPIC(ERR, Logger::DEVEL)
-    //    << std::boolalpha << "waitForSync during insert: " << waitForSync;
 
     if (waitForSync) {
       trx->state()->waitForSync(true);

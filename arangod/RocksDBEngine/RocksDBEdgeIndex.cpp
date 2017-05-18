@@ -109,7 +109,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     return false;
   }
 
-  std::size_t cacheValueSizeLimit = 1000;
+  std::size_t cacheValueSizeLimit = 100000;
 
   // acquire RocksDB collection
   RocksDBToken token;

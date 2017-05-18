@@ -845,7 +845,7 @@ TRI_replication_applier_t::TRI_replication_applier_t(TRI_vocbase_t* vocbase)
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_applier_t::~TRI_replication_applier_t() {
-  stop(true);
+  stop(true, false);
   TRI_DestroyStateReplicationApplier(&_state);
 }
 
@@ -1008,7 +1008,7 @@ void TRI_replication_applier_t::stopInitialSynchronization(bool value) {
 /// @brief stop the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::stop(bool resetError) {
+int TRI_replication_applier_t::stop(bool resetError, bool joinThread) {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
@@ -1043,7 +1043,11 @@ int TRI_replication_applier_t::stop(bool resetError) {
 
   // join the thread without the status lock (otherwise it would probably not
   // join)
-  int res = TRI_JoinThread(&_thread);
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (joinThread) {
+    res = TRI_JoinThread(&_thread);
+  }
 
   setTermination(false);
 
@@ -1059,7 +1063,7 @@ int TRI_replication_applier_t::stop(bool resetError) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::forget() {
-  int res = stop(true);
+  int res = stop(true, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

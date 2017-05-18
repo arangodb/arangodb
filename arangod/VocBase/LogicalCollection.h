@@ -180,8 +180,7 @@ class LogicalCollection {
   // SECTION: Indexes
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, bool,
-                       bool forPersistence = false) const;
+  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence) const;
 
   // SECTION: Replication
   int replicationFactor() const;
@@ -216,7 +215,7 @@ class LogicalCollection {
 
   velocypack::Builder toVelocyPackIgnore(
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
-      bool forPersistence = false) const;
+      bool forPersistence) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
                                                bool useSystem) const;

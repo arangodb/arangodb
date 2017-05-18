@@ -592,7 +592,7 @@ static void JS_GetCollectionInfoClusterInfo(
                                              "path",
                                              "planId",
                                              "version"};
-  VPackBuilder infoBuilder = ci->toVelocyPackIgnore(ignoreKeys, false);
+  VPackBuilder infoBuilder = ci->toVelocyPackIgnore(ignoreKeys, false, false);
   VPackSlice info = infoBuilder.slice();
 
   TRI_ASSERT(info.isObject());

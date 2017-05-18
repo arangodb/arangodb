@@ -26,15 +26,13 @@
 #include "RocksDBVPackIndex.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
-#include "Basics/AttributeNameParser.h"
-#include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexLookupContext.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
@@ -1462,6 +1460,7 @@ int RocksDBVPackIndex::cleanup() {
   RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueIndex(_objectId)
                                     : RocksDBKeyBounds::IndexEntries(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "compacting index range " << bounds;
   db->CompactRange(opts, &b, &e);
   return TRI_ERROR_NO_ERROR;
 }

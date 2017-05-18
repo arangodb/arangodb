@@ -27,6 +27,8 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
@@ -369,4 +371,37 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+}
+
+namespace arangodb {
+
+std::ostream& operator<<(std::ostream& stream, RocksDBKeyBounds const& bounds) {
+  stream << "[bound " << arangodb::rocksDBEntryTypeName(bounds.type()) << ": ";
+  
+  auto dump = [&stream](rocksdb::Slice const& slice) {
+    size_t const n = slice.size();
+
+    for (size_t i = 0; i < n; ++i) {
+      stream << "0x";
+
+      uint8_t const value = static_cast<uint8_t>(slice[i]);
+      uint8_t x = value / 16;
+      stream << static_cast<char>((x < 10 ? ('0' + x) : ('a' + x - 10)));
+      x = value % 16;
+      stream << static_cast<char>(x < 10 ? ('0' + x) : ('a' + x - 10));
+
+      if (i + 1 != n) {
+        stream << " ";
+      }
+    }
+  };
+
+  dump(bounds.start());
+  stream << " - ";
+  dump(bounds.end());
+  stream << "]";
+
+  return stream;
+}
+
 }

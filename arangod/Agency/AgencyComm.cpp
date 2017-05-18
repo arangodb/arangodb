@@ -1014,14 +1014,22 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
 
 AgencyCommResult AgencyComm::registerCallback(std::string const& key,
                                   std::string const& endpoint) {
+
   VPackBuilder builder;
   builder.add(VPackValue(endpoint));
 
-  AgencyOperation operation(key, AgencyValueOperationType::OBSERVE,
-                            builder.slice());
+  AgencyOperation operation(
+    key, AgencyValueOperationType::OBSERVE, builder.slice());
   AgencyWriteTransaction transaction(operation);
-
-  return sendTransactionWithFailover(transaction);
+  AgencyCommResult res;
+  for (size_t i = 0; i < 3; ++i) {
+    res = sendTransactionWithFailover(transaction);
+    if (res.successful()) {
+      return res;
+    }
+  }
+  return res;
+  
 }
 
 AgencyCommResult AgencyComm::unregisterCallback(std::string const& key,
