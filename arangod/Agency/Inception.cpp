@@ -52,7 +52,13 @@ Inception::~Inception() {
 /// - Create outgoing gossip.
 /// - Send to all peers
 void Inception::gossip() {
+
+  if (this->isStopping() || _agent->isStopping()) {
+    return;
+  }
+  
   auto cc = ClusterComm::instance();
+
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
     return;
@@ -170,7 +176,13 @@ void Inception::gossip() {
 
 
 bool Inception::restartingActiveAgent() {
+
+  if (this->isStopping() || _agent->isStopping()) {
+    return false;
+  }
+  
   auto cc = ClusterComm::instance();
+
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
     return false;
@@ -376,7 +388,7 @@ void Inception::reportIn(query_t const& query) {
           slice.get("stdev").getNumber<double>(),
           slice.get("max").getNumber<double>(),
           slice.get("min").getNumber<double>()} ));
-
+  
 }
 
 
