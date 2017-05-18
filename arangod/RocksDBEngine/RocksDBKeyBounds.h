@@ -265,8 +265,8 @@ class RocksDBKeyBounds {
   BoundsBuffer _internals;
 };
 
-}  // namespace arangodb
+std::ostream& operator<<(std::ostream&, RocksDBKeyBounds const&);
 
-std::ostream& operator<<(std::ostream&, arangodb::RocksDBKeyBounds const&);
+}  // namespace arangodb
 
 #endif

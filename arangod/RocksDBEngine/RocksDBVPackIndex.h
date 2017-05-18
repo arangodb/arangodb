@@ -48,9 +48,7 @@ namespace arangodb {
 namespace aql {
 class SortCondition;
 struct Variable;
-enum AstNodeType : uint32_t;
 }  // namespace aql
-class FixedSizeAllocator;
 class LogicalCollection;
 class RocksDBComparator;
 class RocksDBPrimaryIndex;
@@ -235,8 +233,6 @@ protected:
                         std::vector<uint64_t>& hashes);
 
  private:
-  std::unique_ptr<FixedSizeAllocator> _allocator;
-
   /// @brief the attribute paths
   std::vector<std::vector<std::string>> _paths;
 
