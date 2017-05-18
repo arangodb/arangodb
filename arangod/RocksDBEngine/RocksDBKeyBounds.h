@@ -34,6 +34,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <iosfwd>
+
 namespace arangodb {
 
 class RocksDBKeyBounds {
@@ -145,6 +147,8 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds(RocksDBKeyBounds&& other);
   RocksDBKeyBounds& operator=(RocksDBKeyBounds const& other);
   RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other);
+  
+  RocksDBEntryType type() const { return _type; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the left bound slice.
@@ -262,5 +266,7 @@ class RocksDBKeyBounds {
 };
 
 }  // namespace arangodb
+
+std::ostream& operator<<(std::ostream&, arangodb::RocksDBKeyBounds const&);
 
 #endif
