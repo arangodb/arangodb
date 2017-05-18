@@ -164,7 +164,7 @@ rest::ResponseCode VocbaseContext::authenticate() {
         AuthLevel level =
             _authentication->canUseDatabase(username, dbname);
 
-        if (level != AuthLevel::RW) {
+        if (level == AuthLevel::NONE) {
           std::cout << "events::NotAuthorized AuthLevel::NONE\n";
           events::NotAuthorized(_request);
           result = rest::ResponseCode::UNAUTHORIZED;

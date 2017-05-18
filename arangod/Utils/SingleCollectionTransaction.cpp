@@ -132,4 +132,3 @@ Result SingleCollectionTransaction::lockWrite() {
   std::cout << "SingleCollectionTransaction::lockWrite()\n";
   return lock(trxCollection(), AccessMode::Type::WRITE);
 }
-

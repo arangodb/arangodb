@@ -131,14 +131,16 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
 
   std::unordered_map<std::string, std::shared_ptr<AuthContext>> authContexts;
   for (auto const& database : databases) {
-    authContexts.emplace(database.first, std::make_shared<AuthContext>(database.second));
+    authContexts.emplace(database.first, std::make_shared<AuthContext>(database.second,
+      std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::RO}}) ));
   }
 
-  authContexts.emplace("*", std::make_shared<AuthContext>(allDatabases));
+  authContexts.emplace("*", std::make_shared<AuthContext>(allDatabases,
+    std::unordered_map<std::string, AuthLevel>({{"*",AuthLevel::RO}})) );
 
   std::cout << std::endl << userSlice.copyString() << std::endl;
   for (auto const& ctx : authContexts) {
-    std::cout << ctx.first << " " << (ctx.second->databaseAuthLevel() == AuthLevel::RO) << std::endl;
+    std::cout << ctx.first << " " << (ctx.second->databaseAuthLevel() == AuthLevel::RW) << std::endl;
   }
   std::cout << std::endl;
 
@@ -171,7 +173,7 @@ std::shared_ptr<AuthContext> AuthEntry::getAuthContext(std::string const& dbname
     return it->second;
   }
 
-  return std::make_shared<AuthContext>(AuthLevel::NONE);
+  return std::make_shared<AuthContext>(AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}));
 }
 
 AuthInfo::AuthInfo()
@@ -869,7 +871,7 @@ std::shared_ptr<AuthContext> AuthInfo::getAuthContext(std::string const& usernam
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
-    return std::make_shared<AuthContext>(AuthLevel::NONE);
+    return std::make_shared<AuthContext>(AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}));
   }
 
   // AuthEntry const& entry =
