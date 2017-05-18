@@ -225,7 +225,7 @@ JavaScript
 Foxx
 ----
 
-* There is now an [official HTTP API for managing services](../../HTTP/Foxx/README.md),
+* There is now an [official HTTP API for managing services](../../HTTP/Foxx/index.html),
   allowing services to be installed, modified, uninstalled and reconfigured without
   the administrative web interface.
 

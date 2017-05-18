@@ -2,18 +2,19 @@ shell> curl --dump - http://localhost:8529/_api/collection
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"60"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"61"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_apps"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"37"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"36"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_aqlfunctions"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
@@ -41,7 +42,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"22"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"20"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_modules"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
@@ -55,14 +56,14 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"24"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"22"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_routing"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"44"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"43"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statistics"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
@@ -76,28 +77,28 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"39"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"38"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statisticsRaw"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"8"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"6"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"98"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"94"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"animals"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"93"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"89"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"demo"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 

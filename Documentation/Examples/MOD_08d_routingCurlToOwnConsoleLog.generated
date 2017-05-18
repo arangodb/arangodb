@@ -2,6 +2,7 @@ shell> curl --dump - http://localhost:8529/subdirectory/ourtest/1
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
@@ -11,12 +12,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">36164</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">8563</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">37975</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"148412917676034"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">55060</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149510192225740"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
@@ -42,6 +43,7 @@ shell> curl --dump - http://localhost:8529/subdirectory/ourtest/2
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
@@ -51,12 +53,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">36164</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">8563</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">37975</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"148412917676034"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">55060</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149510192225740"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
@@ -82,6 +84,7 @@ shell> curl --dump - http://localhost:8529/subdirectory/ourtest/3
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
@@ -91,12 +94,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">36164</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">8563</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">37975</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"148412917676034"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">55060</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149510192225740"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
