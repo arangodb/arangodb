@@ -23,8 +23,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBCommon.h"
+#include "Basics/RocksDBUtils.h"
 #include "Basics/StringRef.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -37,72 +39,9 @@
 #include <rocksdb/convenience.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
-#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace rocksutils {
-
-arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
-  switch (status.code()) {
-    case rocksdb::Status::Code::kOk:
-      return {TRI_ERROR_NO_ERROR};
-    case rocksdb::Status::Code::kNotFound:
-      switch (hint) {
-        case StatusHint::collection:
-          return {TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, status.ToString()};
-        case StatusHint::database:
-          return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, status.ToString()};
-        case StatusHint::document:
-          return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, status.ToString()};
-        case StatusHint::index:
-          return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND, status.ToString()};
-        case StatusHint::view:
-          return {TRI_ERROR_ARANGO_VIEW_NOT_FOUND, status.ToString()};
-        case StatusHint::wal:
-          // suppress this error if the WAL is queried for changes that are not available
-          return {TRI_ERROR_NO_ERROR};
-        default:
-          return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, status.ToString()};
-      }
-    case rocksdb::Status::Code::kCorruption:
-      return {TRI_ERROR_ARANGO_CORRUPTED_DATAFILE, status.ToString()};
-    case rocksdb::Status::Code::kNotSupported:
-      return {TRI_ERROR_NOT_IMPLEMENTED, status.ToString()};
-    case rocksdb::Status::Code::kInvalidArgument:
-      return {TRI_ERROR_BAD_PARAMETER, status.ToString()};
-    case rocksdb::Status::Code::kIOError:
-      if (status.subcode() == rocksdb::Status::SubCode::kNoSpace) {
-        return {TRI_ERROR_ARANGO_FILESYSTEM_FULL, status.ToString()};
-      }
-      return {TRI_ERROR_ARANGO_IO_ERROR, status.ToString()};
-    case rocksdb::Status::Code::kMergeInProgress:
-      return {TRI_ERROR_ARANGO_MERGE_IN_PROGRESS, status.ToString()};
-    case rocksdb::Status::Code::kIncomplete:
-      return {TRI_ERROR_INTERNAL, "'incomplete' error in storage engine"};
-    case rocksdb::Status::Code::kShutdownInProgress:
-      return {TRI_ERROR_SHUTTING_DOWN, status.ToString()};
-    case rocksdb::Status::Code::kTimedOut:
-      if (status.subcode() == rocksdb::Status::SubCode::kMutexTimeout ||
-          status.subcode() == rocksdb::Status::SubCode::kLockTimeout) {
-        // TODO: maybe add a separator error code/message here
-        return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
-      }
-      return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
-    case rocksdb::Status::Code::kAborted:
-      return {TRI_ERROR_TRANSACTION_ABORTED, status.ToString()};
-    case rocksdb::Status::Code::kBusy:
-      if (status.subcode() == rocksdb::Status::SubCode::kDeadlock) {
-        return {TRI_ERROR_DEADLOCK};
-      }
-      return {TRI_ERROR_ARANGO_CONFLICT};
-    case rocksdb::Status::Code::kExpired:
-      return {TRI_ERROR_INTERNAL, "key expired; TTL was set in error"};
-    case rocksdb::Status::Code::kTryAgain:
-      return {TRI_ERROR_ARANGO_TRY_AGAIN, status.ToString()};
-    default:
-      return {TRI_ERROR_INTERNAL, "unknown RocksDB status code"};
-  }
-}
 
 uint64_t uint64FromPersistent(char const* p) {
   uint64_t value = 0;
@@ -158,68 +97,6 @@ void uint16ToPersistent(std::string& p, uint16_t value) {
     p.push_back(static_cast<char>(value & 0xffU));
     value >>= 8;
   } while (++len < sizeof(uint16_t));
-}
-
-bool hasObjectIds(VPackSlice const& inputSlice) {
-  bool rv = false;
-  if (inputSlice.isObject()) {
-    for (auto const& objectPair :
-         arangodb::velocypack::ObjectIterator(inputSlice)) {
-      if (arangodb::StringRef(objectPair.key) == "objectId") {
-        return true;
-      }
-      rv = hasObjectIds(objectPair.value);
-      if (rv) {
-        return rv;
-      }
-    }
-  } else if (inputSlice.isArray()) {
-    for (auto const& slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
-      if (rv) {
-        return rv;
-      }
-      rv = hasObjectIds(slice);
-    }
-  }
-  return rv;
-}
-
-VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const& inputSlice) {
-  if (inputSlice.isObject()) {
-    builder.openObject();
-    for (auto const& objectPair :
-         arangodb::velocypack::ObjectIterator(inputSlice)) {
-      if (arangodb::StringRef(objectPair.key) == "objectId") {
-        continue;
-      }
-      builder.add(objectPair.key);
-      stripObjectIdsImpl(builder, objectPair.value);
-    }
-    builder.close();
-  } else if (inputSlice.isArray()) {
-    builder.openArray();
-    for (auto const& slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
-      stripObjectIdsImpl(builder, slice);
-    }
-    builder.close();
-  } else {
-    builder.add(inputSlice);
-  }
-  return builder;
-}
-
-std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
-    VPackSlice const& inputSlice, bool checkBeforeCopy) {
-  std::unique_ptr<VPackBuffer<uint8_t>> buffer = nullptr;
-  if (checkBeforeCopy) {
-    if (!hasObjectIds(inputSlice)) {
-      return {inputSlice, std::move(buffer)};
-    }
-  }
-  buffer.reset(new VPackBuffer<uint8_t>);
-  VPackBuilder builder(*buffer);
-  stripObjectIdsImpl(builder, inputSlice);
-  return {VPackSlice(buffer->data()), std::move(buffer)};
 }
 
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
@@ -288,7 +165,7 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
 
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
                           RocksDBKeyBounds const& bounds) {
-  const rocksdb::Comparator* cmp = db->GetOptions().comparator;
+  rocksdb::Comparator const* cmp = db->GetOptions().comparator;
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts));
   std::size_t count = 0;
 
@@ -316,20 +193,20 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
           &upper);
       if (!status.ok()) {
         // if file deletion failed, we will still iterate over the remaining
-        // keys, so we
-        // don't need to abort and raise an error here
+        // keys, so we don't need to abort and raise an error here
         LOG_TOPIC(WARN, arangodb::Logger::FIXME)
             << "RocksDB file deletion failed";
       }
     }
 
     // go on and delete the remaining keys (delete files in range does not
-    // necessarily
-    // find them all, just complete files)
-    const rocksdb::Comparator* cmp = db->GetOptions().comparator;
+    // necessarily find them all, just complete files)
+    rocksdb::Comparator const* cmp = db->GetOptions().comparator;
     rocksdb::WriteBatch batch;
+    rocksdb::ReadOptions readOptions;
+    readOptions.fill_cache = false;
     std::unique_ptr<rocksdb::Iterator> it(
-        db->NewIterator(rocksdb::ReadOptions()));
+        db->NewIterator(readOptions));
 
     it->Seek(lower);
     while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {

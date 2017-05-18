@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/RocksDBUtils.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -77,11 +78,6 @@ class Methods;
 }
 namespace rocksutils {
 
-enum StatusHint { none, document, collection, view, index, database, wal };
-
-arangodb::Result convertStatus(rocksdb::Status const&,
-                               StatusHint hint = StatusHint::none);
-
 uint64_t uint64FromPersistent(char const* p);
 void uint64ToPersistent(char* p, uint64_t value);
 void uint64ToPersistent(std::string& out, uint64_t value);
@@ -89,9 +85,6 @@ void uint64ToPersistent(std::string& out, uint64_t value);
 uint16_t uint16FromPersistent(char const* p);
 void uint16ToPersistent(char* p, uint16_t value);
 void uint16ToPersistent(std::string& out, uint16_t value);
-
-std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
-    VPackSlice const& inputSlice, bool checkBeforeCopy = true);
 
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
 RocksDBMethods* toRocksMethods(transaction::Methods* trx);
@@ -133,9 +126,10 @@ void iterateBounds(
     RocksDBKeyBounds const& bounds, T callback,
     rocksdb::ReadOptions const& options = rocksdb::ReadOptions{}) {
   auto cmp = globalRocksEngine()->cmp();
+  auto const end = bounds.end();
   std::unique_ptr<rocksdb::Iterator> it(globalRocksDB()->NewIterator(options));
   for (it->Seek(bounds.start());
-       it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0; it->Next()) {
+       it->Valid() && cmp->Compare(it->key(), end) < 0; it->Next()) {
     callback(it.get());
   }
 }

@@ -55,12 +55,8 @@ RocksDBIndex::RocksDBIndex(
       _cachePresent(false),
       _useCache(useCache) {
   if (_useCache) {
-    //LOG_TOPIC(ERR, Logger::FIXME) << "creating cache";
     createCache();
-  } else {
-    //LOG_TOPIC(ERR, Logger::FIXME) << "not creating cache";
-  }
-
+  } 
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
@@ -94,14 +90,15 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   Index::toVelocyPackFigures(builder);
   builder.add("cacheInUse", VPackValue(useCache()));
-  if(useCache()){
+  if (useCache()) {
     builder.add("cacheSize", VPackValue(_cache->size()));
-    double rate =_cache->hitRates().first;
+    auto hitRates = _cache->hitRates();
+    double rate = hitRates.first;
     rate = std::isnan(rate) ? 0.0 : rate;
-    builder.add("cacheLiftimeHitRate", VPackValue(rate));
-    rate =_cache->hitRates().second;
+    builder.add("cacheLifeTimeHitRate", VPackValue(rate));
+    rate = hitRates.second;
     rate = std::isnan(rate) ? 0.0 : rate;
-    builder.add("cacheWindowHitRate", VPackValue(rate));
+    builder.add("cacheWindowedHitRate", VPackValue(rate));
   } else {
     builder.add("cacheSize", VPackValue(0));
   }
@@ -162,7 +159,6 @@ int RocksDBIndex::drop() {
   // Try to drop the cache as well.
   if (_cachePresent) {
     try {
-      TRI_ASSERT(_cachePresent);
       TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
       CacheManagerFeature::MANAGER->destroyCache(_cache);
       // Reset flag

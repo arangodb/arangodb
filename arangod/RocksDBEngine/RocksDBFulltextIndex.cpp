@@ -520,7 +520,8 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
 
   // TODO: set options.iterate_upper_bound and remove compare?
   // apply left to right logic, merging all current results with ALL previous
-  while (iter->Valid() && _cmp->Compare(iter->key(), bounds.end()) < 0) {
+  auto const end = bounds.end();
+  while (iter->Valid() && _cmp->Compare(iter->key(), end) < 0) {
     rocksdb::Status s = iter->status();
     if (!s.ok()) {
       return rocksutils::convertStatus(s);

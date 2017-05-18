@@ -134,6 +134,10 @@ class RocksDBCollection final : public PhysicalCollection {
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result) override;
+  
+  bool readDocumentNoCache(transaction::Methods* trx,
+                    DocumentIdentifierToken const& token,
+                    ManagedDocumentResult& result);
 
   int insert(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const newSlice,
@@ -227,7 +231,8 @@ class RocksDBCollection final : public PhysicalCollection {
       arangodb::velocypack::Slice const& newDoc, bool& waitForSync) const;
 
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
-                                       arangodb::ManagedDocumentResult&) const;
+                                       arangodb::ManagedDocumentResult&,
+                                       bool withCache) const;
 
   void recalculateIndexEstimates(std::vector<std::shared_ptr<Index>>& indexes);
 

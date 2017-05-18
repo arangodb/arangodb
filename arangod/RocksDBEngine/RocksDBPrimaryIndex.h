@@ -95,7 +95,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
  private:
   bool const _reverse;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  RocksDBKeyBounds _bounds;
+  RocksDBKeyBounds const _bounds;
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
@@ -120,7 +120,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   RocksDBComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  RocksDBKeyBounds _bounds;
+  RocksDBKeyBounds const _bounds;
   uint64_t _total;
   uint64_t _returned;
 };
