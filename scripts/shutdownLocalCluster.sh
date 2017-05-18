@@ -22,12 +22,20 @@ else
   PROT=http  
 fi
 
+if [ -z "$JWT_SECRET" ];then
+  AUTHENTICATION="--server.authentication false"
+  AUTHORIZATION_HEADER=""
+else
+  AUTHENTICATION="--server.jwt-secret $JWT_SECRET"
+  AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
+fi
 
+echo $JWT_SECRET
 
 shutdown() {
   PORT=$1
   echo -n "$PORT "
-  $CURL DELETE $PROT://$LOCALHOST:$PORT/_admin/shutdown >/dev/null 2>/dev/null
+  $CURL DELETE $PROT://$LOCALHOST:$PORT/_admin/shutdown  -H "$AUTHORIZATION_HEADER" >/dev/null 2>/dev/null
 }
 
 if [ "$SECONDARIES" == "1" ]; then
