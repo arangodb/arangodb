@@ -2094,6 +2094,15 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     indexes = tmp.slice();
 
     if (!indexes.isArray()) {
+      try {
+        LOG_TOPIC(WARN, Logger::CLUSTER)
+          << "Failed to find index " << databaseName << "/" << collectionID
+          << "/" << iid << " - " << indexes.toJson();
+      } catch (std::exception const& e) {
+        LOG_TOPIC(WARN, Logger::CLUSTER)
+          << "Failed to find index " << databaseName << "/" << collectionID
+          << "/" << iid << " - " << e.what();
+      }
       // no indexes present, so we can't delete our index
       return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
     }
@@ -2128,6 +2137,15 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     }
   }
   if (!found) {
+    try {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Failed to find index " << databaseName << "/" << collectionID
+        << "/" << iid << " - " << indexes.toJson();
+    } catch (std::exception const& e) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Failed to find index " << databaseName << "/" << collectionID
+        << "/" << iid << " - " << e.what();
+    }
     return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
   }
 
