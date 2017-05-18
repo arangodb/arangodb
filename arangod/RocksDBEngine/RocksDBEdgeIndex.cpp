@@ -196,8 +196,10 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         _doUpdateBounds = true;
       }
 
+      auto const end = _bounds.end();
+
       while (_iterator->Valid() &&
-             (_index->_cmp->Compare(_iterator->key(), _bounds.end()) < 0)) {
+             (_index->_cmp->Compare(_iterator->key(), end) < 0)) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
 
         // lookup real document

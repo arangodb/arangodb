@@ -61,9 +61,7 @@ class RocksDBSavePoint {
 
 class RocksDBMethods {
  public:
-  // RocksDBOperations(rocksdb::ReadOptions ro, rocksdb::WriteOptions wo) :
-  // _readOptions(ro), _writeOptions(wo) {}
-  RocksDBMethods(RocksDBTransactionState* state) : _state(state) {}
+  explicit RocksDBMethods(RocksDBTransactionState* state) : _state(state) {}
   virtual ~RocksDBMethods() {}
 
   rocksdb::ReadOptions const& readOptions();
@@ -90,7 +88,7 @@ class RocksDBMethods {
 // only implements GET and NewIterator
 class RocksDBReadOnlyMethods : public RocksDBMethods {
  public:
-  RocksDBReadOnlyMethods(RocksDBTransactionState* state);
+  explicit RocksDBReadOnlyMethods(RocksDBTransactionState* state);
 
   bool Exists(RocksDBKey const&) override;
   arangodb::Result Get(RocksDBKey const& key, std::string* val) override;
@@ -135,7 +133,7 @@ private:
 /// transactio wrapper, uses the current rocksdb transaction
 class RocksDBTrxMethods : public RocksDBMethods {
  public:
-  RocksDBTrxMethods(RocksDBTransactionState* state);
+  explicit RocksDBTrxMethods(RocksDBTransactionState* state);
 
   bool Exists(RocksDBKey const&) override;
   arangodb::Result Get(RocksDBKey const& key, std::string* val) override;

@@ -57,8 +57,8 @@ function verifyCache(index){
     expect(index.figures.cacheInUse).to.be.true;
     expect(index.figures).to.be.ok;
     expect(index.figures.cacheSize).to.be.a('number');
-    expect(index.figures.cacheLiftimeHitRate).to.be.a('number');
-    expect(index.figures.cacheWindowHitRate).to.be.a('number');
+    expect(index.figures.cacheLifeTimeHitRate).to.be.a('number');
+    expect(index.figures.cacheWindowedHitRate).to.be.a('number');
   }
 }
 

@@ -309,7 +309,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
       // value(s)
       // + separator (NUL) byte
       // - Value: primary key
-      elements.push_back(
+      elements.emplace_back(
           RocksDBKey::UniqueIndexValue(_objectId, leased.slice()));
     } else {
       // Non-unique VPack index values are stored as follows:
@@ -317,7 +317,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
       // value(s)
       // + separator (NUL) byte + primary key
       // - Value: empty
-      elements.push_back(
+      elements.emplace_back(
           RocksDBKey::IndexValue(_objectId, key, leased.slice()));
       hashes.push_back(leased.slice().normalizedHash());
     }
@@ -348,13 +348,13 @@ void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased,
     // Unique VPack index values are stored as follows:
     // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
     // - Value: primary key
-    elements.push_back(RocksDBKey::UniqueIndexValue(_objectId, leased.slice()));
+    elements.emplace_back(RocksDBKey::UniqueIndexValue(_objectId, leased.slice()));
   } else {
     // Non-unique VPack index values are stored as follows:
     // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
     // + primary key
     // - Value: empty
-    elements.push_back(RocksDBKey::IndexValue(_objectId, key, leased.slice()));
+    elements.emplace_back(RocksDBKey::IndexValue(_objectId, key, leased.slice()));
     hashes.push_back(leased.slice().normalizedHash());
   }
 }
