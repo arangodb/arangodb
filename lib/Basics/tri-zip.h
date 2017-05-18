@@ -30,7 +30,7 @@
 
 #include "Basics/Common.h"
 
-uint32_t TRI_Adler32(char const* filename);
+int TRI_Adler32(char const* filename, uint32_t& checksum);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zips a file
