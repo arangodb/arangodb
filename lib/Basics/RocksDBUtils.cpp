@@ -26,9 +26,7 @@
 #include "RocksDBUtils.h"
 #include "Basics/StringRef.h"
 
-#include <rocksdb/comparator.h>
 #include <rocksdb/convenience.h>
-#include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
 
 namespace arangodb {
@@ -122,10 +120,11 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kShutdownInProgress:
       return {TRI_ERROR_SHUTTING_DOWN, status.ToString()};
     case rocksdb::Status::Code::kTimedOut:
-      if (status.subcode() == rocksdb::Status::SubCode::kMutexTimeout ||
-          status.subcode() == rocksdb::Status::SubCode::kLockTimeout) {
-        // TODO: maybe add a separator error code/message here
+      if (status.subcode() == rocksdb::Status::SubCode::kMutexTimeout) {
         return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
+      }
+      if (status.subcode() == rocksdb::Status::SubCode::kLockTimeout) {
+        return {TRI_ERROR_ARANGO_CONFLICT, "timeout waiting to lock key"};
       }
       return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
     case rocksdb::Status::Code::kAborted:
@@ -133,6 +132,10 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kBusy:
       if (status.subcode() == rocksdb::Status::SubCode::kDeadlock) {
         return {TRI_ERROR_DEADLOCK};
+      }
+      if (status.subcode() == rocksdb::Status::SubCode::kLockLimit) {
+        // should actually not occur with our RocksDB configuration
+        return {TRI_ERROR_RESOURCE_LIMIT, "failed to acquire lock due to lock number limit"};
       }
       return {TRI_ERROR_ARANGO_CONFLICT};
     case rocksdb::Status::Code::kExpired:

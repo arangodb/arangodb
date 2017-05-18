@@ -1,7 +1,8 @@
-shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/9770
+shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/9893
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 

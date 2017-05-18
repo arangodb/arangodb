@@ -17,6 +17,7 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"plans"</span> : [ 
@@ -46,7 +47,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
           }, 
           <span class="hljs-string">"indexes"</span> : [ 
             { 
-              <span class="hljs-string">"id"</span> : <span class="hljs-string">"10066"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-string">"10192"</span>, 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
               <span class="hljs-string">"fields"</span> : [ 
                 <span class="hljs-string">"id"</span> 
@@ -237,7 +238,8 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
         } 
       ], 
       <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">63</span>, 
-      <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span> 
+      <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"initialize"</span> : <span class="hljs-literal">true</span> 
     } 
   ], 
   <span class="hljs-string">"warnings"</span> : [ ], 
