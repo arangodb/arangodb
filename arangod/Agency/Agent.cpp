@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -999,7 +998,7 @@ void Agent::beginShutdown() {
   }
 
   // Stop inception process
-  if (size() > 1 && _inception != nullptr) {
+  if (_inception != nullptr) {
     _inception->beginShutdown();
   } 
 
@@ -1497,6 +1496,10 @@ bool Agent::isTrxOngoing(std::string& id) {
   } catch (...) {
     return false;
   }
+}
+
+Inception const* Agent::inception() const {
+  return _inception.get();
 }
 
 }}  // namespace
