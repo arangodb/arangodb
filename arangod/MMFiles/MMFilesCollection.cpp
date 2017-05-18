@@ -2074,7 +2074,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
             "Database")
             ->forceSyncProperties();
     VPackBuilder builder =
-        _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
+        _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true, true);
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
   created = true;
@@ -2249,7 +2249,7 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
             "Database")
             ->forceSyncProperties();
     VPackBuilder builder =
-        _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
+        _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true, true);
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
 

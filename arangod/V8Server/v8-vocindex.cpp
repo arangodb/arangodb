@@ -516,7 +516,7 @@ static void GetIndexesCoordinator(
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
   VPackBuilder tmp;
-  c->getIndexesVPack(tmp, withFigures);
+  c->getIndexesVPack(tmp, withFigures, false);
   VPackSlice slice = tmp.slice();
 
   if (slice.isArray()) {

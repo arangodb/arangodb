@@ -749,7 +749,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                              "objectId",
                                              "statusString", "version",
                                              "distributeShardsLike"};
-  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false);
+  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
   { VPackObjectBuilder guard(&result);
     for (auto const& p : VPackObjectIterator(params.slice())) {
       result.add(p.key);
@@ -765,7 +765,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, false);
+  getIndexesVPack(result, false, false);
   result.close();  // CollectionInfo
 }
 

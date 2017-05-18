@@ -1460,6 +1460,7 @@ int RocksDBVPackIndex::cleanup() {
   RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueIndex(_objectId)
                                     : RocksDBKeyBounds::IndexEntries(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "compacting index range " << bounds;
   db->CompactRange(opts, &b, &e);
   return TRI_ERROR_NO_ERROR;
 }

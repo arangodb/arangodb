@@ -2359,7 +2359,7 @@ ClusterMethods::persistCollectionInAgency(
       "count",         "planId", "version", "objectId",
   };
   col->setStatus(TRI_VOC_COL_STATUS_LOADED);
-  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false);
+  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(

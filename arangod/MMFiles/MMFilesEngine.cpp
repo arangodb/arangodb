@@ -919,7 +919,7 @@ arangodb::Result MMFilesEngine::persistCollection(
     return {};
   }
   VPackBuilder builder =
-      collection->toVelocyPackIgnore({"path", "statusString"}, true);
+      collection->toVelocyPackIgnore({"path", "statusString"}, true, false);
   VPackSlice const slice = builder.slice();
 
   auto cid = collection->cid();
@@ -2248,7 +2248,7 @@ void MMFilesEngine::saveCollectionInfo(
   std::string const filename = collectionParametersFilename(vocbase->id(), id);
 
   VPackBuilder builder =
-      parameters->toVelocyPackIgnore({"path", "statusString"}, true);
+      parameters->toVelocyPackIgnore({"path", "statusString"}, true, false);
   TRI_ASSERT(id != 0);
 
   bool ok =

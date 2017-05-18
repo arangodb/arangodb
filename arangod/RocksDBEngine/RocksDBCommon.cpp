@@ -183,6 +183,7 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::TransactionDB* db,
                         RocksDBKeyBounds const& bounds) {
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "removing large range: " << bounds;
   try {
     // delete files in range lower..upper
     rocksdb::Slice lower(bounds.start());
@@ -208,6 +209,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
     std::unique_ptr<rocksdb::Iterator> it(
         db->NewIterator(readOptions));
 
+    // TODO: split this into multiple batches if batches get too big
     it->Seek(lower);
     while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
       batch.Delete(it->key());
@@ -222,7 +224,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
           << "RocksDB key deletion failed: " << status.ToString();
       return TRI_ERROR_INTERNAL;
     }
-
+    
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
