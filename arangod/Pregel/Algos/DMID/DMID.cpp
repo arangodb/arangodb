@@ -582,16 +582,18 @@ VertexComputation<DMIDValue, float, DMIDMessage>* DMID::createComputation(
 
 struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   const std::string _resultField;
-  uint64_t vertexIdRange = 0;
+  uint64_t _vertexIdRange = 0;
+  unsigned _maxCommunities;
 
-  explicit DMIDGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit DMIDGraphFormat(std::string const& result, unsigned mc)
+  : _resultField(result), _maxCommunities(mc) {}
 
   void willLoadVertices(uint64_t count) override {
     // if we aren't running in a cluster it doesn't matter
     if (arangodb::ServerState::instance()->isRunningInCluster()) {
       arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
       if (ci) {
-        vertexIdRange = ci->uniqid(count);
+        _vertexIdRange = ci->uniqid(count);
       }
     }
   }
@@ -613,11 +615,29 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const DMIDValue* ptr, size_t size) const override {
     if (ptr->membershipDegree.size() > 0) {
-      b.add(_resultField, VPackValue(VPackValueType::Array));
-      for (auto const& pair : ptr->membershipDegree) {
-        b.add(pair.first.key, VPackValue(pair.second));
+      std::vector<std::pair<PregelID, float>> communities;
+      for (std::pair<PregelID, float> pair : ptr->membershipDegree) {
+        communities.push_back(pair);
       }
-      b.close();
+      std::sort(communities.begin(), communities.end(),
+                [ptr](std::pair<PregelID, float> a, std::pair<PregelID, float> b) {
+                  return ptr->membershipDegree.at(a.first) > ptr->membershipDegree.at(b.first);
+                });
+      if (communities.empty()) {
+        b.add(_resultField, VPackSlice::nullSlice());
+      } else if (_maxCommunities == 1) {
+        b.add(_resultField, VPackValue(communities[0].first.key));
+      } else {
+        unsigned i = _maxCommunities;
+        b.add(_resultField, VPackValue(VPackValueType::Object));
+        for (std::pair<PregelID, float> const& pair : ptr->membershipDegree) {
+          b.add(pair.first.key, VPackValue(pair.second));
+          if (--i == 0) {
+            break;
+          }
+        }
+        b.close();
+      }
     }
     return true;
   }
@@ -629,7 +649,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
 };
 
 GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
-  return new DMIDGraphFormat(_resultField);
+  return new DMIDGraphFormat(_resultField, _maxCommunities);
 }
 
 struct DMIDMasterContext : public MasterContext {

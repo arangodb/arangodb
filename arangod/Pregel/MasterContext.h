@@ -65,9 +65,13 @@ class MasterContext {
   
   template <typename T>
   inline void setAggregatedValue(std::string const& name, T const& value) {
+    // FIXME refactor the aggregators, this whole API is horrible
     arangodb::velocypack::Builder b;
     b.openObject();
+    b.add("aggregators",
+          arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));
     b.add(name, arangodb::velocypack::Value(value));
+    b.close();
     b.close();
     _aggregators->setAggregatedValues(b.slice());
   }
