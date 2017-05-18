@@ -1375,7 +1375,7 @@ static void JS_PropertiesVocbaseCol(
         "allowUserKeys", "cid",  "count",  "deleted", "id",
         "indexes",       "name", "path",   "planId",  "shards",
         "status",        "type", "version"};
-    VPackBuilder vpackProperties = c->toVelocyPackIgnore(ignoreKeys, true);
+    VPackBuilder vpackProperties = c->toVelocyPackIgnore(ignoreKeys, true, false);
 
     // return the current parameter set
     v8::Handle<v8::Object> result =
@@ -1435,7 +1435,7 @@ static void JS_PropertiesVocbaseCol(
       /* These are only relevant for cluster */
       "distributeShardsLike", "isSmart", "numberOfShards", "replicationFactor",
       "shardKeys"};
-  VPackBuilder vpackProperties = collection->toVelocyPackIgnore(ignoreKeys, true);
+  VPackBuilder vpackProperties = collection->toVelocyPackIgnore(ignoreKeys, true, false);
 
   // return the current parameter set
   v8::Handle<v8::Object> result =

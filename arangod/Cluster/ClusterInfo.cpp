@@ -1619,7 +1619,7 @@ int ClusterInfo::ensureIndexCoordinator(
     oldPlanIndexes.reset(new VPackBuilder());
 
     c = getCollection(databaseName, collectionID);
-    c->getIndexesVPack(*(oldPlanIndexes.get()), false);
+    c->getIndexesVPack(*(oldPlanIndexes.get()), false, false);
     VPackSlice const planIndexes = oldPlanIndexes->slice();
     
     if (planIndexes.isArray()) {
@@ -1714,7 +1714,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     }
 
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    c->getIndexesVPack(*(tmp.get()), false);
+    c->getIndexesVPack(*(tmp.get()), false, false);
     MUTEX_LOCKER(guard, *numberOfShardsMutex);
     { *numberOfShards = c->numberOfShards(); }
     VPackSlice const indexes = tmp->slice();
@@ -1764,7 +1764,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
         "count",         "planId", "version", "objectId"
     };
     c->setStatus(TRI_VOC_COL_STATUS_LOADED);
-    collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false);
+    collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false, false);
   }
   VPackSlice const collectionSlice = collectionBuilder.slice();
 
@@ -2090,7 +2090,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     if (c == nullptr) {
       return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
     }
-    c->getIndexesVPack(tmp, false);
+    c->getIndexesVPack(tmp, false, false);
     indexes = tmp.slice();
 
     if (!indexes.isArray()) {

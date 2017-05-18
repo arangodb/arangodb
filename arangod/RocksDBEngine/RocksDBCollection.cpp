@@ -520,7 +520,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   addIndex(newIdx);
   {
     VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
-        {"path", "statusString"}, true, /*forPersistence*/ false);
+        {"path", "statusString"}, true, /*forPersistence*/ true);
     VPackBuilder indexInfo;
     newIdx->toVelocyPack(indexInfo, false, true);
 
