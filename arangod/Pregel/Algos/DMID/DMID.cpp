@@ -232,7 +232,7 @@ struct DMIDComputation
      * (aggregatedValue will be(1/N,..,1/N) in the next superstep)
      * */
 
-    VertexSumAggregator* agg = (VertexSumAggregator*)getAggregator(DA_AGG);
+    VertexSumAggregator* agg = (VertexSumAggregator*)getWriteAggregator(DA_AGG);
     agg->aggregate(this->shard(), this->key(), 1.0 / context()->vertexCount());
     // DoubleDenseVector init = new DoubleDenseVector(
     //                                               (int)
@@ -249,7 +249,7 @@ struct DMIDComputation
    */
   void superstepRW(MessageIterator<DMIDMessage> const& messages) {
     DMIDValue* vertexState = mutableVertexData();
-    VertexSumAggregator* curDA = (VertexSumAggregator*)getAggregator(DA_AGG);
+    VertexSumAggregator const* curDA = (VertexSumAggregator*)getReadAggregator(DA_AGG);
 
     // DoubleDenseVector curDA = getAggregatedValue(DA_AGG);
     // DoubleSparseVector disCol = vertex.getValue().getDisCol();
@@ -261,9 +261,13 @@ struct DMIDComputation
     /** (corresponds to vector matrix multiplication R^1xN * R^NxN) */
     double newEntryDA = 0.0;
     curDA->forEach([&](PregelID const& _id, double entry) {
-      newEntryDA += entry * vertexState->disCol[_id];
+      auto const& it = vertexState->disCol.find(_id);
+      if (it != vertexState->disCol.end()) { // sparse vector in the original
+        newEntryDA += entry * it->second;
+      }
     });
-    curDA->aggregate(this->shard(), this->key(), newEntryDA);
+    VertexSumAggregator* newDA = (VertexSumAggregator*)getWriteAggregator(DA_AGG);
+    newDA->aggregate(this->shard(), this->key(), newEntryDA);
   }
 
   /**
@@ -272,17 +276,16 @@ struct DMIDComputation
    */
   void superstep4(MessageIterator<DMIDMessage> const& messages) {
     DMIDValue* vertexState = mutableVertexData();
-    VertexSumAggregator* finalDA = (VertexSumAggregator*)getAggregator(DA_AGG);
+    VertexSumAggregator const* finalDA = (VertexSumAggregator*)getReadAggregator(DA_AGG);
 
     // DoubleDenseVector finalDA = getAggregatedValue(DA_AGG);
-    double weightedInDegree =
-        vertexState
-            ->weightedInDegree;  // vertex.getValue().getWeightedInDegree();
+    // vertex.getValue().getWeightedInDegree();
+    double weightedInDegree = vertexState->weightedInDegree;
     double lsAggValue =
         finalDA->getAggregatedValue(shard(), key()) * weightedInDegree;
 
-    VertexSumAggregator* vecLS = (VertexSumAggregator*)getAggregator(LS_AGG);
-    vecLS->aggregate(this->shard(), this->key(), lsAggValue);
+    VertexSumAggregator* tmpLS = (VertexSumAggregator*)getWriteAggregator(LS_AGG);
+    tmpLS->aggregate(this->shard(), this->key(), lsAggValue);
 
     // finalDA->aggregateValue(shard(), key(), );
     // int vertexID = (int) vertex.getId().get();
@@ -302,7 +305,7 @@ struct DMIDComputation
    * */
   void superstep6(MessageIterator<DMIDMessage> const& messages) {
     // DoubleDenseVector vecLS = getAggregatedValue(LS_AGG);
-    VertexSumAggregator* vecLS = (VertexSumAggregator*)getAggregator(LS_AGG);
+    VertexSumAggregator const* vecLS = (VertexSumAggregator*)getReadAggregator(LS_AGG);
     for (DMIDMessage const* message : messages) {
       PregelID senderID = message->senderId;
       /** Weight= weightedInDegree */
@@ -370,11 +373,12 @@ struct DMIDComputation
          * Add to set
          */
         leaderSet.insert(message->senderId);
+        maxInfValue = message->weight;
       }
     }
 
     double leaderInit = 1.0 / leaderSet.size();
-    VertexSumAggregator* vecFD = (VertexSumAggregator*)getAggregator(FD_AGG);
+    VertexSumAggregator* vecFD = (VertexSumAggregator*)getWriteAggregator(FD_AGG);
     for (PregelID const& _id : leaderSet) {
       vecFD->aggregate(_id.shard, _id.key, leaderInit);
     }
@@ -417,7 +421,7 @@ struct DMIDComputation
 
         auto const& it2 = vertexState->membershipDegree.find(this->pregelId());
         /** In case of first init test again if vertex is leader */
-        if (it2 == vertexState->membershipDegree.end()) {
+        if (it2 == vertexState->membershipDegree.end()) {// no
           for (auto const& pair : vertexState->membershipDegree) {
             /**
              * message of the form (ownID, community ID of interest)
@@ -481,9 +485,8 @@ struct DMIDComputation
     auto const& it = vertexState->membershipDegree.find(this->pregelId());
 
     /** Is this vertex a global leader? */
-    if (it ==
-        vertexState->membershipDegree
-            .end()) {  //! vertex.getValue().getMembershipDegree().containsKey(vertexID)
+    if (it == vertexState->membershipDegree.end()) {// no
+      //! vertex.getValue().getMembershipDegree().containsKey(vertexID)
       /** counts per communities the number of successors which are member */
       std::map<PregelID, float> membershipCounter;
       // double previousCount = 0.0;
@@ -513,7 +516,8 @@ struct DMIDComputation
       // Map.Entry<Long, Double> entry : membershipCounter.entrySet()
       for (std::pair<PregelID, float> const& pair : membershipCounter) {
         float const ttt = pair.second / getEdges().size();
-        if (ttt > *threshold) {
+        // TODO float const ttt = pair.second / messages.size();
+        if (ttt >= *threshold) {
           /** its profitable to become a member, set value */
           float deg = 1.0f / std::pow(*iterationCounter / 3.0f, 2.0f);
           vertexState->membershipDegree[pair.first] = deg;
@@ -545,7 +549,7 @@ struct DMIDComputation
   void initilaizeMemDeg() {
     DMIDValue* vertexState = mutableVertexData();
 
-    VertexSumAggregator* vecGL = (VertexSumAggregator*)getAggregator(GL_AGG);
+    VertexSumAggregator const* vecGL = (VertexSumAggregator*)getReadAggregator(GL_AGG);
     // DoubleSparseVector vecGL = getAggregatedValue(GL_AGG);
     // std::map<PregelID, float> newMemDeg;
 
@@ -643,14 +647,14 @@ struct DMIDMasterContext : public MasterContext {
     bool hasCascadingStarted = false;
     if (*iterCount != 0) {
       /** Cascading behavior started increment the iteration count */
-      aggregate<int64_t>(ITERATION_AGG, newIterCount);
+      aggregate<int64_t>(ITERATION_AGG, newIterCount);// max aggregator
       hasCascadingStarted = true;
     }
 
     if (globalSuperstep() == RW_ITERATIONBOUND + 8) {
       aggregate<bool>(NEW_MEMBER_AGG, false);
       aggregate<bool>(NOT_ALL_ASSIGNED_AGG, true);
-      aggregate<int64_t>(ITERATION_AGG, 1);
+      setAggregatedValue<int64_t>(ITERATION_AGG, 1);
       hasCascadingStarted = true;
       initializeGL();
     }
@@ -669,9 +673,9 @@ struct DMIDMasterContext : public MasterContext {
          */
 
         float newThreshold = 1 - (PROFTIABILITY_DELTA * (restartCount + 1));
-        aggregate<int64_t>(RESTART_COUNTER_AGG, restartCount + 1);
-        aggregate<float>(PROFITABILITY_AGG, newThreshold);
-        aggregate<int64_t>(ITERATION_AGG, 1);
+        setAggregatedValue<int64_t>(RESTART_COUNTER_AGG, restartCount + 1);
+        setAggregatedValue<float>(PROFITABILITY_AGG, newThreshold);
+        setAggregatedValue<int64_t>(ITERATION_AGG, 1);
       }
     }
 

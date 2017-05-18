@@ -65,7 +65,11 @@ class VertexContext {
     return (const T*)_readAggregators->getAggregatedValue(name);
   }
 
-  IAggregator* getAggregator(std::string const& name) {
+  IAggregator const* getReadAggregator(std::string const& name) {
+    return _readAggregators->getAggregator(name);
+  }
+  
+  IAggregator* getWriteAggregator(std::string const& name) {
     return _writeAggregators->getAggregator(name);
   }
 

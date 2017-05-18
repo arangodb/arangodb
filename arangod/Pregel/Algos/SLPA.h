@@ -53,7 +53,8 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
     }
     field = userParams.get("maxCommunities");
     if (field.isInteger()) {
-      _threshold = (unsigned)std::min((uint64_t)32, std::max(field.getUInt(), (uint64_t)0));
+      _threshold = (unsigned)std::min((uint64_t)32,
+                                      std::max(field.getUInt(), (uint64_t)0));
     }
   }
 
