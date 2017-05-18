@@ -60,7 +60,7 @@ DocumentIdentifierToken RocksDBFulltextIndex::toDocumentIdentifierToken(
 RocksDBFulltextIndex::RocksDBFulltextIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     VPackSlice const& info)
-    : RocksDBIndex(iid, collection, info),
+: RocksDBIndex(iid, collection, info, RocksDBColumnFamily::none()),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
 
@@ -509,19 +509,19 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
                                              FulltextQueryToken const& token,
                                              std::set<std::string>& resultSet) {
   RocksDBMethods *mthds = rocksutils::toRocksMethods(trx);
-
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator();
+  rocksdb::Slice upper = bounds.end();
+  
+  rocksdb::ReadOptions ro = mthds->readOptions();
+  ro.iterate_upper_bound = &upper;
+  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(ro, _cf);
   iter->Seek(bounds.start());
   
-  // set is used to performa an intersection with the result set
+  // set is used to perform an intersection with the result set
   std::set<std::string> intersect;
-
-  // TODO: set options.iterate_upper_bound and remove compare?
   // apply left to right logic, merging all current results with ALL previous
-  auto const end = bounds.end();
-  while (iter->Valid() && _cmp->Compare(iter->key(), end) < 0) {
+  while (iter->Valid()) {
     rocksdb::Status s = iter->status();
     if (!s.ok()) {
       return rocksutils::convertStatus(s);

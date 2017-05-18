@@ -47,10 +47,10 @@ uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
 RocksDBIndex::RocksDBIndex(
     TRI_idx_iid_t id, LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-    bool unique, bool sparse, uint64_t objectId, bool useCache)
+    bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf, uint64_t objectId, bool useCache)
     : Index(id, collection, attributes, unique, sparse),
       _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
-      _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
+      _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
       _useCache(useCache) {
@@ -60,10 +60,10 @@ RocksDBIndex::RocksDBIndex(
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           VPackSlice const& info, bool useCache)
+                           VPackSlice const& info, rocksdb::ColumnFamilyHandle* cf, bool useCache)
     : Index(id, collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
-      _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
+      _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
       _useCache(useCache) {
@@ -84,6 +84,10 @@ RocksDBIndex::~RocksDBIndex() {
     } catch (...) {
     }
   }
+}
+
+rocksdb::Comparator const* RocksDBIndex::comparator() const {
+  return _cf->GetComparator();
 }
 
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
@@ -194,7 +198,7 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   rocksdb::Slice upperBound = indexBounds.end();
   options.iterate_upper_bound = &upperBound;
 
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options);
+  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options, _cf);
   iter->Seek(indexBounds.start());
 
   while (iter->Valid()) {

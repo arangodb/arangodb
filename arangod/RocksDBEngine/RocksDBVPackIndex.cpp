@@ -86,7 +86,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _primaryIndex(primaryIndex),
-      _cmp(index->_cmp),
+      _cmp(index->comparator()),
       _reverse(reverse),
       _bounds(index->_unique ? RocksDBKeyBounds::UniqueIndexRange(
                                    index->objectId(), left, right)
@@ -101,7 +101,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     options.iterate_upper_bound = &_upperBound;
   }
 
-  _iterator = mthds->NewIterator(options);
+  _iterator = mthds->NewIterator(options, index->columnFamily());
   if (reverse) {
     _iterator->SeekForPrev(_bounds.end());
   } else {
@@ -171,10 +171,12 @@ uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
 RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
                                      arangodb::LogicalCollection* collection,
                                      arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(iid, collection, info),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::none()),
       _useExpansion(false),
       _allowPartialIndex(true),
       _estimator(nullptr) {
+  _cf = _unique ? RocksDBColumnFamily::uniqueIndex() :
+        RocksDBColumnFamily::index();
   if (!_unique && !ServerState::instance()->isCoordinator()) {
     // We activate the estimator for all non unique-indexes.
     // And only on DBServers

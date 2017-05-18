@@ -30,6 +30,8 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include <rocksdb/status.h>
 
+namespace rocksdb {class Comparator; class ColumnFamilyHandle;}
+
 namespace arangodb {
 namespace cache {
 class Cache;
@@ -51,10 +53,14 @@ class RocksDBIndex : public Index {
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
                    attributes,
-               bool unique, bool sparse, uint64_t objectId = 0, bool useCache = false);
+               bool unique, bool sparse,
+               rocksdb::ColumnFamilyHandle* cf,
+               uint64_t objectId = 0,
+               bool useCache = false);
 
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               arangodb::velocypack::Slice const&, bool useCache = false);
+               arangodb::velocypack::Slice const&, rocksdb::ColumnFamilyHandle* cf,
+               bool useCache = false);
 
  public:
   ~RocksDBIndex();
@@ -98,6 +104,11 @@ class RocksDBIndex : public Index {
   virtual bool deserializeEstimate(RocksDBCounterManager* mgr);
 
   virtual void recalculateEstimates();
+  
+  rocksdb::ColumnFamilyHandle* columnFamily() const{
+    return _cf;
+  }
+  rocksdb::Comparator const* comparator() const;
 
  protected:
   // Will be called during truncate to allow the index to update selectivity
@@ -115,7 +126,7 @@ class RocksDBIndex : public Index {
 
  protected:
   uint64_t _objectId;
-  RocksDBComparator* _cmp;
+  rocksdb::ColumnFamilyHandle* _cf;
 
   mutable std::shared_ptr<cache::Cache> _cache;
   // we use this boolean for testing whether _cache is set.

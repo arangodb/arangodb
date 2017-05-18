@@ -92,7 +92,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   arangodb::RocksDBVPackIndex const* _index;
   arangodb::RocksDBPrimaryIndex* _primaryIndex;
-  arangodb::RocksDBComparator const* _cmp;
+  rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _reverse;
   RocksDBKeyBounds _bounds;

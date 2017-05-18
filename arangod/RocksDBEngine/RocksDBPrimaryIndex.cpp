@@ -225,7 +225,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
     : IndexIterator(collection, trx, mmdr, index),
-      _cmp(index->_cmp),
+      _cmp(index->comparator()),
       _iterator(rocksutils::toRocksMethods(trx)->NewIterator()),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
       _total(0),
@@ -297,7 +297,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(
                            StaticStrings::KeyString, false)}}),
-                   true, false,
+                   true, false, RocksDBColumnFamily::none(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
                    false) {
                    // !ServerState::instance()->isCoordinator() /*useCache*/) {

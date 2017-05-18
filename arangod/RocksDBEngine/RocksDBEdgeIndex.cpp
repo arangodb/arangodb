@@ -196,10 +196,9 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         _doUpdateBounds = true;
       }
 
+      rocksdb::Comparator const* cmp = _index->comparator();
       auto const end = _bounds.end();
-
-      while (_iterator->Valid() &&
-             (_index->_cmp->Compare(_iterator->key(), end) < 0)) {
+      while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
 
         // lookup real document
@@ -286,7 +285,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
                                         {{AttributeName(attr, false)}}),
-                   false, false,
+                   false, false, RocksDBColumnFamily::none(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
                    !ServerState::instance()->isCoordinator() /*useCache*/
                    ),

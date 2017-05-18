@@ -118,7 +118,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   static uint64_t newOffset(LogicalCollection* collection,
                             transaction::Methods* trx);
 
-  RocksDBComparator const* _cmp;
+  rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   RocksDBKeyBounds const _bounds;
   uint64_t _total;

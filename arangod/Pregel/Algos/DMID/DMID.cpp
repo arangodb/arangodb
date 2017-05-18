@@ -652,8 +652,8 @@ struct DMIDMasterContext : public MasterContext {
     }
 
     if (globalSuperstep() == RW_ITERATIONBOUND + 8) {
-      aggregate<bool>(NEW_MEMBER_AGG, false);
-      aggregate<bool>(NOT_ALL_ASSIGNED_AGG, true);
+      setAggregatedValue<bool>(NEW_MEMBER_AGG, false);
+      setAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG, true);
       setAggregatedValue<int64_t>(ITERATION_AGG, 1);
       hasCascadingStarted = true;
       initializeGL();
@@ -686,8 +686,8 @@ struct DMIDMasterContext : public MasterContext {
        * initial value
        */
 
-      aggregate<bool>(NEW_MEMBER_AGG, false);
-      aggregate<bool>(NOT_ALL_ASSIGNED_AGG, false);
+      setAggregatedValue<bool>(NEW_MEMBER_AGG, false);
+      setAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG, false);
     }
 
     if (LOG_AGGS) {
