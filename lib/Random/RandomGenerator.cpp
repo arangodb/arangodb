@@ -49,14 +49,14 @@ unsigned long RandomDevice::seed() {
   using namespace std::chrono;
   
   unsigned long dev = std::random_device()();
-  auto tid = std::hash<std::thread::id>()(std::this_thread::get_id());
+  unsigned long tid = static_cast<unsigned long>(std::hash<std::thread::id>()(std::this_thread::get_id()));
 
   for (unsigned short i = 0; i < 50; ++i) {
     std::this_thread::yield();
     std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
-  auto now = duration_cast<std::chrono::microseconds>(
-    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  unsigned long now = static_cast<unsigned long>(duration_cast<std::chrono::microseconds>(
+    std::chrono::high_resolution_clock::now().time_since_epoch()).count());
 
   return dev + tid + now;
   
