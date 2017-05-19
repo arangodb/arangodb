@@ -45,13 +45,22 @@ using namespace arangodb::basics;
 // -----------------------------------------------------------------------------
 
 unsigned long RandomDevice::seed() {
-  HybridLogicalClock clock;
-  unsigned long s = static_cast<unsigned long>(clock.getPhysicalTime());
-  TRI_pid_t pid = Thread::currentProcessId();
 
-  s ^= static_cast<unsigned long>(TRI_Crc32HashPointer(&pid, sizeof(TRI_pid_t)));
-  s = static_cast<unsigned long>(TRI_Crc32HashPointer(&s, sizeof(unsigned long))); 
-  return s;
+  using namespace std::chrono;
+  
+  unsigned long dev = std::random_device()();
+  auto tid = std::hash<std::thread::id>()(std::this_thread::get_id());
+
+  for (unsigned short i = 0; i < 50; ++i) {
+    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
+  }
+
+  auto now = duration_cast<std::chrono::microseconds>(
+    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+
+  return dev + tid + now;
+  
 }
 
 int32_t RandomDevice::interval(int32_t left, int32_t right) {
