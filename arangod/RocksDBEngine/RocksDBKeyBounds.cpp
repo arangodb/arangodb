@@ -373,7 +373,9 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
   }
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::RocksDBKeyBounds const& bounds) {
+namespace arangodb {
+
+std::ostream& operator<<(std::ostream& stream, RocksDBKeyBounds const& bounds) {
   stream << "[bound " << arangodb::rocksDBEntryTypeName(bounds.type()) << ": ";
   
   auto dump = [&stream](rocksdb::Slice const& slice) {
@@ -400,4 +402,6 @@ std::ostream& operator<<(std::ostream& stream, arangodb::RocksDBKeyBounds const&
   stream << "]";
 
   return stream;
+}
+
 }

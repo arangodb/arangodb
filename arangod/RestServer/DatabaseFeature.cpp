@@ -1057,7 +1057,7 @@ void DatabaseFeature::closeDatabases() {
       TRI_ASSERT(vocbase != nullptr);
       TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
       if (vocbase->replicationApplier() != nullptr) {
-        vocbase->replicationApplier()->stop(false);
+        vocbase->replicationApplier()->stop(false, true);
       }
     }
   }
