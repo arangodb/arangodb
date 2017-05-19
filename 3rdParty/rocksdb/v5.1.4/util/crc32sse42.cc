@@ -51,7 +51,6 @@ Function Choose_Extend_SSE42() {
 #else
 
 Function Choose_Extend_SSE42() {
-  assert(false);
   return nullptr;
 }
 

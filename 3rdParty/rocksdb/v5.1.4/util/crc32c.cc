@@ -12,6 +12,7 @@
 
 #include "util/crc32c.h"
 
+#include <cassert>
 #include <stdint.h>
 #include "util/coding.h"
 
@@ -58,7 +59,16 @@ static Function Choose_Extend_C() {
 }
 
 static inline Function Choose_Extend() {
-  return isSSE42() ? Choose_Extend_SSE42() : Choose_Extend_C();
+  Function f = nullptr;
+
+  if (isSSE42()) {
+    f = Choose_Extend_SSE42();
+  } 
+  if (f == nullptr) {
+    f = Choose_Extend_C();
+  }
+  assert(f != nullptr);
+  return f;
 }
 
 bool IsFastCrc32Supported() {
