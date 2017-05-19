@@ -55,7 +55,6 @@ unsigned long RandomDevice::seed() {
     std::this_thread::yield();
     std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
-
   auto now = duration_cast<std::chrono::microseconds>(
     std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 
