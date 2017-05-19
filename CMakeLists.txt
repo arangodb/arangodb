@@ -446,8 +446,13 @@ else ()
     OptimizeForArchitecture()
   endif ()
 
+  if (USE_SSE4_2)
+    set(ARANGODB_SSE42_FLAGS "-msse4.2")
+  endif ()
+
   set(BASE_FLAGS "${Vc_COMPILE_FLAGS} ${BASE_FLAGS}")
 endif ()
+
 
 ################################################################################
 ## BACKTRACE
