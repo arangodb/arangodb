@@ -85,6 +85,9 @@
             $.ajax(arangoHelper.databaseUrl('/_api/database/user')).success(function (dbs) {
               availableDbs = dbs.result;
               successFunc(availableDbs);
+            })
+            .error(function (data) {
+              successFunc();
             });
           } catch (ignore) {
             successFunc();
@@ -245,6 +248,9 @@
         try {
           $.ajax(arangoHelper.databaseUrl('/_api/database/user')).success(function (dbs) {
             successFunc(dbs.result);
+          })
+          .error(function (data) {
+            successFunc();
           });
         } catch (ignore) {
           successFunc();
