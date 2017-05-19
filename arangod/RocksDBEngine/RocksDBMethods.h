@@ -24,8 +24,8 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_METHODS_H 1
 
 #include "Basics/Result.h"
-#include "RocksDBCommon.h"
 #include "RocksDBColumnFamily.h"
+#include "RocksDBCommon.h"
 
 namespace rocksdb {
 class Transaction;
@@ -67,37 +67,23 @@ class RocksDBMethods {
 
   rocksdb::ReadOptions const& readOptions();
 
-  bool Exists(RocksDBKey const& key) {
-    return this->Exists(RocksDBColumnFamily::none(), key);
-  }
   virtual bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
-  
-  arangodb::Result Get(RocksDBKey const& key,
-                       std::string* val){
-    return this->Get(RocksDBColumnFamily::none(), key, val);
-  }
   virtual arangodb::Result Get(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
                                std::string*) = 0;
-  
-  arangodb::Result Put(RocksDBKey const& key, rocksdb::Slice const& val,
-                       rocksutils::StatusHint hint = rocksutils::StatusHint::none){
-    return this->Put(RocksDBColumnFamily::none(), key, val, hint);
-  }
   virtual arangodb::Result Put(
       rocksdb::ColumnFamilyHandle*, RocksDBKey const&, rocksdb::Slice const&,
       rocksutils::StatusHint hint = rocksutils::StatusHint::none) = 0;
   // virtual arangodb::Result Merge(RocksDBKey const&, rocksdb::Slice const&) =
   // 0;
-  arangodb::Result Delete(RocksDBKey const& key){
-    return this->Delete(RocksDBColumnFamily::none(), key);
-  }
   virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                                   RocksDBKey const&) = 0;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator() {
-    return this->NewIterator(this->readOptions(), RocksDBColumnFamily::none());
+  std::unique_ptr<rocksdb::Iterator> NewIterator(
+      rocksdb::ColumnFamilyHandle* cf) {
+    return this->NewIterator(this->readOptions(), cf);
   }
-  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) = 0;
+  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(
+      rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) = 0;
 
   virtual void SetSavePoint() = 0;
   virtual arangodb::Result RollbackToSavePoint() = 0;

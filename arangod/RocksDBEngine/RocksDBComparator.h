@@ -46,9 +46,13 @@ class RocksDBComparator final : public rocksdb::Comparator {
   ///          > 0 if lhs > rhs
   ///            0 if lhs == rhs
   //////////////////////////////////////////////////////////////////////////////
-  int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override;
+  int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override {
+    return compareIndexValues(lhs, rhs);
+  }
   
-  bool Equal(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override;
+  bool Equal(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override {
+    return (compareIndexValues(lhs, rhs) == 0);
+  }
 
   // SECTION: API compatibility
   char const* Name() const override { return "ArangoRocksDBComparator2"; }

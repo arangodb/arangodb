@@ -30,7 +30,7 @@ namespace arangodb {
 struct RocksDBColumnFamily {
   friend class RocksDBEngine;
 
-  static rocksdb::ColumnFamilyHandle* none() { return _index; }
+  static rocksdb::ColumnFamilyHandle* none() { return _none; }
 
   static rocksdb::ColumnFamilyHandle* index() { return _index; }
 

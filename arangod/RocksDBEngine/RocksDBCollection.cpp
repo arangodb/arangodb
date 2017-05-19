@@ -630,23 +630,22 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // TODO FIXME -- improve transaction size
   // TODO FIXME -- intermediate commit
   TRI_ASSERT(_objectId != 0);
-
-  rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
   TRI_voc_cid_t cid = _logicalCollection->cid();
-
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  RocksDBMethods* mthd = state->rocksdbMethods();
-  // rocksdb::Transaction* rtrx = state->rocksTransaction();
 
   // delete documents
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
-  auto const end = documentBounds.end();
   
-  std::unique_ptr<rocksdb::Iterator> iter = mthd->NewIterator();
+  RocksDBMethods* mthd = state->rocksdbMethods();
+  rocksdb::ReadOptions ro = mthd->readOptions();
+  rocksdb::Slice const end = documentBounds.end();
+  ro.iterate_upper_bound = &end;
+  
+  std::unique_ptr<rocksdb::Iterator> iter = mthd->NewIterator(ro, RocksDBColumnFamily::none());
   iter->Seek(documentBounds.start());
 
-  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+  while (iter->Valid()) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
     VPackSlice key =
         VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
@@ -657,7 +656,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // add possible log statement
     state->prepareOperation(cid, revisionId, StringRef(key),
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    Result r = mthd->Delete(iter->key());
+    Result r = mthd->Delete(RocksDBColumnFamily::none(), iter->key());
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -687,7 +686,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
   TRI_ASSERT(_objectId != 0);
 
-  rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
   TRI_voc_cid_t cid = _logicalCollection->cid();
 
   rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
@@ -699,12 +697,14 @@ void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
 
   // isolate against newer writes
   rocksdb::ReadOptions readOptions;
+  rocksdb::Slice end = documentBounds.end();
+   readOptions.upper_bound = &end;
   readOptions.snapshot = state->rocksTransaction()->GetSnapshot();
 
-  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(readOptions));
+  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(RocksDBFamily::none(), readOptions));
   iter->Seek(documentBounds.start());
 
-  while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
+  while (iter->Valid()) < 0) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
     VPackSlice key =
     VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
@@ -1409,7 +1409,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  res = mthd->Put(key, value.string());
+  res = mthd->Put(RocksDBColumnFamily::none(), key, value.string());
   if (!res.ok()) {
     // set keysize that is passed up to the crud operations
     res.keySize(key.string().size());
@@ -1467,7 +1467,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   // Simon: actually we do, because otherwise the counter recovery is broken
   // if (!isUpdate) {
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  RocksDBOperationResult res = mthd->Delete(key);
+  RocksDBOperationResult res = mthd->Delete(RocksDBColumnFamily::none(), key);
   if (!res.ok()) {
     return res;
   }
@@ -1582,7 +1582,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   }
 
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result res = mthd->Get(key, &value);
+  Result res = mthd->Get(RocksDBColumnFamily::none(), key, &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
     if (withCache && useCache()) {

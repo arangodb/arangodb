@@ -367,7 +367,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   auto& options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
 
-  arangodb::Result r = mthds->Get(key, value.buffer());
+  arangodb::Result r = mthds->Get(_cf, key, value.buffer());
   if (!r.ok()) {
     return RocksDBToken();
   }
@@ -403,13 +403,13 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  if (mthd->Exists(key)) {
+  if (mthd->Exists(_cf, key)) {
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
-  Result status = mthd->Put(key, value.string(), rocksutils::index);
+  Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
   return status.errorNumber();
 }
 
@@ -429,7 +429,7 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-  Result r = mthds->Delete(key);
+  Result r = mthds->Delete(_cf, key);
       //rocksutils::convertStatus(status, rocksutils::StatusHint::index);
   return r.errorNumber();
 }

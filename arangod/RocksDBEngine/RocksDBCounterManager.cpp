@@ -437,7 +437,12 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
     TRI_HybridLogicalClock(_maxHLC);
   }
 
-  bool prepKey(const rocksdb::Slice& key) {
+  bool prepKey(uint32_t column_family_id, const rocksdb::Slice& key) {
+    // TODO this needs changing if we decide to add more column fams
+    if (column_family_id != 0) {
+      return false;
+    }
+    
     if (RocksDBKey::type(key) == RocksDBEntryType::Document) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       auto const& it = seqStart.find(objectId);
@@ -516,9 +521,10 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  void Put(const rocksdb::Slice& key, const rocksdb::Slice& value) override {
+  rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                    const rocksdb::Slice& value) override {
     updateMaxTick(key, value);
-    if (prepKey(key)) {
+    if (prepKey(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
@@ -555,10 +561,11 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
           break;
       }
     }
+    return rocksdb::Status();
   }
 
-  void Delete(const rocksdb::Slice& key) override {
-    if (prepKey(key)) {
+  rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    if (prepKey(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
@@ -595,9 +602,12 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
           break;
       }
     }
+    return rocksdb::Status();
   }
 
-  void SingleDelete(const rocksdb::Slice& key) override { Delete(key); }
+  rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    return DeleteCF(column_family_id, key);
+  }
 };
 
 /// parse the WAL with the above handler parser class

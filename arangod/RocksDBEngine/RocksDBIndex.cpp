@@ -202,7 +202,7 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   iter->Seek(indexBounds.start());
 
   while (iter->Valid()) {
-    Result r = mthds->Delete(iter->key());
+    Result r = mthds->Delete(_cf, iter->key());
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }

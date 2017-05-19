@@ -67,7 +67,8 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _keys(keys.get()),
       _keysIterator(_keys->slice()),
       _index(index),
-      _iterator(rocksutils::toRocksMethods(trx)->NewIterator()),
+      _iterator(
+          rocksutils::toRocksMethods(trx)->NewIterator(index->columnFamily())),
       _arrayIterator(VPackSlice::emptyArraySlice()),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _doUpdateBounds(true),
@@ -202,7 +203,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
         StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
 
         // lookup real document
-        bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token);
+        bool continueWithNextBatch =
+            lookupDocumentAndUseCb(edgeKey, cb, limit, token);
         // build cache value for from/to
         if (_useCache) {
           if (_cacheValueSize <= cacheValueSizeLimit) {
@@ -241,17 +243,18 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 }
 
 // acquire the document token through the primary index
-bool RocksDBEdgeIndexIterator::lookupDocumentAndUseCb(
-    StringRef primaryKey, TokenCallback const& cb,
-    size_t& limit, RocksDBToken& token){
-  //we pass the token in as ref to avoid allocations
+bool RocksDBEdgeIndexIterator::lookupDocumentAndUseCb(StringRef primaryKey,
+                                                      TokenCallback const& cb,
+                                                      size_t& limit,
+                                                      RocksDBToken& token) {
+  // we pass the token in as ref to avoid allocations
   auto rocksColl = toRocksDBCollection(_collection);
   Result res = rocksColl->lookupDocumentToken(_trx, primaryKey, token);
   if (res.ok()) {
     cb(token);
     --limit;
     if (limit == 0) {
-      _doUpdateBounds=false; //limit hit continue with next batch
+      _doUpdateBounds = false;  // limit hit continue with next batch
       return true;
     }
   }              // TODO do we need to handle failed lookups here?
@@ -360,7 +363,7 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result r = mthd->Put(rocksdb::Slice(key.string()), rocksdb::Slice(),
+  Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), rocksdb::Slice(),
                        rocksutils::index);
   if (r.ok()) {
     std::hash<StringRef> hasher;
@@ -392,7 +395,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result res = mthd->Delete(rocksdb::Slice(key.string()));
+  Result res = mthd->Delete(_cf, rocksdb::Slice(key.string()));
   if (res.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
@@ -423,7 +426,7 @@ void RocksDBEdgeIndex::batchInsert(
         RocksDBKey::EdgeIndexValue(_objectId, fromToRef, StringRef(primaryKey));
 
     blackListKey(fromToRef);
-    Result r = mthd->Put(rocksdb::Slice(key.string()), rocksdb::Slice(),
+    Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), rocksdb::Slice(),
                          rocksutils::index);
     if (!r.ok()) {
       queue->setStatus(r.errorNumber());
