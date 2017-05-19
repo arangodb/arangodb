@@ -138,9 +138,8 @@ class RocksDBCuckooIndexEstimator {
         break;
       }
       default: {
-        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "Unable to restore the "
-                                                     "index estimates. Invalid "
-                                                     "format persisted.";
+        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << 
+            "unable to restore index estimates: invalid format found";
         initializeDefault();
       }
     }
