@@ -268,7 +268,14 @@ v3.2.alpha1 (2017-02-05)
 
 * generated Foxx services now use swagger tags
 
-v3.1.20 (XXXX-XX-XX)
+
+v3.1.21 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #2488:  AQL operator IN error when data use base64 chars
+
+
+v3.1.20 (2016-05-16)
 --------------------
 
 * fixed incorrect sorting for distributeShardsLike
