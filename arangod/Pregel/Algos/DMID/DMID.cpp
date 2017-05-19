@@ -515,8 +515,9 @@ struct DMIDComputation
 
       // Map.Entry<Long, Double> entry : membershipCounter.entrySet()
       for (std::pair<PregelID, float> const& pair : membershipCounter) {
-        float const ttt = pair.second / getEdges().size();
-        // TODO float const ttt = pair.second / messages.size();
+        // FIXME
+        //float const ttt = pair.second / getEdges().size();
+        float const ttt = pair.second / messages.size();
         if (ttt >= *threshold) {
           /** its profitable to become a member, set value */
           float deg = 1.0f / std::pow(*iterationCounter / 3.0f, 2.0f);
