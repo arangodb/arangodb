@@ -46,12 +46,14 @@ class RocksDBComparator final : public rocksdb::Comparator {
   ///          > 0 if lhs > rhs
   ///            0 if lhs == rhs
   //////////////////////////////////////////////////////////////////////////////
-  int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;
+  int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override;
+  
+  bool Equal(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override;
 
   // SECTION: API compatibility
-  char const* Name() const;
-  void FindShortestSeparator(std::string*, rocksdb::Slice const&) const {}
-  void FindShortSuccessor(std::string*) const {}
+  char const* Name() const override { return "ArangoRocksDBComparator"; }
+  void FindShortestSeparator(std::string*, rocksdb::Slice const&) const override {}
+  void FindShortSuccessor(std::string*) const override {}
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -85,9 +87,6 @@ class RocksDBComparator final : public rocksdb::Comparator {
   /// @brief A helper function for the actual VelocyPack comparison
   //////////////////////////////////////////////////////////////////////////////
   int compareIndexedValues(VPackSlice const& lhs, VPackSlice const& rhs) const;
-
- private:
-  const std::string _name;
 };
 
 }  // namespace arangodb
