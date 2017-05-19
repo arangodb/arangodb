@@ -128,7 +128,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = false;
+  options.fill_cache = true;
   _iterator = mthds->NewIterator(options, index->columnFamily());
 
   if (reverse) {
