@@ -451,7 +451,7 @@ set(SOURCES
         utilities/column_aware_encoding_util.cc
         $<TARGET_OBJECTS:build_version>)
 
-set_source_files_properties(util/crc32sse42.cc PROPERTIES COMPILE_FLAGS ${ARANGODB_SSE42_FLAGS}) 
+set_source_files_properties(util/crc32sse42.cc PROPERTIES COMPILE_FLAGS "${ARANGODB_SSE42_FLAGS}") 
 
 if(WIN32)
   list(APPEND SOURCES

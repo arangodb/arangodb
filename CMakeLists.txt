@@ -419,6 +419,7 @@ endif ()
 ## TARGET ARCHITECTURE
 ################################################################################
 
+set(ARANGODB_SSE42_FLAGS "")
 if (WINDOWS)
   add_definitions("-DNO_SSE42")
 else ()
