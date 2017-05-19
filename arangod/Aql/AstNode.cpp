@@ -273,8 +273,12 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
 
   if (lType == VPackValueType::String) {
     if (compareUtf8) {
-      return TRI_compare_utf8(lhs->getStringValue(), lhs->getStringLength(),
-                              rhs->getStringValue(), rhs->getStringLength());
+      int res = TRI_compare_utf8(lhs->getStringValue(), lhs->getStringLength(),
+                                 rhs->getStringValue(), rhs->getStringLength());
+      if (res != 0) {
+        return res < 0 ? -1 : 1;
+      }
+      return 0;
     }
     
     size_t const minLength =
@@ -875,7 +879,7 @@ void AstNode::sort() {
 
   std::sort(members.begin(), members.end(),
             [](AstNode const* lhs, AstNode const* rhs) {
-              return (arangodb::aql::CompareAstNodes(lhs, rhs, false) < 0);
+              return (arangodb::aql::CompareAstNodes(lhs, rhs, true) < 0);
             });
 
   setFlag(DETERMINED_SORTED, VALUE_SORTED);

@@ -1,3 +1,9 @@
+v3.1.21 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #2488:  AQL operator IN error when data use base64 chars
+
+
 v3.1.20 (2016-05-16)
 --------------------
 

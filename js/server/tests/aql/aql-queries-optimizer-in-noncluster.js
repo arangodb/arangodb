@@ -74,6 +74,44 @@ function ahuacatlQueryOptimizerInTestSuite () {
       internal.db._drop(cn);
     },
 
+    testSortedArrayIn : function () {
+      var values = [
+        "WJItoWBuRBMBMajh", "WJIuWmBuRBMBMbdR",
+        "WJIv_mBuRBMBMdgh", "WJIwOWBuRBMBMdzC",
+        "WJIxaWBuRBMBMfRW", "WJIxyGBuRBMBMfvK",
+        "WK5Mz2BuRBMBQT8y", "WKfgmGBuRBMBPgMR",
+        "WMu6iHNG6AAGJ-gY", "WMu6jXNG6AAGJ-hd",
+        "WMu7kXNG6AAGJ_Zc", "WMyn9nNG6AAGKN4Q",
+        "WMynsHNG6AAGKNqu", "WMyo3HNG6AAGKOk5",
+        "WMyoSXNG6AAGKOIY", "WMyohHNG6AAGKOTx"
+      ];
+
+      values.forEach(function(val) {
+        c.insert({ val });
+      });
+
+      var query = "FOR doc IN " + cn + " FILTER doc.val IN " + JSON.stringify(values) + " RETURN 1";
+      var actual = getQueryResults(query);
+      assertEqual(16, actual.length);
+    },
+    
+    testSortedArrayInStatic : function () {
+      var values = [
+        "WJItoWBuRBMBMajh", "WJIuWmBuRBMBMbdR",
+        "WJIv_mBuRBMBMdgh", "WJIwOWBuRBMBMdzC",
+        "WJIxaWBuRBMBMfRW", "WJIxyGBuRBMBMfvK",
+        "WK5Mz2BuRBMBQT8y", "WKfgmGBuRBMBPgMR",
+        "WMu6iHNG6AAGJ-gY", "WMu6jXNG6AAGJ-hd",
+        "WMu7kXNG6AAGJ_Zc", "WMyn9nNG6AAGKN4Q",
+        "WMynsHNG6AAGKNqu", "WMyo3HNG6AAGKOk5",
+        "WMyoSXNG6AAGKOIY", "WMyohHNG6AAGKOTx"
+      ];
+
+      var query = "RETURN 'WMyohHNG6AAGKOTx' IN " + JSON.stringify(values);
+      var actual = getQueryResults(query);
+      assertEqual([ true ], actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check a ref access without any indexes
 ////////////////////////////////////////////////////////////////////////////////
