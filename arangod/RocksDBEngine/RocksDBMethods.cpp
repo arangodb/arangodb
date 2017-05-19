@@ -92,8 +92,9 @@ bool RocksDBReadOnlyMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
 arangodb::Result RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                              RocksDBKey const& key,
                                              std::string* val) {
-  rocksdb::Status s =
-      _db->Get(_state->_rocksReadOptions, cf, key.string(), val);
+  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
+  TRI_ASSERT(ro.snapshot != nullptr);
+  rocksdb::Status s = _db->Get(ro, cf, key.string(), val);
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
@@ -130,8 +131,10 @@ bool RocksDBTrxMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
 arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                         RocksDBKey const& key,
                                         std::string* val) {
-  rocksdb::Status s = _state->_rocksTransaction->Get(_state->_rocksReadOptions,
-                                                     cf, key.string(), val);
+  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
+  TRI_ASSERT(ro.snapshot != nullptr);
+  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key.string(),
+                                                     val);
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 

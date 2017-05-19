@@ -122,6 +122,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  TRI_ASSERT(index->columnFamily()->GetID() == 0);
 
   // intentional copy of the read options 
   auto options = mthds->readOptions();
