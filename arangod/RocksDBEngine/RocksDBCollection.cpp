@@ -1415,7 +1415,8 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
     res.keySize(key.string().size());
     return res;
   }
-
+  LOG_TOPIC(ERR, Logger::FIXME) << "PUT " << revisionId << " " << mthd->readOptions().snapshot->GetSequenceNumber();
+  
   RocksDBOperationResult innerRes;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -1466,6 +1467,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   // document store, if the doc is overwritten with PUT
   // Simon: actually we do, because otherwise the counter recovery is broken
   // if (!isUpdate) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "DELETE " << revisionId;
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   RocksDBOperationResult res = mthd->Delete(RocksDBColumnFamily::none(), key);
   if (!res.ok()) {
@@ -1599,6 +1601,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
 
     mdr.setManaged(std::move(value), revisionId);
   } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "NOT FOUND " << revisionId << " " << mthd->readOptions().snapshot->GetSequenceNumber();
     mdr.reset();
   }
   return res;

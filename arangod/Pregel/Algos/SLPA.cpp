@@ -86,7 +86,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     // which is not really well parallizable. Additionally I figure
     // since a speaker only speaks to neighbours and the speaker order is random
     // we can get away with letting nodes listen in turn
-    bool listen = val->nodeId % 2 == globalSuperstep() % 2;
+    bool listen = val->nodeId % 4 == globalSuperstep() % 4;
     if (messages.size() > 0 && listen) {
       // listen to our neighbours
       uint64_t newCommunity = mostFrequent(messages);

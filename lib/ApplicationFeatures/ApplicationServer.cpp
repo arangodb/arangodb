@@ -524,12 +524,6 @@ void ApplicationServer::prepare() {
 
 void ApplicationServer::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::start";
-  
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
 
   int res = TRI_ERROR_NO_ERROR;
 

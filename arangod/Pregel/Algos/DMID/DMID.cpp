@@ -518,7 +518,7 @@ struct DMIDComputation
         // FIXME
         //float const ttt = pair.second / getEdges().size();
         float const ttt = pair.second / messages.size();
-        if (ttt >= *threshold) {
+        if (ttt > *threshold) {
           /** its profitable to become a member, set value */
           float deg = 1.0f / std::pow(*iterationCounter / 3.0f, 2.0f);
           vertexState->membershipDegree[pair.first] = deg;
@@ -628,6 +628,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         b.add(_resultField, VPackSlice::nullSlice());
       } else if (_maxCommunities == 1) {
         b.add(_resultField, VPackValue(communities[0].first.key));
+        b.add("confidence", VPackValue(communities[0].second));
       } else {
         unsigned i = _maxCommunities;
         b.add(_resultField, VPackValue(VPackValueType::Object));
@@ -755,13 +756,10 @@ struct DMIDMasterContext : public MasterContext {
       averageFD = (double)averageFD / numLocalLeader;
     }
     /** set flag for globalLeader */
-    // if (LOG_AGGS) {
-    //  System.out.print("Global Leader:");
-    //}
     vecFD->forEach([&](PregelID const& _id, double entry) {
       if (entry > averageFD) {
         initGL->aggregate(_id.shard, _id.key, 1.0);
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Leader " << _id.key;
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Global Leader " << _id.key;
       }
     });
     // setAggregatedValue(DMIDComputation.GL_AGG, initGL);
