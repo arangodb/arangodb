@@ -6,4 +6,4 @@ x-content-type-options: nosniff
 x-arango-replication-lastincluded: 10541
 x-arango-replication-checkmore: false
 
-"{\"tick\":\"10535\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_V__aWa6--_\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"10539\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_V__aWb---_\"}}\n{\"tick\":\"10541\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_V__aWbC---\"}}\n"
+"{\"tick\":\"10535\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_VB_bvKi---\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"10539\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_VB_bvKi--A\"}}\n{\"tick\":\"10541\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_VB_bvKm---\"}}\n"

@@ -10,11 +10,11 @@ x-content-type-options: nosniff
     <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10616"</span>, 
     <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10616"</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3824</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-05-16T08:25:30Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-05-22T13:34:56Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.1.20"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"177876747138535"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.1.21"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"25957192613449"</span> 
   }, 
   <span class="hljs-string">"clients"</span> : [ ] 
 }
