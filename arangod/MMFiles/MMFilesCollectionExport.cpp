@@ -33,13 +33,14 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
 MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t* vocbase,
                                    std::string const& name,
-                                   Restrictions const& restrictions)
+                                   CollectionExport::Restrictions const& restrictions)
     : _collection(nullptr),
       _ditch(nullptr),
       _name(name),

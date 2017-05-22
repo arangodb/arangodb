@@ -25,8 +25,8 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_COLLECTION_EXPORT_H 1
 
 #include "Basics/Common.h"
+#include "Utils/CollectionExport.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/SliceContainer.h>
@@ -42,21 +42,11 @@ class RocksDBCollectionExport {
   friend class RocksDBExportCursor;
 
  public:
-  struct Restrictions {
-    enum Type { RESTRICTION_NONE, RESTRICTION_INCLUDE, RESTRICTION_EXCLUDE };
-
-    Restrictions() : fields(), type(RESTRICTION_NONE) {}
-
-    std::unordered_set<std::string> fields;
-    Type type;
-  };
-
- public:
   RocksDBCollectionExport(RocksDBCollectionExport const&) = delete;
   RocksDBCollectionExport& operator=(RocksDBCollectionExport const&) = delete;
 
   RocksDBCollectionExport(TRI_vocbase_t*, std::string const&,
-                          Restrictions const&);
+                          CollectionExport::Restrictions const&);
 
   ~RocksDBCollectionExport();
 
@@ -68,7 +58,7 @@ class RocksDBCollectionExport {
   LogicalCollection* _collection;
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;
-  Restrictions _restrictions;
+  CollectionExport::Restrictions _restrictions;
   std::vector<velocypack::SliceContainer> _vpack;
 };
 }
