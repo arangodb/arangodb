@@ -177,9 +177,23 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
 
   auto data = std::make_unique<IsolateData>();
  
-  MUTEX_LOCKER(guard, _lock); 
-  _isolateData.emplace_back(std::move(data));
+  {
+    MUTEX_LOCKER(guard, _lock); 
+    _isolateData.emplace(isolate, std::move(data));
+  }
+
   isolate->SetData(V8_INFO, _isolateData.back().get());
 
   return isolate;
 }
+
+void V8PlatformFeature::disposeIsolate(v8::Isolate* isolate) {
+  // must first remove from isolate-data map
+  {
+    MUTEX_LOCKER(guard, _lock); 
+    _isolateData.erase(isolate);
+  }
+  // because Isolate::Dispose() will delete isolate!
+  isolate->Dispose();
+}
+
