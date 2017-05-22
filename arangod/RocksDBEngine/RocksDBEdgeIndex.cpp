@@ -148,8 +148,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     if (_posInMemory > 0) {
       // We still have unreturned edges in out memory.
       // Just plainly return those.
-      size_t atMost =
-          (std::min)(limit, valueLength() + 1 /*size*/ - _posInMemory);
+      size_t atMost = (std::min)(static_cast<uint64_t>(limit),
+                                 valueLength() + 1 /*size*/ - _posInMemory);
       for (size_t i = 0; i < atMost; ++i) {
         cb(RocksDBToken{*(_inplaceMemory + _posInMemory++)});
       }
@@ -167,7 +167,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       // We are done iterating
       return false;
     }
-    
+
     // We have exhausted local memory.
     // Now fill it again:
     VPackSlice fromToSlice = _keysIterator.value();
@@ -176,7 +176,6 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
     TRI_ASSERT(fromToSlice.isString());
     StringRef fromTo(fromToSlice);
-
 
     bool needRocksLookup = true;
     if (_cache != nullptr) {
@@ -198,7 +197,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
           // And then we just get back to beginning of the loop
           reserveInplaceMemory(cachedLength);
           // It is now guaranteed that memcpy will succeed
-          std::memcpy(_inplaceMemory, cachedData, (cachedLength + 1 /*size*/) * sizeof(uint64_t) );
+          std::memcpy(_inplaceMemory, cachedData,
+                      (cachedLength + 1 /*size*/) * sizeof(uint64_t));
           TRI_ASSERT(valueLength() == cachedLength);
           // Set to first document.
           _posInMemory = 1;
@@ -263,7 +263,6 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   }
   _posInMemory = 1;
 }
-
 
 // ============================= Index ====================================
 
