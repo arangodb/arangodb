@@ -59,11 +59,8 @@ struct RPRComputation : public VertexComputation<float, float, float> {
     aggregate(kConvergence, diff);
     aggregate(kRank, ptr);
 
-    RangeIterator<Edge<float>> edges = getEdges();
-    float val = *ptr / edges.size();
-    for (Edge<float>* edge : edges) {
-      sendMessage(edge, val);
-    }
+    float val = *ptr / getEdgeCount();
+    sendMessageToAllNeighbours(val);
   }
 };
 

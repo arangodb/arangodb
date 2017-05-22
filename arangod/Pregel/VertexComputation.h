@@ -73,7 +73,7 @@ class VertexContext {
     return _writeAggregators->getAggregator(name);
   }
 
-  inline WorkerContext const* context() { return _context; }
+  inline WorkerContext const* context() const { return _context; }
 
   V* mutableVertexData() {
     return (V*)_graphStore->mutableVertexData(_vertexEntry);
@@ -81,7 +81,11 @@ class VertexContext {
 
   V vertexData() { return *((V*)_graphStore->mutableVertexData(_vertexEntry)); }
 
-  RangeIterator<Edge<E>> getEdges() {
+  size_t getEdgeCount() const {
+    return _vertexEntry->getEdgeCount();
+  }
+  
+  RangeIterator<Edge<E>> getEdges() const {
     return _graphStore->edgeIterator(_vertexEntry);
   }
 

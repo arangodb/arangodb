@@ -86,7 +86,7 @@ static std::string const RESTART_COUNTER_AGG = "aggRestart";
 /** Maximum steps for the random walk, corresponds to t*. Default = 1000 */
 static uint64_t const RW_ITERATIONBOUND = 10;
 
-static const float PROFTIABILITY_DELTA = 0.3f;
+static const float PROFTIABILITY_DELTA = 0.1f;
 
 static const bool LOG_AGGS = false;
 
@@ -414,14 +414,15 @@ struct DMIDComputation
         }
         /** ANOTHER ROUND */
         /**
-         * every 0 entry means vertex is not part of this community
+         * every 0 entry means vertex is not part of this community (yet)
          * request all successors to send their behavior to these
          * specific communities.
          **/
 
         auto const& it2 = vertexState->membershipDegree.find(this->pregelId());
-        /** In case of first init test again if vertex is leader */
-        if (it2 == vertexState->membershipDegree.end()) {// no
+        /** In case of first init test again if vertex is leader, 
+         or if we do not have connections */
+        if (it2 == vertexState->membershipDegree.end() && getEdgeCount() > 0) {// no
           for (auto const& pair : vertexState->membershipDegree) {
             /**
              * message of the form (ownID, community ID of interest)
@@ -513,11 +514,11 @@ struct DMIDComputation
       int64_t const* iterationCounter =
           getAggregatedValue<int64_t>(ITERATION_AGG);
 
-      // Map.Entry<Long, Double> entry : membershipCounter.entrySet()
+      size_t m = std::min(getEdgeCount(), messages.size());
       for (std::pair<PregelID, float> const& pair : membershipCounter) {
         // FIXME
         //float const ttt = pair.second / getEdges().size();
-        float const ttt = pair.second / messages.size();
+        float const ttt = pair.second / m;
         if (ttt > *threshold) {
           /** its profitable to become a member, set value */
           float deg = 1.0f / std::pow(*iterationCounter / 3.0f, 2.0f);
@@ -628,9 +629,17 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         b.add(_resultField, VPackSlice::nullSlice());
       } else if (_maxCommunities == 1) {
         b.add(_resultField, VPackValue(communities[0].first.key));
-        b.add("confidence", VPackValue(communities[0].second));
       } else {
-        unsigned i = _maxCommunities;
+        // Output for DMID modularity calculator
+        b.add(_resultField, VPackValue(VPackValueType::Array));
+        for (std::pair<PregelID, float> const& pair : ptr->membershipDegree) {
+          b.openArray();
+          b.add(VPackValue(pair.first.key));
+          b.add(VPackValue(pair.second));
+          b.close();
+        }
+        b.close();
+        /*unsigned i = _maxCommunities;
         b.add(_resultField, VPackValue(VPackValueType::Object));
         for (std::pair<PregelID, float> const& pair : ptr->membershipDegree) {
           b.add(pair.first.key, VPackValue(pair.second));
@@ -638,7 +647,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
             break;
           }
         }
-        b.close();
+        b.close();*/
       }
     }
     return true;
@@ -667,7 +676,7 @@ struct DMIDMasterContext : public MasterContext {
     int64_t const* iterCount = getAggregatedValue<int64_t>(ITERATION_AGG);
     int64_t newIterCount = *iterCount + 1;
     bool hasCascadingStarted = false;
-    if (*iterCount != 0) {
+    if (*iterCount != 0) {// will happen after GSS > RW_ITERATIONBOUND + 8
       /** Cascading behavior started increment the iteration count */
       aggregate<int64_t>(ITERATION_AGG, newIterCount);// max aggregator
       hasCascadingStarted = true;
@@ -678,7 +687,7 @@ struct DMIDMasterContext : public MasterContext {
       setAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG, true);
       setAggregatedValue<int64_t>(ITERATION_AGG, 1);
       hasCascadingStarted = true;
-      initializeGL();
+      initializeGL();// initialize global leaders
     }
     if (hasCascadingStarted && (newIterCount % 3 == 1)) {
       /** first step of one iteration */
@@ -694,10 +703,13 @@ struct DMIDMasterContext : public MasterContext {
          * RESTART Cascading Behavior with lower profitability threshold
          */
 
-        float newThreshold = 1 - (PROFTIABILITY_DELTA * (restartCount + 1));
+        float newThreshold = 1.05 - (PROFTIABILITY_DELTA * (restartCount + 1));
+        newThreshold = std::max(0.05f, std::min(newThreshold, 0.95f));
         setAggregatedValue<int64_t>(RESTART_COUNTER_AGG, restartCount + 1);
         setAggregatedValue<float>(PROFITABILITY_AGG, newThreshold);
         setAggregatedValue<int64_t>(ITERATION_AGG, 1);
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Restarting with threshold "
+                                        << newThreshold;
       }
     }
 
@@ -789,7 +801,7 @@ IAggregator* DMID::aggregator(std::string const& name) const {
   } else if (name == ITERATION_AGG) {
     return new MaxAggregator<int64_t>(0, true);  // perm
   } else if (name == PROFITABILITY_AGG) {
-    return new MaxAggregator<float>(0.5, true);  // perm
+    return new MaxAggregator<float>(0.95, true);  // perm
   } else if (name == RESTART_COUNTER_AGG) {
     return new MaxAggregator<int64_t>(1, true);  // perm
   }

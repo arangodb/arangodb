@@ -290,6 +290,7 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_none = cfHandles[0];
   RocksDBColumnFamily::_index = cfHandles[1];
   RocksDBColumnFamily::_uniqueIndex = cfHandles[2];
+  TRI_ASSERT(RocksDBColumnFamily::_none->GetID() == 0);
 
   // only enable logger after RocksDB start
   logger->enable();
