@@ -103,7 +103,7 @@ void DatabasePathFeature::start() {
                                            systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "created database directory '" << _directory << "'.";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "created database directory '" << _directory << "'";
     } else {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to create database directory '" << _directory << "': " << systemErrorStr;
       FATAL_ERROR_EXIT();

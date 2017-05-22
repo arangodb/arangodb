@@ -118,17 +118,20 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index, bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
       _reverse(reverse),
-      _iterator(rocksutils::toRocksMethods(trx)->NewIterator()),
-      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId()))
-       {
+      _iterator(),
+      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   TRI_ASSERT(state != nullptr);
 
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-  auto const& options = mthds->readOptions();
+
+  // intentional copy of the read options 
+  auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
+  options.fill_cache = true;  
+  _iterator = mthds->NewIterator(options);
 
   if (reverse) {
     _iterator->SeekForPrev(_bounds.end());
@@ -226,20 +229,23 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
     : IndexIterator(collection, trx, mmdr, index),
       _cmp(index->_cmp),
-      _iterator(rocksutils::toRocksMethods(trx)->NewIterator()),
+      _iterator(),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
       _total(0),
       _returned(0) {
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
   TRI_ASSERT(state != nullptr);
-
-  auto const& options = rocksutils::toRocksMethods(trx)->readOptions();
+     
+  // intentional copy of the read options 
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
-
+  options.fill_cache = false;
+  _iterator = mthds->NewIterator(options);
+  
   _total = collection->numberDocuments(trx);
   uint64_t off = RandomGenerator::interval(_total - 1);
-  // uint64_t goal = off;
   if (_total > 0) {
     if (off <= _total / 2) {
       _iterator->Seek(_bounds.start());

@@ -400,7 +400,7 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
   siStartInfo.cb = sizeof(STARTUPINFO);
 
   siStartInfo.dwFlags = STARTF_USESTDHANDLES;
-  siStartInfo.hStdInput = rd ? rd : GetStdHandle(STD_INPUT_HANDLE);
+  siStartInfo.hStdInput = rd ? rd : nullptr;
   siStartInfo.hStdOutput = wr ? wr : GetStdHandle(STD_OUTPUT_HANDLE);
   siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 
