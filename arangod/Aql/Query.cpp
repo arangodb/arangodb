@@ -378,8 +378,10 @@ void Query::registerWarning(int code, char const* details) {
 
   if (DoFailOnWarning) {
     // make an error from each warning if requested
-    // note: this will throw!
-    registerErrorCustom(code, details);
+    if (details == nullptr) {
+      THROW_ARANGO_EXCEPTION(code);
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
   }
 
   if (_warnings.size() > _maxWarningCount) {
