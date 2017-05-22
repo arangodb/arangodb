@@ -34,7 +34,7 @@ using namespace arangodb::basics;
 /// @brief create a task tied to the specified queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> queue) : _queue(queue) {}
+LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue) : _queue(queue) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch this task to the underlying io_service
@@ -58,7 +58,7 @@ void LocalTask::dispatch() {
 /// @brief create a callback task tied to the specified queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalCallbackTask::LocalCallbackTask(std::shared_ptr<LocalTaskQueue> queue,
+LocalCallbackTask::LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue,
                                      std::function<void()> cb)
     : _queue(queue), _cb(cb) {}
 

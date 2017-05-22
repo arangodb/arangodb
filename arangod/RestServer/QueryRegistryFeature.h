@@ -46,6 +46,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
 
  private:
   bool _queryTracking;
+  bool _failOnWarning;
   uint64_t _queryMemoryLimit;
   double _slowThreshold;
   std::string _queryCacheMode;

@@ -105,8 +105,7 @@ char const* Exception::what() const throw() { return _errorMessage.c_str(); }
 void Exception::appendLocation () {
   if (_code == TRI_ERROR_INTERNAL) {
     _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
-  } else if (_code == TRI_ERROR_OUT_OF_MEMORY || 
-             _code == TRI_ERROR_NOT_YET_IMPLEMENTED) {
+  } else if (_code == TRI_ERROR_OUT_OF_MEMORY) {
     _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ")";
   }
 

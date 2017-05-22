@@ -39,7 +39,7 @@ class AqlTransaction final : public transaction::Methods {
   /// @brief create the transaction and add all collections from the query
   /// context
   AqlTransaction(
-      std::shared_ptr<transaction::Context> transactionContext, 
+      std::shared_ptr<transaction::Context> const& transactionContext, 
       std::map<std::string, aql::Collection*> const* collections,
       bool isMainTransaction)
       : transaction::Methods(transactionContext),

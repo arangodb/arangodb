@@ -46,17 +46,19 @@ using namespace arangodb::basics;
 
 unsigned long RandomDevice::seed() {
 
-  using namespace std::chrono;
-  
-  unsigned long dev = std::random_device()();
-  unsigned long tid = static_cast<unsigned long>(std::hash<std::thread::id>()(std::this_thread::get_id()));
+  // Random device ---
+  size_t dev = std::random_device()();
 
+  // Thread ID -------
+  auto tid =  std::hash<std::thread::id>()(std::this_thread::get_id());
+
+  // Time now --------
   for (unsigned short i = 0; i < 50; ++i) {
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(1));
+    std::this_thread::sleep_for(std::chrono::nanoseconds(100));
   }
-  unsigned long now = static_cast<unsigned long>(duration_cast<std::chrono::microseconds>(
-    std::chrono::high_resolution_clock::now().time_since_epoch()).count());
+  auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(
+    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 
   return dev + tid + now;
   

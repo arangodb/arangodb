@@ -465,7 +465,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED:
     case TRI_ERROR_NOT_IMPLEMENTED:
-    case TRI_ERROR_NOT_YET_IMPLEMENTED:
       return ResponseCode::NOT_IMPLEMENTED;
 
     default:

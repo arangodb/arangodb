@@ -540,7 +540,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
 }
 
 transaction::Methods::Methods(
-    std::shared_ptr<transaction::Context> transactionContext)
+    std::shared_ptr<transaction::Context> const& transactionContext)
     : _state(nullptr),
       _transactionContext(transactionContext),
       _transactionContextPtr(transactionContext.get()) {

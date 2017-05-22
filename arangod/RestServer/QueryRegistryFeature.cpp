@@ -38,6 +38,7 @@ aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
 QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "QueryRegistry"),
       _queryTracking(true),
+      _failOnWarning(false),
       _queryMemoryLimit(0),
       _slowThreshold(10.0),
       _queryCacheMode("off"),
@@ -64,6 +65,9 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.tracking", "whether to track slow AQL queries",
                      new BooleanParameter(&_queryTracking));
   
+  options->addOption("--query.fail-on-warning", "whether AQL queries should fail with errors even for recoverable warnings",
+                     new BooleanParameter(&_failOnWarning));
+  
   options->addOption("--query.slow-threshold", "threshold for slow AQL queries (in seconds)",
                      new DoubleParameter(&_slowThreshold));
 
@@ -86,6 +90,8 @@ void QueryRegistryFeature::prepare() {
 
   // set global query tracking flag
   arangodb::aql::Query::DisableQueryTracking(!_queryTracking);
+  
+  arangodb::aql::Query::FailOnWarning(_failOnWarning);
   
   // set global threshold value for slow queries  
   arangodb::aql::Query::SlowQueryThreshold(_slowThreshold);

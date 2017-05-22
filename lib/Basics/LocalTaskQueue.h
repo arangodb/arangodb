@@ -43,7 +43,7 @@ class LocalTask : public std::enable_shared_from_this<LocalTask> {
   LocalTask(LocalTask const&) = delete;
   LocalTask& operator=(LocalTask const&) = delete;
 
-  explicit LocalTask(std::shared_ptr<LocalTaskQueue> queue);
+  explicit LocalTask(std::shared_ptr<LocalTaskQueue> const& queue);
   virtual ~LocalTask() {}
 
   virtual void run() = 0;
@@ -64,7 +64,7 @@ class LocalCallbackTask
   LocalCallbackTask(LocalCallbackTask const&) = delete;
   LocalCallbackTask& operator=(LocalCallbackTask const&) = delete;
 
-  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> queue, std::function<void()> cb);
+  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue, std::function<void()> cb);
   virtual ~LocalCallbackTask() {}
 
   virtual void run();
