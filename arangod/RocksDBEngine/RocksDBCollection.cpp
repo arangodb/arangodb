@@ -628,7 +628,6 @@ void RocksDBCollection::invokeOnAllElements(
 void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
   // TODO FIXME -- improve transaction size
-  // TODO FIXME -- intermediate commit
   TRI_ASSERT(_objectId != 0);
 
   rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
