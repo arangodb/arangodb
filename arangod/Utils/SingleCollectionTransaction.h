@@ -41,14 +41,14 @@ class SingleCollectionTransaction final : public transaction::Methods {
   /// @brief create the transaction, using a collection id
   //////////////////////////////////////////////////////////////////////////////
 
-  SingleCollectionTransaction(std::shared_ptr<transaction::Context>,
+  SingleCollectionTransaction(std::shared_ptr<transaction::Context> const&,
                               TRI_voc_cid_t, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection name
   //////////////////////////////////////////////////////////////////////////////
 
-  SingleCollectionTransaction(std::shared_ptr<transaction::Context>,
+  SingleCollectionTransaction(std::shared_ptr<transaction::Context> const&,
                               std::string const&, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////

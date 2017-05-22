@@ -52,7 +52,7 @@ std::string buildFilename(char const* path, char const* name);
 std::string buildFilename(std::string const& path, std::string const& name);
 
 template <typename... Args>
-inline std::string buildFilename(std::string path, std::string name, Args... args) {
+inline std::string buildFilename(std::string const& path, std::string const& name, Args... args) {
   return buildFilename(buildFilename(path, name), args...);
 }
 

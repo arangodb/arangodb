@@ -28,6 +28,7 @@
 #include "Basics/Mutex.h"
 #include "MMFiles/MMFilesCollectionExport.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Utils/CollectionExport.h"
 
 namespace arangodb {
 class MMFilesRestExportHandler : public RestVocbaseBaseHandler {
@@ -68,7 +69,7 @@ class MMFilesRestExportHandler : public RestVocbaseBaseHandler {
   /// @brief restrictions for export
   //////////////////////////////////////////////////////////////////////////////
 
-  MMFilesCollectionExport::Restrictions _restrictions;
+  CollectionExport::Restrictions _restrictions;
 };
 }
 

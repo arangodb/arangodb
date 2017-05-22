@@ -20,7 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBCollectionExport.h"
+#include "RocksDBCollectionExport.h"
 #include "Basics/WriteLocker.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -37,7 +37,7 @@ using namespace arangodb;
 
 RocksDBCollectionExport::RocksDBCollectionExport(
     TRI_vocbase_t* vocbase, std::string const& name,
-    Restrictions const& restrictions)
+    CollectionExport::Restrictions const& restrictions)
     : _collection(nullptr),
       _name(name),
       _resolver(vocbase),
@@ -53,45 +53,35 @@ RocksDBCollectionExport::RocksDBCollectionExport(
 RocksDBCollectionExport::~RocksDBCollectionExport() {}
 
 void RocksDBCollectionExport::run(size_t limit) {
+  SingleCollectionTransaction trx(
+      transaction::StandaloneContext::Create(_collection->vocbase()), _name,
+      AccessMode::Type::READ);
 
-  {
-    SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
-        AccessMode::Type::READ);
+  // already locked by guard above
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+  Result res = trx.begin();
 
-    // already locked by guard above
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-    Result res = trx.begin();
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    size_t maxDocuments = _collection->numberDocuments(&trx);
-    if (limit > 0 && limit < maxDocuments) {
-      maxDocuments = limit;
-    } else {
-      limit = maxDocuments;
-    }
-
-    _vpack.reserve(limit);
-
-    ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(
-        _collection->name(),
-        [this, &limit, &trx, &mmdr](DocumentIdentifierToken const& token) {
-          if (limit == 0) {
-            return false;
-          }
-          if (_collection->readDocument(&trx, token, mmdr)) {
-            _vpack.emplace_back(VPackSlice(mmdr.vpack()));
-            --limit;
-          }
-          return true;
-        });
-
-    trx.finish(res.errorNumber());
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
+
+  _vpack.reserve(limit);
+
+  ManagedDocumentResult mmdr;
+  trx.invokeOnAllElements(
+      _collection->name(),
+      [this, &limit, &trx, &mmdr](DocumentIdentifierToken const& token) {
+        if (limit == 0) {
+          return false;
+        }
+        if (_collection->readDocument(&trx, token, mmdr)) {
+          _vpack.emplace_back(VPackSlice(mmdr.vpack()));
+          --limit;
+        }
+        return true;
+      });
+
+  trx.finish(res.errorNumber());
 
   // delete guard right now as we're about to return
   // if we would continue holding the guard's collection lock and return,

@@ -290,6 +290,13 @@ class Query {
     DoDisableQueryTracking = value;
   }
   
+  /// @brief whether a warning in an AQL query should raise an error
+  static bool FailOnWarning() { return DoFailOnWarning; }
+  
+  static void FailOnWarning(bool value) {
+    DoFailOnWarning = value;
+  }
+  
   /// @brief fetch the global slow query threshold value
   static double SlowQueryThreshold() { return SlowQueryThresholdValue; }
   
@@ -465,6 +472,9 @@ class Query {
 
   /// @brief whether or not query tracking is disabled globally
   static bool DoDisableQueryTracking;
+  
+  /// @brief whether a warning in an AQL query should raise an error
+  static bool DoFailOnWarning;
 };
 }
 }

@@ -87,8 +87,8 @@ struct OperationResult {
         code(other.errorNumber()),
         wasSynchronous(false) {}
 
-  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
-                  std::shared_ptr<VPackCustomTypeHandler> handler,
+  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
+                  std::shared_ptr<VPackCustomTypeHandler> const& handler,
                   std::string const& message, int code, bool wasSynchronous)
       : buffer(buffer),
         customTypeHandler(handler),
@@ -96,8 +96,8 @@ struct OperationResult {
         code(code),
         wasSynchronous(wasSynchronous) {}
 
-  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
-                  std::shared_ptr<VPackCustomTypeHandler> handler,
+  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
+                  std::shared_ptr<VPackCustomTypeHandler> const& handler,
                   std::string const& message, int code, bool wasSynchronous,
                   std::unordered_map<int, size_t> const& countErrorCodes)
       : buffer(buffer),
