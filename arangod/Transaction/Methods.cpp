@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Methods.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
@@ -33,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
@@ -1331,16 +1333,26 @@ OperationResult transaction::Methods::insertCoordinator(
 /// @brief choose a timeout for synchronous replication, based on the
 /// number of documents we ship over
 static double chooseTimeout(size_t count) {
+  static bool timeoutQueried = false;
+  static double timeoutFactor = 1.0;
+  if (!timeoutQueried) {
+    // Multithreading is no problem here because these static variables
+    // are only ever set once in the lifetime of the server.
+    auto feature = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    timeoutFactor = feature->syncReplTimeoutFactor();
+    timeoutQueried = true;
+  }
+
   // We usually assume that a server can process at least 2500 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
   double timeout = static_cast<double>(count / 2500);
   if (timeout < 0.5) {
-    return 0.5;
+    return 0.5 * timeoutFactor;
   } else if (timeout > 120) {
-    return 120.0;
+    return 120.0 * timeoutFactor;
   } else {
-    return timeout;
+    return timeout * timeoutFactor;
   }
 }
 
