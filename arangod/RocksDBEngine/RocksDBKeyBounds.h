@@ -156,7 +156,9 @@ class RocksDBKeyBounds {
   /// Forward iterators may use it->Seek(bound.start()) and reverse iterators
   /// may check that the current key is greater than this value.
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::Slice start() const;
+  rocksdb::Slice start() const {
+    return _internals.start();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the right bound slice.
@@ -164,7 +166,9 @@ class RocksDBKeyBounds {
   /// Reverse iterators may use it->SeekForPrev(bound.end()) and forward
   /// iterators may check that the current key is less than this value.
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::Slice end() const;
+  rocksdb::Slice end() const {
+    return _internals.end();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the object ID for these bounds

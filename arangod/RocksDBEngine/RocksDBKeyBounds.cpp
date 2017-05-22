@@ -182,14 +182,6 @@ RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds&& other) {
   return *this;
 }
 
-rocksdb::Slice RocksDBKeyBounds::start() const {
-  return _internals.start();
-}
-
-rocksdb::Slice RocksDBKeyBounds::end() const {
-  return _internals.end();
-}
-
 uint64_t RocksDBKeyBounds::objectId() const {
   RocksDBEntryType type = static_cast<RocksDBEntryType>(_internals._buffer[0]);
   switch (type) {
