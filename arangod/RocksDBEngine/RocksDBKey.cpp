@@ -393,9 +393,10 @@ TRI_voc_cid_t RocksDBKey::objectId(char const* data, size_t size) {
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::UniqueIndexValue:
+    case RocksDBEntryType::FulltextIndexValue:
     case RocksDBEntryType::GeoIndexValue:
     {
-      TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
+      TRI_ASSERT(size >= (sizeof(char) + sizeof(uint64_t)));
       return uint64FromPersistent(data + sizeof(char));
     }
 

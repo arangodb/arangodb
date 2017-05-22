@@ -23,6 +23,7 @@
 #include "RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Logger/Logger.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>

@@ -120,15 +120,17 @@ void RocksDBVPackIndexIterator::reset() {
 
 bool RocksDBVPackIndexIterator::outOfRange() const {
   TRI_ASSERT(_trx->state()->isRunning());
-  TRI_ASSERT(_reverse);
-
-  return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
+  if (_reverse) {
+    return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
+  } else {
+    return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
+  }
 }
 
 bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid() || (_reverse && outOfRange())) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -136,6 +138,8 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
   }
 
   while (limit > 0) {
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+    
     StringRef primaryKey = _index->_unique
                                ? RocksDBValue::primaryKey(_iterator->value())
                                : RocksDBKey::primaryKey(_iterator->key());
@@ -150,7 +154,7 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
       _iterator->Next();
     }
 
-    if (!_iterator->Valid() || (_reverse && outOfRange())) {
+    if (!_iterator->Valid() || outOfRange()) {
       return false;
     }
   }

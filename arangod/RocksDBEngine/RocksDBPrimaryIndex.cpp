@@ -48,6 +48,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
+
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
 
@@ -118,8 +120,13 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index, bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
       _reverse(reverse),
+      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
       _iterator(),
-      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())) {
+      _cmp(index->comparator())
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      , _index(index)
+#endif
+{
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   TRI_ASSERT(index->columnFamily()->GetID() == 0);
@@ -130,7 +137,12 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = true;
   _iterator = mthds->NewIterator(options, index->columnFamily());
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  rocksdb::ColumnFamilyDescriptor desc;
+  index->columnFamily()->GetDescriptor(&desc);
+  TRI_ASSERT(desc.options.prefix_extractor);
+#endif
+  
   if (reverse) {
     _iterator->SeekForPrev(_bounds.end());
   } else {
@@ -138,10 +150,19 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   }
 }
 
+bool RocksDBAllIndexIterator::outOfRange() const {
+  TRI_ASSERT(_trx->state()->isRunning());
+  if (_reverse) {
+    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
+  } else {
+    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+  }
+}
+
 bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid()) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -149,6 +170,9 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   }
 
   while (limit > 0) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+#endif
     RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
     cb(token);
 
@@ -160,7 +184,7 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
       _iterator->Next();
     }
 
-    if (!_iterator->Valid()) {
+    if (!_iterator->Valid() || outOfRange()) {
       return false;
     }
   }
@@ -191,7 +215,7 @@ bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb,
     } else {
       _iterator->Next();
     }
-    if (!_iterator->Valid()) {
+    if (!_iterator->Valid() || outOfRange()) {
       return false;
     }
   }
@@ -239,6 +263,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
+  TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = false;
   _iterator = mthds->NewIterator(options, index->columnFamily());
   
@@ -266,7 +291,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
 bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid()) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -280,7 +305,7 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
     --limit;
     _returned++;
     _iterator->Next();
-    if (!_iterator->Valid()) {
+    if (!_iterator->Valid() || outOfRange()) {
       if (_returned < _total) {
         _iterator->Seek(_bounds.start());
         continue;
@@ -292,6 +317,10 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
 }
 
 void RocksDBAnyIndexIterator::reset() { _iterator->Seek(_bounds.start()); }
+
+bool RocksDBAnyIndexIterator::outOfRange() const {
+  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+}
 
 // ================ PrimaryIndex ================
 

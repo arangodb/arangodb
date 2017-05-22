@@ -93,9 +93,15 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   void seek(StringRef const& key);
 
  private:
+  bool outOfRange() const;
+  
   bool const _reverse;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
   RocksDBKeyBounds const _bounds;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+  rocksdb::Comparator const* _cmp;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  RocksDBPrimaryIndex const* _index;
+#endif
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {

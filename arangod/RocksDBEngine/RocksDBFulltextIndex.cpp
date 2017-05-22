@@ -509,17 +509,20 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
-  rocksdb::Slice upper = bounds.end();
+  rocksdb::Slice end = bounds.end();
+  rocksdb::Comparator const* cmp = this->comparator();
 
   rocksdb::ReadOptions ro = mthds->readOptions();
-  ro.iterate_upper_bound = &upper;
+  ro.iterate_upper_bound = &end;
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(ro, _cf);
   iter->Seek(bounds.start());
 
   // set is used to perform an intersection with the result set
   std::set<std::string> intersect;
   // apply left to right logic, merging all current results with ALL previous
-  while (iter->Valid()) {
+  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    
     rocksdb::Status s = iter->status();
     if (!s.ok()) {
       return rocksutils::convertStatus(s);

@@ -195,13 +195,16 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   RocksDBKeyBounds indexBounds = getBounds();
 
   rocksdb::ReadOptions options = mthds->readOptions();
-  rocksdb::Slice upperBound = indexBounds.end();
-  options.iterate_upper_bound = &upperBound;
+  rocksdb::Slice end = indexBounds.end();
+  rocksdb::Comparator const* cmp = this->comparator();
+  options.iterate_upper_bound = &end;
 
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options, _cf);
   iter->Seek(indexBounds.start());
 
-  while (iter->Valid()) {
+  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    
     Result r = mthds->Delete(_cf, iter->key());
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);

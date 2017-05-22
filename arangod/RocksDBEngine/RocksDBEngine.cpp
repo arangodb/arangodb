@@ -264,8 +264,8 @@ void RocksDBEngine::start() {
 
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> columFamilies;
-  columFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName,
-                             rocksdb::ColumnFamilyOptions(_options));
+  rocksdb::ColumnFamilyOptions cfOptions1(_options);
+  columFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName, cfOptions1);
   rocksdb::ColumnFamilyOptions cfOptions2(_options);
   cfOptions2.comparator = _cmp.get();  // only
   columFamilies.emplace_back("IndexValue", cfOptions2);
