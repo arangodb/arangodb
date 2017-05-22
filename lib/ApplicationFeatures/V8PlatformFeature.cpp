@@ -176,13 +176,19 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   isolate->AddGCEpilogueCallback(gcEpilogueCallback);
 
   auto data = std::make_unique<IsolateData>();
+  isolate->SetData(V8_INFO, data.get());
  
   {
     MUTEX_LOCKER(guard, _lock); 
-    _isolateData.emplace(isolate, std::move(data));
+    try {
+      _isolateData.emplace(isolate, std::move(data));
+    } catch (...) {
+      isolate->SetData(V8_INFO, nullptr);
+      isolate->Dispose();
+      throw;
+    }
   }
 
-  isolate->SetData(V8_INFO, _isolateData.back().get());
 
   return isolate;
 }
