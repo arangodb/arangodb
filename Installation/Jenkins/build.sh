@@ -653,14 +653,6 @@ fi
 PARTIAL_STATE=$?
 set -e
 
-if test "${isCygwin}" == 1 -a "${PARTIAL_STATE}" == 1; then
-    # windows fails to partialy re-configure - so do a complete configure run.
-    if test -f CMakeFiles/generate.stamp -a CMakeFiles/generate.stamp -ot "${SOURCE_DIR}/CMakeList.txt"; then
-        echo "CMakeList older - Forcing complete configure run!"
-        PARTIAL_STATE=0
-    fi
-fi
-
 if test "${PARTIAL_STATE}" == 0; then
     rm -rf CMakeFiles CMakeCache.txt CMakeCPackOptions.cmake cmake_install.cmake CPackConfig.cmake CPackSourceConfig.cmake
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
@@ -674,7 +666,23 @@ if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
     fi
 fi
 
-${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
+TRIES=0;
+set +e
+while /bin/true; do
+    ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
+    RC=$?
+    if test "${isCygwin}" == 1 -a "${RC}" != 0 -a "${TRIES}" == 0; then
+        # sometimes windows will fail on a messed up working copy,
+        # but succed on second try. So we retry once.
+        TRIES=1
+        continue
+    fi
+    if test "${RC}" != 0; then
+        exit ${RC}
+    fi
+    break
+done
+set -e
 
 (cd ${SOURCE_DIR}; git rev-parse HEAD > last_compiled_version.sha)
 
