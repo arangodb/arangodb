@@ -53,9 +53,6 @@
 ///   Will be raised when a request is canceled by the user.
 /// - 22: @LIT{intentional debug error}
 ///   Will be raised intentionally during debugging.
-/// - 23: @LIT{not yet implemented}
-///   Will be raised when hitting an unimplemented feature that will be
-///   implemented soon.
 /// - 25: @LIT{IP address is invalid}
 ///   Will be raised when the structure of an IP address is invalid.
 /// - 27: @LIT{file exists}
@@ -951,17 +948,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_DEBUG                                                   (22)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 23: ERROR_NOT_YET_IMPLEMENTED
-///
-/// not yet implemented
-///
-/// Will be raised when hitting an unimplemented feature that will be
-/// implemented soon.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_NOT_YET_IMPLEMENTED                                     (23)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 25: ERROR_IP_ADDRESS_INVALID
