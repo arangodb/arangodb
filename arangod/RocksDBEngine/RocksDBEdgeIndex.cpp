@@ -62,212 +62,206 @@ using namespace arangodb::basics;
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBEdgeIndex const* index,
-    std::unique_ptr<VPackBuilder>& keys, bool useCache, cache::Cache* cache)
+    std::unique_ptr<VPackBuilder>& keys, cache::Cache* cache)
     : IndexIterator(collection, trx, mmdr, index),
       _keys(keys.get()),
       _keysIterator(_keys->slice()),
       _index(index),
       _iterator(rocksutils::toRocksMethods(trx)->NewIterator()),
-      _arrayIterator(VPackSlice::emptyArraySlice()),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
-      _doUpdateBounds(true),
-      _doUpdateArrayIterator(true),
-      _useCache(useCache),
       _cache(cache),
-      _cacheValueSize(0) {
+      _posInMemory(0),
+      _memSize(26),
+      _inplaceMemory(nullptr) {
+  // We allocate enough memory for 25 elements + 1 size.
+  // Maybe adjust this.
+  _inplaceMemory = new uint64_t[_memSize];
   keys.release();  // now we have ownership for _keys
+  TRI_ASSERT(_keys != nullptr);
   TRI_ASSERT(_keys->slice().isArray());
+  resetInplaceMemory();
 }
 
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
+  delete[] _inplaceMemory;
   if (_keys != nullptr) {
     // return the VPackBuilder to the transaction context
     _trx->transactionContextPtr()->returnBuilder(_keys.release());
   }
 }
 
-void RocksDBEdgeIndexIterator::updateBounds(StringRef fromTo) {
-  _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
-  _iterator->Seek(_bounds.start());
+void RocksDBEdgeIndexIterator::resizeMemory() {
+  // Increase size by factor of two.
+  // TODO Adjust this has potential to kill memory...
+  uint64_t* tmp = new uint64_t[_memSize * 2];
+  std::memcpy(tmp, _inplaceMemory, _memSize * sizeof(uint64_t));
+  _memSize *= 2;
+  delete[] _inplaceMemory;
+  _inplaceMemory = tmp;
 }
 
-StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const& it) {
-  VPackSlice fromTo = it.value();
-  if (fromTo.isObject()) {
-    fromTo = fromTo.get(StaticStrings::IndexEq);
+void RocksDBEdgeIndexIterator::reserveInplaceMemory(uint64_t count) {
+  // NOTE: count the number of cached edges, 1 is the size
+  if (count + 1 > _memSize) {
+    // In this case the current memory is too small.
+    // Reserve more
+    delete[] _inplaceMemory;
+    _inplaceMemory = new uint64_t[count + 1];
+    _memSize = count + 1;
   }
-  TRI_ASSERT(fromTo.isString());
-  return StringRef(fromTo);
+  // else NOOP, we have enough memory to write to
+}
+
+uint64_t RocksDBEdgeIndexIterator::valueLength() const {
+  return *_inplaceMemory;
+}
+
+void RocksDBEdgeIndexIterator::resetInplaceMemory() {
+  // It is sufficient to only set the first element
+  // We always have to make sure to only access elements
+  // at a position lower than valueLength()
+  *_inplaceMemory = 0;
+
+  // Position 0 points to the size.
+  // This is defined as the invalid position
+  _posInMemory = 0;
+}
+
+void RocksDBEdgeIndexIterator::reset() {
+  resetInplaceMemory();
+  _keysIterator.reset();
 }
 
 bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
-  if (limit == 0 || !_keysIterator.valid()) {
-    // No limit no data, or we are actually done. The last call should have
-    // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+#ifdef USE_MAINTAINER_MODE
+  TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+#else
+  // Gracefully return in production code
+  // Nothing bad has happened
+  if (limit == 0) {
     return false;
   }
+#endif
 
-  std::size_t cacheValueSizeLimit = 100000;
-
-  // acquire RocksDB collection
-  RocksDBToken token;
-  auto iterateCachedValues = [this, &cb, &limit, &token]() {
-    while (_arrayIterator.valid()) {
-      VPackSlice edgeKey(_arrayIterator.value());
-
-      cb(RocksDBToken(edgeKey.getUInt()));
-      --limit;
-      ++_arrayIterator;
-      if (limit == 0) {
-        _doUpdateArrayIterator = false;  // limit hit continue with next batch
+  while (limit > 0) {
+    if (_posInMemory > 0) {
+      // We still have unreturned edges in out memory.
+      // Just plainly return those.
+      size_t atMost = (std::min)(static_cast<uint64_t>(limit),
+                                 valueLength() + 1 /*size*/ - _posInMemory);
+      for (size_t i = 0; i < atMost; ++i) {
+        cb(RocksDBToken{*(_inplaceMemory + _posInMemory++)});
+      }
+      limit -= atMost;
+      if (_posInMemory == valueLength() + 1) {
+        // We have returned everthing we had in local buffer, reset it
+        resetInplaceMemory();
+      } else {
+        TRI_ASSERT(limit == 0);
         return true;
       }
     }
 
-    // reset cache iterator before handling next from/to
-    _arrayBuffer.clear();
-    _arrayIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
-    return false;
-  };
-
-  while (_keysIterator.valid()) {
-    TRI_ASSERT(limit > 0);
-    StringRef fromTo = getFromToFromIterator(_keysIterator);
-    bool foundInCache = false;
-
-    if (_useCache && _doUpdateArrayIterator) {
-      // try to find cached value
-      auto f = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
-      foundInCache = f.found();
-      if (foundInCache) {
-        VPackSlice cachedPrimaryKeys(f.value()->value());
-        TRI_ASSERT(cachedPrimaryKeys.isArray());
-
-        // update arraySlice (and copy Buffer if required)
-        // the finding should be small otherwise we need to release it sooner
-        if (cachedPrimaryKeys.length() <=
-            std::min(static_cast<size_t>(40), limit)) {
-          _arraySlice = cachedPrimaryKeys;  // do not copy
-        } else {
-          // copy data if there are more documents than the batch size limit
-          // allows
-          _arrayBuffer.append(cachedPrimaryKeys.start(),
-                              cachedPrimaryKeys.byteSize());
-          _arraySlice = VPackSlice(_arrayBuffer.data());
-          f.release();  // release finding so the cache can be operated on
-        }
-
-        // update cache value iterator
-        _arrayIterator = VPackArrayIterator(_arraySlice);
-
-        // iterate until batch size limit is hit
-        bool continueWithNextBatch = iterateCachedValues();
-        if (continueWithNextBatch) {
-          return true;  // exit and continue with next batch
-        }
-      }
-    } else if (_useCache && !_doUpdateArrayIterator) {
-      // resuming old iterator
-      foundInCache = true;  // do not look up key again!
-      _doUpdateArrayIterator = true;
-      bool continueWithNextBatch = iterateCachedValues();
-      if (continueWithNextBatch) {
-        return true;  // exit and continue with next batch
-      }
+    if (!_keysIterator.valid()) {
+      // We are done iterating
+      return false;
     }
 
-    if (!foundInCache) {
-      // cache lookup failed for key value we need to look up
-      // primary keys in RocksDB
+    // We have exhausted local memory.
+    // Now fill it again:
+    VPackSlice fromToSlice = _keysIterator.value();
+    if (fromToSlice.isObject()) {
+      fromToSlice = fromToSlice.get(StaticStrings::IndexEq);
+    }
+    TRI_ASSERT(fromToSlice.isString());
+    StringRef fromTo(fromToSlice);
 
-      // if there are more documents in the iterator then
-      // we are not allowed to reset the index.
-      // if _doUpdateBound is set to false we resume
-      // returning from an valid iterator after hitting
-      // the batch size limit
-      if (_doUpdateBounds) {
-        updateBounds(fromTo);
-        if (_useCache) {
-          _cacheValueBuilder.openArray();
-        }
-      } else {
-        _doUpdateBounds = true;
-      }
-
-      auto const end = _bounds.end();
-
-      while (_iterator->Valid() &&
-             (_index->_cmp->Compare(_iterator->key(), end) < 0)) {
-        StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
-
-        // lookup real document
-        bool continueWithNextBatch = lookupDocumentAndUseCb(edgeKey, cb, limit, token);
-        // build cache value for from/to
-        if (_useCache) {
-          if (_cacheValueSize <= cacheValueSizeLimit) {
-            _cacheValueBuilder.add(VPackValue(token.revisionId()));
-            ++_cacheValueSize;
+    bool needRocksLookup = true;
+    if (_cache != nullptr) {
+      // Try to read from cache
+      auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
+      if (finding.found()) {
+        needRocksLookup = false;
+        // We got sth. in the cache
+        uint64_t* cachedData = (uint64_t*)finding.value()->value();
+        uint64_t cachedLength = *cachedData;
+        if (cachedLength < limit) {
+          // Save copies, just return it.
+          for (uint64_t i = 0; i < cachedLength; ++i) {
+            cb(RocksDBToken{*(cachedData + 1 + i)});
           }
-        }
-
-        _iterator->Next();
-        // check batch size limit
-        if (continueWithNextBatch) {
-          return true;  // more documents - function will be re-entered
-        }
-      }
-
-      // insert cache values that are beyond the cacheValueSizeLimit
-      if (_useCache && _cacheValueSize <= cacheValueSizeLimit) {
-        _cacheValueBuilder.close();
-        auto entry = cache::CachedValue::construct(
-            fromTo.data(), static_cast<uint32_t>(fromTo.size()),
-            _cacheValueBuilder.slice().start(),
-            static_cast<uint64_t>(_cacheValueBuilder.slice().byteSize()));
-        bool cached = _cache->insert(entry);
-        if (!cached) {
-          delete entry;
+          limit -= cachedLength;
+        } else {
+          // We need to copy it.
+          // And then we just get back to beginning of the loop
+          reserveInplaceMemory(cachedLength);
+          // It is now guaranteed that memcpy will succeed
+          std::memcpy(_inplaceMemory, cachedData,
+                      (cachedLength + 1 /*size*/) * sizeof(uint64_t));
+          TRI_ASSERT(valueLength() == cachedLength);
+          // Set to first document.
+          _posInMemory = 1;
+          // Do not set limit
         }
       }
-
-      // prepare for next key
-      _cacheValueBuilder.clear();
-      _cacheValueSize = 0;
-    }                      // not found in cache
-    _keysIterator.next();  // handle next key
-  }
-  return false;  // no more documents in this iterator
-}
-
-// acquire the document token through the primary index
-bool RocksDBEdgeIndexIterator::lookupDocumentAndUseCb(
-    StringRef primaryKey, TokenCallback const& cb,
-    size_t& limit, RocksDBToken& token){
-  //we pass the token in as ref to avoid allocations
-  auto rocksColl = toRocksDBCollection(_collection);
-  Result res = rocksColl->lookupDocumentToken(_trx, primaryKey, token);
-  if (res.ok()) {
-    cb(token);
-    --limit;
-    if (limit == 0) {
-      _doUpdateBounds=false; //limit hit continue with next batch
-      return true;
     }
-  }              // TODO do we need to handle failed lookups here?
-  return false;  // limit not hit continue in while loop
+
+    if (needRocksLookup) {
+      lookupInRocksDB(fromTo);
+    }
+
+    // We cannot be more advanced here
+    TRI_ASSERT(_posInMemory == 1 || _posInMemory == 0);
+
+    _keysIterator.next();
+  }
+  TRI_ASSERT(limit == 0);
+  return (_posInMemory != 0) || _keysIterator.valid();
 }
 
-void RocksDBEdgeIndexIterator::reset() {
-  // rest offsets into iterators
-  _doUpdateBounds = true;
-  _doUpdateArrayIterator = true;
-  _cacheValueBuilder.clear();
-  _arrayBuffer.clear();
-  _arraySlice = VPackSlice::emptyArraySlice();
-  _arrayIterator = VPackArrayIterator(_arraySlice);
-  _keysIterator.reset();
+void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
+  // Bad case read from RocksDB
+  _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
+  _iterator->Seek(_bounds.start());
+  resetInplaceMemory();
+  _posInMemory = 1;
+  auto rocksColl = toRocksDBCollection(_collection);
+  RocksDBToken token;
+  auto end = _bounds.end();
+  while (_iterator->Valid() &&
+         (_index->_cmp->Compare(_iterator->key(), end) < 0)) {
+    StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
+    Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
+    if (res.ok()) {
+      *(_inplaceMemory + _posInMemory) = token.revisionId();
+      _posInMemory++;
+      (*_inplaceMemory)++;  // Increase size
+      if (_posInMemory == _memSize) {
+        resizeMemory();
+      }
+#ifdef USE_MAINTAINER_MODE
+    } else {
+      // Index inconsistency, we indexed a primaryKey => revision that is
+      // not known any more
+      TRI_ASSERT(res.ok());
+#endif
+    }
+    _iterator->Next();
+  }
+  if (_cache != nullptr) {
+    // TODO Add cache retry on next call
+    // Now we have something in _inplaceMemory.
+    // It may be an empty array or a filled one, never mind, we cache both
+    auto entry = cache::CachedValue::construct(
+        fromTo.data(), static_cast<uint32_t>(fromTo.size()), _inplaceMemory,
+        sizeof(uint64_t) * (valueLength() + 1 /*size*/));
+    bool cached = _cache->insert(entry);
+    if (!cached) {
+      delete entry;
+    }
+  }
+  _posInMemory = 1;
 }
 
 // ============================= Index ====================================
@@ -557,7 +551,7 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   keys->close();
 
   return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys,
-                                      useCache(), _cache.get());
+                                      _cache.get());
 }
 
 /// @brief create the iterator
@@ -584,7 +578,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   keys->close();
 
   return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys,
-                                      useCache(), _cache.get());
+                                      _cache.get());
 }
 
 /// @brief add a single value node to the iterator's keys
