@@ -23,6 +23,7 @@ class DBFlushTest : public DBTestBase {
 // only one of them get committed. The test verifies the issue is fixed.
 TEST_F(DBFlushTest, FlushWhileWritingManifest) {
   Options options;
+  options.env = CurrentOptions().env;
   options.disable_auto_compactions = true;
   options.max_background_flushes = 2;
   Reopen(options);
@@ -50,7 +51,7 @@ TEST_F(DBFlushTest, FlushWhileWritingManifest) {
 
 TEST_F(DBFlushTest, SyncFail) {
   std::unique_ptr<FaultInjectionTestEnv> fault_injection_env(
-      new FaultInjectionTestEnv(Env::Default()));
+      new FaultInjectionTestEnv(CurrentOptions().env));
   Options options;
   options.disable_auto_compactions = true;
   options.env = fault_injection_env.get();

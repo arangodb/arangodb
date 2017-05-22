@@ -123,6 +123,7 @@ TEST_F(DBTestTailingIterator, TailingIteratorSeekToNext) {
 TEST_F(DBTestTailingIterator, TailingIteratorTrimSeekToNext) {
   const uint64_t k150KB = 150 * 1024;
   Options options;
+  options.env = CurrentOptions().env;
   options.write_buffer_size = k150KB;
   options.max_write_buffer_number = 3;
   options.min_write_buffer_number_to_merge = 2;

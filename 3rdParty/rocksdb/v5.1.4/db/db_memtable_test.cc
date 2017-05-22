@@ -118,6 +118,7 @@ class TestPrefixExtractor : public SliceTransform {
 
 TEST_F(DBMemTableTest, InsertWithHint) {
   Options options;
+  options.env = CurrentOptions().env;
   options.allow_concurrent_memtable_write = false;
   options.create_if_missing = true;
   options.memtable_factory.reset(new MockMemTableRepFactory());

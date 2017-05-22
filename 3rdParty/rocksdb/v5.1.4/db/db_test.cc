@@ -3407,6 +3407,9 @@ TEST_F(DBTest, TableOptionsSanitizeTest) {
 // sense to run
 #ifndef OS_WIN
 TEST_F(DBTest, MmapAndBufferOptions) {
+  if (!IsMemoryMappedAccessSupported()) {
+    return;
+  }
   Options options = CurrentOptions();
 
   options.use_direct_reads = true;

@@ -101,6 +101,7 @@ LIB_SOURCES =                                                   \
   util/dynamic_bloom.cc                                         \
   util/env.cc                                                   \
   util/env_chroot.cc                                            \
+  util/env_encryption.cc                                        \
   util/env_hdfs.cc                                              \
   util/env_posix.cc                                             \
   util/event_logger.cc                                          \
@@ -223,6 +224,7 @@ MAIN_SOURCES =                                                    \
   db/dbformat_test.cc                                                   \
   db/db_iter_test.cc                                                    \
   db/db_test.cc                                                         \
+  db/db_encryption_test.cc                                              \
   db/db_block_cache_test.cc                                             \
   db/db_io_failure_test.cc                                              \
   db/db_bloom_filter_test.cc                                            \
