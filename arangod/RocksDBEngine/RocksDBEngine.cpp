@@ -141,10 +141,18 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
+
+#ifdef USE_ENTERPRISE 
+   collectEnterpriseOptions(options);
+#endif
 }
 
 // validate the storage engine's specific options
-void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
+void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+#ifdef USE_ENTERPRISE 
+   validateEnterpriseOptions(options);
+#endif
+}
 
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
@@ -212,6 +220,10 @@ void RocksDBEngine::start() {
   _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
+
+#ifdef USE_ENTERPRISE
+  configureEnterpriseRocksDBOptions(_options);
+#endif
 
   _options.env->SetBackgroundThreads((int)opts->_numThreadsHigh,
                                      rocksdb::Env::Priority::HIGH);
