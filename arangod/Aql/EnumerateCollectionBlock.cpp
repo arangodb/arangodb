@@ -29,6 +29,7 @@
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/ServerState.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
