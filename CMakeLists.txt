@@ -586,6 +586,17 @@ endif ()
 # RocksDB
 # ------------------------------------------------------------------------------
 
+#NDEBUG
+if ( NOT USE_MAINTAINER_MODE AND ( CMAKE_BUILD_TYPE STREQUAL "Release" OR
+                                   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
+                                   CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
+                                 )
+   )
+   add_definitions(-DNDEBUG)
+endif ()
+
+
+
 add_subdirectory(3rdParty/rocksdb)
  
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
@@ -679,15 +690,6 @@ else ()
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
-endif ()
-
-#NDEBUG
-if ( NOT USE_MAINTAINER_MODE AND ( CMAKE_BUILD_TYPE STREQUAL "Release" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
-                                 )
-   )
-   add_definitions(-DNDEBUG)
 endif ()
 
 set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS}                    ${BASE_FLAGS} ${BASE_C_FLAGS}")
