@@ -78,6 +78,9 @@ double Query::SlowQueryThresholdValue = 10.0;
 /// @brief whether or not query tracking is disabled globally
 bool Query::DoDisableQueryTracking = false;
 
+/// @brief whether a warning in an AQL query should raise an error
+bool Query::DoFailOnWarning = false;
+
 /// @brief creates a query
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
@@ -372,6 +375,12 @@ void Query::registerErrorCustom(int code, char const* details) {
 /// @brief register a warning
 void Query::registerWarning(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
+
+  if (DoFailOnWarning) {
+    // make an error from each warning if requested
+    // note: this will throw!
+    registerErrorCustom(code, details);
+  }
 
   if (_warnings.size() > _maxWarningCount) {
     return;
