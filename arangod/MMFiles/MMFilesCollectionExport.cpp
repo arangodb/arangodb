@@ -110,7 +110,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       limit = maxDocuments;
     }
 
-    _vpack.reserve(limit);
+    _vpack.reserve(maxDocuments);
 
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
     ManagedDocumentResult mmdr;
