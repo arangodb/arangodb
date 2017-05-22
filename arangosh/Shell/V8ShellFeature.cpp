@@ -990,7 +990,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   files.push_back("client/client.js");  // needs internal
 
   for (size_t i = 0; i < files.size(); ++i) {
-    switch (loader.loadScript(_isolate, context, files[i])) {
+    switch (loader.loadScript(_isolate, context, files[i], nullptr)) {
       case JSLoader::eSuccess:
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded JavaScript file '" << files[i] << "'";
         break;

@@ -26,6 +26,7 @@
 #include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -82,7 +83,8 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(
 
 JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
                                       v8::Handle<v8::Context>& context,
-                                      std::string const& name) {
+                                      std::string const& name,
+                                      VPackBuilder* builder) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
 
@@ -99,8 +101,9 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
   // Enter the newly created execution environment.
   v8::Context::Scope context_scope(context);
 
-  TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(i->second),
-                              TRI_V8_STD_STRING(name), false);
+  v8::Handle<v8::Value> result =
+    TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(i->second),
+                                TRI_V8_STD_STRING(name), false);
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
@@ -111,6 +114,19 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
 
       v8g->_canceled = true;
       return eFailExecute;
+    }
+  }
+
+  // Report the result if there is one:
+  if (builder != nullptr) {
+    try {
+      if (!result.IsEmpty()) {
+        TRI_V8ToVPack(isolate, *builder, result, false);
+      } else {
+        builder->add(VPackValue(VPackValueType::Null));
+      }
+    }
+    catch (...) {
     }
   }
 

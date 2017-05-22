@@ -55,5 +55,5 @@
 
   global.ArangoAgency.set('Current/Foxxmaster', global.ArangoServerState.id());
 
-  return true;
+  return result;
 }());

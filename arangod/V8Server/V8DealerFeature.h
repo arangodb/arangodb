@@ -28,6 +28,10 @@
 #include "Basics/ConditionVariable.h"
 #include "V8/JSLoader.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -62,8 +66,13 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   bool addGlobalContextMethod(std::string const&);
   void collectGarbage();
 
-  void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file);
-  void loadJavaScriptFileInDefaultContext(TRI_vocbase_t*, std::string const& file);
+  // In the following two, if the builder pointer is not nullptr, then
+  // the Javascript result(s) are returned as VPack in the builder,
+  // the builder is not cleared and thus should be empty before the call.
+  void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
+                                       VPackBuilder* builder);
+  void loadJavaScriptFileInDefaultContext(TRI_vocbase_t*, std::string const& file,
+                                       VPackBuilder* builder);
   void startGarbageCollection();
 
   V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase,
@@ -93,8 +102,9 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   V8Context* buildContext(size_t id);
   V8Context* pickFreeContextForGc();
   void shutdownContext(V8Context* context);
-  void loadJavaScriptFileInternal(std::string const& file, V8Context* context);
-  bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file, V8Context* context);
+  void loadJavaScriptFileInternal(std::string const& file, V8Context* context,
+                                  VPackBuilder* builder);
+  bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file, V8Context* context, VPackBuilder* builder);
   void enterContextInternal(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
   void exitContextInternal(V8Context*);
   void applyContextUpdate(V8Context* context);
