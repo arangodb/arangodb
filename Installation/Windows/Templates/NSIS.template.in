@@ -275,34 +275,6 @@ Var AR_RegFlags
 !verbose 3
 !include "WinMessages.NSH"
 !verbose 4
-;====================================================
-; get_NT_environment
-;     Returns: the selected environment
-;     Output : head of the stack
-;====================================================
-!macro select_NT_profile UN
-Function ${UN}select_NT_profile
-   StrCmp $ADD_TO_PATH_ALL_USERS "1" 0 environment_single
-      DetailPrint "Selected environment for all users"
-      Push "all"
-      Return
-   environment_single:
-      DetailPrint "Selected environment for current user only."
-      Push "current"
-      Return
-FunctionEnd
-!macroend
-!insertmacro select_NT_profile ""
-!insertmacro select_NT_profile "un."
-
-!ifndef WriteEnvStr_RegKey
-  !ifdef ALL_USERS
-    !define WriteEnvStr_RegKey \
-       'HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"'
-  !else
-    !define WriteEnvStr_RegKey 'HKCU "Environment"'
-  !endif
-!endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Uninstall sutff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
