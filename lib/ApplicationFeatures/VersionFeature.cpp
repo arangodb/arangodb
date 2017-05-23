@@ -36,6 +36,8 @@ VersionFeature::VersionFeature(application_features::ApplicationServer* server)
       _printVersion(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+
+  startsAfter("ShellColors");
 }
 
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Section.h"
-#include "Basics/shell-colors.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ProgramOptions/Option.h"
 
 #include <iostream>
@@ -51,7 +51,7 @@ void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool co
   }
 
   if (colors) {
-    std::cout << "Section '" << TRI_SHELL_COLOR_BRIGHT << displayName() << TRI_SHELL_COLOR_RESET << "' (" << description << ")"
+    std::cout << "Section '" << ShellColorsFeature::SHELL_COLOR_BRIGHT << displayName() << ShellColorsFeature::SHELL_COLOR_RESET << "' (" << description << ")"
               << std::endl;
   } else {
     std::cout << "Section '" << displayName() << "' (" << description << ")"
