@@ -52,14 +52,9 @@ void OperationCursor::reset() {
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Calls cb for the next batchSize many elements 
 ///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
-bool OperationCursor::getMore(
-    std::function<void(DocumentIdentifierToken const& token)> const& callback,
-    uint64_t batchSize) {
+bool OperationCursor::next(IndexIterator::TokenCallback const& callback, uint64_t batchSize) {
   if (!hasMore()) {
     return false;
   }
@@ -97,13 +92,10 @@ bool OperationCursor::getMore(
   return _hasMore;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.
 ///        skipped will be increased by the amount of skipped elements afterwards
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
 int OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
   if (!hasMore()) {
     TRI_ASSERT(false);

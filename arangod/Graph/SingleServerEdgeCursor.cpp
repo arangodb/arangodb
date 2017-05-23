@@ -128,7 +128,7 @@ bool SingleServerEdgeCursor::next(
       auto cb = [&](DocumentIdentifierToken const& token) {
         _cache.emplace_back(token);
       };
-      bool tmp = cursor->getMore(cb, 1000);
+      bool tmp = cursor->next(cb, 1000);
       TRI_ASSERT(tmp == cursor->hasMore());
     }
   } while (_cache.empty());
@@ -174,8 +174,7 @@ void SingleServerEdgeCursor::readAll(
           callback(edgeId, doc, cursorId);
         }
       };
-      while (cursor->getMore(cb, 1000)) {
-      }
+      cursor->all(cb);
     }
   }
 }

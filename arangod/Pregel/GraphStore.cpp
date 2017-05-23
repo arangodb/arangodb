@@ -391,7 +391,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
       edgeOffset += ventry._edgeCount;
     }
   };
-  while (cursor->getMore(cb, 1000)) {
+  while (cursor->next(cb, 1000)) {
     if (_destroyed) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
       break;
@@ -474,8 +474,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
       }
     }
   };
-  while (cursor->getMore(cb, 1000)) {
-  }
+  cursor->all(cb);
 
   // Add up all added elements
   vertexEntry._edgeCount += added;

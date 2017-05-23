@@ -535,8 +535,7 @@ void RocksDBPrimaryIndex::invokeOnAllElements(
       cnt = callback(token);
     }
   };
-  while (cursor->next(cb, 1000) && cnt) {
-  }
+  while (cursor->next(cb, 1000) && cnt) {}
 }
 
 Result RocksDBPrimaryIndex::postprocessRemove(transaction::Methods* trx,
