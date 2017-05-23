@@ -174,9 +174,16 @@ class Table : public std::enable_shared_from_this<Table> {
   bool slotEmptied();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Report that there have been too many evictions.
+  ///
+  /// Will force a subsequent idealSize() call to return a larger table size.
+  //////////////////////////////////////////////////////////////////////////////
+  void signalEvictions();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ideal size of the table based on fill ratio.
   //////////////////////////////////////////////////////////////////////////////
-  uint32_t idealSize() const;
+  uint32_t idealSize();
 
  private:
   static constexpr double idealLowerRatio = 0.05;

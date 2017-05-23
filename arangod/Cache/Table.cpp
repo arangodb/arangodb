@@ -243,7 +243,30 @@ bool Table::slotEmptied() {
           (_logSize > Table::minLogSize));
 }
 
-uint32_t Table::idealSize() const {
+void Table::signalEvictions() {
+  bool ok = _state.lock(triesGuarantee);
+  if (ok) {
+    if (!_state.isSet(State::Flag::evictions)) {
+      _state.toggleFlag(State::Flag::evictions);
+    }
+    _state.unlock();
+  }
+}
+
+uint32_t Table::idealSize() {
+  bool ok = _state.lock(triesGuarantee);
+  bool forceGrowth = false;
+  if (ok) {
+    forceGrowth = _state.isSet(State::Flag::evictions);
+    if (forceGrowth) {
+      _state.toggleFlag(State::Flag::evictions);
+    }
+    _state.unlock();
+  }
+  if (forceGrowth) {
+    return logSize() + 1;
+  }
+
   return (((static_cast<double>(_slotsUsed.load()) /
             static_cast<double>(_slotsTotal)) > Table::idealUpperRatio)
               ? (logSize() + 1)
