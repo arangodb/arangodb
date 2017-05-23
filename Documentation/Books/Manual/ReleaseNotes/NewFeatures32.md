@@ -112,7 +112,12 @@ These will be resolved in the following releases:
   context of the MMFiles engine. These are:
 
   - the `rotate` method on collections
-  - the `flush()` method for WAL files 
+  - the `flush` method for WAL files 
+
+* the `any` operation to provide a random document from a collection is supported
+  by the RocksDB engine but the operation has much higher complexity than in the 
+  MMFiles engine. It is therefore discouraged to call it for cases other than manual
+  inspection of a few documents in a collection.
 
 
 ### RocksDB storage engine: supported index types
