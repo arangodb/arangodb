@@ -32,6 +32,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;

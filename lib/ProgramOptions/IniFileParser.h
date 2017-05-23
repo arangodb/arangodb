@@ -26,7 +26,6 @@
 #include "Basics/FileUtils.h"
 
 #include <fstream>
-#include <iostream>
 #include <regex>
 
 #include "ProgramOptions/ProgramOptions.h"

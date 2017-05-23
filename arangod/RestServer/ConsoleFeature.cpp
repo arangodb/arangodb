@@ -30,6 +30,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;

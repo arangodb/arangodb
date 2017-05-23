@@ -40,6 +40,7 @@
 
 namespace rocksdb {
 class Iterator;
+class Comparator;
 }
 
 namespace arangodb {

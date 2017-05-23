@@ -44,7 +44,7 @@ class BindParameters {
     : _builder(nullptr), _parameters(), _processed(false) {}
 
   /// @brief create the parameters
-  explicit BindParameters(std::shared_ptr<arangodb::velocypack::Builder> builder) 
+  explicit BindParameters(std::shared_ptr<arangodb::velocypack::Builder> const& builder) 
     : _builder(builder), _parameters(), _processed(false) {}
 
   /// @brief destroy the parameters

@@ -31,13 +31,11 @@
 #include <rocksdb/status.h>
 
 namespace rocksdb {class Comparator; class ColumnFamilyHandle;}
-
 namespace arangodb {
 namespace cache {
 class Cache;
 }
 class LogicalCollection;
-class RocksDBComparator;
 class RocksDBCounterManager;
 class RocksDBMethods;
 
@@ -105,9 +103,12 @@ class RocksDBIndex : public Index {
 
   virtual void recalculateEstimates();
   
+<<<<<<< HEAD
   rocksdb::ColumnFamilyHandle* columnFamily() const{
     return _cf;
   }
+=======
+>>>>>>> b2cd86ad8b8ef12784583d289c4469a7e5cae3ac
   rocksdb::Comparator const* comparator() const;
 
  protected:
@@ -126,7 +127,11 @@ class RocksDBIndex : public Index {
 
  protected:
   uint64_t _objectId;
+<<<<<<< HEAD
   rocksdb::ColumnFamilyHandle* _cf;
+=======
+  rocksdb::Comparator* _cmp;
+>>>>>>> b2cd86ad8b8ef12784583d289c4469a7e5cae3ac
 
   mutable std::shared_ptr<cache::Cache> _cache;
   // we use this boolean for testing whether _cache is set.

@@ -50,7 +50,6 @@ class SortCondition;
 struct Variable;
 }  // namespace aql
 class LogicalCollection;
-class RocksDBComparator;
 class RocksDBPrimaryIndex;
 class RocksDBVPackIndex;
 namespace transaction {

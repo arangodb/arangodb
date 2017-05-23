@@ -23,6 +23,7 @@
 
 #include "Query.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionBlock.h"
@@ -42,6 +43,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -69,23 +71,11 @@ static std::atomic<TRI_voc_tick_t> NextQueryId(1);
 constexpr uint64_t DontCache = 0;
 }
 
-/// @brief global memory limit for AQL queries
-uint64_t Query::MemoryLimitValue = 0;
-
-/// @brief global threshold value for slow queries
-double Query::SlowQueryThresholdValue = 10.0;
-
-/// @brief whether or not query tracking is disabled globally
-bool Query::DoDisableQueryTracking = false;
-
-/// @brief whether a warning in an AQL query should raise an error
-bool Query::DoFailOnWarning = false;
-
 /// @brief creates a query
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
-             std::shared_ptr<VPackBuilder> bindParameters,
-             std::shared_ptr<VPackBuilder> options, QueryPart part)
+             std::shared_ptr<VPackBuilder> const& bindParameters,
+             std::shared_ptr<VPackBuilder> const& options, QueryPart part)
     : _id(0),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
@@ -102,6 +92,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _maxWarningCount(10),
       _warnings(),
       _startTime(TRI_microtime()),
+      _queryRegistry(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
@@ -152,8 +143,8 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
 
 /// @brief creates a query from VelocyPack
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
-             std::shared_ptr<VPackBuilder> const queryStruct,
-             std::shared_ptr<VPackBuilder> options, QueryPart part)
+             std::shared_ptr<VPackBuilder> const& queryStruct,
+             std::shared_ptr<VPackBuilder> const& options, QueryPart part)
     : _id(0),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
@@ -169,6 +160,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _maxWarningCount(10),
       _warnings(),
       _startTime(TRI_microtime()),
+      _queryRegistry(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
@@ -211,21 +203,7 @@ Query::~Query() {
 
   _executor.reset();
 
-  if (_context != nullptr) {
-    TRI_ASSERT(!_contextOwnedByExterior);
-
-    // unregister transaction and resolver in context
-    ISOLATE;
-    TRI_GET_GLOBALS();
-    auto ctx =
-        static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
-    if (ctx != nullptr) {
-      ctx->unregisterTransaction();
-    }
-
-    V8DealerFeature::DEALER->exitContext(_context);
-    _context = nullptr;
-  }
+  exitContext();
 
   _ast.reset();
 
@@ -376,10 +354,12 @@ void Query::registerErrorCustom(int code, char const* details) {
 void Query::registerWarning(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
-  if (DoFailOnWarning) {
+  if (_queryRegistry->failOnWarning()) {
     // make an error from each warning if requested
-    // note: this will throw!
-    registerErrorCustom(code, details);
+    if (details == nullptr) {
+      THROW_ARANGO_EXCEPTION(code);
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
   }
 
   if (_warnings.size() > _maxWarningCount) {
@@ -1137,7 +1117,6 @@ void Query::exitContext() {
       V8DealerFeature::DEALER->exitContext(_context);
       _context = nullptr;
     }
-    TRI_ASSERT(_context == nullptr);
   }
 }
 
@@ -1471,8 +1450,18 @@ Graph const* Query::lookupGraphByName(std::string const& name) {
 
   return g.release();
 }
+
+size_t Query::memoryLimit() const {
+  uint64_t globalLimit = _queryRegistry->queryMemoryLimit();
+  uint64_t value = getNumericOption<uint64_t>("memoryLimit", globalLimit);
+  if (value > 0) {
+    return static_cast<size_t>(value);
+  }
+  return 0;
+}
   
 /// @brief returns the next query id
 TRI_voc_tick_t Query::NextId() {
   return NextQueryId.fetch_add(1, std::memory_order_seq_cst);
 }
+

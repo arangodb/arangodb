@@ -65,7 +65,14 @@ void RocksDBCollectionExport::run(size_t limit) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  _vpack.reserve(limit);
+  size_t maxDocuments = _collection->numberDocuments(&trx);
+  if (limit > 0 && limit < maxDocuments) {
+    maxDocuments = limit;
+  } else {
+    limit = maxDocuments;
+  }
+
+  _vpack.reserve(maxDocuments);
 
   ManagedDocumentResult mmdr;
   trx.invokeOnAllElements(

@@ -21,7 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/QueryList.h"
+#include "QueryList.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryProfile.h"
 #include "Basics/ReadLocker.h"
@@ -29,8 +30,10 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
@@ -41,21 +44,17 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
     : id(id), queryString(std::move(queryString)), bindParameters(bindParameters), 
       started(started), runTime(runTime), state(state) {}
 
-double const QueryList::DefaultSlowQueryThreshold = 10.0;
-size_t const QueryList::DefaultMaxSlowQueries = 64;
-size_t const QueryList::DefaultMaxQueryStringLength = 4096;
-
 /// @brief create a query list
 QueryList::QueryList(TRI_vocbase_t*)
     : _lock(),
       _current(),
       _slow(),
       _slowCount(0),
-      _enabled(!Query::DisableQueryTracking()),
-      _trackSlowQueries(!Query::DisableQueryTracking()),
-      _slowQueryThreshold(Query::SlowQueryThreshold()),
-      _maxSlowQueries(QueryList::DefaultMaxSlowQueries),
-      _maxQueryStringLength(QueryList::DefaultMaxQueryStringLength) {
+      _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->queryTracking()),
+      _trackSlowQueries(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->queryTracking()),
+      _slowQueryThreshold(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->slowThreshold()),
+      _maxSlowQueries(defaultMaxSlowQueries),
+      _maxQueryStringLength(defaultMaxQueryStringLength) {
   _current.reserve(64);
 }
 

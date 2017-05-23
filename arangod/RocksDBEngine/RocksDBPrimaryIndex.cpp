@@ -197,7 +197,7 @@ bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb,
                                           size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid()) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -205,6 +205,9 @@ bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb,
   }
 
   while (limit > 0) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+#endif
     RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
     StringRef key = RocksDBKey::primaryKey(_iterator->key());
     cb(token, key);
@@ -282,7 +285,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
         _iterator->Prev();
       }
     }
-    if (!_iterator->Valid()) {
+    if (!_iterator->Valid() || outOfRange()) {
       _iterator->Seek(_bounds.start());
     }
   }
@@ -562,8 +565,7 @@ void RocksDBPrimaryIndex::invokeOnAllElements(
       cnt = callback(token);
     }
   };
-  while (cursor->next(cb, 1000) && cnt) {
-  }
+  while (cursor->next(cb, 1000) && cnt) {}
 }
 
 Result RocksDBPrimaryIndex::postprocessRemove(transaction::Methods* trx,
