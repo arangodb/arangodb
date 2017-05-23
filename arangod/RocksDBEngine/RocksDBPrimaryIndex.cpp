@@ -118,13 +118,12 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index, bool reverse)
     : IndexIterator(collection, trx, mmdr, index),
       _reverse(reverse),
-      _iterator(),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
-      _cmp(index->comparator())
+      _iterator(),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      , _index(index)
+      _index(index),
 #endif
-  {
+      _cmp(index->comparator()) {
 
   // acquire rocksdb transaction
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
