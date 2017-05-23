@@ -469,6 +469,9 @@ Status BlockAccessCipherStream::Encrypt(uint64_t fileOffset, char *data, size_t 
   size_t blockOffset = fileOffset % blockSize;
   unique_ptr<char[]> blockBuffer;
 
+  std::string scratch;
+  AllocateScratch(scratch);
+
   // Encrypt individual blocks.
   while (1) {
     char *block = data;
@@ -484,7 +487,7 @@ Status BlockAccessCipherStream::Encrypt(uint64_t fileOffset, char *data, size_t 
       // Copy plain data to block buffer 
       memmove(block + blockOffset, data, n);
     }
-    auto status = EncryptBlock(blockIndex, block);
+    auto status = EncryptBlock(blockIndex, block, (char*)scratch.data());
     if (!status.ok()) {
       return status;
     }
@@ -511,6 +514,9 @@ Status BlockAccessCipherStream::Decrypt(uint64_t fileOffset, char *data, size_t 
   size_t blockOffset = fileOffset % blockSize;
   unique_ptr<char[]> blockBuffer;
 
+  std::string scratch;
+  AllocateScratch(scratch);
+
   // Decrypt individual blocks.
   while (1) {
     char *block = data;
@@ -526,7 +532,7 @@ Status BlockAccessCipherStream::Decrypt(uint64_t fileOffset, char *data, size_t 
       // Copy encrypted data to block buffer 
       memmove(block + blockOffset, data, n);
     }
-    auto status = DecryptBlock(blockIndex, block);
+    auto status = DecryptBlock(blockIndex, block, (char*)scratch.data());
     if (!status.ok()) {
       return status;
     }
@@ -559,34 +565,39 @@ Status ROT13BlockCipher::Decrypt(char *data) {
   return Encrypt(data);
 }
 
+// Allocate scratch space which is passed to EncryptBlock/DecryptBlock.
+void CTRCipherStream::AllocateScratch(std::string& scratch) {
+  auto blockSize = cipher_.BlockSize();
+  scratch.reserve(blockSize);
+}
+
 // Encrypt a block of data at the given block index.
 // Length of data is equal to BlockSize();
-Status CTRCipherStream::EncryptBlock(uint64_t blockIndex, char *data) {
+Status CTRCipherStream::EncryptBlock(uint64_t blockIndex, char *data, char* scratch) {
 
   // Create nonce + counter
   auto blockSize = cipher_.BlockSize();
-  unique_ptr<char[]> ctr(new char[blockSize]);
-  memmove(ctr.get(), iv_, blockSize);
-  *((uint64_t*)ctr.get()) = blockIndex;
+  memmove(scratch, iv_, blockSize);
+  *((uint64_t*)scratch) = blockIndex;
 
   // Encrypt nonce+counter 
-  auto status = cipher_.Encrypt(ctr.get());
+  auto status = cipher_.Encrypt(scratch);
   if (!status.ok()) {
     return status;
   }
 
   // XOR data with ciphertext.
   for (size_t i = 0; i < blockSize; i++) {
-    data[i] = data[i] ^ ctr[i];
+    data[i] = data[i] ^ scratch[i];
   }
   return Status::OK();
 }
 
 // Decrypt a block of data at the given block index.
 // Length of data is equal to BlockSize();
-Status CTRCipherStream::DecryptBlock(uint64_t blockIndex, char *data) {
+Status CTRCipherStream::DecryptBlock(uint64_t blockIndex, char *data, char* scratch) {
   // For CTR decryption & encryption are the same 
-  return EncryptBlock(blockIndex, data);
+  return EncryptBlock(blockIndex, data, scratch);
 }
 
 Status CTREncryptionProvider::CreateCipherStream(const std::string& fname, const EnvOptions& options, unique_ptr<BlockAccessCipherStream>* result) {

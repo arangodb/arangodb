@@ -31,14 +31,6 @@ class BlockAccessCipherStream {
       // BlockSize returns the size of each block supported by this cipher stream.
       virtual size_t BlockSize() = 0;
 
-      // Encrypt a block of data at the given block index.
-      // Length of data is equal to BlockSize();
-      virtual Status EncryptBlock(uint64_t blockIndex, char *data) = 0;
-
-      // Decrypt a block of data at the given block index.
-      // Length of data is equal to BlockSize();
-      virtual Status DecryptBlock(uint64_t blockIndex, char *data) = 0;
-
       // Encrypt one or more (partial) blocks of data at the file offset.
       // Length of data is given in dataSize.
       virtual Status Encrypt(uint64_t fileOffset, char *data, size_t dataSize);
@@ -46,6 +38,18 @@ class BlockAccessCipherStream {
       // Decrypt one or more (partial) blocks of data at the file offset.
       // Length of data is given in dataSize.
       virtual Status Decrypt(uint64_t fileOffset, char *data, size_t dataSize);
+
+    protected:
+      // Allocate scratch space which is passed to EncryptBlock/DecryptBlock.
+      virtual void AllocateScratch(std::string&) = 0;
+
+      // Encrypt a block of data at the given block index.
+      // Length of data is equal to BlockSize();
+      virtual Status EncryptBlock(uint64_t blockIndex, char *data, char* scratch) = 0;
+
+      // Decrypt a block of data at the given block index.
+      // Length of data is equal to BlockSize();
+      virtual Status DecryptBlock(uint64_t blockIndex, char *data, char* scratch) = 0;
 };
 
 // BlockCipher 
@@ -89,7 +93,7 @@ class ROT13BlockCipher : public BlockCipher {
 // CTRCipherStream implements BlockAccessCipherStream using an 
 // Counter operations mode. 
 // See https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation
-class CTRCipherStream : public BlockAccessCipherStream {
+class CTRCipherStream final : public BlockAccessCipherStream {
     private:
       BlockCipher& cipher_;
       const char* iv_;
@@ -101,13 +105,17 @@ class CTRCipherStream : public BlockAccessCipherStream {
       // BlockSize returns the size of each block supported by this cipher stream.
       virtual size_t BlockSize() override { return cipher_.BlockSize(); }
 
+    protected:
+      // Allocate scratch space which is passed to EncryptBlock/DecryptBlock.
+      virtual void AllocateScratch(std::string&) override;
+
       // Encrypt a block of data at the given block index.
       // Length of data is equal to BlockSize();
-      virtual Status EncryptBlock(uint64_t blockIndex, char *data) override;
+      virtual Status EncryptBlock(uint64_t blockIndex, char *data, char *scratch) override;
 
       // Decrypt a block of data at the given block index.
       // Length of data is equal to BlockSize();
-      virtual Status DecryptBlock(uint64_t blockIndex, char *data) override;
+      virtual Status DecryptBlock(uint64_t blockIndex, char *data, char *scratch) override;
 };
 
 // The encryption provider is used to create a cipher stream for a specific file.
