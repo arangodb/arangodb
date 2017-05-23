@@ -164,6 +164,10 @@ void RocksDBEngine::prepare() {
   _basePath = databasePathFeature->directory();
 
   TRI_ASSERT(!_basePath.empty());
+
+#ifdef USE_ENTERPRISE
+  prepareEnterprise();
+#endif
 }
 
 void RocksDBEngine::start() {
@@ -223,6 +227,7 @@ void RocksDBEngine::start() {
 
 #ifdef USE_ENTERPRISE
   configureEnterpriseRocksDBOptions(_options);
+  startEnterprise();
 #endif
 
   _options.env->SetBackgroundThreads((int)opts->_numThreadsHigh,

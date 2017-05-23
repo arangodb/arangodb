@@ -236,6 +236,8 @@ class RocksDBEngine final : public StorageEngine {
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
+  void prepareEnterprise();
+  void startEnterprise();
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
 
   enterprise::RocksDBEngineEEData _eeData;
