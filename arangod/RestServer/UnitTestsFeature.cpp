@@ -33,6 +33,8 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;

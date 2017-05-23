@@ -31,6 +31,8 @@
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;

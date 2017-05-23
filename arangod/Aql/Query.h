@@ -53,6 +53,8 @@ namespace velocypack {
 class Builder;
 }
 
+class QueryRegistryFeature;
+
 namespace aql {
 
 struct AstNode;
@@ -75,12 +77,12 @@ class Query {
 
  public:
   Query(bool, TRI_vocbase_t*, char const*, size_t,
-        std::shared_ptr<arangodb::velocypack::Builder>,
-        std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+        std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
-  Query(bool, TRI_vocbase_t*,
-        std::shared_ptr<arangodb::velocypack::Builder> const,
-        std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
+  Query(bool contextOwnedByExterior, TRI_vocbase_t*,
+        std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
+        std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
   ~Query();
 
@@ -185,13 +187,7 @@ class Query {
   }
   
   /// @brief memory limit for query
-  size_t memoryLimit() const {
-    uint64_t value = getNumericOption<decltype(MemoryLimitValue)>("memoryLimit", MemoryLimitValue);
-    if (value > 0) {
-      return static_cast<size_t>(value);
-    }
-    return 0;
-  }
+  size_t memoryLimit() const;
 
   /// @brief maximum number of plans to produce
   int64_t literalSizeThreshold() const {
@@ -274,37 +270,6 @@ class Query {
   ///        NOTE: returns nullptr if there are no warnings.
   std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
   
-  /// @brief fetch the query memory limit
-  static uint64_t MemoryLimit() { return MemoryLimitValue; }
-  
-  /// @brief set the query memory limit
-  static void MemoryLimit(uint64_t value) {
-    MemoryLimitValue = value;
-  }
-
-  /// @brief fetch the global query tracking value
-  static bool DisableQueryTracking() { return DoDisableQueryTracking; }
-  
-  /// @brief turn off tracking globally
-  static void DisableQueryTracking(bool value) {
-    DoDisableQueryTracking = value;
-  }
-  
-  /// @brief whether a warning in an AQL query should raise an error
-  static bool FailOnWarning() { return DoFailOnWarning; }
-  
-  static void FailOnWarning(bool value) {
-    DoFailOnWarning = value;
-  }
-  
-  /// @brief fetch the global slow query threshold value
-  static double SlowQueryThreshold() { return SlowQueryThresholdValue; }
-  
-  /// @brief set global slow query threshold value
-  static void SlowQueryThreshold(double value) {
-    SlowQueryThresholdValue = value;
-  }
-
   /// @brief get a description of the query's current state
   std::string getStateString() const;
 
@@ -400,7 +365,7 @@ class Query {
   /// @brief the currently used V8 context
   V8Context* _context;
 
-  /// @brief warnings collected during execution
+  /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, Graph*> _graphs;
   
   /// @brief the actual query string
@@ -452,6 +417,8 @@ class Query {
   /// @brief query start time
   double _startTime;
 
+  QueryRegistryFeature const* _queryRegistry;
+
   /// @brief the query part
   QueryPart const _part;
 
@@ -463,18 +430,6 @@ class Query {
 
   /// @brief whether or not the query is a data modification query
   bool _isModificationQuery;
-  
-  /// @brief global memory limit for AQL queries
-  static uint64_t MemoryLimitValue;
-
-  /// @brief global threshold value for slow queries
-  static double SlowQueryThresholdValue;
-
-  /// @brief whether or not query tracking is disabled globally
-  static bool DoDisableQueryTracking;
-  
-  /// @brief whether a warning in an AQL query should raise an error
-  static bool DoFailOnWarning;
 };
 }
 }
