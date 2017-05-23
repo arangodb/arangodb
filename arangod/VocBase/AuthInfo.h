@@ -71,12 +71,10 @@ class AuthEntry {
       : _active(false), 
         _mustChange(false), 
         _created(TRI_microtime()), 
-        _source(AuthSource::COLLECTION), 
-        _allDatabases(AuthLevel::NONE) {}
+        _source(AuthSource::COLLECTION) {}
 
   AuthEntry(std::string&& username, std::string&& passwordMethod,
             std::string&& passwordSalt, std::string&& passwordHash,
-            std::unordered_map<std::string, AuthLevel>&& databases, AuthLevel allDatabases,
             bool active, bool mustChange, AuthSource source,
             std::unordered_map<std::string, std::shared_ptr<AuthContext>>&& authContexts)
       : _username(std::move(username)),
@@ -87,9 +85,7 @@ class AuthEntry {
         _mustChange(mustChange),
         _created(TRI_microtime()),
         _source(source),
-        _databases(std::move(databases)),
-        _authContexts(std::move(authContexts)),
-        _allDatabases(allDatabases) {}
+        _authContexts(std::move(authContexts)) {}
   
   AuthEntry(AuthEntry const& other) = delete;
 
@@ -102,9 +98,7 @@ class AuthEntry {
         _mustChange(other._mustChange),
         _created(other._created),
         _source(other._source),
-        _databases(std::move(other._databases)),
-        _authContexts(std::move(other._authContexts)),
-        _allDatabases(other._allDatabases) {}
+        _authContexts(std::move(other._authContexts)) {}
 
  public:
   std::string const& username() const { return _username; }
@@ -122,7 +116,7 @@ class AuthEntry {
 
   AuthLevel canUseDatabase(std::string const& dbname) const;
 
-  std::shared_ptr<AuthContext> getAuthContext(std::string const& database);
+  std::shared_ptr<AuthContext> getAuthContext(std::string const& database) const;
 
  private:
   std::string const _username;
@@ -133,9 +127,7 @@ class AuthEntry {
   bool _mustChange;
   double _created;
   AuthSource _source;
-  std::unordered_map<std::string, AuthLevel> const _databases;
   std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
-  AuthLevel const _allDatabases;
 };
 
 class AuthResult {

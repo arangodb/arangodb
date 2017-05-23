@@ -103,23 +103,17 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
 
   // extract "databases" attribute
   VPackSlice const databasesSlice = slice.get("databases");
-  std::unordered_map<std::string, AuthLevel> databases;
-  AuthLevel allDatabases = AuthLevel::NONE;
 
-  std::unordered_map<std::string, std::unordered_map<std::string, AuthLevel>> collectionAuthes;
+  std::unordered_map<std::string, std::shared_ptr<AuthContext>> authContexts;
 
   if (databasesSlice.isObject()) {
     for (auto const& obj : VPackObjectIterator(databasesSlice)) {
 
       if (obj.value.isObject()) {
-        std::cout << obj.key.copyString() << " " << userSlice.copyString() << " obj.value.isObject()\n";
-
         std::unordered_map<std::string, AuthLevel> collections;
 
         for (auto const& collection : VPackObjectIterator(obj.value)) {
           std::string const collectionName = collection.key.copyString();
-
-          std::cout << "found collection " << collectionName << std::endl;
 
           AuthLevel level = AuthLevel::NONE;
           ValueLength length;
@@ -127,82 +121,46 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
 
           if (TRI_CaseEqualString(value, "rw", 2)) {
             level = AuthLevel::RW;
-            std::cout << "rw\n";
           } else if (TRI_CaseEqualString(value, "ro", 2)) {
             level = AuthLevel::RO;
-            std::cout << "ro\n";
           }
           collections.emplace(collectionName, level);
         } // for
-        collectionAuthes.emplace(obj.key.copyString(), collections);
+        authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(AuthLevel::RW, std::move(collections)));
 
       } else {
-        // Print deprecation warning
-        std::string const key = obj.key.copyString();
-
+        LOG_TOPIC(INFO, arangodb::Logger::CONFIG) << "Deprecation Warning: Update access rights for user '" << userSlice.copyString() << "'";
         ValueLength length;
         char const* value = obj.value.getString(length);
 
         if (TRI_CaseEqualString(value, "rw", 2)) {
-          if (key == "*") {
-            allDatabases = AuthLevel::RW;
-          } else {
-            databases.emplace(key, AuthLevel::RW);
-          }
+          authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(AuthLevel::RW,
+                                                   std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::RW}}) ));
+
         } else if (TRI_CaseEqualString(value, "ro", 2)) {
-          if (key == "*") {
-            allDatabases = AuthLevel::RO;
-          } else {
-            databases.emplace(key, AuthLevel::RO);
-          }
+          authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(AuthLevel::RW,
+                                                   std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::RO}}) ));
         }
       }
     } // for
   } // if
 
-  for (auto const& a : collectionAuthes) {
-    std::cout << "database " << a.first << std::endl;
 
-    for(auto const& b : a.second) {
-      std::cout << "collection " << b.first << " ";
-      if (b.second == AuthLevel::RO) std::cout << "RO\n";
-      if (b.second == AuthLevel::RW) std::cout << "RW\n";
-    }
-  }
-
-  std::unordered_map<std::string, std::shared_ptr<AuthContext>> authContexts;
-  for (auto const& database : databases) {
-    authContexts.emplace(database.first, std::make_shared<AuthContext>(database.second,
-      std::unordered_map<std::string, AuthLevel>({{"*", database.second}}) ));
-  }
-
-  authContexts.emplace("*", std::make_shared<AuthContext>(allDatabases,
-    std::unordered_map<std::string, AuthLevel>({{"*",allDatabases}})) );
-
-  std::cout << std::endl << userSlice.copyString() << std::endl;
   for (auto const& ctx : authContexts) {
-    std::cout << ctx.first << " " << (ctx.second->databaseAuthLevel() == AuthLevel::RW) << std::endl;
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << userSlice.copyString() << " Database " << ctx.first;
+    ctx.second->dump();
   }
-  std::cout << std::endl;
-
 
   // build authentication entry
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
-                   saltSlice.copyString(), hashSlice.copyString(), std::move(databases),
-                   allDatabases, active, mustChange, source, std::move(authContexts));
+                   saltSlice.copyString(), hashSlice.copyString(), active, mustChange, source, std::move(authContexts));
 }
 
 AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
-  auto const& it = _databases.find(dbname);
-
-  if (it == _databases.end()) {
-    return _allDatabases;
-  }
-
-  return it->second;
+  return getAuthContext(dbname)->databaseAuthLevel();
 }
 
-std::shared_ptr<AuthContext> AuthEntry::getAuthContext(std::string const& dbname) {
+std::shared_ptr<AuthContext> AuthEntry::getAuthContext(std::string const& dbname) const {
   // std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
 
   for (auto const& database : std::vector<std::string>({dbname, "*"})) {

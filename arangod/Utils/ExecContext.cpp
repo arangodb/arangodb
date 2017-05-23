@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecContext.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -36,4 +37,22 @@ AuthLevel AuthContext::collectionAuthLevel(std::string const& collectionName) {
     return it->second;
   }
   return AuthLevel::NONE;
+}
+
+void AuthContext::dump() {
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Dump AuthContext rights";
+
+  if (_databaseAccess == AuthLevel::RO) {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "database level RO";
+  }
+  if (_databaseAccess == AuthLevel::RW) {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "database level RW";
+  }
+
+  for (auto const& it : _collectionAccess) {
+    if (it.second == AuthLevel::RO)
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << it.first << " RO";
+    if (it.second == AuthLevel::RW)
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << it.first << " RW";
+  }
 }
