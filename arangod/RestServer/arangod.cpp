@@ -81,7 +81,6 @@
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -93,9 +92,13 @@
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
-// storage engine
+// storage engines
 #include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+
+#ifdef _WIN32
+#include <iostream>
+#endif
 
 using namespace arangodb;
 
