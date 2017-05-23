@@ -1733,6 +1733,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   }
 
   return binaryPath;
+#endif
 }
 
 std::string TRI_GetInstallRoot(std::string const& binaryPath,
@@ -1761,7 +1762,6 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
     }
   }
   return std::string(pbPath, bpLength - ibpLength);
-#endif
 }
 
 static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize,
