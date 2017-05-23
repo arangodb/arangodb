@@ -30,12 +30,13 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include <rocksdb/status.h>
 
+namespace rocksdb {class Comparator;}
+
 namespace arangodb {
 namespace cache {
 class Cache;
 }
 class LogicalCollection;
-class RocksDBComparator;
 class RocksDBCounterManager;
 class RocksDBMethods;
 
@@ -98,6 +99,8 @@ class RocksDBIndex : public Index {
   virtual bool deserializeEstimate(RocksDBCounterManager* mgr);
 
   virtual void recalculateEstimates();
+  
+  rocksdb::Comparator const* comparator() const;
 
  protected:
   // Will be called during truncate to allow the index to update selectivity
@@ -115,7 +118,7 @@ class RocksDBIndex : public Index {
 
  protected:
   uint64_t _objectId;
-  RocksDBComparator* _cmp;
+  rocksdb::Comparator* _cmp;
 
   mutable std::shared_ptr<cache::Cache> _cache;
   // we use this boolean for testing whether _cache is set.

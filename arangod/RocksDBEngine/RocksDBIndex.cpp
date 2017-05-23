@@ -35,6 +35,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <rocksdb/comparator.h>
+
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
@@ -84,6 +86,10 @@ RocksDBIndex::~RocksDBIndex() {
     } catch (...) {
     }
   }
+}
+
+rocksdb::Comparator const* RocksDBIndex::comparator() const {
+  return _cmp;
 }
 
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
@@ -191,13 +197,14 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   RocksDBKeyBounds indexBounds = getBounds();
 
   rocksdb::ReadOptions options = mthds->readOptions();
-  rocksdb::Slice upperBound = indexBounds.end();
-  options.iterate_upper_bound = &upperBound;
+  rocksdb::Slice end = indexBounds.end();
+  options.iterate_upper_bound = &end;
+
 
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options);
   iter->Seek(indexBounds.start());
 
-  while (iter->Valid()) {
+  while (iter->Valid() && _cmp->Compare(iter->key(), end) < 0) {
     Result r = mthds->Delete(iter->key());
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
