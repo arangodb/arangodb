@@ -91,11 +91,6 @@ engine.
 The RocksDB storage engine in this release has a few known issues and missing features.
 These will be resolved in the following releases:
 
-* index selectivity estimates are missing. All indexes will report their selectivity
-  estimate as `0.2`. This may lead to non-optimal indexes being used in a query.
-
-* the geo index is not yet implemented
-
 * the number of documents reported for collections (`db.<collection>.count()`) may be
   slightly wrong during transactions
 
@@ -105,6 +100,19 @@ These will be resolved in the following releases:
 * the engine is not yet performance-optimized and well configured
 
 * the datafile debugger (arango-dfdb) cannot be used with this storage engine
+
+* APIs that return collection properties or figures will return slightly different
+  attributes for the RocksDB engine than for the MMFiles engine. For example, the
+  attributes `journalSize`, `doCompact`, `indexBuckets` and `isVolatile` are present
+  in the MMFiles engine but not in the RocksDB engine. The memory usage figures reported 
+  for collections in the RocksDB engine are estimate values, whereas they are
+  exact in the MMFiles engine.
+
+* the RocksDB engine does not support some operations which only make sense in the
+  context of the MMFiles engine. These are:
+
+  - the `rotate` method on collections
+  - the `flush()` method for WAL files 
 
 
 ### RocksDB storage engine: supported index types
@@ -122,6 +130,8 @@ supported there:
   sorted index implementation. The same is true for the "persistent" index. The names 
   "hash", "skiplist" and "persistent" are only used for compatibility with the MMFiles 
   engine where these indexes existed in previous and the current version of ArangoDB.
+
+* geo: user-defined index for proximity searches
 
 * fulltext: user-defined sorted reverted index on words occurring in documents
 
