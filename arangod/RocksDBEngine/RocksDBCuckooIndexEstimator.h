@@ -289,6 +289,7 @@ class RocksDBCuckooIndexEstimator {
     for (uint32_t b = 0; b < _size; ++b) {
       for (size_t i = 0; i < SlotsPerBucket; ++i) {
         Slot f = findSlot(b, i);
+        f.injectCounter(findCounter(b, i));
         f.reset();
       }
     }
@@ -557,12 +558,14 @@ class RocksDBCuckooIndexEstimator {
   }
 
   Slot findSlot(uint64_t pos, uint64_t slot) const {
+    TRI_ASSERT(_slotSize * (pos * SlotsPerBucket + slot) <= _slotAllocSize );
     char* address = _base + _slotSize * (pos * SlotsPerBucket + slot);
     auto ret = reinterpret_cast<uint16_t*>(address);
     return Slot(ret);
   }
 
   uint32_t* findCounter(uint64_t pos, uint64_t slot) const {
+    TRI_ASSERT(_counterSize * (pos * SlotsPerBucket + slot) <= _counterAllocSize );
     char* address = _counters + _counterSize * (pos * SlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
@@ -606,6 +609,10 @@ class RocksDBCuckooIndexEstimator {
 
     _size = rocksutils::uint64FromPersistent(current);
     current += sizeof(uint64_t);
+
+    if (_size <= 256) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
 
     _nrUsed = rocksutils::uint64FromPersistent(current);
     current += sizeof(uint64_t);
@@ -677,8 +684,10 @@ class RocksDBCuckooIndexEstimator {
   void deriveSizesAndAlloc() {
     _sizeMask = _niceSize - 1;
     _sizeShift = static_cast<uint32_t>((64 - _logSize) / 2);
-    _slotAllocSize = _size * _slotSize * SlotsPerBucket +
-                     64;  // give 64 bytes padding to enable 64-byte alignment
+
+    // give 64 bytes padding to enable 64-byte alignment
+    _slotAllocSize = _size * _slotSize * SlotsPerBucket + 64;
+
     _slotBase = new char[_slotAllocSize];
 
     _base = reinterpret_cast<char*>(
@@ -686,8 +695,9 @@ class RocksDBCuckooIndexEstimator {
         ~((uintptr_t)0x3fu));  // to actually implement the 64-byte alignment,
                                // shift base pointer within allocated space to
                                // 64-byte boundary
-    _counterAllocSize = _size * _counterSize * SlotsPerBucket +
-                     64;  // give 64 bytes padding to enable 64-byte alignment
+
+    // give 64 bytes padding to enable 64-byte alignment
+    _counterAllocSize = _size * _counterSize * SlotsPerBucket + 64;
     _counterBase = new char[_counterAllocSize];
 
     _counters = reinterpret_cast<char*>(
