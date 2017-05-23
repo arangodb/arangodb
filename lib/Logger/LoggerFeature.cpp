@@ -28,6 +28,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
+#if _WIN32
+#include <iostream>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
