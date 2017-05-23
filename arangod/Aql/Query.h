@@ -34,6 +34,7 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResources.h"
 #include "Aql/QueryResultV8.h"
+#include "Aql/QueryString.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -76,7 +77,7 @@ class Query {
   Query& operator=(Query const&) = delete;
 
  public:
-  Query(bool, TRI_vocbase_t*, char const*, size_t,
+  Query(bool contextOwnedByExterior, TRI_vocbase_t*, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
         std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
@@ -92,6 +93,8 @@ class Query {
   Query* clone(QueryPart, bool);
 
  public:
+
+  QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
   void injectTransaction (transaction::Methods* trx) {
@@ -136,12 +139,6 @@ class Query {
 
   /// @brief return the query's id
   TRI_voc_tick_t id() const { return _id; }
-
-  /// @brief get the query string
-  char const* queryString() const { return _queryString; }
-
-  /// @brief get the length of the query string
-  size_t queryLength() const { return _queryStringLength; }
 
   /// @brief getter for _ast
   Ast* ast() const { 
@@ -199,7 +196,7 @@ class Query {
   }
 
   /// @brief extract a region from the query
-  std::string extractRegion(int, int) const;
+  std::string extractRegion(int line, int column) const;
 
   /// @brief register an error, with an optional parameter inserted into printf
   /// this also makes the query abort
@@ -212,7 +209,7 @@ class Query {
   /// @brief register a warning
   void registerWarning(int, char const* = nullptr);
   
-  void prepare(QueryRegistry*, uint64_t queryStringHash);
+  void prepare(QueryRegistry*, uint64_t queryHash);
 
   /// @brief execute an AQL query
   QueryResult execute(QueryRegistry*);
@@ -297,7 +294,7 @@ class Query {
   void log();
 
   /// @brief calculate a hash value for the query and bind parameters
-  uint64_t hash() const;
+  uint64_t hash();
 
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
@@ -369,10 +366,7 @@ class Query {
   std::unordered_map<std::string, Graph*> _graphs;
   
   /// @brief the actual query string
-  char const* _queryString;
-
-  /// @brief length of the query string in bytes
-  size_t const _queryStringLength;
+  QueryString _queryString;
 
   /// @brief query in a VelocyPack structure
   std::shared_ptr<arangodb::velocypack::Builder> const _queryBuilder;
