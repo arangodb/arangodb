@@ -5,7 +5,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBAqlFunctions.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBCollection.cpp
-  RocksDBEngine/RocksDBCollectionExport.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBCounterManager.cpp
