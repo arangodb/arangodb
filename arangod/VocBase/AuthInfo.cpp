@@ -106,26 +106,67 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
   std::unordered_map<std::string, AuthLevel> databases;
   AuthLevel allDatabases = AuthLevel::NONE;
 
+  std::unordered_map<std::string, std::unordered_map<std::string, AuthLevel>> collectionAuthes;
+
   if (databasesSlice.isObject()) {
     for (auto const& obj : VPackObjectIterator(databasesSlice)) {
-      std::string const key = obj.key.copyString();
 
-      ValueLength length;
-      char const* value = obj.value.getString(length);
+      if (obj.value.isObject()) {
+        std::cout << obj.key.copyString() << " " << userSlice.copyString() << " obj.value.isObject()\n";
 
-      if (TRI_CaseEqualString(value, "rw", 2)) {
-        if (key == "*") {
-          allDatabases = AuthLevel::RW;
-        } else {
-          databases.emplace(key, AuthLevel::RW);
-        }
-      } else if (TRI_CaseEqualString(value, "ro", 2)) {
-        if (key == "*") {
-          allDatabases = AuthLevel::RO;
-        } else {
-          databases.emplace(key, AuthLevel::RO);
+        std::unordered_map<std::string, AuthLevel> collections;
+
+        for (auto const& collection : VPackObjectIterator(obj.value)) {
+          std::string const collectionName = collection.key.copyString();
+
+          std::cout << "found collection " << collectionName << std::endl;
+
+          AuthLevel level = AuthLevel::NONE;
+          ValueLength length;
+          char const* value = collection.value.getString(length);
+
+          if (TRI_CaseEqualString(value, "rw", 2)) {
+            level = AuthLevel::RW;
+            std::cout << "rw\n";
+          } else if (TRI_CaseEqualString(value, "ro", 2)) {
+            level = AuthLevel::RO;
+            std::cout << "ro\n";
+          }
+          collections.emplace(collectionName, level);
+        } // for
+        collectionAuthes.emplace(obj.key.copyString(), collections);
+
+      } else {
+        // Print deprecation warning
+        std::string const key = obj.key.copyString();
+
+        ValueLength length;
+        char const* value = obj.value.getString(length);
+
+        if (TRI_CaseEqualString(value, "rw", 2)) {
+          if (key == "*") {
+            allDatabases = AuthLevel::RW;
+          } else {
+            databases.emplace(key, AuthLevel::RW);
+          }
+        } else if (TRI_CaseEqualString(value, "ro", 2)) {
+          if (key == "*") {
+            allDatabases = AuthLevel::RO;
+          } else {
+            databases.emplace(key, AuthLevel::RO);
+          }
         }
       }
+    } // for
+  } // if
+
+  for (auto const& a : collectionAuthes) {
+    std::cout << "database " << a.first << std::endl;
+
+    for(auto const& b : a.second) {
+      std::cout << "collection " << b.first << " ";
+      if (b.second == AuthLevel::RO) std::cout << "RO\n";
+      if (b.second == AuthLevel::RW) std::cout << "RW\n";
     }
   }
 
