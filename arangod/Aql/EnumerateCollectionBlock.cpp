@@ -230,7 +230,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    bool tmp = _cursor->getMore(cb, atMost);
+    bool tmp = _cursor->next(cb, atMost);
     if (!tmp) {
       TRI_ASSERT(!_cursor->hasMore());
     }

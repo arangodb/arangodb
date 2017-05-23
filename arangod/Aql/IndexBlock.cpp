@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
@@ -417,7 +418,7 @@ bool IndexBlock::skipIndex(size_t atMost) {
 // this is called every time we need to fetch data from the indexes
 bool IndexBlock::readIndex(
     size_t atMost,
-    std::function<void(DocumentIdentifierToken const&)>& callback) {
+    IndexIterator::TokenCallback const& callback) {
   DEBUG_BEGIN_BLOCK();
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
@@ -451,7 +452,7 @@ bool IndexBlock::readIndex(
 
     TRI_ASSERT(atMost >= _returned);
   
-    if (_cursor->getMore(callback, atMost - _returned)) {
+    if (_cursor->next(callback, atMost - _returned)) {
       // We have returned enough.
       // And this index could return more.
       // We are good.
@@ -498,7 +499,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
   std::unique_ptr<AqlItemBlock> res;
 
-  std::function<void(DocumentIdentifierToken const& token)> callback;
+  IndexIterator::TokenCallback callback;
   if (_indexes.size() > 1) {
     // Activate uniqueness checks
     callback = [&](DocumentIdentifierToken const& token) {

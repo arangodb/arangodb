@@ -39,9 +39,9 @@ A geo index is implicitly sparse, and there is no way to control its sparsity.
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-To create a geo on an array attribute that contains longitude first, set the
+To create a geo index on an array attribute that contains longitude first, set the
 *geoJson* attribute to `true`. This corresponds to the format described in
-[positions](http://geojson.org/geojson-spec.html)
+[RFC 7946 Position](https://tools.ietf.org/html/rfc7946#section-3.1.1)
 
 `collection.ensureIndex({ type: "geo", fields: [ "location" ], geoJson: true })`
 
