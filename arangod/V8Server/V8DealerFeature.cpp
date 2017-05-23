@@ -1291,7 +1291,8 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   delete context->_locker;
   context->_locker = nullptr;
 
-  isolate->Dispose();
+  application_features::ApplicationServer::getFeature<V8PlatformFeature>(
+          "V8Platform")->disposeIsolate(isolate);
 
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "closed V8 context #" << context->_id;
 

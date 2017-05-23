@@ -845,7 +845,7 @@ OperationResult transaction::Methods::anyLocal(
                 skip, limit, 1000, false);
 
   LogicalCollection* collection = cursor->collection();
-  cursor->getAll([&](DocumentIdentifierToken const& token) {
+  cursor->all([&](DocumentIdentifierToken const& token) {
     if (collection->readDocument(this, token, mmdr)) {
       mmdr.addToBuilder(resultBuilder, false);
     }
@@ -2151,8 +2151,7 @@ OperationResult transaction::Methods::allLocal(
     }
   };
 
-  while (cursor->getMore(cb, 1000)) {
-  }
+  cursor->all(cb);
 
   resultBuilder.close();
 

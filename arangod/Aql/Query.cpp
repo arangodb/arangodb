@@ -23,6 +23,7 @@
 
 #include "Query.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionBlock.h"
@@ -42,6 +43,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -69,30 +71,17 @@ static std::atomic<TRI_voc_tick_t> NextQueryId(1);
 constexpr uint64_t DontCache = 0;
 }
 
-/// @brief global memory limit for AQL queries
-uint64_t Query::MemoryLimitValue = 0;
-
-/// @brief global threshold value for slow queries
-double Query::SlowQueryThresholdValue = 10.0;
-
-/// @brief whether or not query tracking is disabled globally
-bool Query::DoDisableQueryTracking = false;
-
-/// @brief whether a warning in an AQL query should raise an error
-bool Query::DoFailOnWarning = false;
-
 /// @brief creates a query
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
-             char const* queryString, size_t queryLength,
-             std::shared_ptr<VPackBuilder> bindParameters,
-             std::shared_ptr<VPackBuilder> options, QueryPart part)
+             QueryString const& queryString,
+             std::shared_ptr<VPackBuilder> const& bindParameters,
+             std::shared_ptr<VPackBuilder> const& options, QueryPart part)
     : _id(0),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
       _context(nullptr),
       _queryString(queryString),
-      _queryStringLength(queryLength),
       _queryBuilder(),
       _bindParameters(bindParameters),
       _options(options),
@@ -102,6 +91,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _maxWarningCount(10),
       _warnings(),
       _startTime(TRI_microtime()),
+      _queryRegistry(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
@@ -118,12 +108,12 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
   if (tracing > 0) {
     LOG_TOPIC(INFO, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
-      << "Query::Query queryString: " << std::string(queryString, queryLength)
+      << "Query::Query queryString: " << _queryString
       << " this: " << (uintptr_t) this;
   } else {
     LOG_TOPIC(DEBUG, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
-      << "Query::Query queryString: " << std::string(queryString, queryLength)
+      << "Query::Query queryString: " << _queryString
       << " this: " << (uintptr_t) this;
   }
   if (bindParameters != nullptr && !bindParameters->isEmpty() &&
@@ -152,15 +142,14 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
 
 /// @brief creates a query from VelocyPack
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
-             std::shared_ptr<VPackBuilder> const queryStruct,
-             std::shared_ptr<VPackBuilder> options, QueryPart part)
+             std::shared_ptr<VPackBuilder> const& queryStruct,
+             std::shared_ptr<VPackBuilder> const& options, QueryPart part)
     : _id(0),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
       _context(nullptr),
-      _queryString(nullptr),
-      _queryStringLength(0),
+      _queryString(),
       _queryBuilder(queryStruct),
       _options(options),
       _collections(vocbase),
@@ -169,6 +158,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _maxWarningCount(10),
       _warnings(),
       _startTime(TRI_microtime()),
+      _queryRegistry(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
@@ -211,21 +201,7 @@ Query::~Query() {
 
   _executor.reset();
 
-  if (_context != nullptr) {
-    TRI_ASSERT(!_contextOwnedByExterior);
-
-    // unregister transaction and resolver in context
-    ISOLATE;
-    TRI_GET_GLOBALS();
-    auto ctx =
-        static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
-    if (ctx != nullptr) {
-      ctx->unregisterTransaction();
-    }
-
-    V8DealerFeature::DEALER->exitContext(_context);
-    _context = nullptr;
-  }
+  exitContext();
 
   _ast.reset();
 
@@ -243,7 +219,7 @@ Query::~Query() {
 /// the query
 Query* Query::clone(QueryPart part, bool withPlan) {
   auto clone =
-      std::make_unique<Query>(false, _vocbase, _queryString, _queryStringLength,
+      std::make_unique<Query>(false, _vocbase, _queryString, 
                               std::shared_ptr<VPackBuilder>(), _options, part);
 
   clone->_resourceMonitor = _resourceMonitor;
@@ -288,62 +264,6 @@ void Query::setExecutionTime() {
   }
 }
 
-/// @brief extract a region from the query
-std::string Query::extractRegion(int line, int column) const {
-  TRI_ASSERT(_queryString != nullptr);
-
-  // note: line numbers reported by bison/flex start at 1, columns start at 0
-  int currentLine = 1;
-  int currentColumn = 0;
-
-  char c;
-  char const* p = _queryString;
-
-  while ((static_cast<size_t>(p - _queryString) < _queryStringLength) && (c = *p)) {
-    if (currentLine > line ||
-        (currentLine >= line && currentColumn >= column)) {
-      break;
-    }
-
-    if (c == '\n') {
-      ++p;
-      ++currentLine;
-      currentColumn = 0;
-    } else if (c == '\r') {
-      ++p;
-      ++currentLine;
-      currentColumn = 0;
-
-      // eat a following newline
-      if (*p == '\n') {
-        ++p;
-      }
-    } else {
-      ++currentColumn;
-      ++p;
-    }
-  }
-
-  // p is pointing at the position in the query the parse error occurred at
-  TRI_ASSERT(p >= _queryString);
-
-  size_t offset = static_cast<size_t>(p - _queryString);
-
-  static int const SNIPPET_LENGTH = 32;
-  static char const* SNIPPET_SUFFIX = "...";
-
-  if (_queryStringLength < offset + SNIPPET_LENGTH) {
-    // return a copy of the region
-    return std::string(_queryString + offset, _queryStringLength - offset);
-  }
-
-  // copy query part
-  std::string result(_queryString + offset, SNIPPET_LENGTH);
-  result.append(SNIPPET_SUFFIX);
-
-  return result;
-}
-
 /// @brief register an error, with an optional parameter inserted into printf
 /// this also makes the query abort
 void Query::registerError(int code, char const* details) {
@@ -376,10 +296,12 @@ void Query::registerErrorCustom(int code, char const* details) {
 void Query::registerWarning(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
-  if (DoFailOnWarning) {
+  if (_queryRegistry->failOnWarning()) {
     // make an error from each warning if requested
-    // note: this will throw!
-    registerErrorCustom(code, details);
+    if (details == nullptr) {
+      THROW_ARANGO_EXCEPTION(code);
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
   }
 
   if (_warnings.size() > _maxWarningCount) {
@@ -393,7 +315,7 @@ void Query::registerWarning(int code, char const* details) {
   }
 }
 
-void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
+void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
   TRI_ASSERT(registry != nullptr);
   
   init();
@@ -402,15 +324,15 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
   std::unique_ptr<ExecutionPlan> plan;
 
 #if USE_PLAN_CACHE
-  if (_queryString != nullptr && 
-      queryStringHash != DontCache &&
+  if (!_queryString.empty() && 
+      queryHash != DontCache &&
       _part == PART_MAIN) {
-    // LOG_TOPIC(INFO, Logger::FIXME) << "trying to find query in execution plan cache: '" << std::string(_queryString, _queryStringLength) << "', hash: " << queryStringHash;
+    // LOG_TOPIC(INFO, Logger::FIXME) << "trying to find query in execution plan cache: '" << _queryString << "', hash: " << queryHash;
 
     // store & lookup velocypack plans!!
-    std::shared_ptr<PlanCacheEntry> planCacheEntry = PlanCache::instance()->lookup(_vocbase, queryStringHash, _queryString, _queryStringLength);
+    std::shared_ptr<PlanCacheEntry> planCacheEntry = PlanCache::instance()->lookup(_vocbase, queryHash, queryString);
     if (planCacheEntry != nullptr) {
-      // LOG_TOPIC(INFO, Logger::FIXME) << "query found in execution plan cache: '" << std::string(_queryString, _queryStringLength) << "'";
+      // LOG_TOPIC(INFO, Logger::FIXME) << "query found in execution plan cache: '" << _queryString << "'";
 
       TRI_ASSERT(_trx == nullptr); 
       TRI_ASSERT(_collections.empty());
@@ -453,13 +375,13 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
     TRI_ASSERT(plan != nullptr);
 
 #if USE_PLAN_CACHE
-    if (_queryString != nullptr && 
-        queryStringHash != DontCache && 
+    if (!_queryString.empty() && 
+        queryHash != DontCache && 
         _part == PART_MAIN &&
         _warnings.empty() && 
         _ast->root()->isCacheable()) {
-      // LOG_TOPIC(INFO, Logger::FIXME) << "storing query in execution plan cache '" << std::string(_queryString, _queryStringLength) << "', hash: " << queryStringHash;
-      PlanCache::instance()->store(_vocbase, queryStringHash, _queryString, _queryStringLength, plan.get());
+      // LOG_TOPIC(INFO, Logger::FIXME) << "storing query in execution plan cache '" << _queryString << "', hash: " << queryHash;
+      PlanCache::instance()->store(_vocbase, queryHash, _queryString, plan.get());
     }
 #endif
   }
@@ -471,7 +393,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
   // own _engine attribute (the instanciation procedure may modify us
   // by calling our engine(ExecutionEngine*) function
   // this is confusing and should be fixed!
-  std::unique_ptr<ExecutionEngine> engine(ExecutionEngine::instantiateFromPlan(registry, this, plan.get(), _queryString != nullptr));
+  std::unique_ptr<ExecutionEngine> engine(ExecutionEngine::instantiateFromPlan(registry, this, plan.get(), !_queryString.empty()));
   
   if (_engine == nullptr) {
     _engine = std::move(engine);
@@ -492,7 +414,7 @@ ExecutionPlan* Query::prepare() {
                                     << " this: " << (uintptr_t) this;
   std::unique_ptr<ExecutionPlan> plan;
 
-  if (_queryString != nullptr) {
+  if (!_queryString.empty()) {
     auto parser = std::make_unique<Parser>(this);
     
     parser->parse(false);
@@ -511,7 +433,7 @@ ExecutionPlan* Query::prepare() {
     
   // As soon as we start du instantiate the plan we have to clean it
   // up before killing the unique_ptr
-  if (_queryString != nullptr) {
+  if (!_queryString.empty()) {
     // we have an AST
     // optimize the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
@@ -595,12 +517,12 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
   try {
     bool useQueryCache = canUseQueryCache();
-    uint64_t queryStringHash = hash();
+    uint64_t queryHash = hash();
 
     if (useQueryCache) {
       // check the query cache for an existing result
       auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
-          _vocbase, queryStringHash, _queryString, _queryStringLength);
+          _vocbase, queryHash, _queryString);
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
@@ -619,14 +541,14 @@ QueryResult Query::execute(QueryRegistry* registry) {
     }
 
     // will throw if it fails
-    prepare(registry, queryStringHash);
+    prepare(registry, queryHash);
 
-    if (_queryString == nullptr) {
+    if (_queryString.empty()) {
       // we don't have query string... now pass query id to WorkMonitor
       work.reset(new AqlWorkStack(_vocbase, _id));
     } else {
       // we do have a query string... pass query to WorkMonitor
-      work.reset(new AqlWorkStack(_vocbase, _id, _queryString, _queryStringLength));
+      work.reset(new AqlWorkStack(_vocbase, _id, _queryString.data(), _queryString.size()));
     }
 
     log();
@@ -678,7 +600,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
           auto result = QueryCache::instance()->store(
-              _vocbase, queryStringHash, _queryString, _queryStringLength,
+              _vocbase, queryHash, _queryString,
               resultBuilder, _trx->state()->collectionNames());
 
           if (result == nullptr) {
@@ -779,12 +701,12 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
   try {
     bool useQueryCache = canUseQueryCache();
-    uint64_t queryStringHash = hash();
+    uint64_t queryHash = hash();
 
     if (useQueryCache) {
       // check the query cache for an existing result
       auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
-          _vocbase, queryStringHash, _queryString, _queryStringLength);
+          _vocbase, queryHash, _queryString);
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
@@ -805,14 +727,14 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     }
 
     // will throw if it fails
-    prepare(registry, queryStringHash);
+    prepare(registry, queryHash);
     
-    if (_queryString == nullptr) {
+    if (_queryString.empty()) {
       // we don't have query string... now pass query id to WorkMonitor
       work.reset(new AqlWorkStack(_vocbase, _id));
     } else {
       // we do have a query string... pass query to WorkMonitor
-      work.reset(new AqlWorkStack(_vocbase, _id, _queryString, _queryStringLength));
+      work.reset(new AqlWorkStack(_vocbase, _id, _queryString.data(), _queryString.size()));
     }
 
     log();
@@ -862,8 +784,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
-          QueryCache::instance()->store(_vocbase, queryStringHash, _queryString,
-                                        _queryStringLength, builder,
+          QueryCache::instance()->store(_vocbase, queryHash, _queryString, builder,
                                         _trx->state()->collectionNames());
         }
       } else {
@@ -1053,7 +974,7 @@ QueryResult Query::explain() {
       result.result = bestPlan->toVelocyPack(parser.ast(), verbosePlans());
 
       // cacheability
-      result.cached = (_queryString != nullptr && _queryStringLength > 0 &&
+      result.cached = (!_queryString.empty() &&
                        !_isModificationQuery && _warnings.empty() &&
                        _ast->root()->isCacheable());
     }
@@ -1137,7 +1058,6 @@ void Query::exitContext() {
       V8DealerFeature::DEALER->exitContext(_context);
       _context = nullptr;
     }
-    TRI_ASSERT(_context == nullptr);
   }
 }
 
@@ -1260,25 +1180,20 @@ void Query::init() {
 
 /// @brief log a query
 void Query::log() {
-  if (_queryString != nullptr) {
-    static size_t const MaxLength = 1024;
-
+  if (!_queryString.empty()) {
     LOG_TOPIC(TRACE, Logger::QUERIES)
-        << "executing query " << _id << ": '"
-        << std::string(_queryString, (std::min)(_queryStringLength, MaxLength))
-               .append(_queryStringLength > MaxLength ? "..." : "") << "'";
+        << "executing query " << _id << ": '" << _queryString.extract(1024) << "'";
   }
 }
 
 /// @brief calculate a hash value for the query and bind parameters
-uint64_t Query::hash() const {
-  if (_queryString == nullptr) {
+uint64_t Query::hash() {
+  if (_queryString.empty()) {
     return DontCache;
   }
 
   // hash the query string first
-  uint64_t hash = arangodb::aql::QueryCache::instance()->hashQueryString(
-      _queryString, _queryStringLength);
+  uint64_t hash = _queryString.hash();
 
   // handle "fullCount" option. if this option is set, the query result will
   // be different to when it is not set!
@@ -1309,7 +1224,7 @@ uint64_t Query::hash() const {
 
 /// @brief whether or not the query cache can be used for the query
 bool Query::canUseQueryCache() const {
-  if (_queryString == nullptr || _queryStringLength < 8) {
+  if (_queryString.size() < 8) {
     return false;
   }
 
@@ -1338,9 +1253,9 @@ bool Query::canUseQueryCache() const {
 std::string Query::buildErrorMessage(int errorCode) const {
   std::string err(TRI_errno_string(errorCode));
 
-  if (_queryString != nullptr && verboseErrors()) {
+  if (!_queryString.empty() && verboseErrors()) {
     err += "\nwhile executing:\n";
-    err.append(_queryString, _queryStringLength);
+    _queryString.append(err);
     err += "\n";
   }
 
@@ -1471,8 +1386,18 @@ Graph const* Query::lookupGraphByName(std::string const& name) {
 
   return g.release();
 }
+
+size_t Query::memoryLimit() const {
+  uint64_t globalLimit = _queryRegistry->queryMemoryLimit();
+  uint64_t value = getNumericOption<uint64_t>("memoryLimit", globalLimit);
+  if (value > 0) {
+    return static_cast<size_t>(value);
+  }
+  return 0;
+}
   
 /// @brief returns the next query id
 TRI_voc_tick_t Query::NextId() {
   return NextQueryId.fetch_add(1, std::memory_order_seq_cst);
 }
+

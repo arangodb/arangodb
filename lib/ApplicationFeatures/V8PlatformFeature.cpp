@@ -176,10 +176,30 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   isolate->AddGCEpilogueCallback(gcEpilogueCallback);
 
   auto data = std::make_unique<IsolateData>();
+  isolate->SetData(V8_INFO, data.get());
  
-  MUTEX_LOCKER(guard, _lock); 
-  _isolateData.emplace_back(std::move(data));
-  isolate->SetData(V8_INFO, _isolateData.back().get());
+  {
+    MUTEX_LOCKER(guard, _lock); 
+    try {
+      _isolateData.emplace(isolate, std::move(data));
+    } catch (...) {
+      isolate->SetData(V8_INFO, nullptr);
+      isolate->Dispose();
+      throw;
+    }
+  }
+
 
   return isolate;
 }
+
+void V8PlatformFeature::disposeIsolate(v8::Isolate* isolate) {
+  // must first remove from isolate-data map
+  {
+    MUTEX_LOCKER(guard, _lock); 
+    _isolateData.erase(isolate);
+  }
+  // because Isolate::Dispose() will delete isolate!
+  isolate->Dispose();
+}
+

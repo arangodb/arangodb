@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
@@ -65,6 +66,7 @@ int main(int argc, char* argv[]) {
       server.addFeature(new LanguageFeature(&server));
       server.addFeature(new LoggerFeature(&server, false));
       server.addFeature(new RandomFeature(&server));
+      server.addFeature(new ShellColorsFeature(&server));
       server.addFeature(new ShellFeature(&server, &ret));
       server.addFeature(new ShutdownFeature(&server, {"Shell"}));
       server.addFeature(new SslFeature(&server));

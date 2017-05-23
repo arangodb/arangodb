@@ -46,15 +46,13 @@
 #define ARANGOD_INDEXES_INDEX_ITERATOR_H 1
 
 #include "Basics/Common.h"
-#include "Cluster/ServerState.h"
 #include "Indexes/IndexLookupContext.h"
-#include "StorageEngine/StorageEngine.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
 class Index;
 class LogicalCollection;
+class ManagedDocumentResult;
 namespace transaction {
 class Methods;
 }
@@ -62,7 +60,7 @@ class Methods;
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
 class IndexIterator {
- protected:
+ public:
   typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
   typedef std::function<void(DocumentIdentifierToken const& token,
                              arangodb::velocypack::Slice extra)>

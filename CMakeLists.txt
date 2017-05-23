@@ -78,6 +78,13 @@ set(ARANGODB_VERSION_MINOR      "2")
 set(ARANGODB_VERSION_REVISION   "devel")
 set(ARANGODB_PACKAGE_REVISION   "1")
 
+# version for the windows rc file needs to be numeric:
+if (ARANGODB_VERSION_REVISION GREATER -1)
+  set(ARANGODB_NUMERIC_VERSION_REVISION "${ARANGODB_VERSION_REVISION}")
+else()
+  set(ARANGODB_NUMERIC_VERSION_REVISION 1337)
+endif()
+
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
@@ -94,7 +101,7 @@ set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
 set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
 set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
-set(ARANGO_EXPORT_FRIENDLY_STRING     "arangoexport - datae xporter")
+set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - datae xporter")
 set(ARANGO_IMP_FRIENDLY_STRING     "arangoimp - TSV/CSV/JSON importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")

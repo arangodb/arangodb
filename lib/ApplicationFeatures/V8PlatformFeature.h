@@ -74,6 +74,7 @@ class V8PlatformFeature final
 
  public:
   v8::Isolate* createIsolate();
+  void disposeIsolate(v8::Isolate*);
 
  private:
   std::unique_ptr<v8::Platform> _platform;
@@ -81,7 +82,7 @@ class V8PlatformFeature final
   std::string _v8CombinedOptions;
   
   arangodb::Mutex _lock; // to protect vector _isolateData
-  std::vector<std::unique_ptr<IsolateData>> _isolateData;
+  std::unordered_map<v8::Isolate*, std::unique_ptr<IsolateData>> _isolateData;
 };
 }
 

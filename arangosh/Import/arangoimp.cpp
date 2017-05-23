@@ -25,6 +25,7 @@
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
@@ -57,6 +58,7 @@ int main(int argc, char* argv[]) {
     server.addFeature(new ImportFeature(&server, &ret));
     server.addFeature(new LoggerFeature(&server, false));
     server.addFeature(new RandomFeature(&server));
+    server.addFeature(new ShellColorsFeature(&server));
     server.addFeature(new ShutdownFeature(&server, {"Import"}));
     server.addFeature(new SslFeature(&server));
     server.addFeature(new TempFeature(&server, "arangoimp"));

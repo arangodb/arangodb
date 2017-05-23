@@ -23,11 +23,14 @@
 #include "InitDatabaseFeature.h"
 
 #include "Basics/FileUtils.h"
+#include "Basics/terminal-utils.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
+
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::application_features;

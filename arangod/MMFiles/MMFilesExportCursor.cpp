@@ -71,32 +71,6 @@ VPackSlice MMFilesExportCursor::next() {
 
 size_t MMFilesExportCursor::count() const { return _size; }
 
-static bool IncludeAttribute(
-    MMFilesCollectionExport::Restrictions::Type const restrictionType,
-    std::unordered_set<std::string> const& fields, std::string const& key) {
-  if (restrictionType == MMFilesCollectionExport::Restrictions::RESTRICTION_INCLUDE ||
-      restrictionType == MMFilesCollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
-    bool const keyContainedInRestrictions = (fields.find(key) != fields.end());
-    if ((restrictionType ==
-             MMFilesCollectionExport::Restrictions::RESTRICTION_INCLUDE &&
-         !keyContainedInRestrictions) ||
-        (restrictionType ==
-             MMFilesCollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
-         keyContainedInRestrictions)) {
-      // exclude the field
-      return false;
-    }
-    // include the field
-    return true;
-  } else {
-    // no restrictions
-    TRI_ASSERT(restrictionType ==
-               MMFilesCollectionExport::Restrictions::RESTRICTION_NONE);
-    return true;
-  }
-  return true;
-}
-
 void MMFilesExportCursor::dump(VPackBuilder& builder) {
   auto transactionContext =
       std::make_shared<transaction::StandaloneContext>(_vocbaseGuard.vocbase());
@@ -124,7 +98,7 @@ void MMFilesExportCursor::dump(VPackBuilder& builder) {
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());
 
-        if (!IncludeAttribute(restrictionType, _ex->_restrictions.fields,
+        if (!CollectionExport::IncludeAttribute(restrictionType, _ex->_restrictions.fields,
                               key)) {
           // Ignore everything that should be excluded or not included
           continue;

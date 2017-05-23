@@ -80,22 +80,7 @@ void QueryRegistryFeature::collectOptions(
                      new UInt64Parameter(&_queryCacheEntries));
 }
 
-void QueryRegistryFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-}
-
 void QueryRegistryFeature::prepare() {
-  // set query memory limit
-  arangodb::aql::Query::MemoryLimit(_queryMemoryLimit);
-
-  // set global query tracking flag
-  arangodb::aql::Query::DisableQueryTracking(!_queryTracking);
-  
-  arangodb::aql::Query::FailOnWarning(_failOnWarning);
-  
-  // set global threshold value for slow queries  
-  arangodb::aql::Query::SlowQueryThreshold(_slowThreshold);
-
   // configure the query cache
   std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
                                                  _queryCacheEntries};
@@ -106,8 +91,7 @@ void QueryRegistryFeature::prepare() {
   QUERY_REGISTRY = _queryRegistry.get();
 }
 
-void QueryRegistryFeature::start() {
-}
+void QueryRegistryFeature::start() {}
 
 void QueryRegistryFeature::unprepare() {
   // clear the query registery

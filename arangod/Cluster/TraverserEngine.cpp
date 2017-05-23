@@ -25,6 +25,7 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
+#include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
@@ -105,7 +106,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
   // created transaction is considered a "MAIN" part and will not switch
   // off collection locking completely!
   _query =
-      new aql::Query(true, vocbase, "", 0, params, opts, aql::PART_DEPENDENT);
+      new aql::Query(true, vocbase, aql::QueryString(), params, opts, aql::PART_DEPENDENT);
   _query->injectTransaction(_trx);
 
   VPackSlice variablesSlice = info.get(VARIABLES);

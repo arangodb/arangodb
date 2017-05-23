@@ -87,8 +87,7 @@ void RestEdgesHandler::readCursor(
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
-  while (cursor->getMore(cb, 1000)) {
-  }
+  cursor->all(cb);
 }
 
 

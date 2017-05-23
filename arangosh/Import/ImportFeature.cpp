@@ -33,6 +33,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
 #include <regex>
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;

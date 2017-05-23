@@ -668,7 +668,7 @@ set -e
 if test "${PARTIAL_STATE}" == 0; then
     rm -rf CMakeFiles CMakeCache.txt CMakeCPackOptions.cmake cmake_install.cmake CPackConfig.cmake CPackSourceConfig.cmake
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
-          cmake "${SOURCE_DIR}" "${CONFIGURE_OPTIONS[@]}" -G "${GENERATOR}" || exit 1
+          cmake "${SOURCE_DIR}" ${CONFIGURE_OPTIONS[@]} -G "${GENERATOR}" || exit 1
 fi
 
 if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
@@ -681,7 +681,7 @@ fi
 TRIES=0;
 set +e
 while /bin/true; do
-    ${MAKE_CMD_PREFIX} ${MAKE} "${MAKE_PARAMS[@]}"
+    ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS[@]}
     RC=$?
     if test "${isCygwin}" == 1 -a "${RC}" != 0 -a "${TRIES}" == 0; then
         # sometimes windows will fail on a messed up working copy,
@@ -774,7 +774,7 @@ if test -n "${TARGET_DIR}";  then
                             ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"
                   )
             DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
-            cp "${DLLS}" "bin/${BUILD_CONFIG}"
+            cp ${DLLS} "bin/${BUILD_CONFIG}"
             cp "bin/${BUILD_CONFIG}/"* bin/
             cp "tests/${BUILD_CONFIG}/"*exe bin/
         fi

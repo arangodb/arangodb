@@ -24,6 +24,7 @@
 #include "AuthInfo.h"
 
 #include "Aql/Query.h"
+#include "Aql/QueryString.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -266,8 +267,8 @@ void AuthInfo::reload() {
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
   
-  arangodb::aql::Query query(false, vocbase, queryStr.c_str(),
-                             queryStr.size(), emptyBuilder, emptyBuilder,
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryStr),
+                             emptyBuilder, emptyBuilder,
                              arangodb::aql::PART_MAIN);
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "starting to load authentication and authorization information";
@@ -448,9 +449,9 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
         binds.close(); // user
         binds.close(); // obj
 
-        arangodb::aql::Query query(false, vocbase, queryStr.c_str(),
-                                  queryStr.size(), std::make_shared<VPackBuilder>(binds), emptyBuilder,
-                                  arangodb::aql::PART_MAIN);
+        arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryStr),
+                                   std::make_shared<VPackBuilder>(binds), emptyBuilder,
+                                   arangodb::aql::PART_MAIN);
 
         TRI_ASSERT(_queryRegistry != nullptr);
         auto queryResult = query.execute(_queryRegistry);

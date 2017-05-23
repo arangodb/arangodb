@@ -162,6 +162,12 @@ class QueryList {
  private:
   std::string extractQueryString(Query const* query, size_t maxLength) const;
 
+  /// @brief default maximum number of slow queries to keep in list
+  static constexpr size_t defaultMaxSlowQueries = 64;
+
+  /// @brief default max length of a query when returning it
+  static constexpr size_t defaultMaxQueryStringLength = 4096;
+
  private:
   /// @brief r/w lock for the list
   arangodb::basics::ReadWriteLock _lock;
@@ -189,15 +195,6 @@ class QueryList {
 
   /// @brief max length of query strings to return
   size_t _maxQueryStringLength;
-
-  /// @brief default threshold for slow queries
-  static double const DefaultSlowQueryThreshold;
-
-  /// @brief default maximum number of slow queries to keep in list
-  static size_t const DefaultMaxSlowQueries;
-
-  /// @brief default max length of a query when returning it
-  static size_t const DefaultMaxQueryStringLength;
 };
 }
 }

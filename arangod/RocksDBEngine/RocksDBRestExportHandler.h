@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "RocksDBEngine/RocksDBCollectionExport.h"
+#include "Utils/CollectionExport.h"
 
 namespace arangodb {
 class RocksDBRestExportHandler : public RestVocbaseBaseHandler {
@@ -68,7 +68,7 @@ class RocksDBRestExportHandler : public RestVocbaseBaseHandler {
   /// @brief restrictions for export
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBCollectionExport::Restrictions _restrictions;
+  CollectionExport::Restrictions _restrictions;
 };
 }
 
