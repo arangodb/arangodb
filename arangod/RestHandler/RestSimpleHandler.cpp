@@ -24,6 +24,7 @@
 #include "RestSimpleHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -221,7 +222,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       }
     }
 
-    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(),
+    arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(aql),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
@@ -333,7 +334,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     std::string const aql(
         "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
-    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(),
+    arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);

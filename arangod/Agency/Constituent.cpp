@@ -547,7 +547,7 @@ void Constituent::run() {
   // Most recent vote
   {
     std::string const aql("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(),
+    arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(aql),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     auto queryResult = query.execute(_queryRegistry);
