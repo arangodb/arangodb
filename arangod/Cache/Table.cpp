@@ -81,8 +81,8 @@ Table::Table(uint32_t logSize)
       _mask((uint32_t)((_size - 1) << _shift)),
       _buffer(new uint8_t[(_size * BUCKET_SIZE) + Table::padding]),
       _buckets(reinterpret_cast<GenericBucket*>(
-          reinterpret_cast<uint64_t>((_buffer.get() + 63)) &
-          ~(static_cast<uint64_t>(0x3fU)))),
+          reinterpret_cast<uint64_t>((_buffer.get() + (BUCKET_SIZE - 1))) &
+          ~(static_cast<uint64_t>(BUCKET_SIZE - 1)))),
       _auxiliary(nullptr),
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),

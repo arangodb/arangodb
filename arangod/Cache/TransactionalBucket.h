@@ -50,8 +50,13 @@ namespace cache {
 struct TransactionalBucket {
   State _state;
 
+  // blacklist entries for transactional semantics
+  static constexpr size_t slotsBlacklist = 5;
+  uint32_t _blacklistHashes[slotsBlacklist];
+  uint64_t _blacklistTerm;
+
   // actual cached entries
-  static constexpr size_t slotsData = 3;
+  static constexpr size_t slotsData = 8;
   uint32_t _cachedHashes[slotsData];
   CachedValue* _cachedData[slotsData];
 
@@ -59,11 +64,6 @@ struct TransactionalBucket {
 #ifdef TRI_PADDING_32
   uint32_t _padding[slotsData];
 #endif
-
-  // blacklist entries for transactional semantics
-  static constexpr size_t slotsBlacklist = 4;
-  uint32_t _blacklistHashes[slotsBlacklist];
-  uint64_t _blacklistTerm;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize an empty bucket.
