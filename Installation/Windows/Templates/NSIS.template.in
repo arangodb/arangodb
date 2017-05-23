@@ -85,6 +85,7 @@ SetCompressor @CPACK_NSIS_COMPRESSOR@
 RequestExecutionLevel highest
 
 !include "AddToPath.nsh"
+!include "AddToRegistry.nsh"
 !include "WaitForService.nsh"
 
 
@@ -310,16 +311,6 @@ FunctionEnd
 ;#            Utility Functions            #
 ;###########################################
 
-Function ConditionalAddToRegistry
-  Pop $0
-  Pop $1
-  StrCmp "$0" "" ConditionalAddToRegistry_EmptyString
-    WriteRegStr SHCTX "${TRI_UNINSTALL_REG_PATH}" "$1" "$0"
-    ;MessageBox MB_OK "Set Registry: '$1' to '$0'"
-    DetailPrint "Set install registry entry: '$1' to '$0'"
-  ConditionalAddToRegistry_EmptyString:
-FunctionEnd
-
 ;--------------------------------
 ; Installation types
 @CPACK_NSIS_INSTALLATION_TYPES@
@@ -457,46 +448,24 @@ noServiceToStop:
 
   ;Create uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
-  Push "DisplayName"
-  Push "@CPACK_NSIS_DISPLAY_NAME@"
-  Call ConditionalAddToRegistry
-  Push "DisplayVersion"
-  Push "@CPACK_PACKAGE_VERSION@"
-  Call ConditionalAddToRegistry
-  Push "Publisher"
-  Push "@CPACK_PACKAGE_VENDOR@"
-  Call ConditionalAddToRegistry
-  Push "UninstallString"
-  Push "$INSTDIR\Uninstall.exe"
-  Call ConditionalAddToRegistry
-  Push "NoRepair"
-  Push "1"
-  Call ConditionalAddToRegistry
+  !insertmacro AddToRegistry "DisplayName"          "@CPACK_NSIS_DISPLAY_NAME@"
+  !insertmacro AddToRegistry "DisplayVersion"       "@CPACK_PACKAGE_VERSION@"
+  !insertmacro AddToRegistry "Publisher"            "@CPACK_PACKAGE_VENDOR@"
+  !insertmacro AddToRegistry "UninstallString"      "$INSTDIR\Uninstall.exe"
+  !insertmacro AddToRegistry "NoRepair"             "1"
 
   !ifdef CPACK_NSIS_ADD_REMOVE
   ;Create add/remove functionality
-  Push "ModifyPath"
-  Push "$INSTDIR\AddRemove.exe"
-  Call ConditionalAddToRegistry
+  !insertmacro AddToRegistry "ModifyPath"           "$INSTDIR\AddRemove.exe"
   !else
-  Push "NoModify"
-  Push "1"
-  Call ConditionalAddToRegistry
+  !insertmacro AddToRegistry "NoModify"             "1"
   !endif
 
   ; Optional registration
-  Push "DisplayIcon"
-  Push "$INSTDIR\@CPACK_NSIS_INSTALLED_ICON_NAME@"
-  Call ConditionalAddToRegistry
-  Push "HelpLink"
-  Push "@CPACK_NSIS_HELP_LINK@"
-  Call ConditionalAddToRegistry
-  Push "URLInfoAbout"
-  Push "@CPACK_NSIS_URL_INFO_ABOUT@"
-  Call ConditionalAddToRegistry
-  Push "Contact"
-  Push "@CPACK_NSIS_CONTACT@"
-  Call ConditionalAddToRegistry
+  !insertmacro AddToRegistry "DisplayIcon"          "$INSTDIR\@CPACK_NSIS_INSTALLED_ICON_NAME@"
+  !insertmacro AddToRegistry "HelpLink"             "@CPACK_NSIS_HELP_LINK@"
+  !insertmacro AddToRegistry "URLInfoAbout"         "@CPACK_NSIS_URL_INFO_ABOUT@"
+  !insertmacro AddToRegistry "Contact"              "@CPACK_NSIS_CONTACT@"
 
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 
@@ -514,21 +483,11 @@ noServiceToStop:
   noDesktopIcon:
 
   ; Write special uninstall registry entries
-  Push "StartMenu"
-  Push "$STARTMENU_FOLDER"
-  Call ConditionalAddToRegistry
-  Push "DoNotAddToPath"
-  Push "$DO_NOT_ADD_TO_PATH"
-  Call ConditionalAddToRegistry
-  Push "AddToPathAllUsers"
-  Push "$ADD_TO_PATH_ALL_USERS"
-  Call ConditionalAddToRegistry
-  Push "AddToPathCurrentUser"
-  Push "$ADD_TO_PATH_CURRENT_USER"
-  Call ConditionalAddToRegistry
-  Push "InstallToDesktop"
-  Push "$INSTALL_DESKTOP"
-  Call ConditionalAddToRegistry
+  !insertmacro AddToRegistry "StartMenu"            "$STARTMENU_FOLDER"
+  !insertmacro AddToRegistry "DoNotAddToPath"       "$DO_NOT_ADD_TO_PATH"
+  !insertmacro AddToRegistry "AddToPathAllUsers"    "$ADD_TO_PATH_ALL_USERS"
+  !insertmacro AddToRegistry "AddToPathCurrentUser" "$ADD_TO_PATH_CURRENT_USER"
+  !insertmacro AddToRegistry "InstallToDesktop"     "$INSTALL_DESKTOP"
 
   !insertmacro MUI_STARTMENU_WRITE_END
 
@@ -781,28 +740,6 @@ SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Hallo"
 ;--------------------------------
 ; determine admin versus local install
 Function un.onInit
-
-;  ClearErrors
-;  UserInfo::GetName
-;  IfErrors noLM
-;  Pop $0
-;  UserInfo::GetAccountType
-;  Pop $1
-;  StrCmp $1 "Admin" 0 +3
-;    SetShellVarContext all
-;    MessageBox MB_OK 'User "$0" is in the Admin group'
-;    Goto done
-;  StrCmp $1 "Power" 0 +3
-;    SetShellVarContext all
-;    MessageBox MB_OK 'User "$0" is in the Power Users group'
-;    Goto done
-;
-;  noLM:
-;    ;Get installation folder from registry if available
-;
-;  done:
-
-; determine admin versus local install
 ; arango may be installed on diferent places
 ; determine if the arango was installed for a local user
   ${GetParameters} $R0        
