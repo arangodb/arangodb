@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_QUERY_CACHE_H
 #define ARANGOD_AQL_QUERY_CACHE_H 1
 
+#include "Aql/QueryString.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -42,7 +43,7 @@ enum QueryCacheMode { CACHE_ALWAYS_OFF, CACHE_ALWAYS_ON, CACHE_ON_DEMAND };
 struct QueryCacheResultEntry {
   QueryCacheResultEntry() = delete;
 
-  QueryCacheResultEntry(uint64_t, char const*, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
+  QueryCacheResultEntry(uint64_t, QueryString const&, std::shared_ptr<arangodb::velocypack::Builder>,
                         std::vector<std::string> const&);
 
   ~QueryCacheResultEntry() = default;
@@ -99,7 +100,7 @@ struct QueryCacheDatabaseEntry {
   ~QueryCacheDatabaseEntry();
 
   /// @brief lookup a query result in the database-specific cache
-  QueryCacheResultEntry* lookup(uint64_t, char const*, size_t);
+  QueryCacheResultEntry* lookup(uint64_t, QueryString const&);
 
   /// @brief store a query result in the database-specific cache
   void store(uint64_t, QueryCacheResultEntry*);
@@ -176,12 +177,12 @@ class QueryCache {
   static std::string modeString(QueryCacheMode);
 
   /// @brief lookup a query result in the cache
-  QueryCacheResultEntry* lookup(TRI_vocbase_t*, uint64_t, char const*, size_t);
+  QueryCacheResultEntry* lookup(TRI_vocbase_t*, uint64_t, QueryString const&);
 
   /// @brief store a query in the cache
   /// if the call is successful, the cache has taken over ownership for the
   /// query result!
-  QueryCacheResultEntry* store(TRI_vocbase_t*, uint64_t, char const*, size_t,
+  QueryCacheResultEntry* store(TRI_vocbase_t*, uint64_t, QueryString const&,
                                std::shared_ptr<arangodb::velocypack::Builder>,
                                std::vector<std::string> const&);
 
@@ -196,9 +197,6 @@ class QueryCache {
 
   /// @brief invalidate all queries
   void invalidate();
-
-  /// @brief hashes a query string
-  uint64_t hashQueryString(char const*, size_t) const;
 
   /// @brief get the pointer to the global query cache
   static QueryCache* instance();

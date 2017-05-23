@@ -333,7 +333,7 @@ namespace arangodb {
 
 <INITIAL>` {
   /* string enclosed in backticks */
-  yyextra->marker(yyextra->queryString() + yyextra->offset());
+  yyextra->marker(yyextra->queryStringStart() + yyextra->offset());
   BEGIN(BACKTICK);
 }
 
@@ -341,7 +341,7 @@ namespace arangodb {
   /* end of backtick-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
   yylval->strval.length = outLength;
   return T_STRING;
 }
@@ -361,7 +361,7 @@ namespace arangodb {
 
 <INITIAL>´ {
   /* string enclosed in forwardticks */
-  yyextra->marker(yyextra->queryString() + yyextra->offset());
+  yyextra->marker(yyextra->queryStringStart() + yyextra->offset());
   BEGIN(FORWARDTICK);
 }
 
@@ -369,7 +369,7 @@ namespace arangodb {
   /* end of forwardtick-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 2, outLength);
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 2, outLength);
   yylval->strval.length = outLength;
   return T_STRING;
 }
@@ -391,7 +391,7 @@ namespace arangodb {
   * --------------------------------------------------------------------------- */
 
 <INITIAL>\" {
-  yyextra->marker(yyextra->queryString() + yyextra->offset());
+  yyextra->marker(yyextra->queryStringStart() + yyextra->offset());
   BEGIN(DOUBLE_QUOTE);
 }
 
@@ -399,7 +399,7 @@ namespace arangodb {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
   yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }
@@ -417,7 +417,7 @@ namespace arangodb {
 }
 
 <INITIAL>' {
-  yyextra->marker(yyextra->queryString() + yyextra->offset());
+  yyextra->marker(yyextra->queryStringStart() + yyextra->offset());
   BEGIN(SINGLE_QUOTE);
 }
 
@@ -425,7 +425,7 @@ namespace arangodb {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
   yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }

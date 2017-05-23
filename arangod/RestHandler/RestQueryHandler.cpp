@@ -128,10 +128,7 @@ bool RestQueryHandler::readQuery(bool slow) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns AQL query tracking
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestQueryHandler::readQuery() {
   auto const& suffixes = _request->suffixes();
 
@@ -197,10 +194,7 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief interrupts a query
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestQueryHandler::deleteQuery() {
   auto const& suffixes = _request->suffixes();
 
@@ -315,7 +309,7 @@ bool RestQueryHandler::parseQuery() {
   std::string const&& queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(true, _vocbase, queryString.c_str(), queryString.size(),
+  Query query(true, _vocbase, QueryString(queryString),
               nullptr, nullptr, PART_MAIN);
 
   auto parseResult = query.parse();
