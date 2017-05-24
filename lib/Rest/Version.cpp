@@ -41,6 +41,7 @@
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 
+#include <rocksdb/convenience.h>
 #include <rocksdb/version.h>
 
 using namespace arangodb::rest;

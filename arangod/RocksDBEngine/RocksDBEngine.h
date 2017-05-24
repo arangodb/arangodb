@@ -229,6 +229,8 @@ class RocksDBEngine final : public StorageEngine {
                                       std::string const& name,
                                       bool wasCleanShutdown, bool isUpgrade);
 
+  std::string getCompressionSupport() const;
+
  public:
   static std::string const EngineName;
   static std::string const FeatureName;

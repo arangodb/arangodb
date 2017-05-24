@@ -91,7 +91,7 @@ class Version {
   
   /// @brief get RocksDB version
   static std::string getRocksDBVersion();
-
+  
   /// @brief get V8 version
   static std::string getV8Version();
 
