@@ -285,6 +285,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   waitForSenders();
+  reportProgress(totalLength, totalRead, nextProgress);
+  
   _outputBuffer.clear();
   return !_hasError;
 }
@@ -410,6 +412,8 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   waitForSenders();
+  reportProgress(totalLength, totalRead, nextProgress);
+  
   MUTEX_LOCKER(guard, _stats._mutex);
   // this is an approximation only. _numberLines is more meaningful for CSV
   // imports
