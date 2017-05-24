@@ -98,6 +98,14 @@ class Cache : public std::enable_shared_from_this<Cache> {
   uint64_t usage();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Gives hint to attempt to preallocate space for an incoming load.
+  ///
+  /// The parameter specifies an expected number of elements to be inserted.
+  /// This allows for migration to an appropriately-sized table.
+  //////////////////////////////////////////////////////////////////////////////
+  void sizeHint(uint64_t numElements);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the cache hit-rates.
   ///
   /// The first return value is the lifetime hit-rate for this cache. The second
