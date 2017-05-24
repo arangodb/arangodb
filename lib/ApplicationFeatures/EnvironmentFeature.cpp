@@ -43,10 +43,20 @@ void EnvironmentFeature::prepare() {
     // 32 bit build
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "this is a 32 bit build of ArangoDB. "
                << "it is recommended to run a 64 bit build instead because it can "
-               << "address significantly bigger regions of memory.";
+               << "address significantly bigger regions of memory";
   }
 
 #ifdef __linux__
+
+#ifdef __GLIBC__
+  char const* v = getenv("GLIBCXX_FORCE_NEW");
+  if (v == nullptr) {
+    // environment variable not set
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "environment variable GLIBCXX_FORCE_NEW' is not set. "
+               << "it is recommended to set it to some value to avoid memory pooling in glibc++";
+  }
+#endif
+
   try {
     std::string value = basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
     uint64_t v = basics::StringUtils::uint64(value);
