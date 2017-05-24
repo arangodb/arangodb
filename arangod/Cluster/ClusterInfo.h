@@ -628,7 +628,7 @@ class ClusterInfo {
   std::unordered_map<CollectionID,
                      std::shared_ptr<std::vector<std::string>>>
       _shardKeys;  // from Plan/Collections/
-  
+  // planned shard => servers map
   std::unordered_map<ShardID, std::vector<ServerID>> _shardServers;
 
   // The Current state:

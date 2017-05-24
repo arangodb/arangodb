@@ -5,7 +5,6 @@
 !addplugindir  '@CPACK_PLUGIN_PATH@/SharedMemory/Plugins'
 !addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
 !addincludedir '@CPACK_PLUGIN_PATH@/'
-!include "StrRep.nsh"
 !include "OpenLink.nsh"
 
 ;--------------------------------
@@ -59,6 +58,7 @@ Var ADD_TO_PATH_CURRENT_USER  ; x bool
 ; Variables for definition of instdir
 ; posible values: SingleUser | AllUsers | Service
 VAR TRI_INSTALL_TYPE          ; x 
+Var newCfgValues              ; keep new config file values
 !define TEMP1 $R0 ;Temp variable
 
 Var DATADIR
@@ -88,7 +88,7 @@ RequestExecutionLevel highest
 !include "AddToPath.nsh"
 !include "AddToRegistry.nsh"
 !include "WaitForService.nsh"
-
+!include "ReadINIFileKeys.nsh"
 
 Function disableBackButton
      GetDlgItem $0 $HWNDParent 3
@@ -479,10 +479,17 @@ Section "-Core installation"
 
   !insertmacro AddToRegistry "DATADIR"        "$DATADIR"
 
-  !insertmacro _ReplaceInFile "$INSTDIR\etc\arangodb3\arangod.conf" "storage-engine = auto" "storage-engine = $STORAGE_ENGINE"
-  !insertmacro _ReplaceInFile "$INSTDIR\etc\arangodb3\arangod.conf" "directory = @CPACK_ROOTDIR@var/lib/arangodb3" "directory = $DATADIR"
+  ; Create a file containing the settings we want to be overwritten:
+  StrCpy $newCfgValues "[database]$\r$\ndirectory = $DATADIR$\r$\n[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
+  FileOpen $4  "$INSTDIR\etc\arangodb3\newValues.ini" w
+  FileWrite $4 "$newCfgValues"
+  FileClose $4
+  ; Alter the shipped file and insert the values from above:
+  push "$INSTDIR\etc\arangodb3\newValues.ini"
+  push "$INSTDIR\etc\arangodb3\arangod.conf"
+  call ReadINIFileKeys
 
-  System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
+System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
     ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database --server.rest-server false --server.statistics false --foxx.queues false"
     Goto done
