@@ -194,6 +194,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterComm.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp
+  Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
