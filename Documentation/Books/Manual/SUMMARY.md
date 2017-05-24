@@ -153,6 +153,7 @@
   * [Arangoexport](Administration/Arangoexport.md)
   * [Managing Users](Administration/ManagingUsers.md)
   * [Server Configuration](Administration/Configuration/README.md)
+    * [Operating System Configuration](Administration/Configuration/OperatingSystem.md)
     * [Managing Endpoints](Administration/Configuration/Endpoint.md)
     * [SSL Configuration](Administration/Configuration/SSL.md)
     * [LDAP Options](Administration/Configuration/Ldap.md)
