@@ -218,7 +218,7 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 
   SSL_METHOD SSL_CONST* meth = nullptr;
 
-  switch (protocol_e(sslProtocol)) {
+  switch (SslProtocol(sslProtocol)) {
 #ifndef OPENSSL_NO_SSL2
     case SSL_V2:
       meth = SSLv2_method();
@@ -298,7 +298,7 @@ bool SslClientConnection::connectSocket() {
     return false;
   }
 
-  switch (protocol_e(_sslProtocol)) {
+  switch (SslProtocol(_sslProtocol)) {
     case TLS_V1:
     case TLS_V12:
     default:

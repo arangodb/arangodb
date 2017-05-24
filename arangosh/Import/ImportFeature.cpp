@@ -32,8 +32,8 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
-#include <regex>
 #include <iostream>
+#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -47,6 +47,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _useBackslash(false),
       _convert(true),
       _chunkSize(1024 * 1024 * 16),
+      _threadCount(2),
       _collectionName(""),
       _fromCollectionPrefix(""),
       _toCollectionPrefix(""),
@@ -81,29 +82,41 @@ void ImportFeature::collectOptions(
                      "size for individual data batches (in bytes)",
                      new UInt64Parameter(&_chunkSize));
 
+  options->addOption(
+      "--threads",
+      "Number of parallel import threads. Most useful for the rocksdb engine",
+      new UInt32Parameter(&_threadCount));
+
   options->addOption("--collection", "collection name",
                      new StringParameter(&_collectionName));
 
-  options->addOption("--from-collection-prefix", "_from collection name prefix (will be prepended to all values in '_from')",
+  options->addOption("--from-collection-prefix",
+                     "_from collection name prefix (will be prepended to all "
+                     "values in '_from')",
                      new StringParameter(&_fromCollectionPrefix));
 
-  options->addOption("--to-collection-prefix", "_to collection name prefix (will be prepended to all values in '_to')",
-                     new StringParameter(&_toCollectionPrefix));
+  options->addOption(
+      "--to-collection-prefix",
+      "_to collection name prefix (will be prepended to all values in '_to')",
+      new StringParameter(&_toCollectionPrefix));
 
   options->addOption("--create-collection",
                      "create collection if it does not yet exist",
                      new BooleanParameter(&_createCollection));
-  
+
   options->addOption("--skip-lines",
                      "number of lines to skip for formats (csv and tsv only)",
                      new UInt64Parameter(&_rowsToSkip));
-  
+
   options->addOption("--convert",
-                     "convert the strings 'null', 'false', 'true' and strings containing numbers into non-string types (csv and tsv only)",
+                     "convert the strings 'null', 'false', 'true' and strings "
+                     "containing numbers into non-string types (csv and tsv "
+                     "only)",
                      new BooleanParameter(&_convert));
-  
+
   options->addOption("--translate",
-                     "translate an attribute name (use as --translate \"from=to\", for csv and tsv only)",
+                     "translate an attribute name (use as --translate "
+                     "\"from=to\", for csv and tsv only)",
                      new VectorParameter<StringParameter>(&_translations));
 
   std::unordered_set<std::string> types = {"document", "edge"};
@@ -116,7 +129,8 @@ void ImportFeature::collectOptions(
       new DiscreteValuesParameter<StringParameter>(&_createCollectionType,
                                                    types));
 
-  std::unordered_set<std::string> imports = {"csv", "tsv", "json", "jsonl", "auto"};
+  std::unordered_set<std::string> imports = {"csv", "tsv", "json", "jsonl",
+                                             "auto"};
 
   options->addOption(
       "--type", "type of import file",
@@ -142,12 +156,12 @@ void ImportFeature::collectOptions(
   std::vector<std::string> actionsVector(actions.begin(), actions.end());
   std::string actionsJoined = StringUtils::join(actionsVector, ", ");
 
-  options->addOption(
-      "--on-duplicate",
-      "action to perform when a unique key constraint "
-      "violation occurs. Possible values: " +
-          actionsJoined,
-      new DiscreteValuesParameter<StringParameter>(&_onDuplicateAction, actions));
+  options->addOption("--on-duplicate",
+                     "action to perform when a unique key constraint "
+                     "violation occurs. Possible values: " +
+                         actionsJoined,
+                     new DiscreteValuesParameter<StringParameter>(
+                         &_onDuplicateAction, actions));
 }
 
 void ImportFeature::validateOptions(
@@ -162,84 +176,110 @@ void ImportFeature::validateOptions(
       _filename = positionals[0];
     }
   } else if (1 < n) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "expecting at most one filename, got " +
-                      StringUtils::join(positionals, ", ");
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "expecting at most one filename, got " +
+               StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
 
   static unsigned const MaxBatchSize = 768 * 1024 * 1024;
 
   if (_chunkSize > MaxBatchSize) {
-    // it's not sensible to raise the batch size beyond this value 
-    // because the server has a built-in limit for the batch size too 
+    // it's not sensible to raise the batch size beyond this value
+    // because the server has a built-in limit for the batch size too
     // and will reject bigger HTTP request bodies
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --batch-size value to " << MaxBatchSize;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --batch-size value to "
+                                             << MaxBatchSize;
     _chunkSize = MaxBatchSize;
+  }
+
+  if (_threadCount < 1) {
+    // it's not sensible to use just one thread
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --threads value to "
+                                             << 1;
+    _threadCount = 1;
+  }
+  if (_threadCount > TRI_numberProcessors()) {
+    // it's not sensible to use just one thread
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --threads value to "
+                                             << TRI_numberProcessors();
+    _threadCount = (uint32_t)TRI_numberProcessors();
   }
 
   for (auto const& it : _translations) {
     auto parts = StringUtils::split(it, "=");
     if (parts.size() != 2) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it
+                                                << "'";
       FATAL_ERROR_EXIT();
-    } 
+    }
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);
 
     if (parts[0].empty() || parts[1].empty()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it
+                                                << "'";
       FATAL_ERROR_EXIT();
     }
   }
 }
 
 void ImportFeature::start() {
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>("Client");
+  ClientFeature* client =
+      application_features::ApplicationServer::getFeature<ClientFeature>(
+          "Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
+
+  if (_typeImport == "auto") {
+    std::regex re = std::regex(".*?\\.([a-zA-Z]+)", std::regex::ECMAScript);
+    std::smatch match;
+    if (!std::regex_match(_filename, match, re)) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "Cannot auto-detect file type from filename '" << _filename << "'";
+      FATAL_ERROR_EXIT();
+    }
+
+    std::string extension = match[1].str();
+    if (extension == "json" || extension == "jsonl" || extension == "csv" ||
+        extension == "tsv") {
+      _typeImport = extension;
+    } else {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "Unsupported file extension '" << extension << "'";
+      FATAL_ERROR_EXIT();
+    }
+  }
 
   std::unique_ptr<SimpleHttpClient> httpClient;
 
   try {
     httpClient = client->createHttpClient();
   } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot create server connection, giving up!";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
-  httpClient->setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
-  httpClient->setUserNamePassword("/", client->username(), client->password());
+  httpClient->params().setLocationRewriter(static_cast<void*>(client),
+                                           &rewriteLocation);
+  httpClient->params().setUserNamePassword("/", client->username(),
+                                           client->password());
 
   // must stay here in order to establish the connection
   httpClient->getServerVersion();
 
   if (!httpClient->isConnected()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not connect to endpoint '" << client->endpoint()
-             << "', database: '" << client->databaseName() << "', username: '"
-             << client->username() << "'";
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Could not connect to endpoint '" << client->endpoint()
+        << "', database: '" << client->databaseName() << "', username: '"
+        << client->username() << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << httpClient->getErrorMessage()
+                                              << "'";
     FATAL_ERROR_EXIT();
   }
-  
-  if (_typeImport == "auto") {
-    std::regex re = std::regex(".*?\\.([a-zA-Z]+)", std::regex::ECMAScript);
-    std::smatch match;
-    if (!std::regex_match(_filename, match, re)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot auto-detect file type from filename '" << _filename << "'";
-      FATAL_ERROR_EXIT();
-    }
 
-    std::string extension = match[1].str();
-    if (extension == "json" || extension == "jsonl" || extension == "csv" || extension == "tsv") {
-      _typeImport = extension;
-    } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Unsupported file extension '" << extension << "'";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  
   // successfully connected
   std::cout << "Connected to ArangoDB '"
             << httpClient->getEndpointSpecification() << "', version "
@@ -248,10 +288,12 @@ void ImportFeature::start() {
             << "'" << std::endl;
 
   std::cout << "----------------------------------------" << std::endl;
-  std::cout << "database:               " << client->databaseName() << std::endl;
+  std::cout << "database:               " << client->databaseName()
+            << std::endl;
   std::cout << "collection:             " << _collectionName << std::endl;
   if (!_fromCollectionPrefix.empty()) {
-    std::cout << "from collection prefix: " << _fromCollectionPrefix << std::endl;
+    std::cout << "from collection prefix: " << _fromCollectionPrefix
+              << std::endl;
   }
   if (!_toCollectionPrefix.empty()) {
     std::cout << "to collection prefix:   " << _toCollectionPrefix << std::endl;
@@ -263,16 +305,22 @@ void ImportFeature::start() {
 
   if (_typeImport == "csv") {
     std::cout << "quote:                  " << _quote << std::endl;
-  } 
+  }
   if (_typeImport == "csv" || _typeImport == "tsv") {
     std::cout << "separator:              " << _separator << std::endl;
   }
+  std::cout << "threads:              " << _threadCount << std::endl;
 
-  std::cout << "connect timeout:        " << client->connectionTimeout() << std::endl;
-  std::cout << "request timeout:        " << client->requestTimeout() << std::endl;
+  std::cout << "connect timeout:        " << client->connectionTimeout()
+            << std::endl;
+  std::cout << "request timeout:        " << client->requestTimeout()
+            << std::endl;
   std::cout << "----------------------------------------" << std::endl;
+  httpClient->disconnect();  // we do not reuse this anymore
 
-  arangodb::import::ImportHelper ih(httpClient.get(), _chunkSize);
+  SimpleHttpClientParams params = httpClient->params();
+  arangodb::import::ImportHelper ih(client, client->endpoint(), params,
+                                    _chunkSize, _threadCount);
 
   // create colletion
   if (_createCollection) {
@@ -287,11 +335,11 @@ void ImportFeature::start() {
   ih.setRowsToSkip(static_cast<size_t>(_rowsToSkip));
   ih.setOverwrite(_overwrite);
   ih.useBackslash(_useBackslash);
- 
-  std::unordered_map<std::string, std::string> translations; 
+
+  std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {
     auto parts = StringUtils::split(it, "=");
-    TRI_ASSERT(parts.size() == 2); // already validated before
+    TRI_ASSERT(parts.size() == 2);  // already validated before
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);
 
@@ -304,7 +352,8 @@ void ImportFeature::start() {
   if (_quote.length() <= 1) {
     ih.setQuote(_quote);
   } else {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Wrong length of quote character.";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "Wrong length of quote character.";
     FATAL_ERROR_EXIT();
   }
 
@@ -316,10 +365,12 @@ void ImportFeature::start() {
   }
 
   // separator
-  if (_separator.length() == 1 || _separator == "\\r" || _separator == "\\n" || _separator == "\\t") {
+  if (_separator.length() == 1 || _separator == "\\r" || _separator == "\\n" ||
+      _separator == "\\t") {
     ih.setSeparator(_separator);
   } else {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "_separator must be exactly one character.";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "_separator must be exactly one character.";
     FATAL_ERROR_EXIT();
   }
 
@@ -337,12 +388,15 @@ void ImportFeature::start() {
 
   if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
     if (!FileUtils::exists(_filename)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot open file '" << _filename << "'. File not found.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "Cannot open file '" << _filename << "'. File not found.";
     } else if (FileUtils::isDirectory(_filename)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Specified file '" << _filename
-                 << "' is a directory. Please use a regular file.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "Specified file '" << _filename
+          << "' is a directory. Please use a regular file.";
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot open '" << _filename << "'. Invalid file type.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot open '" << _filename
+                                                << "'. Invalid file type.";
     }
 
     FATAL_ERROR_EXIT();
@@ -389,7 +443,8 @@ void ImportFeature::start() {
     }
 
     else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport << "'.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport
+                                                << "'.";
       FATAL_ERROR_EXIT();
     }
 
@@ -407,12 +462,15 @@ void ImportFeature::start() {
       }
 
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message:    " << ih.getErrorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message:    "
+                                              << ih.getErrorMessage();
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Caught exception " << ex.what() << " during import";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Caught exception " << ex.what()
+                                            << " during import";
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Got an unknown exception during import";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Got an unknown exception during import";
   }
 
   *_result = ret;

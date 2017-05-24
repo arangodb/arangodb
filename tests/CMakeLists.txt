@@ -51,6 +51,7 @@ add_executable(
   Cache/TransactionalStore.cpp
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
+  Cluster/ClusterHelpers.cpp
   Geo/georeg.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/IndexEstimatorTest.cpp

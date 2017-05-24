@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,42 +20,19 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SSL__HELPER_H
-#define ARANGODB_BASICS_SSL__HELPER_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_ENVIRONMENT_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_ENVIRONMENT_FEATURE_H 1
 
-#include "Basics/Common.h"
-
-#include <openssl/err.h>
-#include <openssl/ssl.h>
-#include <boost/asio/ssl.hpp>
-
-#include "Basics/asio-helper.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-// SSL protocol methods
-enum SslProtocol {
-  SSL_UNKNOWN = 0,
-  SSL_V2 = 1,
-  SSL_V23 = 2,
-  SSL_V3 = 3,
-  TLS_V1 = 4,
-  TLS_V12 = 5,
+class EnvironmentFeature final : public application_features::ApplicationFeature {
+ public:
+  explicit EnvironmentFeature(application_features::ApplicationServer* server);
 
-  SSL_LAST
+ public:
+  void prepare() override final;
 };
-
-#if (OPENSSL_VERSION_NUMBER < 0x00999999L)
-#define SSL_CONST /* */
-#else
-#define SSL_CONST const
-#endif
-
-boost::asio::ssl::context sslContext(
-    SslProtocol, std::string const& keyfile);
-
-std::string protocolName(SslProtocol protocol);
-
-std::string lastSSLError();
 }
 
 #endif

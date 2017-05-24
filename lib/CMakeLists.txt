@@ -110,6 +110,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
+  ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/JemallocFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp

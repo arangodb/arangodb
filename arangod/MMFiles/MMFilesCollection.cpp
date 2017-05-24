@@ -585,9 +585,12 @@ int MMFilesCollection::close() {
     }
   }
 
-  // We also have to unload the indexes.
-  for (auto& idx : _indexes) {
-    idx->unload();
+  {
+    // We also have to unload the indexes.
+    WRITE_LOCKER(writeLocker, _dataLock);
+    for (auto& idx : _indexes) {
+      idx->unload();
+    }
   }
 
   {
@@ -1084,7 +1087,7 @@ bool MMFilesCollection::removeDatafile(MMFilesDatafile* df) {
 
   for (auto it = _datafiles.begin(); it != _datafiles.end(); ++it) {
     if ((*it) == df) {
-      // and finally remove the file from the _compactors vector
+      // and finally remove the file from the _datafiles vector
       _datafiles.erase(it);
       return true;
     }

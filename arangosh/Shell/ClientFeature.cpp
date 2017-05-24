@@ -141,7 +141,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   _haveServerPassword = !options->processingResult().touched("server.password");
 
-  SimpleHttpClient::setMaxPacketSize(_maxPacketSize);
+  SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
 }
 
 void ClientFeature::prepare() {
@@ -189,25 +189,29 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(
   return connection;
 }
 
-std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient() {
+std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient() const {
   return createHttpClient(_endpoint);
 }
 
-std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition) {
-  std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
+std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(std::string const& definition) const {
+  return createHttpClient(definition, SimpleHttpClientParams(_requestTimeout, _warn));
+}
 
+std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
+                                                               std::string const& definition,
+                                                                              SimpleHttpClientParams const& params) const {
+  std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
+  
   if (endpoint.get() == nullptr) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for --server.endpoint ('" << definition << "')";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-
-  std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(endpoint, _requestTimeout,
-                                       _connectionTimeout, _retries,
-                                       _sslProtocol));
-
-  return std::make_unique<SimpleHttpClient>(connection, _requestTimeout, _warn);
+  
+  std::unique_ptr<GeneralClientConnection> connection(GeneralClientConnection::factory(endpoint, _requestTimeout,
+                                                                                       _connectionTimeout, _retries,
+                                                                                       _sslProtocol));
+  
+  return std::make_unique<SimpleHttpClient>(connection, params);
 }
 
 std::vector<std::string> ClientFeature::httpEndpoints() {

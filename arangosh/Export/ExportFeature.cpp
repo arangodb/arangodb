@@ -228,8 +228,8 @@ void ExportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  httpClient->setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
-  httpClient->setUserNamePassword("/", client->username(), client->password());
+  httpClient->params().setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
+  httpClient->params().setUserNamePassword("/", client->username(), client->password());
 
   // must stay here in order to establish the connection
   httpClient->getServerVersion();

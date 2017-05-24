@@ -71,9 +71,10 @@ void V8ClientConnection::init(
   _password = password;
   _databaseName = databaseName;
 
-  _client.reset(new SimpleHttpClient(connection, _requestTimeout, false));
-  _client->setLocationRewriter(this, &rewriteLocation);
-  _client->setUserNamePassword("/", _username, _password);
+  SimpleHttpClientParams params(_requestTimeout, false);
+  params.setLocationRewriter(this, &rewriteLocation);
+  params.setUserNamePassword("/", _username, _password);
+  _client.reset(new SimpleHttpClient(connection, params));
 
   // connect to server and get version number
   std::unordered_map<std::string, std::string> headerFields;
@@ -946,11 +947,9 @@ static void ClientConnection_importCsv(
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
-
-  std::unique_ptr<SimpleHttpClient> httpClient =
-      client->createHttpClient(v8connection->endpointSpecification());
-
-  ImportHelper ih(httpClient.get(), DefaultChunkSize);
+  SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
+  ImportHelper ih(client, v8connection->endpointSpecification(), params,
+                  DefaultChunkSize, 1);
 
   ih.setQuote(quote);
   ih.setSeparator(separator.c_str());
@@ -1016,10 +1015,9 @@ static void ClientConnection_importJson(
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  std::unique_ptr<SimpleHttpClient> httpClient =
-      client->createHttpClient(v8connection->endpointSpecification());
-
-  ImportHelper ih(httpClient.get(), DefaultChunkSize);
+  SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
+  ImportHelper ih(client, v8connection->endpointSpecification(), params,
+                  DefaultChunkSize, 1);
 
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
