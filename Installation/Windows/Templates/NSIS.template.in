@@ -94,6 +94,14 @@ Function disableBackButton
      EnableWindow $0 0
 FunctionEnd
 
+Function stop_old_service
+  StrCmp $TRI_INSTALL_TYPE  'Service' 0 noServiceToStop
+     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
+     Call WaitForServiceDown
+     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
+noServiceToStop:
+FunctionEnd
+
 Function Tri_ChangePrivileges
   ${IfNot} ${UAC_IsInnerInstance}
      Call disableBackButton
@@ -320,6 +328,7 @@ Var AR_RegFlags
 
   @CPACK_NSIS_PAGE_COMPONENTS@
 
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE stop_old_service
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE insert_registration_keys
   !insertmacro MUI_PAGE_INSTFILES
   !insertmacro MUI_PAGE_FINISH
@@ -405,14 +414,7 @@ Section "-Core installation"
   ; this variable was defined by eld and included in NSIS.template.in
   ; we probably need this for the install/uninstall software list.
   SetRegView ${BITS}
-
-   StrCmp $TRI_INSTALL_TYPE  'Service' 0 noServiceToStop
-     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
-     Call WaitForServiceDown
-     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
-     Pop $0
-     
-noServiceToStop:
+  
   @CPACK_NSIS_FULL_INSTALL@
 
   ;Store installation folder
@@ -425,13 +427,6 @@ noServiceToStop:
   !insertmacro AddToRegistry "Publisher"            "@CPACK_PACKAGE_VENDOR@"
   !insertmacro AddToRegistry "UninstallString"      "$INSTDIR\Uninstall.exe"
   !insertmacro AddToRegistry "NoRepair"             "1"
-
-  !ifdef CPACK_NSIS_ADD_REMOVE
-  ;Create add/remove functionality
-  !insertmacro AddToRegistry "ModifyPath"           "$INSTDIR\AddRemove.exe"
-  !else
-  !insertmacro AddToRegistry "NoModify"             "1"
-  !endif
 
   ; Optional registration
   !insertmacro AddToRegistry "DisplayIcon"          "$INSTDIR\@CPACK_NSIS_INSTALLED_ICON_NAME@"
@@ -531,12 +526,6 @@ displayAgain:
     Pop ${TEMP1}
 
     Return  
-FunctionEnd
-;------------------------
-; Create
-Function ArangoPreInstallationOptionsPage
-  !insertmacro MUI_HEADER_TEXT "@CPACK_NSIS_PACKAGE_NAME@ als Service?" "Install @CPACK_NSIS_PACKAGE_NAME@ as a service?"
-  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.ArangoDB.ini"
 FunctionEnd
 
 ;--------------------------------
@@ -755,23 +744,6 @@ FunctionEnd
 Section -FinishComponents
   ;Removes unselected components and writes component status to registry
   !insertmacro SectionList "FinishSection"
-
-!ifdef CPACK_NSIS_ADD_REMOVE
-  ; Get the name of the installer executable
-  System::Call 'kernel32::GetModuleFileNameA(i 0, t .R0, i 1024) i r1'
-  StrCpy $R3 $R0
-
-  ; Strip off the last 13 characters, to see if we have AddRemove.exe
-  StrLen $R1 $R0
-  IntOp $R1 $R0 - 13
-  StrCpy $R2 $R0 13 $R1
-  StrCmp $R2 "AddRemove.exe" addremove_installed
-
-  ; We''re not running AddRemove.exe, so install it
-  CopyFiles $R3 $INSTDIR\AddRemove.exe
-
-  addremove_installed:
-!endif
 SectionEnd
 ;--- End of Add/Remove callback functions ---
 
@@ -867,11 +839,6 @@ Section "Uninstall"
   ;Keep the list of directories here in sync with the File commands above.
 @CPACK_NSIS_DELETE_FILES@
 @CPACK_NSIS_DELETE_DIRECTORIES@
-
-!ifdef CPACK_NSIS_ADD_REMOVE
-  ;Remove the add/remove program
-  Delete "$INSTDIR\AddRemove.exe"
-!endif
 
   ;Remove the uninstaller itself.
   Delete "$INSTDIR\Uninstall.exe"
