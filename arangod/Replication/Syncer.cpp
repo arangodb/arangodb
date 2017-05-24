@@ -95,26 +95,24 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
         (uint32_t)_configuration._sslProtocol);
 
     if (_connection != nullptr) {
-      _client = new SimpleHttpClient(_connection,
-                                     _configuration._requestTimeout, false);
-
+      SimpleHttpClientParams params(_configuration._requestTimeout, false);
+      params.setMaxRetries(2);
+      params.setRetryWaitTime(2 * 1000 * 1000);
+      params.setRetryMessage(std::string("retrying failed HTTP request for endpoint '") +
+                             _configuration._endpoint +
+                             std::string("' for replication applier in database '" +
+                                         _vocbase->name() + "'"));
+      
       std::string username = _configuration._username;
       std::string password = _configuration._password;
-      
       if (!username.empty()) {
-        _client->setUserNamePassword("/", username, password);
+        params.setUserNamePassword("/", username, password);
       } else {
-        _client->setJwt(_configuration._jwt);
+        params.setJwt(_configuration._jwt);
       }
-      _client->setLocationRewriter(this, &rewriteLocation);
-
-      _client->_maxRetries = 2;
-      _client->_retryWaitTime = 2 * 1000 * 1000;
-      _client->_retryMessage =
-          std::string("retrying failed HTTP request for endpoint '") +
-          _configuration._endpoint +
-          std::string("' for replication applier in database '" +
-                      _vocbase->name() + "'");
+      params.setLocationRewriter(this, &rewriteLocation);
+      
+      _client = new SimpleHttpClient(_connection, params);
     }
   }
 }
@@ -634,19 +632,19 @@ int Syncer::getMasterState(std::string& errorMsg) {
       BaseUrl + "/logger-state?serverId=" + _localServerIdString;
 
   // store old settings
-  uint64_t maxRetries = _client->_maxRetries;
-  uint64_t retryWaitTime = _client->_retryWaitTime;
+  size_t maxRetries = _client->params().getMaxRetries();
+  uint64_t retryWaitTime = _client->params().getRetryWaitTime();
 
   // apply settings that prevent endless waiting here
-  _client->_maxRetries = 1;
-  _client->_retryWaitTime = 500 * 1000;
+  _client->params().setMaxRetries(1);
+  _client->params().setRetryWaitTime(500 * 1000);
 
   std::unique_ptr<SimpleHttpResult> response(
       _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
 
   // restore old settings
-  _client->_maxRetries = static_cast<size_t>(maxRetries);
-  _client->_retryWaitTime = retryWaitTime;
+  _client->params().setMaxRetries(maxRetries);
+  _client->params().setRetryWaitTime(retryWaitTime);
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " + _masterInfo._endpoint +

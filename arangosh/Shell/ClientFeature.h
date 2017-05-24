@@ -32,6 +32,7 @@ class Endpoint;
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
+struct SimpleHttpClientParams;
 }
 
 class ClientFeature final : public application_features::ApplicationFeature,
@@ -70,9 +71,11 @@ class ClientFeature final : public application_features::ApplicationFeature,
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection();
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
-  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient();
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient() const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition);
+      std::string const& definition) const;
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
+                                                                 std::string const& definition, httpclient::SimpleHttpClientParams const&) const;
   std::vector<std::string> httpEndpoints() override;
 
   void setDatabaseName(std::string const& databaseName) {
@@ -82,6 +85,8 @@ class ClientFeature final : public application_features::ApplicationFeature,
   void setRetries(size_t retries) { _retries = retries; }
 
   void setWarn(bool warn) { _warn = warn; }
+                              
+  bool getWarn() { return _warn; }
 
   static int runMain(int argc, char* argv[],
                      std::function<int(int argc, char* argv[])> const& mainFunc);

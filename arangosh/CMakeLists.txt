@@ -162,6 +162,7 @@ add_executable(${BIN_ARANGOIMP}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
+  Import/SenderThread.cpp
   Import/arangoimp.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
@@ -254,6 +255,7 @@ add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Import/ImportHelper.cpp
+  Import/SenderThread.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   Shell/ShellFeature.cpp
