@@ -258,6 +258,7 @@ void RocksDBEngine::start() {
   } else {
     table_options.no_block_cache = true;
   }
+  table_options.block_size = opts->_tableBlockSize;
   table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
   _options.table_factory.reset(
       rocksdb::NewBlockBasedTableFactory(table_options));
