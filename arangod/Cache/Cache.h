@@ -113,6 +113,11 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isResizing();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Check whether the cache is currently in the process of migrating.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isMigrating();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begin the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
   bool isShutdown();
@@ -168,7 +173,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   void startOperation();
   void endOperation();
 
-  bool isMigrating() const;
+  bool isMigratingLocked() const;
   void requestGrow();
   void requestMigrate(uint32_t requestedLogSize = 0);
 
