@@ -153,6 +153,7 @@ ImportHelper::ImportHelper(ClientFeature const* client,
       _overwrite(false),
       _progress(false),
       _firstChunk(true),
+      _numberLines(0),
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
@@ -680,9 +681,8 @@ bool ImportHelper::checkCreateCollection() {
 
   std::string data = builder.slice().toJson();
 
-  std::unordered_map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
-      rest::RequestType::POST, url, data.c_str(), data.size(), headerFields));
+      rest::RequestType::POST, url, data.c_str(), data.size()));
 
   if (result == nullptr) {
     return false;
@@ -710,9 +710,8 @@ bool ImportHelper::truncateCollection() {
 
   std::string const url = "/_api/collection/" + _collectionName + "/truncate";
   std::string data = "";// never send an completly empty string
-  std::unordered_map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
-      rest::RequestType::PUT, url, data.c_str(), data.size(), headerFields));
+      rest::RequestType::PUT, url, data.c_str(), data.size()));
 
   if (result == nullptr) {
     return false;
@@ -743,7 +742,6 @@ void ImportHelper::sendCsvBuffer() {
     return;
   }
 
-  std::unordered_map<std::string, std::string> headerFields;
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
                   StringUtils::urlEncode(_onDuplicateAction));
