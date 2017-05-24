@@ -31,6 +31,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <crtdbg.h>
+#include <VersionHelpers.h>
 
 #include "Logger/Logger.h"
 #include "Basics/files.h"
@@ -718,13 +719,5 @@ bool terminalKnowsANSIColors()
   }
   
   // Windows 8 onwards the CMD window understands ANSI-Colorcodes.
-  DWORD Version = 0; 
-  DWORD MajorVersion = 0;
-  DWORD MinorVersion = 0;
-  Version = GetVersion();
- 
-  MajorVersion = (DWORD)(LOBYTE(LOWORD(Version)));
-  MinorVersion = (DWORD)(HIBYTE(LOWORD(Version)));
-
-  return ((MajorVersion >= 6) && (MinorVersion >= 2));
+  return IsWindows8OrGreater();
 }
