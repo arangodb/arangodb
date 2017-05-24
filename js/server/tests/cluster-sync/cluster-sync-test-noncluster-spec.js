@@ -206,8 +206,11 @@ describe('Cluster sync', function() {
       db._useDatabase('test');
       let collections = db._collections();
       expect(collections.map(collection => collection.name())).to.contain('s100001');
-      expect(db._collection('s100001').status()).to.be.oneOf([ArangoCollection.STATUS_UNLOADED, ArangoCollection.STATUS_UNLOADING]);
-
+      let count = 0;
+      while (db._collection('s100001').status() == ArangoCollection.STATUS_UNLOADING && count++ < 100) {
+        wait(0.1);
+      }
+      expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
     });
     it('should unload an existing collection', function() {
       db._create('s100001');
@@ -256,7 +259,11 @@ describe('Cluster sync', function() {
       };
       cluster.executePlanForCollections(plan);
       db._useDatabase('test');
-      expect(db._collection('s100001').status()).to.be.oneOf([ArangoCollection.STATUS_UNLOADED, ArangoCollection.STATUS_UNLOADING]);
+      let count = 0;
+      while (db._collection('s100001').status() == ArangoCollection.STATUS_UNLOADING && count++ < 100) {
+        wait(0.1);
+      }
+      expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
     });
     it('should delete a stale collection', function() {
       db._create('s100001');
