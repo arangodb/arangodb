@@ -114,8 +114,24 @@ static void raceForClusterBootstrap() {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
     auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
+    VPackBuilder builder;
     V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(
-        vocbase, "server/bootstrap/cluster-bootstrap.js");
+        vocbase, "server/bootstrap/cluster-bootstrap.js", &builder);
+
+    VPackSlice jsresult = builder.slice();
+    if (!jsresult.isTrue()) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
+        << "marking as not successful.";
+      if (!jsresult.isNone()) {
+        LOG_TOPIC(ERR, Logger::STARTUP) << "Returned value: "
+          << jsresult.toJson();
+      } else {
+        LOG_TOPIC(ERR, Logger::STARTUP) << "Empty returned value.";
+      }
+      agency.removeValues("Bootstrap", false);
+      sleep(1);
+      continue;
+    }
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -141,19 +157,19 @@ void BootstrapFeature::start() {
 
   if (!ss->isRunningInCluster()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
-    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js");
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
   } else if (ss->isCoordinator()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
     raceForClusterBootstrap();
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/coordinator.js";
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
-                                            "server/bootstrap/coordinator.js");
+        "server/bootstrap/coordinator.js", nullptr);
   } else if (ss->isDBServer()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/db-server.js";
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
-                                            "server/bootstrap/db-server.js");
+        "server/bootstrap/db-server.js", nullptr);
   }
 
   // Start service properly:
