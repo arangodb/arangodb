@@ -458,7 +458,10 @@ Section "-Core installation"
 
   !insertmacro MUI_STARTMENU_WRITE_END
 
+  !insertmacro AddToRegistry "DATADIR"        "${DATADIR}"
+
   !insertmacro _ReplaceInFile "$INSTDIR\etc\arangodb3\arangod.conf" "storage-engine = auto" "storage-engine = $STORAGE_ENGINE"
+  !insertmacro _ReplaceInFile "$INSTDIR\etc\arangodb3\arangod.conf" "directory = @CPACK_ROOTDIR@var/lib/arangodb3" "directory = $DATADIR"
 
   System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
@@ -582,23 +585,24 @@ Function default_installation_directory
      Call read_options
    ${EndIf}
 
-
   ${Switch} $TRI_INSTALL_TYPE
     ${Case} 'Service'
       Call Tri_ChangePrivileges
       SetShellVarContext all
       ;MessageBox MB_OK "Service : $INSTDIR"
-      StrCpy $DATADIR "${ProgramData}\"
+      StrCpy $DATADIR "$APPDATA\ArangoDB"
       ${Break}
     ${Case} 'SingleUser'
       SetShellVarContext current
       StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
       ;MessageBox MB_OK "SingleUser : $INSTDIR"
+      StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB"
       ${Break}
     ${Case} 'AllUsers'
       Call Tri_ChangePrivileges
       SetShellVarContext all
       StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+      StrCpy $DATADIR "$DOCUMENTS\ArangoDB"
       ;MessageBox MB_OK "AllUsers : $INSTDIR"
       ${Break}
    ${EndSwitch}
@@ -786,6 +790,8 @@ Section "Uninstall"
   ReadRegStr $ADD_TO_PATH_CURRENT_USER SHCTX "${TRI_UNINSTALL_REG_PATH}" "AddToPathCurrentUser"
   ;MessageBox MB_OK "Add to path: $DO_NOT_ADD_TO_PATH all users: $ADD_TO_PATH_ALL_USERS"
   ReadRegStr $INSTALL_DESKTOP          SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
+  ReadRegStr $DATADIR                  SHCTX "${TRI_UNINSTALL_REG_PATH}" "DATADIR"
+  
   ;MessageBox MB_OK "Install to desktop: $INSTALL_DESKTOP "
 
   StrCmp "0" "$INSTALL_DESKTOP" noDesktopIconRemove
@@ -830,7 +836,7 @@ Section "Uninstall"
   Delete "$INSTDIR\etc\arangodb3\arangod.conf.old"
 
   StrCmp $PURGE_DB "0" dontDeleteDatabases
-  RMDir /r "$INSTDIR\var\lib\arangodb3"
+  RMDir /r "$DATADIR"
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"
   RMDir /r "$INSTDIR\var\log\arangodb3"
