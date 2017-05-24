@@ -190,27 +190,29 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
-  int sslEcdhNid;
-  EC_KEY* ecdhKey;
-  sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
+  if (!_ecdhCurve.empty()) {
+    int sslEcdhNid;
+    EC_KEY* ecdhKey;
+    sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
-  if (sslEcdhNid == 0) {
-    LOG(ERR) << "SSL error: " << lastSSLError()
-             << " Unknown curve name: " << _ecdhCurve;
-    throw std::runtime_error("cannot create SSL context");
+    if (sslEcdhNid == 0) {
+      LOG(ERR) << "SSL error: " << lastSSLError()
+              << " Unknown curve name: " << _ecdhCurve;
+      throw std::runtime_error("cannot create SSL context");
+    }
+
+    // https://www.openssl.org/docs/manmaster/apps/ecparam.html
+    ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
+    if (ecdhKey == nullptr) {
+      LOG(ERR) << "SSL error: " << lastSSLError()
+              << " Unable to create curve by name: " << _ecdhCurve;
+      throw std::runtime_error("cannot create SSL context");
+    }
+
+    SSL_CTX_set_tmp_ecdh(nativeContext, ecdhKey);
+    SSL_CTX_set_options(nativeContext, SSL_OP_SINGLE_ECDH_USE);
+    EC_KEY_free(ecdhKey);
   }
-
-  // https://www.openssl.org/docs/manmaster/apps/ecparam.html
-  ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
-  if (ecdhKey == nullptr) {
-    LOG(ERR) << "SSL error: " << lastSSLError()
-             << " Unable to create curve by name: " << _ecdhCurve;
-    throw std::runtime_error("cannot create SSL context");
-  }
-
-  SSL_CTX_set_tmp_ecdh(nativeContext, ecdhKey);
-  SSL_CTX_set_options(nativeContext, SSL_OP_SINGLE_ECDH_USE);
-  EC_KEY_free(ecdhKey);
 #endif
 
   // set ssl context
