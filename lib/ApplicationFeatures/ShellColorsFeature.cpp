@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellColorsFeature.h"
-
+#
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -79,10 +79,12 @@ void ShellColorsFeature::prepare() {
     SHELL_COLOR_RESET = "\x1b[0m";
   }
 }
-  
+
 bool ShellColorsFeature::useColors() {
-#ifndef _WIN32
+#ifdef _WIN32
+  #include "Basics/win-utils.h"
+  return terminalKnowsANSIColors();
+#else
   return true;
 #endif
-  return false;
 }
