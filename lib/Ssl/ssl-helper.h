@@ -29,13 +29,12 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <boost/asio/ssl.hpp>
-#include <boost/optional.hpp>
 
 #include "Basics/asio-helper.h"
 
 namespace arangodb {
 // SSL protocol methods
-enum protocol_e {
+enum SslProtocol {
   SSL_UNKNOWN = 0,
   SSL_V2 = 1,
   SSL_V23 = 2,
@@ -52,10 +51,10 @@ enum protocol_e {
 #define SSL_CONST const
 #endif
 
-boost::optional<boost::asio::ssl::context> sslContext(
-    protocol_e, std::string const& keyfile);
+boost::asio::ssl::context sslContext(
+    SslProtocol, std::string const& keyfile);
 
-std::string protocolName(protocol_e protocol);
+std::string protocolName(SslProtocol protocol);
 
 std::string lastSSLError();
 }
