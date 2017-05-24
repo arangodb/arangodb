@@ -40,6 +40,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -1335,20 +1336,25 @@ OperationResult transaction::Methods::insertCoordinator(
 static double chooseTimeout(size_t count) {
   static bool timeoutQueried = false;
   static double timeoutFactor = 1.0;
+  static double lowerLimit = 0.5;
   if (!timeoutQueried) {
     // Multithreading is no problem here because these static variables
     // are only ever set once in the lifetime of the server.
     auto feature = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
     timeoutFactor = feature->syncReplTimeoutFactor();
     timeoutQueried = true;
+    auto feature2 = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector");
+    if (feature2->engineName() == arangodb::RocksDBEngine::EngineName) {
+      lowerLimit = 1.0;
+    }
   }
 
   // We usually assume that a server can process at least 2500 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
   double timeout = static_cast<double>(count / 2500);
-  if (timeout < 0.5) {
-    return 0.5 * timeoutFactor;
+  if (timeout < lowerLimit) {
+    return lowerLimit * timeoutFactor;
   } else if (timeout > 120) {
     return 120.0 * timeoutFactor;
   } else {
