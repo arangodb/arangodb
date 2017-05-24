@@ -1757,8 +1757,44 @@ class Graph {
 // / @brief was docuBlock JSF_general_graph_connectingEdges
 // //////////////////////////////////////////////////////////////////////////////
 
-  _getConnectingEdges (vertexExample1, vertexExample2, options) {
+  _connectingEdges (vertexExample1, vertexExample2, options) {
     options = options || {};
+    if (options.vertex1CollectionRestriction) {
+      if (!Array.isArray(options.vertex1CollectionRestriction)) {
+        options.vertex1CollectionRestriction = [ options.vertex1CollectionRestriction ];
+      }
+    }
+    if (options.vertex2CollectionRestriction) {
+      if (!Array.isArray(options.vertex2CollectionRestriction)) {
+        options.vertex2CollectionRestriction = [ options.vertex2CollectionRestriction ];
+      }
+    }
+
+    /*var query = `
+      ${generateWithStatement(this, optionsVertex1.hasOwnProperty('edgeCollectionRestriction') ? optionsVertex1 : optionsVertex2)}
+      ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, 'left')}
+        LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || 'ANY'} left
+          ${buildEdgeCollectionRestriction(optionsVertex1.edgeCollectionRestriction, bindVars, this)}
+          OPTIONS {bfs: true, uniqueVertices: "global"} 
+          ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction, 'v') : ''} 
+          RETURN v)
+        ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, 'right')}
+          FILTER right != left
+          LET rightNeighbors = (FOR v IN ${optionsVertex2.minDepth || 1}..${optionsVertex2.maxDepth || 1} ${optionsVertex2.direction || 'ANY'} right
+          ${buildEdgeCollectionRestriction(optionsVertex2.edgeCollectionRestriction, bindVars, this)}
+          OPTIONS {bfs: true, uniqueVertices: "global"} 
+          ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction, 'v') : ''} 
+          RETURN v)
+          LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)
+          FILTER LENGTH(neighbors) > 0 `;
+    if (optionsVertex1.includeData === true || optionsVertex2.includeData === true) {
+      query += `RETURN {left : left, right: right, neighbors: neighbors}`;
+    } else {
+      query += `RETURN {left : left._id, right: right._id, neighbors: neighbors[*]._id}`;
+    }
+    return db._query(query, bindVars).toArray();*/
+
+
     // TODO
     return [];
   }

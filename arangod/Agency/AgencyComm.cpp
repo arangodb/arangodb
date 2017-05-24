@@ -1555,10 +1555,11 @@ AgencyCommResult AgencyComm::send(
       << connection->getEndpoint()->specification() << "', url '" << url
       << "': " << body;
 
-  arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
-  client.setJwt(ClusterComm::instance()->jwt());
-  client.keepConnectionOnDestruction(true);
-
+  arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
+  params.setJwt(ClusterComm::instance()->jwt());
+  params.keepConnectionOnDestruction(true);
+  arangodb::httpclient::SimpleHttpClient client(connection, params);
+  
   // set up headers
   std::unordered_map<std::string, std::string> headers;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
@@ -36,6 +37,130 @@ namespace httpclient {
 
 class SimpleHttpResult;
 class GeneralClientConnection;
+
+struct SimpleHttpClientParams {
+  friend class SimpleHttpClient;
+
+  SimpleHttpClientParams(double requestTimeout, bool warn)
+      : _requestTimeout(requestTimeout),
+        _warn(warn),
+        _locationRewriter({nullptr, nullptr}) {}
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief leave connection open on destruction
+  //////////////////////////////////////////////////////////////////////////////
+
+  void keepConnectionOnDestruction(bool b) { _keepConnectionOnDestruction = b; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief enable or disable keep-alive
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setKeepAlive(bool value) { _keepAlive = value; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief expose ArangoDB via user-agent?
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setExposeArangoDB(bool value) { _exposeArangoDB = value; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief advertise support for deflate?
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setSupportDeflate(bool value) { _supportDeflate = value; }
+
+  void setMaxRetries(size_t s) { _maxRetries = s; }
+
+  size_t getMaxRetries() { return _maxRetries; }
+
+  void setRetryWaitTime(uint64_t wt) { _retryWaitTime = wt; }
+
+  uint64_t getRetryWaitTime() { return _retryWaitTime; }
+
+  void setRetryMessage(std::string const& m) { _retryMessage = m; }
+
+  void setMaxPacketSize(size_t ms) { _maxPacketSize = ms; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets username and password
+  ///
+  /// @param prefix                         prefix for sending username and
+  /// password
+  /// @param username                       username
+  /// @param password                       password
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setJwt(std::string const& jwt) { _jwt = jwt; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief sets username and password
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setUserNamePassword(std::string const& prefix,
+                           std::string const& username,
+                           std::string const& password) {
+    std::string value =
+        arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
+
+    _pathToBasicAuth.push_back(std::make_pair(prefix, value));
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief allows rewriting locations
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setLocationRewriter(void* data,
+                           std::string (*func)(void*, std::string const&)) {
+    _locationRewriter.data = data;
+    _locationRewriter.func = func;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set the value for max packet size
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setDefaultMaxPacketSize(size_t value) { MaxPacketSize = value; }
+
+ private:
+  // flag whether or not we keep the connection on destruction
+  bool _keepConnectionOnDestruction = false;
+
+  double _requestTimeout;
+
+  bool _warn;
+
+  bool _keepAlive = true;
+
+  bool _exposeArangoDB = true;
+
+  bool _supportDeflate = true;
+
+  size_t _maxRetries = 3;
+
+  uint64_t _retryWaitTime = 1 * 1000 * 1000;
+
+  std::string _retryMessage = "";
+
+  size_t _maxPacketSize = SimpleHttpClientParams::MaxPacketSize;
+
+  std::vector<std::pair<std::string, std::string>> _pathToBasicAuth;
+
+  std::string _jwt = "";
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief struct for rewriting location URLs
+  //////////////////////////////////////////////////////////////////////////////
+
+  struct {
+    void* data;
+    std::string (*func)(void*, std::string const&);
+  } _locationRewriter;
+
+ private:
+  // default value for max packet size
+  static size_t MaxPacketSize;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple http client
@@ -63,8 +188,9 @@ class SimpleHttpClient {
   };
 
  public:
-  SimpleHttpClient(std::unique_ptr<GeneralClientConnection>&, double, bool);
-  SimpleHttpClient(GeneralClientConnection*, double, bool);
+  SimpleHttpClient(std::unique_ptr<GeneralClientConnection>&,
+                   SimpleHttpClientParams const&);
+  SimpleHttpClient(GeneralClientConnection*, SimpleHttpClientParams const&);
   ~SimpleHttpClient();
 
  public:
@@ -105,10 +231,17 @@ class SimpleHttpClient {
   void close();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief leave connection open on destruction
+  /// @brief make an http request, creating a new HttpResult object
+  /// the caller has to delete the result object
+  /// this version does not allow specifying custom headers
+  /// if the request fails because of connection problems, the request will be
+  /// retried until it either succeeds (at least no connection problem) or there
+  /// have been _maxRetries retries
   //////////////////////////////////////////////////////////////////////////////
 
-  void keepConnectionOnDestruction(bool b) { _keepConnectionOnDestruction = b; }
+  SimpleHttpResult* retryRequest(
+      rest::RequestType, std::string const&, char const*, size_t,
+      std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, creating a new HttpResult object
@@ -119,21 +252,8 @@ class SimpleHttpClient {
   /// have been _maxRetries retries
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* retryRequest(rest::RequestType,
-                                 std::string const&, char const*, size_t,
-                                 std::unordered_map<std::string, std::string> const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief make an http request, creating a new HttpResult object
-  /// the caller has to delete the result object
-  /// this version does not allow specifying custom headers
-  /// if the request fails because of connection problems, the request will be
-  /// retried until it either succeeds (at least no connection problem) or there
-  /// have been _maxRetries retries
-  //////////////////////////////////////////////////////////////////////////////
-
-  SimpleHttpResult* retryRequest(rest::RequestType,
-                                 std::string const&, char const*, size_t);
+  SimpleHttpResult* retryRequest(rest::RequestType, std::string const&,
+                                 char const*, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, creating a new HttpResult object
@@ -141,8 +261,8 @@ class SimpleHttpClient {
   /// this version does not allow specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* request(rest::RequestType,
-                            std::string const&, char const*, size_t);
+  SimpleHttpResult* request(rest::RequestType, std::string const&, char const*,
+                            size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, actual worker function
@@ -150,60 +270,9 @@ class SimpleHttpClient {
   /// this version allows specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* request(rest::RequestType,
-                            std::string const&, char const*, size_t,
-                            std::unordered_map<std::string, std::string> const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets username and password
-  ///
-  /// @param prefix                         prefix for sending username and
-  /// password
-  /// @param username                       username
-  /// @param password                       password
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setJwt(std::string const& jwt);
-  
-  void setUserNamePassword(std::string const& prefix,
-                           std::string const& username,
-                           std::string const& password);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief allows rewriting locations
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setLocationRewriter(void* data,
-                           std::string (*func)(void*, std::string const&)) {
-    _locationRewriter.data = data;
-    _locationRewriter.func = func;
-  }
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief set the value for max packet size
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void setMaxPacketSize(size_t value) {
-    MaxPacketSize = value;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief enable or disable keep-alive
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setKeepAlive(bool value) { _keepAlive = value; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief expose ArangoDB via user-agent?
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setExposeArangoDB(bool value) { _exposeArangoDB = value; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief advertise support for deflate?
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setSupportDeflate(bool value) { _supportDeflate = value; }
+  SimpleHttpResult* request(
+      rest::RequestType, std::string const&, char const*, size_t,
+      std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the current error message
@@ -218,7 +287,7 @@ class SimpleHttpClient {
   void setErrorMessage(std::string const& message, bool forceWarn = false) {
     _errorMessage = message;
 
-    if (_warn || forceWarn) {
+    if (_params._warn || forceWarn) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << _errorMessage;
     }
   }
@@ -251,7 +320,10 @@ class SimpleHttpClient {
   /// @brief extract an error message from a response
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHttpErrorMessage(SimpleHttpResult const*, int* errorCode = nullptr);
+  std::string getHttpErrorMessage(SimpleHttpResult const*,
+                                  int* errorCode = nullptr);
+
+  SimpleHttpClientParams& params() { return _params; };
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -260,9 +332,9 @@ class SimpleHttpClient {
   /// this version allows specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* doRequest(rest::RequestType,
-                              std::string const&, char const*, size_t,
-                              std::unordered_map<std::string, std::string> const&);
+  SimpleHttpResult* doRequest(
+      rest::RequestType, std::string const&, char const*, size_t,
+      std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the connection
@@ -281,8 +353,9 @@ class SimpleHttpClient {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string rewriteLocation(std::string const& location) {
-    if (_locationRewriter.func != nullptr) {
-      return _locationRewriter.func(_locationRewriter.data, location);
+    if (_params._locationRewriter.func != nullptr) {
+      return _params._locationRewriter.func(_params._locationRewriter.data,
+                                            location);
     }
 
     return location;
@@ -305,10 +378,10 @@ class SimpleHttpClient {
   /// @param headerFields                   list of header fields
   //////////////////////////////////////////////////////////////////////////////
 
-  void setRequest(rest::RequestType method,
-                  std::string const& location, char const* body,
-                  size_t bodyLength,
-                  std::unordered_map<std::string, std::string> const& headerFields);
+  void setRequest(
+      rest::RequestType method, std::string const& location, char const* body,
+      size_t bodyLength,
+      std::unordered_map<std::string, std::string> const& headerFields);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief process (a part of) the http header, the data is
@@ -360,6 +433,14 @@ class SimpleHttpClient {
 
   GeneralClientConnection* _connection;
 
+  // flag whether or not to delete the connection on destruction
+  bool _deleteConnectionOnDestruction = false;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief connection parameters
+  //////////////////////////////////////////////////////////////////////////////
+  SimpleHttpClientParams _params;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write buffer
   //////////////////////////////////////////////////////////////////////////////
@@ -393,22 +474,11 @@ class SimpleHttpClient {
 
   size_t _readBufferOffset;
 
-  double _requestTimeout;
-
   request_state _state;
 
   size_t _written;
 
   std::string _errorMessage;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief struct for rewriting location URLs
-  //////////////////////////////////////////////////////////////////////////////
-
-  struct {
-    void* data;
-    std::string (*func)(void*, std::string const&);
-  } _locationRewriter;
 
   uint32_t _nextChunkedSize;
 
@@ -416,38 +486,8 @@ class SimpleHttpClient {
 
   SimpleHttpResult* _result;
 
-  std::vector<std::pair<std::string, std::string>> _pathToBasicAuth;
-  std::string _jwt;
-
-  size_t _maxPacketSize;
-
- public:
-  size_t _maxRetries;
-
-  uint64_t _retryWaitTime;
-
-  std::string _retryMessage;
-
- private:
-  // flag whether or not to delete the connection on destruction
-  bool _deleteConnectionOnDestruction;
-
-  // flag whether or not we keep the connection on destruction
-  bool _keepConnectionOnDestruction;
-
-  bool _warn;
-
-  bool _keepAlive;
-
-  bool _exposeArangoDB;
-
-  bool _supportDeflate;
-
   // empty map, used for headers
   static std::unordered_map<std::string, std::string> const NO_HEADERS;
-
-  // default value for max packet size
-  static size_t MaxPacketSize;
 };
 }
 }

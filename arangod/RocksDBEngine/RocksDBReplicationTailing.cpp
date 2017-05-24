@@ -380,6 +380,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
       _builder.close();
     }
+    _lastLogType = RocksDBLogType::Invalid;
     _seenBeginTransaction = false;
     _singleOp = false;
     _startOfBatch = true;

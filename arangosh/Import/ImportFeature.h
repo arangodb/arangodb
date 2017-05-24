@@ -34,10 +34,9 @@ class SimpleHttpResult;
 }
 
 class ImportFeature final : public application_features::ApplicationFeature,
-                               public ArangoClientHelper {
+                            public ArangoClientHelper {
  public:
-  ImportFeature(application_features::ApplicationServer* server,
-                   int* result);
+  ImportFeature(application_features::ApplicationServer* server, int* result);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -50,6 +49,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   bool _useBackslash;
   bool _convert;
   uint64_t _chunkSize;
+  uint32_t _threadCount;
   std::string _collectionName;
   std::string _fromCollectionPrefix;
   std::string _toCollectionPrefix;
@@ -63,7 +63,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   bool _progress;
   std::string _onDuplicateAction;
   uint64_t _rowsToSkip;
-  
+
   int* _result;
 };
 }
