@@ -40,7 +40,10 @@ SslServerFeature::SslServerFeature(
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
       _keyfile(),
-      _cipherList(),
+      _sessionCache(false),
+      _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
+      _sslProtocol(TLS_V12),
+      _sslOptions(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
   requiresElevatedPrivileges(false);
@@ -69,7 +72,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_sessionCache));
 
   options->addOption("--ssl.cipher-list",
-                     "ssl cipers to use, see OpenSSL documentation",
+                     "ssl ciphers to use, see OpenSSL documentation",
                      new StringParameter(&_cipherList));
 
   std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
@@ -176,7 +179,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
     }
 
     // set options
-    SSL_CTX_set_options(nativeContext, static_cast<long>(_sslOptions));
+    sslContext.set_options(static_cast<long>(_sslOptions));
 
     if (!_cipherList.empty()) {
       if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
@@ -188,31 +191,37 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
     }
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
-    int sslEcdhNid;
-    EC_KEY* ecdhKey;
-    sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
+    if (!_ecdhCurve.empty()) {
+      int sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
-    if (sslEcdhNid == 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::SSL)
-          << "SSL error: " << lastSSLError()
-          << " Unknown curve name: " << _ecdhCurve;
-      throw std::runtime_error("cannot create SSL context");
+      if (sslEcdhNid == 0) {
+        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+            << "SSL error: " << lastSSLError()
+            << " Unknown curve name: " << _ecdhCurve;
+        throw std::runtime_error("cannot create SSL context");
+      }
+
+      // https://www.openssl.org/docs/manmaster/apps/ecparam.html
+      EC_KEY* ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
+      if (ecdhKey == nullptr) {
+        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+            << "SSL error: " << lastSSLError()
+            << ". unable to create curve by name: " << _ecdhCurve;
+        throw std::runtime_error("cannot create SSL context");
+      }
+
+      if (SSL_CTX_set_tmp_ecdh(nativeContext, ecdhKey) != 1) {
+        EC_KEY_free(ecdhKey);
+        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+            << "cannot set ECDH option" << lastSSLError();
+        throw std::runtime_error("cannot create SSL context");
+      }
+
+      EC_KEY_free(ecdhKey);
+      SSL_CTX_set_options(nativeContext, SSL_OP_SINGLE_ECDH_USE);
     }
-
-    // https://www.openssl.org/docs/manmaster/apps/ecparam.html
-    ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
-    if (ecdhKey == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::SSL)
-          << "SSL error: " << lastSSLError()
-          << " Unable to create curve by name: " << _ecdhCurve;
-      throw std::runtime_error("cannot create SSL context");
-    }
-
-    SSL_CTX_set_tmp_ecdh(nativeContext, ecdhKey);
-    SSL_CTX_set_options(nativeContext, SSL_OP_SINGLE_ECDH_USE);
-    EC_KEY_free(ecdhKey);
 #endif
-
+    
     // set ssl context
     int res = SSL_CTX_set_session_id_context(
         nativeContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
