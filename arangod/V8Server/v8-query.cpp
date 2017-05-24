@@ -24,6 +24,7 @@
 #include "v8-query.h"
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
+#include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -61,7 +62,7 @@ aql::QueryResultV8 AqlQuery(
   TRI_ASSERT(col != nullptr);
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, col->vocbase(), aql.c_str(), aql.size(),
+  arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(

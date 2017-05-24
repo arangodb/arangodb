@@ -53,11 +53,10 @@ class SslServerFeature : public application_features::ApplicationFeature {
  protected:
   std::string _cafile;
   std::string _keyfile;
-  bool _sessionCache = false;
+  bool _sessionCache;
   std::string _cipherList;
-  uint64_t _sslProtocol = TLS_V12;
-  uint64_t _sslOptions =
-      (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE);
+  uint64_t _sslProtocol;
+  uint64_t _sslOptions;
   std::string _ecdhCurve;
 
  private:

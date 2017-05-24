@@ -23,10 +23,10 @@
 
 #include "v8-shell.h"
 
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/csv.h"
 #include "Basics/Exceptions.h"
 #include "Basics/OpenFilesTracker.h"
-#include "Basics/shell-colors.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
@@ -34,6 +34,10 @@
 #include "V8/v8-utils.h"
 
 #include <fstream>
+
+using namespace arangodb;
+
+namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begins a new CSV line
@@ -80,6 +84,8 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
 
   v8::Handle<v8::Value> args[] = {*array, r};
   (*cb)->Call(*cb, 2, args);
+}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,97 +332,97 @@ void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8::Handle<v8::Object> colors = v8::Object::New(isolate);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_RED"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_RED)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_RED)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_RED"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_RED)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_RED)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_GREEN"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_GREEN)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_GREEN)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_GREEN"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_GREEN)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_GREEN)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BLUE"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BLUE)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BLUE)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_BLUE"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_BLUE)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_BLUE)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_YELLOW"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_YELLOW)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_YELLOW)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_YELLOW"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_YELLOW)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_YELLOW)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_WHITE"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_WHITE)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_WHITE)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_WHITE"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_WHITE)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_WHITE)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_CYAN"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_CYAN)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_CYAN)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_CYAN"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_CYAN)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_CYAN)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_MAGENTA"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_MAGENTA)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_MAGENTA)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_MAGENTA"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_MAGENTA)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_MAGENTA)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BLACK"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BLACK)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BLACK)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_BLACK"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_BLACK)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_BLACK)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BLINK"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BLINK)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BLINK)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BRIGHT"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BRIGHT)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BRIGHT)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
   colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_RESET"),
-                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_RESET)
+                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_RESET)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 

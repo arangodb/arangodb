@@ -22,9 +22,9 @@
 
 #include "ConsoleFeature.h"
 
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/StringUtils.h"
 #include "Basics/messages.h"
-#include "Basics/shell-colors.h"
 #include "Basics/terminal-utils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -504,9 +504,9 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
 
   if (_supportsColors && _colors) {
     if (_promptError) {
-      colored = TRI_SHELL_COLOR_BOLD_RED + result + TRI_SHELL_COLOR_RESET;
+      colored = ShellColorsFeature::SHELL_COLOR_BOLD_RED + result + ShellColorsFeature::SHELL_COLOR_RESET;
     } else {
-      colored = TRI_SHELL_COLOR_BOLD_GREEN + result + TRI_SHELL_COLOR_RESET;
+      colored = ShellColorsFeature::SHELL_COLOR_BOLD_GREEN + result + ShellColorsFeature::SHELL_COLOR_RESET;
     }
   } else {
     colored = result;

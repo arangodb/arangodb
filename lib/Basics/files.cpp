@@ -1657,33 +1657,30 @@ std::string TRI_BinaryName(char const* argv0) {
 
 std::string TRI_LocateBinaryPath(char const* argv0) {
 #if _WIN32
+  char buff[4096];
+  int res = GetModuleFileName(NULL, buff, sizeof(buff));
 
-  if (argv0 == nullptr) {
-    char buff[4096];
-    int res = GetModuleFileName(NULL, buff, sizeof(buff));
+  if (res != 0) {
+    buff[4095] = '\0';
 
-    if (res != 0) {
-      buff[4095] = '\0';
+    char* q = buff + res;
 
-      char* q = buff + res;
-
-      while (buff < q) {
-        if (*q == '\\' || *q == '/') {
-          *q = '\0';
-          break;
-        }
-
-        --q;
+    while (buff < q) {
+      if (*q == '\\' || *q == '/') {
+        *q = '\0';
+        break;
       }
 
-      return std::string(buff);
+      --q;
     }
 
-    return std::string();
+    return std::string(buff);
   }
 
-#endif
-  
+  return std::string();
+
+#else
+
   std::string binaryPath;
 
   // check if name contains a '/' ( or '\' for windows)
@@ -1736,6 +1733,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   }
 
   return binaryPath;
+#endif
 }
 
 std::string TRI_GetInstallRoot(std::string const& binaryPath,

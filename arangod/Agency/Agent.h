@@ -285,13 +285,15 @@ class Agent : public arangodb::Thread,
   /// @brief Last commit index (raft)
   index_t _lastCommitIndex;
 
-  /// @brief Last compaction index
+  /// @brief Last index of the log that has been applied to the readDB
   index_t _lastAppliedIndex;
 
-  /// @brief Last compaction index
+  /// @brief Last index up to which we have performed log compaction
   index_t _lastCompactionIndex;
 
-  /// @brief Last compaction index
+  /// @brief Last index that is "committed" in the sense that the leader
+  /// has convinced itself that an absolute majority (including the leader)
+  /// have written the entry into their log
   index_t _leaderCommitIndex;
 
   /// @brief Spearhead (write) kv-store
@@ -300,7 +302,7 @@ class Agent : public arangodb::Thread,
   /// @brief Committed (read) kv-store
   Store _readDB;
 
-  /// @brief Committed (read) kv-store
+  /// @brief Committed (read) kv-store for transient data
   Store _transient;
 
   /// @brief Last compacted store
@@ -337,7 +339,7 @@ class Agent : public arangodb::Thread,
   mutable arangodb::Mutex _activatorLock;
 
   /// @brief Next compaction after
-  index_t _nextCompationAfter;
+  index_t _nextCompactionAfter;
 
   /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;

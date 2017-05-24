@@ -34,13 +34,19 @@ Parser::Parser(Query* query)
     : _query(query),
       _ast(query->ast()),
       _scanner(nullptr),
-      _buffer(query->queryString()),
-      _remainingLength(query->queryLength()),
+      _queryStringStart(nullptr),
+      _buffer(nullptr),
+      _remainingLength(0),
       _offset(0),
       _marker(nullptr),
       _stack(),
       _isModificationQuery(false) {
   _stack.reserve(4);
+    
+  QueryString const& qs = queryString();
+  _queryStringStart = qs.data(); 
+  _buffer = qs.data(); 
+  _remainingLength = qs.size(); 
 }
 
 /// @brief destroy the parser
@@ -64,9 +70,7 @@ bool Parser::configureWriteQuery(AstNode const* collectionNode,
 
 /// @brief parse the query
 QueryResult Parser::parse(bool withDetails) {
-  char const* q = queryString();
-
-  if (q == nullptr || *q == '\0' || remainingLength() == 0) {
+  if (queryString().empty() || remainingLength() == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
   }
 
@@ -137,7 +141,7 @@ void Parser::registerParseError(int errorCode, char const* data, int line,
   TRI_ASSERT(data != nullptr);
 
   // extract the query string part where the error happened
-  std::string const region(_query->extractRegion(line, column));
+  std::string const region(queryString().extractRegion(line, column));
 
   // note: line numbers reported by bison/flex start at 1, columns start at 0
   std::stringstream errorMessage;
@@ -146,7 +150,7 @@ void Parser::registerParseError(int errorCode, char const* data, int line,
                << (column + 1);
 
   if (_query->verboseErrors()) {
-    errorMessage << std::endl << _query->queryString() << std::endl;
+    errorMessage << std::endl << queryString() << std::endl;
 
     // create a neat pointer to the location of the error.
     size_t i;

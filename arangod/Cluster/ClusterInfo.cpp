@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
+#include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
@@ -431,6 +432,7 @@ void ClusterInfo::loadPlan() {
       decltype(_plannedDatabases) newDatabases;
       decltype(_plannedCollections) newCollections;
       decltype(_shards) newShards;
+      decltype(_shardServers) newShardServers;
       decltype(_shardKeys) newShardKeys;
 
       bool swapDatabases = false;
@@ -518,6 +520,7 @@ void ClusterInfo::loadPlan() {
               auto shards = std::make_shared<std::vector<std::string>>();
               for (auto const& p : *shardIDs) {
                 shards->push_back(p.first);
+                newShardServers.emplace(p.first, p.second);
               }
               // Sort by the number in the shard ID ("s0000001" for example):
               std::sort(shards->begin(), shards->end(),
@@ -526,6 +529,7 @@ void ClusterInfo::loadPlan() {
                                  std::strtol(b.c_str() + 1, nullptr, 10);
                         });
               newShards.emplace(std::make_pair(collectionId, shards));
+              
             } catch (std::exception const& ex) {
               // The plan contains invalid collection information.
               // This should not happen in healthy situations.
@@ -572,6 +576,7 @@ void ClusterInfo::loadPlan() {
         _plannedCollections.swap(newCollections);
         _shards.swap(newShards);
         _shardKeys.swap(newShardKeys);
+        _shardServers.swap(newShardServers);
       }
       _planProt.doneVersion = storedVersion;
       _planProt.isValid = true;  // will never be reset to false
@@ -1138,13 +1143,28 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
             
             // wait that all followers have created our new collection
             if (tmpError.empty() && waitForReplication) {
-              uint64_t mutableReplicationFactor = replicationFactor;
-              if (mutableReplicationFactor == 0) {
-                mutableReplicationFactor = dbServers.size();
+              std::vector<ServerID> plannedServers;
+              {
+                READ_LOCKER(readLocker, _planProt.lock);
+                auto it = _shardServers.find(p.key.copyString());
+                if (it != _shardServers.end()) {
+                  plannedServers = (*it).second;
+                }
               }
-              
+              std::vector<ServerID> currentServers;
               VPackSlice servers = p.value.get("servers");
-              if (!servers.isArray() || servers.length() < mutableReplicationFactor) {
+              if (!servers.isArray()) {
+                return true;
+              }
+              for (auto const& server: VPackArrayIterator(servers)) {
+                if (!server.isString()) {
+                  return true;
+                }
+                currentServers.push_back(server.copyString());
+              }
+              if (!ClusterHelpers::compareServerLists(plannedServers, currentServers)) {
+                LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Still waiting for all servers to ACK creation of " << name
+                  << ". Planned: " << plannedServers << ", Current: " << currentServers;
                 return true;
               }
             }

@@ -226,11 +226,6 @@ void RocksDBRestExportHandler::createCursor() {
   size_t limit = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
       options, "limit", 0);
 
-  // this may throw!
-  auto collectionExport =
-      std::make_unique<RocksDBCollectionExport>(_vocbase, name, _restrictions);
-  collectionExport->run(limit);
-
   size_t batchSize =
       arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
           options, "batchSize", 1000);
@@ -245,9 +240,8 @@ void RocksDBRestExportHandler::createCursor() {
   Cursor* c = nullptr;
   {
     auto cursor = std::make_unique<RocksDBExportCursor>(
-        _vocbase, TRI_NewTickServer(), collectionExport.get(), batchSize, ttl,
+        _vocbase, name, _restrictions, TRI_NewTickServer(), limit, batchSize, ttl,
         count);
-    collectionExport.release();
 
     cursor->use();
     c = cursors->addCursor(std::move(cursor));

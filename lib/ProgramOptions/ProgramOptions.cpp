@@ -21,8 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ProgramOptions.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/levenshtein.h"
-#include "Basics/shell-colors.h"
 #include "Basics/terminal-utils.h"
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Section.h"
@@ -98,8 +98,8 @@ void ProgramOptions::printSectionsHelp() const {
   char const* colorEnd;
 
   if (isatty(STDOUT_FILENO)) {
-    colorStart = TRI_SHELL_COLOR_BRIGHT;
-    colorEnd = TRI_SHELL_COLOR_RESET;
+    colorStart = ShellColorsFeature::SHELL_COLOR_BRIGHT;
+    colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
   } else {
     colorStart = colorEnd = "";
   }
@@ -287,8 +287,8 @@ bool ProgramOptions::unknownOption(std::string const& name) {
   char const* colorEnd;
 
   if (isatty(STDERR_FILENO)) {
-    colorStart = TRI_SHELL_COLOR_BRIGHT;
-    colorEnd = TRI_SHELL_COLOR_RESET;
+    colorStart = ShellColorsFeature::SHELL_COLOR_BRIGHT;
+    colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
   } else {
     colorStart = colorEnd = "";
   }

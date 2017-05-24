@@ -41,7 +41,7 @@ Debug32/
 Release64/
 Release32/
 WindowsLibraries/
-cluster/
+cluster/**
 p/
 
 core

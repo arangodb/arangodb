@@ -43,6 +43,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
   setOptional(false);
   requiresElevatedPrivileges(false);
 
+  startsAfter("ShellColors");
   startsAfter("Version");
 
   if (threaded) {

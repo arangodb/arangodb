@@ -42,6 +42,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Rest/Version.h"
 #include "RocksDBEngine/RocksDBAqlFunctions.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -164,6 +165,8 @@ void RocksDBEngine::start() {
     return;
   }
 
+  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "rocksdb version " << rest::Version::getRocksDBVersion() << ", supported compression types: " << getCompressionSupport();
+
   // set the database sub-directory for RocksDB
   auto* databasePathFeature =
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
@@ -208,6 +211,49 @@ void RocksDBEngine::start() {
       static_cast<int>(opts->_maxBackgroundCompactions);
   _options.max_background_flushes = static_cast<int>(opts->_maxFlushes);
   _options.use_fsync = opts->_useFSync;
+/*
+  // only compress levels >= 2
+  _options.compression_per_level.resize(_options.num_levels);
+  for (size_t level = 0; i level < _options.num_levels; ++level) {
+    _options.compression_per_level[level] = ((level >= 2) ? rocksdb::kLZ4Compression : rocksdb::kNoCompression);
+  }
+  
+  // Number of files to trigger level-0 compaction. A value <0 means that
+  // level-0 compaction will not be triggered by number of files at all.
+  //
+  // Default: 4
+  _options.level0_file_num_compaction_trigger = -1;
+
+  // Soft limit on number of level-0 files. We start slowing down writes at this
+  // point. A value <0 means that no writing slow down will be triggered by
+  // number of files in level-0.
+  _options.level0_slowdown_writes_trigger = -1;
+
+  // Maximum number of level-0 files.  We stop writes at this point.
+  _options.level0_stop_writes_trigger = 256;
+*/
+
+  /* TODO: needs compile support for Snappy  
+  // only compress levels >= 2
+  _options.compression_per_level.resize(_options.num_levels);
+  for (int level = 0; level < _options.num_levels; ++level) {
+    _options.compression_per_level[level] = ((level >= 2) ? rocksdb::kSnappyCompression : rocksdb::kNoCompression);
+  }
+  */
+
+  /* TODO: try out the effects of these options 
+  // Number of files to trigger level-0 compaction. A value <0 means that
+  // level-0 compaction will not be triggered by number of files at all.
+  _options.level0_file_num_compaction_trigger = -1;
+
+  // Soft limit on number of level-0 files. We start slowing down writes at this
+  // point. A value <0 means that no writing slow down will be triggered by
+  // number of files in level-0.
+  _options.level0_slowdown_writes_trigger = -1;
+
+  // Maximum number of level-0 files.  We stop writes at this point.
+  _options.level0_stop_writes_trigger = 256;
+  */
 
   _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
   _options.compaction_readahead_size =
@@ -236,6 +282,7 @@ void RocksDBEngine::start() {
   } else {
     table_options.no_block_cache = true;
   }
+  table_options.block_size = opts->_tableBlockSize;
   table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
   _options.table_factory.reset(
       rocksdb::NewBlockBasedTableFactory(table_options));
@@ -1374,6 +1421,25 @@ Result RocksDBEngine::lastLogger(
   builderSPtr = std::move(builder);
 
   return rep;
+}
+
+/// @brief get compression supported by RocksDB
+std::string RocksDBEngine::getCompressionSupport() const {
+  std::string result;
+
+  for (auto const& type : rocksdb::GetSupportedCompressions()) {
+    std::string out;
+    rocksdb::GetStringFromCompressionType(&out, type);
+
+    if (out.empty()) {
+      continue;
+    }
+    if (!result.empty()) {
+      result.append(", ");
+    }
+    result.append(out);
+  }
+  return result;
 }
 
 }  // namespace arangodb

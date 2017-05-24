@@ -774,7 +774,7 @@ if test -n "${TARGET_DIR}";  then
                             ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"
                   )
             DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
-            cp "${DLLS}" "bin/${BUILD_CONFIG}"
+            cp ${DLLS} "bin/${BUILD_CONFIG}"
             cp "bin/${BUILD_CONFIG}/"* bin/
             cp "tests/${BUILD_CONFIG}/"*exe bin/
         fi

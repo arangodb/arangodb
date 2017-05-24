@@ -22,12 +22,12 @@
 
 #include "V8ShellFeature.h"
 
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/shell-colors.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -192,9 +192,9 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
   // http://www.network-science.de/ascii/   Font: ogre
 
   if (!_console->quiet()) {
-    std::string g = TRI_SHELL_COLOR_GREEN;
-    std::string r = TRI_SHELL_COLOR_RED;
-    std::string z = TRI_SHELL_COLOR_RESET;
+    std::string g = ShellColorsFeature::SHELL_COLOR_GREEN;
+    std::string r = ShellColorsFeature::SHELL_COLOR_RED;
+    std::string z = ShellColorsFeature::SHELL_COLOR_RESET;
 
     if (!_console->colors()) {
       g = "";
@@ -990,7 +990,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   files.push_back("client/client.js");  // needs internal
 
   for (size_t i = 0; i < files.size(); ++i) {
-    switch (loader.loadScript(_isolate, context, files[i])) {
+    switch (loader.loadScript(_isolate, context, files[i], nullptr)) {
       case JSLoader::eSuccess:
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded JavaScript file '" << files[i] << "'";
         break;
