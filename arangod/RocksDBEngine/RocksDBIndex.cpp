@@ -49,10 +49,10 @@ uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
 RocksDBIndex::RocksDBIndex(
     TRI_idx_iid_t id, LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-    bool unique, bool sparse, uint64_t objectId, bool useCache)
+    bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf, uint64_t objectId, bool useCache)
     : Index(id, collection, attributes, unique, sparse),
       _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
-      _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
+      _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
       _useCache(useCache) {
@@ -62,10 +62,10 @@ RocksDBIndex::RocksDBIndex(
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           VPackSlice const& info, bool useCache)
+                           VPackSlice const& info, rocksdb::ColumnFamilyHandle* cf, bool useCache)
     : Index(id, collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
-      _cmp(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->cmp()),
+      _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
       _useCache(useCache) {
@@ -89,7 +89,7 @@ RocksDBIndex::~RocksDBIndex() {
 }
 
 rocksdb::Comparator const* RocksDBIndex::comparator() const {
-  return _cmp;
+  return _cf->GetComparator();
 }
 
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
@@ -198,14 +198,16 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 
   rocksdb::ReadOptions options = mthds->readOptions();
   rocksdb::Slice end = indexBounds.end();
+  rocksdb::Comparator const* cmp = this->comparator();
   options.iterate_upper_bound = &end;
 
-
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options);
+  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options, _cf);
   iter->Seek(indexBounds.start());
 
-  while (iter->Valid() && _cmp->Compare(iter->key(), end) < 0) {
-    Result r = mthds->Delete(iter->key());
+  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    
+    Result r = mthds->Delete(_cf, iter->key());
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }

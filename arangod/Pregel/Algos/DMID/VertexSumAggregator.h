@@ -105,7 +105,7 @@ struct VertexSumAggregator : public IAggregator {
     }
   }
 
-  double getAggregatedValue(PregelShard shard, PregelKey const& key) {
+  double getAggregatedValue(PregelShard shard, PregelKey const& key) const {
     auto const& it1 = _entries.find(shard);
     if (it1 != _entries.end()) {
       auto const& it2 = it1->second.find(key);
@@ -126,7 +126,7 @@ struct VertexSumAggregator : public IAggregator {
 
   void aggregateDefaultValue(double empty) { _default += empty; }
 
-  void forEach(std::function<void(PregelID const& _id, double value)> func) {
+  void forEach(std::function<void(PregelID const& _id, double value)> func) const {
     for (auto const& pair : _entries) {
       PregelShard shard = pair.first;
       std::unordered_map<std::string, double> const& vertexMap = pair.second;

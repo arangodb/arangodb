@@ -46,6 +46,7 @@
 #include "RocksDBEngine/RocksDBAqlFunctions.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
@@ -91,6 +92,10 @@ namespace arangodb {
 
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
+
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_none(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_index(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_uniqueIndex(nullptr);
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
@@ -172,8 +177,8 @@ void RocksDBEngine::start() {
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = databasePathFeature->subdirectoryName("engine-rocksdb");
 
-  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP)
-      << "initializing rocksdb, path: " << _path;
+  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "initializing rocksdb, path: "
+                                              << _path;
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
@@ -276,8 +281,8 @@ void RocksDBEngine::start() {
 
   rocksdb::BlockBasedTableOptions table_options;
   if (opts->_blockCacheSize > 0) {
-    auto cache =
-        rocksdb::NewLRUCache(opts->_blockCacheSize, (int)opts->_blockCacheShardBits);
+    auto cache = rocksdb::NewLRUCache(opts->_blockCacheSize,
+                                      (int)opts->_blockCacheShardBits);
     table_options.block_cache = cache;
   } else {
     table_options.no_block_cache = true;
@@ -288,8 +293,9 @@ void RocksDBEngine::start() {
       rocksdb::NewBlockBasedTableFactory(table_options));
 
   _options.create_if_missing = true;
+  _options.create_missing_column_families = true;
   _options.max_open_files = -1;
-  _options.comparator = _cmp.get();
+  //_options.comparator = _cmp.get();
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
   _options.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
@@ -303,15 +309,36 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  rocksdb::Status status =
-      rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);
+  // create column families
+  std::vector<rocksdb::ColumnFamilyDescriptor> columFamilies;
+  rocksdb::ColumnFamilyOptions cfOptions1(_options);
+  columFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName, cfOptions1);
+  rocksdb::ColumnFamilyOptions cfOptions2(_options);
+  cfOptions2.comparator = _cmp.get();  // only
+  columFamilies.emplace_back("IndexValue", cfOptions2);
+  columFamilies.emplace_back("UniqueIndexValue", cfOptions2);
+  // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
+
+  std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
+  rocksdb::Status status = rocksdb::TransactionDB::Open(
+      _options, transactionOptions, _path, columFamilies, &cfHandles, &_db);
 
   if (!status.ok()) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
         << "unable to initialize RocksDB engine: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
-  
+  if (columFamilies.size() != cfHandles.size()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+        << "unable to initialize RocksDB column families";
+    FATAL_ERROR_EXIT();
+  }
+  // set our column families
+  RocksDBColumnFamily::_none = cfHandles[0];
+  RocksDBColumnFamily::_index = cfHandles[1];
+  RocksDBColumnFamily::_uniqueIndex = cfHandles[2];
+  TRI_ASSERT(RocksDBColumnFamily::_none->GetID() == 0);
+
   // only enable logger after RocksDB start
   logger->enable();
 
@@ -337,11 +364,11 @@ void RocksDBEngine::stop() {
     return;
   }
   replicationManager()->dropAll();
-    
+
   if (_backgroundThread) {
     // stop the press
     _backgroundThread->beginShutdown();
-    
+
     if (_counterManager) {
       _counterManager->sync(true);
     }
@@ -360,6 +387,19 @@ void RocksDBEngine::unprepare() {
   }
 
   if (_db) {
+    if (RocksDBColumnFamily::_none) {
+      _db->DestroyColumnFamilyHandle(RocksDBColumnFamily::_none);
+      RocksDBColumnFamily::_none = nullptr;
+    }
+    if (RocksDBColumnFamily::_index) {
+      _db->DestroyColumnFamilyHandle(RocksDBColumnFamily::_index);
+      RocksDBColumnFamily::_index = nullptr;
+    }
+    if (RocksDBColumnFamily::_uniqueIndex) {
+      _db->DestroyColumnFamilyHandle(RocksDBColumnFamily::_uniqueIndex);
+      RocksDBColumnFamily::_uniqueIndex = nullptr;
+    }
+
     // now prune all obsolete WAL files
     determinePrunableWalFiles(0);
     pruneWalFiles();
@@ -447,8 +487,8 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
           basics::StringUtils::uint64(idSlice.copyString()));
 
       // database is deleted, skip it!
-      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
-          << "found dropped database " << id;
+      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "found dropped database "
+                                                  << id;
 
       dropDatabase(id);
       continue;
@@ -819,7 +859,7 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   // Unregister counter
   _counterManager->removeCounter(coll->objectId());
-  
+
   // remove from map
   {
     WRITE_LOCKER(guard, _collectionMapLock);
@@ -1246,8 +1286,8 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       view->getImplementation()->open();
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error while opening database: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
+                                            << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -1267,7 +1307,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
-    
+
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
@@ -1284,14 +1324,14 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       TRI_ASSERT(physical != nullptr);
 
       physical->deserializeIndexEstimates(counterManager());
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-          << "added document collection '" << collection->name() << "'";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "added document collection '"
+                                                << collection->name() << "'";
     }
 
     return vocbase.release();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error while opening database: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
+                                            << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
