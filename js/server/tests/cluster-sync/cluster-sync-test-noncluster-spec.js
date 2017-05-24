@@ -26,6 +26,7 @@
 // / @author Andreas Streichardt
 // //////////////////////////////////////////////////////////////////////////////
 
+const wait = require('internal').wait;
 const db = require('internal').db;
 const cluster = require('@arangodb/cluster');
 const expect = require('chai').expect;
@@ -207,7 +208,7 @@ describe('Cluster sync', function() {
       let collections = db._collections();
       expect(collections.map(collection => collection.name())).to.contain('s100001');
       let count = 0;
-      while (db._collection('s100001').status() == ArangoCollection.STATUS_UNLOADING && count++ < 100) {
+      while (db._collection('s100001').status() === ArangoCollection.STATUS_UNLOADING && count++ < 100) {
         wait(0.1);
       }
       expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
@@ -260,7 +261,7 @@ describe('Cluster sync', function() {
       cluster.executePlanForCollections(plan);
       db._useDatabase('test');
       let count = 0;
-      while (db._collection('s100001').status() == ArangoCollection.STATUS_UNLOADING && count++ < 100) {
+      while (db._collection('s100001').status() === ArangoCollection.STATUS_UNLOADING && count++ < 100) {
         wait(0.1);
       }
       expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
