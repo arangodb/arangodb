@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
+#include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 
 #include <openssl/err.h>
 #include <boost/asio/ssl.hpp>
-
-#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -38,12 +38,12 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-boost::optional<boost::asio::ssl::context> arangodb::sslContext(
-    protocol_e protocol, std::string const& keyfile) {
+boost::asio::ssl::context arangodb::sslContext(
+    SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
   using boost::asio::ssl::context;
-  context::method meth = context::method::sslv23;
+  context::method meth;
 
   switch (protocol) {
 #ifndef OPENSSL_NO_SSL2
@@ -69,8 +69,7 @@ boost::optional<boost::asio::ssl::context> arangodb::sslContext(
       break;
 
     default:
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown SSL protocol method";
-      return boost::none;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown SSL protocol method");
   }
 
   boost::asio::ssl::context sslctx(meth);
@@ -87,27 +86,27 @@ boost::optional<boost::asio::ssl::context> arangodb::sslContext(
                                           keyfile.c_str())) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read certificate from '" << keyfile
              << "': " << lastSSLError();
-    return boost::none;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "unable to read certificate from file");
   }
 
   if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(),
                                    SSL_FILETYPE_PEM)) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read key from '" << keyfile << "': " << lastSSLError();
-    return boost::none;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "unable to read key from keyfile");
   }
 
 #if (OPENSSL_VERSION_NUMBER < 0x00905100L)
   SSL_CTX_set_verify_depth(sslctx.native_handle(), 1);
 #endif
 
-  return std::move(sslctx);
+  return sslctx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string arangodb::protocolName(protocol_e protocol) {
+std::string arangodb::protocolName(SslProtocol protocol) {
   switch (protocol) {
     case SSL_V2:
       return "SSLv2";

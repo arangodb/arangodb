@@ -54,7 +54,7 @@ Agent::Agent(config_t const& config)
     _readDB(this),
     _transient(this),
     _compacted(this),
-    _nextCompationAfter(_config.compactionStepSize()),
+    _nextCompactionAfter(_config.compactionStepSize()),
     _inception(std::make_unique<Inception>(this)),
     _activator(nullptr),
     _compactor(this),
@@ -250,7 +250,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
         MUTEX_LOCKER(liLocker, _liLock);
         _leaderCommitIndex = index;
-        if (_leaderCommitIndex >= _nextCompationAfter) {
+        if (_leaderCommitIndex >= _nextCompactionAfter) {
           _compactor.wakeUp();
         }
 
@@ -310,7 +310,7 @@ bool Agent::recvAppendEntriesRPC(
         
         _lastCommitIndex = _state.log(queries, ndups);
         
-        if (_lastCommitIndex >= _nextCompationAfter) {
+        if (_lastCommitIndex >= _nextCompactionAfter) {
           _compactor.wakeUp();
         }
 
@@ -1225,7 +1225,7 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
 void Agent::compact() {
   rebuildDBs();
   _state.compact(_lastAppliedIndex-_config.compactionKeepSize());
-  _nextCompationAfter += _config.compactionStepSize();
+  _nextCompactionAfter += _config.compactionStepSize();
 }
 
 
@@ -1281,7 +1281,7 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   }
 
   // Schedule next compaction
-  _nextCompationAfter = _lastCommitIndex + _config.compactionStepSize();
+  _nextCompactionAfter = _lastCommitIndex + _config.compactionStepSize();
 
   return *this;
 }

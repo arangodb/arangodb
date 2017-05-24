@@ -14,7 +14,8 @@
   !include "UAC.nsh"
   !include nsDialogs.nsh
   !include WinMessages.nsh
-
+  !include InstallOptions.nsh
+  !include MUI2.nsh
 ;--------------------------------
 ; get commandline parameters
 !include FileFunc.nsh
@@ -94,6 +95,14 @@ Function disableBackButton
      EnableWindow $0 0
 FunctionEnd
 
+Function stop_old_service
+  StrCmp $TRI_INSTALL_TYPE  'Service' 0 noServiceToStop
+     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
+     Call WaitForServiceDown
+     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
+noServiceToStop:
+FunctionEnd
+
 Function Tri_ChangePrivileges
   ${IfNot} ${UAC_IsInnerInstance}
      Call disableBackButton
@@ -152,8 +161,23 @@ ${EndSwitch}
 SetShellVarContext all
 FunctionEnd
 
+Var mycheckbox ; You could just store the HWND in $1 etc if you don't want this extra variable
 
-  !include Sections.nsh
+Function un.ModifyUnWelcome
+;  SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Titlebar - UnWelcome BLARG"
+  ${NSD_CreateCheckbox} 120u -20u 50% 20u "Delete databases with uninstallation?"
+  Pop $mycheckbox
+;  ${NSD_Check} $mycheckbox ; don't check it by default
+FunctionEnd
+
+Function un.LeaveUnWelcome
+  ${NSD_GetState} $mycheckbox $0
+  ${If} $0 <> 0
+    StrCpy $PURGE_DB "1"
+  ${EndIf}
+FunctionEnd
+
+!include Sections.nsh
 
 ;--- Component support macros: ---
 ; The code for the add/remove functionality is from:
@@ -320,10 +344,15 @@ Var AR_RegFlags
 
   @CPACK_NSIS_PAGE_COMPONENTS@
 
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE stop_old_service
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE insert_registration_keys
   !insertmacro MUI_PAGE_INSTFILES
   !insertmacro MUI_PAGE_FINISH
 
+  !define MUI_WELCOMEPAGE_TEXT 'Please choose whether we should also remove the database files along with the programm files.'
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.ModifyUnWelcome
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.LeaveUnWelcome
+  !insertmacro MUI_UNPAGE_WELCOME
   !insertmacro MUI_UNPAGE_CONFIRM
   !insertmacro MUI_UNPAGE_INSTFILES
 
@@ -391,7 +420,6 @@ Var AR_RegFlags
   ;Only for solid compression (by default, solid compression is enabled for BZIP2 and LZMA)
 
   ReserveFile "NSIS.InstallOptions.ini"
-  !insertmacro MUI_RESERVEFILE_INSTALLOPTIONS
 
 ;--------------------------------
 ;Installer Sections
@@ -405,14 +433,7 @@ Section "-Core installation"
   ; this variable was defined by eld and included in NSIS.template.in
   ; we probably need this for the install/uninstall software list.
   SetRegView ${BITS}
-
-   StrCmp $TRI_INSTALL_TYPE  'Service' 0 noServiceToStop
-     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
-     Call WaitForServiceDown
-     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
-     Pop $0
-     
-noServiceToStop:
+  
   @CPACK_NSIS_FULL_INSTALL@
 
   ;Store installation folder
@@ -425,13 +446,6 @@ noServiceToStop:
   !insertmacro AddToRegistry "Publisher"            "@CPACK_PACKAGE_VENDOR@"
   !insertmacro AddToRegistry "UninstallString"      "$INSTDIR\Uninstall.exe"
   !insertmacro AddToRegistry "NoRepair"             "1"
-
-  !ifdef CPACK_NSIS_ADD_REMOVE
-  ;Create add/remove functionality
-  !insertmacro AddToRegistry "ModifyPath"           "$INSTDIR\AddRemove.exe"
-  !else
-  !insertmacro AddToRegistry "NoModify"             "1"
-  !endif
 
   ; Optional registration
   !insertmacro AddToRegistry "DisplayIcon"          "$INSTDIR\@CPACK_NSIS_INSTALLED_ICON_NAME@"
@@ -463,7 +477,10 @@ noServiceToStop:
 
   !insertmacro MUI_STARTMENU_WRITE_END
 
+  !insertmacro AddToRegistry "DATADIR"        "$DATADIR"
+
   !insertmacro _ReplaceInFile "$INSTDIR\etc\arangodb3\arangod.conf" "storage-engine = auto" "storage-engine = $STORAGE_ENGINE"
+  !insertmacro _ReplaceInFile "$INSTDIR\etc\arangodb3\arangod.conf" "directory = @CPACK_ROOTDIR@var/lib/arangodb3" "directory = $DATADIR"
 
   System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
@@ -515,14 +532,14 @@ continueUI:
 displayAgain:
 
   !insertmacro MUI_HEADER_TEXT "Install Options" "Choose options for installing @CPACK_NSIS_PACKAGE_NAME@"
-  !insertmacro MUI_INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"
-  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.InstallOptions.ini"
-  !insertmacro MUI_INSTALLOPTIONS_READ $PASSWORD "NSIS.InstallOptions.ini" "Field 6" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $PASSWORD_AGAIN "NSIS.InstallOptions.ini" "Field 7" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $STORAGE_ENGINE "NSIS.InstallOptions.ini" "Field 11" "State"
+  !insertmacro INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"
+  !insertmacro INSTALLOPTIONS_DISPLAY "NSIS.InstallOptions.ini"
+  !insertmacro INSTALLOPTIONS_READ $PASSWORD "NSIS.InstallOptions.ini" "Field 6" "State"
+  !insertmacro INSTALLOPTIONS_READ $PASSWORD_AGAIN "NSIS.InstallOptions.ini" "Field 7" "State"
+  !insertmacro INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
+  !insertmacro INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
+  !insertmacro INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
+  !insertmacro INSTALLOPTIONS_READ $STORAGE_ENGINE "NSIS.InstallOptions.ini" "Field 11" "State"
 
   StrCmp $PASSWORD $PASSWORD_AGAIN +3 0
     MessageBox MB_OK|MB_ICONSTOP "Passwords don't match, try again"
@@ -531,12 +548,6 @@ displayAgain:
     Pop ${TEMP1}
 
     Return  
-FunctionEnd
-;------------------------
-; Create
-Function ArangoPreInstallationOptionsPage
-  !insertmacro MUI_HEADER_TEXT "@CPACK_NSIS_PACKAGE_NAME@ als Service?" "Install @CPACK_NSIS_PACKAGE_NAME@ as a service?"
-  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.ArangoDB.ini"
 FunctionEnd
 
 ;--------------------------------
@@ -570,9 +581,9 @@ Function default_installation_directory
      Call disableBackButton
   ${EndIf}
   ${IfNot} ${UAC_IsInnerInstance}
-    !insertmacro MUI_INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
-    !insertmacro MUI_INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
-    !insertmacro MUI_INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
+    !insertmacro INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
+    !insertmacro INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
+    !insertmacro INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
 
      ${If} $R2 == '1'
        StrCpy $TRI_INSTALL_TYPE 'Service'
@@ -593,23 +604,24 @@ Function default_installation_directory
      Call read_options
    ${EndIf}
 
-
   ${Switch} $TRI_INSTALL_TYPE
     ${Case} 'Service'
       Call Tri_ChangePrivileges
       SetShellVarContext all
       ;MessageBox MB_OK "Service : $INSTDIR"
-      StrCpy $DATADIR "${ProgramData}\"
+      StrCpy $DATADIR "$APPDATA\ArangoDB"
       ${Break}
     ${Case} 'SingleUser'
       SetShellVarContext current
       StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
       ;MessageBox MB_OK "SingleUser : $INSTDIR"
+      StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB"
       ${Break}
     ${Case} 'AllUsers'
       Call Tri_ChangePrivileges
       SetShellVarContext all
       StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+      StrCpy $DATADIR "$DOCUMENTS\ArangoDB"
       ;MessageBox MB_OK "AllUsers : $INSTDIR"
       ${Break}
    ${EndSwitch}
@@ -755,23 +767,6 @@ FunctionEnd
 Section -FinishComponents
   ;Removes unselected components and writes component status to registry
   !insertmacro SectionList "FinishSection"
-
-!ifdef CPACK_NSIS_ADD_REMOVE
-  ; Get the name of the installer executable
-  System::Call 'kernel32::GetModuleFileNameA(i 0, t .R0, i 1024) i r1'
-  StrCpy $R3 $R0
-
-  ; Strip off the last 13 characters, to see if we have AddRemove.exe
-  StrLen $R1 $R0
-  IntOp $R1 $R0 - 13
-  StrCpy $R2 $R0 13 $R1
-  StrCmp $R2 "AddRemove.exe" addremove_installed
-
-  ; We''re not running AddRemove.exe, so install it
-  CopyFiles $R3 $INSTDIR\AddRemove.exe
-
-  addremove_installed:
-!endif
 SectionEnd
 ;--- End of Add/Remove callback functions ---
 
@@ -814,6 +809,8 @@ Section "Uninstall"
   ReadRegStr $ADD_TO_PATH_CURRENT_USER SHCTX "${TRI_UNINSTALL_REG_PATH}" "AddToPathCurrentUser"
   ;MessageBox MB_OK "Add to path: $DO_NOT_ADD_TO_PATH all users: $ADD_TO_PATH_ALL_USERS"
   ReadRegStr $INSTALL_DESKTOP          SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
+  ReadRegStr $DATADIR                  SHCTX "${TRI_UNINSTALL_REG_PATH}" "DATADIR"
+  
   ;MessageBox MB_OK "Install to desktop: $INSTALL_DESKTOP "
 
   StrCmp "0" "$INSTALL_DESKTOP" noDesktopIconRemove
@@ -858,20 +855,17 @@ Section "Uninstall"
   Delete "$INSTDIR\etc\arangodb3\arangod.conf.old"
 
   StrCmp $PURGE_DB "0" dontDeleteDatabases
-  RMDir /r "$INSTDIR\var\lib\arangodb3"
+  DetailPrint 'Removing database files from $DATADIR: '
+  RMDir /r "$DATADIR"
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"
   RMDir /r "$INSTDIR\var\log\arangodb3"
   dontDeleteDatabases:
+  DetailPrint 'Removing programm files:'
   ;Remove files we installed.
   ;Keep the list of directories here in sync with the File commands above.
 @CPACK_NSIS_DELETE_FILES@
 @CPACK_NSIS_DELETE_DIRECTORIES@
-
-!ifdef CPACK_NSIS_ADD_REMOVE
-  ;Remove the add/remove program
-  Delete "$INSTDIR\AddRemove.exe"
-!endif
 
   ;Remove the uninstaller itself.
   Delete "$INSTDIR\Uninstall.exe"
@@ -1092,7 +1086,7 @@ inst:
       StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 
   StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 noOptionsPage
-    !insertmacro MUI_INSTALLOPTIONS_EXTRACT "NSIS.InstallOptions.ini"
+    !insertmacro INSTALLOPTIONS_EXTRACT "NSIS.InstallOptions.ini"
 
   noOptionsPage:
 FunctionEnd

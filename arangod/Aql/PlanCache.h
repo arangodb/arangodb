@@ -41,8 +41,8 @@ class VariableGenerator;
 
 struct PlanCacheEntry {
   PlanCacheEntry(std::string&& queryString, 
-                 std::shared_ptr<arangodb::velocypack::Builder> builder)
-      : queryString(std::move(queryString)), builder(builder) {}
+                 std::shared_ptr<arangodb::velocypack::Builder>&& builder)
+      : queryString(std::move(queryString)), builder(std::move(builder)) {}
 
   std::string queryString;
   std::shared_ptr<arangodb::velocypack::Builder> builder;

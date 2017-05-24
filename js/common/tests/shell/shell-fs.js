@@ -1079,19 +1079,34 @@ function FileSystemSuite () {
 /// @brief test alder32()
 ////////////////////////////////////////////////////////////////////////////////
 
-    testAdler32Existing : function() {
-      const internal = require('internal');
-      const file = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'foxx','toomanysecrets.txt'));
+    testAdler32EmptyFile : function() {
+      const file = fs.join(tempDir, 'empty.txt');
+      try {
+        fs.remove(file);
+      } catch (err) {
+      }
+      fs.writeFileSync(file, '');
       const checksum = fs.adler32(file);
-      assertEqual(checksum, "583533794");
+      assertEqual(checksum, '1');
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test alder32()
 ////////////////////////////////////////////////////////////////////////////////
 
-    testAdler32NotExisting : function() {
-      const file = fs.join(tempDir, "ne.txt");
+    testAdler32File : function() {
+      const internal = require('internal');
+      const file = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'foxx','toomanysecrets.txt'));
+      const checksum = fs.adler32(file);
+      assertEqual(checksum, '583533794');
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test alder32()
+////////////////////////////////////////////////////////////////////////////////
+
+    testAdler32NotExistingFile : function() {
+      const file = fs.join(tempDir, 'ne.txt');
       try {
         fs.remove(file);
       } catch (err) {

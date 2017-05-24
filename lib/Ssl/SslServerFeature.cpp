@@ -40,7 +40,10 @@ SslServerFeature::SslServerFeature(
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
       _keyfile(),
-      _cipherList(),
+      _sessionCache(false),
+      _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
+      _sslProtocol(TLS_V12),
+      _sslOptions(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
   requiresElevatedPrivileges(false);
@@ -69,7 +72,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_sessionCache));
 
   options->addOption("--ssl.cipher-list",
-                     "ssl cipers to use, see OpenSSL documentation",
+                     "ssl ciphers to use, see OpenSSL documentation",
                      new StringParameter(&_cipherList));
 
   std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
@@ -129,7 +132,7 @@ void SslServerFeature::verifySslOptions() {
 
   LOG_TOPIC(DEBUG, arangodb::Logger::SSL)
       << "using SSL protocol version '"
-      << protocolName(protocol_e(_sslProtocol)) << "'";
+      << protocolName(SslProtocol(_sslProtocol)) << "'";
 
   if (!FileUtils::exists(_keyfile)) {
     LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "unable to find SSL keyfile '"
@@ -158,135 +161,139 @@ class BIOGuard {
 }
 
 boost::asio::ssl::context SslServerFeature::createSslContext() const {
-  // create context
-  auto sslContextOpt = ::sslContext(protocol_e(_sslProtocol), _keyfile);
+  try {
+    // create context
+    boost::asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+    
+    // and use this native handle
+    boost::asio::ssl::context::native_handle_type nativeContext =
+        sslContext.native_handle();
 
-  if (!sslContextOpt) {
+    // set cache mode
+    SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache
+                                                      ? SSL_SESS_CACHE_SERVER
+                                                      : SSL_SESS_CACHE_OFF);
+
+    if (_sessionCache) {
+      LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "using SSL session caching";
+    }
+
+    // set options
+    sslContext.set_options(static_cast<long>(_sslOptions));
+
+    if (!_cipherList.empty()) {
+      if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
+        LOG_TOPIC(ERR, arangodb::Logger::SSL) << "cannot set SSL cipher list '"
+                                              << _cipherList
+                                              << "': " << lastSSLError();
+        throw std::runtime_error("cannot create SSL context");
+      }
+    }
+
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+    if (!_ecdhCurve.empty()) {
+      int sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
+
+      if (sslEcdhNid == 0) {
+        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+            << "SSL error: " << lastSSLError()
+            << " Unknown curve name: " << _ecdhCurve;
+        throw std::runtime_error("cannot create SSL context");
+      }
+
+      // https://www.openssl.org/docs/manmaster/apps/ecparam.html
+      EC_KEY* ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
+      if (ecdhKey == nullptr) {
+        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+            << "SSL error: " << lastSSLError()
+            << ". unable to create curve by name: " << _ecdhCurve;
+        throw std::runtime_error("cannot create SSL context");
+      }
+
+      if (SSL_CTX_set_tmp_ecdh(nativeContext, ecdhKey) != 1) {
+        EC_KEY_free(ecdhKey);
+        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+            << "cannot set ECDH option" << lastSSLError();
+        throw std::runtime_error("cannot create SSL context");
+      }
+
+      EC_KEY_free(ecdhKey);
+      SSL_CTX_set_options(nativeContext, SSL_OP_SINGLE_ECDH_USE);
+    }
+#endif
+    
+    // set ssl context
+    int res = SSL_CTX_set_session_id_context(
+        nativeContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
+
+    if (res != 1) {
+      LOG_TOPIC(ERR, arangodb::Logger::SSL)
+          << "cannot set SSL session id context '" << _rctx
+          << "': " << lastSSLError();
+      throw std::runtime_error("cannot create SSL context");
+    }
+
+    // check CA
+    if (!_cafile.empty()) {
+      LOG_TOPIC(TRACE, arangodb::Logger::SSL)
+          << "trying to load CA certificates from '" << _cafile << "'";
+
+      int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), 0);
+
+      if (res == 0) {
+        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+            << "cannot load CA certificates from '" << _cafile
+            << "': " << lastSSLError();
+        throw std::runtime_error("cannot create SSL context");
+      }
+
+      STACK_OF(X509_NAME) * certNames;
+
+      certNames = SSL_load_client_CA_file(_cafile.c_str());
+
+      if (certNames == nullptr) {
+        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+            << "cannot load CA certificates from '" << _cafile
+            << "': " << lastSSLError();
+        throw std::runtime_error("cannot create SSL context");
+      }
+
+      if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
+        for (int i = 0; i < sk_X509_NAME_num(certNames); ++i) {
+          X509_NAME* cert = sk_X509_NAME_value(certNames, i);
+
+          if (cert) {
+            BIOGuard bout(BIO_new(BIO_s_mem()));
+
+            X509_NAME_print_ex(bout._bio, cert, 0,
+                              (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV |
+                                ASN1_STRFLGS_UTF8_CONVERT) &
+                                  ~ASN1_STRFLGS_ESC_MSB);
+
+            char* r;
+            long len = BIO_get_mem_data(bout._bio, &r);
+
+            LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "name: "
+                                                    << std::string(r, len);
+          }
+        }
+      }
+
+      SSL_CTX_set_client_CA_list(nativeContext, certNames);
+    }
+
+    sslContext.set_verify_mode(SSL_VERIFY_NONE);
+
+    return sslContext;
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::SSL)
+        << "failed to create SSL context: " << ex.what();
+    throw std::runtime_error("cannot create SSL context");
+  } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::SSL)
         << "failed to create SSL context, cannot create HTTPS server";
     throw std::runtime_error("cannot create SSL context");
   }
-
-  boost::asio::ssl::context sslContext(
-      boost::asio::ssl::context::method::sslv23);
-
-  // swap context out of optional
-  std::swap(sslContextOpt.get(), sslContext);
-
-  // and use this native handle
-  boost::asio::ssl::context::native_handle_type nativeContext =
-      sslContext.native_handle();
-
-  // set cache mode
-  SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache
-                                                    ? SSL_SESS_CACHE_SERVER
-                                                    : SSL_SESS_CACHE_OFF);
-
-  if (_sessionCache) {
-    LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "using SSL session caching";
-  }
-
-  // set options
-  SSL_CTX_set_options(nativeContext, (long)_sslOptions);
-
-  if (!_cipherList.empty()) {
-    if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
-      LOG_TOPIC(ERR, arangodb::Logger::SSL) << "cannot set SSL cipher list '"
-                                            << _cipherList
-                                            << "': " << lastSSLError();
-      throw std::runtime_error("cannot create SSL context");
-    }
-  }
-
-#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
-  int sslEcdhNid;
-  EC_KEY* ecdhKey;
-  sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
-
-  if (sslEcdhNid == 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::SSL)
-        << "SSL error: " << lastSSLError()
-        << " Unknown curve name: " << _ecdhCurve;
-    throw std::runtime_error("cannot create SSL context");
-  }
-
-  // https://www.openssl.org/docs/manmaster/apps/ecparam.html
-  ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
-  if (ecdhKey == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::SSL)
-        << "SSL error: " << lastSSLError()
-        << " Unable to create curve by name: " << _ecdhCurve;
-    throw std::runtime_error("cannot create SSL context");
-  }
-
-  SSL_CTX_set_tmp_ecdh(nativeContext, ecdhKey);
-  SSL_CTX_set_options(nativeContext, SSL_OP_SINGLE_ECDH_USE);
-  EC_KEY_free(ecdhKey);
-#endif
-
-  // set ssl context
-  int res = SSL_CTX_set_session_id_context(
-      nativeContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
-
-  if (res != 1) {
-    LOG_TOPIC(ERR, arangodb::Logger::SSL)
-        << "cannot set SSL session id context '" << _rctx
-        << "': " << lastSSLError();
-    throw std::runtime_error("cannot create SSL context");
-  }
-
-  // check CA
-  if (!_cafile.empty()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::SSL)
-        << "trying to load CA certificates from '" << _cafile << "'";
-
-    int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), 0);
-
-    if (res == 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::SSL)
-          << "cannot load CA certificates from '" << _cafile
-          << "': " << lastSSLError();
-      throw std::runtime_error("cannot create SSL context");
-    }
-
-    STACK_OF(X509_NAME) * certNames;
-
-    certNames = SSL_load_client_CA_file(_cafile.c_str());
-
-    if (certNames == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::SSL)
-          << "cannot load CA certificates from '" << _cafile
-          << "': " << lastSSLError();
-      throw std::runtime_error("cannot create SSL context");
-    }
-
-    if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
-      for (int i = 0; i < sk_X509_NAME_num(certNames); ++i) {
-        X509_NAME* cert = sk_X509_NAME_value(certNames, i);
-
-        if (cert) {
-          BIOGuard bout(BIO_new(BIO_s_mem()));
-
-          X509_NAME_print_ex(bout._bio, cert, 0,
-                             (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV |
-                              ASN1_STRFLGS_UTF8_CONVERT) &
-                                 ~ASN1_STRFLGS_ESC_MSB);
-
-          char* r;
-          long len = BIO_get_mem_data(bout._bio, &r);
-
-          LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "name: "
-                                                  << std::string(r, len);
-        }
-      }
-    }
-
-    SSL_CTX_set_client_CA_list(nativeContext, certNames);
-  }
-
-  sslContext.set_verify_mode(SSL_VERIFY_NONE);
-
-  return sslContext;
 }
 
 std::string SslServerFeature::stringifySslOptions(uint64_t opts) const {

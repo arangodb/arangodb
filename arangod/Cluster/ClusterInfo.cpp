@@ -431,6 +431,7 @@ void ClusterInfo::loadPlan() {
       decltype(_plannedDatabases) newDatabases;
       decltype(_plannedCollections) newCollections;
       decltype(_shards) newShards;
+      decltype(_shardServers) newShardServers;
       decltype(_shardKeys) newShardKeys;
 
       bool swapDatabases = false;
@@ -518,6 +519,7 @@ void ClusterInfo::loadPlan() {
               auto shards = std::make_shared<std::vector<std::string>>();
               for (auto const& p : *shardIDs) {
                 shards->push_back(p.first);
+                newShardServers.emplace(p.first, p.second);
               }
               // Sort by the number in the shard ID ("s0000001" for example):
               std::sort(shards->begin(), shards->end(),
@@ -526,6 +528,7 @@ void ClusterInfo::loadPlan() {
                                  std::strtol(b.c_str() + 1, nullptr, 10);
                         });
               newShards.emplace(std::make_pair(collectionId, shards));
+              
             } catch (std::exception const& ex) {
               // The plan contains invalid collection information.
               // This should not happen in healthy situations.
