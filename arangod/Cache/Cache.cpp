@@ -283,6 +283,11 @@ bool Cache::reportInsert(bool hadEviction) {
   if (((++_insertsTotal) & _evictionMask) == 0) {
     if (_insertEvictions.load() > _evictionThreshold) {
       shouldMigrate = true;
+      bool ok = _state.lock(triesGuarantee);
+      if (ok) {
+        _table->signalEvictions();
+        _state.unlock();
+      }
     }
     _insertEvictions = 0;
   }

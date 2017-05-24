@@ -81,8 +81,8 @@ Table::Table(uint32_t logSize)
       _mask((uint32_t)((_size - 1) << _shift)),
       _buffer(new uint8_t[(_size * BUCKET_SIZE) + Table::padding]),
       _buckets(reinterpret_cast<GenericBucket*>(
-          reinterpret_cast<uint64_t>((_buffer.get() + 63)) &
-          ~(static_cast<uint64_t>(0x3fU)))),
+          reinterpret_cast<uint64_t>((_buffer.get() + (BUCKET_SIZE - 1))) &
+          ~(static_cast<uint64_t>(BUCKET_SIZE - 1)))),
       _auxiliary(nullptr),
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),
@@ -243,7 +243,30 @@ bool Table::slotEmptied() {
           (_logSize > Table::minLogSize));
 }
 
-uint32_t Table::idealSize() const {
+void Table::signalEvictions() {
+  bool ok = _state.lock(triesGuarantee);
+  if (ok) {
+    if (!_state.isSet(State::Flag::evictions)) {
+      _state.toggleFlag(State::Flag::evictions);
+    }
+    _state.unlock();
+  }
+}
+
+uint32_t Table::idealSize() {
+  bool ok = _state.lock(triesGuarantee);
+  bool forceGrowth = false;
+  if (ok) {
+    forceGrowth = _state.isSet(State::Flag::evictions);
+    if (forceGrowth) {
+      _state.toggleFlag(State::Flag::evictions);
+    }
+    _state.unlock();
+  }
+  if (forceGrowth) {
+    return logSize() + 1;
+  }
+
   return (((static_cast<double>(_slotsUsed.load()) /
             static_cast<double>(_slotsTotal)) > Table::idealUpperRatio)
               ? (logSize() + 1)
