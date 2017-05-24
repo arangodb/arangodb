@@ -26,6 +26,7 @@
 // / @author Andreas Streichardt
 // //////////////////////////////////////////////////////////////////////////////
 
+const wait = require('internal').wait;
 const db = require('internal').db;
 const cluster = require('@arangodb/cluster');
 const expect = require('chai').expect;
@@ -206,6 +207,10 @@ describe('Cluster sync', function() {
       db._useDatabase('test');
       let collections = db._collections();
       expect(collections.map(collection => collection.name())).to.contain('s100001');
+      let count = 0;
+      while (db._collection('s100001').status() === ArangoCollection.STATUS_UNLOADING && count++ < 100) {
+        wait(0.1);
+      }
       expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
     });
     it('should unload an existing collection', function() {
@@ -255,6 +260,10 @@ describe('Cluster sync', function() {
       };
       cluster.executePlanForCollections(plan);
       db._useDatabase('test');
+      let count = 0;
+      while (db._collection('s100001').status() === ArangoCollection.STATUS_UNLOADING && count++ < 100) {
+        wait(0.1);
+      }
       expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
     });
     it('should delete a stale collection', function() {
@@ -1057,7 +1066,7 @@ describe('Cluster sync', function() {
         .that.has.property('new')
         .with.deep.equal(["_repltest"]);
     });
-    it('should report newly assumed leadership for which we were a follower previously and remove any leaders and followers (these have to reregister themselves separateley)', function() {
+    it('should report newly assumed leadership for which we were a follower previously and remove any leaders and followers (these have to reregister themselves separately)', function() {
       let props = { planId: '888111' };
       let collection = db._create('testi', props);
       collection.assumeLeadership();
