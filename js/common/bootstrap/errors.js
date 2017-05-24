@@ -164,6 +164,7 @@
     "ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE" : { "code" : 1484, "message" : "chain of distributeShardsLike references" },
     "ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE" : { "code" : 1485, "message" : "must not drop collection while another has a distributeShardsLike attribute pointing to it" },
     "ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE" : { "code" : 1486, "message" : "must not have a distributeShardsLike attribute pointing to an unknown collection" },
+    "ERROR_CLUSTER_INSUFFICIENT_DBSERVERS" : { "code" : 1487, "message" : "the number of current dbservers is lower than the requested replicationFactor" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
