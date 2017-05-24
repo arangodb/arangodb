@@ -165,6 +165,19 @@ bool Cache::isResizing() {
   return resizing;
 }
 
+bool Cache::isMigrating() {
+  bool migrating = false;
+  _state.lock();
+  if (isOperational()) {
+    _metadata.lock();
+    migrating = _metadata.isSet(State::Flag::migrating);
+    _metadata.unlock();
+    _state.unlock();
+  }
+
+  return migrating;
+}
+
 bool Cache::isShutdown() {
   _state.lock();
   bool shutdown = !isOperational();
@@ -189,7 +202,7 @@ void Cache::startOperation() { ++_openOperations; }
 
 void Cache::endOperation() { --_openOperations; }
 
-bool Cache::isMigrating() const {
+bool Cache::isMigratingLocked() const {
   TRI_ASSERT(_state.isLocked());
   return _state.isSet(State::Flag::migrating);
 }
@@ -216,7 +229,7 @@ void Cache::requestGrow() {
 void Cache::requestMigrate(uint32_t requestedLogSize) {
   bool ok = _state.lock(Cache::triesGuarantee);
   if (ok) {
-    if (!isMigrating() &&
+    if (!isMigratingLocked() &&
         (std::chrono::steady_clock::now() > _migrateRequestTime)) {
       _metadata.lock();
       ok = !_metadata.isSet(State::Flag::migrating) &&
