@@ -27,7 +27,7 @@ Default: 2.
 Minimum number of write buffers that will be merged together when flushing to
 normal storage. Default: 1.
 
-`--rocksdb.delayed_write_rate` (Hidden)
+`--rocksdb.delayed-write-rate` (Hidden)
 
 Limited write rate to DB (in bytes per second) if we are writing to the last
 in-memory buffer allowed and we allow more than 3 buffers. Default: 16MiB/s.
@@ -113,6 +113,10 @@ The number of bits used to shard the block cache to allow concurrent operations.
 To keep individual shards at a reasonable size (i.e. at least 512KB), keep this
 value to at most `block-cache-shard-bits / 512KB`. Default: `block-cache-size /
 2^19`.
+  
+`--rocksdb.table-block-size`
+
+Approximate size of user data (in bytes) packed per block for uncompressed data.
 
 `--rocksdb.recycle-log-file-num` (Hidden)
 
