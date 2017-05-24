@@ -24,9 +24,9 @@
 
 #include "LogAppender.h"
 
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/shell-colors.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderSyslog.h"
 #include "Logger/LogAppenderTty.h"
@@ -224,11 +224,9 @@ void LogAppender::log(LogMessage* message) {
 
 void LogAppender::writeStderr(LogLevel level, std::string const& msg) {
   if (level == LogLevel::FATAL || level == LogLevel::ERR) {
-    fprintf(stderr, TRI_SHELL_COLOR_RED "%s" TRI_SHELL_COLOR_RESET "\n",
-            msg.c_str());
+    fprintf(stderr, "%s%s%s\n", ShellColorsFeature::SHELL_COLOR_RED, msg.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
   } else if (level == LogLevel::WARN) {
-    fprintf(stderr, TRI_SHELL_COLOR_YELLOW "%s" TRI_SHELL_COLOR_RESET "\n",
-            msg.c_str());
+    fprintf(stderr, "%s%s%s\n", ShellColorsFeature::SHELL_COLOR_YELLOW, msg.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
   } else {
     fprintf(stderr, "%s\n", msg.c_str());
   }

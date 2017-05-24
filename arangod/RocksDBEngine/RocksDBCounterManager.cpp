@@ -356,11 +356,20 @@ void RocksDBCounterManager::readIndexEstimates() {
                                     iter->value().size() - sizeof(uint64_t));
     // If this hits we have two estimates for the same index
     TRI_ASSERT(_estimators.find(objectId) == _estimators.end());
-    _estimators.emplace(
-        objectId,
-        std::make_pair(lastSeqNumber,
-                       std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
-                           estimateSerialisation)));
+    try {
+      if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateSerialisation)) {
+        _estimators.emplace(
+            objectId,
+            std::make_pair(
+                lastSeqNumber,
+                std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
+                    estimateSerialisation)));
+      }
+    } catch (...) {
+      // Nothing to do, if the estimator fails to create we let it be recreated.
+      // Just validate that no corrupted memory was produced.
+      TRI_ASSERT(_estimators.find(objectId) == _estimators.end());
+    }
   }
 }
 
@@ -421,11 +430,12 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
   uint64_t _maxTick = 0;
   uint64_t _maxHLC = 0;
 
-  explicit WBReader(std::unordered_map<
-           uint64_t,
-           std::pair<uint64_t,
-                     std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
-               estimators)
+  explicit WBReader(
+      std::unordered_map<
+          uint64_t,
+          std::pair<uint64_t,
+                    std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
+          estimators)
       : _estimators(estimators), currentSeqNum(0) {}
 
   ~WBReader() {

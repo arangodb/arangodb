@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Aql/QueryString.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "VocBase/vocbase.h"
@@ -43,9 +44,9 @@ PlanCache::PlanCache() : _lock(), _plans() {}
 PlanCache::~PlanCache() {}
 
 /// @brief lookup a plan in the cache
-std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
-                                                  char const* queryString,
-                                                  size_t queryStringLength) {
+std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase,
+                                                  uint64_t queryHash, 
+                                                  QueryString const& queryString) {
   READ_LOCKER(readLocker, _lock);
 
   auto it = _plans.find(vocbase);
@@ -55,7 +56,7 @@ std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase, uint64
     return std::shared_ptr<PlanCacheEntry>();
   }
 
-  auto it2 = (*it).second.find(hash);
+  auto it2 = (*it).second.find(queryHash);
   
   if (it2 == (*it).second.end()) {
     // plan not found in cache
@@ -68,10 +69,10 @@ std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase, uint64
 
 /// @brief store a plan in the cache
 void PlanCache::store(
-    TRI_vocbase_t* vocbase, uint64_t hash, char const* queryString,
-    size_t queryStringLength, ExecutionPlan const* plan) {
+    TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString,
+    ExecutionPlan const* plan) {
  
-  auto entry = std::make_unique<PlanCacheEntry>(std::string(queryString, queryStringLength), plan->toVelocyPack(plan->getAst(), true)); 
+  auto entry = std::make_unique<PlanCacheEntry>(queryString.extract(SIZE_MAX), plan->toVelocyPack(plan->getAst(), true)); 
 
   WRITE_LOCKER(writeLocker, _lock);
 

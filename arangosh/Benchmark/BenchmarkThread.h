@@ -90,10 +90,10 @@ class BenchmarkThread : public arangodb::Thread {
       FATAL_ERROR_EXIT();
     }
 
-    _httpClient->setLocationRewriter(this, &rewriteLocation);
+    _httpClient->params().setLocationRewriter(this, &rewriteLocation);
 
-    _httpClient->setUserNamePassword("/", _username, _password);
-    _httpClient->setKeepAlive(_keepAlive);
+    _httpClient->params().setUserNamePassword("/", _username, _password);
+    _httpClient->params().setKeepAlive(_keepAlive);
 
     // test the connection
     httpclient::SimpleHttpResult* result =

@@ -31,6 +31,8 @@ WorkMonitorFeature::WorkMonitorFeature(
     : ApplicationFeature(server, "WorkMonitor") {
   setOptional(false);
   requiresElevatedPrivileges(false);
+
+  startsAfter("ShellColors");
 }
 
 void WorkMonitorFeature::start() { WorkMonitor::initialize(); }

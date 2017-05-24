@@ -46,10 +46,10 @@ static std::atomic<arangodb::aql::QueryCacheMode> Mode(CACHE_ON_DEMAND);
 
 /// @brief create a cache entry
 QueryCacheResultEntry::QueryCacheResultEntry(
-    uint64_t hash, char const* queryString, size_t queryStringLength,
+    uint64_t hash, QueryString const& queryString,
     std::shared_ptr<VPackBuilder> queryResult, std::vector<std::string> const& collections)
     : _hash(hash),
-      _queryString(queryString, queryStringLength),
+      _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
       _collections(collections),
       _prev(nullptr),
@@ -105,7 +105,7 @@ QueryCacheDatabaseEntry::~QueryCacheDatabaseEntry() {
 
 /// @brief lookup a query result in the database-specific cache
 QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup(
-    uint64_t hash, char const* queryString, size_t queryStringLength) {
+    uint64_t hash, QueryString const& queryString) {
   auto it = _entriesByHash.find(hash);
 
   if (it == _entriesByHash.end()) {
@@ -115,8 +115,8 @@ QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup(
 
   // found some result in cache
 
-  if (queryStringLength != (*it).second->_queryString.size() ||
-      memcmp(queryString, (*it).second->_queryString.c_str(), queryStringLength) != 0) {
+  if (queryString.size() != (*it).second->_queryString.size() ||
+      memcmp(queryString.data(), (*it).second->_queryString.c_str(), queryString.size()) != 0) {
     // found something, but obviously the result of a different query with the
     // same hash
     return nullptr;
@@ -362,8 +362,7 @@ std::string QueryCache::modeString(QueryCacheMode mode) {
 
 /// @brief lookup a query result in the cache
 QueryCacheResultEntry* QueryCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
-                                          char const* queryString,
-                                          size_t queryStringLength) {
+                                          QueryString const& queryString) {
   auto const part = getPart(vocbase);
   READ_LOCKER(readLocker, _entriesLock[part]);
 
@@ -374,17 +373,16 @@ QueryCacheResultEntry* QueryCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
     return nullptr;
   }
 
-  return (*it).second->lookup(hash, queryString, queryStringLength);
+  return (*it).second->lookup(hash, queryString);
 }
 
 /// @brief store a query in the cache
 /// if the call is successful, the cache has taken over ownership for the
 /// query result!
 QueryCacheResultEntry* QueryCache::store(
-    TRI_vocbase_t* vocbase, uint64_t hash, char const* queryString,
-    size_t queryStringLength, std::shared_ptr<VPackBuilder> result,
+    TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString,
+    std::shared_ptr<VPackBuilder> result,
     std::vector<std::string> const& collections) {
-
 
   if (!result->slice().isArray()) {
     return nullptr;
@@ -395,7 +393,7 @@ QueryCacheResultEntry* QueryCache::store(
 
   // create the cache entry outside the lock
   auto entry = std::make_unique<QueryCacheResultEntry>(
-      hash, queryString, queryStringLength, result, collections);
+      hash, queryString, result, collections);
 
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
@@ -480,14 +478,6 @@ void QueryCache::invalidate() {
     // clearing the cache
     invalidate(i);
   }
-}
-
-/// @brief hashes a query string
-uint64_t QueryCache::hashQueryString(char const* queryString,
-                                     size_t queryLength) const {
-  TRI_ASSERT(queryString != nullptr);
-
-  return fasthash64(queryString, queryLength, 0x3123456789abcdef);
 }
 
 /// @brief get the query cache instance

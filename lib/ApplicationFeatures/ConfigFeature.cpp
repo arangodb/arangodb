@@ -49,6 +49,7 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
+  startsAfter("ShellColors");
 }
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

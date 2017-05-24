@@ -71,9 +71,9 @@ class Parser {
 
   /// @brief return the scanner
   inline void* scanner() const { return _scanner; }
-
+  
   /// @brief a pointer to the start of the query string
-  inline char const* queryString() const { return _query->queryString(); }
+  char const* queryStringStart() const { return _queryStringStart; }
 
   /// @brief return the remaining length of the query string to process
   inline size_t remainingLength() const { return _remainingLength; }
@@ -149,6 +149,10 @@ class Parser {
   void* peekStack();
 
  private:
+  /// @brief a pointer to the start of the query string
+  QueryString const& queryString() const { return _query->queryString(); }
+
+ private:
   /// @brief the query
   Query* _query;
 
@@ -157,6 +161,8 @@ class Parser {
 
   /// @brief lexer / scanner used when parsing the query (Aql/tokens.ll)
   void* _scanner;
+
+  char const* _queryStringStart;
 
   /// @brief currently processed part of the query string
   char const* _buffer;

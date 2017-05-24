@@ -275,7 +275,7 @@ size_t State::removeConflicts(query_t const& transactions) { // Under MUTEX in A
                                     stringify(idx) + "' REMOVE l IN log");
 
               arangodb::aql::Query query(
-                false, _vocbase, aql.c_str(), aql.size(), bindVars, nullptr,
+                false, _vocbase, aql::QueryString(aql), bindVars, nullptr,
                 arangodb::aql::PART_MAIN);
 
               auto queryResult = query.execute(_queryRegistry);
@@ -537,7 +537,7 @@ bool State::loadCompacted() {
   
   std::string const aql(
       std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
-  arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
+  arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
@@ -576,7 +576,7 @@ bool State::loadOrPersistConfiguration() {
   std::string const aql(
       std::string("FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg"));
 
-  arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
+  arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
@@ -652,7 +652,7 @@ bool State::loadRemaining() {
   bindVars->close();
 
   std::string const aql(std::string("FOR l IN log SORT l._key RETURN l"));
-  arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
+  arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
@@ -755,7 +755,7 @@ bool State::compactPersisted(arangodb::consensus::index_t cind) {
   std::string const aql(std::string("FOR l IN log FILTER l._key < \"") +
                         i_str.str() + "\" REMOVE l IN log");
 
-  arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
+  arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
@@ -785,7 +785,7 @@ bool State::removeObsolete(arangodb::consensus::index_t cind) {
     std::string const aql(std::string("FOR c IN compact FILTER c._key < \"") +
                           i_str.str() + "\" REMOVE c IN compact");
 
-    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(),
+    arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
@@ -876,9 +876,9 @@ query_t State::allLogs() const {
   std::string const comp("FOR c IN compact SORT c._key RETURN c");
   std::string const logs("FOR l IN log SORT l._key RETURN l");
 
-  arangodb::aql::Query compq(false, _vocbase, comp.c_str(), comp.size(),
+  arangodb::aql::Query compq(false, _vocbase, aql::QueryString(comp),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
-  arangodb::aql::Query logsq(false, _vocbase, logs.c_str(), logs.size(),
+  arangodb::aql::Query logsq(false, _vocbase, aql::QueryString(logs),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
   auto compqResult = compq.execute(QueryRegistryFeature::QUERY_REGISTRY);

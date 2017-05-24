@@ -42,6 +42,7 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/QueryString.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -744,8 +745,8 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const queryString(TRI_ObjectToString(args[0]));
 
-  arangodb::aql::Query query(true, vocbase, queryString.c_str(),
-                             queryString.size(), nullptr, nullptr,
+  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
+                             nullptr, nullptr,
                              arangodb::aql::PART_MAIN);
 
   auto parseResult = query.parse();
@@ -882,8 +883,8 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
-  arangodb::aql::Query query(true, vocbase, queryString.c_str(),
-                             queryString.size(), bindVars, options,
+  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
+                             bindVars, options,
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.explain();
@@ -1070,8 +1071,8 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, vocbase, queryString.c_str(),
-                             queryString.size(), bindVars, options,
+  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
+                             bindVars, options,
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(

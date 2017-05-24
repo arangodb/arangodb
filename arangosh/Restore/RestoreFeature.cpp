@@ -678,9 +678,9 @@ void RestoreFeature::start() {
 
   std::string dbName = client->databaseName();
 
-  _httpClient->setLocationRewriter(static_cast<void*>(client),
+  _httpClient->params().setLocationRewriter(static_cast<void*>(client),
                                    &rewriteLocation);
-  _httpClient->setUserNamePassword("/", client->username(), client->password());
+  _httpClient->params().setUserNamePassword("/", client->username(), client->password());
 
   int err = TRI_ERROR_NO_ERROR;
   std::string versionString = _httpClient->getServerVersion(&err);

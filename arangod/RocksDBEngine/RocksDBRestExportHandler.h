@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "RocksDBEngine/RocksDBCollectionExport.h"
 #include "Utils/CollectionExport.h"
 
 namespace arangodb {
