@@ -102,7 +102,7 @@ class WriteLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-      LOG_TOPIC(WARN, arangodb::Logger::PERFORMANCE) << "WriteLocker " << _file << ":" << _line << " took " << _time << " s";
+      LOG_TOPIC(INFO, arangodb::Logger::PERFORMANCE) << "WriteLocker " << _file << ":" << _line << " took " << _time << " s";
     }
 #endif
   }

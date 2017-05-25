@@ -38,29 +38,35 @@ EnvironmentFeature::EnvironmentFeature(
 }
 
 void EnvironmentFeature::prepare() {
-#if 0
   if (sizeof(void*) == 4) {
     // 32 bit build
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "this is a 32 bit build of ArangoDB. "
-               << "it is recommended to run a 64 bit build instead because it can "
-               << "address significantly bigger regions of memory";
+    LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+        << "this is a 32 bit build of ArangoDB. "
+        << "it is recommended to run a 64 bit build instead because it can "
+        << "address significantly bigger regions of memory";
   }
 
 #ifdef __linux__
 
 #ifdef __GLIBC__
   char const* v = getenv("GLIBCXX_FORCE_NEW");
+
   if (v == nullptr) {
     // environment variable not set
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "environment variable GLIBCXX_FORCE_NEW' is not set. "
-               << "it is recommended to set it to some value to avoid memory pooling in glibc++";
+    LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+        << "environment variable GLIBCXX_FORCE_NEW' is not set. "
+        << "it is recommended to set it to some value to avoid memory pooling "
+           "in glibc++";
+    LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+        << "execute 'export GLIBCXX_FORCE_NEW=1'";
   }
 #endif
 
   try {
-    std::string value = basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
+    std::string value =
+        basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
     uint64_t v = basics::StringUtils::uint64(value);
-    if (v == 2) {
+    if (v != 0 && v != 1) {
       // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
       //
       //   When this flag is 0, the kernel attempts to estimate the amount
@@ -69,15 +75,19 @@ void EnvironmentFeature::prepare() {
       //   memory until it actually runs out.
       //   When this flag is 2, the kernel uses a "never overcommit"
       //   policy that attempts to prevent any overcommit of memory.
-      LOG_TOPIC(WARN, Logger::FIXME) << "/proc/sys/vm/overcommit_memory is set to '" 
-                 << v << "'. it is recommended to set it to a value of 0 or 1";
+      LOG_TOPIC(WARN, Logger::MEMORY)
+          << "/proc/sys/vm/overcommit_memory is set to '" << v
+          << "'. It is recommended to set it to a value of 0 or 1";
+      LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo 0 > "
+                                         "/proc/sys/vm/overcommit_memory\"'";
     }
   } catch (...) {
     // file not found or value not convertible into integer
   }
-  
+
   try {
-    std::string value = basics::FileUtils::slurp("/proc/sys/vm/zone_reclaim_mode");
+    std::string value =
+        basics::FileUtils::slurp("/proc/sys/vm/zone_reclaim_mode");
     uint64_t v = basics::StringUtils::uint64(value);
     if (v != 0) {
       // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
@@ -85,31 +95,52 @@ void EnvironmentFeature::prepare() {
       //    This is value ORed together of
       //    1 = Zone reclaim on
       //    2 = Zone reclaim writes dirty pages out
-      //    4 =  Zone reclaim swaps pages
-      // 
+      //    4 = Zone reclaim swaps pages
+      //
       // https://www.poempelfox.de/blog/2010/03/19/
-      LOG_TOPIC(WARN, Logger::FIXME) << "/proc/sys/vm/zone_reclaim_mode is set to '" 
-                 << v << "'. it is recommended to set it to a value of 0";
+      LOG_TOPIC(WARN, Logger::PERFORMANCE)
+          << "/proc/sys/vm/zone_reclaim_mode is set to '" << v
+          << "'. It is recommended to set it to a value of 0";
+      LOG_TOPIC(WARN, Logger::PERFORMANCE)
+          << "execute 'sudo bash -c \"echo 0 > "
+             "/proc/sys/vm/zone_reclaim_mode\"'";
     }
   } catch (...) {
     // file not found or value not convertible into integer
   }
 
-  try {
-    std::string value = basics::FileUtils::slurp("/sys/kernel/mm/transparent_hugepage/enabled");
-    size_t start = value.find('[');
-    size_t end = value.find(']');
-    if (start != std::string::npos && end != std::string::npos && start < end && end - start >= 4) {
-      value = value.substr(start + 1, end - start - 1);
-      if (value == "always") {
-        LOG_TOPIC(WARN, Logger::FIXME) << "/sys/kernel/mm/transparent_hugepage/enabled is set to '" 
-                   << value << "'. it is recommended to set it to a value of 'never' or 'madvise'";
-      }
-    }
-  } catch (...) {
-    // file not found
-  }
-#endif
+  bool showHuge = false;
+  std::vector<std::string> paths = {
+      "/sys/kernel/mm/transparent_hugepage/enabled",
+      "/sys/kernel/mm/transparent_hugepage/defrag"};
 
+  for (auto file : paths) {
+    try {
+      std::string value = basics::FileUtils::slurp(file);
+      size_t start = value.find('[');
+      size_t end = value.find(']');
+
+      if (start != std::string::npos && end != std::string::npos &&
+          start < end && end - start >= 4) {
+        value = value.substr(start + 1, end - start - 1);
+        if (value == "always") {
+          LOG_TOPIC(WARN, Logger::MEMORY)
+              << file << " is set to '" << value
+              << "'. It is recommended to set it to a value of 'never' "
+                 "or 'madvise'";
+          showHuge = true;
+        }
+      }
+    } catch (...) {
+      // file not found
+    }
+  }
+
+  if (showHuge) {
+    for (auto file : paths) {
+      LOG_TOPIC(WARN, Logger::MEMORY)
+          << "execute 'sudo bash -c \"echo madvise > " << file << "\"'";
+    }
+  }
 #endif
 }
