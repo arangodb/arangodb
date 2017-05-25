@@ -1,6 +1,18 @@
 Operating System Configuration
 ==============================
 
+File Systems
+------------
+
+(LINUX)
+
+We recommend **not** to use BTRFS on linux, it's known to not work
+well in conjunction with ArangoDB.  We experienced that arangodb
+facing latency issues on accessing its database files on BTRFS
+partitions.  In conjunction with BTRFS and AUFS we also saw data loss
+on restart.
+
+
 Virtual Memory Page Sizes
 --------------------------
 
@@ -67,16 +79,13 @@ This is value ORed together of
 - 2 = Zone reclaim writes dirty pages out
 - 4 = Zone reclaim swaps pages
 
-32bit
------
-
-While it is possible to compile ArangoDB on 32bit system, this is not a
-recommended environment. 64bit systems can address a significantly bigger
-memory region.
-
 NUMA
 ----
 
+Multi-prozessor systems often have non-uniform Access Memory (NUMA). ArangoDB
+should be started with interleave on such system. This can be archived using
+
+    numactl --interleave=all arangod ...
 
 Environment Variables
 ---------------------
@@ -92,3 +101,11 @@ Execute
 
 
 before starting `arangod`.
+
+32bit
+-----
+
+While it is possible to compile ArangoDB on 32bit system, this is not a
+recommended environment. 64bit systems can address a significantly bigger
+memory region.
+
