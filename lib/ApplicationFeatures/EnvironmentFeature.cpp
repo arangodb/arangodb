@@ -142,5 +142,30 @@ void EnvironmentFeature::prepare() {
           << "execute 'sudo bash -c \"echo madvise > " << file << "\"'";
     }
   }
+
+  bool numa = FileUtils::exists("/sys/devices/system/node/node1");
+
+  if (numa) {
+    try {
+      std::string value = basics::FileUtils::slurp("/proc/self/numa_maps");
+      auto values = basics::StringUtils::split(value, '\n', '\0');
+
+      if (!values.empty()) {
+        auto first = values[0];
+        auto where = first.find(' ');
+
+        if (where != std::string::npos &&
+            !StringUtils::isPrefix(first.substr(where), " interleave")) {
+          LOG_TOPIC(WARN, Logger::MEMORY)
+              << "It is recommended to set NUMA to interleaved.";
+          LOG_TOPIC(WARN, Logger::MEMORY)
+              << "put 'numactl --interleave=all' in front of your command";
+        }
+      }
+    } catch (...) {
+      // file not found
+    }
+  }
+
 #endif
 }
