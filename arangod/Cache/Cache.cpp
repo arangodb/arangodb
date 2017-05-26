@@ -115,6 +115,15 @@ uint64_t Cache::usage() {
   return usage;
 }
 
+void Cache::sizeHint(uint64_t numElements) {
+  uint64_t numBuckets = static_cast<uint64_t>(static_cast<double>(numElements)
+    / (static_cast<double>(_slotsPerBucket) * Table::idealUpperRatio));
+  uint32_t requestedLogSize = 0;
+  for (; (static_cast<uint64_t>(1) << requestedLogSize) < numBuckets;
+    requestedLogSize++) {}
+  requestMigrate(requestedLogSize);
+}
+
 std::pair<double, double> Cache::hitRates() {
   double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");

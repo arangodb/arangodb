@@ -39,6 +39,8 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class Table : public std::enable_shared_from_this<Table> {
  public:
+   static constexpr double idealLowerRatio = 0.05;
+   static constexpr double idealUpperRatio = 0.33;
   static const uint32_t minLogSize;
   static const uint32_t maxLogSize;
   static constexpr uint32_t standardLogSizeAdjustment = 6;
@@ -186,9 +188,6 @@ class Table : public std::enable_shared_from_this<Table> {
   uint32_t idealSize();
 
  private:
-  static constexpr double idealLowerRatio = 0.05;
-  static constexpr double idealUpperRatio = 0.33;
-
   State _state;
 
   uint32_t _logSize;

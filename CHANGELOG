@@ -1,6 +1,8 @@
 devel
 -----
 
+* added checks for memory managment and warn (i. e. if hugepages are enabled)
+
 * set default SSL cipher suite string to "HIGH:!EXPORT:!aNULL@STRENGTH"
 
 * fixed issue #2469: Authentication = true does not protect foxx-routes

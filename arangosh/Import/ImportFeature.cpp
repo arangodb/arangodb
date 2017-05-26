@@ -193,7 +193,7 @@ void ImportFeature::validateOptions(
     _chunkSize = MaxBatchSize;
   }
 
-  if (_threadCount <= 1) {
+  if (_threadCount < 1) {
     // it's not sensible to use just one thread
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --threads value to "
                                              << 1;
@@ -309,6 +309,7 @@ void ImportFeature::start() {
   if (_typeImport == "csv" || _typeImport == "tsv") {
     std::cout << "separator:              " << _separator << std::endl;
   }
+  std::cout << "threads:              " << _threadCount << std::endl;
 
   std::cout << "connect timeout:        " << client->connectionTimeout()
             << std::endl;

@@ -30,6 +30,7 @@
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/JemallocFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -144,6 +145,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new DatabasePathFeature(&server));
     server.addFeature(new EndpointFeature(&server));
     server.addFeature(new EngineSelectorFeature(&server));
+    server.addFeature(new EnvironmentFeature(&server));
     server.addFeature(new FeatureCacheFeature(&server));
     server.addFeature(new FileDescriptorsFeature(&server));
     server.addFeature(new FoxxQueuesFeature(&server));

@@ -177,7 +177,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(_appPath, "javascript.app-directory", true);
+  ctx->normalizePath(_appPath, "javascript.app-path", true);
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
