@@ -30,7 +30,10 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
+#include "VocBase/LogicalCollection.h"
+#include <iostream>
 
 using namespace arangodb;
 
@@ -132,14 +135,35 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   if (!AccessMode::isWriteOrExclusive(accessType) && (isRunning() && !_options.allowImplicitCollections)) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
-  
+
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxCollection == nullptr);
-    
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   trxCollection = engine->createTransactionCollection(this, cid, accessType, nestingLevel);
-  
+
   TRI_ASSERT(trxCollection != nullptr);
+
+  // std::cout << "SingleCollectionTransaction::lockRead() database: " /*<< documentCollection()->dbName()*/ << ", collection: " << trxCollection->collectionName() << "\n";
+/*
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
+    ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
+
+    if (ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(trxCollection->collectionName()) == AuthLevel::NONE) {
+      std::cout << "collection AuthLevel::NONE\n";
+      delete trxCollection;
+      return TRI_ERROR_OUT_OF_MEMORY;
+    } // if
+  } else
+     std::cout << "is nullptr\n";*/
+     try {
+      auto const *logCol = _vocbase->lookupCollection(cid);
+      std::string colName;
+
+      if (logCol != nullptr) colName = logCol->name();
+      std::cout << colName <<  " continue\n";
+     } catch(...) {}
 
   // insert collection at the correct position
   try {

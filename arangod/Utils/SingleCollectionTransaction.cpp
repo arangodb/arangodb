@@ -25,12 +25,10 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/ExecContext.h"
 #include "Utils/OperationResult.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
-#include <iostream>
 
 using namespace arangodb;
 
@@ -103,22 +101,6 @@ std::string SingleCollectionTransaction::name() {
 
 /// @brief explicitly lock the underlying collection for read access
 Result SingleCollectionTransaction::lockRead() {
-  std::cout << "SingleCollectionTransaction::lockRead() database: " << documentCollection()->dbName() << ", collection: " << name() << "\n";
-  std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
-
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
-
-    if (ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(name()) == AuthLevel::NONE) {
-      std::cout << "collection AuthLevel::NONE\n";
-      return Result(TRI_ERROR_HTTP_UNAUTHORIZED);
-    } // if
-  } else
-    std::cout << "is nullptr\n";
-
-
-
-  std::cout << "return lock()\n";
   return lock(trxCollection(), AccessMode::Type::READ);
 }
 
@@ -129,6 +111,5 @@ Result SingleCollectionTransaction::unlockRead() {
 
 /// @brief explicitly lock the underlying collection for write access
 Result SingleCollectionTransaction::lockWrite() {
-  std::cout << "SingleCollectionTransaction::lockWrite()\n";
   return lock(trxCollection(), AccessMode::Type::WRITE);
 }
