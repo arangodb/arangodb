@@ -97,6 +97,36 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
+  try {
+    auto const *logCol = _vocbase->lookupCollection(cid);
+    std::string colName;
+
+    if (logCol != nullptr) {
+      colName = logCol->name();
+
+    if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+      std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
+      ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
+
+      AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(colName);
+
+      if (level == AuthLevel::NONE) {
+        std::cout << "collection AuthLevel::NONE\n";
+        return TRI_ERROR_OUT_OF_MEMORY;
+      } // if
+
+      if (level == AuthLevel::RO && accessType == AccessMode::Type::WRITE) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    } else
+      std::cout << "is nullptr\n";
+    } // if
+    std::cout << colName <<  " continue\n";
+  } catch(...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid 
   //            << ", accessType: " << accessType 
   //            << ", nestingLevel: " << nestingLevel 
@@ -145,25 +175,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   TRI_ASSERT(trxCollection != nullptr);
 
   // std::cout << "SingleCollectionTransaction::lockRead() database: " /*<< documentCollection()->dbName()*/ << ", collection: " << trxCollection->collectionName() << "\n";
-/*
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
-    ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
 
-    if (ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(trxCollection->collectionName()) == AuthLevel::NONE) {
-      std::cout << "collection AuthLevel::NONE\n";
-      delete trxCollection;
-      return TRI_ERROR_OUT_OF_MEMORY;
-    } // if
-  } else
-     std::cout << "is nullptr\n";*/
-     try {
-      auto const *logCol = _vocbase->lookupCollection(cid);
-      std::string colName;
-
-      if (logCol != nullptr) colName = logCol->name();
-      std::cout << colName <<  " continue\n";
-     } catch(...) {}
 
   // insert collection at the correct position
   try {
