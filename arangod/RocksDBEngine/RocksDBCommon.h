@@ -110,7 +110,7 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 
 /// Iterator over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
-                          RocksDBKeyBounds const&);
+                          rocksdb::ColumnFamilyHandle*, RocksDBKeyBounds const&);
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
@@ -128,12 +128,11 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
 template <typename T>  // T is a invokeable that takes a rocksdb::Iterator*
 void iterateBounds(
     RocksDBKeyBounds const& bounds, T callback,
-    rocksdb::ReadOptions const& options = rocksdb::ReadOptions{}) {
-  auto cmp = globalRocksEngine()->cmp();
-  auto const end = bounds.end();
+    rocksdb::ReadOptions options = rocksdb::ReadOptions()) {
+  rocksdb::Slice const end = bounds.end();
+  options.iterate_upper_bound = &end;// save to use on rocksb::DB directly
   std::unique_ptr<rocksdb::Iterator> it(globalRocksDB()->NewIterator(options));
-  for (it->Seek(bounds.start());
-       it->Valid() && cmp->Compare(it->key(), end) < 0; it->Next()) {
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     callback(it.get());
   }
 }

@@ -48,6 +48,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
+
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
 
@@ -120,24 +122,26 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _reverse(reverse),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
       _iterator(),
+      _cmp(index->comparator())
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _index(index),
+      , _index(index)
 #endif
-      _cmp(index->comparator()) {
-
+{
   // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  TRI_ASSERT(state != nullptr);
-
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
 
   // intentional copy of the read options 
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = true;  
-  _iterator = mthds->NewIterator(options);
-
+  options.fill_cache = true;
+  _iterator = mthds->NewIterator(options, index->columnFamily());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  rocksdb::ColumnFamilyDescriptor desc;
+  index->columnFamily()->GetDescriptor(&desc);
+  TRI_ASSERT(desc.options.prefix_extractor);
+#endif
+  
   if (reverse) {
     _iterator->SeekForPrev(_bounds.end());
   } else {
@@ -157,7 +161,7 @@ bool RocksDBAllIndexIterator::outOfRange() const {
 bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid()) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -165,6 +169,9 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   }
 
   while (limit > 0) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+#endif
     RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
     cb(token);
 
@@ -176,7 +183,7 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
       _iterator->Next();
     }
 
-    if (!_iterator->Valid()) {
+    if (!_iterator->Valid() || outOfRange()) {
       return false;
     }
   }
@@ -260,7 +267,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = false;
-  _iterator = mthds->NewIterator(options);
+  _iterator = mthds->NewIterator(options, index->columnFamily());
   
   _total = collection->numberDocuments(trx);
   uint64_t off = RandomGenerator::interval(_total - 1);
@@ -286,7 +293,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
 bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid()) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -325,7 +332,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(
                            StaticStrings::KeyString, false)}}),
-                   true, false,
+                   true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
                    false) {
                    // !ServerState::instance()->isCoordinator() /*useCache*/) {
@@ -392,7 +399,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   auto& options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
 
-  arangodb::Result r = mthds->Get(key, value.buffer());
+  arangodb::Result r = mthds->Get(_cf, key, value.buffer());
   if (!r.ok()) {
     return RocksDBToken();
   }
@@ -428,13 +435,13 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  if (mthd->Exists(key)) {
+  if (mthd->Exists(_cf, key)) {
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
-  Result status = mthd->Put(key, value.string(), rocksutils::index);
+  Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
   return status.errorNumber();
 }
 
@@ -454,7 +461,7 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-  Result r = mthds->Delete(key);
+  Result r = mthds->Delete(_cf, key);
       //rocksutils::convertStatus(status, rocksutils::StatusHint::index);
   return r.errorNumber();
 }

@@ -60,7 +60,7 @@ DocumentIdentifierToken RocksDBFulltextIndex::toDocumentIdentifierToken(
 RocksDBFulltextIndex::RocksDBFulltextIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     VPackSlice const& info)
-    : RocksDBIndex(iid, collection, info),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo()),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
 
@@ -197,8 +197,8 @@ int RocksDBFulltextIndex::insert(transaction::Methods* trx,
   if (words.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
-  
-  RocksDBMethods *mthd = rocksutils::toRocksMethods(trx);
+
+  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   StringRef docKey(doc.get(StaticStrings::KeyString));
@@ -210,7 +210,7 @@ int RocksDBFulltextIndex::insert(transaction::Methods* trx,
     RocksDBKey key =
         RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
 
-    Result r = mthd->Put(key, value.string(), rocksutils::index);
+    Result r = mthd->Put(_cf, key, value.string(), rocksutils::index);
     if (!r.ok()) {
       res = r.errorNumber();
       break;
@@ -227,8 +227,7 @@ int RocksDBFulltextIndex::insert(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch,
-                                    TRI_voc_rid_t,
+int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch, TRI_voc_rid_t,
                                     arangodb::velocypack::Slice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
@@ -243,7 +242,7 @@ int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch,
   for (std::string const& word : words) {
     RocksDBKey key =
         RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
-    batch->Put(key, value.string());
+    batch->Put(_cf, key, value.string());
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -259,7 +258,7 @@ int RocksDBFulltextIndex::remove(transaction::Methods* trx,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  RocksDBMethods *mthd = rocksutils::toRocksMethods(trx);
+  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   StringRef docKey(doc.get(StaticStrings::KeyString));
@@ -268,7 +267,7 @@ int RocksDBFulltextIndex::remove(transaction::Methods* trx,
     RocksDBKey key =
         RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
 
-    Result r = mthd->Delete(key);
+    Result r = mthd->Delete(_cf, key);
     if (!r.ok()) {
       res = r.errorNumber();
       break;
@@ -277,8 +276,7 @@ int RocksDBFulltextIndex::remove(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBFulltextIndex::removeRaw(RocksDBMethods* batch,
-                                    TRI_voc_rid_t,
+int RocksDBFulltextIndex::removeRaw(RocksDBMethods* batch, TRI_voc_rid_t,
                                     arangodb::velocypack::Slice const& doc) {
   std::set<std::string> words = wordlist(doc);
   // now we are going to construct the value to insert into rocksdb
@@ -287,7 +285,7 @@ int RocksDBFulltextIndex::removeRaw(RocksDBMethods* batch,
   for (std::string const& word : words) {
     RocksDBKey key =
         RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), docKey);
-    batch->Delete(key);
+    batch->Delete(_cf, key);
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -508,20 +506,23 @@ static RocksDBKeyBounds MakeBounds(uint64_t oid,
 Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
                                              FulltextQueryToken const& token,
                                              std::set<std::string>& resultSet) {
-  RocksDBMethods *mthds = rocksutils::toRocksMethods(trx);
-
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator();
-  iter->Seek(bounds.start());
-  
-  // set is used to performa an intersection with the result set
-  std::set<std::string> intersect;
+  rocksdb::Slice end = bounds.end();
+  rocksdb::Comparator const* cmp = this->comparator();
 
-  // TODO: set options.iterate_upper_bound and remove compare?
+  rocksdb::ReadOptions ro = mthds->readOptions();
+  ro.iterate_upper_bound = &end;
+  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(ro, _cf);
+  iter->Seek(bounds.start());
+
+  // set is used to perform an intersection with the result set
+  std::set<std::string> intersect;
   // apply left to right logic, merging all current results with ALL previous
-  auto const end = bounds.end();
-  while (iter->Valid() && _cmp->Compare(iter->key(), end) < 0) {
+  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    
     rocksdb::Status s = iter->status();
     if (!s.ok()) {
       return rocksutils::convertStatus(s);

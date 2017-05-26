@@ -29,84 +29,31 @@
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
-using namespace arangodb::velocypack;
 
 RocksDBComparator::RocksDBComparator() {}
 
 RocksDBComparator::~RocksDBComparator() {}
 
-int RocksDBComparator::Compare(rocksdb::Slice const& lhs,
-                               rocksdb::Slice const& rhs) const {
-  // type is first byte of every key
-  if (lhs[0] != rhs[0]) {
-    return ((lhs[0] < rhs[0]) ? -1 : 1);
-  }
-
-  switch (RocksDBKey::type(lhs)) {
-    case RocksDBEntryType::IndexValue:
-    case RocksDBEntryType::UniqueIndexValue: {
-      return compareIndexValues(lhs, rhs);
-    }
-    default: { 
-      return compareLexicographic(lhs, rhs); 
-    }
-  }
-}
-  
-bool RocksDBComparator::Equal(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
-  if (lhs[0] != rhs[0]) {
-    return false;
-  }
- 
-  switch (RocksDBKey::type(lhs)) {
-    case RocksDBEntryType::IndexValue:
-    case RocksDBEntryType::UniqueIndexValue: {
-      return (compareIndexValues(lhs, rhs) == 0);
-    }
-    default: {
-      if (lhs.size() != rhs.size()) {
-        return false;
-      }
-      return (memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
-    }
-  }
-}
-
-int RocksDBComparator::compareType(rocksdb::Slice const& lhs,
-                                   rocksdb::Slice const& rhs) const {
-  // type is first byte of every key
-  if (lhs[0] == rhs[0]) {
-    return 0;
-  }
-
-  return ((lhs[0] < rhs[0]) ? -1 : 1);
-}
-
-int RocksDBComparator::compareLexicographic(rocksdb::Slice const& lhs,
-                                            rocksdb::Slice const& rhs) const {
-  size_t const lLength = lhs.size();
-  size_t const rLength = rhs.size();
-  size_t const minLength = std::min(lLength, rLength);
-
-  int result = memcmp(lhs.data(), rhs.data(), minLength);
-  if (result != 0 || lLength == rLength) {
-    return result;
-  }
-
-  return ((lLength < rLength) ? -1 : 1);
+inline static VPackSlice indexedVPack(rocksdb::Slice const& slice) {
+  TRI_ASSERT(slice.size() > (sizeof(char) + sizeof(uint64_t)));
+  return VPackSlice(slice.data() + sizeof(char) + sizeof(uint64_t));
 }
 
 int RocksDBComparator::compareIndexValues(rocksdb::Slice const& lhs,
                                           rocksdb::Slice const& rhs) const {
-  int result =
-      memcmp((lhs.data() + sizeof(char)), (rhs.data() + sizeof(char)), sizeof(uint64_t));
-  if (result != 0) {
-    return result;
+  TRI_ASSERT(RocksDBKey::type(lhs) == RocksDBEntryType::IndexValue
+             || RocksDBKey::type(lhs) == RocksDBEntryType::UniqueIndexValue);
+  TRI_ASSERT(RocksDBKey::type(rhs) == RocksDBKey::type(rhs));
+  
+  constexpr size_t prefixLength = RocksDBPrefixExtractor::getIndexPrefixLength();
+  int r = memcmp(lhs.data(), rhs.data(), prefixLength);
+  if (r != 0) {
+    return r;
   }
-
-  size_t prefixLength = RocksDBPrefixExtractor::getPrefixLength(
-      static_cast<RocksDBEntryType>(lhs[0]));
   if (lhs.size() == prefixLength || rhs.size() == prefixLength) {
     if (lhs.size() == rhs.size()) {
       return 0;
@@ -118,12 +65,12 @@ int RocksDBComparator::compareIndexValues(rocksdb::Slice const& lhs,
   TRI_ASSERT(lhs.size() > sizeof(char) + sizeof(uint64_t));
   TRI_ASSERT(rhs.size() > sizeof(char) + sizeof(uint64_t));
 
-  VPackSlice const lSlice = RocksDBKey::indexedVPack(lhs);
-  VPackSlice const rSlice = RocksDBKey::indexedVPack(rhs);
+  VPackSlice const lSlice = indexedVPack(lhs);
+  VPackSlice const rSlice = indexedVPack(rhs);
 
-  result = compareIndexedValues(lSlice, rSlice);
-  if (result != 0) {
-    return result;
+  r = compareIndexedValues(lSlice, rSlice);
+  if (r != 0) {
+    return r;
   }
 
   constexpr size_t offset = sizeof(char) + sizeof(uint64_t);
@@ -136,9 +83,9 @@ int RocksDBComparator::compareIndexValues(rocksdb::Slice const& lhs,
   size_t minSize = ((lSize <= rSize) ? lSize : rSize);
 
   if (minSize > 0) {
-    result = memcmp(lBase, rBase, minSize);
-    if (result != 0) {
-      return result;
+    r = memcmp(lBase, rBase, minSize);
+    if (r != 0) {
+      return r;
     }
   }
 
@@ -154,18 +101,21 @@ int RocksDBComparator::compareIndexedValues(VPackSlice const& lhs,
   TRI_ASSERT(lhs.isArray());
   TRI_ASSERT(rhs.isArray());
 
-  size_t const lLength = lhs.length();
-  size_t const rLength = rhs.length();
-  size_t const n = lLength < rLength ? rLength : lLength;
-
-  for (size_t i = 0; i < n; ++i) {
+  VPackArrayIterator lhsIter(lhs);
+  VPackArrayIterator rhsIter(rhs);
+  size_t const lLength = lhsIter.size();
+  size_t const rLength = rhsIter.size();
+  
+  while (lhsIter.valid() || rhsIter.valid()) {
+    size_t i = lhsIter.index();
     int res = arangodb::basics::VelocyPackHelper::compare(
-        (i < lLength ? lhs[i] : VPackSlice::noneSlice()),
-        (i < rLength ? rhs[i] : VPackSlice::noneSlice()), true);
-
+                                                          (i < lLength ? *lhsIter : VPackSlice::noneSlice()),
+                                                          (i < rLength ? *rhsIter : VPackSlice::noneSlice()), true);
     if (res != 0) {
       return res;
     }
+    ++lhsIter;
+    ++rhsIter;
   }
 
   if (lLength != rLength) {

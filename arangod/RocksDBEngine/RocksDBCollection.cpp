@@ -629,23 +629,25 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
   // TODO FIXME -- improve transaction size
   TRI_ASSERT(_objectId != 0);
-
-  rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
   TRI_voc_cid_t cid = _logicalCollection->cid();
-
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  RocksDBMethods* mthd = state->rocksdbMethods();
-  // rocksdb::Transaction* rtrx = state->rocksTransaction();
 
   // delete documents
+  RocksDBMethods* mthd = state->rocksdbMethods();
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
-  auto const end = documentBounds.end();
   
-  std::unique_ptr<rocksdb::Iterator> iter = mthd->NewIterator();
+  rocksdb::Comparator const * cmp = RocksDBColumnFamily::documents()->GetComparator();
+  rocksdb::ReadOptions ro = mthd->readOptions();
+  rocksdb::Slice const end = documentBounds.end();
+  ro.iterate_upper_bound = &end;
+  
+  std::unique_ptr<rocksdb::Iterator> iter = mthd->NewIterator(ro, RocksDBColumnFamily::documents());
   iter->Seek(documentBounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
     VPackSlice key =
         VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
@@ -656,7 +658,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // add possible log statement
     state->prepareOperation(cid, revisionId, StringRef(key),
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    Result r = mthd->Delete(iter->key());
+    Result r = mthd->Delete(RocksDBColumnFamily::documents(), iter->key());
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -681,105 +683,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   }
   _needToPersistIndexEstimates = true;
 }
-
-/*
-void RocksDBCollection::truncateNoTrx(transaction::Methods* trx) {
-  TRI_ASSERT(_objectId != 0);
-
-  rocksdb::Comparator const* cmp = globalRocksEngine()->cmp();
-  TRI_voc_cid_t cid = _logicalCollection->cid();
-
-  rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
-  rocksdb::WriteBatch batch(32 * 1024 * 1024);
-  // delete documents
-  RocksDBKeyBounds documentBounds =
-  RocksDBKeyBounds::CollectionDocuments(this->objectId());
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-
-  // isolate against newer writes
-  rocksdb::ReadOptions readOptions;
-  readOptions.snapshot = state->rocksTransaction()->GetSnapshot();
-
-  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(readOptions));
-  iter->Seek(documentBounds.start());
-
-  while (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
-    VPackSlice key =
-    VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
-    TRI_ASSERT(key.isString());
-
-    // add possible log statement
-    state->prepareOperation(cid, revisionId, StringRef(key),
-                            TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    rocksdb::Status s = rtrx->Delete(iter->key());
-    if (!s.ok()) {
-      auto converted = convertStatus(s);
-      THROW_ARANGO_EXCEPTION(converted);
-    }
-    // report size of key
-    RocksDBOperationResult result =
-    state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-                        0, iter->key().size());
-
-    // transaction size limit reached -- fail
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
-    }
-
-    // force intermediate commit
-    if (result.commitRequired()) {
-      // force commit
-    }
-
-    iter->Next();
-  }
-
-  // delete index items
-
-  // TODO maybe we could also reuse Index::drop, if we ensure the
-  // implementations
-  // don't do anything beyond deleting their contents
-  READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& index : _indexes) {
-    RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
-
-    RocksDBKeyBounds indexBounds = RocksDBKeyBounds::Empty();
-    switch (rindex->type()) {
-      case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
-        indexBounds = RocksDBKeyBounds::PrimaryIndex(rindex->objectId());
-        break;
-      case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
-        indexBounds = RocksDBKeyBounds::EdgeIndex(rindex->objectId());
-        break;
-
-      case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
-      case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
-      case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
-        if (rindex->unique()) {
-          indexBounds = RocksDBKeyBounds::UniqueIndex(rindex->objectId());
-        } else {
-          indexBounds = RocksDBKeyBounds::IndexEntries(rindex->objectId());
-        }
-        break;
-        // TODO add options for geoindex, fulltext etc
-
-      default:
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    }
-
-    iter->Seek(indexBounds.start());
-    while (iter->Valid() && cmp->Compare(iter->key(), indexBounds.end()) < 0) {
-      rocksdb::Status s = rtrx->Delete(iter->key());
-      if (!s.ok()) {
-        auto converted = convertStatus(s);
-        THROW_ARANGO_EXCEPTION(converted);
-      }
-
-      iter->Next();
-    }
-  }
-}*/
 
 DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods* trx,
                                                      VPackSlice const& key) {
@@ -809,10 +712,13 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      DocumentIdentifierToken const& token,
                                      ManagedDocumentResult& result) {
   // TODO: why do we have read(), readDocument() and lookupKey()?
-  auto tkn = static_cast<RocksDBToken const*>(&token);
+  RocksDBToken const* tkn = static_cast<RocksDBToken const*>(&token);
   TRI_voc_rid_t revisionId = tkn->revisionId();
-  auto res = lookupRevisionVPack(revisionId, trx, result, true);
-  return res.ok();
+  if (revisionId != 0) {
+    auto res = lookupRevisionVPack(revisionId, trx, result, true);
+    return res.ok();
+  }
+  return false;
 }
 
 // read using a token, bypassing the cache
@@ -1408,7 +1314,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  res = mthd->Put(key, value.string());
+  res = mthd->Put(RocksDBColumnFamily::documents(), key, value.string());
   if (!res.ok()) {
     // set keysize that is passed up to the crud operations
     res.keySize(key.string().size());
@@ -1466,7 +1372,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   // Simon: actually we do, because otherwise the counter recovery is broken
   // if (!isUpdate) {
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  RocksDBOperationResult res = mthd->Delete(key);
+  RocksDBOperationResult res = mthd->Delete(RocksDBColumnFamily::documents(), key);
   if (!res.ok()) {
     return res;
   }
@@ -1581,7 +1487,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   }
 
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result res = mthd->Get(key, &value);
+  Result res = mthd->Get(RocksDBColumnFamily::documents(), key, &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
     if (withCache && useCache()) {
@@ -1598,6 +1504,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
 
     mdr.setManaged(std::move(value), revisionId);
   } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "NOT FOUND rev: " << revisionId << " trx: " << trx->state()->id()
+                                  << " seq: " <<  mthd->readOptions().snapshot->GetSequenceNumber()
+                                  << " objectID " << _objectId
+    << " name: " << _logicalCollection->name();
     mdr.reset();
   }
   return res;
@@ -1733,8 +1643,9 @@ uint64_t RocksDBCollection::recalculateCounts() {
 
   // count documents
   auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-  _numberDocuments = rocksutils::countKeyRange(
-      globalRocksDB(), readOptions, documentBounds);
+  _numberDocuments = rocksutils::countKeyRange(globalRocksDB(), readOptions,
+                                               RocksDBColumnFamily::documents(),
+                                               documentBounds);
 
   // update counter manager value
   res = globalRocksEngine()->counterManager()->setAbsoluteCounter(

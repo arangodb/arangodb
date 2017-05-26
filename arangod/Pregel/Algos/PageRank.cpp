@@ -73,11 +73,8 @@ struct PRComputation : public VertexComputation<float, float, float> {
     float diff = fabs(copy - *ptr);
     aggregate<float>(kConvergence, diff);
 
-    RangeIterator<Edge<float>> edges = getEdges();
-    float val = *ptr / edges.size();
-    for (Edge<float>* edge : edges) {
-      sendMessage(edge, val);
-    }
+    float val = *ptr / getEdgeCount();
+    sendMessageToAllNeighbours(val);
   }
 };
 

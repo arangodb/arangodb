@@ -31,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
@@ -343,7 +344,8 @@ void RocksDBCounterManager::readIndexEstimates() {
 
   rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
+                                                           RocksDBColumnFamily::other()));
   iter->Seek(bounds.start());
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
@@ -402,7 +404,8 @@ void RocksDBCounterManager::readCounterValues() {
 
   rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
+                                                           RocksDBColumnFamily::other()));
   iter->Seek(bounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
@@ -417,7 +420,8 @@ void RocksDBCounterManager::readCounterValues() {
 
 /// WAL parser, no locking required here, because we have been locked from the
 /// outside
-struct WBReader final : public rocksdb::WriteBatch::Handler {
+class WBReader final : public rocksdb::WriteBatch::Handler {
+public:
   // must be set by the counter manager
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqStart;
   std::unordered_map<uint64_t, RocksDBCounterManager::CounterAdjustment> deltas;
@@ -436,7 +440,7 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
           std::pair<uint64_t,
                     std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
           estimators)
-      : _estimators(estimators), currentSeqNum(0) {}
+  : _estimators(estimators), currentSeqNum(0) {}
 
   ~WBReader() {
     // update ticks after parsing wal
@@ -447,7 +451,7 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
     TRI_HybridLogicalClock(_maxHLC);
   }
 
-  bool prepKey(const rocksdb::Slice& key) {
+  bool shouldHandle(uint32_t column_family_id, const rocksdb::Slice& key) {
     if (RocksDBKey::type(key) == RocksDBEntryType::Document) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       auto const& it = seqStart.find(objectId);
@@ -526,9 +530,10 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  void Put(const rocksdb::Slice& key, const rocksdb::Slice& value) override {
+  rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                    const rocksdb::Slice& value) override {
     updateMaxTick(key, value);
-    if (prepKey(key)) {
+    if (shouldHandle(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
@@ -565,10 +570,11 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
           break;
       }
     }
+    return rocksdb::Status();
   }
 
-  void Delete(const rocksdb::Slice& key) override {
-    if (prepKey(key)) {
+  rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    if (shouldHandle(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
@@ -605,9 +611,12 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
           break;
       }
     }
+    return rocksdb::Status();
   }
 
-  void SingleDelete(const rocksdb::Slice& key) override { Delete(key); }
+  rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    return DeleteCF(column_family_id, key);
+  }
 };
 
 /// parse the WAL with the above handler parser class

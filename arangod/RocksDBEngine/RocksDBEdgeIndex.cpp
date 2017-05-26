@@ -67,7 +67,8 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _keys(keys.get()),
       _keysIterator(_keys->slice()),
       _index(index),
-      _iterator(rocksutils::toRocksMethods(trx)->NewIterator()),
+      _iterator(
+          rocksutils::toRocksMethods(trx)->NewIterator(index->columnFamily())),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _cache(cache),
       _posInMemory(0),
@@ -226,11 +227,13 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _iterator->Seek(_bounds.start());
   resetInplaceMemory();
   _posInMemory = 1;
-  auto rocksColl = toRocksDBCollection(_collection);
+  RocksDBCollection* rocksColl = toRocksDBCollection(_collection);
+  rocksdb::Comparator const* cmp = _index->comparator();
+
   RocksDBToken token;
   auto end = _bounds.end();
   while (_iterator->Valid() &&
-         (_index->_cmp->Compare(_iterator->key(), end) < 0)) {
+         (cmp->Compare(_iterator->key(), end) < 0)) {
     StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
     Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
     if (res.ok()) {
@@ -280,7 +283,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
                                         {{AttributeName(attr, false)}}),
-                   false, false,
+                   false, false, RocksDBColumnFamily::edge(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
                    !ServerState::instance()->isCoordinator() /*useCache*/
                    ),
@@ -355,7 +358,7 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result r = mthd->Put(rocksdb::Slice(key.string()), rocksdb::Slice(),
+  Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), rocksdb::Slice(),
                        rocksutils::index);
   if (r.ok()) {
     std::hash<StringRef> hasher;
@@ -387,7 +390,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result res = mthd->Delete(rocksdb::Slice(key.string()));
+  Result res = mthd->Delete(_cf, rocksdb::Slice(key.string()));
   if (res.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
@@ -418,7 +421,7 @@ void RocksDBEdgeIndex::batchInsert(
         RocksDBKey::EdgeIndexValue(_objectId, fromToRef, StringRef(primaryKey));
 
     blackListKey(fromToRef);
-    Result r = mthd->Put(rocksdb::Slice(key.string()), rocksdb::Slice(),
+    Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), rocksdb::Slice(),
                          rocksutils::index);
     if (!r.ok()) {
       queue->setStatus(r.errorNumber());

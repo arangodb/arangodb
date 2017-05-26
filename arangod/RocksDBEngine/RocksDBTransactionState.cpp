@@ -146,9 +146,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
     } else {
       createTransaction();
-      bool intermediate = hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMIT);
       bool readWrites = hasHint(transaction::Hints::Hint::READ_WRITES);
-      if (intermediate && !readWrites) {
+      if (_intermediateTransactionEnabled && !readWrites) {
         _snapshot = db->GetSnapshot(); // we must call ReleaseSnapshot at some point
         _rocksReadOptions.snapshot = _snapshot;
         TRI_ASSERT(_snapshot != nullptr);
@@ -448,16 +447,14 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
       (_intermediateTransactionNumber <= numOperations ||
        _intermediateTransactionSize <= newSize)) {
     //res.commitRequired(true);
-      if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMIT)) {
-        internalCommit();
-        _numInserts = 0;
-        _numUpdates = 0;
-        _numRemoves = 0;
+      internalCommit();
+      _numInserts = 0;
+      _numUpdates = 0;
+      _numRemoves = 0;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        _numLogdata = 0;
+      _numLogdata = 0;
 #endif
-        createTransaction();
-      } // TODO what else?
+      createTransaction();
     }
 
   return res;

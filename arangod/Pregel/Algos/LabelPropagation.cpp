@@ -145,7 +145,7 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const LPValue* ptr,
                            size_t size) const override {
     b.add(_resultField, VPackValue(ptr->currentCommunity));
-    b.add("stabilizationRounds", VPackValue(ptr->stabilizationRounds));
+    //b.add("stabilizationRounds", VPackValue(ptr->stabilizationRounds));
     return true;
   }
 

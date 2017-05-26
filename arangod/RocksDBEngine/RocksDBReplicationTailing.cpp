@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
@@ -73,18 +74,21 @@ class WALParser : public rocksdb::WriteBatch::Handler {
  public:
   explicit WALParser(TRI_vocbase_t* vocbase, bool includeSystem,
                      TRI_voc_cid_t collectionId, VPackBuilder& builder)
-      : _vocbase(vocbase),
+      : _documentsCF(RocksDBColumnFamily::documents()->GetID()),
+        _otherCF(RocksDBColumnFamily::other()->GetID()),
+        _vocbase(vocbase),
         _includeSystem(includeSystem),
         _onlyCollectionId(collectionId),
         _builder(builder),
-        _currentSequence(0) {}
+        _currentSequence(0)
+         {}
 
   void LogData(rocksdb::Slice const& blob) override {
     RocksDBLogType type = RocksDBLogValue::type(blob);
     TRI_DEFER(_lastLogType = type);
 
     LOG_TOPIC(_LOG, Logger::ROCKSDB) << "tick: " << _currentSequence << " "
-                                   << rocksDBLogTypeName(type);
+                                     << rocksDBLogTypeName(type);
     tick();
     switch (type) {
       case RocksDBLogType::DatabaseCreate: {
@@ -168,7 +172,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _seenBeginTransaction = true;
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentTrxId = RocksDBLogValue::transactionId(blob);
-        
+
         _builder.openObject();
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
         _builder.add(
@@ -181,7 +185,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::DocumentOperationsPrologue: {
         _currentCollectionId = RocksDBLogValue::collectionId(blob);
-        LOG_TOPIC(_LOG, Logger::ROCKSDB) << "Collection: " << _currentCollectionId;
+        LOG_TOPIC(_LOG, Logger::ROCKSDB) << "Collection: "
+                                         << _currentCollectionId;
         break;
       }
       case RocksDBLogType::DocumentRemove: {
@@ -206,15 +211,18 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  void Put(rocksdb::Slice const& key, rocksdb::Slice const& value) override {
+  rocksdb::Status PutCF(uint32_t column_family_id, rocksdb::Slice const& key,
+                        rocksdb::Slice const& value) override {
     RocksDBEntryType type = RocksDBKey::type(key);
-    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "tick: " << _currentSequence << " "
-                                   << rocksDBEntryTypeName(type);
-    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "PUT: key:" << key.ToString() << "  value: " << value.ToString();
     tick();
-    if (!shouldHandleKey(key)) {
-      return;
+    if (!shouldHandleKey(column_family_id, key)) {
+      return rocksdb::Status();
     }
+    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "tick: " << _currentSequence << " "
+    << rocksDBEntryTypeName(type);
+    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "PUT: key:" << key.ToString()
+    << "  value: " << value.ToString();
+    
     switch (type) {
       case RocksDBEntryType::Collection: {
         if (_lastLogType == RocksDBLogType::IndexCreate ||
@@ -279,28 +287,35 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       default:
         break;  // shouldn't get here?
     }
+    return rocksdb::Status();
   }
 
-  void Delete(rocksdb::Slice const& key) override { handleDeletion(key); }
+  rocksdb::Status DeleteCF(uint32_t column_family_id,
+                           rocksdb::Slice const& key) override {
+    return handleDeletion(column_family_id, key);
+  }
 
-  void SingleDelete(rocksdb::Slice const& key) override { handleDeletion(key); }
+  rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
+                                 rocksdb::Slice const& key) override {
+    return handleDeletion(column_family_id, key);
+  }
 
-  void handleDeletion(rocksdb::Slice const& key) {
+  rocksdb::Status handleDeletion(uint32_t column_family_id,
+                                 rocksdb::Slice const& key) {
     RocksDBEntryType type = RocksDBKey::type(key);
+    tick();
+    if (!shouldHandleKey(column_family_id, key)) {
+      return rocksdb::Status();
+    }
     LOG_TOPIC(_LOG, Logger::ROCKSDB) << "tick: " << _currentSequence << " "
     << rocksDBEntryTypeName(type);
-    
-    tick();
-    if (!shouldHandleKey(key)) {
-      return;
-    }
     switch (type) {
       case RocksDBEntryType::Collection: {
         // a database DROP will not set this flag
         if (_lastLogType == RocksDBLogType::CollectionDrop) {
           TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
           LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCollectionId;
-          
+
           _builder.openObject();
           _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
           _builder.add("type", VPackValue(REPLICATION_COLLECTION_DROP));
@@ -317,16 +332,16 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       case RocksDBEntryType::Document: {
         // document removes, because of a drop is not transactional and
         // should not appear in the WAL. Allso fixes
-        if (!shouldHandleKey(key) || !(_seenBeginTransaction || _singleOp)) {
-          return;
+        if (!(_seenBeginTransaction || _singleOp)) {
+          return rocksdb::Status();
         }
         // TODO somehow fix counters if we optimize the DELETE in
         // documentRemove on updates
         if (_lastLogType != RocksDBLogType::DocumentRemove &&
             _lastLogType != RocksDBLogType::SingleRemove) {
-          return;
+          return rocksdb::Status();
         }
-        //TRI_ASSERT(_lastLogType == RocksDBLogType::DocumentRemove ||
+        // TRI_ASSERT(_lastLogType == RocksDBLogType::DocumentRemove ||
         //           _lastLogType == RocksDBLogType::SingleRemove);
         TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
@@ -358,6 +373,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       default:
         break;  // shouldn't get here?
     }
+    return rocksdb::Status();
   }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
@@ -365,17 +381,17 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     _startSequence = startSequence;
     _currentSequence = startSequence;
   }
-  
+
   void writeCommitMarker() {
     if (_seenBeginTransaction) {
       LOG_TOPIC(_LOG, Logger::PREGEL) << "tick: " << _currentSequence
-      << " commit transaction";
-      
+                                      << " commit transaction";
+
       _builder.openObject();
       _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
       _builder.add(
-                   "type",
-                   VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
+          "type",
+          VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
       _builder.add("database", VPackValue(std::to_string(_currentDbId)));
       _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
       _builder.close();
@@ -409,7 +425,14 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  bool shouldHandleKey(rocksdb::Slice const& key) const {
+  bool shouldHandleKey(uint32_t column_family_id,
+                       rocksdb::Slice const& key) const {
+    // TODO reconsider if we add new colum fams
+    if (column_family_id != _otherCF &&
+        column_family_id != _documentsCF) {
+      return false;
+    }
+
     TRI_voc_cid_t cid;
     switch (RocksDBKey::type(key)) {
       case RocksDBEntryType::Collection: {
@@ -451,6 +474,9 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   }
 
  private:
+  uint32_t const _documentsCF;
+  uint32_t const _otherCF;
+  
   // these parameters are relevant to determine if we can print
   // a specific marker from the WAL
   TRI_vocbase_t* const _vocbase;
@@ -525,7 +551,8 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
       s = batch.writeBatchPtr->Iterate(handler.get());
       if (s.ok()) {
         lastWrittenTick = handler->endBatch();
-        LOG_TOPIC(_LOG, Logger::ROCKSDB) << "End WriteBatch written-tick: " << lastWrittenTick;
+        LOG_TOPIC(_LOG, Logger::ROCKSDB) << "End WriteBatch written-tick: "
+                                         << lastWrittenTick;
         handler->endBatch();
         if (!fromTickIncluded && lastTick >= tickStart && lastTick <= tickEnd) {
           fromTickIncluded = true;

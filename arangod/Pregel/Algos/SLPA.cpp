@@ -23,6 +23,7 @@
 #include "SLPA.h"
 #include <atomic>
 #include <cmath>
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -36,6 +37,16 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
+
+struct SLPAWorkerContext : public WorkerContext {
+  uint32_t mod = 1;
+  void preGlobalSuperstep(uint64_t gss) override {
+    // lets switch the order randomly, but ensure equal listenting time
+    if (gss % 2 == 0) {
+      mod = RandomGenerator::interval(UINT32_MAX);
+    }
+  }
+};
 
 struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   SLPAComputation() {}
@@ -85,9 +96,10 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     // Normally the SLPA algo only lets one vertex by one listen sequentially,
     // which is not really well parallizable. Additionally I figure
     // since a speaker only speaks to neighbours and the speaker order is random
-    // we can get away with letting nodes listen in turn
-    bool listen = val->nodeId % 2 == globalSuperstep() % 2;
-    if (messages.size() > 0 && listen) {
+    // we can get away with letting some nodes listen in turn
+    SLPAWorkerContext const* ctx = (SLPAWorkerContext const*)(context());
+    bool shouldListen = (ctx->mod + val->nodeId) % 2 == globalSuperstep() % 2;
+    if (messages.size() > 0 && shouldListen) {
       // listen to our neighbours
       uint64_t newCommunity = mostFrequent(messages);
       auto it = val->memory.find(newCommunity);
@@ -108,6 +120,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
       cumulativeSum += e.second;
       if (cumulativeSum >= random) {
         sendMessageToAllNeighbours(e.first);
+        return;
       }
     }
     sendMessageToAllNeighbours(val->nodeId);
@@ -122,6 +135,7 @@ VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(
 struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   std::string resField;
   std::atomic<uint64_t> vertexIdRange;
+  uint64_t step = 1;
   double threshold;
   unsigned maxCommunities;
 
@@ -161,26 +175,27 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
     if (ptr->memory.empty()) {
       return false;
     } else {
-      std::vector<uint64_t> communities;
+      std::vector<std::pair<uint64_t, double>> vec;
       for (std::pair<uint64_t, uint64_t> pair : ptr->memory) {
-        if ((double)pair.second / ptr->numCommunities >= threshold) {
-          communities.push_back(pair.first);
+        double t = (double)pair.second / ptr->numCommunities;
+        if (t >= threshold) {
+          vec.emplace_back(pair.first, t);
         }
       }
-      std::sort(communities.begin(), communities.end(),
-                [ptr](uint64_t a, uint64_t b) {
-                  return ptr->memory.at(a) > ptr->memory.at(b);
+      std::sort(vec.begin(), vec.end(),
+                [ptr](std::pair<uint64_t, double> a, std::pair<uint64_t, double> b) {
+                  return a.second > b.second;
                 });
 
-      if (communities.empty()) {
+      if (vec.empty()) {
         b.add(resField, VPackSlice::nullSlice());
-      } else if (communities.size() == 1 || maxCommunities == 1) {
-        b.add(resField, VPackValue(communities[0]));
-      } else if (communities.size() > 1) {
-        b.add(resField, VPackValue(VPackValueType::Array));
-        for (unsigned c = 0; c < communities.size() && c < maxCommunities;
-             c++) {
-          b.add(VPackValue(communities[c]));
+      } else if (vec.size() == 1 || maxCommunities == 1) {
+        b.add(resField, VPackValue(vec[0].first));
+      } else {
+        b.add(resField, VPackValue(VPackValueType::Object));
+        for (unsigned c = 0; c < vec.size() && c < maxCommunities; c++) {
+          b.add(arangodb::basics::StringUtils::itoa(vec[c].first),
+                VPackValue(vec[c].second));
         }
         b.close();
       }
@@ -197,3 +212,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
 GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
   return new SLPAGraphFormat(_resultField, _threshold, _maxCommunities);
 }
+
+WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {
+  return new SLPAWorkerContext();
+};

@@ -99,10 +99,10 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   bool const _reverse;
   RocksDBKeyBounds const _bounds;
   std::unique_ptr<rocksdb::Iterator> _iterator;
+  rocksdb::Comparator const* _cmp;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   RocksDBPrimaryIndex const* _index;
 #endif
-  rocksdb::Comparator const* _cmp;
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
