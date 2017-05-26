@@ -419,9 +419,6 @@ void RocksDBCounterManager::readCounterValues() {
 /// WAL parser, no locking required here, because we have been locked from the
 /// outside
 class WBReader final : public rocksdb::WriteBatch::Handler {
-  uint32_t const _documentsCF;
-  uint32_t const _otherCF;
-  
 public:
   // must be set by the counter manager
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqStart;
@@ -441,9 +438,7 @@ public:
           std::pair<uint64_t,
                     std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
           estimators)
-  : _documentsCF(RocksDBColumnFamily::documents()->GetID()),
-    _otherCF(RocksDBColumnFamily::other()->GetID()),
-    _estimators(estimators), currentSeqNum(0) {}
+  : _estimators(estimators), currentSeqNum(0) {}
 
   ~WBReader() {
     // update ticks after parsing wal
@@ -455,11 +450,6 @@ public:
   }
 
   bool shouldHandle(uint32_t column_family_id, const rocksdb::Slice& key) {
-    if (column_family_id != _otherCF &&
-        column_family_id != _documentsCF) {
-      return false;
-    }
-    
     if (RocksDBKey::type(key) == RocksDBEntryType::Document) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       auto const& it = seqStart.find(objectId);
