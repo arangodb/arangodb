@@ -129,7 +129,6 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
 {
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-  TRI_ASSERT(index->columnFamily()->GetID() == 0);
 
   // intentional copy of the read options 
   auto options = mthds->readOptions();
@@ -333,7 +332,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(
                            StaticStrings::KeyString, false)}}),
-                   true, false, RocksDBColumnFamily::none(),
+                   true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
                    false) {
                    // !ServerState::instance()->isCoordinator() /*useCache*/) {

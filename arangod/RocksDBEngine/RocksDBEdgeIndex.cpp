@@ -283,7 +283,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
                                         {{AttributeName(attr, false)}}),
-                   false, false, RocksDBColumnFamily::none(),
+                   false, false, RocksDBColumnFamily::edge(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
                    !ServerState::instance()->isCoordinator() /*useCache*/
                    ),

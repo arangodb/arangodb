@@ -31,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
@@ -417,7 +418,11 @@ void RocksDBCounterManager::readCounterValues() {
 
 /// WAL parser, no locking required here, because we have been locked from the
 /// outside
-struct WBReader final : public rocksdb::WriteBatch::Handler {
+class WBReader final : public rocksdb::WriteBatch::Handler {
+  uint32_t const _documentsCF;
+  uint32_t const _otherCF;
+  
+public:
   // must be set by the counter manager
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqStart;
   std::unordered_map<uint64_t, RocksDBCounterManager::CounterAdjustment> deltas;
@@ -436,7 +441,9 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
           std::pair<uint64_t,
                     std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
           estimators)
-      : _estimators(estimators), currentSeqNum(0) {}
+  : _documentsCF(RocksDBColumnFamily::documents()->GetID()),
+    _otherCF(RocksDBColumnFamily::other()->GetID()),
+    _estimators(estimators), currentSeqNum(0) {}
 
   ~WBReader() {
     // update ticks after parsing wal
@@ -447,9 +454,9 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
     TRI_HybridLogicalClock(_maxHLC);
   }
 
-  bool prepKey(uint32_t column_family_id, const rocksdb::Slice& key) {
-    // TODO this needs changing if we decide to add more column fams
-    if (column_family_id != 0) {
+  bool shouldHandle(uint32_t column_family_id, const rocksdb::Slice& key) {
+    if (column_family_id != _otherCF &&
+        column_family_id != _documentsCF) {
       return false;
     }
     
@@ -534,7 +541,7 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                     const rocksdb::Slice& value) override {
     updateMaxTick(key, value);
-    if (prepKey(column_family_id, key)) {
+    if (shouldHandle(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
 
@@ -575,7 +582,7 @@ struct WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    if (prepKey(column_family_id, key)) {
+    if (shouldHandle(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::counterObjectId(key);
       uint64_t revisionId = RocksDBKey::revisionId(key);
 

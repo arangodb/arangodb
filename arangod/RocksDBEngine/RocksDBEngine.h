@@ -211,8 +211,6 @@ class RocksDBEngine final : public StorageEngine {
 
   rocksdb::TransactionDB* db() const { return _db; }
 
-  RocksDBComparator* cmp() const { return _cmp.get(); }
-
   int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
                                   VPackSlice const& slice,
                                   RocksDBLogValue&& logValue);
@@ -248,7 +246,7 @@ class RocksDBEngine final : public StorageEngine {
   /// default read options
   rocksdb::Options _options;
   /// arangodb comparator - requried because of vpack in keys
-  std::unique_ptr<RocksDBComparator> _cmp;
+  std::unique_ptr<RocksDBComparator> _vpackCmp;
   /// path used by rocksdb (inside _basePath)
   std::string _path;
   /// path to arangodb data dir

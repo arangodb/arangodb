@@ -27,19 +27,40 @@
 
 namespace arangodb {
 
+/// Globally defined column families. If you do change the number of column families
+/// consider if there is a need for an upgrade script. Added column families can be
+/// created automatically by rocksdb. Do check the RocksDB WAL tailing code and the
+/// counter manager. Maybe the the number of families in the shouldHandle method needs
+/// to be changed
 struct RocksDBColumnFamily {
   friend class RocksDBEngine;
+  
+  static rocksdb::ColumnFamilyHandle* other() { return _other; }
+  
+  static rocksdb::ColumnFamilyHandle* documents() { return _documents; }
 
-  static rocksdb::ColumnFamilyHandle* none() { return _none; }
+  static rocksdb::ColumnFamilyHandle* primary() { return _primary; }
+
+  static rocksdb::ColumnFamilyHandle* edge() { return _edge; }
+
+  static rocksdb::ColumnFamilyHandle* geo() { return _geo; }
+
+  static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
 
   static rocksdb::ColumnFamilyHandle* index() { return _index; }
 
   static rocksdb::ColumnFamilyHandle* uniqueIndex() { return _uniqueIndex; }
 
  private:
-  static rocksdb::ColumnFamilyHandle* _none;
+  static rocksdb::ColumnFamilyHandle* _other;
+  static rocksdb::ColumnFamilyHandle* _documents;
+  static rocksdb::ColumnFamilyHandle* _primary;
+  static rocksdb::ColumnFamilyHandle* _edge;
+  static rocksdb::ColumnFamilyHandle* _geo;
+  static rocksdb::ColumnFamilyHandle* _fulltext;
   static rocksdb::ColumnFamilyHandle* _index;
   static rocksdb::ColumnFamilyHandle* _uniqueIndex;
+  static std::vector<rocksdb::ColumnFamilyHandle*> _allHandles;
 };
 
 }  // namespace arangodb

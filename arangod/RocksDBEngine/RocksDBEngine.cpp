@@ -93,15 +93,21 @@ namespace arangodb {
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_none(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_documents(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_primary(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_edge(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_other(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_index(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_uniqueIndex(nullptr);
+std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
       _db(nullptr),
-      _cmp(new RocksDBComparator()),
+      _vpackCmp(new RocksDBComparator()),
       _maxTransactionSize((std::numeric_limits<uint64_t>::max)()),
       _intermediateTransactionCommitSize(32 * 1024 * 1024),
       _intermediateTransactionCommitCount(100000),
@@ -295,7 +301,6 @@ void RocksDBEngine::start() {
   _options.create_if_missing = true;
   _options.create_missing_column_families = true;
   _options.max_open_files = -1;
-  //_options.comparator = _cmp.get();
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
   _options.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
@@ -312,11 +317,16 @@ void RocksDBEngine::start() {
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> columFamilies;
   rocksdb::ColumnFamilyOptions cfOptions1(_options);
-  columFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName, cfOptions1);
+  columFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName, cfOptions1);// 0
+  columFamilies.emplace_back("Documents", cfOptions1);// 1
+  columFamilies.emplace_back("PrimaryIndex", cfOptions1);// 2
+  columFamilies.emplace_back("EdgeIndex", cfOptions1);// 3
+  columFamilies.emplace_back("GeoIndex", cfOptions1);// 4
+  columFamilies.emplace_back("FulltextIndex", cfOptions1);// 5
   rocksdb::ColumnFamilyOptions cfOptions2(_options);
-  cfOptions2.comparator = _cmp.get();  // only
-  columFamilies.emplace_back("IndexValue", cfOptions2);
-  columFamilies.emplace_back("UniqueIndexValue", cfOptions2);
+  cfOptions2.comparator = _vpackCmp.get();
+  columFamilies.emplace_back("IndexValue", cfOptions2); // 6
+  columFamilies.emplace_back("UniqueIndexValue", cfOptions2);// 7
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
@@ -334,10 +344,16 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
   // set our column families
-  RocksDBColumnFamily::_none = cfHandles[0];
-  RocksDBColumnFamily::_index = cfHandles[1];
-  RocksDBColumnFamily::_uniqueIndex = cfHandles[2];
-  TRI_ASSERT(RocksDBColumnFamily::_none->GetID() == 0);
+  RocksDBColumnFamily::_other = cfHandles[0];
+  RocksDBColumnFamily::_documents = cfHandles[1];
+  RocksDBColumnFamily::_primary = cfHandles[2];
+  RocksDBColumnFamily::_edge = cfHandles[3];
+  RocksDBColumnFamily::_geo = cfHandles[4];
+  RocksDBColumnFamily::_fulltext = cfHandles[5];
+  RocksDBColumnFamily::_index = cfHandles[6];
+  RocksDBColumnFamily::_uniqueIndex = cfHandles[7];
+  RocksDBColumnFamily::_allHandles = cfHandles;
+  TRI_ASSERT(RocksDBColumnFamily::_other->GetID() == 0);
 
   // only enable logger after RocksDB start
   logger->enable();
@@ -387,17 +403,8 @@ void RocksDBEngine::unprepare() {
   }
 
   if (_db) {
-    if (RocksDBColumnFamily::_none) {
-      _db->DestroyColumnFamilyHandle(RocksDBColumnFamily::_none);
-      RocksDBColumnFamily::_none = nullptr;
-    }
-    if (RocksDBColumnFamily::_index) {
-      _db->DestroyColumnFamilyHandle(RocksDBColumnFamily::_index);
-      RocksDBColumnFamily::_index = nullptr;
-    }
-    if (RocksDBColumnFamily::_uniqueIndex) {
-      _db->DestroyColumnFamilyHandle(RocksDBColumnFamily::_uniqueIndex);
-      RocksDBColumnFamily::_uniqueIndex = nullptr;
+    for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
+      _db->DestroyColumnFamilyHandle(h);
     }
 
     // now prune all obsolete WAL files
@@ -700,7 +707,8 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   auto value = RocksDBValue::Database(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
-  rocksdb::Status res = _db->Put(options, key.string(), value.string());
+  rocksdb::Status res = _db->Put(options, RocksDBColumnFamily::other(),
+                                 key.string(), value.string());
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
 }

@@ -281,7 +281,7 @@ void GeoIndex_clearRocks(GeoIdx* gi) {
 }
   
 inline void RocksRead(GeoIx * gix, RocksDBKey const& key, std::string *val) {
-  arangodb::Result r = gix->rocksMethods->Get(RocksDBColumnFamily::none(), key, val);
+  arangodb::Result r = gix->rocksMethods->Get(RocksDBColumnFamily::geo(), key, val);
   if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
@@ -294,13 +294,13 @@ inline void RocksWrite(GeoIx * gix,
   if (gix->rocksMethods == nullptr) {
     rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
     rocksdb::WriteOptions wo;
-    rocksdb::Status s = db->Put(wo, key.string(), slice);
+    rocksdb::Status s = db->Put(wo, RocksDBColumnFamily::geo(), key.string(), slice);
     if (!s.ok()) {
       arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
   } else {
-    arangodb::Result r = gix->rocksMethods->Put(RocksDBColumnFamily::none(),
+    arangodb::Result r = gix->rocksMethods->Put(RocksDBColumnFamily::geo(),
                                                 key, slice, rocksutils::index);
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -309,7 +309,7 @@ inline void RocksWrite(GeoIx * gix,
 }
   
 inline void RocksDelete(GeoIx* gix, RocksDBKey const& key) {
-  arangodb::Result r = gix->rocksMethods->Delete(RocksDBColumnFamily::none(),
+  arangodb::Result r = gix->rocksMethods->Delete(RocksDBColumnFamily::geo(),
                                                  key);
   if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
