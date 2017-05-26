@@ -273,7 +273,8 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
   // cheap trick to get the last inserted pot and slot number
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::ReadOptions opts;
-        std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(opts, RocksDBColumnFamily::geo()));
+  std::unique_ptr<rocksdb::Iterator> iter(
+      db->NewIterator(opts, RocksDBColumnFamily::geo()));
 
   rocksdb::Comparator const* cmp = this->comparator();
   int numPots = 0;
@@ -297,15 +298,6 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
     TRI_ASSERT(pair.first);
     numSlots = pair.second;
   }
-        
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
-        usleep(1000000);
 
   _geoIndex = GeoIndex_new(_objectId, numPots, numSlots);
   if (_geoIndex == nullptr) {
