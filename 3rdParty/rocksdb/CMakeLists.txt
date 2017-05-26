@@ -31,7 +31,7 @@ if (WIN32)
   set(SNAPPY_LIB_RELEASE snappystatic CACHE FILEPATH "release library")
 else ()
   set(WITH_SNAPPY ON CACHE BOOL "enable snappy")
-  set(SNAPPY_INCLUDE_DIR ${SNAPPY_INCLUDE})
+  set(SNAPPY_INCLUDE_DIR ${SNAPPY_INCLUDE};${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
   set(SNAPPY_LIBRARIES ${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/libsnappystatic.a)
 endif ()
 
