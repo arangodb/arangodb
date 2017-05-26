@@ -192,9 +192,9 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
 }
 
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
-                          RocksDBKeyBounds const& bounds) {
+                          rocksdb::ColumnFamilyHandle* handle, RocksDBKeyBounds const& bounds) {
   rocksdb::Comparator const* cmp = db->GetOptions().comparator;
-  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts));
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, handle));
   std::size_t count = 0;
 
   rocksdb::Slice lower(bounds.start());

@@ -344,7 +344,8 @@ void RocksDBCounterManager::readIndexEstimates() {
 
   rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
+                                                           RocksDBColumnFamily::other()));
   iter->Seek(bounds.start());
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
@@ -403,7 +404,8 @@ void RocksDBCounterManager::readCounterValues() {
 
   rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
+                                                           RocksDBColumnFamily::other()));
   iter->Seek(bounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {

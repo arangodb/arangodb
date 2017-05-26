@@ -294,6 +294,7 @@ inline void RocksWrite(GeoIx * gix,
   if (gix->rocksMethods == nullptr) {
     rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
     rocksdb::WriteOptions wo;
+    wo.sync = true;
     rocksdb::Status s = db->Put(wo, RocksDBColumnFamily::geo(), key.string(), slice);
     if (!s.ok()) {
       arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
@@ -563,7 +564,7 @@ GeoIdx* GeoIndex_new(uint64_t objectId,
     gp.end = 0x1FFFFFFFFFFFFFll;
     gp.level = 1;
     for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
-    PotWrite(gix, 1, &gp);
+    PotWrite(gix, 1, &gp);// pot 1 is root
   } else {
     gix->nextFreePot = numPots + 1;
     gix->nextFreeSlot = numSlots + 1;

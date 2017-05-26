@@ -1643,8 +1643,9 @@ uint64_t RocksDBCollection::recalculateCounts() {
 
   // count documents
   auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-  _numberDocuments = rocksutils::countKeyRange(
-      globalRocksDB(), readOptions, documentBounds);
+  _numberDocuments = rocksutils::countKeyRange(globalRocksDB(), readOptions,
+                                               RocksDBColumnFamily::documents(),
+                                               documentBounds);
 
   // update counter manager value
   res = globalRocksEngine()->counterManager()->setAbsoluteCounter(
