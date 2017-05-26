@@ -28,7 +28,7 @@ Make sure to protect these keys!
 That means:
 - Do not write them to persistent disks or your server(s), always store them on an in-memory (`tmpfs`) filesystem.
 - Transport your keys safely to your server(s). There are various tools for managing secrets like this (e.g. vaultproject.io).
-- Store a copy of your key offline in a safe place. If you loose your key, there is NO way to get your data back.
+- Store a copy of your key offline in a safe place. If you lose your key, there is NO way to get your data back.
 
 ## Configuration
 
