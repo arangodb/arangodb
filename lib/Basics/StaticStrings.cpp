@@ -39,6 +39,7 @@ std::string const StaticStrings::IndexGe("ge");
 std::string const StaticStrings::IndexGt("gt");
 
 // system attribute names
+std::string const StaticStrings::AttachmentString("_attachment");
 std::string const StaticStrings::IdString("_id");
 std::string const StaticStrings::KeyString("_key");
 std::string const StaticStrings::RevString("_rev");
