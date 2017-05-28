@@ -153,6 +153,7 @@ class Logger {
   static LogTopic THREADS;
   static LogTopic TRANSACTIONS;
   static LogTopic V8;
+  static LogTopic VIEWS;
 
  public:
   struct FIXED {
@@ -161,11 +162,11 @@ class Logger {
     double _value;
     int _precision;
   };
-  
+
   struct BINARY {
     BINARY(void const* baseAddress, size_t size)
         : baseAddress(baseAddress), size(size){}
-    explicit BINARY(std::string const& data) : BINARY(data.c_str(), data.size()) {} 
+    explicit BINARY(std::string const& data) : BINARY(data.c_str(), data.size()) {}
     void const* baseAddress;
     size_t size;
   };
