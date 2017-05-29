@@ -156,6 +156,20 @@
       });
     },
 
+    warmupCollection: function () {
+      $.ajax({
+        cache: false,
+        type: 'PUT',
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/warmup'),
+        success: function () {
+          arangoHelper.arangoNotification('Warmup started.');
+        },
+        error: function () {
+          arangoHelper.arangoError('Collection error.');
+        }
+      });
+    },
+
     loadCollection: function (callback) {
       $.ajax({
         cache: false,
