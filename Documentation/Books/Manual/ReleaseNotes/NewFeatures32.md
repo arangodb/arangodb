@@ -287,6 +287,15 @@ AQL
 
 ### Miscellaneous improvements
 
+* added new startup option `--query.fail-on-warning` to make AQL queries
+  abort instead of continuing with warnings. 
+
+  When set to *true*, this will make an AQL query throw an exception and
+  abort in case a warning occurs. This option should be used in development to catch
+  errors early. If set to *false*, warnings will not be propagated to exceptions and
+  will be returned with the query results. The startup option can also be overriden
+  on a per query-level.
+
 * the slow query list now contains the values of bind variables used in the
   slow queries. Bind variables are also provided for the currently running 
   queries. This helps debugging slow or blocking queries that use dynamic

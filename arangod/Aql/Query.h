@@ -32,6 +32,7 @@
 #include "Aql/Collections.h"
 #include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/QueryResources.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
@@ -106,6 +107,8 @@ class Query {
     return _profile.get();
   }
 
+  QueryOptions const& queryOptions() const { return _queryOptions; }
+
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
   void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
   
@@ -145,27 +148,6 @@ class Query {
     return _ast.get(); 
   }
 
-  /// @brief should we return verbose plans?
-  bool verbosePlans() const { return getBooleanOption("verbosePlans", false); }
-
-  /// @brief should we return all plans?
-  bool allPlans() const { return getBooleanOption("allPlans", false); }
-
-  /// @brief should the execution be profiled?
-  bool profiling() const { return getBooleanOption("profile", false); }
-  
-  /// @brief should we suppress the query result (useful for performance testing only)?
-  bool silent() const { return getBooleanOption("silent", false); }
-
-  /// @brief maximum number of plans to produce
-  size_t maxNumberOfPlans() const {
-    size_t value = getNumericOption<size_t>("maxNumberOfPlans", 0);
-    if (value > 0) {
-      return value;
-    }
-    return 0;
-  }
-
   /// @brief add a node to the list of nodes
   void addNode(AstNode* node) { _resources.addNode(node); }
 
@@ -183,21 +165,6 @@ class Query {
     return _resources.registerEscapedString(p, length, outLength); 
   }
   
-  /// @brief memory limit for query
-  size_t memoryLimit() const;
-
-  /// @brief maximum number of plans to produce
-  int64_t literalSizeThreshold() const {
-    int64_t value = getNumericOption<int64_t>("literalSizeThreshold", 0);
-    if (value > 0) {
-      return value;
-    }
-    return -1;
-  }
-
-  /// @brief extract a region from the query
-  std::string extractRegion(int line, int column) const;
-
   /// @brief register an error, with an optional parameter inserted into printf
   /// this also makes the query abort
   void registerError(int, char const* = nullptr);
@@ -239,11 +206,6 @@ class Query {
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
 
-  /// @brief whether or not the query returns verbose error messages
-  bool verboseErrors() const {
-    return getBooleanOption("verboseErrors", false);
-  }
-
   /// @brief enter a V8 context
   void enterContext();
 
@@ -252,11 +214,6 @@ class Query {
 
   /// @brief returns statistics for current query.
   void getStats(arangodb::velocypack::Builder&);
-
-  /// @brief fetch a boolean value from the options
-  bool getBooleanOption(char const*, bool) const;
-
-  std::unordered_set<std::string> includedShards() const;
 
   /// @brief add the list of warnings to VelocyPack.
   ///        Will add a new entry { ..., warnings: <warnings>, } if there are
@@ -277,6 +234,8 @@ class Query {
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
     return _bindParameters.builder(); 
   }
+ 
+  QueryExecutionState::ValueType state() const { return _state; }
 
  private:
   /// @brief initializes the query
@@ -299,35 +258,7 @@ class Query {
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
 
- public:
-  /// @brief fetch a numeric value from the options
-  template<typename T> T getNumericOption(char const* option, T defaultValue) const {
-    if (_options == nullptr) {
-      return defaultValue;
-    }
-
-    VPackSlice options = _options->slice();
-    if (!options.isObject()) {
-      return defaultValue;
-    }
-
-    VPackSlice value = options.get(option);
-    if (!value.isNumber()) {
-      return defaultValue;
-    }
-
-    return value.getNumericValue<T>();
-  }
-  
-  QueryExecutionState::ValueType state() const { return _state; }
-
  private:
-  /// @brief read the "optimizer.inspectSimplePlans" section from the options
-  bool inspectSimplePlans() const;
-
-  /// @brief read the "optimizer.rules" section from the options
-  std::vector<std::string> getRulesFromOptions() const;
-
   /// @brief neatly format exception messages for the users
   std::string buildErrorMessage(int errorCode) const;
 
@@ -377,6 +308,9 @@ class Query {
   /// @brief query options
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 
+  /// @brief query options
+  QueryOptions _queryOptions;
+
   /// @brief collections used in the query
   Collections _collections;
   
@@ -401,9 +335,6 @@ class Query {
 
   /// @brief the ExecutionEngine object, if the query is prepared
   std::unique_ptr<ExecutionEngine> _engine;
-
-  /// @brief maximum number of warnings
-  size_t _maxWarningCount;
 
   /// @brief warnings collected during execution
   std::vector<std::pair<int, std::string>> _warnings;

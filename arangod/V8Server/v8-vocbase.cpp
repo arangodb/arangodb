@@ -895,7 +895,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (queryResult.result != nullptr) {
-    if (query.allPlans()) {
+    if (query.queryOptions().allPlans) {
       result->Set(TRI_V8_ASCII_STRING("plans"),
                   TRI_VPackToV8(isolate, queryResult.result->slice()));
     } else {

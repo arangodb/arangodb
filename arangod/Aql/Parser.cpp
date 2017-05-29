@@ -149,7 +149,7 @@ void Parser::registerParseError(int errorCode, char const* data, int line,
                << std::string("' at position ") << line << std::string(":")
                << (column + 1);
 
-  if (_query->verboseErrors()) {
+  if (_query->queryOptions().verboseErrors) {
     errorMessage << std::endl << queryString() << std::endl;
 
     // create a neat pointer to the location of the error.
