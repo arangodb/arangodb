@@ -226,9 +226,11 @@ void RocksDBEngine::start() {
   // only compress levels >= 2
   _options.compression_per_level.resize(_options.num_levels);
   for (int level = 0; level < _options.num_levels; ++level) {
-    _options.compression_per_level[level] = ((level >= 2) ? rocksdb::kSnappyCompression : rocksdb::kNoCompression);
+    _options.compression_per_level[level] =
+        (((uint64_t) level >= opts->_numUncompressedLevels) ? rocksdb::kSnappyCompression
+                                                 : rocksdb::kNoCompression);
   }
-  
+
   // TODO: try out the effects of these options 
   // Number of files to trigger level-0 compaction. A value <0 means that
   // level-0 compaction will not be triggered by number of files at all.
