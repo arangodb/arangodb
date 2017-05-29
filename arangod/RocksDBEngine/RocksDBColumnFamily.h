@@ -34,6 +34,8 @@ namespace arangodb {
 /// to be changed
 struct RocksDBColumnFamily {
   friend class RocksDBEngine;
+
+  static constexpr size_t numberOfColumnFamilies = 8;
   
   static rocksdb::ColumnFamilyHandle* other() { return _other; }
   
