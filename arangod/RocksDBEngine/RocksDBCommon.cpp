@@ -28,6 +28,7 @@
 #include "Basics/StringRef.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -192,9 +193,9 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
 }
 
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
-                          RocksDBKeyBounds const& bounds) {
+                          rocksdb::ColumnFamilyHandle* handle, RocksDBKeyBounds const& bounds) {
   rocksdb::Comparator const* cmp = db->GetOptions().comparator;
-  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts));
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, handle));
   std::size_t count = 0;
 
   rocksdb::Slice lower(bounds.start());
@@ -276,7 +277,7 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
   iterateBounds(bounds, [&rv](rocksdb::Iterator* it) {
     rv.emplace_back(RocksDBKey(it->key()),
                     RocksDBValue(RocksDBEntryType::Collection, it->value()));
-  });
+  }, arangodb::RocksDBColumnFamily::other());
   return rv;
 }
 
@@ -287,7 +288,7 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
   iterateBounds(bounds, [&rv](rocksdb::Iterator* it) {
     rv.emplace_back(RocksDBKey(it->key()),
                     RocksDBValue(RocksDBEntryType::View, it->value()));
-  });
+  }, arangodb::RocksDBColumnFamily::other());
   return rv;
 }
 

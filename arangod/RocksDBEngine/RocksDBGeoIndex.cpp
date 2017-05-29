@@ -234,7 +234,7 @@ void RocksDBGeoIndexIterator::reset() { replaceCursor(nullptr); }
 RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
                                  arangodb::LogicalCollection* collection,
                                  VPackSlice const& info)
-    : RocksDBIndex(iid, collection, info),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo()),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
       _geoJson(false),
       _geoIndex(nullptr) {
@@ -273,13 +273,15 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
   // cheap trick to get the last inserted pot and slot number
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::ReadOptions opts;
-  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(opts));
+  std::unique_ptr<rocksdb::Iterator> iter(
+      db->NewIterator(opts, RocksDBColumnFamily::geo()));
 
+  rocksdb::Comparator const* cmp = this->comparator();
   int numPots = 0;
   RocksDBKeyBounds b1 = RocksDBKeyBounds::GeoIndex(_objectId, false);
   iter->SeekForPrev(b1.end());
-  if (iter->Valid() && _cmp->Compare(b1.start(), iter->key()) < 0 &&
-      _cmp->Compare(iter->key(), b1.end()) < 0) {
+  if (iter->Valid() && cmp->Compare(b1.start(), iter->key()) < 0 &&
+      cmp->Compare(iter->key(), b1.end()) < 0) {
     // found a key smaller than bounds end
     std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
     TRI_ASSERT(pair.first == false);
@@ -289,8 +291,8 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
   int numSlots = 0;
   RocksDBKeyBounds b2 = RocksDBKeyBounds::GeoIndex(_objectId, true);
   iter->SeekForPrev(b2.end());
-  if (iter->Valid() && _cmp->Compare(b2.start(), iter->key()) < 0 &&
-      _cmp->Compare(iter->key(), b2.end()) < 0) {
+  if (iter->Valid() && cmp->Compare(b2.start(), iter->key()) < 0 &&
+      cmp->Compare(iter->key(), b2.end()) < 0) {
     // found a key smaller than bounds end
     std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
     TRI_ASSERT(pair.first);

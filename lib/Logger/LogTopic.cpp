@@ -41,6 +41,7 @@ std::map<std::string, LogTopic*> LogTopic::_names;
 
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
+LogTopic Logger::CACHE("cache", LogLevel::INFO);
 LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMMUNICATION("communication", LogLevel::INFO);
@@ -67,6 +68,7 @@ LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
+LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
 #ifdef USE_ENTERPRISE
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::INFO);
@@ -117,7 +119,7 @@ LogTopic* LogTopic::lookup(std::string const& name) {
 
   return it->second;
 }
-  
+
 std::string LogTopic::lookup(size_t topicId) {
   MUTEX_LOCKER(guard, _namesLock);
 

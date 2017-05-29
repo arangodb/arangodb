@@ -24,7 +24,6 @@
 #define ARANGODB_PREGEL_MASTER_CONTEXT_H 1
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
 
@@ -62,6 +61,19 @@ class MasterContext {
   template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
     return (const T*)_aggregators->getAggregatedValue(name);
+  }
+  
+  template <typename T>
+  inline void setAggregatedValue(std::string const& name, T const& value) {
+    // FIXME refactor the aggregators, this whole API is horrible
+    arangodb::velocypack::Builder b;
+    b.openObject();
+    b.add("aggregators",
+          arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));
+    b.add(name, arangodb::velocypack::Value(value));
+    b.close();
+    b.close();
+    _aggregators->setAggregatedValues(b.slice());
   }
 
   inline IAggregator* getAggregator(std::string const& name) {

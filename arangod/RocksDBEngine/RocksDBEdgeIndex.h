@@ -55,7 +55,9 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
                            std::unique_ptr<VPackBuilder>& keys, cache::Cache*);
   ~RocksDBEdgeIndexIterator();
   char const* typeName() const override { return "edge-index-iterator"; }
+  bool hasExtra() const override { return true; }
   bool next(TokenCallback const& cb, size_t limit) override;
+  bool nextExtra(ExtraCallback const& cb, size_t limit) override;
   void reset() override;
 
  private:
@@ -75,9 +77,10 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iterator;  // iterator position in rocksdb
   RocksDBKeyBounds _bounds;
   cache::Cache* _cache;
-  uint64_t _posInMemory;
-  uint64_t _memSize;
-  uint64_t* _inplaceMemory;
+  arangodb::velocypack::ArrayIterator _builderIterator;
+  arangodb::velocypack::Builder _builder;
+  size_t _copyCounter;
+  size_t _lookupCounter;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {
@@ -153,6 +156,10 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   ///        entries.
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
+
+  /// @brief Warmup the index caches.
+  void warmup(arangodb::transaction::Methods* trx) override;
+
   int cleanup() override;
 
   void serializeEstimate(std::string& output) const override;
@@ -160,6 +167,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   bool deserializeEstimate(arangodb::RocksDBCounterManager* mgr) override;
 
   void recalculateEstimates() override;
+
 
  private:
   /// @brief create the iterator

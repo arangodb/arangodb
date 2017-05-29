@@ -32,9 +32,16 @@ namespace algos {
 
 /// https://github.com/Rofti/DMID
 struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
+  unsigned _maxCommunities = 1;
  public:
   explicit DMID(VPackSlice userParams)
-      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>("DMID", userParams) {}
+      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>("DMID", userParams) {
+        arangodb::velocypack::Slice val = userParams.get("maxCommunities");
+        if (val.isInteger()) {
+          _maxCommunities = (unsigned)std::min((uint64_t)32,
+                                               std::max(val.getUInt(), (uint64_t)0));
+        }
+      }
 
   GraphFormat<DMIDValue, float>* inputFormat() const override;
   MessageFormat<DMIDMessage>* messageFormat() const override;

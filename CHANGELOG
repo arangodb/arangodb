@@ -1,6 +1,8 @@
 devel
 -----
 
+* added --rocksdb.num-uncompressed-levels to adjust number of non-compressed levels
+
 * added checks for memory managment and warn (i. e. if hugepages are enabled)
 
 * set default SSL cipher suite string to "HIGH:!EXPORT:!aNULL@STRENGTH"

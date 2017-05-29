@@ -99,6 +99,7 @@ void RocksDBRestWalHandler::flush() {
   if (!slice.isObject() && !slice.isNone()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid body value. expecting object");
+    return;
   }
 
   bool waitForSync = false;

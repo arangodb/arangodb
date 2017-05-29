@@ -89,10 +89,10 @@ if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
   endif()
 
   add_definitions("-DENABLE_ASM_CRC32=1")
-  message(STATUS "-- Will compile in hand-optimized assembler code for CRC32.")
+  message(STATUS "Will compile in hand-optimized assembler code for CRC32.")
 else()
   add_definitions("-DENABLE_ASM_CRC32=0")
-  message(STATUS "-- Will not compile in hand-optimized assembler code for CRC32.")
+  message(STATUS "Will not compile in hand-optimized assembler code for CRC32.")
 endif()
 
 if (USE_LOCAL_CLOCK_GETTIME)

@@ -86,8 +86,7 @@ struct ASCCComputation
         vertexState->color = vertexState->vertexID;
         // If this node doesn't have any parents or outgoing edges,
         // it can't be part of an SCC
-        RangeIterator<Edge<int8_t>> edges = getEdges();
-        if (vertexState->parents.size() == 0 || edges.size() == 0) {
+        if (vertexState->parents.size() == 0 || getEdgeCount() == 0) {
           voteHalt();
         } else {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);

@@ -83,11 +83,7 @@ in our example.
 *CalculationNode*s are responsible for evaluating arbitrary expressions. In our
 example query, the *CalculationNode* will evaluate the value of `i.value`, which
 is needed by the *ReturnNode*. The calculation will be applied for all data the
-*CalculationNode* gets from the node above it, in our example the *FilterNode*.
-
-*FilterNode*s will only let certain documents pass. Normally, filters are based on
-the evaluation of an expression. The filters expression result (`i.value > 97`)
-is calculated in the *CalculationNode* above the *FilterNode*.
+*CalculationNode* gets from the node above it, in our example the *IndexNode*.
 
 Finally, all of this needs to be done for documents of collection `test`. This is
 where the *IndexNode* enters the game. It will use an index (thus its name)
@@ -101,7 +97,6 @@ Here's a summary:
 * IndexNode: iterates over the index on attribute `value` in collection `test`
   in the order required by `SORT i.value`.
 * CalculationNode: evaluates the result of the calculation `i.value > 97` to `true` or `false`
-* FilterNode: only lets documents pass where above calculation returned `true`
 * CalculationNode: calculates return value `i.value`
 * ReturnNode: returns data to the caller
 
@@ -139,6 +134,9 @@ Here is the meaning of these rules in context of this query:
 * `use-indexes`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
   used for filtering and sorting.
+* `remove-filter-covered-by-index`: remove an unnessary filter whose functionality
+  is already covered by an index. In this case the index only returns documents 
+  matching the filter.
 * `use-index-for-sort`: removes a `SORT` operation if it is already satisfied by
   traversing over a sorted index
 
