@@ -33,5 +33,5 @@ docker build -t arangodb/debian-jessie-builder ${BUILDDIR}/.build-docker-contain
 if [ ! -e ${ENCRYPTION_KEYFILE} ]; then
     dd if=/dev/random bs=1 count=32 of=${ENCRYPTION_KEYFILE}
 fi
-export ARANGODB="-v ${ENCRYPTION_KEYFILE}:/encryption-keyfile:ro -e ARANGO_ENCRYPTION_KEYFILE=/encryption-keyfile arangodb:${DOCKERTAG}"
+export ARANGODB="-v ${ENCRYPTION_KEYFILE}:/encryption-keyfile:ro -e ARANGO_ENCRYPTION_KEYFILE=/encryption-keyfile arangodb:${DOCKERTAG} --log.level=startup=DEBUG"
 make -C ${BUILDDIR}/.go-driver run-tests-single
