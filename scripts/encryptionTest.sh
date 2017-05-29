@@ -22,6 +22,13 @@ if [ ! -e ${BUILDDIR}/.go-driver ]; then
     git clone git@github.com:arangodb/go-driver.git ${BUILDDIR}/.go-driver
 fi
 
+# Create debian-jessie-builder
+if [ ! -e ${BUILDDIR}/.build-docker-containers ]; then
+    cd ${BUILDDIR} 
+    git clone git@github.com:arangodb-helper/build-docker-containers.git ${BUILDDIR}/.build-docker-containers
+fi
+docker build -t arangodb/debian-jessie-builder ${BUILDDIR}/.build-docker-containers/distros/debian/jessie/build/
+
 # Start test 
 if [ ! -e ${ENCRYPTION_KEYFILE} ]; then
     dd if=/dev/random bs=1 count=32 of=${ENCRYPTION_KEYFILE}

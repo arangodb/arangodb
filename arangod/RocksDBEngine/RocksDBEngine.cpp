@@ -331,6 +331,7 @@ void RocksDBEngine::start() {
     rocksdb::Options testOptions; 
     testOptions.create_if_missing = false;
     testOptions.create_missing_column_families = false;
+    testOptions.env = _options.env;
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status = rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
     if (!status.ok()) {
