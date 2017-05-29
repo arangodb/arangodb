@@ -16,11 +16,12 @@ for i in $@; do
     fi
 done
 
+export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
 
 ./Installation/Jenkins/build.sh \
     standard \
     --rpath \
-    --parallel 25 \
+    --parallel ${CPU_CORES} \
     --package DEB \
     --buildDir build-${EP}deb \
     --targetDir /var/tmp/ \

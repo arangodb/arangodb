@@ -39,6 +39,7 @@ fi
 
 # Build jessie package
 docker run -it \
+    -e GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
     -v ${ROOTDIR}:/arangodb \
     -v ${ROOTDIR}/build-tmp:/var/tmp \
     -w /arangodb \
