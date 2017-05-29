@@ -41,5 +41,5 @@ cp -a ${ROOTDIR}/build-tmp/${DEBIMAGE_NAME}.deb ${BUILDDIR}/.arangodb-docker/ara
 
 # Build docker image
 cd ${BUILDDIR}/.arangodb-docker
-docker build -f Dockerfile3.local -t arangodb:${DOCKERTAG} .
+docker build -f Dockerfile32.local -t arangodb:${DOCKERTAG} .
 cd ${ROOTDIR}
