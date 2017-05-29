@@ -13,12 +13,16 @@ export DEBVERSION=${VERSION}-1
 DOCKERTAG=${VERSION}-local
 DEBIMAGE_NAME="arangodb3-${DEBVERSION}_amd64"
 BUILDDEB_ARGS=""
+BUILDDEB_DOCKER_ARGS=""
 for i in $@; do
     if test "$i" == "--enterprise"; then
         DEBIMAGE_NAME="arangodb3e-${DEBVERSION}_amd64"
-        BUILDDEB_ARGS="--enterprise xyz"
+        BUILDDEB_ARGS="--enterprise git@github.com:arangodb/enterprise.git "
     fi
 done
+if [ ! -z "${SSH_AUTH_SOCK}" ]; then
+    BUILDDEB_DOCKER_ARGS="${BUILDDEB_DOCKER_ARGS} -v ${SSH_AUTH_SOCK}:/.ssh-agent -e SSH_AUTH_SOCK=/.ssh-agent"
+fi
 
 # Create debian-jessie-builder
 if [ ! -e ${BUILDDIR}/.build-docker-containers ]; then
@@ -34,7 +38,13 @@ if [ ! -e ${BUILDDIR}/.arangodb-docker ]; then
 fi 
 
 # Build jessie package
-docker run -it -v ${ROOTDIR}:/arangodb -v ${ROOTDIR}/build-tmp:/var/tmp arangodb/debian-jessie-builder /arangodb/scripts/build-deb.sh $BUILDDEB_ARGS
+docker run -it \
+    -v ${ROOTDIR}:/arangodb \
+    -v ${ROOTDIR}/build-tmp:/var/tmp \
+    -w /arangodb \
+    ${BUILDDEB_DOCKER_ARGS} \
+    arangodb/debian-jessie-builder \
+    /arangodb/scripts/build-deb.sh $BUILDDEB_ARGS
 
 # Copy deb image to docker build root
 cp -a ${ROOTDIR}/build-tmp/${DEBIMAGE_NAME}.deb ${BUILDDIR}/.arangodb-docker/arangodb.deb
