@@ -198,6 +198,107 @@ function getChecksumsFromPeers (mounts) {
 
 // Startup and self-heal
 
+function ddSelfHealAll () {
+  const db = require('internal').db;
+  const dbName = db._name();
+  let modified;
+  try {
+    db._useDatabase('_system');
+    const databases = db._databases();
+    for (const name of databases) {
+      try {
+        db._useDatabase(name);
+        modified = ddSelfHeal();
+      } catch (e) {
+        console.warnStack(e);
+      }
+    }
+  } finally {
+    db._useDatabase(dbName);
+    if (modified) {
+      reloadRouting();
+    }
+  }
+}
+
+function ddSelfHeal () {
+  const serviceCollection = utils.getStorage();
+  const bundleCollection = utils.getBundleStorage();
+  const serviceDefinitions = db._query(aql`
+    FOR doc IN ${serviceCollection}
+    FILTER LEFT(doc.mount, 2) != "/_"
+    LET bundleExists = DOCUMENT(${bundleCollection}, doc.checksum) != null
+    RETURN [doc.mount, doc.checksum, bundleExists]
+  `).toArray();
+
+  let modified = false;
+  const knownBundlePaths = new Array(serviceDefinitions.length);
+  const knownServicePaths = new Array(serviceDefinitions.length);
+  for (const [mount, checksum, bundleExists] of serviceDefinitions) {
+    const bundlePath = FoxxService.bundlePath(mount);
+    const basePath = FoxxService.basePath(mount);
+    knownBundlePaths.push(bundlePath);
+    knownServicePaths.push(basePath);
+
+    const hasBundle = fs.exists(bundlePath);
+    const hasFolder = fs.exists(basePath);
+    if (!hasBundle && hasFolder) {
+      createServiceBundle(mount);
+    } else if (hasBundle && !hasFolder) {
+      extractServiceBundle(bundlePath, basePath);
+      modified = true;
+    }
+    const isInstalled = hasBundle || hasFolder;
+    const localChecksum = isInstalled ? safeChecksum(mount) : null;
+
+    if (!checksum) {
+      // pre-3.2 service, can't self-heal this
+      continue;
+    }
+
+    if (checksum === localChecksum) {
+      if (!bundleExists) {
+        try {
+          bundleCollection._binaryInsert({_key: checksum}, bundlePath);
+        } catch (e) {
+          console.warnStack(e, `Failed to store missing service bundle for service at "${mount}"`);
+        }
+      }
+    } else if (bundleExists) {
+      try {
+        bundleCollection._binaryDocument(checksum, bundlePath);
+        extractServiceBundle(bundlePath, basePath);
+        modified = true;
+      } catch (e) {
+        console.errorStack(e, `Failed to load service bundle for service at "${mount}"`);
+      }
+    }
+  }
+
+  const rootPath = FoxxService.rootPath();
+  for (const relPath of fs.listTree(rootPath)) {
+    const basename = path.basename(relPath);
+    if (basename.toUpperCase() !== 'APP') {
+      continue;
+    }
+    const basePath = path.resolve(rootPath, relPath);
+    if (!knownServicePaths.includes(basePath)) {
+      modified = true;
+      console.error(`DELETING ${basePath}`); // FIXME actually delete files
+    }
+  }
+
+  const bundlesPath = FoxxService.rootBundlePath();
+  for (const relPath of fs.listTree(bundlesPath)) {
+    const bundlePath = path.resolve(rootPath, relPath);
+    if (!knownBundlePaths.includes(bundlePath)) {
+      console.error(`DELETING ${bundlePath}`); // FIXME actually delete files
+    }
+  }
+
+  return modified;
+}
+
 function startup () {
   const db = require('internal').db;
   const dbName = db._name();

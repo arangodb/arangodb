@@ -63,6 +63,15 @@ function getStorage () {
   return c;
 }
 
+function getBundleStorage () {
+  var c = db._collection('_appbundles');
+  if (c === null) {
+    c = db._create('_appbundles', {isSystem: true, replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
+    distributeShardsLike: '_graphs', journalSize: 4 * 1024 * 1024});
+  }
+  return c;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief comparator for mount points
 // //////////////////////////////////////////////////////////////////////////////
@@ -231,4 +240,5 @@ exports.buildGithubUrl = buildGithubUrl;
 exports.validateMount = validateMount;
 exports.zipDirectory = zipDirectory;
 exports.getStorage = getStorage;
+exports.getBundleStorage = getBundleStorage;
 exports.pathRegex = pathRegex;
