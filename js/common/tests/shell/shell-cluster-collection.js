@@ -383,8 +383,36 @@ function ClusterCollectionSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
-      db._drop('bigreplication');    }
+      db._drop('bigreplication');
+    }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test creation / deleting of documents with replication set
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateReplicated : function () {
+      var cn = "UnitTestsClusterCrudRepl";
+      var c = db._create(cn, { numberOfShards: 2, replicationFactor: 2});
+      c.save({foo: 'bar'});
+      db._query(`FOR x IN @@cn REMOVE x IN @@cn`, {'@cn': cn});
+      assertEqual(0, c.toArray().length);
+
+      db._query(`FOR x IN @@cn REMOVE {_key: x._key} IN @@cn`, {'@cn': cn});
+      assertEqual(0, c.toArray().length);
+
+      db._query(`
+                let x = (FOR a IN [1]
+                         INSERT {
+                           "foo": "bar"
+                         } IN @@cn)
+                return x`,
+                {'@cn' : cn});
+
+      assertEqual(1, c.toArray().length);
+      db._drop(cn);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
   };
 }
 
