@@ -634,6 +634,50 @@ int revisionOnCoordinator(std::string const& dbname,
                               // the DBserver could have reported an error.
 }
 
+int warmupOnCoordinator(std::string const& dbname,
+                        std::string const& cid) {
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
+
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, cid);
+  } catch (...) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  TRI_ASSERT(collinfo != nullptr);
+
+  // If we get here, the sharding attributes are not only _key, therefore
+  // we have to contact everybody:
+  auto shards = collinfo->shardIds();
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+
+  for (auto const& p : *shards) {
+    auto headers =
+        std::make_unique<std::unordered_map<std::string, std::string>>();
+    cc->asyncRequest(
+        "", coordTransactionID, "shard:" + p.first,
+        arangodb::rest::RequestType::GET,
+        "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
+            StringUtils::urlEncode(p.first) + "/warmup",
+        std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
+  }
+
+  // Now listen to the results:
+  // Well actually we don't care...
+  int count;
+  for (count = (int)shards->size(); count > 0; count--) {
+    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////

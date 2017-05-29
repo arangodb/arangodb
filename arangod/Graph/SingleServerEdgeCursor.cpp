@@ -165,16 +165,26 @@ void SingleServerEdgeCursor::readAll(
     auto& cursorSet = _cursors[_currentCursor];
     for (auto& cursor : cursorSet) {
       LogicalCollection* collection = cursor->collection();
-      auto cb = [&](DocumentIdentifierToken const& token) {
-        if (collection->readDocument(_trx, token, *_mmdr)) {
-          VPackSlice doc(_mmdr->vpack());
+      if (cursor->hasExtra()) {
+        auto cb = [&](DocumentIdentifierToken const& token, VPackSlice doc) {
           std::string tmpId = _trx->extractIdString(doc);
           StringRef edgeId = _opts->cache()->persistString(StringRef(tmpId));
           _opts->cache()->insertDocument(edgeId, doc);
           callback(edgeId, doc, cursorId);
-        }
-      };
-      cursor->all(cb);
+        };
+        cursor->allWithExtra(cb);
+      } else {
+        auto cb = [&](DocumentIdentifierToken const& token) {
+          if (collection->readDocument(_trx, token, *_mmdr)) {
+            VPackSlice doc(_mmdr->vpack());
+            std::string tmpId = _trx->extractIdString(doc);
+            StringRef edgeId = _opts->cache()->persistString(StringRef(tmpId));
+            _opts->cache()->insertDocument(edgeId, doc);
+            callback(edgeId, doc, cursorId);
+          }
+        };
+        cursor->all(cb);
+      }
     }
   }
 }

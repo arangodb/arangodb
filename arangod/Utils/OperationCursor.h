@@ -41,17 +41,15 @@ class LogicalCollection;
 struct OperationResult;
 
 struct OperationCursor {
-
  public:
-  int                            code;
+  int code;
 
  private:
-
   std::unique_ptr<IndexIterator> _indexIterator;
-  bool                           _hasMore;
-  uint64_t                       _limit;
-  uint64_t const                 _originalLimit;
-  uint64_t const                 _batchSize;
+  bool _hasMore;
+  uint64_t _limit;
+  uint64_t const _originalLimit;
+  uint64_t const _batchSize;
 
  public:
   explicit OperationCursor(int code)
@@ -62,7 +60,7 @@ struct OperationCursor {
         _batchSize(1000) {}
 
   OperationCursor(IndexIterator* iterator, uint64_t limit, uint64_t batchSize)
-      : code(TRI_ERROR_NO_ERROR), 
+      : code(TRI_ERROR_NO_ERROR),
         _indexIterator(iterator),
         _hasMore(true),
         _limit(limit),  // _limit is modified later on
@@ -91,6 +89,8 @@ struct OperationCursor {
     return !successful();
   }
 
+  bool hasExtra() const;
+
 /// @brief Reset the cursor
   void reset();
 
@@ -98,9 +98,18 @@ struct OperationCursor {
   bool next(IndexIterator::TokenCallback const& callback,
       uint64_t batchSize);
   
+/// @brief Calls cb for the next batchSize many elements 
+  bool nextWithExtra(IndexIterator::ExtraCallback const& callback,
+      uint64_t batchSize);
+
 /// @brief convenience function to retrieve all results
   void all(IndexIterator::TokenCallback const& callback) {
     while (next(callback, 1000)) {}
+  }
+
+/// @brief convenience function to retrieve all results with extra
+  void allWithExtra(IndexIterator::ExtraCallback const& callback) {
+    while (nextWithExtra(callback, 1000)) {}
   }
 
 /// @brief Skip the next toSkip many elements.

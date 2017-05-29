@@ -245,7 +245,7 @@ class ExecutionBlock {
   bool _done;
 
   /// A copy of the tracing value in the options:
-  double _tracing;
+  int64_t _tracing;
 };
 
 }  // namespace arangodb::aql

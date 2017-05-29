@@ -127,6 +127,7 @@ class Logger {
  public:
   static LogTopic AGENCY;
   static LogTopic AGENCYCOMM;
+  static LogTopic CACHE;
   static LogTopic CLUSTER;
   static LogTopic COLLECTOR;
   static LogTopic COMMUNICATION;

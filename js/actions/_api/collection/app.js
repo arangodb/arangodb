@@ -468,6 +468,25 @@ function put_api_collection_load (req, res, collection) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_put_api_collection_warmup
+// //////////////////////////////////////////////////////////////////////////////
+
+function put_api_collection_warmup (req, res, collection) {
+  try {
+    // Warmup the indexes
+    collection.warmup();
+
+    var result = collectionRepresentation(collection);
+
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  } catch (err) {
+    actions.resultException(req, res, err, undefined, false);
+  }
+}
+
+
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_put_api_collection_unload
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -613,6 +632,8 @@ function put_api_collection (req, res) {
     put_api_collection_rename(req, res, collection);
   } else if (sub === 'rotate') {
     put_api_collection_rotate(req, res, collection);
+  } else if (sub === 'warmup') {
+    put_api_collection_warmup(req, res, collection);
   } else {
     actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
       "expecting one of the actions 'load', 'unload',"
@@ -657,6 +678,8 @@ function delete_api_collection (req, res) {
     }
   }
 }
+
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief handles a collection request

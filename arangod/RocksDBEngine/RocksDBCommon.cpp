@@ -28,6 +28,7 @@
 #include "Basics/StringRef.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -276,7 +277,7 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
   iterateBounds(bounds, [&rv](rocksdb::Iterator* it) {
     rv.emplace_back(RocksDBKey(it->key()),
                     RocksDBValue(RocksDBEntryType::Collection, it->value()));
-  });
+  }, arangodb::RocksDBColumnFamily::other());
   return rv;
 }
 
@@ -287,7 +288,7 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
   iterateBounds(bounds, [&rv](rocksdb::Iterator* it) {
     rv.emplace_back(RocksDBKey(it->key()),
                     RocksDBValue(RocksDBEntryType::View, it->value()));
-  });
+  }, arangodb::RocksDBColumnFamily::other());
   return rv;
 }
 

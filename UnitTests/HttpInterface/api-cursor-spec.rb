@@ -73,6 +73,56 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(500)
         doc.parsed_response['errorNum'].should eq(32)
       end
+      
+      it "returns no errors but warnings if fail-on-warning is not triggered" do
+        cmd = api
+        body = "{ \"query\" : \"FOR i IN 1..5 RETURN i / 0\", \"options\" : { \"failOnWarning\" : false } }"
+        doc = ArangoDB.log_post("#{prefix}-fail-on-warning", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['result'].length.should eq(5)
+        doc.parsed_response['result'].should eq([ nil, nil, nil, nil, nil ])
+        doc.parsed_response['extra']['warnings'].length.should eq(5)
+        doc.parsed_response['extra']['warnings'][0]['code'].should eq(1562)
+        doc.parsed_response['extra']['warnings'][1]['code'].should eq(1562)
+        doc.parsed_response['extra']['warnings'][2]['code'].should eq(1562)
+        doc.parsed_response['extra']['warnings'][3]['code'].should eq(1562)
+        doc.parsed_response['extra']['warnings'][4]['code'].should eq(1562)
+      end
+      
+      it "returns no errors but warnings if fail-on-warning is not triggered, limiting number of warnings" do
+        cmd = api
+        body = "{ \"query\" : \"FOR i IN 1..5 RETURN i / 0\", \"options\" : { \"failOnWarning\" : false, \"maxWarningCount\" : 3 } }"
+        doc = ArangoDB.log_post("#{prefix}-fail-on-warning", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['result'].length.should eq(5)
+        doc.parsed_response['result'].should eq([ nil, nil, nil, nil, nil ])
+        doc.parsed_response['extra']['warnings'].length.should eq(3)
+        doc.parsed_response['extra']['warnings'][0]['code'].should eq(1562)
+        doc.parsed_response['extra']['warnings'][1]['code'].should eq(1562)
+        doc.parsed_response['extra']['warnings'][2]['code'].should eq(1562)
+      end
+      
+      it "returns an error if fail-on-warning is triggered" do
+        cmd = api
+        body = "{ \"query\" : \"FOR i IN 1..5 RETURN i / 0\", \"options\" : { \"failOnWarning\" : true } }"
+        doc = ArangoDB.log_post("#{prefix}-fail-on-warning", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1562)
+      end
 
     end
 

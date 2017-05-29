@@ -226,4 +226,3 @@ If no memory limit is specified, then the server default value (controlled by
 startup option *--query.memory-limit* will be used for restricting the maximum amount 
 of memory the query can use. A memory limit value of *0* means that the maximum
 amount of memory for the query is not restricted. 
-

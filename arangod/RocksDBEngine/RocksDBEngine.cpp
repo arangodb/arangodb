@@ -226,9 +226,11 @@ void RocksDBEngine::start() {
   // only compress levels >= 2
   _options.compression_per_level.resize(_options.num_levels);
   for (int level = 0; level < _options.num_levels; ++level) {
-    _options.compression_per_level[level] = ((level >= 2) ? rocksdb::kSnappyCompression : rocksdb::kNoCompression);
+    _options.compression_per_level[level] =
+        (((uint64_t) level >= opts->_numUncompressedLevels) ? rocksdb::kSnappyCompression
+                                                 : rocksdb::kNoCompression);
   }
-  
+
   // TODO: try out the effects of these options 
   // Number of files to trigger level-0 compaction. A value <0 means that
   // level-0 compaction will not be triggered by number of files at all.
@@ -306,8 +308,50 @@ void RocksDBEngine::start() {
   columFamilies.emplace_back("IndexValue", cfOptions2); // 6
   columFamilies.emplace_back("UniqueIndexValue", cfOptions2);// 7
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
-
+ 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
+  size_t const numberOfColumnFamilies = RocksDBColumnFamily::numberOfColumnFamilies;
+  {
+    rocksdb::Options testOptions; 
+    testOptions.create_if_missing = false;
+    testOptions.create_missing_column_families = false;
+    std::vector<std::string> existingColumnFamilies;
+    rocksdb::Status status = rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
+    if (!status.ok()) {
+      // check if we have found the database directory or not
+      Result res = rocksutils::convertStatus(status);
+      if (res.errorNumber() != TRI_ERROR_ARANGO_IO_ERROR) {
+        // not an I/O error. so we better report the error and abort here
+        LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+            << "unable to initialize RocksDB engine: " << status.ToString();
+        FATAL_ERROR_EXIT();
+      }
+    }
+
+    if (status.ok()) {
+      // we were able to open the database.
+      // now check which column families are present in the db
+      std::string names;
+      for (auto const& it : existingColumnFamilies) {
+        if (!names.empty()) {
+          names.append(", ");
+        }
+        names.append(it);
+      }
+      
+      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "found existing column families: " << names;
+
+      if (existingColumnFamilies.size() < numberOfColumnFamilies) {
+        LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) 
+            << "unexpected number of column families found in database (" << cfHandles.size() << "). " 
+            << "expecting at least " << numberOfColumnFamilies
+            << ". if you are upgrading from an alpha version of ArangoDB 3.2, " 
+            << "it is required to restart with a new database directory and re-import data";
+        FATAL_ERROR_EXIT();
+      }
+    }
+  }
+
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _options, transactionOptions, _path, columFamilies, &cfHandles, &_db);
 
@@ -321,6 +365,16 @@ void RocksDBEngine::start() {
         << "unable to initialize RocksDB column families";
     FATAL_ERROR_EXIT();
   }
+
+  if (cfHandles.size() < numberOfColumnFamilies) {
+    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) 
+        << "unexpected number of column families found in database. " 
+        << "got " << cfHandles.size() << ", expecting at least " << numberOfColumnFamilies;
+    FATAL_ERROR_EXIT();
+  }
+
+  TRI_ASSERT(cfHandles.size() >= numberOfColumnFamilies);
+
   // set our column families
   RocksDBColumnFamily::_other = cfHandles[0];
   RocksDBColumnFamily::_documents = cfHandles[1];

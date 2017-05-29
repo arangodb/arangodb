@@ -207,13 +207,14 @@
 
       var container = document.getElementById('documentEditor');
       var options = {
-        change: function () {
+        onChange: function () {
           self.jsonContentChanged();
         },
         search: true,
         mode: 'tree',
         modes: ['tree', 'code'],
-        iconlib: 'fontawesome4'
+        ace: window.ace
+        // iconlib: 'fontawesome4'
       };
       this.editor = new JSONEditor(container, options);
       if (this.defaultMode) {
@@ -221,6 +222,12 @@
       }
 
       return this;
+    },
+
+    cleanupEditor: function () {
+      if (this.editor) {
+        this.editor.destroy();
+      }
     },
 
     removeReadonlyKeys: function (object) {

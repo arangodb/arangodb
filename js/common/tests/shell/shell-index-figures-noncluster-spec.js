@@ -54,8 +54,8 @@ function verifyMemory(index){
 
 function verifyCache(index){
   if (index.type !== 'primary') {
-    expect(index.figures.cacheInUse).to.be.true;
     expect(index.figures).to.be.ok;
+    expect(index.figures.cacheInUse).to.be.true;
     expect(index.figures.cacheSize).to.be.a('number');
     expect(index.figures.cacheLifeTimeHitRate).to.be.a('number');
     expect(index.figures.cacheWindowedHitRate).to.be.a('number');
@@ -76,39 +76,89 @@ describe('Index figures', function () {
     }
   });
 
-// edge index ///////////////////////////////////////////////////////////
   describe('primar/edge index', function () {
-    var col;
-    before('create collection',function(){
-      col = db._createEdgeCollection("UnitTestEdgar");
-      for(var i = 0; i < 100; i++){
-        col.insert({"_from":"source/1","_to":"sink/"+i});
-      }
+    const colName = 'UnitTestEdges';
+    let col;
+
+    before('create collection', function(){
+      db._drop(colName);
+      col = db._createEdgeCollection(colName);
     });
-    it('verify index types', function() {
-      var indexes = col.getIndexes(true);
-      expect(indexes.length).to.be.equal(2);
-      expect(indexes[0].type).to.be.equal("primary");
-      expect(indexes[1].type).to.be.equal("edge");
+
+
+    after(function() {
+      db._drop(colName);
     });
-    it('verify index - memory', function() {
-      var indexes = col.getIndexes(true);
-      indexes.forEach((i) => {
-          verifyMemory(i);
+
+    describe('verify statistics', function() {
+
+      before('insert documents', function() {
+        for (let i = 0; i < 100; i++) {
+          col.insert({"_from": "source/1", "_to": "sink/" + i});
+        }
       });
-    });
-    it('verify figures - cache', function() {
-      if(!isRocksDB){
-        this.skip();
-      }
-      var indexes = col.getIndexes(true);
-      indexes.forEach((i) => {
-        verifyCache(i);
+
+      it('index types', function() {
+        var indexes = col.getIndexes(true);
+        expect(indexes.length).to.be.equal(2);
+        expect(indexes[0].type).to.be.equal("primary");
+        expect(indexes[1].type).to.be.equal("edge");
       });
+
+      it('index - memory', function() {
+        var indexes = col.getIndexes(true);
+        indexes.forEach((i) => {
+            verifyMemory(i);
+        });
+      });
+
+      it('figures - cache', function() {
+        if(!isRocksDB){
+          this.skip();
+        }
+        var indexes = col.getIndexes(true);
+        indexes.forEach((i) => {
+          verifyCache(i);
+        });
+      });
+
     });
-    after(function(){
-      db._drop(col);
+
+    describe('warmup', function() {
+
+      before('insert document', function() {
+        // We insert enough documents to trigger resizing
+        // of initial cache size.
+        for (let i = 0; i < 23000; i++) {
+          col.insert({"_from": "source/" + i, "_to": "sink/" + i});
+        }
+      });
+
+      it('should fill the cache', function() {
+        if(!isRocksDB){
+          this.skip();
+        }
+        // The cache does not expose fillgrades an such.
+        // We can only check memory consumption...
+        let indexes = col.getIndexes(true);
+        let edgeIndex = indexes[1];
+        expect(edgeIndex.type).to.be.equal('edge');
+
+        expect(edgeIndex.figures).to.be.ok;
+        expect(edgeIndex.figures.cacheSize).to.be.a('number');
+        let oldSize = edgeIndex.figures.cacheSize;
+
+        col.warmup();
+
+        // Test if the memory consumption goes up
+        let indexes2 = col.getIndexes(true);
+        let edgeIndex2 = indexes2[1];
+        expect(edgeIndex2.type).to.be.equal('edge');
+        expect(edgeIndex2.figures.cacheSize).to.be.above(oldSize);
+      });
+
     });
+
   }); // end edge index
 
 // hash index ///////////////////////////////////////////////////////////

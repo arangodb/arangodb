@@ -256,7 +256,7 @@ void RestAqlHandler::explainQuery() {
     {
       VPackObjectBuilder guard(&answerBuilder);
       if (res.result != nullptr) {
-        if (query->allPlans()) {
+        if (query->queryOptions().allPlans) {
           answerBuilder.add(VPackValue("plans"));
         } else {
           answerBuilder.add(VPackValue("plan"));
