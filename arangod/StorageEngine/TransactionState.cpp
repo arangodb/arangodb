@@ -97,35 +97,33 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
-  try {
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
+    ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
+
     auto const *logCol = _vocbase->lookupCollection(cid);
-    std::string colName;
+    if (logCol == nullptr) {
+      return TRI_ERROR_INTERNAL;
+    }
 
-    if (logCol != nullptr) {
-      colName = logCol->name();
+    std::string colName = logCol->name();
+    std::cout << "collection is " << colName <<  "\n";
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(colName);
 
-    if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-      std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
-      ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
-
-      AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(colName);
-
-      if (level == AuthLevel::NONE) {
-        std::cout << "collection AuthLevel::NONE\n";
-        return TRI_ERROR_OUT_OF_MEMORY;
-      } // if
-
-      if (level == AuthLevel::RO && accessType == AccessMode::Type::WRITE) {
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-    } else
-      std::cout << "is nullptr\n";
+    if (level == AuthLevel::NONE) {
+      std::cout << "collection AuthLevel::NONE\n";
+      return TRI_ERROR_FORBIDDEN;
     } // if
-    std::cout << colName <<  " continue\n";
-  } catch(...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
 
+    bool collectionWillWrite = (accessType == AccessMode::Type::WRITE || accessType == AccessMode::Type::EXCLUSIVE);
+
+    if (level == AuthLevel::RO && collectionWillWrite) {
+      std::cout << "collection will write but no write right\n";
+        return TRI_ERROR_FORBIDDEN;
+    }
+  }
+  else
+    std::cout << "is nullptr\n";
 
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid 
   //            << ", accessType: " << accessType 
