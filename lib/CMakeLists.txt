@@ -110,6 +110,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
+  ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/JemallocFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
@@ -117,6 +118,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/PageSizeFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/RocksDBOptionFeature.cpp
+  ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
@@ -188,6 +190,9 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
+  ProgramOptions/Option.cpp
+  ProgramOptions/ProgramOptions.cpp
+  ProgramOptions/Section.cpp
   ProgramOptions/Translator.cpp
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp

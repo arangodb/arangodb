@@ -147,9 +147,9 @@ VPackBuilder MMFilesRestExportHandler::buildOptions(VPackSlice const& slice) {
     std::string typeString = type.copyString();
 
     if (typeString == "include") {
-      _restrictions.type = MMFilesCollectionExport::Restrictions::RESTRICTION_INCLUDE;
+      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_INCLUDE;
     } else if (typeString == "exclude") {
-      _restrictions.type = MMFilesCollectionExport::Restrictions::RESTRICTION_EXCLUDE;
+      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_EXCLUDE;
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,

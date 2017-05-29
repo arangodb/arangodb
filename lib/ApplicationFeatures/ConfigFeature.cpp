@@ -33,6 +33,7 @@
 #include "ProgramOptions/IniFileParser.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "ProgramOptions/Translator.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -48,6 +49,7 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
+  startsAfter("ShellColors");
 }
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -71,7 +73,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
                                 char const* binaryPath) {
   for (auto const& def : _defines) {
-    DefineEnvironment(def);
+    arangodb::options::DefineEnvironment(def);
   }
 
   loadConfigFile(options, _progname, binaryPath);

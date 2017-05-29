@@ -32,6 +32,7 @@
 #include "RestServer/DatabasePathFeature.h"
 
 #include <rocksdb/options.h>
+#include <rocksdb/table.h>
 
 #include <thread>
 
@@ -41,6 +42,7 @@ using namespace arangodb::options;
 
 namespace {
 rocksdb::Options rocksDBDefaults;
+rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 }
 
 RocksDBOptionFeature::RocksDBOptionFeature(
@@ -64,6 +66,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
         ? static_cast<uint64_t>(((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3))
         : (256 << 20)),
       _blockCacheShardBits(0),
+      _tableBlockSize(rocksDBTableOptionsDefaults.block_size),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compactionReadaheadSize(rocksDBDefaults.compaction_readahead_size),
       _verifyChecksumsInCompaction(
@@ -197,6 +200,10 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.block-cache-shard-bits",
                      "number of shard bits to use for block cache",
                      new UInt64Parameter(&_blockCacheShardBits));
+  
+  options->addOption("--rocksdb.table-block-size",
+                     "approximate size (in bytes) of user data packed per block",
+                     new UInt64Parameter(&_tableBlockSize));
 
   options->addHiddenOption("--rocksdb.recycle-log-file-num",
                            "number of log files to keep around for recycling",

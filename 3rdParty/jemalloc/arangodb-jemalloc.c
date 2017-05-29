@@ -143,6 +143,12 @@ void* adb_mmap(void* addr, size_t length, int prot, int flags) {
         __atomic_add_fetch(&adb_total_size, (uint64_t)length, __ATOMIC_SEQ_CST);
       }
 
+#ifdef MADV_NOHUGEPAGE
+      if (ret != MAP_FAILED) {
+        madvise(ret, length, MADV_NOHUGEPAGE);
+      }
+#endif
+
       return ret;
     }
   }

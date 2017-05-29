@@ -36,12 +36,13 @@ class Builder;
 
 namespace aql {
 class ExecutionPlan;
+class QueryString;
 class VariableGenerator;
 
 struct PlanCacheEntry {
   PlanCacheEntry(std::string&& queryString, 
-                 std::shared_ptr<arangodb::velocypack::Builder> builder)
-      : queryString(std::move(queryString)), builder(builder) {}
+                 std::shared_ptr<arangodb::velocypack::Builder>&& builder)
+      : queryString(std::move(queryString)), builder(std::move(builder)) {}
 
   std::string queryString;
   std::shared_ptr<arangodb::velocypack::Builder> builder;
@@ -60,10 +61,10 @@ class PlanCache {
 
  public:
   /// @brief lookup a plan in the cache
-  std::shared_ptr<PlanCacheEntry> lookup(TRI_vocbase_t*, uint64_t, char const*, size_t);
+  std::shared_ptr<PlanCacheEntry> lookup(TRI_vocbase_t*, uint64_t, QueryString const&);
 
   /// @brief store a plan in the cache
-  void store(TRI_vocbase_t*, uint64_t, char const*, size_t, ExecutionPlan const*);
+  void store(TRI_vocbase_t*, uint64_t, QueryString const&, ExecutionPlan const*);
 
   /// @brief invalidate all plans for a particular database
   void invalidate(TRI_vocbase_t*);

@@ -20,6 +20,9 @@ However, if client applications specify the list of used collections for all
 their queries using *WITH*, then no deadlocks will happen and no queries will
 be aborted due to deadlock situations.
 
+From ArangoDB 3.1 onwards `WITH` is required for traversals in a
+clustered environment in order to avoid deadlocks.
+
 Note that for queries that access only a single collection or that have all
 collection names specified somewhere else in the query string, there is no
 need to use *WITH*. *WITH* is only useful when the AQL query parser cannot

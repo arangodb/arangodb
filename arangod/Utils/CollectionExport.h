@@ -21,26 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_COLLECTION_EXPORT_H
-#define ARANGOD_ROCKSDB_ROCKSDB_COLLECTION_EXPORT_H 1
+#ifndef ARANGOD_COLLECTION_EXPORT_H
+#define ARANGOD_COLLECTION_EXPORT_H 1
 
 #include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/voc-types.h"
-
-#include <velocypack/SliceContainer.h>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class CollectionGuard;
-class RocksDBDocumentDitch;
-
-class RocksDBCollectionExport {
-  friend class RocksDBExportCursor;
-
+struct CollectionExport {
  public:
   struct Restrictions {
     enum Type { RESTRICTION_NONE, RESTRICTION_INCLUDE, RESTRICTION_EXCLUDE };
@@ -51,25 +39,34 @@ class RocksDBCollectionExport {
     Type type;
   };
 
- public:
-  RocksDBCollectionExport(RocksDBCollectionExport const&) = delete;
-  RocksDBCollectionExport& operator=(RocksDBCollectionExport const&) = delete;
+  static bool IncludeAttribute(
+      CollectionExport::Restrictions::Type const restrictionType,
+      std::unordered_set<std::string> const& fields, std::string const& key) {
+    if (restrictionType ==
+            CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
+        restrictionType ==
+            CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
+      bool const keyContainedInRestrictions = (fields.find(key) != fields.end());
+      if ((restrictionType ==
+              CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
+          !keyContainedInRestrictions) ||
+          (restrictionType ==
+              CollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
+          keyContainedInRestrictions)) {
+        // exclude the field
+        return false;
+      }
+      // include the field
+      return true;
+    } else {
+      // no restrictions
+      TRI_ASSERT(restrictionType ==
+                CollectionExport::Restrictions::RESTRICTION_NONE);
+      return true;
+    }
+    return true;
+  }
 
-  RocksDBCollectionExport(TRI_vocbase_t*, std::string const&,
-                          Restrictions const&);
-
-  ~RocksDBCollectionExport();
-
- public:
-  void run(size_t);
-
- private:
-  std::unique_ptr<arangodb::CollectionGuard> _guard;
-  LogicalCollection* _collection;
-  std::string const _name;
-  arangodb::CollectionNameResolver _resolver;
-  Restrictions _restrictions;
-  std::vector<velocypack::SliceContainer> _vpack;
 };
 }
 

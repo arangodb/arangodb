@@ -26,6 +26,10 @@
 
 #include "Basics/Common.h"
 #include "Utils/Cursor.h"
+#include "Utils/CollectionExport.h"
+#include "Utils/CollectionGuard.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -33,13 +37,17 @@ namespace arangodb {
 namespace velocypack {
 class Slice;
 }
+namespace transaction {
+  class Methods;
+}
 
-class RocksDBCollectionExport;
+class IndexIterator;
 
 class RocksDBExportCursor final : public Cursor {
  public:
-  RocksDBExportCursor(TRI_vocbase_t*, CursorId,
-                      arangodb::RocksDBCollectionExport*, size_t, double, bool);
+  RocksDBExportCursor(TRI_vocbase_t*, std::string const&,
+                      CollectionExport::Restrictions const&, CursorId, size_t, size_t,
+                      double, bool);
 
   ~RocksDBExportCursor();
 
@@ -56,8 +64,15 @@ class RocksDBExportCursor final : public Cursor {
 
  private:
   VocbaseGuard _vocbaseGuard;
-  arangodb::RocksDBCollectionExport* _ex;
-  size_t const _size;
+  arangodb::CollectionNameResolver _resolver;
+  CollectionExport::Restrictions _restrictions;
+  std::string const _name;
+  std::unique_ptr<arangodb::CollectionGuard> _collectionGuard;
+  LogicalCollection* _collection;
+  std::unique_ptr<transaction::Methods> _trx;
+  ManagedDocumentResult _mdr;
+  std::unique_ptr<IndexIterator> _iter;
+  size_t _size;
 };
 }
 

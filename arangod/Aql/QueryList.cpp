@@ -21,7 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/QueryList.h"
+#include "QueryList.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryProfile.h"
 #include "Basics/ReadLocker.h"
@@ -29,8 +30,10 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
@@ -41,28 +44,24 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
     : id(id), queryString(std::move(queryString)), bindParameters(bindParameters), 
       started(started), runTime(runTime), state(state) {}
 
-double const QueryList::DefaultSlowQueryThreshold = 10.0;
-size_t const QueryList::DefaultMaxSlowQueries = 64;
-size_t const QueryList::DefaultMaxQueryStringLength = 4096;
-
 /// @brief create a query list
 QueryList::QueryList(TRI_vocbase_t*)
     : _lock(),
       _current(),
       _slow(),
       _slowCount(0),
-      _enabled(!Query::DisableQueryTracking()),
-      _trackSlowQueries(!Query::DisableQueryTracking()),
-      _slowQueryThreshold(Query::SlowQueryThreshold()),
-      _maxSlowQueries(QueryList::DefaultMaxSlowQueries),
-      _maxQueryStringLength(QueryList::DefaultMaxQueryStringLength) {
+      _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->queryTracking()),
+      _trackSlowQueries(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->queryTracking()),
+      _slowQueryThreshold(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->slowThreshold()),
+      _maxSlowQueries(defaultMaxSlowQueries),
+      _maxQueryStringLength(defaultMaxQueryStringLength) {
   _current.reserve(64);
 }
 
 /// @brief insert a query
 bool QueryList::insert(Query* query) {
   // not enable or no query string
-  if (!_enabled || query == nullptr || query->queryString() == nullptr) {
+  if (!_enabled || query == nullptr || query->queryString().empty()) {
     return false;
   }
 
@@ -93,7 +92,7 @@ void QueryList::remove(Query* query) {
   // the list are correct
 
   // no query string
-  if (query == nullptr || query->queryString() == nullptr) {
+  if (query == nullptr || query->queryString().empty()) {
     return;
   }
 
@@ -165,9 +164,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   }
 
   Query* query = (*it).second;
-  StringRef queryString(query->queryString(), query->queryLength());
-
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << id << " '" << queryString << "'";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << id << " '" << query->queryString() << "'";
 
   query->killed(true);
   return TRI_ERROR_NO_ERROR;
@@ -182,12 +179,10 @@ uint64_t QueryList::killAll(bool silent) {
   for (auto& it : _current) {
     Query* query = it.second;
    
-    StringRef queryString(query->queryString(), query->queryLength());
-  
     if (silent) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << queryString << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << queryString << "'";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
     }
     
     query->killed(true);
@@ -211,7 +206,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
     for (auto const& it : _current) {
       Query const* query = it.second;
 
-      if (query == nullptr || query->queryString() == nullptr) {
+      if (query == nullptr || query->queryString().empty()) {
         continue;
       }
 
@@ -252,38 +247,5 @@ void QueryList::clearSlow() {
 }
       
 std::string QueryList::extractQueryString(Query const* query, size_t maxLength) const {
-  char const* queryString = query->queryString();
-  size_t length = query->queryLength();
-
-  if (length > maxLength) {
-    std::string q;
-
-    // query string needs truncation
-    length = maxLength;
-
-    // do not create invalid UTF-8 sequences
-    while (length > 0) {
-      uint8_t c = queryString[length - 1];
-      if ((c & 128) == 0) {
-        // single-byte character
-        break;
-      }
-      --length;
-
-      // start of a multi-byte sequence
-      if ((c & 192) == 192) {
-        // decrease length by one more, so we the string contains the
-        // last part of the previous (multi-byte?) sequence
-        break;
-      }
-    }
-    
-    q.reserve(length + 3);
-    q.append(queryString, length); 
-    q.append("...", 3);
-    return q;
-  } 
-    
-  // no truncation
-  return std::string(queryString, length);
+  return query->queryString().extract(maxLength);
 }

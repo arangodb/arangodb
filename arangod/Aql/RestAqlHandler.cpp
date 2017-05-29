@@ -170,7 +170,7 @@ void RestAqlHandler::parseQuery() {
     return;
   }
 
-  auto query = std::make_unique<Query>(false, _vocbase, queryString.c_str(), queryString.size(),
+  auto query = std::make_unique<Query>(false, _vocbase, QueryString(queryString),
                 std::shared_ptr<VPackBuilder>(), nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -241,8 +241,8 @@ void RestAqlHandler::explainQuery() {
       VPackBuilder::clone(querySlice.get("options")));
 
   auto query =
-      std::make_unique<Query>(false, _vocbase, queryString.c_str(),
-                              queryString.size(), bindVars, options, PART_MAIN);
+      std::make_unique<Query>(false, _vocbase, QueryString(queryString),
+                              bindVars, options, PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the Query: " << res.details;
@@ -309,8 +309,8 @@ void RestAqlHandler::createQueryFromString() {
   auto options = std::make_shared<VPackBuilder>(
       VPackBuilder::clone(querySlice.get("options")));
 
-  auto query = std::make_unique<Query>(false, _vocbase, queryString.c_str(),
-                         queryString.size(), bindVars, options,
+  auto query = std::make_unique<Query>(false, _vocbase, QueryString(queryString),
+                         bindVars, options,
                          (part == "main" ? PART_MAIN : PART_DEPENDENT));
   
   try {

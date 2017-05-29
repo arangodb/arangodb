@@ -28,6 +28,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
+#if _WIN32
+#include <iostream>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -39,6 +43,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
   setOptional(false);
   requiresElevatedPrivileges(false);
 
+  startsAfter("ShellColors");
   startsAfter("Version");
 
   if (threaded) {

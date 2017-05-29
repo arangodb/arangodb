@@ -465,7 +465,7 @@ extern "C" {
 #ifndef TRI_UNALIGNED_ACCESS
     // byte-wise hashing to support platforms that don't permit
     // unaligned accesses of uint32_t values
-    uint8_t* currentChar = reinterpret_cast<uint8_t const*>(data);
+    uint8_t const* currentChar = reinterpret_cast<uint8_t const*>(data);
     while (length--) {
       value = (value >> 8) ^ Crc32Lookup[0][(value & 0xFF) ^ *currentChar++];
     }

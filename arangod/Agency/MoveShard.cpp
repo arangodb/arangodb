@@ -25,7 +25,9 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Cluster/ClusterHelpers.h"
 
+using namespace arangodb;
 using namespace arangodb::consensus;
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
@@ -585,7 +587,7 @@ JOB_STATUS MoveShard::pendingFollower() {
   size_t done = 0;   // count the number of shards done
   doForAllShards(_snapshot, _database, shardsLikeMe,
     [this, &done](Slice plan, Slice current, std::string& planPath) {
-      if (compareServerLists(plan, current)) {
+      if (ClusterHelpers::compareServerLists(plan, current)) {
         ++done;
       }
     });

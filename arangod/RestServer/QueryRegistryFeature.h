@@ -39,13 +39,18 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
+  bool queryTracking() const { return _queryTracking; }
+  bool failOnWarning() const { return _failOnWarning; }
+  uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
+  double slowThreshold() const { return _slowThreshold; }
+
  private:
   bool _queryTracking;
+  bool _failOnWarning;
   uint64_t _queryMemoryLimit;
   double _slowThreshold;
   std::string _queryCacheMode;

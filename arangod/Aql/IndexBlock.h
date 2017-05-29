@@ -29,7 +29,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
-
+#include "Indexes/IndexIterator.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 
 namespace arangodb {
@@ -102,7 +102,7 @@ class IndexBlock final : public ExecutionBlock {
   bool skipIndex(size_t atMost);
 
   /// @brief continue fetching of documents
-  bool readIndex(size_t atMost, std::function<void(DocumentIdentifierToken const&)>&);
+  bool readIndex(size_t atMost, IndexIterator::TokenCallback const&);
 
   /// @brief frees the memory for all non-constant expressions
   void cleanupNonConstExpressions();

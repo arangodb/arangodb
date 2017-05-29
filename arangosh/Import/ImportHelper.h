@@ -26,18 +26,21 @@
 #define ARANGODB_IMPORT_IMPORT_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 
-#include "Basics/csv.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/csv.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #endif
 
 namespace arangodb {
+class ClientFeature;
 namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
+struct SimpleHttpClientParams;
 }
 }
 
@@ -47,6 +50,16 @@ class SimpleHttpResult;
 
 namespace arangodb {
 namespace import {
+class SenderThread;
+
+struct ImportStatistics {
+  size_t _numberCreated = 0;
+  size_t _numberErrors = 0;
+  size_t _numberUpdated = 0;
+  size_t _numberIgnored = 0;
+
+  arangodb::Mutex _mutex;
+};
 
 class ImportHelper {
  public:
@@ -61,7 +74,9 @@ class ImportHelper {
   ImportHelper& operator=(ImportHelper const&) = delete;
 
  public:
-  ImportHelper(httpclient::SimpleHttpClient* client, uint64_t maxUploadSize);
+  ImportHelper(ClientFeature const* client, std::string const& endpoint,
+               httpclient::SimpleHttpClientParams const& params,
+               uint64_t maxUploadSize, uint32_t threadCount);
 
   ~ImportHelper();
 
@@ -79,8 +94,7 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   bool importJson(std::string const& collectionName,
-                  std::string const& fileName,
-                  bool assumeLinewise);
+                  std::string const& fileName, bool assumeLinewise);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the action to carry out on duplicate _key
@@ -102,17 +116,13 @@ class ImportHelper {
   /// @brief set collection name prefix for _from
   //////////////////////////////////////////////////////////////////////////////
 
-  void setFrom (std::string const& from) {
-    _fromCollectionPrefix = from;
-  }
+  void setFrom(std::string const& from) { _fromCollectionPrefix = from; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection name prefix for _to
   //////////////////////////////////////////////////////////////////////////////
 
-  void setTo (std::string const& to) {
-    _toCollectionPrefix = to;
-  }
+  void setTo(std::string const& to) { _toCollectionPrefix = to; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not backslashes can be used for escaping quotes
@@ -139,7 +149,8 @@ class ImportHelper {
     _createCollectionType = value;
   }
 
-  void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
+  void setTranslations(
+      std::unordered_map<std::string, std::string> const& translations) {
     _translations = translations;
   }
 
@@ -148,19 +159,19 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   void setOverwrite(bool value) { _overwrite = value; }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the number of rows to skip
   //////////////////////////////////////////////////////////////////////////////
 
   void setRowsToSkip(size_t value) { _rowsToSkip = value; }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of rows to skip
   //////////////////////////////////////////////////////////////////////////////
-  
+
   size_t getRowsToSkip() const { return _rowsToSkip; }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not to convert strings that contain "null", "false",
   /// "true" or that look like numbers into those types
@@ -184,36 +195,36 @@ class ImportHelper {
   /// @brief get the number of documents imported
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getNumberCreated() { return _numberCreated; }
+  size_t getNumberCreated() { return _stats._numberCreated; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of errors
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getNumberErrors() { return _numberErrors; }
+  size_t getNumberErrors() { return _stats._numberErrors; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of updated documents
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getNumberUpdated() { return _numberUpdated; }
+  size_t getNumberUpdated() { return _stats._numberUpdated; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of ignored documents
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getNumberIgnored() const { return _numberIgnored; }
+  size_t getNumberIgnored() const { return _stats._numberIgnored; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increase the row counter
   //////////////////////////////////////////////////////////////////////////////
 
   void incRowsRead() { ++_rowsRead; }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of rows read
   //////////////////////////////////////////////////////////////////////////////
-  
+
   size_t getRowsRead() const { return _rowsRead; }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -240,13 +251,17 @@ class ImportHelper {
                     bool escaped);
 
   bool checkCreateCollection();
+  bool truncateCollection();
+
   void sendCsvBuffer();
   void sendJsonBuffer(char const* str, size_t len, bool isObject);
-  void handleResult(httpclient::SimpleHttpResult* result);
+  SenderThread* findSender();
+  void waitForSenders();
 
  private:
-  httpclient::SimpleHttpClient* _client;
-  uint64_t _maxUploadSize;
+  std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
+  uint64_t const _maxUploadSize;
+  std::vector<std::unique_ptr<SenderThread>> _senderThreads;
 
   std::string _separator;
   std::string _quote;
@@ -259,10 +274,7 @@ class ImportHelper {
   bool _firstChunk;
 
   size_t _numberLines;
-  size_t _numberCreated;
-  size_t _numberErrors;
-  size_t _numberUpdated;
-  size_t _numberIgnored;
+  ImportStatistics _stats;
 
   size_t _rowsRead;
   size_t _rowOffset;

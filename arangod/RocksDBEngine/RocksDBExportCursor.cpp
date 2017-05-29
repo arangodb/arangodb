@@ -19,12 +19,23 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBExportCursor.h"
-#include "RocksDBEngine/RocksDBCollectionExport.h"
+#include "Basics/WriteLocker.h"
+#include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/StorageEngine.h"
+#include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+
+#include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -34,23 +45,53 @@
 
 using namespace arangodb;
 
-RocksDBExportCursor::RocksDBExportCursor(TRI_vocbase_t* vocbase, CursorId id,
-                                         arangodb::RocksDBCollectionExport* ex,
-                                         size_t batchSize, double ttl,
-                                         bool hasCount)
+RocksDBExportCursor::RocksDBExportCursor(
+    TRI_vocbase_t* vocbase, std::string const& name,
+    CollectionExport::Restrictions const& restrictions, CursorId id,
+    size_t limit, size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
       _vocbaseGuard(vocbase),
-      _ex(ex),
-      _size(ex->_vpack.size()) {}
+      _resolver(vocbase),
+      _restrictions(restrictions),
+      _name(name),
+      _mdr() {
+  // prevent the collection from being unloaded while the export is ongoing
+  // this may throw
+  _collectionGuard.reset(
+      new arangodb::CollectionGuard(vocbase, _name.c_str(), false));
 
-RocksDBExportCursor::~RocksDBExportCursor() { delete _ex; }
+  _collection = _collectionGuard->collection();
+
+  _trx.reset(new SingleCollectionTransaction(
+      transaction::StandaloneContext::Create(_collection->vocbase()), _name,
+      AccessMode::Type::READ));
+
+  // already locked by guard above
+  _trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+  Result res = _trx->begin();
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  auto rocksCollection =
+      reinterpret_cast<RocksDBCollection*>(_collection->getPhysical());
+  _iter = rocksCollection->getAllIterator(_trx.get(), &_mdr, false);
+
+  _size = _collection->numberDocuments(_trx.get());
+  if (limit > 0 && limit < _size) {
+    _size = limit;
+  }
+}
+
+RocksDBExportCursor::~RocksDBExportCursor() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the cursor contains more data
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RocksDBExportCursor::hasNext() {
-  if (_ex == nullptr) {
+  if (_iter.get() == nullptr) {
     return false;
   }
 
@@ -72,34 +113,6 @@ VPackSlice RocksDBExportCursor::next() {
 
 size_t RocksDBExportCursor::count() const { return _size; }
 
-static bool IncludeAttribute(
-    RocksDBCollectionExport::Restrictions::Type const restrictionType,
-    std::unordered_set<std::string> const& fields, std::string const& key) {
-  if (restrictionType ==
-          RocksDBCollectionExport::Restrictions::RESTRICTION_INCLUDE ||
-      restrictionType ==
-          RocksDBCollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
-    bool const keyContainedInRestrictions = (fields.find(key) != fields.end());
-    if ((restrictionType ==
-             RocksDBCollectionExport::Restrictions::RESTRICTION_INCLUDE &&
-         !keyContainedInRestrictions) ||
-        (restrictionType ==
-             RocksDBCollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
-         keyContainedInRestrictions)) {
-      // exclude the field
-      return false;
-    }
-    // include the field
-    return true;
-  } else {
-    // no restrictions
-    TRI_ASSERT(restrictionType ==
-               RocksDBCollectionExport::Restrictions::RESTRICTION_NONE);
-    return true;
-  }
-  return true;
-}
-
 void RocksDBExportCursor::dump(VPackBuilder& builder) {
   auto transactionContext =
       std::make_shared<transaction::StandaloneContext>(_vocbaseGuard.vocbase());
@@ -108,40 +121,47 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
 
   builder.options = transactionContext->getVPackOptions();
 
-  TRI_ASSERT(_ex != nullptr);
-  auto const restrictionType = _ex->_restrictions.type;
+  TRI_ASSERT(_iter.get() != nullptr);
+
+  auto const restrictionType = _restrictions.type;
 
   try {
     builder.add("result", VPackValue(VPackValueType::Array));
     size_t const n = batchSize();
 
-    for (size_t i = 0; i < n; ++i) {
-      if (!hasNext()) {
-        break;
+    auto cb = [&, this](DocumentIdentifierToken const& token) {
+      if (_position == _size) {
+        return false;
       }
+      if (_collection->readDocument(_trx.get(), token, _mdr)) {
+        builder.openObject();
+        VPackSlice const slice(_mdr.vpack());
+        // Copy over shaped values
+        for (auto const& entry : VPackObjectIterator(slice)) {
+          std::string key(entry.key.copyString());
 
-      VPackSlice const slice(_ex->_vpack.at(_position++).slice());
-      builder.openObject();
-      // Copy over shaped values
-      for (auto const& entry : VPackObjectIterator(slice)) {
-        std::string key(entry.key.copyString());
-
-        if (!IncludeAttribute(restrictionType, _ex->_restrictions.fields,
-                              key)) {
-          // Ignore everything that should be excluded or not included
-          continue;
+          if (!CollectionExport::IncludeAttribute(restrictionType,
+                                                  _restrictions.fields, key)) {
+            // Ignore everything that should be excluded or not included
+            continue;
+          }
+          // If we get here we need this entry in the final result
+          if (entry.value.isCustom()) {
+            builder.add(key,
+                        VPackValue(builder.options->customTypeHandler->toString(
+                            entry.value, builder.options, slice)));
+          } else {
+            builder.add(key, entry.value);
+          }
         }
-        // If we get here we need this entry in the final result
-        if (entry.value.isCustom()) {
-          builder.add(key,
-                      VPackValue(builder.options->customTypeHandler->toString(
-                          entry.value, builder.options, slice)));
-        } else {
-          builder.add(key, entry.value);
-        }
+        builder.close();
+        _position++;
       }
-      builder.close();
-    }
+      return true;
+    };
+
+    _iter->next(cb, n);
+
     builder.close();  // close Array
 
     // builder.add("hasMore", VPackValue(hasNext() ? "true" : "false"));
@@ -162,8 +182,7 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
 
     if (!hasNext()) {
       // mark the cursor as deleted
-      delete _ex;
-      _ex = nullptr;
+      _iter.reset();
       this->deleted();
     }
   } catch (arangodb::basics::Exception const& ex) {

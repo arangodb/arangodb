@@ -109,7 +109,7 @@ function isClusterReadyForBusiness () {
   const coordIds = getPeerCoordinatorIds();
   return parallelClusterRequests(function * () {
     for (const coordId of coordIds) {
-      yield [coordId, 'GET', '/_api/foxx/_local/status'];
+      yield [coordId, 'GET', '/_api/version'];
     }
   }()).every(response => response.statusCode === 200);
 }

@@ -29,6 +29,8 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ArgumentParser.h"
 
+#include <iostream>
+
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;

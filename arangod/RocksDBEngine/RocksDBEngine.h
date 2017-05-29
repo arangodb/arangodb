@@ -233,6 +233,8 @@ class RocksDBEngine final : public StorageEngine {
                                       std::string const& name,
                                       bool wasCleanShutdown, bool isUpgrade);
 
+  std::string getCompressionSupport() const;
+
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);

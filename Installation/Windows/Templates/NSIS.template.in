@@ -5,14 +5,16 @@
 !addplugindir  '@CPACK_PLUGIN_PATH@/SharedMemory/Plugins'
 !addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
 !addincludedir '@CPACK_PLUGIN_PATH@/'
-!include StrRep.nsh
+!include "OpenLink.nsh"
+
 ;--------------------------------
 ; Include LogicLib for more readable code
   !include "LogicLib.nsh"
   !include "UAC.nsh"
   !include nsDialogs.nsh
   !include WinMessages.nsh
-
+  !include InstallOptions.nsh
+  !include MUI2.nsh
 ;--------------------------------
 ; get commandline parameters
 !include FileFunc.nsh
@@ -20,120 +22,85 @@
 !insertmacro GetOptions
 
 ;--------------------------------
-; You must define these values
 
-  !define VERSION "@CPACK_PACKAGE_VERSION@"
-  !define PATCH  "@CPACK_PACKAGE_VERSION_PATCH@"
-  !define INST_DIR "@CPACK_TEMPORARY_DIRECTORY@"
+!define VERSION "@CPACK_PACKAGE_VERSION@"
+!define PATCH  "@CPACK_PACKAGE_VERSION_PATCH@"
+!define INST_DIR "@CPACK_TEMPORARY_DIRECTORY@"
 
 ;--------------------------------
 ; custom defines for the DRY people of us.
-  !define TRI_UNINSTALL_REG_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@";
-  !define TRI_SVC_NAME 'ArangoDB'
+!define TRI_UNINSTALL_REG_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@";
+# Comes from WaitForService: !define TRI_SVC_NAME 'ArangoDB'
 ; Put some of the more custom ones in from the CMakeFile:
 @CPACK_ARANGODB_NSIS_DEFINES@
 
 ;--------------------------------
 ;Variables                        x -> from userinput
 !define EMPTY ""
-  var retryCount
-  Var MUI_TEMP
-  Var STARTMENU_FOLDER
-  Var SV_ALLUSERS
-  Var START_MENU
+Var MUI_TEMP
+Var STARTMENU_FOLDER
+Var SV_ALLUSERS
+Var START_MENU
 
-  Var DO_NOT_ADD_TO_PATH        ; x bool
-  Var ADD_TO_PATH_ALL_USERS     ; x bool
-  Var ADD_TO_PATH_CURRENT_USER  ; x bool
+Var INSTALL_DESKTOP           ; x bool: add desktop icon
+Var IS_DEFAULT_INSTALLDIR
 
-  Var INSTALL_DESKTOP           ; x bool: add desktop icon
-  Var IS_DEFAULT_INSTALLDIR
+Var STORAGE_ENGINE            ; x string auto/mmfiles/rocksdb
+Var PASSWORD                  ; x string
+Var PASSWORD_AGAIN            ; x string / only for comparison
 
-  Var STORAGE_ENGINE            ; x string auto/mmfiles/rocksdb
-  Var PASSWORD                  ; x string
-  Var PASSWORD_AGAIN            ; x string / only for comparison
+Var PURGE_DB                  ; x bool ; delete DB on uninstall
 
-  Var PURGE_DB                  ; x bool ; delete DB on uninstall
+Var DO_NOT_ADD_TO_PATH        ; x bool
+Var ADD_TO_PATH_ALL_USERS     ; x bool
+Var ADD_TO_PATH_CURRENT_USER  ; x bool
 
 ; Variables for definition of instdir
 ; posible values: SingleUser | AllUsers | Service
-  VAR TRI_INSTALL_TYPE          ; x 
-  !define TEMP1 $R0 ;Temp variable
-  
+VAR TRI_INSTALL_TYPE          ; x 
+Var newCfgValues              ; keep new config file values
+!define TEMP1 $R0 ;Temp variable
+
+Var DATADIR
 ;--------------------------------
 ;Include Modern UI
 
-  !include "MUI.nsh"
+!include "MUI.nsh"
 
-  ;Default installation folder
-  InstallDir "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+;Default installation folder
+InstallDir "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 
-;--------------------------------
-; Open a URL in a browser.
-; http://nsis.sourceforge.net/Open_link_in_new_browser_window
-Function openLinkNewWindow
-  Push $3
-  Exch
-  Push $2
-  Exch
-  Push $1
-  Exch
-  Push $0
-  Exch
-
-  ReadRegStr $0 HKCR "http\shell\open\command" ""
-; Get browser path             
-    DetailPrint $0
-  StrCpy $2 '"'                 ;"
-  StrCpy $1 $0 1
-  StrCmp $1 $2 +2 ; if path is not enclosed in " look for space as final char 
-    StrCpy $2 ' '
-  StrCpy $3 1
-  loop:
-    StrCpy $1 $0 1 $3
-    DetailPrint $1
-    StrCmp $1 $2 found
-    StrCmp $1 "" found
-    IntOp $3 $3 + 1
-    Goto loop
-
-  found:
-    StrCpy $1 $0 $3
-    StrCmp $2 " " +2
-      StrCpy $1 '$1"'           ;"
-
-  Pop $0
-  Exec '$1 $0'
-  Pop $0
-  Pop $1
-  Pop $2
-  Pop $3
-FunctionEnd
-
-!macro _OpenURL URL
-Push "${URL}"
-Call openLinkNewWindow
-!macroend
-
-!define OpenURL '!insertmacro "_OpenURL"'
 
 ;--------------------------------
 ;General
 
-  ;Name and file
-  Name "@CPACK_NSIS_PACKAGE_NAME@"
-  OutFile "@CPACK_TOPLEVEL_DIRECTORY@/@CPACK_OUTPUT_FILE_NAME@"
+;Name and file
+Name "@CPACK_NSIS_PACKAGE_NAME@"
+OutFile "@CPACK_TOPLEVEL_DIRECTORY@/@CPACK_OUTPUT_FILE_NAME@"
 
-  ;Set compression
-  SetCompressor @CPACK_NSIS_COMPRESSOR@
+;Set compression
+SetCompressor @CPACK_NSIS_COMPRESSOR@
 
-  ;Require administrator access
-  ; RequestExecutionLevel admin
-  RequestExecutionLevel highest
+;Require administrator access
+; RequestExecutionLevel admin
+RequestExecutionLevel highest
+
+!include "AddToPath.nsh"
+!include "AddToRegistry.nsh"
+!include "WaitForService.nsh"
+!include "ReadINIFileKeys.nsh"
 
 Function disableBackButton
      GetDlgItem $0 $HWNDParent 3
      EnableWindow $0 0
+FunctionEnd
+
+Function stop_old_service
+  StrCmp $TRI_INSTALL_TYPE  'Service' 0 noServiceToStop
+     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
+     Call WaitForServiceDown
+     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
+noServiceToStop:
 FunctionEnd
 
 Function Tri_ChangePrivileges
@@ -194,8 +161,23 @@ ${EndSwitch}
 SetShellVarContext all
 FunctionEnd
 
+Var mycheckbox ; You could just store the HWND in $1 etc if you don't want this extra variable
 
-  !include Sections.nsh
+Function un.ModifyUnWelcome
+;  SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Titlebar - UnWelcome BLARG"
+  ${NSD_CreateCheckbox} 120u -20u 50% 20u "Delete databases with uninstallation?"
+  Pop $mycheckbox
+;  ${NSD_Check} $mycheckbox ; don't check it by default
+FunctionEnd
+
+Function un.LeaveUnWelcome
+  ${NSD_GetState} $mycheckbox $0
+  ${If} $0 <> 0
+    StrCpy $PURGE_DB "1"
+  ${EndIf}
+FunctionEnd
+
+!include Sections.nsh
 
 ;--- Component support macros: ---
 ; The code for the add/remove functionality is from:
@@ -308,183 +290,15 @@ Var AR_RegFlags
   !define MUI_HEADERIMAGE
   !define MUI_ABORTWARNING
 
-;--------------------------------
-; path functions
 
 !verbose 3
 !include "WinMessages.NSH"
 !verbose 4
 
 ;----------------------------------------
-; based upon a script of "Written by KiCHiK 2003-01-18 05:57:02"
-;----------------------------------------
 !verbose 3
 !include "WinMessages.NSH"
 !verbose 4
-;====================================================
-; get_NT_environment
-;     Returns: the selected environment
-;     Output : head of the stack
-;====================================================
-!macro select_NT_profile UN
-Function ${UN}select_NT_profile
-   StrCmp $ADD_TO_PATH_ALL_USERS "1" 0 environment_single
-      DetailPrint "Selected environment for all users"
-      Push "all"
-      Return
-   environment_single:
-      DetailPrint "Selected environment for current user only."
-      Push "current"
-      Return
-FunctionEnd
-!macroend
-!insertmacro select_NT_profile ""
-!insertmacro select_NT_profile "un."
-;----------------------------------------------------
-!define NT_current_env 'HKCU "Environment"'
-!define NT_all_env     'HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"'
-
-!ifndef WriteEnvStr_RegKey
-  !ifdef ALL_USERS
-    !define WriteEnvStr_RegKey \
-       'HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"'
-  !else
-    !define WriteEnvStr_RegKey 'HKCU "Environment"'
-  !endif
-!endif
-
-; AddToPath - Adds the given dir to the search path.
-;        Input - head of the stack
-;        Note - Win9x systems requires reboot
-
-Function AddToPath
-  Exch $0
-  Push $1
-  Push $2
-  Push $3
-
-  ; don't add if the path doesn't exist
-  IfFileExists "$0\*.*" "" AddToPath_done
-
-  ReadEnvStr $1 PATH
-  ; if the path is too long for a NSIS variable NSIS will return a 0
-  ; length string.  If we find that, then warn and skip any path
-  ; modification as it will trash the existing path.
-  StrLen $2 $1
-  IntCmp $2 0 CheckPathLength_ShowPathWarning CheckPathLength_Done CheckPathLength_Done
-    CheckPathLength_ShowPathWarning:
-    Messagebox MB_OK|MB_ICONEXCLAMATION "Warning! Your PATH environment is already to long; the installer unable to add ArangoDB to it."
-    Goto AddToPath_done
-  CheckPathLength_Done:
-  Push "$1;"
-  Push "$0;"
-  Call StrStr
-  Pop $2
-  StrCmp $2 "" "" AddToPath_done
-  Push "$1;"
-  Push "$0\;"
-  Call StrStr
-  Pop $2
-  StrCmp $2 "" "" AddToPath_done
-  GetFullPathName /SHORT $3 $0
-  Push "$1;"
-  Push "$3;"
-  Call StrStr
-  Pop $2
-  StrCmp $2 "" "" AddToPath_done
-  Push "$1;"
-  Push "$3\;"
-  Call StrStr
-  Pop $2
-  StrCmp $2 "" "" AddToPath_done
-
-  StrCmp $ADD_TO_PATH_ALL_USERS "1" ReadAllKey
-    ReadRegStr $1 ${NT_current_env} "PATH"
-    Goto DoTrim
-  ReadAllKey:
-    ReadRegStr $1 ${NT_all_env} "PATH"
-  DoTrim:
-  StrCmp $1 "" AddToPath_NTdoIt
-    Push $1
-    Call Trim
-    Pop $1
-    StrCpy $0 "$1;$0"
-  AddToPath_NTdoIt:
-    StrCmp $ADD_TO_PATH_ALL_USERS "1" WriteAllKey
-      WriteRegExpandStr ${NT_current_env} "PATH" $0
-      Goto DoSend
-    WriteAllKey:
-      WriteRegExpandStr ${NT_all_env} "PATH" $0
-    DoSend:
-    SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
-
-  AddToPath_done:
-    Pop $3
-    Pop $2
-    Pop $1
-    Pop $0
-FunctionEnd
-
-
-; RemoveFromPath - Remove a given dir from the path
-;     Input: head of the stack
-
-Function un.RemoveFromPath
-  Exch $0
-  Push $1
-  Push $2
-  Push $3
-  Push $4
-  Push $5
-  Push $6
-
-  IntFmt $6 "%c" 26 ; DOS EOF
-
-  StrCmp $ADD_TO_PATH_ALL_USERS "1" unReadAllKey
-    ReadRegStr $1 ${NT_current_env} "PATH"
-    Goto unDoTrim
-  unReadAllKey:
-    ReadRegStr $1 ${NT_all_env} "PATH"
-  unDoTrim:
-  StrCpy $5 $1 1 -1 ; copy last char
-  StrCmp $5 ";" +2 ; if last char != ;
-    StrCpy $1 "$1;" ; append ;
-  Push $1
-  Push "$0;"
-  Call un.StrStr ; Find `$0;` in $1
-  Pop $2 ; pos of our dir
-  StrCmp $2 "" unRemoveFromPath_done
-    ; else, it is in path
-    ; $0 - path to add
-    ; $1 - path var
-    StrLen $3 "$0;"
-    StrLen $4 $2
-    StrCpy $5 $1 -$4 ; $5 is now the part before the path to remove 
-    StrCpy $6 $2 "" $3 ; $6 is now the part after the path to remove
-    StrCpy $3 $5$6
-
-    StrCpy $5 $3 1 -1 ; copy last char
-    StrCmp $5 ";" 0 +2 ; if last char == ;
-      StrCpy $3 $3 -1 ; remove last char
-
-    StrCmp $ADD_TO_PATH_ALL_USERS "1" unWriteAllKey
-      WriteRegExpandStr ${NT_current_env} "PATH" $3
-      Goto unDoSend
-    unWriteAllKey:
-      WriteRegExpandStr ${NT_all_env} "PATH" $3
-    unDoSend:
-    SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
-
-  unRemoveFromPath_done:
-    Pop $6
-    Pop $5
-    Pop $4
-    Pop $3
-    Pop $2
-    Pop $1
-    Pop $0
-FunctionEnd
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Uninstall sutff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -492,177 +306,6 @@ FunctionEnd
 ;###########################################
 ;#            Utility Functions            #
 ;###########################################
-
-; StrStr
-; input, top of stack = string to search for
-;        top of stack-1 = string to search in
-; output, top of stack (replaces with the portion of the string remaining)
-; modifies no other variables.
-;
-; Usage:
-;   Push "this is a long ass string"
-;   Push "ass"
-;   Call StrStr
-;   Pop $R0
-;  ($R0 at this point is "ass string")
-
-!macro StrStr un
-Function ${un}StrStr
-Exch $R1 ; st=haystack,old$R1, $R1=needle
-  Exch    ; st=old$R1,haystack
-  Exch $R2 ; st=old$R1,old$R2, $R2=haystack
-  Push $R3
-  Push $R4
-  Push $R5
-  StrLen $R3 $R1
-  StrCpy $R4 0
-  ; $R1=needle
-  ; $R2=haystack
-  ; $R3=len(needle)
-  ; $R4=cnt
-  ; $R5=tmp
-  loop:
-    StrCpy $R5 $R2 $R3 $R4
-    StrCmp $R5 $R1 done
-    StrCmp $R5 "" done
-    IntOp $R4 $R4 + 1
-    Goto loop
-done:
-  StrCpy $R1 $R2 "" $R4
-  Pop $R5
-  Pop $R4
-  Pop $R3
-  Pop $R2
-  Exch $R1
-FunctionEnd
-!macroend
-!insertmacro StrStr ""
-!insertmacro StrStr "un."
-
-Function Trim ; Added by Pelaca
-	Exch $R1
-	Push $R2
-Loop:
-	StrCpy $R2 "$R1" 1 -1
-	StrCmp "$R2" " " RTrim
-	StrCmp "$R2" "$\n" RTrim
-	StrCmp "$R2" "$\r" RTrim
-	StrCmp "$R2" ";" RTrim
-	GoTo Done
-RTrim:
-	StrCpy $R1 "$R1" -1
-	Goto Loop
-Done:
-	Pop $R2
-	Exch $R1
-FunctionEnd
-
-Function ConditionalAddToRegistry
-  Pop $0
-  Pop $1
-  StrCmp "$0" "" ConditionalAddToRegistry_EmptyString
-    WriteRegStr SHCTX "${TRI_UNINSTALL_REG_PATH}" "$1" "$0"
-    ;MessageBox MB_OK "Set Registry: '$1' to '$0'"
-    DetailPrint "Set install registry entry: '$1' to '$0'"
-  ConditionalAddToRegistry_EmptyString:
-FunctionEnd
-
-;--------------------------------
-
-Function WaitForServiceUp
-  DetailPrint "starting ArangoDB Service..."
-  Push 0
-  Pop $retryCount
-  try_again:
-    SimpleSC::ServiceIsRunning '${TRI_SVC_NAME}'
-    Pop $0 ; returns an errorcode (<>0) otherwise success (0)
-    Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
-    ${If} $1 == 1
-      ;MessageBox MB_OK "Service running : $retryCount "
-      ; ok, running now.
-      Return
-    ${EndIf}
-    Sleep 1000
-    ${If} $retryCount == 40
-      MessageBox MB_OK "Waited 40 seconds for ArangoDB to come up; Please look at the Windows Eventlog for eventual errors!"
-      Return
-    ${EndIf}
-    IntOp $retryCount $retryCount + 1
-    Goto try_again
-FunctionEnd
-
-;--------------------------------
-
-Function WaitForServiceDown
-  DetailPrint "stopping ArangoDB Service..."
-  Push 0
-  Pop $retryCount
-  try_again:
-    SimpleSC::ServiceIsRunning '${TRI_SVC_NAME}'
-    Pop $0 ; returns an errorcode (<>0) otherwise success (0)
-    Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
-    ${If} $1 == 0
-      ;MessageBox MB_OK "Service running : $retryCount "
-      ; ok, running now.
-      Return
-    ${EndIf}
-    Sleep 1000
-    ${If} $retryCount == 40
-      MessageBox MB_OK "Waited 40 seconds for the ArangoDB Service to shutdown; you may need to remove files by hand"
-      Return
-    ${EndIf}
-    IntOp $retryCount $retryCount + 1
-    Goto try_again
-FunctionEnd
-
-Function un.WaitForServiceDown
-  DetailPrint "stopping ArangoDB Service..."
-  Push 0
-  Pop $retryCount
-  try_again:
-    SimpleSC::ServiceIsRunning '${TRI_SVC_NAME}'
-    Pop $0 ; returns an errorcode (<>0) otherwise success (0)
-    Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
-    ${If} $1 == 0
-      ;MessageBox MB_OK "Service running : $retryCount "
-      ; ok, running now.
-      Return
-    ${EndIf}
-    Sleep 1000
-    ${If} $retryCount == 40
-      MessageBox MB_OK "Waited 40 seconds for the ArangoDB Service to shutdown; you may need to remove files by hand"
-      Return
-    ${EndIf}
-    IntOp $retryCount $retryCount + 1
-    Goto try_again
-FunctionEnd
-
-;--------------------------------
-
-!ifdef CPACK_USES_DOWNLOAD
-Function DownloadFile
-    IfFileExists $INSTDIR\* +2
-    CreateDirectory $INSTDIR
-    Pop $0
-
-    ; Skip if already downloaded
-    IfFileExists $INSTDIR\$0 0 +2
-    Return
-
-    StrCpy $1 "@CPACK_DOWNLOAD_SITE@"
-
-  try_again:
-    NSISdl::download "$1/$0" "$INSTDIR\$0"
-
-    Pop $1
-    StrCmp $1 "success" success
-    StrCmp $1 "Cancelled" cancel
-    MessageBox MB_OK "Download failed: $1"
-  cancel:
-    Return
-  success:
-FunctionEnd
-!endif
 
 ;--------------------------------
 ; Installation types
@@ -701,10 +344,15 @@ FunctionEnd
 
   @CPACK_NSIS_PAGE_COMPONENTS@
 
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE stop_old_service
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE insert_registration_keys
   !insertmacro MUI_PAGE_INSTFILES
   !insertmacro MUI_PAGE_FINISH
 
+  !define MUI_WELCOMEPAGE_TEXT 'Please choose whether we should also remove the database files along with the programm files.'
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.ModifyUnWelcome
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.LeaveUnWelcome
+  !insertmacro MUI_UNPAGE_WELCOME
   !insertmacro MUI_UNPAGE_CONFIRM
   !insertmacro MUI_UNPAGE_INSTFILES
 
@@ -772,7 +420,6 @@ FunctionEnd
   ;Only for solid compression (by default, solid compression is enabled for BZIP2 and LZMA)
 
   ReserveFile "NSIS.InstallOptions.ini"
-  !insertmacro MUI_RESERVEFILE_INSTALLOPTIONS
 
 ;--------------------------------
 ;Installer Sections
@@ -786,14 +433,7 @@ Section "-Core installation"
   ; this variable was defined by eld and included in NSIS.template.in
   ; we probably need this for the install/uninstall software list.
   SetRegView ${BITS}
-
-   StrCmp $TRI_INSTALL_TYPE  'Service' 0 noServiceToStop
-     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
-     Call WaitForServiceDown
-     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
-     Pop $0
-     
-noServiceToStop:
+  
   @CPACK_NSIS_FULL_INSTALL@
 
   ;Store installation folder
@@ -801,46 +441,17 @@ noServiceToStop:
 
   ;Create uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
-  Push "DisplayName"
-  Push "@CPACK_NSIS_DISPLAY_NAME@"
-  Call ConditionalAddToRegistry
-  Push "DisplayVersion"
-  Push "@CPACK_PACKAGE_VERSION@"
-  Call ConditionalAddToRegistry
-  Push "Publisher"
-  Push "@CPACK_PACKAGE_VENDOR@"
-  Call ConditionalAddToRegistry
-  Push "UninstallString"
-  Push "$INSTDIR\Uninstall.exe"
-  Call ConditionalAddToRegistry
-  Push "NoRepair"
-  Push "1"
-  Call ConditionalAddToRegistry
-
-  !ifdef CPACK_NSIS_ADD_REMOVE
-  ;Create add/remove functionality
-  Push "ModifyPath"
-  Push "$INSTDIR\AddRemove.exe"
-  Call ConditionalAddToRegistry
-  !else
-  Push "NoModify"
-  Push "1"
-  Call ConditionalAddToRegistry
-  !endif
+  !insertmacro AddToRegistry "DisplayName"          "@CPACK_NSIS_DISPLAY_NAME@"
+  !insertmacro AddToRegistry "DisplayVersion"       "@CPACK_PACKAGE_VERSION@"
+  !insertmacro AddToRegistry "Publisher"            "@CPACK_PACKAGE_VENDOR@"
+  !insertmacro AddToRegistry "UninstallString"      "$INSTDIR\Uninstall.exe"
+  !insertmacro AddToRegistry "NoRepair"             "1"
 
   ; Optional registration
-  Push "DisplayIcon"
-  Push "$INSTDIR\@CPACK_NSIS_INSTALLED_ICON_NAME@"
-  Call ConditionalAddToRegistry
-  Push "HelpLink"
-  Push "@CPACK_NSIS_HELP_LINK@"
-  Call ConditionalAddToRegistry
-  Push "URLInfoAbout"
-  Push "@CPACK_NSIS_URL_INFO_ABOUT@"
-  Call ConditionalAddToRegistry
-  Push "Contact"
-  Push "@CPACK_NSIS_CONTACT@"
-  Call ConditionalAddToRegistry
+  !insertmacro AddToRegistry "DisplayIcon"          "$INSTDIR\@CPACK_NSIS_INSTALLED_ICON_NAME@"
+  !insertmacro AddToRegistry "HelpLink"             "@CPACK_NSIS_HELP_LINK@"
+  !insertmacro AddToRegistry "URLInfoAbout"         "@CPACK_NSIS_URL_INFO_ABOUT@"
+  !insertmacro AddToRegistry "Contact"              "@CPACK_NSIS_CONTACT@"
 
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 
@@ -858,27 +469,27 @@ noServiceToStop:
   noDesktopIcon:
 
   ; Write special uninstall registry entries
-  Push "StartMenu"
-  Push "$STARTMENU_FOLDER"
-  Call ConditionalAddToRegistry
-  Push "DoNotAddToPath"
-  Push "$DO_NOT_ADD_TO_PATH"
-  Call ConditionalAddToRegistry
-  Push "AddToPathAllUsers"
-  Push "$ADD_TO_PATH_ALL_USERS"
-  Call ConditionalAddToRegistry
-  Push "AddToPathCurrentUser"
-  Push "$ADD_TO_PATH_CURRENT_USER"
-  Call ConditionalAddToRegistry
-  Push "InstallToDesktop"
-  Push "$INSTALL_DESKTOP"
-  Call ConditionalAddToRegistry
+  !insertmacro AddToRegistry "StartMenu"            "$STARTMENU_FOLDER"
+  !insertmacro AddToRegistry "DoNotAddToPath"       "$DO_NOT_ADD_TO_PATH"
+  !insertmacro AddToRegistry "AddToPathAllUsers"    "$ADD_TO_PATH_ALL_USERS"
+  !insertmacro AddToRegistry "AddToPathCurrentUser" "$ADD_TO_PATH_CURRENT_USER"
+  !insertmacro AddToRegistry "InstallToDesktop"     "$INSTALL_DESKTOP"
 
   !insertmacro MUI_STARTMENU_WRITE_END
 
-  !insertmacro _ReplaceInFile "$INSTDIR\etc\arangodb3\arangod.conf" "storage-engine = auto" "storage-engine = $STORAGE_ENGINE"
+  !insertmacro AddToRegistry "DATADIR"        "$DATADIR"
 
-  System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
+  ; Create a file containing the settings we want to be overwritten:
+  StrCpy $newCfgValues "[database]$\r$\ndirectory = $DATADIR$\r$\n[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
+  FileOpen $4  "$INSTDIR\etc\arangodb3\newValues.ini" w
+  FileWrite $4 "$newCfgValues"
+  FileClose $4
+  ; Alter the shipped file and insert the values from above:
+  push "$INSTDIR\etc\arangodb3\newValues.ini"
+  push "$INSTDIR\etc\arangodb3\arangod.conf"
+  call ReadINIFileKeys
+
+System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
     ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database --server.rest-server false --server.statistics false --foxx.queues false"
     Goto done
@@ -895,13 +506,11 @@ noServiceToStop:
 SectionEnd
 
 Function .onInstSuccess
-        
   IfSilent 0 continueUI
   Call insert_registration_keys
-  Push "$INSTDIR/${BIN_DIR}"
   StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 doNotAddToPath
   StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
-  Call AddToPath
+  !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $ADD_TO_PATH_ALL_USERS
 doNotAddToPath:
   Return
 
@@ -930,14 +539,14 @@ continueUI:
 displayAgain:
 
   !insertmacro MUI_HEADER_TEXT "Install Options" "Choose options for installing @CPACK_NSIS_PACKAGE_NAME@"
-  !insertmacro MUI_INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"
-  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.InstallOptions.ini"
-  !insertmacro MUI_INSTALLOPTIONS_READ $PASSWORD "NSIS.InstallOptions.ini" "Field 6" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $PASSWORD_AGAIN "NSIS.InstallOptions.ini" "Field 7" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $STORAGE_ENGINE "NSIS.InstallOptions.ini" "Field 11" "State"
+  !insertmacro INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"
+  !insertmacro INSTALLOPTIONS_DISPLAY "NSIS.InstallOptions.ini"
+  !insertmacro INSTALLOPTIONS_READ $PASSWORD "NSIS.InstallOptions.ini" "Field 6" "State"
+  !insertmacro INSTALLOPTIONS_READ $PASSWORD_AGAIN "NSIS.InstallOptions.ini" "Field 7" "State"
+  !insertmacro INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
+  !insertmacro INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
+  !insertmacro INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
+  !insertmacro INSTALLOPTIONS_READ $STORAGE_ENGINE "NSIS.InstallOptions.ini" "Field 11" "State"
 
   StrCmp $PASSWORD $PASSWORD_AGAIN +3 0
     MessageBox MB_OK|MB_ICONSTOP "Passwords don't match, try again"
@@ -946,12 +555,6 @@ displayAgain:
     Pop ${TEMP1}
 
     Return  
-FunctionEnd
-;------------------------
-; Create
-Function ArangoPreInstallationOptionsPage
-  !insertmacro MUI_HEADER_TEXT "@CPACK_NSIS_PACKAGE_NAME@ als Service?" "Install @CPACK_NSIS_PACKAGE_NAME@ as a service?"
-  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.ArangoDB.ini"
 FunctionEnd
 
 ;--------------------------------
@@ -985,9 +588,9 @@ Function default_installation_directory
      Call disableBackButton
   ${EndIf}
   ${IfNot} ${UAC_IsInnerInstance}
-    !insertmacro MUI_INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
-    !insertmacro MUI_INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
-    !insertmacro MUI_INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
+    !insertmacro INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
+    !insertmacro INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
+    !insertmacro INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
 
      ${If} $R2 == '1'
        StrCpy $TRI_INSTALL_TYPE 'Service'
@@ -1008,22 +611,24 @@ Function default_installation_directory
      Call read_options
    ${EndIf}
 
-
   ${Switch} $TRI_INSTALL_TYPE
     ${Case} 'Service'
       Call Tri_ChangePrivileges
       SetShellVarContext all
       ;MessageBox MB_OK "Service : $INSTDIR"
+      StrCpy $DATADIR "$APPDATA\ArangoDB"
       ${Break}
     ${Case} 'SingleUser'
       SetShellVarContext current
       StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
       ;MessageBox MB_OK "SingleUser : $INSTDIR"
+      StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB"
       ${Break}
     ${Case} 'AllUsers'
       Call Tri_ChangePrivileges
       SetShellVarContext all
       StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+      StrCpy $DATADIR "$DOCUMENTS\ArangoDB"
       ;MessageBox MB_OK "AllUsers : $INSTDIR"
       ${Break}
    ${EndSwitch}
@@ -1126,28 +731,6 @@ SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Hallo"
 ;--------------------------------
 ; determine admin versus local install
 Function un.onInit
-
-;  ClearErrors
-;  UserInfo::GetName
-;  IfErrors noLM
-;  Pop $0
-;  UserInfo::GetAccountType
-;  Pop $1
-;  StrCmp $1 "Admin" 0 +3
-;    SetShellVarContext all
-;    MessageBox MB_OK 'User "$0" is in the Admin group'
-;    Goto done
-;  StrCmp $1 "Power" 0 +3
-;    SetShellVarContext all
-;    MessageBox MB_OK 'User "$0" is in the Power Users group'
-;    Goto done
-;
-;  noLM:
-;    ;Get installation folder from registry if available
-;
-;  done:
-
-; determine admin versus local install
 ; arango may be installed on diferent places
 ; determine if the arango was installed for a local user
   ${GetParameters} $R0        
@@ -1191,23 +774,6 @@ FunctionEnd
 Section -FinishComponents
   ;Removes unselected components and writes component status to registry
   !insertmacro SectionList "FinishSection"
-
-!ifdef CPACK_NSIS_ADD_REMOVE
-  ; Get the name of the installer executable
-  System::Call 'kernel32::GetModuleFileNameA(i 0, t .R0, i 1024) i r1'
-  StrCpy $R3 $R0
-
-  ; Strip off the last 13 characters, to see if we have AddRemove.exe
-  StrLen $R1 $R0
-  IntOp $R1 $R0 - 13
-  StrCpy $R2 $R0 13 $R1
-  StrCmp $R2 "AddRemove.exe" addremove_installed
-
-  ; We''re not running AddRemove.exe, so install it
-  CopyFiles $R3 $INSTDIR\AddRemove.exe
-
-  addremove_installed:
-!endif
 SectionEnd
 ;--- End of Add/Remove callback functions ---
 
@@ -1250,6 +816,8 @@ Section "Uninstall"
   ReadRegStr $ADD_TO_PATH_CURRENT_USER SHCTX "${TRI_UNINSTALL_REG_PATH}" "AddToPathCurrentUser"
   ;MessageBox MB_OK "Add to path: $DO_NOT_ADD_TO_PATH all users: $ADD_TO_PATH_ALL_USERS"
   ReadRegStr $INSTALL_DESKTOP          SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
+  ReadRegStr $DATADIR                  SHCTX "${TRI_UNINSTALL_REG_PATH}" "DATADIR"
+  
   ;MessageBox MB_OK "Install to desktop: $INSTALL_DESKTOP "
 
   StrCmp "0" "$INSTALL_DESKTOP" noDesktopIconRemove
@@ -1294,20 +862,17 @@ Section "Uninstall"
   Delete "$INSTDIR\etc\arangodb3\arangod.conf.old"
 
   StrCmp $PURGE_DB "0" dontDeleteDatabases
-  RMDir /r "$INSTDIR\var\lib\arangodb3"
+  DetailPrint 'Removing database files from $DATADIR: '
+  RMDir /r "$DATADIR"
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"
   RMDir /r "$INSTDIR\var\log\arangodb3"
   dontDeleteDatabases:
+  DetailPrint 'Removing programm files:'
   ;Remove files we installed.
   ;Keep the list of directories here in sync with the File commands above.
 @CPACK_NSIS_DELETE_FILES@
 @CPACK_NSIS_DELETE_DIRECTORIES@
-
-!ifdef CPACK_NSIS_ADD_REMOVE
-  ;Remove the add/remove program
-  Delete "$INSTDIR\AddRemove.exe"
-!endif
 
   ;Remove the uninstaller itself.
   Delete "$INSTDIR\Uninstall.exe"
@@ -1375,9 +940,8 @@ Section "Uninstall"
   ${EndIf}
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
-  Push "$INSTDIR/${BIN_DIR}"
   StrCmp $DO_NOT_ADD_TO_PATH_ "1" doNotRemoveFromPath 0
-    Call un.RemoveFromPath
+  !InsertMacro un.RemoveFromPath "$INSTDIR/${BIN_DIR}"
   doNotRemoveFromPath:
 SectionEnd
 
@@ -1529,7 +1093,7 @@ inst:
       StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 
   StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 noOptionsPage
-    !insertmacro MUI_INSTALLOPTIONS_EXTRACT "NSIS.InstallOptions.ini"
+    !insertmacro INSTALLOPTIONS_EXTRACT "NSIS.InstallOptions.ini"
 
   noOptionsPage:
 FunctionEnd

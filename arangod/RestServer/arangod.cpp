@@ -30,13 +30,14 @@
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/JemallocFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
-#include "Pregel/PregelFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
@@ -52,6 +53,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
+#include "Pregel/PregelFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "RestServer/AqlFeature.h"
@@ -81,7 +83,6 @@
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -93,9 +94,13 @@
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
-// storage engine
+// storage engines
 #include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+
+#ifdef _WIN32
+#include <iostream>
+#endif
 
 using namespace arangodb;
 
@@ -140,6 +145,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new DatabasePathFeature(&server));
     server.addFeature(new EndpointFeature(&server));
     server.addFeature(new EngineSelectorFeature(&server));
+    server.addFeature(new EnvironmentFeature(&server));
     server.addFeature(new FeatureCacheFeature(&server));
     server.addFeature(new FileDescriptorsFeature(&server));
     server.addFeature(new FoxxQueuesFeature(&server));
@@ -162,6 +168,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
     server.addFeature(new ServerIdFeature(&server));
+    server.addFeature(new ShellColorsFeature(&server));
     server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
     server.addFeature(new SslFeature(&server));
     server.addFeature(new StatisticsFeature(&server));

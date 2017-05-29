@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -59,6 +60,7 @@ int main(int argc, char* argv[]) {
     server.addFeature(new ConfigFeature(&server, "arangobench"));
     server.addFeature(new LoggerFeature(&server, false));
     server.addFeature(new RandomFeature(&server));
+    server.addFeature(new ShellColorsFeature(&server));
     server.addFeature(new ShutdownFeature(&server, {"Bench"}));
     server.addFeature(new SslFeature(&server));
     server.addFeature(new TempFeature(&server, "arangobench"));

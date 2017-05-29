@@ -37,6 +37,8 @@ start () {
     ( cd /var/run/arangodb && chown -R arangodb:arangodb . ) || exit 1
     ( cd $PIDDIR && chown arangodb:arangodb . ) || exit 1
 
+    export GLIBCXX_FORCE_NEW=1
+
     if [ "$1" = "--database.auto-upgrade" ]; then
       $DAEMON -c $CONF --uid arangodb --gid arangodb --server.rest-server false $@
       RETVAL=$?

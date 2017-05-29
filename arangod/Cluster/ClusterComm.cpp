@@ -33,7 +33,6 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"

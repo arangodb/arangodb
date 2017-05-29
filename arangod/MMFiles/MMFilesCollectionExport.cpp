@@ -33,13 +33,14 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
 MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t* vocbase,
                                    std::string const& name,
-                                   Restrictions const& restrictions)
+                                   CollectionExport::Restrictions const& restrictions)
     : _collection(nullptr),
       _ditch(nullptr),
       _name(name),
@@ -110,7 +111,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       limit = maxDocuments;
     }
 
-    _vpack.reserve(limit);
+    _vpack.reserve(maxDocuments);
 
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
     ManagedDocumentResult mmdr;

@@ -38,6 +38,7 @@ aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
 QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "QueryRegistry"),
       _queryTracking(true),
+      _failOnWarning(false),
       _queryMemoryLimit(0),
       _slowThreshold(10.0),
       _queryCacheMode("off"),
@@ -64,6 +65,9 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.tracking", "whether to track slow AQL queries",
                      new BooleanParameter(&_queryTracking));
   
+  options->addOption("--query.fail-on-warning", "whether AQL queries should fail with errors even for recoverable warnings",
+                     new BooleanParameter(&_failOnWarning));
+  
   options->addOption("--query.slow-threshold", "threshold for slow AQL queries (in seconds)",
                      new DoubleParameter(&_slowThreshold));
 
@@ -76,20 +80,7 @@ void QueryRegistryFeature::collectOptions(
                      new UInt64Parameter(&_queryCacheEntries));
 }
 
-void QueryRegistryFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-}
-
 void QueryRegistryFeature::prepare() {
-  // set query memory limit
-  arangodb::aql::Query::MemoryLimit(_queryMemoryLimit);
-
-  // set global query tracking flag
-  arangodb::aql::Query::DisableQueryTracking(!_queryTracking);
-  
-  // set global threshold value for slow queries  
-  arangodb::aql::Query::SlowQueryThreshold(_slowThreshold);
-
   // configure the query cache
   std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
                                                  _queryCacheEntries};
@@ -100,8 +91,7 @@ void QueryRegistryFeature::prepare() {
   QUERY_REGISTRY = _queryRegistry.get();
 }
 
-void QueryRegistryFeature::start() {
-}
+void QueryRegistryFeature::start() {}
 
 void QueryRegistryFeature::unprepare() {
   // clear the query registery

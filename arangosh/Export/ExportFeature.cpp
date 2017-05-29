@@ -36,6 +36,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/detail/xml_parser_utils.hpp>
 #include <regex>
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -227,8 +228,8 @@ void ExportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  httpClient->setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
-  httpClient->setUserNamePassword("/", client->username(), client->password());
+  httpClient->params().setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
+  httpClient->params().setUserNamePassword("/", client->username(), client->password());
 
   // must stay here in order to establish the connection
   httpClient->getServerVersion();

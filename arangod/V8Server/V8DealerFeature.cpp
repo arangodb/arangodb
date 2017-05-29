@@ -177,7 +177,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(_appPath, "javascript.app-directory", true);
+  ctx->normalizePath(_appPath, "javascript.app-path", true);
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -267,7 +267,7 @@ void V8DealerFeature::start() {
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  loadJavaScriptFileInAllContexts(database->systemDatabase(), "server/initialize.js");
+  loadJavaScriptFileInAllContexts(database->systemDatabase(), "server/initialize.js", nullptr);
 
   startGarbageCollection();
 }
@@ -280,7 +280,7 @@ V8Context* V8DealerFeature::addContext() {
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  loadJavaScriptFileInContext(database->systemDatabase(), "server/initialize.js", context);
+  loadJavaScriptFileInContext(database->systemDatabase(), "server/initialize.js", context, nullptr);
   return context; 
 }
 
@@ -478,22 +478,29 @@ void V8DealerFeature::collectGarbage() {
 }
 
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
-                                                      std::string const& file) {
+    std::string const& file,
+    VPackBuilder* builder) {
   CONDITION_LOCKER(guard, _contextCondition);
   
+  if (builder != nullptr) {
+    builder->openArray();
+  }
   for (auto& context : _contexts) {
-    loadJavaScriptFileInContext(vocbase, file, context);
+    loadJavaScriptFileInContext(vocbase, file, context, builder);
+  }
+  if (builder != nullptr) {
+    builder->close();
   }
 }
 
 void V8DealerFeature::loadJavaScriptFileInDefaultContext(TRI_vocbase_t* vocbase,
-                                                         std::string const& file) {
+    std::string const& file, VPackBuilder* builder) {
   // find context with id 0
   CONDITION_LOCKER(guard, _contextCondition);
   
   for (auto const& context : _contexts) {
     if (context->_id == 0) {
-      loadJavaScriptFileInContext(vocbase, file, context);
+      loadJavaScriptFileInContext(vocbase, file, context, builder);
       break;
     }
   }
@@ -1177,7 +1184,8 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
 }
 
 bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
-                                                  std::string const& file, V8Context* context) {
+    std::string const& file, V8Context* context,
+    VPackBuilder* builder) {
   
   TRI_ASSERT(vocbase != nullptr);
 
@@ -1191,13 +1199,13 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
 
   enterContextInternal(vocbase, context, true);
 
-  loadJavaScriptFileInternal(file, context);
+  loadJavaScriptFileInternal(file, context, builder);
   
   exitContextInternal(context);
   return true;
 }
 
-void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Context* context) {
+void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Context* context, VPackBuilder* builder) {
   v8::HandleScope scope(context->_isolate);
   auto localContext =
       v8::Local<v8::Context>::New(context->_isolate, context->_context);
@@ -1207,7 +1215,7 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
     v8::Context::Scope contextScope(localContext);
 
     switch (
-        _startupLoader.loadScript(context->_isolate, localContext, file)) {
+        _startupLoader.loadScript(context->_isolate, localContext, file, builder)) {
       case JSLoader::eSuccess:
         LOG_TOPIC(TRACE, arangodb::Logger::V8) << "loaded JavaScript file '" << file << "'";
         break;
@@ -1283,7 +1291,8 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   delete context->_locker;
   context->_locker = nullptr;
 
-  isolate->Dispose();
+  application_features::ApplicationServer::getFeature<V8PlatformFeature>(
+          "V8Platform")->disposeIsolate(isolate);
 
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "closed V8 context #" << context->_id;
 

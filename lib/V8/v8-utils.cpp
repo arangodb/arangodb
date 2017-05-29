@@ -854,12 +854,13 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (connection == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
-
-    SimpleHttpClient client(connection.get(), timeout, false);
-    client.setSupportDeflate(false);
+    
+    SimpleHttpClientParams params(timeout, false);
+    params.setSupportDeflate(false);
     // security by obscurity won't work. Github requires a useragent nowadays.
-    client.setExposeArangoDB(true);
-
+    params.setExposeArangoDB(true);
+    SimpleHttpClient client(connection.get(), params);
+    
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
     if (numRedirects > 0) {

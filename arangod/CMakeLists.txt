@@ -153,6 +153,7 @@ SET(ARANGOD_SOURCES
   Aql/QueryList.cpp
   Aql/QueryRegistry.cpp
   Aql/QueryResources.cpp
+  Aql/QueryString.cpp
   Aql/Range.cpp
   Aql/RestAqlHandler.cpp
   Aql/Scopes.cpp
@@ -193,6 +194,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterComm.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp
+  Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp

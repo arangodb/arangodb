@@ -103,8 +103,7 @@ class Methods {
     bool operator!=(IndexHandle const& other) const {
       return other._index.get() != _index.get();
     }
-    explicit IndexHandle(std::shared_ptr<arangodb::Index> idx) : _index(idx) {
-    }
+    explicit IndexHandle(std::shared_ptr<arangodb::Index> const& idx) : _index(idx) {}
     std::vector<std::vector<std::string>> fieldNames() const;
 
    public:
@@ -125,7 +124,7 @@ class Methods {
  protected:
 
   /// @brief create the transaction
-  explicit Methods(std::shared_ptr<transaction::Context> transactionContext);
+  explicit Methods(std::shared_ptr<transaction::Context> const& transactionContext);
 
  public:
 

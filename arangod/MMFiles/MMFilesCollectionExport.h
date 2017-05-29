@@ -25,8 +25,8 @@
 #define ARANGOD_MMFILES_MMFILES_COLLECTION_EXPORT_H 1
 
 #include "Basics/Common.h"
+#include "Utils/CollectionExport.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
@@ -40,20 +40,10 @@ class MMFilesCollectionExport {
   friend class MMFilesExportCursor;
 
  public:
-  struct Restrictions {
-    enum Type { RESTRICTION_NONE, RESTRICTION_INCLUDE, RESTRICTION_EXCLUDE };
-
-    Restrictions() : fields(), type(RESTRICTION_NONE) {}
-
-    std::unordered_set<std::string> fields;
-    Type type;
-  };
-
- public:
   MMFilesCollectionExport(MMFilesCollectionExport const&) = delete;
   MMFilesCollectionExport& operator=(MMFilesCollectionExport const&) = delete;
 
-  MMFilesCollectionExport(TRI_vocbase_t*, std::string const&, Restrictions const&);
+  MMFilesCollectionExport(TRI_vocbase_t*, std::string const&, CollectionExport::Restrictions const&);
 
   ~MMFilesCollectionExport();
 
@@ -66,7 +56,7 @@ class MMFilesCollectionExport {
   arangodb::MMFilesDocumentDitch* _ditch;
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;
-  Restrictions _restrictions;
+  CollectionExport::Restrictions _restrictions;
   std::vector<uint8_t const*> _vpack;
 };
 }

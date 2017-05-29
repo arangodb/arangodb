@@ -91,36 +91,22 @@ struct OperationCursor {
     return !successful();
   }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
-//////////////////////////////////////////////////////////////////////////////
-
   void reset();
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Calls cb for the next batchSize many elements 
-//////////////////////////////////////////////////////////////////////////////
-
-  bool getMore(
-      std::function<void(DocumentIdentifierToken const& token)> const& callback,
+  bool next(IndexIterator::TokenCallback const& callback,
       uint64_t batchSize);
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief convenience function to retrieve all results
-//////////////////////////////////////////////////////////////////////////////
-
-  void getAll(
-      std::function<void(DocumentIdentifierToken const& token)> const& callback) {
-    while (getMore(callback, 1000)) {}
+  void all(IndexIterator::TokenCallback const& callback) {
+    while (next(callback, 1000)) {}
   }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.
 ///        skipped will be increased by the amount of skipped elements afterwards
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
   int skip(uint64_t, uint64_t&);
 
 };
