@@ -90,6 +90,7 @@ void RestWalHandler::properties() {
     if (!slice.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid body value. expecting object");
+      return;
     }
 
     if (slice.hasKey("allowOversizeEntries")) {
