@@ -101,6 +101,15 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
     ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
 
+    if (accessType == AccessMode::Type::NONE)
+      std::cout << "AccessMode::Type::NONE\n";
+    else if (accessType == AccessMode::Type::READ)
+      std::cout << "AccessMode::Type::READ\n";
+    else if (accessType == AccessMode::Type::WRITE)
+      std::cout << "AccessMode::Type::WRITE\n";
+    else if (accessType == AccessMode::Type::EXCLUSIVE)
+      std::cout << "AccessMode::Type::EXCLUSIVE\n";
+
     auto const *logCol = _vocbase->lookupCollection(cid);
     if (logCol == nullptr) {
       return TRI_ERROR_INTERNAL;
@@ -122,8 +131,6 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
         return TRI_ERROR_FORBIDDEN;
     }
   }
-  else
-    std::cout << "is nullptr\n";
 
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid 
   //            << ", accessType: " << accessType 

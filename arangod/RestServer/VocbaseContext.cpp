@@ -88,13 +88,9 @@ rest::ResponseCode VocbaseContext::authenticate() {
 
   if (result == rest::ResponseCode::OK) {
     auto authContext = _authentication->authInfo()->getAuthContext(
-        _request->user(), _request->databaseName());
-    auto* execContext = new ExecContext(_request->user(),
-                                        _request->databaseName(), authContext);
-
-    _request->setExecContext(execContext);
-
-    std::cout << "setExecContext()\n";
+        _request->user(), _request->databaseName());;
+    _request->setExecContext(
+      new ExecContext(_request->user(), _request->databaseName(), authContext));
   }
 
   if (result == rest::ResponseCode::UNAUTHORIZED ||
