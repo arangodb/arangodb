@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleHttpClient.h"
@@ -44,33 +45,23 @@ std::unordered_map<std::string, std::string> const
     SimpleHttpClient::NO_HEADERS{};
 
 /// @brief default value for max packet size
-size_t SimpleHttpClient::MaxPacketSize = 256 * 1024 * 1024;
+size_t SimpleHttpClientParams::MaxPacketSize = 256 * 1024 * 1024;
 
 SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
-                                   double requestTimeout, bool warn)
+                                   SimpleHttpClientParams const& params)
     : _connection(connection),
+      _deleteConnectionOnDestruction(false),
+      _params(params),
       _writeBuffer(TRI_UNKNOWN_MEM_ZONE, false),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE),
       _readBufferOffset(0),
-      _requestTimeout(requestTimeout),
       _state(IN_CONNECT),
       _written(0),
       _errorMessage(""),
-      _locationRewriter({nullptr, nullptr}),
       _nextChunkedSize(0),
       _method(rest::RequestType::GET),
-      _result(nullptr),
-      _jwt(""),
-      _maxPacketSize(MaxPacketSize),
-      _maxRetries(3),
-      _retryWaitTime(1 * 1000 * 1000),
-      _retryMessage(),
-      _deleteConnectionOnDestruction(false),
-      _keepConnectionOnDestruction(false),
-      _warn(warn),
-      _keepAlive(true),
-      _exposeArangoDB(true),
-      _supportDeflate(true) {
+      _result(nullptr)
+ {
   TRI_ASSERT(connection != nullptr);
 
   if (_connection->isConnected()) {
@@ -79,17 +70,17 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
 }
 
 SimpleHttpClient::SimpleHttpClient(
-    std::unique_ptr<GeneralClientConnection>& connection, double requestTimeout,
-    bool warn)
-    : SimpleHttpClient(connection.get(), requestTimeout, warn) {
-  _deleteConnectionOnDestruction = true;
-  connection.release();
+    std::unique_ptr<GeneralClientConnection>& connection,
+    SimpleHttpClientParams const& params)
+    : SimpleHttpClient(connection.get(), params) {
+    _deleteConnectionOnDestruction = true;
+    connection.release();
 }
 
 SimpleHttpClient::~SimpleHttpClient() {
   // connection may have been invalidated by other objects
   if (_connection != nullptr) {
-    if (!_keepConnectionOnDestruction || !_connection->isConnected()) {
+    if (!_params._keepConnectionOnDestruction || !_connection->isConnected()) {
       _connection->disconnect();
     }
 
@@ -174,16 +165,16 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     delete result;
     result = nullptr;
 
-    if (tries++ >= _maxRetries) {
+    if (tries++ >= _params._maxRetries) {
       break;
     }
 
-    if (!_retryMessage.empty() && (_maxRetries - tries) > 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << _retryMessage
-                << " - retries left: " << (_maxRetries - tries);
+    if (!_params._retryMessage.empty() && (_params._maxRetries - tries) > 0) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << _params._retryMessage
+                << " - retries left: " << (_params._maxRetries - tries);
     }
 
-    usleep(static_cast<TRI_usleep_t>(_retryWaitTime));
+    usleep(static_cast<TRI_usleep_t>(_params._retryWaitTime));
   }
 
   return result;
@@ -240,8 +231,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
 
   // respect timeout
-  double endTime = TRI_microtime() + _requestTimeout;
-  double remainingTime = _requestTimeout;
+  double endTime = TRI_microtime() + _params._requestTimeout;
+  double remainingTime = _params._requestTimeout;
 
   bool haveSentRequest = false;
 
@@ -442,21 +433,6 @@ void SimpleHttpClient::clearReadBuffer() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets username and password
-////////////////////////////////////////////////////////////////////////////////
-
-void SimpleHttpClient::setJwt(std::string const& jwt) { _jwt = jwt; }
-
-void SimpleHttpClient::setUserNamePassword(std::string const& prefix,
-                                           std::string const& username,
-                                           std::string const& password) {
-  std::string value =
-      arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
-
-  _pathToBasicAuth.push_back(std::make_pair(prefix, value));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the result
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -537,29 +513,29 @@ void SimpleHttpClient::setRequest(
   _writeBuffer.appendText(hostname);
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
-  if (_keepAlive) {
+  if (_params._keepAlive) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
   } else {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
   }
 
-  if (_exposeArangoDB) {
+  if (_params._exposeArangoDB) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("User-Agent: ArangoDB\r\n"));
   }
 
   // do not automatically advertise deflate support
-  if (_supportDeflate) {
+  if (_params._supportDeflate) {
     _writeBuffer.appendText(
         TRI_CHAR_LENGTH_PAIR("Accept-Encoding: deflate\r\n"));
   }
 
   // do basic authorization
-  if (!_pathToBasicAuth.empty()) {
+  if (!_params._pathToBasicAuth.empty()) {
     std::string foundPrefix;
     std::string foundValue;
-    auto i = _pathToBasicAuth.begin();
+    auto i = _params._pathToBasicAuth.begin();
 
-    for (; i != _pathToBasicAuth.end(); ++i) {
+    for (; i != _params._pathToBasicAuth.end(); ++i) {
       std::string& f = i->first;
 
       if (l->compare(0, f.size(), f) == 0) {
@@ -577,9 +553,9 @@ void SimpleHttpClient::setRequest(
       _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
     }
   }
-  if (!_jwt.empty()) {
+  if (!_params._jwt.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
-    _writeBuffer.appendText(_jwt);
+    _writeBuffer.appendText(_params._jwt);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
@@ -692,7 +668,7 @@ void SimpleHttpClient::processHeader() {
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
 
-        if (!_keepAlive) {
+        if (!_params._keepAlive) {
           _connection->disconnect();
         }
         return;
@@ -700,7 +676,7 @@ void SimpleHttpClient::processHeader() {
 
       // found content-length header in response
       else if (_result->hasContentLength() && _result->getContentLength() > 0) {
-        if (_result->getContentLength() > _maxPacketSize) {
+        if (_result->getContentLength() > _params._maxPacketSize) {
           setErrorMessage("Content-Length > max packet size found", true);
 
           // reset connection
@@ -753,7 +729,7 @@ void SimpleHttpClient::processBody() {
     _result->setResultType(SimpleHttpResult::COMPLETE);
     _state = FINISHED;
 
-    if (!_keepAlive) {
+    if (!_params._keepAlive) {
       _connection->disconnect();
     }
 
@@ -790,7 +766,7 @@ void SimpleHttpClient::processBody() {
   _result->setResultType(SimpleHttpResult::COMPLETE);
   _state = FINISHED;
 
-  if (!_keepAlive) {
+  if (!_params._keepAlive) {
     _connection->disconnect();
   }
 }
@@ -847,7 +823,7 @@ void SimpleHttpClient::processChunkedHeader() {
   }
 
   // failed: too many bytes
-  if (contentLength > _maxPacketSize) {
+  if (contentLength > _params._maxPacketSize) {
     setErrorMessage("Content-Length > max packet size found!", true);
     // reset connection
     this->close();
@@ -868,7 +844,7 @@ void SimpleHttpClient::processChunkedBody() {
     _result->setResultType(SimpleHttpResult::COMPLETE);
     _state = FINISHED;
 
-    if (!_keepAlive) {
+    if (!_params._keepAlive) {
       _connection->disconnect();
     }
 
@@ -882,7 +858,7 @@ void SimpleHttpClient::processChunkedBody() {
 
       _state = FINISHED;
 
-      if (!_keepAlive) {
+      if (!_params._keepAlive) {
         _connection->disconnect();
       }
 

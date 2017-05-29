@@ -347,10 +347,7 @@ std::string Version::getVerboseVersionString() {
           << " with ASAN"
 #endif
           << ", using "
-#ifdef TRI_HAVE_TCMALLOC
-          << "tcmalloc, "
-#endif
-#ifdef TRI_HAVE_JEMALLOC
+#ifdef ARANGODB_HAVE_JEMALLOC
           << "jemalloc, "
 #endif
           << "VPack " << getVPackVersion() << ", "

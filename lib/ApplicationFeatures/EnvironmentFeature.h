@@ -17,53 +17,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_SSL_SERVER_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_SSL_SERVER_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_ENVIRONMENT_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_ENVIRONMENT_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-// needs to come first
-#include "Ssl/ssl-helper.h"
-
-// needs to come second in order to recognize ssl
-#include "Basics/asio-helper.h"
-
 namespace arangodb {
-class SslServerFeature : public application_features::ApplicationFeature {
+class EnvironmentFeature final : public application_features::ApplicationFeature {
  public:
-  static SslServerFeature* SSL;
+  explicit EnvironmentFeature(application_features::ApplicationServer* server);
 
  public:
-  explicit SslServerFeature(application_features::ApplicationServer* server);
-
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
-  void unprepare() override final;
-
- public:
-  virtual void verifySslOptions();
-
- public:
-  virtual boost::asio::ssl::context createSslContext() const;
-
- protected:
-  std::string _cafile;
-  std::string _keyfile;
-  bool _sessionCache;
-  std::string _cipherList;
-  uint64_t _sslProtocol;
-  uint64_t _sslOptions;
-  std::string _ecdhCurve;
-
- private:
-  std::string stringifySslOptions(uint64_t opts) const;
-
- private:
-  std::string _rctx;
 };
 }
 

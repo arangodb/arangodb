@@ -69,11 +69,22 @@ static std::string LevelEnumToString(LogLevel level) {
   }
 }
 
+#define VIEW_LOG_TOPIC(a)                                               \
+  !arangodb::Logger::isEnabled(static_cast<arangodb::LogLevel>(a),      \
+                               Logger::VIEWS)                           \
+      ? (void)0                                                         \
+      : arangodb::LogVoidify() & (arangodb::LoggerStream()              \
+                                  << static_cast<arangodb::LogLevel>(a) \
+                                  << Logger::VIEWS                      \
+                                  << arangodb::Logger::LINE(__LINE__)   \
+                                  << arangodb::Logger::FILE(__FILE__)   \
+                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
+
 std::string LoggerView::type("logger");
 
 std::unique_ptr<ViewImplementation> LoggerView::creator(
     LogicalView* view, arangodb::velocypack::Slice const& info, bool isNew) {
-  LOG_TOPIC(INFO, Logger::FIXME)
+  LOG_TOPIC(TRACE, Logger::VIEWS)
       << "called LoggerView::creator with data: " << info.toJson()
       << ", isNew: " << isNew;
 
@@ -101,7 +112,7 @@ LoggerView::LoggerView(ConstructionGuard const&, LogicalView* logical,
 
 arangodb::Result LoggerView::updateProperties(
     arangodb::velocypack::Slice const& slice, bool partialUpdate, bool doSync) {
-  LOG_TOPIC(INFO, Logger::FIXME)
+  VIEW_LOG_TOPIC(_level)
       << "called LoggerView::updateProperties with data " << slice.toJson()
       << ". view data: "
       << _logicalView->toVelocyPack(true, false).slice().toJson();
@@ -120,7 +131,7 @@ arangodb::Result LoggerView::updateProperties(
 
 /// @brief export properties
 void LoggerView::getPropertiesVPack(velocypack::Builder& builder) const {
-  LOG_TOPIC(INFO, Logger::FIXME) << "called LoggerView::getPropertiesVPack";
+  VIEW_LOG_TOPIC(_level) << "called LoggerView::getPropertiesVPack";
 
   TRI_ASSERT(builder.isOpenObject());
   builder.add("level", VPackValue(LevelEnumToString(_level)));
@@ -129,13 +140,13 @@ void LoggerView::getPropertiesVPack(velocypack::Builder& builder) const {
 
 /// @brief opens an existing view
 void LoggerView::open() {
-  LOG_TOPIC(INFO, Logger::FIXME)
+  VIEW_LOG_TOPIC(_level)
       << "called LoggerView::open. view data: "
       << _logicalView->toVelocyPack(true, false).slice().toJson();
 }
 
 void LoggerView::drop() {
-  LOG_TOPIC(INFO, Logger::FIXME)
+  VIEW_LOG_TOPIC(_level)
       << "called LoggerView::drop. view data: "
       << _logicalView->toVelocyPack(true, false).slice().toJson();
 }

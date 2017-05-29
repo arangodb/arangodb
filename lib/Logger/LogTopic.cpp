@@ -52,9 +52,9 @@ LogTopic Logger::ENGINES("engines", LogLevel::INFO);
 LogTopic Logger::FIXME("general", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
-LogTopic Logger::MEMORY("memory", LogLevel::FATAL);  // suppress
+LogTopic Logger::MEMORY("memory", LogLevel::WARN);
 LogTopic Logger::MMAP("mmap");
-LogTopic Logger::PERFORMANCE("performance", LogLevel::FATAL);  // suppress
+LogTopic Logger::PERFORMANCE("performance", LogLevel::WARN);
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
@@ -67,6 +67,7 @@ LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
+LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
 #ifdef USE_ENTERPRISE
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::INFO);
@@ -117,7 +118,7 @@ LogTopic* LogTopic::lookup(std::string const& name) {
 
   return it->second;
 }
-  
+
 std::string LogTopic::lookup(size_t topicId) {
   MUTEX_LOCKER(guard, _namesLock);
 

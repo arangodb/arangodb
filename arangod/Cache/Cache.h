@@ -98,6 +98,14 @@ class Cache : public std::enable_shared_from_this<Cache> {
   uint64_t usage();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Gives hint to attempt to preallocate space for an incoming load.
+  ///
+  /// The parameter specifies an expected number of elements to be inserted.
+  /// This allows for migration to an appropriately-sized table.
+  //////////////////////////////////////////////////////////////////////////////
+  void sizeHint(uint64_t numElements);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the cache hit-rates.
   ///
   /// The first return value is the lifetime hit-rate for this cache. The second
@@ -111,6 +119,11 @@ class Cache : public std::enable_shared_from_this<Cache> {
   /// @brief Check whether the cache is currently in the process of resizing.
   //////////////////////////////////////////////////////////////////////////////
   bool isResizing();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Check whether the cache is currently in the process of migrating.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isMigrating();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begin the process of shutting down.
@@ -168,7 +181,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   void startOperation();
   void endOperation();
 
-  bool isMigrating() const;
+  bool isMigratingLocked() const;
   void requestGrow();
   void requestMigrate(uint32_t requestedLogSize = 0);
 

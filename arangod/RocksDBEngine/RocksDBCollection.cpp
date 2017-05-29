@@ -637,12 +637,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
   
-  rocksdb::Comparator const * cmp = RocksDBColumnFamily::none()->GetComparator();
+  rocksdb::Comparator const * cmp = RocksDBColumnFamily::documents()->GetComparator();
   rocksdb::ReadOptions ro = mthd->readOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
   
-  std::unique_ptr<rocksdb::Iterator> iter = mthd->NewIterator(ro, RocksDBColumnFamily::none());
+  std::unique_ptr<rocksdb::Iterator> iter = mthd->NewIterator(ro, RocksDBColumnFamily::documents());
   iter->Seek(documentBounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
@@ -658,7 +658,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // add possible log statement
     state->prepareOperation(cid, revisionId, StringRef(key),
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    Result r = mthd->Delete(RocksDBColumnFamily::none(), iter->key());
+    Result r = mthd->Delete(RocksDBColumnFamily::documents(), iter->key());
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -1314,7 +1314,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  res = mthd->Put(RocksDBColumnFamily::none(), key, value.string());
+  res = mthd->Put(RocksDBColumnFamily::documents(), key, value.string());
   if (!res.ok()) {
     // set keysize that is passed up to the crud operations
     res.keySize(key.string().size());
@@ -1372,7 +1372,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   // Simon: actually we do, because otherwise the counter recovery is broken
   // if (!isUpdate) {
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  RocksDBOperationResult res = mthd->Delete(RocksDBColumnFamily::none(), key);
+  RocksDBOperationResult res = mthd->Delete(RocksDBColumnFamily::documents(), key);
   if (!res.ok()) {
     return res;
   }
@@ -1487,7 +1487,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   }
 
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result res = mthd->Get(RocksDBColumnFamily::none(), key, &value);
+  Result res = mthd->Get(RocksDBColumnFamily::documents(), key, &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
     if (withCache && useCache()) {
@@ -1643,8 +1643,9 @@ uint64_t RocksDBCollection::recalculateCounts() {
 
   // count documents
   auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-  _numberDocuments = rocksutils::countKeyRange(
-      globalRocksDB(), readOptions, documentBounds);
+  _numberDocuments = rocksutils::countKeyRange(globalRocksDB(), readOptions,
+                                               RocksDBColumnFamily::documents(),
+                                               documentBounds);
 
   // update counter manager value
   res = globalRocksEngine()->counterManager()->setAbsoluteCounter(

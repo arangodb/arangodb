@@ -110,7 +110,7 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 
 /// Iterator over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
-                          RocksDBKeyBounds const&);
+                          rocksdb::ColumnFamilyHandle*, RocksDBKeyBounds const&);
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
