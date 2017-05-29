@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OperationCursor.h"
-#include "OperationResult.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "OperationResult.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -41,6 +41,8 @@ bool OperationCursor::hasMore() {
   }
   return _hasMore;
 }
+
+bool OperationCursor::hasExtra() const { return indexIterator()->hasExtra(); }
 
 void OperationCursor::reset() {
   code = TRI_ERROR_NO_ERROR;
@@ -82,6 +84,52 @@ bool OperationCursor::next(IndexIterator::TokenCallback const& callback, uint64_
   }
 #else
   _hasMore = _indexIterator->next(callback, atMost);
+#endif
+
+  if (_hasMore) {
+    // We got atMost many callbacks
+    TRI_ASSERT(_limit >= atMost);
+    _limit -= atMost;
+  }
+  return _hasMore;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Calls cb for the next batchSize many elements
+///        Uses the getExtra feature of indexes. Can only be called on those
+///        who support it.
+///        NOTE: This will throw on OUT_OF_MEMORY
+//////////////////////////////////////////////////////////////////////////////
+
+bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback, uint64_t batchSize) {
+  TRI_ASSERT(hasExtra());
+
+  if (!hasMore()) {
+    return false;
+  }
+
+  if (batchSize == UINT64_MAX) {
+    batchSize = _batchSize;
+  }
+  size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // We add wrapper around Callback that validates that
+  // the callback has been called at least once.
+  bool called = false;
+  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice extra) {
+    called = true;
+    callback(token, extra);
+  };
+  _hasMore = _indexIterator->nextExtra(cb, atMost);
+  if (_hasMore) {
+    // If the index says it has more elements than it need
+    // to call callback at least once.
+    // Otherweise progress is not guaranteed.
+    TRI_ASSERT(called);
+  }
+#else
+  _hasMore = _indexIterator->nextExtra(callback, atMost);
 #endif
 
   if (_hasMore) {

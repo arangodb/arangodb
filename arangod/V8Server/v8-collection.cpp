@@ -37,6 +37,7 @@
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/Index.h"
 #include "Cluster/FollowerInfo.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor.h"
@@ -3169,6 +3170,62 @@ static void JS_CountVocbaseCol(
 }
 
 // .............................................................................
+// Warmup Index caches
+// .............................................................................
+
+static void JS_WarmupVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  arangodb::LogicalCollection* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                                   WRP_VOCBASE_COL_TYPE);
+
+  if (ServerState::instance()->isCoordinator()) {
+    std::string const databaseName(collection->dbName());
+    std::string const cid = collection->cid_as_string();
+    int res = warmupOnCoordinator(databaseName, cid);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+
+    TRI_V8_RETURN_UNDEFINED();
+  }
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  SingleCollectionTransaction trx(
+      transaction::V8Context::Create(collection->vocbase(), true),
+      collection->cid(),
+      AccessMode::Type::READ);
+
+  Result trxRes = trx.begin();
+
+  if (!trxRes.ok()) {
+    TRI_V8_THROW_EXCEPTION(trxRes);
+  }
+
+  auto idxs = collection->getIndexes();
+
+  for (auto& idx : idxs) {
+    // multi threading?
+    idx->warmup(&trx);
+  }
+
+  trxRes = trx.commit();
+
+  if (!trxRes.ok()) {
+    TRI_V8_THROW_EXCEPTION(trxRes);
+  }
+  TRI_V8_RETURN_UNDEFINED();
+
+  TRI_V8_TRY_CATCH_END
+}
+ 
+// .............................................................................
 // generate the arangodb::LogicalCollection template
 // .............................................................................
 
@@ -3281,6 +3338,8 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_UpdateVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("version"),
                        JS_VersionVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("warmup"),
+                       JS_WarmupVocbaseCol);
 
   TRI_InitV8IndexCollection(isolate, rt);
 
