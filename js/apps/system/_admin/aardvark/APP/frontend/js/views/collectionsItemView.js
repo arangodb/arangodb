@@ -131,6 +131,11 @@
       window.modalView.hide();
     },
 
+    warumupCollection: function () {
+      this.model.warumupCollection();
+      window.modalView.hide();
+    },
+
     deleteCollection: function () {
       this.model.destroy(
         {
@@ -293,6 +298,12 @@
               window.modalView.createDeleteButton(
                 'Truncate',
                 this.truncateCollection.bind(this)
+              )
+            );
+            buttons.push(
+              window.modalView.createDeleteButton(
+                'Warmup',
+                this.warumupCollection.bind(this)
               )
             );
             if (collectionIsLoaded) {
