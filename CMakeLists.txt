@@ -590,31 +590,15 @@ if (USE_JEMALLOC)
 endif ()
 
 # ------------------------------------------------------------------------------
-# RocksDB
+# NDEBUG
 # ------------------------------------------------------------------------------
 
-#NDEBUG
 if ( NOT USE_MAINTAINER_MODE AND ( CMAKE_BUILD_TYPE STREQUAL "Release" OR
                                    CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
                                    CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
                                  )
    )
    add_definitions(-DNDEBUG)
-endif ()
-
-
-
-add_subdirectory(3rdParty/rocksdb)
- 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-include_directories(${ROCKSDB_INCLUDE_DIR})
- 
-set(ROCKSDB_LIBS rocksdblib;snappystatic)
-
-add_dependencies(rocksdblib snappystatic)
-
-if (USE_JEMALLOC)
-  add_dependencies(rocksdblib jemalloc)
 endif ()
 
 ################################################################################
@@ -740,6 +724,23 @@ if(ARANGODB_DEBUG_CMAKE)
   endforeach()
   message( STATUS "DirDefs: ${DirDefs}" )
 endif()
+
+# ------------------------------------------------------------------------------
+# RocksDB
+# ------------------------------------------------------------------------------
+
+add_subdirectory(3rdParty/rocksdb)
+ 
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+include_directories(${ROCKSDB_INCLUDE_DIR})
+ 
+set(ROCKSDB_LIBS rocksdblib;snappystatic)
+
+add_dependencies(rocksdblib snappystatic)
+
+if (USE_JEMALLOC)
+  add_dependencies(rocksdblib jemalloc)
+endif ()
 
 ################################################################################
 ## 3RD PARTY

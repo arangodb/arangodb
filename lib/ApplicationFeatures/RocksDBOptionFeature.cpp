@@ -54,6 +54,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _minWriteBufferNumberToMerge(
           rocksDBDefaults.min_write_buffer_number_to_merge),
       _numLevels(rocksDBDefaults.num_levels),
+      _numUncompressedLevels(2),
       _maxBytesForLevelBase(rocksDBDefaults.max_bytes_for_level_base),
       _maxBytesForLevelMultiplier(
           rocksDBDefaults.max_bytes_for_level_multiplier),
@@ -127,6 +128,10 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.num-levels",
                      "number of levels for the database",
                      new UInt64Parameter(&_numLevels));
+
+  options->addOption("--rocksdb.num-uncompressed-levels",
+                     "number of uncompressed levels for the database",
+                     new UInt64Parameter(&_numUncompressedLevels));
 
   options->addHiddenOption("--rocksdb.max-bytes-for-level-base",
                            "control maximum total data size for level-1",
