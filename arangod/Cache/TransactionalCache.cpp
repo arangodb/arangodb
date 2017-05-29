@@ -98,8 +98,10 @@ bool TransactionalCache::insert(CachedValue* value) {
           bool eviction = false;
           if (candidate != nullptr) {
             bucket->evict(candidate, true);
+            if (!candidate->sameKey(value->key(), value->keySize)) {
+              eviction = true;
+            }
             freeValue(candidate);
-            eviction = true;
           }
           bucket->insert(hash, value);
           inserted = true;

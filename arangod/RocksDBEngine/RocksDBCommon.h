@@ -128,10 +128,11 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
 template <typename T>  // T is a invokeable that takes a rocksdb::Iterator*
 void iterateBounds(
     RocksDBKeyBounds const& bounds, T callback,
+    rocksdb::ColumnFamilyHandle* handle,
     rocksdb::ReadOptions options = rocksdb::ReadOptions()) {
   rocksdb::Slice const end = bounds.end();
   options.iterate_upper_bound = &end;// save to use on rocksb::DB directly
-  std::unique_ptr<rocksdb::Iterator> it(globalRocksDB()->NewIterator(options));
+  std::unique_ptr<rocksdb::Iterator> it(globalRocksDB()->NewIterator(options, handle));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     callback(it.get());
   }

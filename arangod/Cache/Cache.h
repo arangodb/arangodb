@@ -131,8 +131,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isShutdown();
 
  protected:
-  static constexpr int64_t triesFast = 50;
-  static constexpr int64_t triesSlow = 10000;
+  static constexpr int64_t triesFast = 200000;
+  static constexpr int64_t triesSlow = 10000000;
   static constexpr int64_t triesGuarantee = -1;
 
  protected:
@@ -157,7 +157,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::atomic<uint64_t> _insertsTotal;
   std::atomic<uint64_t> _insertEvictions;
   static constexpr uint64_t _evictionMask = 1023; // check every 1024 insertions
-  static constexpr uint64_t _evictionThreshold = 32;  // if more than 32
+  static constexpr uint64_t _evictionThreshold = 10;  // if more than 10
                                                       // evictions in past 1024
                                                       // inserts, migrate
 

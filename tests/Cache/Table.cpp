@@ -191,11 +191,11 @@ TEST_CASE("cache::Table", "[cache]") {
       for (uint64_t i = 0; i < large->size(); i++) {
         bool res = large->slotFilled();
         if (static_cast<double>(i + 1) <
-            0.05 * static_cast<double>(large->size())) {
+            0.04 * static_cast<double>(large->size())) {
           REQUIRE(large->idealSize() == large->logSize() - 1);
           REQUIRE(res == false);
         } else if (static_cast<double>(i + 1) >
-                                 0.33 * static_cast<double>(large->size())) {
+                                 0.25 * static_cast<double>(large->size())) {
           REQUIRE(large->idealSize() == large->logSize() + 1);
           REQUIRE(res == true);
         } else {
@@ -206,11 +206,11 @@ TEST_CASE("cache::Table", "[cache]") {
       for (uint64_t i = large->size(); i > 0; i--) {
         bool res = large->slotEmptied();
         if (static_cast<double>(i - 1) <
-            0.05 * static_cast<double>(large->size())) {
+            0.04 * static_cast<double>(large->size())) {
           REQUIRE(large->idealSize() == large->logSize() - 1);
           REQUIRE(res == true);
         } else if (static_cast<double>(i - 1) >
-                                 0.33 * static_cast<double>(large->size())) {
+                                 0.25 * static_cast<double>(large->size())) {
           REQUIRE(large->idealSize() == large->logSize() + 1);
           REQUIRE(res == false);
         } else {

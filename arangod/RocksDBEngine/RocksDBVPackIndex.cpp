@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
@@ -1512,7 +1513,7 @@ void RocksDBVPackIndex::recalculateEstimates() {
   rocksutils::iterateBounds(bounds, [&](rocksdb::Iterator* it) {
     uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
     _estimator->insert(hash);
-  });
+  }, arangodb::RocksDBColumnFamily::index());
 }
 
 Result RocksDBVPackIndex::postprocessRemove(transaction::Methods* trx,
