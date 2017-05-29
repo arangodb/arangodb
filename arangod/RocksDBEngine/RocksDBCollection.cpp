@@ -631,9 +631,10 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   TRI_ASSERT(_objectId != 0);
   TRI_voc_cid_t cid = _logicalCollection->cid();
   RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-
   // delete documents
-  RocksDBMethods* mthd = state->rocksdbMethods();
+  RocksDBMethods* mthd;
+  mthd = state->rocksdbMethods();
+  
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
   

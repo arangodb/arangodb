@@ -89,7 +89,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey EdgeIndexValue(uint64_t indexId,
                                    arangodb::StringRef const& vertexId,
-                                   arangodb::StringRef const& primaryKey);
+                                   TRI_voc_rid_t revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a user-defined,
@@ -99,8 +99,8 @@ class RocksDBKey {
   /// actual index ID.
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey IndexValue(uint64_t indexId,
-                               arangodb::StringRef const& primaryKey,
-                               VPackSlice const& indexValues);
+                               VPackSlice const& indexValues,
+                               TRI_voc_rid_t revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a unique user-defined
@@ -117,7 +117,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey FulltextIndexValue(uint64_t indexId,
                                        arangodb::StringRef const& word,
-                                       arangodb::StringRef const& primaryKey);
+                                       TRI_voc_rid_t revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a geoIndexValue
@@ -218,8 +218,8 @@ class RocksDBKey {
   /// May be called only on the following key types: PrimaryIndexValue,
   /// EdgeIndexValue, IndexValue, FulltextIndexValue. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static StringRef primaryKey(RocksDBKey const&);
-  static StringRef primaryKey(rocksdb::Slice const&);
+  //static StringRef primaryKey(RocksDBKey const&);
+  //static StringRef primaryKey(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the vertex ID from a key
@@ -258,13 +258,11 @@ class RocksDBKey {
   RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second);
   RocksDBKey(RocksDBEntryType type, uint64_t first, VPackSlice const& slice);
   RocksDBKey(RocksDBEntryType type, uint64_t first,
-             arangodb::StringRef const& docKey, VPackSlice const& indexData);
+             VPackSlice const& second, TRI_voc_rid_t third);
   RocksDBKey(RocksDBEntryType type, uint64_t first,
              arangodb::StringRef const& second);
-  RocksDBKey(RocksDBEntryType type, uint64_t first, std::string const& second,
-             std::string const& third);
-  RocksDBKey(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second,
-             arangodb::StringRef const& third);
+  RocksDBKey(RocksDBEntryType type, uint64_t first,
+             arangodb::StringRef const& second, uint64_t third);
 
  private:
   static inline RocksDBEntryType type(char const* data, size_t size) {
@@ -278,7 +276,7 @@ class RocksDBKey {
   static TRI_voc_cid_t objectId(char const* data, size_t size);
   static TRI_voc_cid_t viewId(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(char const* data, size_t size);
-  static StringRef primaryKey(char const* data, size_t size);
+  //static StringRef primaryKey(char const* data, size_t size);
   static StringRef vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
 

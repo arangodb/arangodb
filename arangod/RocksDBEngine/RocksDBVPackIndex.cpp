@@ -140,6 +140,8 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
     
+    
+    
     StringRef primaryKey = _index->_unique
                                ? RocksDBValue::primaryKey(_iterator->value())
                                : RocksDBKey::primaryKey(_iterator->key());

@@ -45,16 +45,17 @@ RocksDBValue RocksDBValue::PrimaryIndexValue(TRI_voc_rid_t revisionId) {
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, revisionId);
 }
 
-RocksDBValue RocksDBValue::EdgeIndexValue() {
-  return RocksDBValue(RocksDBEntryType::EdgeIndexValue);
+RocksDBValue RocksDBValue::EdgeIndexValue(TRI_voc_rid_t revisionId) {
+  return RocksDBValue(RocksDBEntryType::EdgeIndexValue, revisionId);
 }
 
-RocksDBValue RocksDBValue::IndexValue() {
-  return RocksDBValue(RocksDBEntryType::IndexValue);
+RocksDBValue RocksDBValue::IndexValue(TRI_voc_rid_t revisionId) {
+  return RocksDBValue(RocksDBEntryType::IndexValue, revisionId);
 }
 
-RocksDBValue RocksDBValue::UniqueIndexValue(StringRef const& primaryKey) {
-  return RocksDBValue(RocksDBEntryType::UniqueIndexValue, primaryKey);
+RocksDBValue RocksDBValue::UniqueIndexValue(TRI_voc_rid_t revisionId,
+                                            StringRef const& primaryKey) {
+  return RocksDBValue(RocksDBEntryType::UniqueIndexValue, revisionId, primaryKey);
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice const& data) {
@@ -110,6 +111,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
     : _type(type), _buffer() {
   switch (_type) {
+    case RocksDBEntryType::EdgeIndexValue:
+    case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
       _buffer.reserve(sizeof(uint64_t));
       uint64ToPersistent(_buffer, data);  // revision id
@@ -122,11 +125,14 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type,
+                           uint64_t rev,
                            arangodb::StringRef const& data)
     : _type(type), _buffer() {
   switch (_type) {
+    
     case RocksDBEntryType::UniqueIndexValue: {
-      _buffer.reserve(data.length());
+      _buffer.reserve(sizeof(uint64_t) + data.length());
+      uint64ToPersistent(_buffer, rev);  // revision id
       _buffer.append(data.data(), data.length());  // primary key
       break;
     }
@@ -156,7 +162,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
 }
 
 TRI_voc_rid_t RocksDBValue::revisionId(char const* data, uint64_t size) {
-  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(data != nullptr && size >= sizeof(uint64_t));
   return uint64FromPersistent(data);
 }
 
