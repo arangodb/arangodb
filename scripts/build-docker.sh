@@ -14,6 +14,7 @@ DOCKERTAG=${VERSION}-local
 DEBIMAGE_NAME="arangodb3-${DEBVERSION}_amd64"
 BUILDDEB_ARGS=""
 BUILDDEB_DOCKER_ARGS=""
+DOCKERFILENAME=Dockerfile$(echo ${VERSION} | cut -d '.' -f 1,2 --output-delimiter=).local
 for i in $@; do
     if test "$i" == "--enterprise"; then
         DEBIMAGE_NAME="arangodb3e-${DEBVERSION}_amd64"
@@ -52,5 +53,5 @@ cp -a ${ROOTDIR}/build-tmp/${DEBIMAGE_NAME}.deb ${BUILDDIR}/.arangodb-docker/ara
 
 # Build docker image
 cd ${BUILDDIR}/.arangodb-docker
-docker build -f Dockerfile32.local -t arangodb:${DOCKERTAG} .
+docker build -f ${DOCKERFILENAME} -t arangodb:${DOCKERTAG} .
 cd ${ROOTDIR}
