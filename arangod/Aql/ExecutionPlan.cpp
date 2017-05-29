@@ -210,7 +210,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   // insert fullCount flag
   if (plan->_lastLimitNode != nullptr &&
-      ast->query()->getBooleanOption("fullCount", false)) {
+      ast->query()->queryOptions().fullCount) {
     static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
   }
 

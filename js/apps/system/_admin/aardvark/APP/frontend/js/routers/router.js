@@ -49,21 +49,31 @@
 
     execute: function (callback, args) {
       if (this.lastRoute === '#queries') {
+        // cleanup input editors
+        this.queryView.removeInputEditors();
         // cleanup old canvas elements
         this.queryView.cleanupGraphs();
+        // cleanup old ace instances
+        this.queryView.removeResults();
       }
 
-      if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
-        // dom graph cleanup
-        d3.selectAll('svg > *').remove();
-      }
-
-      if (this.lastRoute === '#logger') {
-        if (this.loggerView.logLevelView) {
-          this.loggerView.logLevelView.remove();
+      if (this.lastRoute) {
+        if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split('/').length === 3) {
+          this.documentView.cleanupEditor();
         }
-        if (this.loggerView.logTopicView) {
-          this.loggerView.logTopicView.remove();
+
+        if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
+          // dom graph cleanup
+          d3.selectAll('svg > *').remove();
+        }
+
+        if (this.lastRoute === '#logger') {
+          if (this.loggerView.logLevelView) {
+            this.loggerView.logLevelView.remove();
+          }
+          if (this.loggerView.logTopicView) {
+            this.loggerView.logTopicView.remove();
+          }
         }
       }
 

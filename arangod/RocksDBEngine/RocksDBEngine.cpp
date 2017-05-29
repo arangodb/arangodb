@@ -327,6 +327,7 @@ void RocksDBEngine::start() {
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
  
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
+  size_t const numberOfColumnFamilies = RocksDBColumnFamily::numberOfColumnFamilies;
   {
     rocksdb::Options testOptions; 
     testOptions.create_if_missing = false;
@@ -358,10 +359,10 @@ void RocksDBEngine::start() {
       
       LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "found existing column families: " << names;
 
-      if (existingColumnFamilies.size() < RocksDBColumnFamily::numberOfColumnFamilies) {
+      if (existingColumnFamilies.size() < numberOfColumnFamilies) {
         LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) 
             << "unexpected number of column families found in database (" << cfHandles.size() << "). " 
-            << "expecting at least " << RocksDBColumnFamily::numberOfColumnFamilies
+            << "expecting at least " << numberOfColumnFamilies
             << ". if you are upgrading from an alpha version of ArangoDB 3.2, " 
             << "it is required to restart with a new database directory and re-import data";
         FATAL_ERROR_EXIT();
@@ -383,14 +384,14 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (cfHandles.size() < RocksDBColumnFamily::numberOfColumnFamilies) {
+  if (cfHandles.size() < numberOfColumnFamilies) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) 
         << "unexpected number of column families found in database. " 
-        << "got " << cfHandles.size() << ", expecting at least " << RocksDBColumnFamily::numberOfColumnFamilies;
+        << "got " << cfHandles.size() << ", expecting at least " << numberOfColumnFamilies;
     FATAL_ERROR_EXIT();
   }
 
-  TRI_ASSERT(cfHandles.size() >= RocksDBColumnFamily::numberOfColumnFamilies);
+  TRI_ASSERT(cfHandles.size() >= numberOfColumnFamilies);
 
   // set our column families
   RocksDBColumnFamily::_other = cfHandles[0];

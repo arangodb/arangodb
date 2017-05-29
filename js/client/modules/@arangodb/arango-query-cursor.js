@@ -84,13 +84,23 @@ ArangoQueryCursor.prototype.toString = function () {
     result += ', count: ' + this._count;
   }
 
+  result += ', cached: ' + (this.data.cached ? 'true' : 'false');
+
   result += ', hasMore: ' + (this.hasNext() ? 'true' : 'false');
 
   if (this.data.hasOwnProperty('extra') &&
     this.data.extra.hasOwnProperty('warnings')) {
+    result += ', warning(s): ';
+    var last = null;
     for (var j = 0; j < this.data.extra.warnings.length; j++) {
-      result += ', warning: ' + this.data.extra.warnings[j].code +
-      ' - ' + this.data.extra.warnings[j].message;
+      // check if same warning. do not report again
+      if (this.data.extra.warnings[j].code !== last) {
+        if (last !== null) {
+          result += ', ';
+        }
+        result += '"' + this.data.extra.warnings[j].code + ' ' + this.data.extra.warnings[j].message + '"';
+        last = this.data.extra.warnings[j].code;
+      }
     }
   }
   result += ']';

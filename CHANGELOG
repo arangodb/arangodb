@@ -1,6 +1,12 @@
 devel
 -----
 
+* added server startup option `--query.fail-on-warning`
+
+  setting this option to `true` will abort any AQL query with an exception if
+  it causes a warning at runtime. The value can be overridden per query by
+  setting the `failOnWarning` attribute in a query's options.
+
 * added --rocksdb.num-uncompressed-levels to adjust number of non-compressed levels
 
 * added checks for memory managment and warn (i. e. if hugepages are enabled)

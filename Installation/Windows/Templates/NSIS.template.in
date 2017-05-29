@@ -59,6 +59,8 @@ Var ADD_TO_PATH_CURRENT_USER  ; x bool
 ; posible values: SingleUser | AllUsers | Service
 VAR TRI_INSTALL_TYPE          ; x 
 Var newCfgValues              ; keep new config file values
+Var newCfgValuesFile          ; write them to a temporary file...
+Var ServiceUp                 ; did the service start?
 !define TEMP1 $R0 ;Temp variable
 
 Var DATADIR
@@ -481,13 +483,15 @@ Section "-Core installation"
 
   ; Create a file containing the settings we want to be overwritten:
   StrCpy $newCfgValues "[database]$\r$\ndirectory = $DATADIR$\r$\n[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
-  FileOpen $4  "$INSTDIR\etc\arangodb3\newValues.ini" w
+  StrCpy $newCfgValuesFile "$INSTDIR\etc\arangodb3\newValues.ini"
+  FileOpen $4  "$newCfgValuesFile" w
   FileWrite $4 "$newCfgValues"
   FileClose $4
   ; Alter the shipped file and insert the values from above:
-  push "$INSTDIR\etc\arangodb3\newValues.ini"
+  push "$newCfgValuesFile"
   push "$INSTDIR\etc\arangodb3\arangod.conf"
   call ReadINIFileKeys
+  Delete "$newCfgValuesFile"
 
 System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
@@ -502,6 +506,7 @@ System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PA
      SimpleSC::SetServiceDescription '${TRI_SVC_NAME}' '${TRI_FRIENDLY_SVC_NAME}'
      SimpleSC::StartService '${TRI_SVC_NAME}' '' 30
      Call WaitForServiceUp
+     pop $ServiceUp
    nothing:
 SectionEnd
 
@@ -511,13 +516,15 @@ Function .onInstSuccess
   StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 doNotAddToPath
   StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
   !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $ADD_TO_PATH_ALL_USERS
-doNotAddToPath:
-  Return
+  doNotAddToPath:
+    Return
 
-continueUI:
-  ${If} $TRI_INSTALL_TYPE == 'Service'
-    ${OpenURL} ${TRI_AARDVARK_URL}
-  ${EndIf}
+  continueUI:
+    ifErrors +3
+    ${If} $TRI_INSTALL_TYPE == 'Service'
+    ${AndIf} $ServiceUp == 0
+      ${OpenURL} ${TRI_AARDVARK_URL}
+    ${EndIf}
 FunctionEnd
 
 Section "-Add to path"
