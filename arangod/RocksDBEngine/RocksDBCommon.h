@@ -78,18 +78,32 @@ class Methods;
 }
 namespace rocksutils {
 
+//// to persistent
 template <typename T>
 typename std::enable_if<std::is_integral<T>::value,void>::type
-toPersistent(T in, char* out){
+toPersistent(T in, char*& out){
   using TT = typename std::decay<T>::type;
   std::memcpy(out, &in, sizeof(TT));
   out += sizeof(TT);
 }
 
+//// from persistent
 template <typename T,
           typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 0
          >
-typename std::decay<T>::type fromPersistent(char const* in){
+typename std::decay<T>::type fromPersistent(char const*& in){
+  using TT = typename std::decay<T>::type;
+  TT out;
+  std::memcpy(&out, in, sizeof(TT));
+  in += sizeof(TT);
+  return out;
+}
+
+//we need this overload or the template will match
+template <typename T,
+          typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 1
+         >
+typename std::decay<T>::type fromPersistent(char *& in){
   using TT = typename std::decay<T>::type;
   TT out;
   std::memcpy(&out, in, sizeof(TT));
@@ -133,7 +147,7 @@ void uint16ToPersistent(std::string& out, uint16_t value);
 
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
 RocksDBMethods* toRocksMethods(transaction::Methods* trx);
-  
+
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(
