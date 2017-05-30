@@ -80,7 +80,6 @@ foreach ($it in $map.GetEnumerator()) {
             "--cluster.my-address=tcp://[::1]:$port",
             "--database.directory=cluster\data$port",
             "--server.endpoint=tcp://[::1]:$port",
-            "--log.level=cluster=debug",
             "--log.file=cluster\$port.log"
         )
         $roleArguments += $commonArguments
