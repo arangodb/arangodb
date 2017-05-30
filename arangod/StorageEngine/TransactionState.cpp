@@ -129,7 +129,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
 
-  if (!AccessMode::isWriteOrExclusive(accessType) && !_options.allowImplicitCollections) {
+  if (!AccessMode::isWriteOrExclusive(accessType) && (isRunning() && !_options.allowImplicitCollections)) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
   
