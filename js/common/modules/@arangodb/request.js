@@ -62,14 +62,29 @@ class Response {
     }
   }
   _PRINT (ctx) {
-    ctx.output += `[IncomingResponse ${this.status} "${this.message}"`;
-    if (Buffer.isBuffer(this.body)) {
-      ctx.output += ` <${this.body.length} bytes>]`;
+    const MAX_BYTES = 100;
+    ctx.output += `[IncomingResponse ${this.status} ${this.message} `;
+    if (this.body && this.body.length) {
+      ctx.output += `${this.body.length} bytes `;
+      if (typeof this.body === 'string') {
+        if (this.body.length > MAX_BYTES) {
+          const offset = (this.body.length - (MAX_BYTES - 2)) / 2;
+          ctx.output += `"…${
+            this.body.slice(offset, offset + (MAX_BYTES - 2))
+            .replace('\n', '\\n')
+            .replace('\r', '\\r')
+            .replace('\t', '\\t')
+          }…"`;
+        } else {
+          ctx.output += `"${this.body}"`;
+        }
+      } else {
+        ctx.output += '<binary>';
+      }
     } else {
-      ctx.output += '\n  ';
-      ctx.output += this.body.replace('\n', '\n  ');
-      ctx.output += '\n]';
+      ctx.output += 'empty';
     }
+    ctx.output += ']';
   }
 }
 
