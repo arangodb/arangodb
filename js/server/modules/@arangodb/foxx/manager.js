@@ -222,6 +222,9 @@ function selfHeal () {
       }
     } else if (bundleExists) {
       try {
+        if (fs.exists(bundlePath)) {
+          fs.remove(bundlePath);
+        }
         bundleCollection._binaryDocument(checksum, bundlePath);
         extractServiceBundle(bundlePath, basePath);
         modified = true;
