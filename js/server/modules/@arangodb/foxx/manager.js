@@ -510,7 +510,10 @@ function _install (mount, options = {}) {
     service.executeScript('setup');
   }
   service.updateChecksum();
-  utils.getBundleStorage()._binaryInsert({_key: service.checksum}, service.bundlePath);
+  const bundleCollection = utils.getBundleStorage();
+  if (!bundleCollection.exists(service.checksum)) {
+    bundleCollection._binaryInsert({_key: service.checksum}, service.bundlePath);
+  }
   const serviceDefinition = service.toJSON();
   const meta = db._query(aql`
     UPSERT {mount: ${mount}}
