@@ -67,8 +67,7 @@
   if (internal.threadNumber === 0 && global.ArangoServerState.role() === 'SINGLE') {
     if (restServer) {
       // startup the foxx manager once
-      require('@arangodb/foxx/manager')._startup(true);
-      require('@arangodb/foxx/manager')._selfHeal(true);
+      require('@arangodb/foxx/manager')._startup();
     }
 
     // start the queue manager once

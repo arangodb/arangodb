@@ -55,19 +55,6 @@ describe('Foxx Manager', function () {
         expect(checksum).not.to.be.empty;
       });
 
-      it('should provide a bundle', function () {
-        FoxxManager.install(setupTeardownApp, mount);
-        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}/_api/foxx/_local/bundle?mount=${encodeURIComponent(mount)}`;
-        const res = download(url);
-        expect(res.code).to.equal(200);
-        const checksum = db._query(aql`
-          FOR service IN _apps
-          FILTER service.mount == ${mount}
-          RETURN service.checksum
-        `).next();
-        expect(res.headers.etag).to.equal(`"${checksum}"`);
-      });
-
       it('should run the setup script', function () {
         FoxxManager.install(setupTeardownApp, mount);
         expect(db._collection(setupTeardownCol)).to.be.an.instanceOf(ArangoCollection);
