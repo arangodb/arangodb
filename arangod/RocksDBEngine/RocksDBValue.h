@@ -49,10 +49,9 @@ class RocksDBValue {
   static RocksDBValue Collection(VPackSlice const& data);
   static RocksDBValue Document(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
-  static RocksDBValue EdgeIndexValue(TRI_voc_rid_t revisionId);
-  static RocksDBValue IndexValue(TRI_voc_rid_t revisionId);
-  static RocksDBValue UniqueIndexValue(TRI_voc_rid_t revisionId,
-                                       arangodb::StringRef const& primaryKey);
+  static RocksDBValue EdgeIndexValue();
+  static RocksDBValue IndexValue();
+  static RocksDBValue UniqueIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
 
@@ -111,7 +110,6 @@ class RocksDBValue {
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, uint64_t data);
-  RocksDBValue(RocksDBEntryType type, uint64_t rev, StringRef const& data);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
 
  private:

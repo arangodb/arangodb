@@ -66,7 +66,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             transaction::Methods* trx,
                             ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
-                            arangodb::RocksDBPrimaryIndex* primaryIndex,
                             bool reverse,
                             arangodb::velocypack::Slice const& left,
                             arangodb::velocypack::Slice const& right);
@@ -88,7 +87,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   bool outOfRange() const;
 
   arangodb::RocksDBVPackIndex const* _index;
-  arangodb::RocksDBPrimaryIndex* _primaryIndex;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _reverse;
@@ -216,7 +214,8 @@ protected:
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void addIndexValue(velocypack::Builder& leased, VPackSlice const& document,
+  void addIndexValue(velocypack::Builder& leased, TRI_voc_rid_t revisionId,
+                     VPackSlice const& document,
                      std::vector<RocksDBKey>& elements,
                      std::vector<VPackSlice>& sliceStack,
                      std::vector<uint64_t>& hashes);
@@ -226,7 +225,8 @@ protected:
   /// @param elements vector of resulting index entries
   /// @param sliceStack working list of values to insert into the index
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void buildIndexValues(velocypack::Builder& leased, VPackSlice const document,
+  void buildIndexValues(velocypack::Builder& leased, TRI_voc_rid_t revisionId,
+                        VPackSlice const document,
                         size_t level, std::vector<RocksDBKey>& elements,
                         std::vector<VPackSlice>& sliceStack,
                         std::vector<uint64_t>& hashes);

@@ -161,7 +161,6 @@ class RocksDBKey {
     return type(slice.data(), slice.size());
   }
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the object id
   ///
@@ -218,8 +217,8 @@ class RocksDBKey {
   /// May be called only on the following key types: PrimaryIndexValue,
   /// EdgeIndexValue, IndexValue, FulltextIndexValue. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  //static StringRef primaryKey(RocksDBKey const&);
-  //static StringRef primaryKey(rocksdb::Slice const&);
+  static StringRef primaryKey(RocksDBKey const&);
+  static StringRef primaryKey(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the vertex ID from a key
@@ -276,7 +275,7 @@ class RocksDBKey {
   static TRI_voc_cid_t objectId(char const* data, size_t size);
   static TRI_voc_cid_t viewId(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(char const* data, size_t size);
-  //static StringRef primaryKey(char const* data, size_t size);
+  static StringRef primaryKey(char const* data, size_t size);
   static StringRef vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
 

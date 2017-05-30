@@ -164,6 +164,14 @@ TRI_voc_rid_t RocksDBKey::revisionId(rocksdb::Slice const& slice) {
   return revisionId(slice.data(), slice.size());
 }
 
+arangodb::StringRef RocksDBKey::primaryKey(RocksDBKey const& key) {
+  return primaryKey(key._buffer.data(), key._buffer.size());
+}
+
+arangodb::StringRef RocksDBKey::primaryKey(rocksdb::Slice const& slice) {
+  return primaryKey(slice.data(), slice.size());
+}
+
 StringRef RocksDBKey::vertexId(RocksDBKey const& key) {
   return vertexId(key._buffer.data(), key._buffer.size());
 }
@@ -420,12 +428,19 @@ TRI_voc_rid_t RocksDBKey::revisionId(char const* data, size_t size) {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
       return uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t));
     }
+    case RocksDBEntryType::EdgeIndexValue:
+    case RocksDBEntryType::IndexValue:
+    case RocksDBEntryType::FulltextIndexValue: {
+      TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
+      // last 8 bytes should by revision
+      return uint64FromPersistent(data + size - sizeof(uint64_t));
+    }
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
   }
 }
-/*
+
 arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
@@ -437,19 +452,11 @@ arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
       return arangodb::StringRef(data + sizeof(char) + sizeof(uint64_t),
                                  keySize);
     }
-    case RocksDBEntryType::EdgeIndexValue:
-    case RocksDBEntryType::IndexValue:
-    case RocksDBEntryType::FulltextIndexValue: {
-      TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t) + sizeof(uint8_t)));
-      size_t keySize = static_cast<size_t>(data[size - 1]);
-      return arangodb::StringRef(data + (size - (keySize + sizeof(uint8_t))),
-                                 keySize);
-    }
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
   }
-}*/
+}
 
 StringRef RocksDBKey::vertexId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
