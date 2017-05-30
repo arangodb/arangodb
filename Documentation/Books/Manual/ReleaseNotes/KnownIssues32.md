@@ -62,6 +62,9 @@ The following known issues will be resolved in future releases:
   even with the RocksDB engine. Reads from these collections can still be done in parallel 
   but no writes 
 
+* modifying documents in a collection with a geo index will cause multiple additional 
+  writes to RocksDB for maintaining the index structures
+
 * the number of documents reported for collections (`db.<collection>.count()`) may be
   slightly wrong during transactions if there are parallel transactions ongoing for the
   same collection that also modify the number of documents
