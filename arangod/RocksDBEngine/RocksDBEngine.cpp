@@ -133,13 +133,13 @@ void RocksDBEngine::collectOptions(
                      "transaction size limit (in bytes)",
                      new UInt64Parameter(&_maxTransactionSize));
 
-  options->addHiddenOption(
+  options->addOption(
       "--rocksdb.intermediate-commit-size",
       "an intermediate commit will be performed automatically when a transaction "
       "has accumulated operations of this size (in bytes)",
       new UInt64Parameter(&_intermediateCommitSize));
 
-  options->addHiddenOption(
+  options->addOption(
       "--rocksdb.intermediate-commit-count",
       "an intermediate commit will be performed automatically when this number of "
       "operations is reached in a transaction",
