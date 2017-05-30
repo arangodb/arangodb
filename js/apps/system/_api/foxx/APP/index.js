@@ -1,4 +1,29 @@
 'use strict';
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2010-2013 triAGENS GmbH, Cologne, Germany
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// //////////////////////////////////////////////////////////////////////////////
+
+
 const _ = require('lodash');
 const dd = require('dedent');
 const fs = require('fs');
@@ -10,7 +35,6 @@ const errors = require('@arangodb').errors;
 const jsonml2xml = require('@arangodb/util').jsonml2xml;
 const swaggerJson = require('@arangodb/foxx/legacy/swagger').swaggerJson;
 const FoxxManager = require('@arangodb/foxx/manager');
-const FoxxService = require('@arangodb/foxx/service');
 const createRouter = require('@arangodb/foxx/router');
 const reporters = Object.keys(require('@arangodb/mocha').reporters);
 const schemas = require('./schemas');
@@ -64,7 +88,10 @@ router.use((req, res, next) => {
   } catch (e) {
     if (e.isArangoError) {
       const status = actions.arangoErrorToHttpCode(e.errorNum);
-      res.throw(status, e.errorMessage, {errorNum: e.errorNum, cause: e});
+      res.throw(status, e.errorMessage, {
+        errorNum: e.errorNum,
+        cause: e
+      });
     }
     throw e;
   }
@@ -87,31 +114,33 @@ router.get((req, res) => {
 })
 .response(200, joi.array().items(schemas.shortInfo).required());
 
-if (FoxxManager.isFoxxmaster()) {
-  router.post(prepareServiceRequestBody, (req, res) => {
-    const mount = req.queryParams.mount;
-    FoxxManager.install(req.body.source, mount, _.omit(req.queryParams, ['mount', 'development']));
-    if (req.body.configuration) {
-      FoxxManager.setConfiguration(mount, {configuration: req.body.configuration, replace: true});
-    }
-    if (req.body.dependencies) {
-      FoxxManager.setDependencies(mount, {dependencies: req.body.dependencies, replace: true});
-    }
-    if (req.queryParams.development) {
-      FoxxManager.development(mount);
-    }
-    const service = FoxxManager.lookupService(mount);
-    res.json(serviceToJson(service));
-  })
-  .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
-  .queryParam('mount', schemas.mount)
-  .queryParam('development', schemas.flag.default(false))
-  .queryParam('setup', schemas.flag.default(true))
-  .queryParam('legacy', schemas.flag.default(false))
-  .response(201, schemas.fullInfo);
-} else {
-  router.post(FoxxManager.proxyToFoxxmaster);
-}
+router.post(prepareServiceRequestBody, (req, res) => {
+  const mount = req.queryParams.mount;
+  FoxxManager.install(req.body.source, mount, _.omit(req.queryParams, ['mount', 'development']));
+  if (req.body.configuration) {
+    FoxxManager.setConfiguration(mount, {
+      configuration: req.body.configuration,
+      replace: true
+    });
+  }
+  if (req.body.dependencies) {
+    FoxxManager.setDependencies(mount, {
+      dependencies: req.body.dependencies,
+      replace: true
+    });
+  }
+  if (req.queryParams.development) {
+    FoxxManager.development(mount);
+  }
+  const service = FoxxManager.lookupService(mount);
+  res.json(serviceToJson(service));
+})
+.body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
+.queryParam('mount', schemas.mount)
+.queryParam('development', schemas.flag.default(false))
+.queryParam('setup', schemas.flag.default(true))
+.queryParam('legacy', schemas.flag.default(false))
+.response(201, schemas.fullInfo);
 
 const instanceRouter = createRouter();
 instanceRouter.use((req, res, next) => {
@@ -133,62 +162,68 @@ serviceRouter.get((req, res) => {
   res.json(serviceToJson(req.service));
 })
 .response(200, schemas.fullInfo)
-.summary(`Service description`)
+.summary('Service description')
 .description(dd`
   Fetches detailed information for the service at the given mount path.
 `);
 
-if (FoxxManager.isFoxxmaster()) {
-  serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
-    const mount = req.queryParams.mount;
-    FoxxManager.upgrade(req.body.source, mount, _.omit(req.queryParams, ['mount']));
-    if (req.body.configuration) {
-      FoxxManager.setConfiguration(mount, {configuration: req.body.configuration, replace: false});
-    }
-    if (req.body.dependencies) {
-      FoxxManager.setDependencies(mount, {dependencies: req.body.dependencies, replace: false});
-    }
-    const service = FoxxManager.lookupService(mount);
-    res.json(serviceToJson(service));
-  })
-  .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
-  .queryParam('teardown', schemas.flag.default(false))
-  .queryParam('setup', schemas.flag.default(true))
-  .queryParam('legacy', schemas.flag.default(false))
-  .response(200, schemas.fullInfo);
+serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
+  const mount = req.queryParams.mount;
+  FoxxManager.upgrade(req.body.source, mount, _.omit(req.queryParams, ['mount']));
+  if (req.body.configuration) {
+    FoxxManager.setConfiguration(mount, {
+      configuration: req.body.configuration,
+      replace: false
+    });
+  }
+  if (req.body.dependencies) {
+    FoxxManager.setDependencies(mount, {
+      dependencies: req.body.dependencies,
+      replace: false
+    });
+  }
+  const service = FoxxManager.lookupService(mount);
+  res.json(serviceToJson(service));
+})
+.body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
+.queryParam('teardown', schemas.flag.default(false))
+.queryParam('setup', schemas.flag.default(true))
+.queryParam('legacy', schemas.flag.default(false))
+.response(200, schemas.fullInfo);
 
-  serviceRouter.put(prepareServiceRequestBody, (req, res) => {
-    const mount = req.queryParams.mount;
-    FoxxManager.replace(req.body.source, mount, _.omit(req.queryParams, ['mount']));
-    if (req.body.configuration) {
-      FoxxManager.setConfiguration(mount, {configuration: req.body.configuration, replace: true});
-    }
-    if (req.body.dependencies) {
-      FoxxManager.setDependencies(mount, {dependencies: req.body.dependencies, replace: true});
-    }
-    const service = FoxxManager.lookupService(mount);
-    res.json(serviceToJson(service));
-  })
-  .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
-  .queryParam('teardown', schemas.flag.default(true))
-  .queryParam('setup', schemas.flag.default(true))
-  .queryParam('legacy', schemas.flag.default(false))
-  .response(200, schemas.fullInfo);
+serviceRouter.put(prepareServiceRequestBody, (req, res) => {
+  const mount = req.queryParams.mount;
+  FoxxManager.replace(req.body.source, mount, _.omit(req.queryParams, ['mount']));
+  if (req.body.configuration) {
+    FoxxManager.setConfiguration(mount, {
+      configuration: req.body.configuration,
+      replace: true
+    });
+  }
+  if (req.body.dependencies) {
+    FoxxManager.setDependencies(mount, {
+      dependencies: req.body.dependencies,
+      replace: true
+    });
+  }
+  const service = FoxxManager.lookupService(mount);
+  res.json(serviceToJson(service));
+})
+.body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
+.queryParam('teardown', schemas.flag.default(true))
+.queryParam('setup', schemas.flag.default(true))
+.queryParam('legacy', schemas.flag.default(false))
+.response(200, schemas.fullInfo);
 
-  serviceRouter.delete((req, res) => {
-    FoxxManager.uninstall(
-      req.queryParams.mount,
-      _.omit(req.queryParams, ['mount'])
-    );
-    res.status(204);
-  })
-  .queryParam('teardown', schemas.flag.default(true))
-  .response(204, null);
-} else {
-  serviceRouter.patch(FoxxManager.proxyToFoxxmaster);
-  serviceRouter.put(FoxxManager.proxyToFoxxmaster);
-  serviceRouter.delete(FoxxManager.proxyToFoxxmaster);
-}
+serviceRouter.delete((req, res) => {
+  FoxxManager.uninstall(
+    req.queryParams.mount,
+    _.omit(req.queryParams, ['mount'])
+  );
+  res.status(204);
+})
+.queryParam('teardown', schemas.flag.default(true))
+.response(204, null);
 
 const configRouter = createRouter();
 instanceRouter.use('/configuration', configRouter)
@@ -198,30 +233,31 @@ configRouter.get((req, res) => {
   res.json(req.service.getConfiguration());
 });
 
-if (FoxxManager.isFoxxmaster()) {
-  configRouter.patch((req, res) => {
-    const warnings = FoxxManager.setConfiguration(req.service.mount, {
-      configuration: req.body,
-      replace: false
-    });
-    const values = req.service.getConfiguration(true);
-    res.json({values, warnings});
-  })
-  .body(joi.object().required());
+configRouter.patch((req, res) => {
+  const warnings = FoxxManager.setConfiguration(req.service.mount, {
+    configuration: req.body,
+    replace: false
+  });
+  const values = req.service.getConfiguration(true);
+  res.json({
+    values,
+    warnings
+  });
+})
+.body(joi.object().required());
 
-  configRouter.put((req, res) => {
-    const warnings = FoxxManager.setConfiguration(req.service.mount, {
-      configuration: req.body,
-      replace: true
-    });
-    const values = req.service.getConfiguration(true);
-    res.json({values, warnings});
-  })
-  .body(joi.object().required());
-} else {
-  configRouter.patch(FoxxManager.proxyToFoxxmaster);
-  configRouter.put(FoxxManager.proxyToFoxxmaster);
-}
+configRouter.put((req, res) => {
+  const warnings = FoxxManager.setConfiguration(req.service.mount, {
+    configuration: req.body,
+    replace: true
+  });
+  const values = req.service.getConfiguration(true);
+  res.json({
+    values,
+    warnings
+  });
+})
+.body(joi.object().required());
 
 const depsRouter = createRouter();
 instanceRouter.use('/dependencies', depsRouter)
@@ -231,30 +267,31 @@ depsRouter.get((req, res) => {
   res.json(req.service.getDependencies());
 });
 
-if (FoxxManager.isFoxxmaster()) {
-  depsRouter.patch((req, res) => {
-    const warnings = FoxxManager.setDependencies(req.service.mount, {
-      dependencies: req.body,
-      replace: true
-    });
-    const values = req.service.getDependencies(true);
-    res.json({values, warnings});
-  })
-  .body(joi.object().required());
+depsRouter.patch((req, res) => {
+  const warnings = FoxxManager.setDependencies(req.service.mount, {
+    dependencies: req.body,
+    replace: true
+  });
+  const values = req.service.getDependencies(true);
+  res.json({
+    values,
+    warnings
+  });
+})
+.body(joi.object().required());
 
-  depsRouter.put((req, res) => {
-    const warnings = FoxxManager.setDependencies(req.service.mount, {
-      dependencies: req.body,
-      replace: true
-    });
-    const values = req.service.getDependencies(true);
-    res.json({values, warnings});
-  })
-  .body(joi.object().required());
-} else {
-  depsRouter.patch(FoxxManager.proxyToFoxxmaster);
-  depsRouter.put(FoxxManager.proxyToFoxxmaster);
-}
+depsRouter.put((req, res) => {
+  const warnings = FoxxManager.setDependencies(req.service.mount, {
+    dependencies: req.body,
+    replace: true
+  });
+  const values = req.service.getDependencies(true);
+  res.json({
+    values,
+    warnings
+  });
+})
+.body(joi.object().required());
 
 const devRouter = createRouter();
 instanceRouter.use('/development', devRouter)
@@ -356,86 +393,6 @@ instanceRouter.get('/swagger', (req, res) => {
 const localRouter = createRouter();
 router.use('/_local', localRouter);
 
-localRouter.post((req, res) => {
-  const result = {};
-  for (const mount of Object.keys(req.body)) {
-    const coordIds = req.body[mount];
-    result[mount] = FoxxManager._installLocal(mount, coordIds);
-  }
-  FoxxManager._reloadRouting();
-  res.json(result);
-})
-.body(joi.object());
-
-localRouter.post('/service', (req, res) => {
-  FoxxManager._reloadRouting();
-})
-.queryParam('mount', schemas.mount);
-
-localRouter.delete('/service', (req, res) => {
-  FoxxManager._uninstallLocal(req.queryParams.mount);
-  FoxxManager._reloadRouting();
-})
-.queryParam('mount', schemas.mount);
-
-localRouter.get('/bundle', (req, res) => {
-  const mount = req.queryParams.mount;
-  const bundlePath = FoxxService.bundlePath(mount);
-  if (!fs.isFile(bundlePath)) {
-    res.throw(404, 'Bundle not available');
-  }
-  const etag = `"${FoxxService.checksum(mount)}"`;
-  if (req.get('if-none-match') === etag) {
-    res.status(304);
-    return;
-  }
-  if (req.get('if-match') && req.get('if-match') !== etag) {
-    res.throw(404, 'No matching bundle available');
-  }
-  res.set('etag', etag);
-  res.download(bundlePath);
-})
-.response(200, ['application/zip'])
-.header('if-match', joi.string().optional())
-.header('if-none-match', joi.string().optional())
-.queryParam('mount', schemas.mount);
-
-localRouter.get('/status', (req, res) => {
-  const ready = global.KEY_GET('foxx', 'ready');
-  if (ready || FoxxManager.isFoxxmaster()) {
-    res.json({ready});
-    return;
-  }
-  FoxxManager.proxyToFoxxmaster(req, res);
-  if (res.statusCode < 400) {
-    const result = JSON.parse(res.body.toString('utf-8'));
-    if (result.ready) {
-      global.KEY_SET('foxx', 'ready', result.ready);
-    }
-  }
+localRouter.post('/heal', (req, res) => {
+  FoxxManager.heal();
 });
-
-localRouter.get('/checksums', (req, res) => {
-  const mountParam = req.queryParams.mount || [];
-  const mounts = Array.isArray(mountParam) ? mountParam : [mountParam];
-  const checksums = {};
-  for (const mount of mounts) {
-    try {
-      checksums[mount] = FoxxService.checksum(mount);
-    } catch (e) {
-    }
-  }
-  res.json(checksums);
-})
-.queryParam('mount', joi.alternatives(
-  joi.array().items(schemas.mount),
-  schemas.mount
-));
-
-if (FoxxManager.isFoxxmaster()) {
-  localRouter.post('/heal', (req, res) => {
-    FoxxManager.heal();
-  });
-} else {
-  localRouter.post('/heal', FoxxManager.proxyToFoxxmaster);
-}
