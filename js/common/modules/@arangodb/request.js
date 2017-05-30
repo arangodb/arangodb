@@ -61,6 +61,16 @@ class Response {
       }
     }
   }
+  _PRINT (ctx) {
+    ctx.output += `[IncomingResponse ${this.status} "${this.message}"`;
+    if (Buffer.isBuffer(this.body)) {
+      ctx.output += ` <${this.body.length} bytes>]`;
+    } else {
+      ctx.output += '\n  ';
+      ctx.output += this.body.replace('\n', '\n  ');
+      ctx.output += '\n]';
+    }
+  }
 }
 
 function querystringify (query, useQuerystring) {
