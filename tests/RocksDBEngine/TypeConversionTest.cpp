@@ -48,8 +48,9 @@ template <typename T>
 void doFromToTest(T num){
   T x = num , y;
   char s[sizeof(x)];
-  toPersistent(x,&s[0]);
-  y = fromPersistent<decltype(y)>(&s[0]);
+  char* p = &s[0];
+  toPersistent(x,p);
+  y = fromPersistent<T>(p);
   CHECK((x == y));
 }
 
