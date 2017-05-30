@@ -47,7 +47,7 @@ void doFromToTest(double num){
 template <typename T>
 void doFromToTest(T num){
   T x = num , y;
-  char s[sizeof(x)];
+  char s[sizeof(x)] = {0};
   char* p = &s[0];
   toPersistent(x,p);
   y = fromPersistent<T>(p);
