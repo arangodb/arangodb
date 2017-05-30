@@ -36,7 +36,7 @@ const querystring = require('querystring');
 const qs = require('qs');
 const url = require('url');
 
-class Response {
+class IncomingResponse {
   throw (msg) {
     if (this.status >= 400) {
       throw Object.assign(
@@ -61,9 +61,12 @@ class Response {
       }
     }
   }
+  toString () {
+    return this._PRINT({output: ''}).output;
+  }
   _PRINT (ctx) {
     const MAX_BYTES = 100;
-    ctx.output += `[IncomingResponse ${this.status} ${this.message} `;
+    ctx.output += `[${this.constructor.name} ${this.status} ${this.message} `;
     if (!this.body || !this.body.length) {
       ctx.output += 'empty';
     } else {
@@ -196,12 +199,12 @@ function request (req) {
   }
   let result = internal.download(path, body, options);
 
-  return new Response(result, req.encoding, req.json);
+  return new IncomingResponse(result, req.encoding, req.json);
 }
 
 module.exports = request;
 request.request = request;
-request.Response = Response;
+request.Response = IncomingResponse;
 
 for (const method of ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT']) {
   request[method.toLowerCase()] = function (url, options) {
