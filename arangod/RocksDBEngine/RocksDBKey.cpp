@@ -80,17 +80,19 @@ RocksDBKey RocksDBKey::UniqueIndexValue(uint64_t indexId,
 RocksDBKey RocksDBKey::FulltextIndexValue(uint64_t indexId,
                                           arangodb::StringRef const& word,
                                           TRI_voc_rid_t revisionId) {
-  return RocksDBKey(RocksDBEntryType::FulltextIndexValue, indexId, word, revisionId);
+  return RocksDBKey(RocksDBEntryType::FulltextIndexValue, indexId, word,
+                    revisionId);
 }
 
-RocksDBKey RocksDBKey::GeoIndexValue(uint64_t indexId, int32_t offset, bool isSlot) {
+RocksDBKey RocksDBKey::GeoIndexValue(uint64_t indexId, int32_t offset,
+                                     bool isSlot) {
   RocksDBKey key(RocksDBEntryType::GeoIndexValue);
   size_t length = sizeof(char) + sizeof(indexId) + sizeof(offset);
   key._buffer.reserve(length);
   uint64ToPersistent(key._buffer, indexId);
 
   uint64_t norm = uint64_t(offset) << 32;
-  norm |= isSlot ? 0xFFU : 0; //encode slot|pot in lowest bit
+  norm |= isSlot ? 0xFFU : 0;  // encode slot|pot in lowest bit
   uint64ToPersistent(key._buffer, norm);
   return key;
 }
@@ -192,8 +194,9 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(char) + sizeof(uint64_t) * 2);
   RocksDBEntryType type = static_cast<RocksDBEntryType>(*slice.data());
   TRI_ASSERT(type == RocksDBEntryType::GeoIndexValue);
-  uint64_t val = uint64FromPersistent(slice.data() + sizeof(char) + sizeof(uint64_t));
-  bool isSlot = ((val & 0xFFULL) > 0);// lowest byte is 0xFF if true
+  uint64_t val =
+      uint64FromPersistent(slice.data() + sizeof(char) + sizeof(uint64_t));
+  bool isSlot = ((val & 0xFFULL) > 0);  // lowest byte is 0xFF if true
   return std::pair<bool, int32_t>(isSlot, (val >> 32));
 }
 
@@ -276,8 +279,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second)
 }
 
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
-                       VPackSlice const& second,
-                       uint64_t third)
+                       VPackSlice const& second, uint64_t third)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::IndexValue: {
@@ -286,8 +288,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       // + revisionID
       // - Value: empty
       size_t length = sizeof(char) + sizeof(uint64_t) +
-                      static_cast<size_t>(second.byteSize()) +
-                      sizeof(uint64_t);
+                      static_cast<size_t>(second.byteSize()) + sizeof(uint64_t);
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
@@ -327,8 +328,8 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
   switch (_type) {
     case RocksDBEntryType::FulltextIndexValue:
     case RocksDBEntryType::EdgeIndexValue: {
-      size_t length = sizeof(char) + sizeof(uint64_t) + second.size() +
-                      sizeof(third);
+      size_t length =
+          sizeof(char) + sizeof(uint64_t) + second.size() + sizeof(third);
       _buffer.reserve(length);
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);

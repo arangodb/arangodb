@@ -80,8 +80,7 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
 RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
-     bool reverse,
-    VPackSlice const& left, VPackSlice const& right)
+    bool reverse, VPackSlice const& left, VPackSlice const& right)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cmp(index->comparator()),
@@ -139,9 +138,10 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   while (limit > 0) {
     TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-    
-    TRI_voc_rid_t revisionId = _index->_unique ? RocksDBValue::revisionId(_iterator->value())
-                               : RocksDBKey::revisionId(_iterator->key());
+
+    TRI_voc_rid_t revisionId =
+        _index->_unique ? RocksDBValue::revisionId(_iterator->value())
+                        : RocksDBKey::revisionId(_iterator->key());
     cb(RocksDBToken(revisionId));
 
     --limit;
@@ -364,8 +364,7 @@ void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased,
 /// @brief helper function to create a set of index combinations to insert
 void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
                                          TRI_voc_rid_t revisionId,
-                                         VPackSlice const doc,
-                                         size_t level,
+                                         VPackSlice const doc, size_t level,
                                          std::vector<RocksDBKey>& elements,
                                          std::vector<VPackSlice>& sliceStack,
                                          std::vector<uint64_t>& hashes) {
@@ -387,7 +386,8 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
     } else {
       sliceStack.emplace_back(slice);
     }
-    buildIndexValues(leased, revisionId, doc, level + 1, elements, sliceStack, hashes);
+    buildIndexValues(leased, revisionId, doc, level + 1, elements, sliceStack,
+                     hashes);
     sliceStack.pop_back();
     return;
   }
@@ -796,8 +796,8 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
     }
   }
 
-  return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this,
-                                       reverse, leftBorder, rightBorder);
+  return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this, reverse,
+                                       leftBorder, rightBorder);
 }
 
 bool RocksDBVPackIndex::accessFitsIndex(
@@ -1499,10 +1499,13 @@ void RocksDBVPackIndex::recalculateEstimates() {
   _estimator->clear();
 
   auto bounds = RocksDBKeyBounds::IndexEntries(_objectId);
-  rocksutils::iterateBounds(bounds, [&](rocksdb::Iterator* it) {
-    uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
-    _estimator->insert(hash);
-  }, arangodb::RocksDBColumnFamily::index());
+  rocksutils::iterateBounds(bounds,
+                            [&](rocksdb::Iterator* it) {
+                              uint64_t hash =
+                                  RocksDBVPackIndex::HashForKey(it->key());
+                              _estimator->insert(hash);
+                            },
+                            arangodb::RocksDBColumnFamily::index());
 }
 
 Result RocksDBVPackIndex::postprocessRemove(transaction::Methods* trx,

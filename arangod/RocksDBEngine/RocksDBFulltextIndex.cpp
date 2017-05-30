@@ -219,14 +219,16 @@ int RocksDBFulltextIndex::insert(transaction::Methods* trx,
     for (size_t j = 0; j < i; ++j) {
       std::string const& word = words[j];
       RocksDBKey key =
-          RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
+          RocksDBKey::FulltextIndexValue(_objectId, StringRef(word),
+  revisionId);
       rtrx->Delete(key.string());
     }
   }*/
   return res;
 }
 
-int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,
+int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch,
+                                    TRI_voc_rid_t revisionId,
                                     arangodb::velocypack::Slice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
@@ -235,7 +237,7 @@ int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch, TRI_voc_rid_t revisio
 
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
-  //StringRef docKey(doc.get(StaticStrings::KeyString));
+  // StringRef docKey(doc.get(StaticStrings::KeyString));
   RocksDBValue value = RocksDBValue::IndexValue();
 
   for (std::string const& word : words) {
@@ -274,7 +276,8 @@ int RocksDBFulltextIndex::remove(transaction::Methods* trx,
   return res;
 }
 
-int RocksDBFulltextIndex::removeRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,
+int RocksDBFulltextIndex::removeRaw(RocksDBMethods* batch,
+                                    TRI_voc_rid_t revisionId,
                                     arangodb::velocypack::Slice const& doc) {
   std::set<std::string> words = wordlist(doc);
   // now we are going to construct the value to insert into rocksdb
@@ -496,9 +499,9 @@ static RocksDBKeyBounds MakeBounds(uint64_t oid,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
-                                             FulltextQueryToken const& token,
-                                             std::set<TRI_voc_rid_t>& resultSet) {
+Result RocksDBFulltextIndex::applyQueryToken(
+    transaction::Methods* trx, FulltextQueryToken const& token,
+    std::set<TRI_voc_rid_t>& resultSet) {
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
@@ -515,7 +518,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
   // apply left to right logic, merging all current results with ALL previous
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    
+
     rocksdb::Status s = iter->status();
     if (!s.ok()) {
       return rocksutils::convertStatus(s);

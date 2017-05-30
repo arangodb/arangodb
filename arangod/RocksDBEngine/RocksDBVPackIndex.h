@@ -91,7 +91,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _reverse;
   RocksDBKeyBounds _bounds;
-  rocksdb::Slice _upperBound; // used for iterate_upper_bound
+  rocksdb::Slice _upperBound;  // used for iterate_upper_bound
 };
 
 class RocksDBVPackIndex : public RocksDBIndex {
@@ -109,7 +109,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(
+      arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
@@ -178,9 +179,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   void recalculateEstimates() override;
 
-protected:
- Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                          rocksdb::Slice const& value) override;
+ protected:
+  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
+                           rocksdb::Slice const& value) override;
 
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
@@ -226,8 +227,8 @@ protected:
   /// @param sliceStack working list of values to insert into the index
   /// @param hashes list of VPackSlice hashes for the estimator.
   void buildIndexValues(velocypack::Builder& leased, TRI_voc_rid_t revisionId,
-                        VPackSlice const document,
-                        size_t level, std::vector<RocksDBKey>& elements,
+                        VPackSlice const document, size_t level,
+                        std::vector<RocksDBKey>& elements,
                         std::vector<VPackSlice>& sliceStack,
                         std::vector<uint64_t>& hashes);
 
@@ -248,7 +249,6 @@ protected:
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
-
 };
 }  // namespace arangodb
 
