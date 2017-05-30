@@ -32,6 +32,7 @@ devel
 
 * added distinction between hasUser and authorized within Foxx
   (cluster internal requests are authorized requests but don't have a user)
+* arangoimp now has a `—threads`option to enable parallel imports of data
 
 
 v3.2.alpha4 (2017-04-25)

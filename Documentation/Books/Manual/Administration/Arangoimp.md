@@ -92,6 +92,13 @@ Please note that by default, _arangoimp_ will import data into the specified
 collection in the default database (*_system*). To specify a different database, 
 use the *--server.database* option when invoking _arangoimp_. 
 
+The tool also supports parallel imports, with multiple threads. This will only 
+bring a notable performance increase with the new rocksdb engine. To specify 
+the number of parallel threads use the `--threads` option to specfiy the number.
+
+  > arangoimp --threads 4 --file "data.json" --type json --collection "users"
+
+
 
 ### JSON input file formats
 
