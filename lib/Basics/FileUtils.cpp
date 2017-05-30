@@ -215,7 +215,7 @@ static void throwFileWriteError(int fd, std::string const& filename) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
-void spit(std::string const& filename, char const* ptr, size_t len) {
+void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
   int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
                                    O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                                    S_IRUSR | S_IWUSR | S_IRGRP);
@@ -227,67 +227,29 @@ void spit(std::string const& filename, char const* ptr, size_t len) {
   while (0 < len) {
     ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t)len);
 
-    if (n < 1) {
+    if (n < 0) {
       throwFileWriteError(fd, filename);
     }
 
     ptr += n;
     len -= n;
+  }
+
+  if (sync) {
+    // intentionally ignore this error as there is nothing we can do about it
+    TRI_fsync(fd);
+
   }
 
   TRI_TRACKED_CLOSE_FILE(fd);
 }
 
-void spit(std::string const& filename, std::string const& content) {
-  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
-                                   O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
-                                   S_IRUSR | S_IWUSR | S_IRGRP);
-
-  if (fd == -1) {
-    throwFileWriteError(fd, filename);
-  }
-
-  char const* ptr = content.c_str();
-  size_t len = content.size();
-
-  while (0 < len) {
-    ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t)len);
-
-    if (n < 1) {
-      throwFileWriteError(fd, filename);
-    }
-
-    ptr += n;
-    len -= n;
-  }
-
-  TRI_TRACKED_CLOSE_FILE(fd);
+void spit(std::string const& filename, std::string const& content, bool sync) {
+  spit(filename, content.c_str(), content.size(), sync);
 }
 
-void spit(std::string const& filename, StringBuffer const& content) {
-  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
-                                   O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
-                                   S_IRUSR | S_IWUSR | S_IRGRP);
-
-  if (fd == -1) {
-    throwFileWriteError(fd, filename);
-  }
-
-  char const* ptr = content.c_str();
-  size_t len = content.length();
-
-  while (0 < len) {
-    ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t)len);
-
-    if (n < 1) {
-      throwFileWriteError(fd, filename);
-    }
-
-    ptr += n;
-    len -= n;
-  }
-
-  TRI_TRACKED_CLOSE_FILE(fd);
+void spit(std::string const& filename, StringBuffer const& content, bool sync) {
+  spit(filename, content.c_str(), content.length(), sync);
 }
 
 bool remove(std::string const& fileName, int* errorNumber) {
