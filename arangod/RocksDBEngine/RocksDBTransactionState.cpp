@@ -59,21 +59,15 @@ struct RocksDBTransactionData final : public TransactionData {};
 
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
-    TRI_vocbase_t* vocbase, uint64_t maxTransSize,
-    bool intermediateTransactionEnabled, uint64_t intermediateTransactionSize,
-    uint64_t intermediateTransactionNumber)
-    : TransactionState(vocbase),
+    TRI_vocbase_t* vocbase, transaction::Options const& options)
+    : TransactionState(vocbase, options),
       _snapshot(nullptr),
       _rocksWriteOptions(),
       _rocksReadOptions(),
       _cacheTx(nullptr),
-      _maxTransactionSize(maxTransSize),
-      _intermediateTransactionSize(intermediateTransactionSize),
-      _intermediateTransactionNumber(intermediateTransactionNumber),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
-      _intermediateTransactionEnabled(intermediateTransactionEnabled),
       _lastUsedCollection(0) {}
 
 /// @brief free a transaction container
@@ -147,7 +141,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     } else {
       createTransaction();
       bool readWrites = hasHint(transaction::Hints::Hint::READ_WRITES);
-      if (_intermediateTransactionEnabled && !readWrites) {
+      if (!readWrites) {
         _snapshot = db->GetSnapshot(); // we must call ReleaseSnapshot at some point
         _rocksReadOptions.snapshot = _snapshot;
         TRI_ASSERT(_snapshot != nullptr);
@@ -396,11 +390,11 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
 
   size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
   uint64_t newSize = currentSize + operationSize + keySize;
-  if (_maxTransactionSize < newSize) {
+  if (newSize > _options.maxTransactionSize) {
     // we hit the transaction size limit
     std::string message =
         "aborting transaction because maximal transaction size limit of " +
-        std::to_string(_maxTransactionSize) + " bytes is reached";
+        std::to_string(_options.maxTransactionSize) + " bytes is reached";
     res.reset(TRI_ERROR_RESOURCE_LIMIT, message);
     return res;
   }
@@ -439,14 +433,13 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   }
 
   auto numOperations = _numInserts + _numUpdates + _numRemoves;
-  // signal if intermediate commit is required
-  // this will be done if intermediate transactions are enabled
-  // and either the "number of operations" or the "transaction size"
-  // has reached the limit
-  if (_intermediateTransactionEnabled &&
-      (_intermediateTransactionNumber <= numOperations ||
-       _intermediateTransactionSize <= newSize)) {
-    //res.commitRequired(true);
+  // perform an intermediate commit
+  // this will be done if either the "number of operations" or the 
+  // "transaction size" counters have reached their limit
+  if (_options.intermediateCommitCount <= numOperations ||
+      _options.intermediateCommitSize <= newSize) {
+
+    LOG_TOPIC(ERR, Logger::FIXME) << "INTERMEDIATE COMMIT!";
       internalCommit();
       _numInserts = 0;
       _numUpdates = 0;

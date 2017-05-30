@@ -53,6 +53,7 @@ class RestHandlerFactory;
 
 namespace transaction {
 class ContextData;
+struct Options;
 }
 
 class RocksDBEngine final : public StorageEngine {
@@ -80,7 +81,7 @@ class RocksDBEngine final : public StorageEngine {
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  TransactionState* createTransactionState(TRI_vocbase_t*) override;
+  TransactionState* createTransactionState(TRI_vocbase_t*, transaction::Options const&) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -259,14 +260,11 @@ class RocksDBEngine final : public StorageEngine {
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
   uint64_t _maxTransactionSize;  // maximum allowed size for a transaction
-  uint64_t _intermediateTransactionCommitSize;   // maximum size for a
-                                                 // transaction before a
-                                                 // intermediate commit will be
-                                                 // tried
-  uint64_t _intermediateTransactionCommitCount;  // limit of transaction count
-                                                 // for intermediate commit
-  bool _intermediateTransactionCommitEnabled;    // allow usage of intermediate
-                                                 // commits
+  uint64_t _intermediateCommitSize;   // maximum size for a
+                                      // transaction before an
+                                      // intermediate commit is performed
+  uint64_t _intermediateCommitCount;  // limit of transaction count
+                                      // for intermediate commit
 
   mutable basics::ReadWriteLock _collectionMapLock;
   std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
