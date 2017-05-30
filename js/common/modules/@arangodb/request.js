@@ -64,25 +64,23 @@ class Response {
   _PRINT (ctx) {
     const MAX_BYTES = 100;
     ctx.output += `[IncomingResponse ${this.status} ${this.message} `;
-    if (this.body && this.body.length) {
-      ctx.output += `${this.body.length} bytes `;
-      if (typeof this.body === 'string') {
-        if (this.body.length > MAX_BYTES) {
-          const offset = (this.body.length - (MAX_BYTES - 2)) / 2;
-          ctx.output += `"…${
-            this.body.slice(offset, offset + (MAX_BYTES - 2))
-            .replace('\n', '\\n')
-            .replace('\r', '\\r')
-            .replace('\t', '\\t')
-          }…"`;
-        } else {
-          ctx.output += `"${this.body}"`;
-        }
-      } else {
-        ctx.output += '<binary>';
-      }
-    } else {
+    if (!this.body || !this.body.length) {
       ctx.output += 'empty';
+    } else {
+      ctx.output += `${this.body.length} bytes `;
+      if (typeof this.body !== 'string') {
+        ctx.output += '<binary>';
+      } else if (this.body.length <= MAX_BYTES) {
+        ctx.output += `"${this.body}"`;
+      } else {
+        const offset = (this.body.length - MAX_BYTES) / 2;
+        ctx.output += `"…${
+          this.body.slice(offset, offset + MAX_BYTES)
+          .replace('\n', '\\n')
+          .replace('\r', '\\r')
+          .replace('\t', '\\t')
+        }…"`;
+      }
     }
     ctx.output += ']';
   }
