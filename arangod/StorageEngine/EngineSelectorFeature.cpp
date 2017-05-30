@@ -108,7 +108,7 @@ void EngineSelectorFeature::start() {
   // write engine File
   if (!basics::FileUtils::isRegularFile(_engineFilePath)) {
     try {
-      basics::FileUtils::spit(_engineFilePath, _engine);
+      basics::FileUtils::spit(_engineFilePath, _engine, true);
     } catch (std::exception const& ex) {
       LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to write 'ENGINE' file '" << _engineFilePath << "': " << ex.what() << ". please make sure the file/directory is writable for the arangod process and user";
       FATAL_ERROR_EXIT();
