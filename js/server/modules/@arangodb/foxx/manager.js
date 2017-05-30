@@ -158,7 +158,19 @@ function selfHealAll () {
   }
 }
 
+function triggerSelfHeal () {
+  const modified = selfHeal();
+  if (modified) {
+    reloadRouting();
+  }
+}
+
 function selfHeal () {
+  const dirname = FoxxService.rootBundlePath();
+  if (!fs.exists(dirname)) {
+    fs.makeDirectoryRecursive(dirname);
+  }
+
   const serviceCollection = utils.getStorage();
   const bundleCollection = utils.getBundleStorage();
   const serviceDefinitions = db._query(aql`
@@ -221,6 +233,9 @@ function selfHeal () {
 
   const rootPath = FoxxService.rootPath();
   for (const relPath of fs.listTree(rootPath)) {
+    if (!relPath) {
+      continue;
+    }
     const basename = path.basename(relPath);
     if (basename.toUpperCase() !== 'APP') {
       continue;
@@ -228,15 +243,18 @@ function selfHeal () {
     const basePath = path.resolve(rootPath, relPath);
     if (!knownServicePaths.includes(basePath)) {
       modified = true;
-      console.error(`DELETING ${basePath}`); // FIXME actually delete files
+      console.error(`DELETING folder ${basePath}`); // FIXME actually delete files
     }
   }
 
   const bundlesPath = FoxxService.rootBundlePath();
   for (const relPath of fs.listTree(bundlesPath)) {
-    const bundlePath = path.resolve(rootPath, relPath);
+    if (!relPath) {
+      continue;
+    }
+    const bundlePath = path.resolve(bundlesPath, relPath);
     if (!knownBundlePaths.includes(bundlePath)) {
-      console.error(`DELETING ${bundlePath}`); // FIXME actually delete files
+      console.error(`DELETING bundle ${bundlePath}`); // FIXME actually delete files
     }
   }
 
@@ -837,7 +855,8 @@ exports.ensureRouted = ensureServiceLoaded;
 exports.initializeFoxx = initLocalServiceMap;
 exports.ensureFoxxInitialized = ensureFoxxInitialized;
 exports._startup = startup;
-exports.heal = selfHealAll;
+exports.heal = triggerSelfHeal;
+exports.healAll = selfHealAll;
 exports._createServiceBundle = createServiceBundle;
 exports._resetCache = () => GLOBAL_SERVICE_MAP.clear();
 exports._mountPoints = getMountPoints;
