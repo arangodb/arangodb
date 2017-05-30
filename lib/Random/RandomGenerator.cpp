@@ -60,7 +60,7 @@ unsigned long RandomDevice::seed() {
   seed += std::chrono::duration_cast<std::chrono::nanoseconds>(
     std::chrono::high_resolution_clock::now().time_since_epoch()).count();
   
-  return seed;
+  return reinterpret_cast<unsigned long>(seed);
   
 }
 
