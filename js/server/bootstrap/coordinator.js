@@ -46,7 +46,6 @@
 
   if (internal.threadNumber === 0) {
     // start the queue manager once
-    require('@arangodb/foxx/queues/manager').run();
     var systemCollectionsCreated = global.ArangoAgency.get('SystemCollectionsCreated');
     if (!(systemCollectionsCreated && systemCollectionsCreated.arango && systemCollectionsCreated.arango.SystemCollectionsCreated)) {
       // Wait for synchronous replication of system colls to settle:
@@ -60,6 +59,7 @@
         global.ArangoAgency.set('SystemCollectionsCreated', true);
       }
     }
+    require('@arangodb/foxx/queues/manager').run();
     console.info('bootstrapped coordinator %s', global.ArangoServerState.id());
   }
 
