@@ -326,10 +326,10 @@
       this.clusterView.render();
     },
 
-    node: function (name, initialized) {
+    node: function (id, initialized) {
       this.checkUser();
       if (!initialized || this.isCluster === undefined) {
-        this.waitForInit(this.node.bind(this), name);
+        this.waitForInit(this.node.bind(this), id);
         return;
       }
       if (this.isCluster === false) {
@@ -342,7 +342,7 @@
         this.nodeView.remove();
       }
       this.nodeView = new window.NodeView({
-        coordname: name,
+        coordid: id,
         coordinators: this.coordinatorCollection,
         dbServers: this.dbServers
       });
