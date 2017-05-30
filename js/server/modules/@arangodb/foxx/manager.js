@@ -178,8 +178,8 @@ function selfHeal () {
     knownBundlePaths.push(bundlePath);
     knownServicePaths.push(basePath);
 
-    if (localServiceMap.has(mount)) {
-      if (localServiceMap.get(mount)._rev !== rev) {
+    if (localServiceMap) {
+      if (!localServiceMap.has(mount) || localServiceMap.get(mount)._rev !== rev) {
         modified = true;
       }
     }
