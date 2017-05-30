@@ -243,7 +243,12 @@ function selfHeal () {
     const basePath = path.resolve(rootPath, relPath);
     if (!knownServicePaths.includes(basePath)) {
       modified = true;
-      console.error(`DELETING folder ${basePath}`); // FIXME actually delete files
+      try {
+        fs.removeDirectoryRecursive(basePath, true);
+        console.debug(`Deleted orphaned service folder ${basePath}`);
+      } catch (e) {
+        console.warnStack(e, `Failed to delete orphaned service folder ${basePath}`);
+      }
     }
   }
 
@@ -254,7 +259,12 @@ function selfHeal () {
     }
     const bundlePath = path.resolve(bundlesPath, relPath);
     if (!knownBundlePaths.includes(bundlePath)) {
-      console.error(`DELETING bundle ${bundlePath}`); // FIXME actually delete files
+      try {
+        fs.remove(bundlePath);
+        console.debug(`Deleted orphaned service bundle ${bundlePath}`);
+      } catch (e) {
+        console.warnStack(e, `Failed to delete orphaned service bundle ${bundlePath}`);
+      }
     }
   }
 
