@@ -78,6 +78,61 @@ class Methods;
 }
 namespace rocksutils {
 
+//// to persistent
+template <typename T>
+typename std::enable_if<std::is_integral<T>::value,void>::type
+toPersistent(T in, char*& out){
+  using TT = typename std::decay<T>::type;
+  std::memcpy(out, &in, sizeof(TT));
+  out += sizeof(TT);
+}
+
+//// from persistent
+template <typename T,
+          typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 0
+         >
+typename std::decay<T>::type fromPersistent(char const*& in){
+  using TT = typename std::decay<T>::type;
+  TT out;
+  std::memcpy(&out, in, sizeof(TT));
+  in += sizeof(TT);
+  return out;
+}
+
+//we need this overload or the template will match
+template <typename T,
+          typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 1
+         >
+typename std::decay<T>::type fromPersistent(char *& in){
+  using TT = typename std::decay<T>::type;
+  TT out;
+  std::memcpy(&out, in, sizeof(TT));
+  in += sizeof(TT);
+  return out;
+}
+
+template <typename T, typename StringLike,
+          typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 2
+         >
+typename std::decay<T>::type fromPersistent(StringLike& in){
+  using TT = typename std::decay<T>::type;
+  TT out;
+  std::memcpy(&out, in.data(), sizeof(TT));
+  return out;
+}
+
+inline uint64_t doubleToInt(double d){
+  uint64_t i;
+  std::memcpy(&i, &d, sizeof(i));
+  return i;
+}
+
+inline double intToDouble(uint64_t i){
+  double d;
+  std::memcpy(&d, &i, sizeof(i));
+  return d;
+}
+
 uint64_t uint64FromPersistent(char const* p);
 void uint64ToPersistent(char* p, uint64_t value);
 void uint64ToPersistent(std::string& out, uint64_t value);
@@ -92,7 +147,7 @@ void uint16ToPersistent(std::string& out, uint16_t value);
 
 RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
 RocksDBMethods* toRocksMethods(transaction::Methods* trx);
-  
+
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(

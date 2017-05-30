@@ -250,9 +250,18 @@ Foxx
   uploaded file will be used as the service's main entry point.
 
 
-Pregel
+Distributed Graph Processing
 ------
 
+* We added support for executing distributed graph algorithms aka `Pregel`. 
+* Users can run arbitrary algorithms on an entire graph, including in cluster mode.
+* We implemented a number of algorithms for various well-known graph measures:
+  * Connected Components
+  * PageRank
+  * Shortest Paths
+  * Centrality Measures (Centrality and Betweeness)
+  * Community Detection (via Label Propagation, Speakers-Listeners Label Propagation or DMID)
+* Users can contribute their own algorithms
 
 AQL
 ---
@@ -343,6 +352,8 @@ Client tools
       arangoimp --type csv --file data.csv --translate "id=_key" --translate "from=_from" --translate "to=_to"
 
   `--translate` works for CSV and TSV inputs only.
+
+* added `--threads` option to arangoimp to specify the number of parallel import threads 
 
 * changed default value for client tools option `--server.max-packet-size` from 128 MB 
   to 256 MB. this allows transferring bigger result sets from the server without the

@@ -33,6 +33,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <type_traits>
 
 namespace arangodb {
 
