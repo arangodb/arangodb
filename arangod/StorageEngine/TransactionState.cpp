@@ -29,12 +29,13 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
+#include "Transaction/Options.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
 
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t* vocbase)
+TransactionState::TransactionState(TRI_vocbase_t* vocbase, transaction::Options const& options)
     : _vocbase(vocbase), 
       _id(0), 
       _type(AccessMode::Type::READ),
@@ -43,10 +44,8 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
       _collections{_arena}, // assign arena to vector 
       _serverRole(ServerState::instance()->getRole()),
       _hints(),
-      _timeout(transaction::Methods::DefaultLockTimeout),
       _nestingLevel(0), 
-      _allowImplicitCollections(true),
-      _waitForSync(false) {}
+      _options(options) {}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
@@ -99,7 +98,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   //            << ", accessType: " << accessType 
   //            << ", nestingLevel: " << nestingLevel 
   //            << ", force: " << force 
-  //            << ", allowImplicitCollections: " << _allowImplicitCollections;
+  //            << ", allowImplicitCollections: " << _options.allowImplicitCollections;
   
   // upgrade transaction type if required
   if (nestingLevel == 0) {
@@ -130,7 +129,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
 
-  if (!AccessMode::isWriteOrExclusive(accessType) && !_allowImplicitCollections) {
+  if (!AccessMode::isWriteOrExclusive(accessType) && (isRunning() && !_options.allowImplicitCollections)) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
   

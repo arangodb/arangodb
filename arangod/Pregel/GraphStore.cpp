@@ -327,10 +327,12 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
 
 template <typename V, typename E>
 std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
-  double lockTimeout = transaction::Methods::DefaultLockTimeout;
+  transaction::Options transactionOptions;
+  transactionOptions.waitForSync = false;
+  transactionOptions.allowImplicitCollections = true;
   auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase());
   std::unique_ptr<transaction::Methods> trx(
-      new transaction::UserTransaction(ctx, {}, {}, {}, lockTimeout, false, true));
+      new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
   Result res = trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -504,10 +506,12 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       }
       currentShard = it->shard();
       ShardID const& shard = globalShards[currentShard];
-      double timeout = transaction::Methods::DefaultLockTimeout;
+      transaction::Options transactionOptions;
+      transactionOptions.waitForSync = false;
+      transactionOptions.allowImplicitCollections = false;
       trx.reset(new transaction::UserTransaction(
           transaction::StandaloneContext::Create(_vocbaseGuard.vocbase()), {},
-          {shard}, {}, timeout, false, false));
+          {shard}, {}, transactionOptions));
       res = trx->begin();
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);

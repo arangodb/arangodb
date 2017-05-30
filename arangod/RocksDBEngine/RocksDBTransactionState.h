@@ -52,6 +52,7 @@ class LogicalCollection;
 struct RocksDBDocumentOperation;
 namespace transaction {
 class Methods;
+struct Options;
 }
 class TransactionCollection;
 class RocksDBMethods;
@@ -65,11 +66,7 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBBatchedMethods;
   
  public:
-  explicit RocksDBTransactionState(TRI_vocbase_t* vocbase,
-                                   uint64_t maxOperationSize,
-                                   bool intermediateTransactionEnabled,
-                                   uint64_t intermediateTransactionSize,
-                                   uint64_t intermediateTransactionNumber);
+  RocksDBTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
@@ -129,16 +126,11 @@ private:
   // wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
-  // a transaction may not become bigger than this value
-  uint64_t _maxTransactionSize;
-  // if a transaction gets bigger than  this value and intermediate transactions
-  // are enabled then a commit will be done
-  uint64_t _intermediateTransactionSize;
-  uint64_t _intermediateTransactionNumber;
+  // if a transaction gets bigger than these values then an automatic
+  // intermediate commit will be done
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
-  bool _intermediateTransactionEnabled;
 
   /// Last collection used for transaction
   TRI_voc_cid_t _lastUsedCollection;

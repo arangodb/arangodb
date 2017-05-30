@@ -30,6 +30,7 @@
 #include "Basics/Result.h"
 #include "Utils/OperationResult.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
@@ -79,16 +80,13 @@ class TransactionState;
 class TransactionCollection;
 
 namespace transaction {
+struct Options;
 
 class Methods {
   friend class traverser::BaseEngine;
   friend class CallbackInvoker;
 
  public:
-
-  /// @brief time (in seconds) that is spent waiting for a lock
-  static constexpr double DefaultLockTimeout = 900.0; 
-
   class IndexHandle {
     friend class transaction::Methods;
     
@@ -124,7 +122,7 @@ class Methods {
  protected:
 
   /// @brief create the transaction
-  explicit Methods(std::shared_ptr<transaction::Context> const& transactionContext);
+  Methods(std::shared_ptr<transaction::Context> const& transactionContext, transaction::Options const& options = transaction::Options());
 
  public:
 
@@ -547,7 +545,7 @@ class Methods {
   void setupEmbedded(TRI_vocbase_t*);
 
   /// @brief set up a top-level transaction
-  void setupToplevel(TRI_vocbase_t*);
+  void setupToplevel(TRI_vocbase_t*, transaction::Options const&);
 
  protected:
   /// @brief the state 

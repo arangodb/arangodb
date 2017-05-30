@@ -29,6 +29,7 @@
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -49,6 +50,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace transaction {
 class Methods;
+struct Options;
 }
 class TransactionCollection;
 
@@ -59,7 +61,7 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  explicit TransactionState(TRI_vocbase_t* vocbase);
+  TransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
   virtual ~TransactionState();
 
   bool isRunningInCluster() const { return ServerState::isRunningInCluster(_serverRole); }
@@ -80,18 +82,18 @@ class TransactionState {
   bool isTopLevelTransaction() const { return _nestingLevel == 0; }
   bool isEmbeddedTransaction() const { return !isTopLevelTransaction(); }
 
-  double timeout() const { return _timeout; }
+  double timeout() const { return _options.lockTimeout; }
   void timeout(double value) { 
     if (value > 0.0) {
-      _timeout = value;
+      _options.lockTimeout = value;
     } 
   }
 
-  bool waitForSync() const { return _waitForSync; }
-  void waitForSync(bool value) { _waitForSync = value; }
+  bool waitForSync() const { return _options.waitForSync; }
+  void waitForSync(bool value) { _options.waitForSync = value; }
 
-  bool allowImplicitCollections() const { return _allowImplicitCollections; }
-  void allowImplicitCollections(bool value) { _allowImplicitCollections = value; }
+  bool allowImplicitCollections() const { return _options.allowImplicitCollections; }
+  void allowImplicitCollections(bool value) { _options.allowImplicitCollections = value; }
 
   std::vector<std::string> collectionNames() const;
 
@@ -169,10 +171,9 @@ class TransactionState {
   ServerState::RoleEnum const _serverRole;  // role of the server
 
   transaction::Hints _hints;          // hints;
-  double _timeout;                    // timeout for lock acquisition
   int _nestingLevel;
-  bool _allowImplicitCollections;
-  bool _waitForSync;   // whether or not the transaction had a synchronous op
+
+  transaction::Options _options;
 };
 
 }
