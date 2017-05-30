@@ -99,14 +99,14 @@ typedef struct {
 /* only used for a leaf pot.                           */
 /* =================================================== */
 typedef struct {
-  int LorLeaf;
-  int RorPoints;
+  int32_t LorLeaf;
+  int32_t RorPoints;
   GeoString middle;
   GeoFix maxdist[GeoIndexFIXEDPOINTS];
   GeoString start;
   GeoString end;
-  int level;
-  int points[GeoIndexPOTSIZE];
+  int32_t level;
+  int32_t points[GeoIndexPOTSIZE];
 } GeoPot;
 /* =================================================== */
 /*                 GeoIx structure                     */
@@ -266,8 +266,98 @@ typedef struct {
 #include <StorageEngine/EngineSelectorFeature.h>
 
 namespace arangodb { namespace rocksdbengine {
-  
-  
+
+GeoCoordinate& fromPersistent(char const* in, GeoCoordinate& out){
+  const char* start = in;
+
+  //convert latituide and longitute to uint64 for network transfer / storage
+  uint64_t fromStorage = rocksutils::fromPersistent<uint64_t>(start);
+  start += sizeof(uint64_t);
+  out.latitude = rocksutils::intToDouble(fromStorage);
+
+  fromStorage = rocksutils::fromPersistent<uint64_t>(start);
+  start += sizeof(uint64_t);
+  out.longitude = rocksutils::intToDouble(fromStorage);
+
+  out.data = rocksutils::fromPersistent<uint64_t>(start);
+  start += sizeof(uint64_t);
+
+  return out;
+}
+
+void toPersistent(GeoCoordinate& in, char* out){
+  char* start = out;
+
+  uint64_t toStorage = rocksutils::doubleToInt(in.latitude);
+  rocksutils::toPersistent(toStorage, start);
+  start += sizeof(in.latitude);
+ 
+  toStorage = rocksutils::doubleToInt(in.longitude);
+  rocksutils::toPersistent(toStorage, start);
+  start += sizeof(in.longitude);
+
+  rocksutils::toPersistent(in.data, start);
+  start += sizeof(in.data);
+}
+
+GeoPot& fromPersistent(char const* in, GeoPot& out){
+  const char* start = in;
+
+  out.LorLeaf = rocksutils::fromPersistent<int32_t>(start);
+  start += sizeof(int32_t);
+  out.RorPoints = rocksutils::fromPersistent<int32_t>(start);
+  start += sizeof(int32_t);
+  out.middle = rocksutils::fromPersistent<GeoString>(start);
+  start += sizeof(GeoString);
+
+  for(std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++){
+    out.maxdist[i] = rocksutils::fromPersistent<GeoFix>(start);
+    start += sizeof(GeoFix);
+  }
+
+  out.start = rocksutils::fromPersistent<GeoString>(start);
+  start += sizeof(GeoString);
+  out.end = rocksutils::fromPersistent<GeoString>(start);
+  start += sizeof(GeoString);
+  out.level = rocksutils::fromPersistent<int32_t>(start);
+  start += sizeof(int32_t);
+
+  for(std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++){
+    out.points[i] = rocksutils::fromPersistent<int32_t>(start);
+    start += sizeof(int32_t);
+  }
+
+  return out;
+}
+
+void toPersistent(GeoPot const& in, char* out){
+  char* start = out;
+
+  rocksutils::toPersistent(in.LorLeaf, start);
+  start += sizeof(int32_t);
+  rocksutils::toPersistent(in.RorPoints, start);
+  start += sizeof(int32_t);
+  rocksutils::toPersistent(in.middle, start);
+  start += sizeof(GeoString);
+
+  for(std::size_t i = 0; i< GeoIndexFIXEDPOINTS; i++){
+    rocksutils::toPersistent(in.maxdist[i], start);
+    start += sizeof(GeoFix);
+  }
+
+  rocksutils::toPersistent(in.start, start);
+  start += sizeof(GeoString);
+  rocksutils::toPersistent(in.end, start);
+  start += sizeof(GeoString);
+  rocksutils::toPersistent(in.level, start);
+  start += sizeof(int32_t);
+
+  for(std::size_t i = 0; i< GeoIndexFIXEDPOINTS; i++){
+    rocksutils::toPersistent(in.points[i], start);
+    start += sizeof(int32_t);
+  }
+}
+
 /* CRUD interface */
 
 void GeoIndex_setRocksMethods(GeoIdx* gi, RocksDBMethods* trx) {
@@ -279,14 +369,14 @@ void GeoIndex_clearRocks(GeoIdx* gi) {
   GeoIx* gix = (GeoIx*)gi;
   gix->rocksMethods = nullptr;
 }
-  
+
 inline void RocksRead(GeoIx * gix, RocksDBKey const& key, std::string *val) {
   arangodb::Result r = gix->rocksMethods->Get(RocksDBColumnFamily::geo(), key, val);
   if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 }
-  
+
 inline void RocksWrite(GeoIx * gix,
                        RocksDBKey const& key,
                        rocksdb::Slice const& slice) {
@@ -322,13 +412,23 @@ void SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
   std::string slotValue;
   RocksRead(gix, key, &slotValue);
-  memcpy(gc, slotValue.data(), slotValue.size());
+  fromPersistent(slotValue.data(),*gc);
+  //memcpy(gc, slotValue.data(), slotValue.size());
 }
 void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
 {
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
-  RocksWrite(gix, key, rocksdb::Slice((char*)gc,
-                                      sizeof(GeoCoordinate)));
+  char data[sizeof (GeoCoordinate)];
+  toPersistent(*gc, &data[0]);
+  RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoCoordinate)));
+
+  GeoCoordinate test;
+  fromPersistent(&data[0],test);
+  // RocksWrite(gix, key, rocksdb::Slice((char*)gc, sizeof(GeoCoordinate)));
+
+  TRI_ASSERT(test.longitude == gc->longitude);
+  TRI_ASSERT(test.latitude == gc->latitude);
+  TRI_ASSERT(test.data == gc->data);
 }
 
 void PotRead(GeoIx * gix, int pot, GeoPot * gp)
@@ -336,12 +436,21 @@ void PotRead(GeoIx * gix, int pot, GeoPot * gp)
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
   std::string potValue;
   RocksRead(gix, key, &potValue);
-  memcpy(gp, potValue.data(), potValue.size());
+  TRI_ASSERT(potValue.size() == sizeof(GeoPot));
+  fromPersistent(potValue.data(), *gp);
+  //memcpy(gp, potValue.data(), potValue.size());
 }
   
 void PotWrite(GeoIx * gix, int pot, GeoPot * gp) {
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
-  RocksWrite(gix, key, rocksdb::Slice((char*)gp, sizeof(GeoPot)));
+  char data[sizeof (GeoPot)];
+  toPersistent(*gp, &data[0]);
+  RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoPot)));
+  //RocksWrite(gix, key, rocksdb::Slice((char*)gp, sizeof(GeoPot)));
+  
+  GeoPot test;
+  fromPersistent(&data[0],test);
+  TRI_ASSERT(test.level == gp->level);
 }
 
 /* =================================================== */

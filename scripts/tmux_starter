@@ -36,7 +36,7 @@ suite_all(){
     local tests=""
     case $count in
         num)
-            echo "6"
+            echo "11"
             return
         ;;
         name)
@@ -48,21 +48,33 @@ suite_all(){
             return
         ;;
         1)
-            tests="shell_server shell_client"
+            tests="shell_server"
         ;;
         2)
-            tests="shell_server_aql"
-        ;;
-        2)
-            tests="http_server server_http"
+            tests="shell_client"
         ;;
         3)
-            tests="dump importing export arangobench upgrade"
+            tests="shell_server_aql"
         ;;
         4)
-            tests="replication_sync replication_static replication_ongoing http_replication shell_replication"
+            tests="http_server"
         ;;
         5)
+            tests="server_http"
+        ;;
+        6)
+            tests="dump importing"
+        ;;
+        7)
+            tests="export arangobench upgrade"
+        ;;
+        8)
+            tests="replication_sync replication_static"
+        ;;
+        9)
+            tests="replication_ongoing http_replication shell_replication"
+        ;;
+        10)
             tests="agency cluster_sync"
         ;;
         *)

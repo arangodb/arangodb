@@ -25,7 +25,11 @@
 #define ARANGODB_BASICS_COMMON_H 1
 
 #ifdef _WIN32
+
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1
+#endif
+
 // debug malloc for Windows (only used when DEBUG is set)
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>

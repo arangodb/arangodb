@@ -55,6 +55,7 @@ add_executable(
   Geo/georeg.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
+  RocksDBEngine/TypeConversionTest.cpp
   main.cpp
 )
 

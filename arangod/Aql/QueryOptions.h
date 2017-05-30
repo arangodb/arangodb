@@ -38,7 +38,7 @@ struct QueryOptions {
   QueryOptions();
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);
-  void toVelocyPack(arangodb::velocypack::Builder&);
+  void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
@@ -57,7 +57,7 @@ struct QueryOptions {
   bool verboseErrors;
   bool inspectSimplePlans;
   std::vector<std::string> optimizerRules;
-  std::unordered_set<std::string> includedShards;
+  std::unordered_set<std::string> shardIds;
 };
 
 }
