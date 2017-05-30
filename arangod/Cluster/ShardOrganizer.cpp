@@ -53,8 +53,6 @@ ShardingResult ShardOrganizer::createShardMap(std::string const& databaseName, s
   
   ShardMapPtr shards;
   if (otherCid != 0) {
-    bool chainOfDistributeShardsLike = false;
-
     std::string otherCidString 
       = arangodb::basics::StringUtils::itoa(otherCid);
     
