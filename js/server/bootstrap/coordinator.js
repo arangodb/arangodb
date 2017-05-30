@@ -44,7 +44,6 @@
   internal.loadStartup('server/bootstrap/routing.js').startup();
 
   if (internal.threadNumber === 0) {
-    global.KEYSPACE_CREATE('foxx', 1, true);
     require('@arangodb/foxx/manager')._startup();
     require('@arangodb/tasks').register({
       id: 'self-heal',
