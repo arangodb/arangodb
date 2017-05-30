@@ -86,7 +86,7 @@ rest::ResponseCode VocbaseContext::authenticate() {
   bool forceOpen = false;
   rest::ResponseCode result = authenticateRequest();
 
-  if (result == rest::ResponseCode::OK) {
+  if (result == rest::ResponseCode::OK && _request->user().size()) {
     auto authContext = _authentication->authInfo()->getAuthContext(
         _request->user(), _request->databaseName());;
     _request->setExecContext(

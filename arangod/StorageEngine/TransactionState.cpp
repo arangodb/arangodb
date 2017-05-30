@@ -98,7 +98,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    std::cout << ExecContext::CURRENT_EXECCONTEXT->user() << " " << ExecContext::CURRENT_EXECCONTEXT->database() << "\n";
+    std::cout << "'" << ExecContext::CURRENT_EXECCONTEXT->user() << "' '" << ExecContext::CURRENT_EXECCONTEXT->database() << "'\n";
     ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
 
     if (accessType == AccessMode::Type::NONE)
