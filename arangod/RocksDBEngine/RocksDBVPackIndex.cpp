@@ -796,10 +796,6 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
     }
   }
 
-  // Secured by trx. The shared_ptr index stays valid in
-  // _collection at least as long as trx is running.
-  // Same for the iterator
-  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this,
                                        reverse, leftBorder, rightBorder);
 }

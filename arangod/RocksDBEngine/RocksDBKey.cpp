@@ -333,6 +333,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);
       _buffer.append(second.data(), second.length());
+      _buffer.push_back(_stringSeparator);
       uint64ToPersistent(_buffer, third);
       break;
     }

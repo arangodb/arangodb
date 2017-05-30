@@ -465,9 +465,7 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
   }
 
   auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
-  auto idx = physical->primaryIndex();
   ManagedDocumentResult mmdr;
-
   if (maxResults == 0) {  // 0 appearantly means "all results"
     maxResults = SIZE_MAX;
   }
