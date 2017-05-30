@@ -813,29 +813,6 @@ function installedServices () {
   return Array.from(GLOBAL_SERVICE_MAP.get(db._name()).values());
 }
 
-function listJson () {
-  ensureFoxxInitialized();
-  const json = [];
-  for (const service of GLOBAL_SERVICE_MAP.get(db._name()).values()) {
-    json.push({
-      mount: service.mount,
-      name: service.manifest.name,
-      description: service.manifest.description,
-      author: service.manifest.author,
-      system: service.isSystem,
-      development: service.isDevelopment,
-      contributors: service.manifest.contributors || false,
-      license: service.manifest.license,
-      version: service.manifest.version,
-      path: service.basePath,
-      config: service.getConfiguration(),
-      deps: service.getDependencies(),
-      scripts: service.getScripts()
-    });
-  }
-  return json;
-}
-
 function safeChecksum (mount) {
   try {
     return FoxxService.checksum(mount);
@@ -877,7 +854,6 @@ exports._createServiceBundle = createServiceBundle;
 exports._resetCache = () => GLOBAL_SERVICE_MAP.clear();
 exports._mountPoints = getMountPoints;
 exports._isClusterReady = isClusterReadyForBusiness;
-exports.listJson = listJson;
 
 // -------------------------------------------------
 // Exports from foxx utils module

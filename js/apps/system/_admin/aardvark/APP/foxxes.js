@@ -215,17 +215,24 @@ foxxRouter.delete('/', function (req, res) {
 `);
 
 router.get('/', function (req, res) {
-  const foxxes = FoxxManager.listJson();
-  foxxes.forEach((foxx) => {
-    const service = FoxxManager.lookupService(foxx.mount);
-    const readme = service.readme;
-    if (readme) {
-      foxx.readme = marked(readme, {
-        highlight: (code) => highlightAuto(code).value
-      });
-    }
-  });
-  res.json(foxxes);
+  res.json(FoxxManager.installedServices().map(service => ({
+    mount: service.mount,
+    name: service.manifest.name,
+    description: service.manifest.description,
+    author: service.manifest.author,
+    system: service.isSystem,
+    development: service.isDevelopment,
+    contributors: service.manifest.contributors || false,
+    license: service.manifest.license,
+    version: service.manifest.version,
+    path: service.basePath,
+    config: service.getConfiguration(),
+    deps: service.getDependencies(),
+    scripts: service.getScripts(),
+    readme: service.readme && marked(service.readme, {
+      highlight: (code) => highlightAuto(code).value
+    })
+  })));
 })
 .summary('List all Foxxes')
 .description(dd`
