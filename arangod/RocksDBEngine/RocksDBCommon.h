@@ -187,6 +187,7 @@ void iterateBounds(
     rocksdb::ReadOptions options = rocksdb::ReadOptions()) {
   rocksdb::Slice const end = bounds.end();
   options.iterate_upper_bound = &end;// save to use on rocksb::DB directly
+  options.prefix_same_as_start = true;
   std::unique_ptr<rocksdb::Iterator> it(globalRocksDB()->NewIterator(options, handle));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     callback(it.get());

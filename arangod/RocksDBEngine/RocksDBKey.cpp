@@ -465,11 +465,10 @@ StringRef RocksDBKey::vertexId(char const* data, size_t size) {
   RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
   switch (type) {
     case RocksDBEntryType::EdgeIndexValue: {
-      TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t) + sizeof(uint8_t)));
-      size_t keySize = static_cast<size_t>(data[size - 1]);
-      size_t idSize = size - (sizeof(char) + sizeof(uint64_t) + sizeof(char) +
-                              keySize + sizeof(uint8_t));
-      return StringRef(data + sizeof(char) + sizeof(uint64_t), idSize);
+      // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0 + 8 byte rev
+      TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t)) * 2);
+      size_t keySize = size - (sizeof(char) + sizeof(uint64_t)) * 2;
+      return StringRef(data + sizeof(char) + sizeof(uint64_t), keySize);
     }
 
     default:
