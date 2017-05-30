@@ -394,5 +394,5 @@ const localRouter = createRouter();
 router.use('/_local', localRouter);
 
 localRouter.post('/heal', (req, res) => {
-  FoxxManager.heal(true);
+  FoxxManager.heal();
 });

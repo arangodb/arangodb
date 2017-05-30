@@ -135,7 +135,7 @@ function parallelClusterRequests (requests) {
 
 // Startup and self-heal
 
-function selfHealAll (forceReloadRouting = false) {
+function selfHealAll () {
   const db = require('internal').db;
   const dbName = db._name();
   let modified;
@@ -152,7 +152,7 @@ function selfHealAll (forceReloadRouting = false) {
     }
   } finally {
     db._useDatabase(dbName);
-    if (modified || forceReloadRouting) {
+    if (modified) {
       reloadRouting();
     }
   }
@@ -262,7 +262,7 @@ function startup () {
       db._useDatabase(dbName);
     }
   }
-  selfHealAll(true);
+  selfHealAll();
 }
 
 function upsertSystemServices () {
