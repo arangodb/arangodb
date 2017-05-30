@@ -404,27 +404,29 @@ function reloadInstalledService (mount, runSetup) {
 
 function loadInstalledService (serviceDefinition) {
   const mount = serviceDefinition.mount;
-  const checksum = serviceDefinition.checksum;
-  if (checksum && checksum !== safeChecksum(mount)) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_SERVICE_FILES_OUTDATED.code,
-      errorMessage: dd`
-        ${errors.ERROR_SERVICE_FILES_OUTDATED.message}
-        Mount: ${mount}
-      `
-    });
-  }
-  if (
-    !fs.exists(FoxxService.bundlePath(mount)) ||
-    !fs.exists(FoxxService.basePath(mount))
-  ) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_SERVICE_FILES_MISSING.code,
-      errorMessage: dd`
-        ${errors.ERROR_SERVICE_FILES_MISSING.message}
-        Mount: ${mount}
-      `
-    });
+  if (!mount.startsWith('/_')) {
+    const checksum = serviceDefinition.checksum;
+    if (checksum && checksum !== safeChecksum(mount)) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_SERVICE_FILES_OUTDATED.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_FILES_OUTDATED.message}
+          Mount: ${mount}
+        `
+      });
+    }
+    if (
+      !fs.exists(FoxxService.bundlePath(mount)) ||
+      !fs.exists(FoxxService.basePath(mount))
+    ) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_SERVICE_FILES_MISSING.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_FILES_MISSING.message}
+          Mount: ${mount}
+        `
+      });
+    }
   }
   return FoxxService.create(serviceDefinition);
 }
