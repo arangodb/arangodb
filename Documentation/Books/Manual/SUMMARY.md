@@ -179,6 +179,7 @@
 #    * [Authentication](Administration/Sharding/Authentication.md)
 #    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
   * [Upgrading](Administration/Upgrading/README.md)
+    * [Upgrading to 3.2](Administration/Upgrading/Upgrading32.md)
     * [Upgrading to 3.1](Administration/Upgrading/Upgrading31.md)
     * [Upgrading to 3.0](Administration/Upgrading/Upgrading30.md)
     * [Upgrading to 2.8](Administration/Upgrading/Upgrading28.md)

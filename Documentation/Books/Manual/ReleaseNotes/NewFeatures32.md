@@ -86,40 +86,6 @@ Unlike in MySQL, the storage engine selection in ArangoDB is for an entire clust
 an entire single-server instance. All databases and collections will use the same storage 
 engine. 
 
-### RocksDB storage engine: known issues
-
-The RocksDB storage engine in this release has a few known issues and missing features.
-These will be resolved in the following releases:
-
-* the number of documents reported for collections (`db.<collection>.count()`) may be
-  slightly wrong during transactions
-
-* transactions are de facto limited in size, but no size restriction is currently
-  enforced. These restrictions will be implemented in a future release
-
-* the engine is not yet performance-optimized and well configured
-
-* the datafile debugger (arango-dfdb) cannot be used with this storage engine
-
-* APIs that return collection properties or figures will return slightly different
-  attributes for the RocksDB engine than for the MMFiles engine. For example, the
-  attributes `journalSize`, `doCompact`, `indexBuckets` and `isVolatile` are present
-  in the MMFiles engine but not in the RocksDB engine. The memory usage figures reported 
-  for collections in the RocksDB engine are estimate values, whereas they are
-  exact in the MMFiles engine.
-
-* the RocksDB engine does not support some operations which only make sense in the
-  context of the MMFiles engine. These are:
-
-  - the `rotate` method on collections
-  - the `flush` method for WAL files 
-
-* the `any` operation to provide a random document from a collection is supported
-  by the RocksDB engine but the operation has much higher complexity than in the 
-  MMFiles engine. It is therefore discouraged to call it for cases other than manual
-  inspection of a few documents in a collection.
-
-
 ### RocksDB storage engine: supported index types
 
 The existing indexes in the RocksDB engine are all persistent. The following indexes are
