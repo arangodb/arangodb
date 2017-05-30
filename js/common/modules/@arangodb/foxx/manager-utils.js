@@ -54,20 +54,46 @@ function getReadableName (name) {
 }
 
 function getStorage () {
-  var c = db._collection('_apps');
+  let c = db._collection('_apps');
   if (c === null) {
-    c = db._create('_apps', {isSystem: true, replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
-    distributeShardsLike: '_graphs', journalSize: 4 * 1024 * 1024});
-    c.ensureIndex({ type: 'hash', fields: [ 'mount' ], unique: true });
+    try {
+      c = db._create('_apps', {
+        isSystem: true,
+        replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
+        distributeShardsLike: '_graphs',
+        journalSize: 4 * 1024 * 1024
+      });
+      c.ensureIndex({
+        type: 'hash',
+        fields: ['mount'],
+        unique: true
+      });
+    } catch (e) {
+      c = db._collection('_apps');
+      if (!c) {
+        throw e;
+      }
+    }
   }
   return c;
 }
 
 function getBundleStorage () {
-  var c = db._collection('_appbundles');
+  let c = db._collection('_appbundles');
   if (c === null) {
-    c = db._create('_appbundles', {isSystem: true, replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
-    distributeShardsLike: '_graphs', journalSize: 4 * 1024 * 1024});
+    try {
+      c = db._create('_appbundles', {
+        isSystem: true,
+        replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
+        distributeShardsLike: '_graphs',
+        journalSize: 4 * 1024 * 1024
+      });
+    } catch (e) {
+      c = db._collection('_appbundles');
+      if (!c) {
+        throw e;
+      }
+    }
   }
   return c;
 }
