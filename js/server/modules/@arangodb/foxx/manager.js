@@ -532,13 +532,15 @@ function _uninstall (mount, options = {}) {
     REMOVE service IN ${collection}
     RETURN OLD
   `).next();
-  const checksumRefs = db._query(aql`
-    FOR service IN ${collection}
-    FILTER service.checksum == ${serviceDefinition.checksum}
-    RETURN 1
-  `).toArray();
-  if (!checksumRefs.length) {
-    utils.getBundleStorage().delete(serviceDefinition.checksum);
+  if (serviceDefinition) {
+    const checksumRefs = db._query(aql`
+      FOR service IN ${collection}
+      FILTER service.checksum == ${serviceDefinition.checksum}
+      RETURN 1
+    `).toArray();
+    if (!checksumRefs.length) {
+      utils.getBundleStorage().remove(serviceDefinition.checksum);
+    }
   }
   GLOBAL_SERVICE_MAP.get(db._name()).delete(mount);
   const servicePath = FoxxService.basePath(mount);
