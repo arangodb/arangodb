@@ -29,4 +29,5 @@ if [[ -e $fpath ]]; then
 fi
 
 #execute
-sudo cgexec -g memory:arango_mem su - $USER -c "$@"
+sudo cgexec -g memory:arango_mem su -l -p -c "$@" $USER
+
