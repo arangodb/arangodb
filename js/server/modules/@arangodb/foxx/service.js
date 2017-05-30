@@ -107,7 +107,7 @@ module.exports =
       return manifest;
     }
 
-    static validateServiceFiles (mount, manifest) {
+    static validateServiceFiles (mount, manifest, rev) {
       const servicePath = FoxxService.basePath(mount);
       if (manifest.main) {
         parseFile(servicePath, manifest.main);
@@ -140,6 +140,7 @@ module.exports =
     }
 
     constructor (definition, manifest) {
+      this._rev = definition._rev;
       this.mount = definition.mount;
       this.checksum = definition.checksum;
       this.basePath = definition.basePath || FoxxService.basePath(this.mount);

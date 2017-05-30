@@ -228,17 +228,24 @@ function ddSelfHeal () {
     FOR doc IN ${serviceCollection}
     FILTER LEFT(doc.mount, 2) != "/_"
     LET bundleExists = DOCUMENT(${bundleCollection}, doc.checksum) != null
-    RETURN [doc.mount, doc.checksum, bundleExists]
+    RETURN [doc.mount, doc.checksum, doc._rev, bundleExists]
   `).toArray();
 
   let modified = false;
   const knownBundlePaths = new Array(serviceDefinitions.length);
   const knownServicePaths = new Array(serviceDefinitions.length);
-  for (const [mount, checksum, bundleExists] of serviceDefinitions) {
+  const localServiceMap = GLOBAL_SERVICE_MAP.get(db._name());
+  for (const [mount, checksum, rev, bundleExists] of serviceDefinitions) {
     const bundlePath = FoxxService.bundlePath(mount);
     const basePath = FoxxService.basePath(mount);
     knownBundlePaths.push(bundlePath);
     knownServicePaths.push(basePath);
+
+    if (localServiceMap.has(mount)) {
+      if (localServiceMap.get(mount)._rev !== rev) {
+        modified = true;
+      }
+    }
 
     const hasBundle = fs.exists(bundlePath);
     const hasFolder = fs.exists(basePath);
@@ -817,12 +824,14 @@ function _install (mount, options = {}) {
   }
   service.updateChecksum();
   const serviceDefinition = service.toJSON();
-  db._query(aql`
+  const meta = db._query(aql`
     UPSERT {mount: ${mount}}
     INSERT ${serviceDefinition}
     REPLACE ${serviceDefinition}
     IN ${collection}
-  `);
+    RETURN NEW
+  `).next();
+  service._rev = meta._rev;
   ensureServiceExecuted(service, true);
   return service;
 }
