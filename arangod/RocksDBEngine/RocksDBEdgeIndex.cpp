@@ -328,30 +328,21 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   rocksdb::Comparator const* cmp = _index->comparator();
 
   _builder.openArray();
-  RocksDBToken token;
   auto end = _bounds.end();
-  while (_iterator->Valid() &&
-         (cmp->Compare(_iterator->key(), end) < 0)) {
-    StringRef edgeKey = RocksDBKey::primaryKey(_iterator->key());
-    Result res = rocksColl->lookupDocumentToken(_trx, edgeKey, token);
-    if (res.ok()) {
-      ManagedDocumentResult mmdr;
-      if (rocksColl->readDocument(_trx, token, mmdr)) {
-        _builder.add(VPackValue(token.revisionId()));
-        VPackSlice doc(mmdr.vpack());
-        TRI_ASSERT(doc.isObject());
-        _builder.add(doc);
-      } else {
-        // Data Inconsistency.
-        // We have a revision id without a document...
-        TRI_ASSERT(false);
-      }
-#ifdef USE_MAINTAINER_MODE
+  while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
+    RocksDBToken token(revisionId);
+
+    ManagedDocumentResult mmdr;
+    if (rocksColl->readDocument(_trx, token, mmdr)) {
+      _builder.add(VPackValue(token.revisionId()));
+      VPackSlice doc(mmdr.vpack());
+      TRI_ASSERT(doc.isObject());
+      _builder.add(doc);
     } else {
-      // Index inconsistency, we indexed a primaryKey => revision that is
-      // not known any more
-      TRI_ASSERT(res.ok());
-#endif
+      // Data Inconsistency.
+      // We have a revision id without a document...
+      TRI_ASSERT(false);
     }
     _iterator->Next();
   }
@@ -455,12 +446,10 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 int RocksDBEdgeIndex::insert(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
-  VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
-  TRI_ASSERT(primaryKey.isString() && fromTo.isString());
+  TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
-  RocksDBKey key =
-      RocksDBKey::EdgeIndexValue(_objectId, fromToRef, StringRef(primaryKey));
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef, revisionId);
   // blacklist key in cache
   blackListKey(fromToRef);
 
@@ -486,12 +475,11 @@ int RocksDBEdgeIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
 int RocksDBEdgeIndex::remove(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
-  VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
+  // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);
-  TRI_ASSERT(primaryKey.isString() && fromTo.isString());
-  RocksDBKey key =
-      RocksDBKey::EdgeIndexValue(_objectId, fromToRef, StringRef(primaryKey));
+  TRI_ASSERT(fromTo.isString());
+  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef, revisionId);
 
   // blacklist key in cache
   blackListKey(fromToRef);
@@ -521,12 +509,12 @@ void RocksDBEdgeIndex::batchInsert(
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   for (std::pair<TRI_voc_rid_t, VPackSlice> const& doc : documents) {
-    VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
+    // VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
     VPackSlice fromTo = doc.second.get(_directionAttr);
-    TRI_ASSERT(primaryKey.isString() && fromTo.isString());
+    TRI_ASSERT(fromTo.isString());
     auto fromToRef = StringRef(fromTo);
     RocksDBKey key =
-        RocksDBKey::EdgeIndexValue(_objectId, fromToRef, StringRef(primaryKey));
+        RocksDBKey::EdgeIndexValue(_objectId, fromToRef, doc.first);
 
     blackListKey(fromToRef);
     Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), rocksdb::Slice(),
@@ -648,7 +636,8 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
     return;
   }
   auto rocksColl = toRocksDBCollection(_collection);
-  uint64_t expectedCount = static_cast<uint64_t>(selectivityEstimate() * rocksColl->numberDocuments());
+  uint64_t expectedCount = static_cast<uint64_t>(selectivityEstimate() *
+                                                 rocksColl->numberDocuments());
 
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
@@ -657,77 +646,77 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
   std::string previous = "";
   VPackBuilder builder;
   ManagedDocumentResult mmdr;
-  RocksDBToken token;
   bool needsInsert = false;
 
-  rocksutils::iterateBounds(bounds, [&](rocksdb::Iterator* it) {
-    auto key = it->key();
-    StringRef v = RocksDBKey::vertexId(key);
-    if (previous.empty()) {
-      // First call.
-      builder.clear();
-      previous = v.toString();
-      auto finding = _cache->find(previous.data(), (uint32_t)previous.size());
-      if (finding.found()) {
-        needsInsert = false;
-      } else {
-        needsInsert = true;
-        builder.openArray();
-      }
-
-    }
-
-    if (v != previous) {
-      if (needsInsert) {
-        // Switch to next vertex id.
-        // Store what we have.
-        builder.close();
-
-        while(_cache->isResizing() || _cache->isMigrating()) {
-          // We should wait here, the cache will reject
-          // any inserts anyways.
-          usleep(10000);
+  rocksutils::iterateBounds(
+      bounds,
+      [&](rocksdb::Iterator* it) {
+        rocksdb::Slice key = it->key();
+        StringRef v = RocksDBKey::vertexId(key);
+        if (previous.empty()) {
+          // First call.
+          builder.clear();
+          previous = v.toString();
+          auto finding =
+              _cache->find(previous.data(), (uint32_t)previous.size());
+          if (finding.found()) {
+            needsInsert = false;
+          } else {
+            needsInsert = true;
+            builder.openArray();
+          }
         }
 
-        auto entry = cache::CachedValue::construct(
-            previous.data(), static_cast<uint32_t>(previous.size()),
-            builder.slice().start(),
-            static_cast<uint64_t>(builder.slice().byteSize()));
-        if (!_cache->insert(entry)) {
-          delete entry;
+        if (v != previous) {
+          if (needsInsert) {
+            // Switch to next vertex id.
+            // Store what we have.
+            builder.close();
+
+            while (_cache->isResizing() || _cache->isMigrating()) {
+              // We should wait here, the cache will reject
+              // any inserts anyways.
+              usleep(10000);
+            }
+
+            auto entry = cache::CachedValue::construct(
+                previous.data(), static_cast<uint32_t>(previous.size()),
+                builder.slice().start(),
+                static_cast<uint64_t>(builder.slice().byteSize()));
+            if (!_cache->insert(entry)) {
+              delete entry;
+            }
+            builder.clear();
+          }
+          // Need to store
+          previous = v.toString();
+          auto finding =
+              _cache->find(previous.data(), (uint32_t)previous.size());
+          if (finding.found()) {
+            needsInsert = false;
+          } else {
+            needsInsert = true;
+            builder.openArray();
+          }
         }
-        builder.clear();
-      }
-      // Need to store
-      previous = v.toString();
-      auto finding = _cache->find(previous.data(), (uint32_t)previous.size());
-      if (finding.found()) {
-        needsInsert = false;
-      } else {
-        needsInsert = true;
-        builder.openArray();
-      }
-
-
-
-    }
-    if (needsInsert) {
-      StringRef edgeKey = RocksDBKey::primaryKey(key);
-      Result res = rocksColl->lookupDocumentToken(trx, edgeKey, token);
-      if (res.ok() && rocksColl->readDocument(trx, token, mmdr)) {
-        builder.add(VPackValue(token.revisionId()));
-        VPackSlice doc(mmdr.vpack());
-        TRI_ASSERT(doc.isObject());
-        builder.add(doc);
+        if (needsInsert) {
+          TRI_voc_rid_t revisionId = RocksDBKey::revisionId(key);
+          RocksDBToken token(revisionId);
+          if (rocksColl->readDocument(trx, token, mmdr)) {
+            builder.add(VPackValue(token.revisionId()));
+            VPackSlice doc(mmdr.vpack());
+            TRI_ASSERT(doc.isObject());
+            builder.add(doc);
 #ifdef USE_MAINTAINER_MODE
-      } else {
-        // Data Inconsistency.
-        // We have a revision id without a document...
-        TRI_ASSERT(false);
+          } else {
+            // Data Inconsistency.
+            // We have a revision id without a document...
+            TRI_ASSERT(false);
 #endif
-      }
-    }
-  }, RocksDBColumnFamily::edge());
+          }
+        }
+      },
+      RocksDBColumnFamily::edge());
 
   if (!previous.empty() && needsInsert) {
     // We still have something to store
@@ -847,10 +836,13 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   _estimator->clear();
 
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
-  rocksutils::iterateBounds(bounds, [&](rocksdb::Iterator* it) {
-    uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
-    _estimator->insert(hash);
-  }, arangodb::RocksDBColumnFamily::edge());
+  rocksutils::iterateBounds(bounds,
+                            [&](rocksdb::Iterator* it) {
+                              uint64_t hash =
+                                  RocksDBEdgeIndex::HashForKey(it->key());
+                              _estimator->insert(hash);
+                            },
+                            arangodb::RocksDBColumnFamily::edge());
 }
 
 Result RocksDBEdgeIndex::postprocessRemove(transaction::Methods* trx,

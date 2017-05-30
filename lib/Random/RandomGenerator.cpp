@@ -362,7 +362,7 @@ class RandomDeviceCombined : public RandomDevice {
 class RandomDeviceMersenne : public RandomDevice {
  public:
   RandomDeviceMersenne()
-      : engine(RandomDevice::seed()) {}
+      : engine((uint_fast32_t)RandomDevice::seed()) {}
 
   uint32_t random() { return engine(); }
   void seed(uint64_t seed) { engine.seed(static_cast<decltype(engine)::result_type>(seed)); }

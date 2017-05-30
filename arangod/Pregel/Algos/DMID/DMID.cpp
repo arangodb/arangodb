@@ -634,7 +634,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         b.add(_resultField, VPackValue(VPackValueType::Array));
         for (std::pair<PregelID, float> const& pair : ptr->membershipDegree) {
           b.openArray();
-          b.add(VPackValue(pair.first.key));
+          b.add(VPackValue(arangodb::basics::StringUtils::int64(pair.first.key)));
           b.add(VPackValue(pair.second));
           b.close();
         }
